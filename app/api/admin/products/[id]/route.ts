@@ -20,10 +20,10 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
     const slug = b.slug!==undefined ? (slugify(String(b.slug||b.name||existing.name)) || `product-${Date.now()}`) : undefined
     const data:any={}
     const textFields=['name','brand','vendor','productType','description','shortDescription','seoTitle','seoDescription','seoImageUrl','weightUnit','productTemplate','salesChannelsJson']
-    for(const k of textFields) if(b[k]!==undefined) data[k]=b[k]===null?'':String(b[k])
+    for(const k of textFields) if(b[k]!==undefined)data[k]=b[k]===null?'':String(b[k])
     if(b.slug!==undefined)data.slug=slug
-    for(const k of ['basePrice','compareAtPrice','costPrice']) if(b[k]!==undefined) data[k]=b[k]===null||b[k]===''?null:Math.max(0,Math.trunc(Number(b[k])))
-    for(const k of ['weight']) if(b[k]!==undefined)data[k]=b[k]===null||b[k]===''?null:Number(b[k])
+    for(const k of ['basePrice','compareAtPrice','costPrice']) if(b[k]!==undefined)data[k]=b[k]===null||b[k]===''?null:Math.max(0,Math.trunc(Number(b[k])))
+    if(b.weight!==undefined)data.weight=b.weight===null||b.weight===''?null:Number(b.weight)
     for(const k of ['featured','requiresShipping','taxable','trackInventory','continueSellingWhenOutOfStock','giftCard']) if(b[k]!==undefined)data[k]=Boolean(b[k])
     if(b.status!==undefined)data.status=b.status
     if(b.categoryId!==undefined)data.categoryId=b.categoryId||null
@@ -31,46 +31,36 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
 
     const product=await db.$transaction(async tx=>{
       const p=await tx.product.update({where:{id},data})
+
       if(Array.isArray(b.images)){
         const keptIds=b.images.filter((x:any)=>x.id).map((x:any)=>String(x.id))
         if(keptIds.length) await tx.productImage.deleteMany({where:{productId:id,id:{notIn:keptIds}}})
         else await tx.productImage.deleteMany({where:{productId:id}})
         for(let i=0;i<b.images.length;i++){
           const x=b.images[i]
-          if(x.id){ await tx.productImage.update({where:{id:String(x.id)},data:{url:String(x.url),alt:x.alt?String(x.alt):null,sortOrder:i}}) }
-          else { await tx.productImage.create({data:{productId:id,url:String(x.url),alt:x.alt?String(x.alt):null,sortOrder:i}}) }
+          if(x.id) await tx.productImage.update({where:{id:String(x.id)},data:{url:String(x.url),alt:x.alt?String(x.alt):null,sortOrder:i}})
+          else await tx.productImage.create({data:{productId:id,url:String(x.url),alt:x.alt?String(x.alt):null,sortOrder:i}})
         }
       }
+
       if(Array.isArray(b.tags)){
         await tx.productTag.deleteMany({where:{productId:id}})
-        const tags: string[] = Array.from(
-  new Set<string>(
-    b.tags
-      .map((t: unknown) => String(t).trim())
-      .filter((t: string) => t.length > 0)
-  )
-)
-
-if (tags.length > 0) {
-  await tx.productTag.createMany({
-    data: tags.map((value: string) => ({
-      productId: id,
-      value,
-    })),
-  })
-}
-        if(tags.length)await tx.productTag.createMany({data:tags.map(value=>({productId:id,value}))})
+        const tags:string[]=Array.from(new Set<string>(b.tags.map((t:unknown)=>String(t).trim()).filter((t:string)=>t.length>0)))
+        if(tags.length) await tx.productTag.createMany({data:tags.map((value:string)=>({productId:id,value}))})
       }
+
       if(b.quantity!==undefined || b.lowStockThreshold!==undefined || b.location!==undefined){
         const row=await tx.inventoryItem.findFirst({where:{productId:id,variantId:null}})
         if(row) await tx.inventoryItem.update({where:{id:row.id},data:{quantity:Math.max(row.reserved,Math.trunc(Number(b.quantity ?? row.quantity))),lowStockThreshold:b.lowStockThreshold!==undefined?Math.max(0,Math.trunc(Number(b.lowStockThreshold))):row.lowStockThreshold,location:b.location!==undefined?String(b.location||''):row.location}})
         else await tx.inventoryItem.create({data:{productId:id,quantity:Math.max(0,Math.trunc(Number(b.quantity)||0)),lowStockThreshold:Math.max(0,Math.trunc(Number(b.lowStockThreshold)||5)),location:String(b.location||'Main')}})
       }
+
       if(Array.isArray(b.metafields)){
         await tx.metafieldValue.deleteMany({where:{ownerType:'PRODUCT',ownerId:id}})
         const vals=b.metafields.filter((m:any)=>m.definitionId&&m.value!==undefined&&String(m.value)!=='').map((m:any)=>({definitionId:String(m.definitionId),ownerType:'PRODUCT',ownerId:id,value:typeof m.value==='string'?m.value:JSON.stringify(m.value)}))
         if(vals.length) await tx.metafieldValue.createMany({data:vals})
       }
+
       if(Array.isArray(b.variants)){
         for(const v of b.variants){
           const variantId=v.id?String(v.id):null
@@ -88,6 +78,7 @@ if (tags.length > 0) {
       }
       return p
     })
+
     await audit(actor.id,'product.updated','Product',id,{fields:Object.keys(data),images:Array.isArray(b.images)?b.images.length:undefined,variants:Array.isArray(b.variants)?b.variants.length:undefined})
     return json({product:await getProduct(id)})
   } catch(e){ return json({error:e instanceof Error?e.message:'Unable to update product'},{status:400}) }
