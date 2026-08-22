@@ -1,0 +1,2 @@
+import { db } from '@/lib/prisma'; import { json } from '@/lib/utils';
+export async function GET(req:Request){const {searchParams}=new URL(req.url);const q=searchParams.get('q')?.trim();const featured=searchParams.get('featured');const data=await db.product.findMany({where:{status:'ACTIVE',...(q?{OR:[{name:{contains:q}},{sku:{contains:q}}]}:{}),...(featured?{featured:true}:{})},include:{images:true,category:true,variants:true},orderBy:[{featured:'desc'},{createdAt:'desc'}]});return json(data)}
