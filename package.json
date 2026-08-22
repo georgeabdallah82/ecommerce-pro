@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
-    "db:deploy": "prisma db push"
+    "db:deploy": "prisma db push",
+    "db:ensure-admin": "tsx scripts/ensure-admin.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.15.0",
