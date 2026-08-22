@@ -2,7 +2,7 @@ export const defaultTheme={
   brandName:process.env.NEXT_PUBLIC_BRAND_NAME||'YOUR BRAND',
   logoUrl:'',faviconUrl:'',
   colors:{
-    background:'#fffaf6',surface:'#ffffff',text:'#191512',muted:'#746b64',primary:'#ff5a1f',secondary:'#fff0e8',buttonText:'#ffffff',border:'#eaded4',announcementBg:'#191512',announcementText:'#ffffff',accent:'#2a8b63',sale:'#d92d20',success:'#16805b',warning:'#b7791f'
+    background:'#fffaf6',surface:'#ffffff',text:'#191512',muted:'#746b64',primary:'#ff5a1f',secondary:'#fff0e8',buttonText:'#ffffff',border:'#eaded4',announcementBg:'#ff5a1f',announcementText:'#ffffff',accent:'#e64a19',sale:'#d92d20',success:'#16805b',warning:'#b7791f'
   },
   typography:{heading:'Inter',body:'Inter',scale:'100',headingWeight:'750',bodyWeight:'450',letterSpacing:'tight',lineHeight:'1.45'},
   layout:{maxWidth:1360,sectionSpacing:84,productColumns:4,cardGap:20,contentWidth:'wide',pageGutter:28},
