@@ -26,6 +26,13 @@ function normalizeSections(raw:any, fallback:any[]){
   }))
 }
 
+function headerFirst(list:any[]){
+  const normalized=normalizeSections(list,[])
+  const headers=normalized.filter((s:any)=>s.type==='header')
+  const rest=normalized.filter((s:any)=>s.type!=='header')
+  return headers.length?[headers[0],...rest]:rest
+}
+
 export async function getThemeState(){
   const [themeSetting,sectionsSetting,navigationSetting]=await Promise.all([
     db.setting.findUnique({where:{key:'theme.config'}}),
@@ -37,8 +44,6 @@ export async function getThemeState(){
   const theme=deepMerge(defaultTheme,raw)
   const sections=normalizeSections(parseJson<any[]>(sectionsSetting?.value,defaultSections),defaultSections)
 
-  // Keep the storefront's brand palette orange-forward. Existing saved theme data
-  // may contain the old dark announcement/accent values, so normalize those too.
   theme.colors={
     ...theme.colors,
     primary:'#ff5a1f',
@@ -54,16 +59,17 @@ export async function getThemeState(){
     border:'#eaded4'
   }
 
-  // The homepage template is the storefront source of truth. Older versions of
-  // the editor stored a duplicated/stale editorTemplates.Home page, which caused
-  // the editor preview and the real storefront to drift apart. Keep them in sync
-  // on every editor load while preserving the other page templates.
+  // Keep the editor and the live storefront on one source of truth.
+  // The storefront header is global (StoreNav), so the editor keeps a Header
+  // section at the top of each template while all other Home sections come
+  // directly from theme.sections. Older saved editorTemplates are normalized
+  // so stale copies cannot hide sections or reorder the preview incorrectly.
   const editorTemplates=(theme.editorTemplates&&typeof theme.editorTemplates==='object')
     ? structuredClone(theme.editorTemplates)
     : {}
-  editorTemplates['Home page']=structuredClone(sections)
+  editorTemplates['Home page']=headerFirst(sections)
   for(const [key,value] of Object.entries(editorTemplates)){
-    if(key!=='Home page') editorTemplates[key]=normalizeSections(value,[])
+    if(key!=='Home page') editorTemplates[key]=headerFirst(value as any[])
   }
   theme.editorTemplates=editorTemplates
 
