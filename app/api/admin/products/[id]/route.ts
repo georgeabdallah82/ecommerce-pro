@@ -43,7 +43,22 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
       }
       if(Array.isArray(b.tags)){
         await tx.productTag.deleteMany({where:{productId:id}})
-        const tags=[...new Set(b.tags.map((t:any)=>String(t).trim()).filter(Boolean))]
+        const tags: string[] = Array.from(
+  new Set<string>(
+    b.tags
+      .map((t: unknown) => String(t).trim())
+      .filter((t: string) => t.length > 0)
+  )
+)
+
+if (tags.length > 0) {
+  await tx.productTag.createMany({
+    data: tags.map((value: string) => ({
+      productId: id,
+      value,
+    })),
+  })
+}const tags=[...new Set(b.tags.map((t:any)=>String(t).trim()).filter(Boolean))]
         if(tags.length)await tx.productTag.createMany({data:tags.map(value=>({productId:id,value}))})
       }
       if(b.quantity!==undefined || b.lowStockThreshold!==undefined || b.location!==undefined){
