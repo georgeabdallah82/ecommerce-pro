@@ -58,7 +58,7 @@ if (tags.length > 0) {
       value,
     })),
   })
-}const tags=[...new Set(b.tags.map((t:any)=>String(t).trim()).filter(Boolean))]
+}
         if(tags.length)await tx.productTag.createMany({data:tags.map(value=>({productId:id,value}))})
       }
       if(b.quantity!==undefined || b.lowStockThreshold!==undefined || b.location!==undefined){
