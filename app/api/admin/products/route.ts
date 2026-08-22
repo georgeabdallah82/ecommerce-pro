@@ -55,14 +55,12 @@ export async function POST(req: Request) {
       )
     }
 
-    // Normalize tags BEFORE sending them to Prisma.
-    // This explicitly guarantees string[] instead of unknown[].
     const tags: string[] = Array.isArray(b.tags)
       ? Array.from(
           new Set(
             b.tags
               .map((x: unknown) => String(x).trim())
-              .filter((x: string) => Boolean(x))
+              .filter((x: string) => x.length > 0)
           )
         )
       : []
@@ -86,7 +84,6 @@ export async function POST(req: Request) {
         slug:
           slugify(String(b.slug || name)) ||
           `product-${Date.now()}`,
-
         sku,
 
         brand: b.brand || null,
