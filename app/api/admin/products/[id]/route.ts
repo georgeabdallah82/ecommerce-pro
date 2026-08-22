@@ -3,77 +3,504 @@ import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json, slugify } from '@/lib/utils'
 
-async function getProduct(id:string){
-  return db.product.findUnique({where:{id},include:{category:true,images:{orderBy:{sortOrder:'asc'}},variants:{include:{inventory:true}},inventory:{where:{variantId:null}},tags:true,collections:{include:{collection:true}},metafields:{include:{definition:true}}}})
-}
-
-export async function GET(_req:Request,{params}:{params:Promise<{id:string}>}){
-  try { await requirePermission('products.view'); const {id}=await params; const product=await getProduct(id); if(!product)return json({error:'Product not found'},{status:404}); return json({product}) }
-  catch(e){ return json({error:e instanceof Error?e.message:'Forbidden'},{status:403}) }
-}
-
-export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
+export async function GET(req: Request) {
   try {
-    const actor=await requirePermission('products.manage'); const {id}=await params; const b=await req.json()
-    const existing=await db.product.findUnique({where:{id},include:{variants:true,images:true,inventory:{where:{variantId:null}},tags:true}})
-    if(!existing)return json({error:'Product not found'},{status:404})
-    const slug = b.slug!==undefined ? (slugify(String(b.slug||b.name||existing.name)) || `product-${Date.now()}`) : undefined
-    const data:any={}
-    const textFields=['name','brand','vendor','productType','description','shortDescription','seoTitle','seoDescription','seoImageUrl','weightUnit','productTemplate','salesChannelsJson']
-    for(const k of textFields) if(b[k]!==undefined) data[k]=b[k]===null?'':String(b[k])
-    if(b.slug!==undefined)data.slug=slug
-    for(const k of ['basePrice','compareAtPrice','costPrice']) if(b[k]!==undefined) data[k]=b[k]===null||b[k]===''?null:Math.max(0,Math.trunc(Number(b[k])))
-    for(const k of ['weight']) if(b[k]!==undefined)data[k]=b[k]===null||b[k]===''?null:Number(b[k])
-    for(const k of ['featured','requiresShipping','taxable','trackInventory','continueSellingWhenOutOfStock','giftCard']) if(b[k]!==undefined)data[k]=Boolean(b[k])
-    if(b.status!==undefined)data.status=b.status
-    if(b.categoryId!==undefined)data.categoryId=b.categoryId||null
-    if(b.publishedAt!==undefined)data.publishedAt=b.publishedAt?new Date(b.publishedAt):null
+    await requirePermission('products.view')
 
-    const product=await db.$transaction(async tx=>{
-      const p=await tx.product.update({where:{id},data})
-      if(Array.isArray(b.images)){
-        const keptIds=b.images.filter((x:any)=>x.id).map((x:any)=>String(x.id))
-        if(keptIds.length) await tx.productImage.deleteMany({where:{productId:id,id:{notIn:keptIds}}})
-        else await tx.productImage.deleteMany({where:{productId:id}})
-        for(let i=0;i<b.images.length;i++){
-          const x=b.images[i]
-          if(x.id){ await tx.productImage.update({where:{id:String(x.id)},data:{url:String(x.url),alt:x.alt?String(x.alt):null,sortOrder:i}}) }
-          else { await tx.productImage.create({data:{productId:id,url:String(x.url),alt:x.alt?String(x.alt):null,sortOrder:i}}) }
-        }
-      }
-      if(Array.isArray(b.tags)){
-        await tx.productTag.deleteMany({where:{productId:id}})
-        const tags=[...new Set(b.tags.map((t:any)=>String(t).trim()).filter(Boolean))]
-        if(tags.length)await tx.productTag.createMany({data:tags.map(value=>({productId:id,value}))})
-      }
-      if(b.quantity!==undefined || b.lowStockThreshold!==undefined || b.location!==undefined){
-        const row=await tx.inventoryItem.findFirst({where:{productId:id,variantId:null}})
-        if(row) await tx.inventoryItem.update({where:{id:row.id},data:{quantity:Math.max(row.reserved,Math.trunc(Number(b.quantity ?? row.quantity))),lowStockThreshold:b.lowStockThreshold!==undefined?Math.max(0,Math.trunc(Number(b.lowStockThreshold))):row.lowStockThreshold,location:b.location!==undefined?String(b.location||''):row.location}})
-        else await tx.inventoryItem.create({data:{productId:id,quantity:Math.max(0,Math.trunc(Number(b.quantity)||0)),lowStockThreshold:Math.max(0,Math.trunc(Number(b.lowStockThreshold)||5)),location:String(b.location||'Main')}})
-      }
-      if(Array.isArray(b.metafields)){
-        await tx.metafieldValue.deleteMany({where:{ownerType:'PRODUCT',ownerId:id}})
-        const vals=b.metafields.filter((m:any)=>m.definitionId&&m.value!==undefined&&String(m.value)!=='').map((m:any)=>({definitionId:String(m.definitionId),ownerType:'PRODUCT',ownerId:id,value:typeof m.value==='string'?m.value:JSON.stringify(m.value)}))
-        if(vals.length) await tx.metafieldValue.createMany({data:vals})
-      }
-      if(Array.isArray(b.variants)){
-        for(const v of b.variants){
-          const variantId=v.id?String(v.id):null
-          const vd:any={name:String(v.name||'Default Title'),sku:String(v.sku||`${existing.sku}-${Date.now()}`),barcode:v.barcode?String(v.barcode):null,optionJson:typeof v.optionJson==='string'?v.optionJson:JSON.stringify(v.options||{}),price:v.price===''||v.price==null?null:Math.trunc(Number(v.price)),compareAtPrice:v.compareAtPrice===''||v.compareAtPrice==null?null:Math.trunc(Number(v.compareAtPrice)),weight:v.weight===''||v.weight==null?null:Number(v.weight),weightUnit:v.weightUnit?String(v.weightUnit):null}
-          let variant
-          if(variantId) variant=await tx.productVariant.update({where:{id:variantId},data:vd})
-          else variant=await tx.productVariant.create({data:{productId:id,...vd}})
-          const qty=v.quantity===undefined?null:Math.max(0,Math.trunc(Number(v.quantity)||0))
-          if(qty!==null){
-            const inv=await tx.inventoryItem.findFirst({where:{variantId:variant.id}})
-            if(inv) await tx.inventoryItem.update({where:{id:inv.id},data:{quantity:Math.max(inv.reserved,qty),lowStockThreshold:Math.max(0,Math.trunc(Number(v.lowStockThreshold)||inv.lowStockThreshold)),location:String(v.location||inv.location||'Main')}})
-            else await tx.inventoryItem.create({data:{productId:id,variantId:variant.id,quantity:qty,lowStockThreshold:Math.max(0,Math.trunc(Number(v.lowStockThreshold)||5)),location:String(v.location||'Main')}})
+    const q = new URL(req.url).searchParams.get('q')?.trim()
+
+    const rows = await db.product.findMany({
+      where: q
+        ? {
+            OR: [
+              { name: { contains: q } },
+              { sku: { contains: q } },
+              { slug: { contains: q } },
+            ],
           }
-        }
-      }
-      return p
+        : undefined,
+      include: {
+        category: true,
+        inventory: true,
+        images: true,
+      },
+      orderBy: {
+        updatedAt: 'desc',
+      },
     })
-    await audit(actor.id,'product.updated','Product',id,{fields:Object.keys(data),images:Array.isArray(b.images)?b.images.length:undefined,variants:Array.isArray(b.variants)?b.variants.length:undefined})
-    return json({product:await getProduct(id)})
-  } catch(e){ return json({error:e instanceof Error?e.message:'Unable to update product'},{status:400}) }
+
+    return json(rows)
+  } catch (e) {
+    return json(
+      {
+        error: e instanceof Error ? e.message : 'Forbidden',
+      },
+      { status: 403 }
+    )
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const actor = await requirePermission('products.manage')
+    const b = await req.json()
+
+    const name = String(b.name || '').trim()
+    const sku = String(b.sku || '').trim()
+
+    if (!name || !sku) {
+      return json(
+        { error: 'Name and SKU are required' },
+        { status: 400 }
+      )
+    }
+
+    const tags: string[] = Array.isArray(b.tags)
+      ? Array.from(
+          new Set(
+            b.tags
+              .map((x: unknown) => String(x).trim())
+              .filter((x: string) => x.length > 0)
+          )
+        )
+      : []
+
+    const images = Array.isArray(b.images)
+      ? b.images.map((x: any, i: number) => ({
+          url: String(x?.url || x),
+          alt: x?.alt ? String(x.alt) : null,
+          sortOrder: i,
+        }))
+      : []
+
+    const variants =
+      Array.isArray(b.variants) && b.variants.length
+        ? b.variants
+        : []
+
+    const p = await db.product.create({
+      data: {
+        name,
+
+        slug:
+          slugify(String(b.slug || name)) ||
+          `product-${Date.now()}`,
+
+        sku,
+
+        brand: b.brand || null,
+        vendor: b.vendor || null,
+        productType: b.productType || null,
+
+        description: b.description || null,
+        shortDescription: b.shortDescription || null,
+
+        basePrice: Math.max(
+          0,
+          Math.trunc(Number(b.basePrice) || 0)
+        ),
+
+        compareAtPrice:
+          b.compareAtPrice !== undefined &&
+          b.compareAtPrice !== null &&
+          b.compareAtPrice !== ''
+            ? Math.trunc(Number(b.compareAtPrice))
+            : null,
+
+        costPrice:
+          b.costPrice !== undefined &&
+          b.costPrice !== null &&
+          b.costPrice !== ''
+            ? Math.trunc(Number(b.costPrice))
+            : null,
+
+        status: b.status || 'DRAFT',
+
+        featured: Boolean(b.featured),
+
+        categoryId: b.categoryId || null,
+
+        seoTitle: b.seoTitle || null,
+        seoDescription: b.seoDescription || null,
+        seoImageUrl: b.seoImageUrl || null,
+
+        weight:
+          b.weight !== undefined && b.weight !== ''
+            ? Number(b.weight)
+            : null,
+
+        weightUnit: b.weightUnit || null,
+
+        requiresShipping: b.requiresShipping !== false,
+
+        taxable: b.taxable !== false,
+
+        trackInventory: b.trackInventory !== false,
+
+        continueSellingWhenOutOfStock: Boolean(
+          b.continueSellingWhenOutOfStock
+        ),
+
+        giftCard: Boolean(b.giftCard),
+
+        salesChannelsJson: b.salesChannelsJson
+          ? String(b.salesChannelsJson)
+          : JSON.stringify(['online_store']),
+
+        productTemplate: b.productTemplate
+          ? String(b.productTemplate)
+          : 'product',
+
+        publishedAt:
+          b.status === 'ACTIVE'
+            ? b.publishedAt
+              ? new Date(b.publishedAt)
+              : new Date()
+            : null,
+
+        images: {
+          create: images,
+        },
+
+        inventory: {
+          create: {
+            quantity: Math.max(
+              0,
+              Math.trunc(Number(b.quantity) || 0)
+            ),
+
+            lowStockThreshold: Math.max(
+              0,
+              Math.trunc(
+                Number(b.lowStockThreshold) || 5
+              )
+            ),
+
+            location: b.location || 'Main',
+          },
+        },
+
+        tags: {
+          create: tags.map((value: string) => ({
+            value,
+          })),
+        },
+
+        variants: {
+          create: variants.map((v: any) => ({
+            name: String(
+              v.name || 'Default Title'
+            ),
+
+            sku: String(
+              v.sku ||
+                `${sku}-${Date.now()}-${Math.random()
+                  .toString(36)
+                  .slice(2, 5)}`
+            ),
+
+            barcode: v.barcode
+              ? String(v.barcode)
+              : null,
+
+            optionJson:
+              typeof v.optionJson === 'string'
+                ? v.optionJson
+                : JSON.stringify(
+                    v.options || {}
+                  ),
+
+            price:
+              v.price !== undefined &&
+              v.price !== ''
+                ? Math.trunc(
+                    Number(v.price)
+                  )
+                : null,
+
+            compareAtPrice:
+              v.compareAtPrice !== undefined &&
+              v.compareAtPrice !== ''
+                ? Math.trunc(
+                    Number(v.compareAtPrice)
+                  )
+                : null,
+
+            weight:
+              v.weight !== undefined &&
+              v.weight !== ''
+                ? Number(v.weight)
+                : null,
+
+            weightUnit:
+              v.weightUnit || null,
+
+            inventory: {
+              create: {
+                quantity: Math.max(
+                  0,
+                  Math.trunc(
+                    Number(v.quantity) || 0
+                  )
+                ),
+
+                lowStockThreshold: Math.max(
+                  0,
+                  Math.trunc(
+                    Number(
+                      v.lowStockThreshold
+                    ) || 5
+                  )
+                ),
+
+                location:
+                  v.location || 'Main',
+              },
+            },
+          })),
+        },
+      },
+    })
+
+    await audit(
+      actor.id,
+      'product.created',
+      'Product',
+      p.id,
+      {
+        name: p.name,
+      }
+    )
+
+    return json(
+      {
+        product: p,
+      },
+      {
+        status: 201,
+      }
+    )
+  } catch (e) {
+    return json(
+      {
+        error:
+          e instanceof Error
+            ? e.message
+            : 'Unable to create product',
+      },
+      {
+        status: 400,
+      }
+    )
+  }
+}
+
+export async function PATCH(req: Request) {
+  try {
+    const actor =
+      await requirePermission(
+        'products.manage'
+      )
+
+    const b = await req.json()
+
+    const id = String(b.id || '')
+
+    if (!id) {
+      return json(
+        {
+          error: 'Product id required',
+        },
+        {
+          status: 400,
+        }
+      )
+    }
+
+    const data: any = {}
+
+    const stringFields = [
+      'name',
+      'slug',
+      'sku',
+      'brand',
+      'vendor',
+      'productType',
+      'description',
+      'shortDescription',
+      'seoTitle',
+      'seoDescription',
+      'seoImageUrl',
+      'weightUnit',
+      'productTemplate',
+      'salesChannelsJson',
+    ]
+
+    for (const key of stringFields) {
+      if (b[key] !== undefined) {
+        data[key] =
+          b[key] === null
+            ? ''
+            : String(b[key])
+      }
+    }
+
+    if (b.basePrice !== undefined) {
+      data.basePrice = Math.max(
+        0,
+        Math.trunc(
+          Number(b.basePrice) || 0
+        )
+      )
+    }
+
+    if (b.compareAtPrice !== undefined) {
+      data.compareAtPrice =
+        b.compareAtPrice === '' ||
+        b.compareAtPrice === null
+          ? null
+          : Math.trunc(
+              Number(b.compareAtPrice)
+            )
+    }
+
+    if (b.costPrice !== undefined) {
+      data.costPrice =
+        b.costPrice === '' ||
+        b.costPrice === null
+          ? null
+          : Math.trunc(
+              Number(b.costPrice)
+            )
+    }
+
+    if (b.weight !== undefined) {
+      data.weight =
+        b.weight === '' ||
+        b.weight === null
+          ? null
+          : Number(b.weight)
+    }
+
+    const booleanFields = [
+      'featured',
+      'requiresShipping',
+      'taxable',
+      'trackInventory',
+      'continueSellingWhenOutOfStock',
+      'giftCard',
+    ]
+
+    for (const key of booleanFields) {
+      if (b[key] !== undefined) {
+        data[key] = Boolean(b[key])
+      }
+    }
+
+    if (b.status !== undefined) {
+      data.status = b.status
+    }
+
+    if (b.categoryId !== undefined) {
+      data.categoryId =
+        b.categoryId || null
+    }
+
+    if (b.publishedAt !== undefined) {
+      data.publishedAt = b.publishedAt
+        ? new Date(b.publishedAt)
+        : null
+    }
+
+    const product =
+      await db.product.update({
+        where: {
+          id,
+        },
+        data,
+      })
+
+    await audit(
+      actor.id,
+      'product.updated',
+      'Product',
+      id,
+      b
+    )
+
+    return json({
+      product,
+    })
+  } catch (e) {
+    return json(
+      {
+        error:
+          e instanceof Error
+            ? e.message
+            : 'Unable to update product',
+      },
+      {
+        status: 400,
+      }
+    )
+  }
+}
+
+export async function DELETE(
+  req: Request
+) {
+  try {
+    const actor =
+      await requirePermission(
+        'products.manage'
+      )
+
+    const id =
+      new URL(req.url)
+        .searchParams
+        .get('id')
+
+    if (!id) {
+      return json(
+        {
+          error: 'Product id required',
+        },
+        {
+          status: 400,
+        }
+      )
+    }
+
+    await db.product.update({
+      where: {
+        id,
+      },
+      data: {
+        status: 'ARCHIVED',
+      },
+    })
+
+    await audit(
+      actor.id,
+      'product.archived',
+      'Product',
+      id
+    )
+
+    return json({
+      ok: true,
+    })
+  } catch (e) {
+    return json(
+      {
+        error:
+          e instanceof Error
+            ? e.message
+            : 'Unable to archive product',
+      },
+      {
+        status: 400,
+      }
+    )
+  }
 }
