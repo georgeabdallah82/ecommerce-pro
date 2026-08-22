@@ -22,7 +22,10 @@ export async function POST(req:Request){
       publishedAt:b.status==='ACTIVE'?(b.publishedAt?new Date(b.publishedAt):new Date()):null,
       images:{create:(Array.isArray(b.images)?b.images:[]).map((x:any,i:number)=>({url:String(x.url||x),alt:x.alt?String(x.alt):null,sortOrder:i}))},
       inventory:{create:{quantity:Math.max(0,Math.trunc(Number(b.quantity)||0)),lowStockThreshold:Math.max(0,Math.trunc(Number(b.lowStockThreshold)||5)),location:b.location||'Main'}},
-      tags:{create:productTags.map((value:string)=>({value}))},tags:{create:(Array.isArray(b.tags)?[...new Set(b.tags.map((x:any)=>String(x).trim()).filter(Boolean))]:[]).map((value:string)=>({value}))},
+     images:{create:...},
+inventory:{create:...},
+tags:{create:(Array.isArray(b.tags)?Array.from(new Set<string>(b.tags.map((x:unknown)=>String(x).trim()).filter((x:string)=>x.length>0))):[]).map((value:string)=>({value}))},
+variants:{create:...},tags:{create:productTags.map((value:string)=>({value}))},tags:{create:(Array.isArray(b.tags)?[...new Set(b.tags.map((x:any)=>String(x).trim()).filter(Boolean))]:[]).map((value:string)=>({value}))},
       variants:{create:(Array.isArray(b.variants)&&b.variants.length?b.variants:[]).map((v:any)=>({name:String(v.name||'Default Title'),sku:String(v.sku||`${sku}-${Date.now()}-${Math.random().toString(36).slice(2,5)}`),barcode:v.barcode?String(v.barcode):null,optionJson:typeof v.optionJson==='string'?v.optionJson:JSON.stringify(v.options||{}),price:v.price!==undefined&&v.price!==''?Math.trunc(Number(v.price)):null,compareAtPrice:v.compareAtPrice!==undefined&&v.compareAtPrice!==''?Math.trunc(Number(v.compareAtPrice)):null,weight:v.weight!==undefined&&v.weight!==''?Number(v.weight):null,weightUnit:v.weightUnit||null,inventory:{create:{quantity:Math.max(0,Math.trunc(Number(v.quantity)||0)),lowStockThreshold:Math.max(0,Math.trunc(Number(v.lowStockThreshold)||5)),location:v.location||'Main'}}}))}
     }});
     await audit(actor.id,'product.created','Product',p.id,{name:p.name}); return json({product:p},{status:201})
