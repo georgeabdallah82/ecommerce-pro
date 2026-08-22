@@ -66,14 +66,29 @@ export async function POST(req: Request) {
           if (remaining <= 0) break
           const canReserve = Math.min(remaining, Math.max(0, stock.quantity - stock.reserved))
           if (canReserve <= 0) continue
-          const affected = await tx.$executeRawUnsafe(`UPDATE "InventoryItem" SET "reserved" = "reserved" + ? WHERE "id" = ? AND "quantity" - "reserved" >= ?`, canReserve, stock.id, canReserve)
-          if (affected === 1) {
-            await tx.inventoryMovement.create({data:{inventoryId:stock.id,type:'SALE_RESERVATION',quantity:canReserve,reason:'Checkout reservation',referenceId:orderNumber}})
+
+          const affected = await tx.inventoryItem.updateMany({
+            where: {
+              id: stock.id,
+              reserved: {
+                lte: stock.quantity - canReserve,
+              },
+            },
+            data: {
+              reserved: {
+                increment: canReserve,
+              },
+            },
+          })
+
+          if (affected.count === 1) {
+            await tx.inventoryMovement.create({ data: { inventoryId: stock.id, type: 'SALE_RESERVATION', quantity: canReserve, reason: 'Checkout reservation', referenceId: orderNumber } })
             remaining -= canReserve
           }
         }
         if (remaining > 0) throw new Error(`Stock changed for ${p.name}. Please try again.`)
       }
+
       const created = await tx.order.create({ data: { orderNumber, userId: user?.id ?? null, email: input.email, phone: input.phone || null, subtotal, discountTotal: discount, shippingTotal, taxTotal, grandTotal, currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD', paymentMethod, shippingAddressJson: JSON.stringify(input.shippingAddress), couponCode: coupon?.code ?? null, shippingMethod: shipping.method, items: { create: normalized }, events: { create: { status: 'PENDING', message: 'Order placed successfully.' } }, paymentTransactions: { create: { provider: 'manual', status: 'created', amount: grandTotal, currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD' } } } })
       if (coupon) await tx.coupon.update({ where: { id: coupon.id }, data: { usedCount: { increment: 1 } } })
       return created
