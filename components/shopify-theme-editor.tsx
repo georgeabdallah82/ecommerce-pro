@@ -1,13 +1,12 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDown, ArrowLeft, ArrowUp, ChevronDown, ChevronRight, Copy, Eye, GripVertical, Image as ImageIcon, LayoutTemplate, Monitor, MoreHorizontal, Palette, Plus, Redo2, Save, Search, Settings2, Smartphone, Tablet, Trash2, Undo2, X } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowUp, ChevronRight, Copy, Eye, GripVertical, Image as ImageIcon, LayoutTemplate, Monitor, Palette, Plus, Redo2, Save, Search, Settings2, Smartphone, Tablet, Trash2, Undo2, X } from 'lucide-react'
 
 type Block = { id: string; type: string; settings: Record<string, any> }
 type Section = { id: string; type: string; enabled: boolean; settings: Record<string, any>; blocks?: Block[] }
 type Theme = Record<string, any>
 type Snapshot = { theme: Theme; sections: Section[]; navigation: any[] }
-
 type CatalogProduct = { id: string; name: string; slug?: string; basePrice: number; compareAtPrice?: number | null; images?: { url: string }[]; category?: { name: string } | null }
 type CatalogCollection = { id: string; name: string; slug: string; description?: string | null; imageUrl?: string | null }
 
@@ -35,27 +34,25 @@ const META: Record<string, { label: string; category: string; description: strin
   footer: { label: 'Footer', category: 'Footer', description: 'Footer navigation, newsletter and policies.', storeType: 'footer' },
 }
 
-const PICKER = [
-  'hero','slideshow','video','image_with_text','product_grid','product_carousel','featured_product','product_recommendations','collection_grid','collection_carousel','main_collection_banner','multicolumn','rich_text','testimonials','logo_list','faq','newsletter','footer'
-]
+const PICKER = ['hero','slideshow','video','image_with_text','product_grid','product_carousel','featured_product','product_recommendations','collection_grid','collection_carousel','main_collection_banner','multicolumn','rich_text','testimonials','logo_list','faq','newsletter','footer']
 const CATEGORY_ORDER = ['Hero & media','Products','Collections','Content','Footer']
 const TEMPLATES = ['Home page','Products','Product','Collections','Collection','Cart','Pages','Blog']
 
 function clone<T>(value: T): T { return structuredClone(value) }
 
 function defaults(type: string): Record<string, any> {
-  if (type === 'hero') return { eyebrow: 'NEW COLLECTION', heading: 'Make your store impossible to ignore.', text: 'A premium storefront built for conversion.', buttonLabel: 'Shop now', buttonUrl: '/shop', secondaryLabel: 'Explore collections', secondaryUrl: '/collections', imageUrl: '', desktopImageUrl: '', mobileImageUrl: '', imageAlt: '', focalX: 50, focalY: 50, mobileFocalX: 50, mobileFocalY: 50, imageFit: 'cover', overlay: .25, overlayColor: '#000000', overlayStyle: 'bottom-gradient', contentPosition: 'center-left', contentWidth: 620, contentBox: false, minHeight: 620 },
-  if (type === 'slideshow') return { heading: 'Featured', subheading: '', autoplay: true, speed: 5, minHeight: 540 },
-  if (type === 'video') return { heading: 'Watch the story', text: '', imageUrl: '', url: '', minHeight: 460 },
-  if (type === 'image_with_text') return { eyebrow: 'THE BRAND', heading: 'Tell your story.', text: 'Combine imagery, copy and a strong call to action.', buttonLabel: 'Learn more', buttonUrl: '#', imageUrl: '', layout: 'image-right' },
-  if (type.includes('product') || type === 'featured_product') return { heading: META[type]?.label || 'Featured products', subheading: 'Best sellers, new arrivals or a hand-picked edit.', limit: type === 'featured_product' ? 1 : 8, columns: type === 'featured_product' ? 1 : 4, showViewAll: true, collection: '' },
-  if (type.includes('collection')) return { heading: 'Shop by collection', subheading: 'Build a visual path through your catalog.', limit: 4, columns: 4 },
-  if (type === 'multicolumn') return { heading: 'Why shop with us?', subheading: '', columns: 3 },
-  if (type === 'testimonials') return { heading: 'Loved by customers', subheading: 'Real feedback makes the store feel real.', columns: 3 },
-  if (type === 'logo_list') return { heading: 'Featured in', columns: 5 },
-  if (type === 'faq') return { heading: 'Frequently asked questions' },
-  if (type === 'newsletter') return { heading: 'Stay in the loop', text: 'Get launches, drops and offers in your inbox.', buttonLabel: 'Subscribe', background: 'primary' },
-  if (type === 'announcement') return { enabled: true, text: 'Free shipping on orders over $50', link: '', position: 'above', autoplay: false },
+  if (type === 'hero') return { eyebrow: 'NEW COLLECTION', heading: 'Make your store impossible to ignore.', text: 'A premium storefront built for conversion.', buttonLabel: 'Shop now', buttonUrl: '/shop', secondaryLabel: 'Explore collections', secondaryUrl: '/collections', imageUrl: '', desktopImageUrl: '', mobileImageUrl: '', imageAlt: '', focalX: 50, focalY: 50, mobileFocalX: 50, mobileFocalY: 50, imageFit: 'cover', overlay: .25, overlayColor: '#000000', overlayStyle: 'bottom-gradient', contentPosition: 'center-left', contentWidth: 620, contentBox: false, minHeight: 620 }
+  if (type === 'slideshow') return { heading: 'Featured', subheading: '', autoplay: true, speed: 5, minHeight: 540 }
+  if (type === 'video') return { heading: 'Watch the story', text: '', imageUrl: '', url: '', minHeight: 460 }
+  if (type === 'image_with_text') return { eyebrow: 'THE BRAND', heading: 'Tell your story.', text: 'Combine imagery, copy and a strong call to action.', buttonLabel: 'Learn more', buttonUrl: '#', imageUrl: '', layout: 'image-right' }
+  if (type.includes('product') || type === 'featured_product') return { heading: META[type]?.label || 'Featured products', subheading: 'Best sellers, new arrivals or a hand-picked edit.', limit: type === 'featured_product' ? 1 : 8, columns: type === 'featured_product' ? 1 : 4, showViewAll: true, collection: '' }
+  if (type.includes('collection')) return { heading: 'Shop by collection', subheading: 'Build a visual path through your catalog.', limit: 4, columns: 4 }
+  if (type === 'multicolumn') return { heading: 'Why shop with us?', subheading: '', columns: 3 }
+  if (type === 'testimonials') return { heading: 'Loved by customers', subheading: 'Real feedback makes the store feel real.', columns: 3 }
+  if (type === 'logo_list') return { heading: 'Featured in', columns: 5 }
+  if (type === 'faq') return { heading: 'Frequently asked questions' }
+  if (type === 'newsletter') return { heading: 'Stay in the loop', text: 'Get launches, drops and offers in your inbox.', buttonLabel: 'Subscribe', background: 'primary' }
+  if (type === 'announcement') return { enabled: true, text: 'Free shipping on orders over $50', link: '', position: 'above', autoplay: false }
   return { heading: META[type]?.label || type }
 }
 
@@ -175,7 +172,34 @@ export default function ShopifyThemeEditor({ initial }: { initial: { theme: Them
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not save theme') } finally { setSaving(false) }
   }
 
+  const editorStyles = `
+    .stxEditor{--stx-accent:${theme.colors?.primary || '#ff5a1f'};--stx-accent-text:${theme.colors?.buttonText || '#ffffff'};--stx-bg:${theme.colors?.background || '#fffaf6'};--stx-surface:${theme.colors?.surface || '#ffffff'};--stx-text:${theme.colors?.text || '#191512'};--stx-muted:${theme.colors?.muted || '#746b64'};--stx-border:${theme.colors?.border || '#eaded4'};--stx-secondary:${theme.colors?.secondary || '#fff0e8'};--stx-announcement:${theme.colors?.announcementBg || '#191512'};--stx-announcement-text:${theme.colors?.announcementText || '#ffffff'};}
+    .stxTopbar,.stxSidebar,.stxDrawer,.stxPanel,.stxTopbar,.stxPreviewBar{background:var(--stx-surface)!important;color:var(--stx-text)}
+    .stxEditor{background:var(--stx-bg)!important;color:var(--stx-text)}
+    .stxTopbar,.stxSidebar,.stxDrawer,.stxPanel,.stxPreviewBar{border-color:var(--stx-border)!important}
+    .stxTitle,.stxSidebarHead strong,.stxRowMain,.stxPanel h3,.stxDrawerHead h2,.stxSectionHead h2,.stxImageText h2,.stxNewsletter h2,.stxRich h2{color:var(--stx-text)!important}
+    .stxKicker,.stxTemplate span,.stxSidebarHead span,.stxRowMain em,.stxPreviewBar,.stxField>span,.stxSectionHead p,.stxImageText p,.stxNewsletter p,.stxRich p,.stxProductGrid article>span,.stxQuoteGrid small{color:var(--stx-muted)!important}
+    .stxDevices button.active,.stxButton.dark,.stxCta,.stxFakeInput b{background:var(--stx-accent)!important;border-color:var(--stx-accent)!important;color:var(--stx-accent-text)!important}
+    .stxRow.selected{box-shadow:inset 3px 0 var(--stx-accent)!important;background:var(--stx-secondary)!important;border-color:var(--stx-border)!important}
+    .stxLiveSection.selected{outline-color:var(--stx-accent)!important}
+    .stxLiveSection:hover{outline-color:color-mix(in srgb,var(--stx-accent) 35%, transparent)!important}
+    .stxHoverLabel{background:var(--stx-accent)!important;color:var(--stx-accent-text)!important}
+    .stxAnnouncement{background:var(--stx-announcement)!important;color:var(--stx-announcement-text)!important}
+    .stxLiveHeader,.stxSection,.stxImageText>div:last-child,.stxRich,.stxFooter,.stxNewsletter.surface,.stxPanel{background:var(--stx-surface)!important;color:var(--stx-text)}
+    .stxNewsletter.primary{background:var(--stx-accent)!important;color:var(--stx-accent-text)!important}
+    .stxNewsletter.secondary{background:var(--stx-secondary)!important;color:var(--stx-text)!important}
+    .stxHero{background-color:var(--stx-secondary)}
+    .stxCta{color:var(--stx-accent-text)!important}
+    .stxField input,.stxField textarea,.stxField select,.stxAdd,.stxAddSectionWide,.stxPicker,.stxPickerGroup button,.stxButton.ghost,.stxIcon,.stxDrawerActions button,.stxAddBlock button{border-color:var(--stx-border)!important;background:var(--stx-surface)!important;color:var(--stx-text)!important}
+    .stxPickerGroup button:hover{border-color:var(--stx-accent)!important}
+    .stxBottomLinks a:hover,.stxSidebarTabs button.active{background:var(--stx-secondary)!important;color:var(--stx-text)!important}
+    .stxLive{color:var(--stx-accent)!important}
+    .stxLive i{background:var(--stx-accent)!important}
+    .stxQuoteGrid article{background:var(--stx-surface)!important;border-color:var(--stx-border)!important}
+  `
+
   return <div className="stxEditor">
+    <style>{editorStyles}</style>
     <header className="stxTopbar">
       <div className="stxTopLeft"><a className="stxBack" href="/admin/online-store"><ArrowLeft size={17}/></a><div><div className="stxKicker">ONLINE STORE</div><div className="stxTitle">Theme editor</div></div></div>
       <div className="stxTemplate"><select value={template} onChange={e => setTemplate(e.target.value)}>{TEMPLATES.map(t => <option key={t}>{t}</option>)}</select><span>Template</span></div>
@@ -222,7 +246,7 @@ function ThemeSettings({ theme, updateTheme }: { theme: Theme; updateTheme: (key
   return <div className="stxThemeSettings">
     <div className="stxIntro"><span>THEME SETTINGS</span><strong>Global design</strong><p>Controls shared across your storefront.</p></div>
     <Panel title="Brand"><Field label="Brand name" value={theme.brandName || ''} onChange={v => updateTheme('brandName', v)}/><Field label="Logo URL" value={theme.logoUrl || ''} onChange={v => updateTheme('logoUrl', v)}/></Panel>
-    <Panel title="Colors"><div className="stxTwo"><Color label="Background" value={theme.colors?.background || '#ffffff'} onChange={v => updateTheme('colors', { ...theme.colors, background:v })}/><Color label="Primary" value={theme.colors?.primary || '#111827'} onChange={v => updateTheme('colors', { ...theme.colors, primary:v })}/><Color label="Text" value={theme.colors?.text || '#111827'} onChange={v => updateTheme('colors', { ...theme.colors, text:v })}/><Color label="Accent" value={theme.colors?.accent || '#4f7cff'} onChange={v => updateTheme('colors', { ...theme.colors, accent:v })}/></div></Panel>
+    <Panel title="Colors"><div className="stxTwo"><Color label="Background" value={theme.colors?.background || '#ffffff'} onChange={v => updateTheme('colors', { ...theme.colors, background:v })}/><Color label="Primary" value={theme.colors?.primary || '#ff5a1f'} onChange={v => updateTheme('colors', { ...theme.colors, primary:v })}/><Color label="Text" value={theme.colors?.text || '#111827'} onChange={v => updateTheme('colors', { ...theme.colors, text:v })}/><Color label="Accent" value={theme.colors?.accent || '#2a8b63'} onChange={v => updateTheme('colors', { ...theme.colors, accent:v })}/></div></Panel>
     <Panel title="Typography"><Select label="Heading" value={theme.typography?.heading || 'Inter'} options={['Inter','Manrope','DM Sans','Poppins','Georgia','Playfair Display']} onChange={v => updateTheme('typography', { ...theme.typography, heading:v })}/><Select label="Body" value={theme.typography?.body || 'Inter'} options={['Inter','Manrope','DM Sans','Poppins','Arial','Georgia']} onChange={v => updateTheme('typography', { ...theme.typography, body:v })}/><Range label="Scale" value={Number(theme.typography?.scale || 100)} min={90} max={125} step={5} onChange={v => updateTheme('typography', { ...theme.typography, scale:String(v) })}/></Panel>
     <Panel title="Layout"><Range label="Max width" value={Number(theme.layout?.maxWidth || 1360)} min={960} max={1680} step={10} onChange={v => updateTheme('layout', { ...theme.layout, maxWidth:v })}/><Range label="Section spacing" value={Number(theme.layout?.sectionSpacing || 84)} min={24} max={160} step={4} onChange={v => updateTheme('layout', { ...theme.layout, sectionSpacing:v })}/></Panel>
   </div>
@@ -237,7 +261,7 @@ function SectionInspector({ section, update, addBlock, patchBlock, deleteBlock }
     <div className="stxInspectorBody">
       <Panel title="Content">
         {section.type==='hero' && <>{field('Eyebrow','eyebrow')}<TextArea label="Heading" value={s.heading || ''} onChange={v => update({heading:v})}/><TextArea label="Supporting text" value={s.text || ''} onChange={v => update({text:v})}/><div className="stxTwo">{field('Button','buttonLabel')}{field('Button URL','buttonUrl')}</div>{field('Image URL','imageUrl')}</>}
-        {(section.type.includes('product') || section.type==='featured_product') && <>{field('Heading','heading')}<TextArea label="Subheading" value={s.subheading || ''} onChange={v => update({subheading:v})}/><Select label="Collection" value={s.collection || ''} options={['', 'All products', ...Array.from(new Set([]))]} onChange={v => update({collection:v})}/><div className="stxTwo"><Range label="Products" value={Number(s.limit || 8)} min={1} max={24} step={1} onChange={v => update({limit:v})}/><Range label="Columns" value={Number(s.columns || 4)} min={1} max={6} step={1} onChange={v => update({columns:v})}/></div>}</>
+        {(section.type.includes('product') || section.type==='featured_product') && <>{field('Heading','heading')}<TextArea label="Subheading" value={s.subheading || ''} onChange={v => update({subheading:v})}/><Select label="Collection" value={s.collection || ''} options={['', 'All products']} onChange={v => update({collection:v})}/><div className="stxTwo"><Range label="Products" value={Number(s.limit || 8)} min={1} max={24} step={1} onChange={v => update({limit:v})}/><Range label="Columns" value={Number(s.columns || 4)} min={1} max={6} step={1} onChange={v => update({columns:v})}/></div>}</>
         {(section.type.includes('collection')) && <>{field('Heading','heading')}<TextArea label="Subheading" value={s.subheading || ''} onChange={v => update({subheading:v})}/><div className="stxTwo"><Range label="Collections" value={Number(s.limit || 4)} min={1} max={12} step={1} onChange={v => update({limit:v})}/><Range label="Columns" value={Number(s.columns || 4)} min={1} max={6} step={1} onChange={v => update({columns:v})}/></div></>}
         {section.type==='announcement' && <>{field('Message','text')} {field('Link','link')} <Toggle label="Auto rotate" value={Boolean(s.autoplay)} onChange={v => update({autoplay:v})}/></>}
         {section.type==='image_with_text' && <>{field('Eyebrow','eyebrow')}<TextArea label="Heading" value={s.heading || ''} onChange={v => update({heading:v})}/><TextArea label="Text" value={s.text || ''} onChange={v => update({text:v})}/>{field('Button','buttonLabel')}{field('Button URL','buttonUrl')}{field('Image URL','imageUrl')}<Select label="Layout" value={s.layout || 'image-right'} options={['image-left','image-right']} onChange={v => update({layout:v})}/></>}
@@ -258,7 +282,7 @@ function PreviewSection({ section, theme, products, collections, selected, onSel
   const s=section.settings || {}
   const wrap = (child:React.ReactNode) => <div className={`stxLiveSection ${selected?'selected':''}`} onClick={onSelect}>{child}<span className="stxHoverLabel">{META[section.type]?.label || section.type}</span></div>
   const cols=Math.min(6,Math.max(1,Number(s.columns||4)))
-  if (section.type==='announcement') return <>{selected && wrap(<div className="stxAnnouncement">{s.text || 'Announcement bar'}</div>)}</>
+  if (section.type==='announcement') return selected ? wrap(<div className="stxAnnouncement">{s.text || 'Announcement bar'}</div>) : null
   if (section.type==='hero') return wrap(<section className="stxHero" style={{minHeight:Number(s.minHeight||560),backgroundImage:s.imageUrl?`linear-gradient(rgba(0,0,0,.24),rgba(0,0,0,.24)),url(${s.imageUrl})`:'linear-gradient(135deg,#18181b,#6b4b3b)'}}><div><small>{s.eyebrow}</small><h1>{s.heading}</h1><p>{s.text}</p><span className="stxCta">{s.buttonLabel || 'Shop now'}</span></div></section>)
   if (section.type==='slideshow') { const b=section.blocks?.[0]?.settings || {}; return wrap(<section className="stxHero" style={{backgroundImage:b.imageUrl?`linear-gradient(rgba(0,0,0,.25),rgba(0,0,0,.25)),url(${b.imageUrl})`:'linear-gradient(135deg,#121212,#6d3b25)'}}><div><small>SLIDESHOW</small><h1>{b.heading || s.heading || 'Featured campaign'}</h1><p>{b.text || 'Add slides from the section settings.'}</p><span className="stxCta">{b.buttonLabel || 'Shop now'}</span></div></section>) }
   if (section.type.includes('product')) { const items=products.slice(0,Number(s.limit || 8)); return wrap(<section className="stxSection"><div className="stxSectionHead"><div><small>PRODUCTS</small><h2>{s.heading || 'Featured collection'}</h2><p>{s.subheading}</p></div><span>View all →</span></div><div className="stxProductGrid" style={{gridTemplateColumns:`repeat(${cols},1fr)`}}>{items.length ? items.map(p => <article key={p.id}><div className="stxProductImage">{p.images?.[0]?.url && <img src={p.images[0].url} alt=""/>}</div><strong>{p.name}</strong><span>${(Number(p.basePrice||0)/100).toFixed(2)}</span></article>) : Array.from({length:Math.min(4,Number(s.limit||4))}).map((_,i)=><article key={i}><div className="stxProductImage placeholder"/><strong>Product {i+1}</strong><span>$24.00</span></article>)}</div></section>) }
