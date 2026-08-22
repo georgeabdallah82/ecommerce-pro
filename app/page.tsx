@@ -29,7 +29,9 @@ export default async function Home(){
   db.product.findMany({where:{status:'ACTIVE'},include:{images:true,category:true},orderBy:[{featured:'desc'},{createdAt:'desc'}],take:32}),
   db.collection.findMany({where:{isActive:true},take:16,orderBy:{sortOrder:'asc'}})
  ])
- const visible=sections.filter((s:any)=>s.enabled!==false&&s.settings?.enabled!==false)
+ // Keep the storefront on the exact same Home template source as the editor.
+ const homeTemplates=Array.isArray(theme.editorTemplates?.['Home page'])?theme.editorTemplates['Home page']:sections
+ const visible=homeTemplates.filter((s:any)=>s.enabled!==false&&s.settings?.enabled!==false)
  const hasFooter=visible.some((s:any)=>s.type==='footer')
  return <><main>{visible.map((section:any)=>{const s=section.settings||{};const style=sectionStyle(theme,s);const anim=reveal(theme,s)
    if(section.type==='announcement') return <section className={`storeSection announcementSection ${anim}`} key={section.id} style={{padding:0,background:s.background==='secondary'?theme.colors.secondary:s.background==='dark'?'#15120f':theme.colors.primary,color:s.textColor||theme.colors.buttonText||'#fff'}}><div className="announcementBar" style={{background:'transparent',color:'inherit',minHeight:Number(s.height||40)}}><div className="announcementInner container"><span className="announcementMessage">{s.text||'Free shipping on orders over $50'}</span>{s.link&&<Link href={s.link}>Learn more</Link>}</div></div></section>
@@ -57,5 +59,4 @@ export default async function Home(){
    if(section.type==='newsletter') return <section className={`storeSection ${anim}`} key={section.id} style={style}><div className="container"><div className={`newsletterHome ${s.background||'primary'}`}><div><span className="muted">NEWSLETTER</span><h2 className="h2">{s.heading||'Stay in the loop'}</h2><p className="muted">{s.text||''}</p></div><div className="newsletterForm"><input className="input" placeholder="Email address"/><button className="btn">{s.buttonLabel||'Subscribe'}</button></div></div></div></section>
    if(section.type==='footer') return <Footer key={section.id}/>
    return null
- })}</main>{!hasFooter&&<Footer/>}</>
-}
+ })}</main>{!hasFooter&&<Footer/>}</>}
