@@ -15,15 +15,23 @@ function deepMerge(base:any,raw:any){
 
 function normalizeSections(raw:any, fallback:any[]){
   const source=Array.isArray(raw)?raw:(Array.isArray(fallback)?fallback:[])
-  return source.filter(Boolean).map((s:any)=>({
-    ...s,
-    enabled:s.enabled!==false,
-    settings:{...(s.settings||{})},
-    blocks:Array.isArray(s.blocks)?s.blocks.map((b:any)=>({
-      ...b,
-      settings:{...(b.settings||{})}
-    })):[]
-  }))
+  return source.filter(Boolean).map((original:any)=>{
+    const settings={...(original.settings||{})}
+    // Keep legacy/desktop/mobile hero image fields compatible with the editor
+    // and storefront so one image setting is always available to both.
+    if(original.type==='hero' && !settings.imageUrl){
+      settings.imageUrl=settings.desktopImageUrl||settings.mobileImageUrl||''
+    }
+    return {
+      ...original,
+      enabled: original.enabled===false || original.enabled==='false' || original.enabled===0 ? false : true,
+      settings,
+      blocks:Array.isArray(original.blocks)?original.blocks.map((b:any)=>({
+        ...b,
+        settings:{...(b.settings||{})}
+      })):[]
+    }
+  })
 }
 
 function headerFirst(list:any[]){
@@ -59,11 +67,8 @@ export async function getThemeState(){
     border:'#eaded4'
   }
 
-  // Keep the editor and the live storefront on one source of truth.
-  // The storefront header is global (StoreNav), so the editor keeps a Header
-  // section at the top of each template while all other Home sections come
-  // directly from theme.sections. Older saved editorTemplates are normalized
-  // so stale copies cannot hide sections or reorder the preview incorrectly.
+  // Home is the single source of truth. The other templates keep their own
+  // saved draft sections, while the Home template always mirrors theme.sections.
   const editorTemplates=(theme.editorTemplates&&typeof theme.editorTemplates==='object')
     ? structuredClone(theme.editorTemplates)
     : {}
