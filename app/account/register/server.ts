@@ -1,0 +1,3 @@
+'use server'
+import { db } from '@/lib/prisma'; import { hashPassword,setSession } from '@/lib/auth'; import { redirect } from 'next/navigation'
+export async function register(f:FormData){const name=String(f.get('name')||'').trim();const email=String(f.get('email')||'').toLowerCase().trim();const password=String(f.get('password')||'');if(name.length<2||!email||password.length<8)redirect('/account/register?error=invalid');if(await db.user.findUnique({where:{email}}))redirect('/account/register?error=exists');const u=await db.user.create({data:{name,email,passwordHash:await hashPassword(password)}});await setSession(u.id);redirect('/account')}
