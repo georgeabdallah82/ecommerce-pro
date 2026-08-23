@@ -70,7 +70,6 @@ export function OrdersAdminPro({ initial }: { initial: any[] }) {
     <div className="card" style={{ padding: 8, overflowX: 'auto' }}>
       <table className="table"><thead><tr><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Payment</th><th>Status</th><th>Actions</th></tr></thead>
       <tbody>{shown.map(o => {
-        const allowedStatuses = statuses.filter(s => s === o.status || canTransitionOrder(o.status, s as any))
         return <tr key={o.id}>
         <td><Link className="textLink" href={`/admin/orders/${o.id}`}><strong>#{o.orderNumber}</strong></Link><div className="muted">{new Date(o.createdAt).toLocaleString()}</div></td>
         <td><strong>{o.user?.name || `${o.user?.firstName || ''} ${o.user?.lastName || ''}`.trim() || 'Guest'}</strong><div className="muted">{o.email}</div></td>
@@ -79,7 +78,8 @@ export function OrdersAdminPro({ initial }: { initial: any[] }) {
         <td><span className="pill">{o.paymentStatus}</span><div className="muted">{o.paymentMethod}</div></td>
         <td><span className="pill">{o.status}</span>{o.trackingNumber && <div className="muted">{o.trackingNumber}</div>}</td>
         <td><div className="inline" style={{ gap: 6 }}>
-          <select className="input compact" disabled={busy === o.id} value={o.status} onChange={e => update(o.id, { status: e.target.value })}>{allowedStatuses.map(s => <option key={s}>{s}</option>)}</select>
+          <Link className="btn ghost smallBtn" href={`/admin/orders/${o.id}`}>View</Link>
+          <select className="input compact" disabled={busy === o.id} value={o.status} onChange={e => update(o.id, { status: e.target.value })}>{statuses.map(s => <option key={s} disabled={s !== o.status && !canTransitionOrder(o.status, s as any)}>{s}{s !== o.status && !canTransitionOrder(o.status, s as any) ? ' (not available)' : ''}</option>)}</select>
           <button className="btn ghost smallBtn" disabled={busy === o.id} onClick={() => { const t = prompt('Tracking number', o.trackingNumber || ''); if (t !== null) update(o.id, { trackingNumber: t }) }}>Tracking</button>
           {o.paymentStatus !== 'REFUNDED' && o.status !== 'CANCELLED' && <button className="btn ghost smallBtn" disabled={busy === o.id} onClick={() => { setRefund({ id: o.id, number: o.orderNumber, currency: o.currency, max: o.grandTotal }); setRefundAmount('') }}>Refund</button>}
         </div></td>
