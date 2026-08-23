@@ -5,6 +5,7 @@ export function availableQuantity(row: { quantity: number; reserved: number }) {
 }
 
 export async function reserveStock(tx: any, product: any, variantId: string | null | undefined, quantity: number, referenceId: string) {
+  if (quantity <= 0) throw new Error('Quantity must be greater than zero')
   if (!product.trackInventory || product.continueSellingWhenOutOfStock) return []
 
   const variantRows = variantId ? product.inventory.filter((x: any) => x.variantId === variantId) : []
@@ -16,13 +17,28 @@ export async function reserveStock(tx: any, product: any, variantId: string | nu
     if (remaining <= 0) break
     const canReserve = Math.min(remaining, availableQuantity(row))
     if (canReserve <= 0) continue
-    const affected = await tx.inventoryItem.updateMany({ where: { id: row.id, reserved: { lte: row.quantity - canReserve } }, data: { reserved: { increment: canReserve } } })
-    if (affected.count === 1) {
-      await tx.inventoryMovement.create({ data: { inventoryId: row.id, type: InventoryMovementType.SALE_RESERVATION, quantity: canReserve, reason: 'Checkout reservation', referenceId } })
-      reservations.push({ inventoryId: row.id, quantity: canReserve })
-      remaining -= canReserve
-    }
+
+    // The conditional update is the actual concurrency guard: another checkout
+    // can only reserve the same row if enough unreserved quantity remains.
+    const affected = await tx.inventoryItem.updateMany({
+      where: { id: row.id, reserved: { lte: row.quantity - canReserve } },
+      data: { reserved: { increment: canReserve } },
+    })
+    if (affected.count !== 1) continue
+
+    await tx.inventoryMovement.create({
+      data: {
+        inventoryId: row.id,
+        type: InventoryMovementType.SALE_RESERVATION,
+        quantity: canReserve,
+        reason: 'Checkout reservation',
+        referenceId,
+      },
+    })
+    reservations.push({ inventoryId: row.id, quantity: canReserve })
+    remaining -= canReserve
   }
+
   if (remaining > 0) throw new Error(`Not enough stock for ${product.name}`)
   return reservations
 }
