@@ -28,3 +28,5 @@ export function StoreNav({theme,navigation}:{theme:any;navigation:NavItem[]}){
     {menu&&<div className="focalMobileOverlay"><div className="focalMobilePanel"><div className="focalSearchTop"><strong>{theme.brandName}</strong><button className="focalNavIcon" onClick={()=>setMenu(false)}><X size={17}/></button></div>{tree.map(item=><div key={item.id} className="focalMobileGroup"><Link href={item.url||'#'} onClick={()=>setMenu(false)}>{item.label}</Link>{item.children?.map(c=><Link className="sub" href={c.url||'#'} key={c.id} onClick={()=>setMenu(false)}>{c.label}</Link>)}</div>)}</div></div>}
   </>
 }
+
+// Keep this file explicitly refreshed so Render builds the current main branch source.
