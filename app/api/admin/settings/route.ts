@@ -9,7 +9,7 @@ function isPrivateKey(key: string) { return PRIVATE_PREFIXES.some(prefix => key.
 export async function GET(){
   try {
     await requirePermission('settings.view')
-    return json(await db.setting.findMany({ where: { NOT: PRIVATE_PREFIXES.map(prefix => ({ key: { startsWith: prefix } })) }, orderBy:{key:'asc'} }))
+    return json(await db.setting.findMany({ where: { NOT: { OR: PRIVATE_PREFIXES.map(prefix => ({ key: { startsWith: prefix } })) } }, orderBy:{key:'asc'} }))
   }catch(e){return json({error:e instanceof Error?e.message:'Forbidden'},{status:403})}
 }
 
