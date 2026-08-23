@@ -1,0 +1,1 @@
+export default function Loading(){return <main className="section"><div className="container"><div className="card" style={{padding:32}} aria-busy="true"><div className="muted">Loading store…</div></div></div></main>}
