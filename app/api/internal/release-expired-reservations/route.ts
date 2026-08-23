@@ -11,7 +11,7 @@ export async function GET(req: Request) {
   }
 
   const cutoff = new Date(Date.now() - RESERVATION_MINUTES * 60 * 1000)
-  const orders = await db.order.findMany({
+  const candidates = await db.order.findMany({
     where: { status: OrderStatus.PENDING, createdAt: { lt: cutoff } },
     select: { id: true, orderNumber: true },
     take: 100,
@@ -19,21 +19,36 @@ export async function GET(req: Request) {
   })
 
   let released = 0
-  for (const order of orders) {
-    await db.$transaction(async tx => {
+  for (const candidate of candidates) {
+    const didRelease = await db.$transaction(async tx => {
+      await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${candidate.id} FOR UPDATE`
+      const order = await tx.order.findUnique({
+        where: { id: candidate.id },
+        include: { paymentTransactions: true },
+      })
+      if (!order || order.status !== OrderStatus.PENDING || order.createdAt >= cutoff) return false
+
+      // Only storefront checkout orders are eligible for reservation expiry.
+      // Manual/admin orders can intentionally remain PENDING.
+      const isStorefrontCheckout = order.paymentTransactions.some(t => t.provider === 'checkout')
+      if (!isStorefrontCheckout) return false
+
       const reservation = await tx.inventoryMovement.findFirst({ where: { referenceId: order.orderNumber, type: 'SALE_RESERVATION' } })
-      if (!reservation) return
+      if (!reservation) return false
+
       await releaseOrderReservations(tx, order.id, 'Expired checkout reservation')
       await tx.order.update({
         where: { id: order.id },
         data: {
           status: OrderStatus.CANCELLED,
+          fulfillmentStatus: 'UNFULFILLED',
           events: { create: { status: OrderStatus.CANCELLED, message: 'Checkout reservation expired.' } },
         },
       })
+      return true
     })
-    released += 1
+    if (didRelease) released += 1
   }
 
-  return Response.json({ released, checked: orders.length })
+  return Response.json({ released, checked: candidates.length })
 }
