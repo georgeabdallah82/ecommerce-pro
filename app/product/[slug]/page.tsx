@@ -15,6 +15,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params
   const product = await db.product.findUnique({ where: { slug }, select: { name: true, description: true, shortDescription: true, seoTitle: true, seoDescription: true, seoImageUrl: true, images: { orderBy: { sortOrder: 'asc' }, take: 1 } })
   if (!product) return {}
+  const image = product.seoImageUrl || product.images[0]?.url
   return {
     title: product.seoTitle || product.name,
     description: product.seoDescription || product.shortDescription || product.description || undefined,
@@ -23,7 +24,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       title: product.seoTitle || product.name,
       description: product.seoDescription || product.shortDescription || product.description || undefined,
       url: `${siteUrl()}/product/${slug}`,
-      images: product.seoImageUrl || product.images[0]?.url ? [product.seoImageUrl || product.images[0].url] : undefined,
+      images: image ? [image] : undefined,
       type: 'website',
     },
   }
