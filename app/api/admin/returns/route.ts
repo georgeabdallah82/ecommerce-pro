@@ -42,7 +42,7 @@ export async function POST(req: Request) {
         normalized.push({ orderItemId, quantity, item })
       }
 
-      const refunded = order.paymentTransactions.filter(t => t.status === 'refunded').reduce((sum, t) => sum + t.amount, 0)
+      const refunded = order.paymentTransactions.filter(t => ['refunded', 'partially_refunded'].includes(t.status)).reduce((sum, t) => sum + t.amount, 0)
       const remainingRefundable = Math.max(0, order.grandTotal - refunded)
       if (requestedRefund > remainingRefundable) throw new Error(`Refund cannot exceed the remaining refundable amount of ${remainingRefundable}`)
 
