@@ -2,6 +2,7 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { reserveStock } from '@/lib/inventory'
+import { getPaymentProvider } from '@/lib/payments'
 import { json } from '@/lib/utils'
 import { PaymentMethod, PaymentStatus, OrderStatus, FulfillmentStatus } from '@prisma/client'
 
@@ -18,10 +19,7 @@ export async function POST(req: Request) {
     if (!email || !email.includes('@')) return json({ error: 'A valid customer email is required' }, { status: 400 })
 
     const productIds: string[] = Array.from(new Set(items.map(x => String(x.productId)).filter(Boolean)))
-    const products = await db.product.findMany({
-      where: { id: { in: productIds }, status: 'ACTIVE' },
-      include: { inventory: true },
-    })
+    const products = await db.product.findMany({ where: { id: { in: productIds }, status: 'ACTIVE' }, include: { inventory: true } })
     const variants = await db.productVariant.findMany({ where: { productId: { in: productIds } } })
     const variantsByProduct = new Map<string, typeof variants>()
     for (const variant of variants) {
@@ -65,9 +63,13 @@ export async function POST(req: Request) {
     const paymentMethod = Object.values(PaymentMethod).includes(body.paymentMethod) ? body.paymentMethod as PaymentMethod : PaymentMethod.COD
     const paymentStatus = Object.values(PaymentStatus).includes(body.paymentStatus) ? body.paymentStatus as PaymentStatus : PaymentStatus.UNPAID
     const status = Object.values(OrderStatus).includes(body.status) ? body.status as OrderStatus : OrderStatus.PENDING
+    const paymentProvider = getPaymentProvider()
+    if (paymentMethod === PaymentMethod.CARD && paymentProvider.name === 'manual') return json({ error: 'Card payments are not configured yet.' }, { status: 503 })
+    if (![PaymentStatus.UNPAID, PaymentStatus.PENDING, PaymentStatus.PAID, PaymentStatus.FAILED].includes(paymentStatus)) return json({ error: 'Invalid initial payment status for a manual order' }, { status: 400 })
     if (status !== OrderStatus.PENDING) return json({ error: 'Manual orders must start as PENDING and can then move through the normal order workflow' }, { status: 400 })
 
     const existingUser = body.customerId ? await db.user.findUnique({ where: { id: String(body.customerId) } }) : await db.user.findUnique({ where: { email } })
+    if (body.customerId && !existingUser) return json({ error: 'Selected customer not found' }, { status: 404 })
     const address = {
       firstName: String(body.firstName || name.split(' ')[0] || 'Customer'),
       lastName: String(body.lastName || name.split(' ').slice(1).join(' ') || ''),
@@ -87,8 +89,8 @@ export async function POST(req: Request) {
           currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD', status, paymentStatus,
           fulfillmentStatus: FulfillmentStatus.UNFULFILLED, paymentMethod,
           shippingAddressJson: JSON.stringify(address), billingAddressJson: JSON.stringify(address),
-          notes: String(body.notes || '').trim() || `Manual order created by ${actor.email}`,
-          shippingMethod: String(body.shippingMethod || 'Manual').trim(),
+          notes: String(body.notes || '').trim().slice(0, 5000) || `Manual order created by ${actor.email}`,
+          shippingMethod: String(body.shippingMethod || 'Manual').trim().slice(0, 120),
           items: { create: normalized },
           events: { create: { status: OrderStatus.PENDING, message: 'Manual order created by admin.' } },
           paymentTransactions: paymentStatus !== PaymentStatus.UNPAID ? { create: { provider: 'manual', externalId: null, status: paymentStatus.toLowerCase(), amount: grandTotal, currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD' } } : undefined,
