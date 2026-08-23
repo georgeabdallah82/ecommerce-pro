@@ -9,7 +9,7 @@ export async function POST(req: Request) {
   try {
     const actor = await requirePermission('orders.manage')
     const body = await req.json()
-    const items = Array.isArray(body.items) ? body.items : []
+    const items: any[] = Array.isArray(body.items) ? body.items : []
     if (!items.length) return json({ error: 'Add at least one product' }, { status: 400 })
 
     const email = String(body.email || '').trim().toLowerCase()
@@ -17,11 +17,19 @@ export async function POST(req: Request) {
     const phone = String(body.phone || '').trim() || null
     if (!email || !email.includes('@')) return json({ error: 'A valid customer email is required' }, { status: 400 })
 
-    const productIds = [...new Set(items.map((x: any) => String(x.productId)).filter(Boolean))]
+    const productIds: string[] = Array.from(new Set(items.map(x => String(x.productId)).filter(Boolean)))
     const products = await db.product.findMany({
       where: { id: { in: productIds }, status: 'ACTIVE' },
-      include: { variants: true, inventory: true },
+      include: { inventory: true },
     })
+    const variants = await db.productVariant.findMany({ where: { productId: { in: productIds } } })
+    const variantsByProduct = new Map<string, typeof variants>()
+    for (const variant of variants) {
+      const list = variantsByProduct.get(variant.productId) || []
+      list.push(variant)
+      variantsByProduct.set(variant.productId, list)
+    }
+
     const byId = new Map(products.map(p => [p.id, p]))
     if (products.length !== productIds.length) return json({ error: 'One or more selected products are unavailable' }, { status: 400 })
 
@@ -42,7 +50,8 @@ export async function POST(req: Request) {
     const normalized: any[] = []
     for (const line of merged.values()) {
       const p = byId.get(line.productId)!
-      const variant = line.variantId ? p.variants.find(v => v.id === line.variantId) : undefined
+      const productVariants = variantsByProduct.get(line.productId) || []
+      const variant = line.variantId ? productVariants.find(v => v.id === line.variantId) : undefined
       if (line.variantId && !variant) return json({ error: `Invalid variant for ${p.name}` }, { status: 400 })
       const unitPrice = variant?.price ?? p.basePrice
       subtotal += unitPrice * line.quantity
