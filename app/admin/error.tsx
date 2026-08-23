@@ -1,0 +1,2 @@
+'use client'
+export default function AdminError({reset}:{error:Error & {digest?:string};reset:()=>void}){return <div className="card adminPanel"><span className="muted">CONTROL CENTER ERROR</span><h1 className="h2">We couldn't load this section.</h1><p className="muted">Try again. No store mutation was applied by this failed page load.</p><button className="btn" onClick={()=>reset()}>Try again</button></div>}
