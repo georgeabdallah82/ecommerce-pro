@@ -70,6 +70,7 @@ export async function GET(req: Request) {
         variants: { include: { inventory: true } },
         inventory: { where: { variantId: null } },
         tags: true,
+        collections: { include: { collection: true } },
       },
       orderBy: [{ featured: 'desc' }, { createdAt: 'desc' }],
       take: 100,

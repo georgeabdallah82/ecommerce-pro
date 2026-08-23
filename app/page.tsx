@@ -26,7 +26,7 @@ function imageSource(raw:any){
 export default async function Home(){
  const {theme,sections}=await getThemeState()
  const [products,collections]=await Promise.all([
-  db.product.findMany({where:{status:'ACTIVE'},include:{images:true,category:true},orderBy:[{featured:'desc'},{createdAt:'desc'}],take:32}),
+  db.product.findMany({where:{status:'ACTIVE'},include:{images:true,category:true,collections:{include:{collection:true}}},orderBy:[{featured:'desc'},{createdAt:'desc'}],take:32}),
   db.collection.findMany({where:{isActive:true},take:16,orderBy:{sortOrder:'asc'}})
  ])
  // Keep the storefront on the exact same Home template source as the editor.
