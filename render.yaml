@@ -15,6 +15,10 @@ services:
           property: connectionString
       - key: AUTH_SECRET
         generateValue: true
+      - key: CRON_SECRET
+        generateValue: true
+      - key: NEXT_PUBLIC_SITE_URL
+        sync: false
       - key: NEXT_PUBLIC_BRAND_NAME
         value: Your Brand
       - key: NEXT_PUBLIC_CURRENCY
