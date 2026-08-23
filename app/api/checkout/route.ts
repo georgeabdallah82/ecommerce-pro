@@ -82,7 +82,7 @@ export async function POST(req: Request) {
       // Serialize requests sharing the same idempotency key. This closes the
       // race where two concurrent requests both observe no existing order.
       if (idempotencyKey) {
-        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${idempotencyKey}))`
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${idempotencyKey}))`
         const existing = await tx.paymentTransaction.findFirst({ where: { provider: 'checkout', externalId: idempotencyKey }, include: { order: true } })
         if (existing?.order) return { existing: true as const, order: existing.order }
       }
