@@ -12,19 +12,28 @@ export async function POST(req: Request) {
     if (!orderId || !Number.isInteger(requestedAmount) || requestedAmount <= 0) return json({ error: 'A valid orderId and positive integer refund amount are required' }, { status: 400 })
 
     const result = await db.$transaction(async tx => {
-      // Serialize refunds for one order so concurrent requests cannot both
-      // observe the same refundable balance and over-refund it.
       await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${orderId} FOR UPDATE`
 
       const order = await tx.order.findUnique({ where: { id: orderId }, include: { paymentTransactions: true } })
       if (!order) throw new Error('Order not found')
       if (order.status === 'CANCELLED') throw new Error('Cancelled orders cannot be refunded')
+      if (!['PAID', 'PARTIALLY_REFUNDED'].includes(order.paymentStatus)) throw new Error('Only paid orders can be refunded')
+
       const refunded = order.paymentTransactions.filter(t => t.status === 'refunded').reduce((sum, t) => sum + t.amount, 0)
       const remaining = Math.max(0, order.grandTotal - refunded)
       if (remaining <= 0) throw new Error('Order is already fully refunded')
       if (requestedAmount > remaining) throw new Error(`Refund cannot exceed the remaining refundable amount of ${remaining}`)
 
-      const transaction = await tx.paymentTransaction.create({ data: { orderId: order.id, provider: 'manual', status: 'refunded', amount: requestedAmount, currency: order.currency, rawJson: JSON.stringify({ reason: body.reason || null, actorId: actor.id }).slice(0, 5000) } })
+      const transaction = await tx.paymentTransaction.create({
+        data: {
+          orderId: order.id,
+          provider: 'manual',
+          status: 'refunded',
+          amount: requestedAmount,
+          currency: order.currency,
+          rawJson: JSON.stringify({ reason: String(body.reason || '').slice(0, 1000) || null, actorId: actor.id }).slice(0, 5000),
+        },
+      })
       const newRefundedTotal = refunded + requestedAmount
       const paymentStatus = newRefundedTotal >= order.grandTotal ? 'REFUNDED' : 'PARTIALLY_REFUNDED'
       const status = paymentStatus === 'REFUNDED' ? 'REFUNDED' : order.status
