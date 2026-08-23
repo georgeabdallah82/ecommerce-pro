@@ -5,11 +5,12 @@ import { json } from '@/lib/utils'
 import { Role } from '@prisma/client'
 
 const staffRoles = new Set<Role>(['ADMIN', 'MANAGER', 'SUPPORT', 'EDITOR'])
+const safeUserSelect = { id: true, name: true, email: true, phone: true, role: true, isActive: true, createdAt: true, lastLoginAt: true } as const
 
 export async function GET() {
   try {
     await requirePermission('users.view')
-    return json(await db.user.findMany({ orderBy: { createdAt: 'desc' }, select: { id:true, name:true, email:true, phone:true, role:true, isActive:true, createdAt:true, lastLoginAt:true } }))
+    return json(await db.user.findMany({ orderBy: { createdAt: 'desc' }, select: safeUserSelect }))
   } catch (e) { return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 }) }
 }
 
@@ -38,7 +39,7 @@ export async function PATCH(req: Request) {
       if (String(b.password).length < 8) return json({ error: 'Password must be at least 8 characters' }, { status: 400 })
       data.passwordHash = await hashPassword(String(b.password))
     }
-    const u = await db.user.update({ where: { id: targetId }, data })
+    const u = await db.user.update({ where: { id: targetId }, data, select: safeUserSelect })
     await audit(actor.id, 'user.updated', 'User', u.id, { role: u.role, isActive: u.isActive })
     return json({ user: u })
   } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to update user' }, { status: 400 }) }
@@ -55,7 +56,7 @@ export async function POST(req: Request) {
     if (!Object.values(Role).includes(requestedRole) || requestedRole === 'CUSTOMER') return json({ error: 'Invalid staff role' }, { status: 400 })
     if (requestedRole === 'SUPER_ADMIN' && actor.role !== 'SUPER_ADMIN') return json({ error: 'Only the super admin can create a super admin' }, { status: 403 })
     if (actor.role !== 'SUPER_ADMIN' && !staffRoles.has(requestedRole)) return json({ error: 'You cannot assign this role' }, { status: 403 })
-    const u = await db.user.create({ data: { name: String(b.name || 'Staff'), email, passwordHash: await hashPassword(password), role: requestedRole } })
+    const u = await db.user.create({ data: { name: String(b.name || 'Staff'), email, passwordHash: await hashPassword(password), role: requestedRole }, select: safeUserSelect })
     await audit(actor.id, 'user.created', 'User', u.id, { role: u.role })
     return json({ user: u }, { status: 201 })
   } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to create user' }, { status: 400 }) }
