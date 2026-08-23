@@ -31,7 +31,8 @@ export async function POST(req: Request) {
 
     const amount = Number.isInteger(body.amount) ? body.amount : order.grandTotal
     if (status === PaymentStatus.PAID && amount !== order.grandTotal) return Response.json({ error: 'Payment amount does not match order total' }, { status: 409 })
-    if (rank[status] < rank[order.paymentStatus] && ![PaymentStatus.PARTIALLY_REFUNDED, PaymentStatus.REFUNDED].includes(status)) {
+    const isRefundStatus = status === PaymentStatus.PARTIALLY_REFUNDED || status === PaymentStatus.REFUNDED
+    if (rank[status] < rank[order.paymentStatus] && !isRefundStatus) {
       return Response.json({ orderId, paymentStatus: order.paymentStatus, ignored: true })
     }
 
