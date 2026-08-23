@@ -13,6 +13,5 @@ export default async function Home(){
     db.collection.findMany({where:{isActive:true},take:16,orderBy:{sortOrder:'asc'}})
   ])
   const homeTemplates=Array.isArray(theme.editorTemplates?.['Home page'])?theme.editorTemplates['Home page']:sections
-  const hasFooter=homeTemplates.some((s:any)=>s.type==='footer'&&s.enabled!==false)
-  return <><StorefrontSections theme={theme} sections={homeTemplates} products={products} collections={collections} />{!hasFooter&&<Footer/>}</>
+  return <><StorefrontSections theme={theme} sections={homeTemplates} products={products} collections={collections} /><Footer/></>
 }
