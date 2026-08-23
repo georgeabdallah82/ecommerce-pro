@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 
-const path='components/pro-theme-editor.tsx'
-let s=fs.readFileSync(path,'utf8')
+const editorPath='components/pro-theme-editor.tsx'
+let s=fs.readFileSync(editorPath,'utf8')
 
 const patches=[
   [
@@ -35,8 +35,6 @@ s=s.replace(
   "if (section.type.includes('collection')) { const selectedCollections=s.collectionIds?.length?collections.filter(c=>s.collectionIds.includes(c.id)||s.collectionIds.includes(c.slug)):s.sourceCollection?collections.filter(c=>c.slug===s.sourceCollection||c.id===s.sourceCollection):collections; const items=selectedCollections.slice(0,Number(s.limit||4));"
 )
 
-// Replace the editor's duplicate preview renderer with the exact storefront renderer.
-// This keeps the WYSIWYG output and the real storefront on one rendering path.
 const previewStart=s.indexOf('function PreviewSection(')
 const panelStart=s.indexOf('\nfunction Panel(', previewStart)
 if (previewStart>=0 && panelStart>previewStart) {
@@ -49,6 +47,17 @@ if (!s.includes('return <StorefrontSections theme={theme} sections={[section]}')
 if (!s.includes('collections, products }: { section: Section')) throw new Error('Theme Editor Inspector patch did not apply')
 if (!s.includes('Selected collections')) throw new Error('Collection selector patch did not apply')
 if (!s.includes('options={[{value:\'\',label:\'First active product\'}')) throw new Error('Product selector patch did not apply')
+fs.writeFileSync(editorPath,s)
 
-fs.writeFileSync(path,s)
+// The shared storefront renderer is a Client Component so both the editor and
+// the live homepage can use exactly the same section markup. Remove server-only
+// component imports and inline the product-card markup with the same CSS classes.
+const storefrontPath='components/storefront-sections.tsx'
+let st=fs.readFileSync(storefrontPath,'utf8')
+st=st.replace("import { ProductCard } from '@/components/product-card'\n",'')
+st=st.replace("import { Footer } from '@/components/footer'\n",'')
+st=st.replace(/<ProductCard key=\{p\.id\} p=\{p\} \/>/g, `<Link className=\"card productCard\" href={\`/product/${p.slug}\`}><img className=\"productImage\" src={p.images?.[0]?.url||'/placeholder-product.svg'} alt={p.images?.[0]?.alt||p.name}/><div className=\"productBody\"><span className=\"muted\" style={{fontSize:12}}>{p.category?.name||'Collection'}</span><div className=\"productName\">{p.name}</div><div className=\"price\">{(Number(p.basePrice||0)/100).toFixed(2)}</div></div></Link>`)
+st=st.replace(/\n\s*!preview && !hasFooter && <Footer \/>\n/, '\n')
+fs.writeFileSync(storefrontPath,st)
+
 console.log('Theme Editor patches applied')
