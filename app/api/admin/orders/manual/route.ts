@@ -66,7 +66,8 @@ export async function POST(req: Request) {
     const status = Object.values(OrderStatus).includes(body.status) ? body.status as OrderStatus : OrderStatus.PENDING
     const paymentProvider = getPaymentProvider()
     if (paymentMethod === PaymentMethod.CARD && paymentProvider.name === 'manual') return json({ error: 'Card payments are not configured yet.' }, { status: 503 })
-    if (![PaymentStatus.UNPAID, PaymentStatus.PENDING, PaymentStatus.PAID, PaymentStatus.FAILED].includes(paymentStatus)) return json({ error: 'Invalid initial payment status for a manual order' }, { status: 400 })
+    const allowedInitialPaymentStatuses: PaymentStatus[] = [PaymentStatus.UNPAID, PaymentStatus.PENDING, PaymentStatus.PAID, PaymentStatus.FAILED]
+    if (!allowedInitialPaymentStatuses.includes(paymentStatus)) return json({ error: 'Invalid initial payment status for a manual order' }, { status: 400 })
     if (status !== OrderStatus.PENDING) return json({ error: 'Manual orders must start as PENDING and can then move through the normal order workflow' }, { status: 400 })
 
     const existingUser = body.customerId ? await db.user.findUnique({ where: { id: String(body.customerId) } }) : await db.user.findUnique({ where: { email } })
