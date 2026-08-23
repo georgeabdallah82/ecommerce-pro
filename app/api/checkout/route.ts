@@ -79,8 +79,6 @@ export async function POST(req: Request) {
     const orderNumber = `ORD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
 
     const result = await db.$transaction(async tx => {
-      // Serialize requests sharing the same idempotency key. This closes the
-      // race where two concurrent requests both observe no existing order.
       if (idempotencyKey) {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${idempotencyKey}))`
         const existing = await tx.paymentTransaction.findFirst({ where: { provider: 'checkout', externalId: idempotencyKey }, include: { order: true } })
@@ -110,15 +108,13 @@ export async function POST(req: Request) {
           shippingMethod: shipping.method,
           items: { create: normalized },
           events: { create: { status: 'PENDING', message: 'Order placed successfully.' } },
-          paymentTransactions: { create: { provider: idempotencyKey ? 'checkout' : paymentProvider.name, externalId: idempotencyKey, status: 'created', amount: grandTotal, currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD' } },
+          paymentTransactions: { create: { provider: 'checkout', externalId: idempotencyKey, status: 'created', amount: grandTotal, currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD' } },
         },
       })
       return { existing: false as const, order }
     })
 
-    if (result.existing) {
-      return json({ order: { id: result.order.id, orderNumber: result.order.orderNumber, total: result.order.grandTotal } }, { status: 200 })
-    }
+    if (result.existing) return json({ order: { id: result.order.id, orderNumber: result.order.orderNumber, total: result.order.grandTotal } }, { status: 200 })
 
     const order = result.order
     if (user?.id) await db.notification.create({ data: { userId: user.id, title: 'Order placed', body: `Order ${order.orderNumber} was placed successfully.`, type: 'ORDER_CREATED' } })
