@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { money } from '@/lib/config'
+import { canTransitionOrder } from '@/lib/orders'
 
 const statuses = ['PENDING','CONFIRMED','PROCESSING','SHIPPED','DELIVERED','CANCELLED','REFUNDED']
 
@@ -68,7 +69,9 @@ export function OrdersAdminPro({ initial }: { initial: any[] }) {
     </div>
     <div className="card" style={{ padding: 8, overflowX: 'auto' }}>
       <table className="table"><thead><tr><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Payment</th><th>Status</th><th>Actions</th></tr></thead>
-      <tbody>{shown.map(o => <tr key={o.id}>
+      <tbody>{shown.map(o => {
+        const allowedStatuses = statuses.filter(s => s === o.status || canTransitionOrder(o.status, s as any))
+        return <tr key={o.id}>
         <td><Link className="textLink" href={`/admin/orders/${o.id}`}><strong>#{o.orderNumber}</strong></Link><div className="muted">{new Date(o.createdAt).toLocaleString()}</div></td>
         <td><strong>{o.user?.name || `${o.user?.firstName || ''} ${o.user?.lastName || ''}`.trim() || 'Guest'}</strong><div className="muted">{o.email}</div></td>
         <td>{o.items.reduce((a: number, x: any) => a + x.quantity, 0)}</td>
@@ -76,11 +79,11 @@ export function OrdersAdminPro({ initial }: { initial: any[] }) {
         <td><span className="pill">{o.paymentStatus}</span><div className="muted">{o.paymentMethod}</div></td>
         <td><span className="pill">{o.status}</span>{o.trackingNumber && <div className="muted">{o.trackingNumber}</div>}</td>
         <td><div className="inline" style={{ gap: 6 }}>
-          <select className="input compact" disabled={busy === o.id} value={o.status} onChange={e => update(o.id, { status: e.target.value })}>{statuses.map(s => <option key={s}>{s}</option>)}</select>
+          <select className="input compact" disabled={busy === o.id} value={o.status} onChange={e => update(o.id, { status: e.target.value })}>{allowedStatuses.map(s => <option key={s}>{s}</option>)}</select>
           <button className="btn ghost smallBtn" disabled={busy === o.id} onClick={() => { const t = prompt('Tracking number', o.trackingNumber || ''); if (t !== null) update(o.id, { trackingNumber: t }) }}>Tracking</button>
           {o.paymentStatus !== 'REFUNDED' && o.status !== 'CANCELLED' && <button className="btn ghost smallBtn" disabled={busy === o.id} onClick={() => { setRefund({ id: o.id, number: o.orderNumber, currency: o.currency, max: o.grandTotal }); setRefundAmount('') }}>Refund</button>}
         </div></td>
-      </tr>)}</tbody></table>
+      </tr>})}</tbody></table>
     </div>
 
     {refund && <div className="modalOverlay" onClick={() => setRefund(null)}><div className="card" style={{ width: 'min(440px, 92vw)', padding: 24 }} onClick={e => e.stopPropagation()}>
