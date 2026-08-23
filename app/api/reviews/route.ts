@@ -23,20 +23,23 @@ export async function POST(req: Request) {
     })
     if (!purchase) return json({ error: 'You can review products you purchased' }, { status: 403 })
 
-    const existing = await db.review.findFirst({ where: { productId, userId: user.id } })
-    if (existing) return json({ error: 'You have already reviewed this product' }, { status: 409 })
-
-    const review = await db.review.create({
-      data: {
-        productId,
-        userId: user.id,
-        rating,
-        title: b.title ? String(b.title).slice(0, 140) : null,
-        body: b.body ? String(b.body).slice(0, 2000) : null,
-      },
+    const review = await db.$transaction(async tx => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${user.id}:${productId}`}))`
+      const existing = await tx.review.findFirst({ where: { productId, userId: user.id }, select: { id: true } })
+      if (existing) throw new Error('You have already reviewed this product')
+      return tx.review.create({
+        data: {
+          productId,
+          userId: user.id,
+          rating,
+          title: b.title ? String(b.title).slice(0, 140) : null,
+          body: b.body ? String(b.body).slice(0, 2000) : null,
+        },
+      })
     })
     return json({ review }, { status: 201 })
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Unable to submit review' }, { status: 400 })
+    const message = e instanceof Error ? e.message : 'Unable to submit review'
+    return json({ error: message }, { status: message === 'You have already reviewed this product' ? 409 : 400 })
   }
 }
