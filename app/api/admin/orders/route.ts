@@ -2,6 +2,7 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { canTransitionOrder, canTransitionPayment, fulfillmentForStatus } from '@/lib/orders'
+import { fulfillOrderStock, releaseOrderReservations } from '@/lib/inventory'
 import { json } from '@/lib/utils'
 import { OrderStatus, PaymentStatus } from '@prisma/client'
 
@@ -15,15 +16,7 @@ export async function GET(req: Request) {
     const status = sp.get('status')
     const q = sp.get('q')?.trim()
     if (status && !ORDER_STATUSES.has(status as OrderStatus)) return json({ error: 'Invalid order status' }, { status: 400 })
-    const rows = await db.order.findMany({
-      where: {
-        ...(status ? { status: status as OrderStatus } : {}),
-        ...(q ? { OR: [{ orderNumber: { contains: q } }, { email: { contains: q } }, { phone: { contains: q } }] } : {}),
-      },
-      include: { user: true, items: true },
-      orderBy: { createdAt: 'desc' },
-      take: 200,
-    })
+    const rows = await db.order.findMany({ where: { ...(status ? { status: status as OrderStatus } : {}), ...(q ? { OR: [{ orderNumber: { contains: q } }, { email: { contains: q } }, { phone: { contains: q } }] } : {}) }, include: { user: true, items: true }, orderBy: { createdAt: 'desc' }, take: 200 })
     return json(rows)
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 })
@@ -34,7 +27,7 @@ export async function PATCH(req: Request) {
   try {
     const actor = await requirePermission('orders.manage')
     const body = await req.json()
-    const order = await db.order.findUnique({ where: { id: String(body.id) }, include: { items: true } })
+    const order = await db.order.findUnique({ where: { id: String(body.id) } })
     if (!order) return json({ error: 'Order not found' }, { status: 404 })
 
     const noteBody = typeof body.addNote === 'string' ? body.addNote.trim() : ''
@@ -53,37 +46,8 @@ export async function PATCH(req: Request) {
     if (nextPayment === 'REFUNDED' || nextPayment === 'PARTIALLY_REFUNDED') return json({ error: 'Use the refund/return workflow to create a refund transaction' }, { status: 400 })
 
     const updated = await db.$transaction(async tx => {
-      if (next === 'CANCELLED' && order.status !== 'CANCELLED') {
-        for (const item of order.items) {
-          const rows = await tx.inventoryItem.findMany({ where: { productId: item.productId, variantId: item.variantId || null }, orderBy: { id: 'asc' } })
-          let remaining = item.quantity
-          for (const row of rows) {
-            if (remaining <= 0) break
-            const release = Math.min(remaining, row.reserved)
-            if (release <= 0) continue
-            await tx.inventoryItem.update({ where: { id: row.id }, data: { reserved: { decrement: release } } })
-            await tx.inventoryMovement.create({ data: { inventoryId: row.id, type: 'SALE_RELEASE', quantity: -release, reason: 'Order cancelled', referenceId: order.orderNumber } })
-            remaining -= release
-          }
-        }
-      }
-
-      if (next === 'SHIPPED' && order.status === 'PROCESSING') {
-        for (const item of order.items) {
-          const rows = await tx.inventoryItem.findMany({ where: { productId: item.productId, variantId: item.variantId || null }, orderBy: { id: 'asc' } })
-          let remaining = item.quantity
-          for (const row of rows) {
-            if (remaining <= 0) break
-            const fulfill = Math.min(remaining, row.reserved, row.quantity)
-            if (fulfill <= 0) continue
-            const affected = await tx.inventoryItem.updateMany({ where: { id: row.id, reserved: { gte: fulfill }, quantity: { gte: fulfill } }, data: { quantity: { decrement: fulfill }, reserved: { decrement: fulfill } } })
-            if (affected.count !== 1) throw new Error(`Stock changed for ${item.name}. Please retry.`)
-            await tx.inventoryMovement.create({ data: { inventoryId: row.id, type: 'SALE_FULFILLMENT', quantity: -fulfill, reason: 'Order shipped', referenceId: order.orderNumber } })
-            remaining -= fulfill
-          }
-          if (remaining > 0) throw new Error(`Unable to fulfill stock for ${item.name}. Please retry.`)
-        }
-      }
+      if (next === OrderStatus.CANCELLED && order.status !== OrderStatus.CANCELLED) await releaseOrderReservations(tx, order.id, 'Order cancelled')
+      if (next === OrderStatus.SHIPPED && order.status === OrderStatus.PROCESSING) await fulfillOrderStock(tx, order.id)
 
       const data: any = {
         ...(next ? { status: next, fulfillmentStatus: fulfillmentForStatus(next) } : {}),
@@ -94,6 +58,7 @@ export async function PATCH(req: Request) {
       return tx.order.update({ where: { id: order.id }, data: { ...data, events: next ? { create: { status: next, message: `Order moved from ${order.status} to ${next}.` } } : undefined } })
     })
 
+    if (order.userId && next && next !== order.status) await db.notification.create({ data: { userId: order.userId, title: `Order ${order.orderNumber} updated`, body: `Your order is now ${next.toLowerCase().replaceAll('_', ' ')}.`, type: 'ORDER_STATUS' } })
     await audit(actor.id, 'order.updated', 'Order', order.id, { from: order.status, to: next || order.status, paymentFrom: order.paymentStatus, paymentTo: nextPayment || order.paymentStatus })
     return json({ order: updated })
   } catch (e) {
