@@ -1,0 +1,2 @@
+import Link from 'next/link'
+export default function NotFound(){return <main className="section"><div className="container"><div className="card empty"><span className="muted">404</span><h1 className="h2">Page not found.</h1><p className="muted">The page or product you're looking for may have moved or is no longer available.</p><div className="inline" style={{justifyContent:'center'}}><Link className="btn" href="/shop">Shop products</Link><Link className="btn secondary" href="/">Home</Link></div></div></div></main>}
