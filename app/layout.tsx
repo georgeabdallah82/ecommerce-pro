@@ -1,6 +1,7 @@
 import './globals.css'
 import './focal-store.css'
 import './focal-store-v2.css'
+import './responsive-fixes.css'
 import { getThemeState } from '@/lib/theme'
 import { StoreNav } from '@/components/store-nav'
 import { CartProvider } from '@/components/cart-provider'
