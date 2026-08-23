@@ -1,0 +1,44 @@
+name: Repair current build
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: !contains(github.event.head_commit.message, '[theme-auto-fix]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Repair known source mismatch
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('components/pro-theme-editor.tsx')
+          s = p.read_text()
+          old = '<DesignInspector section={selected} theme={theme} patch={patch}/>'
+          new = '<DesignInspector section={selected} patch={patch}/>'
+          if old in s:
+              p.write_text(s.replace(old, new))
+          PY
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Commit repair
+        run: |
+          if git diff --quiet; then
+            echo "No source repair was needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add components/pro-theme-editor.tsx
+          git commit -m "[theme-auto-fix] Fix theme editor type error"
+          git push
