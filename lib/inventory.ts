@@ -18,8 +18,6 @@ export async function reserveStock(tx: any, product: any, variantId: string | nu
     const canReserve = Math.min(remaining, availableQuantity(row))
     if (canReserve <= 0) continue
 
-    // The conditional update is the actual concurrency guard: another checkout
-    // can only reserve the same row if enough unreserved quantity remains.
     const affected = await tx.inventoryItem.updateMany({
       where: { id: row.id, reserved: { lte: row.quantity - canReserve } },
       data: { reserved: { increment: canReserve } },
@@ -67,7 +65,17 @@ export async function fulfillOrderStock(tx: any, orderId: string) {
 
   for (const item of order.items) {
     if (!item.product.trackInventory || item.product.continueSellingWhenOutOfStock) continue
-    const reservations = await tx.inventoryMovement.findMany({ where: { referenceId: order.orderNumber, type: InventoryMovementType.SALE_RESERVATION, inventory: { productId: item.productId } }, orderBy: { createdAt: 'asc' } })
+    const reservations = await tx.inventoryMovement.findMany({
+      where: {
+        referenceId: order.orderNumber,
+        type: InventoryMovementType.SALE_RESERVATION,
+        inventory: {
+          productId: item.productId,
+          ...(item.variantId ? { variantId: item.variantId } : { variantId: null }),
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    })
     let remaining = item.quantity
     for (const reservation of reservations) {
       if (remaining <= 0) break
