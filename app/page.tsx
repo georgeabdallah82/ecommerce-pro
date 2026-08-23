@@ -1,6 +1,7 @@
 import {db} from '@/lib/prisma'
 import {getThemeState} from '@/lib/theme'
 import StorefrontSections from '@/components/storefront-sections'
+import {Footer} from '@/components/footer'
 
 export const dynamic='force-dynamic'
 export const revalidate=0
@@ -12,5 +13,6 @@ export default async function Home(){
     db.collection.findMany({where:{isActive:true},take:16,orderBy:{sortOrder:'asc'}})
   ])
   const homeTemplates=Array.isArray(theme.editorTemplates?.['Home page'])?theme.editorTemplates['Home page']:sections
-  return <StorefrontSections theme={theme} sections={homeTemplates} products={products} collections={collections} />
+  const hasFooter=homeTemplates.some((s:any)=>s.type==='footer'&&s.enabled!==false)
+  return <><StorefrontSections theme={theme} sections={homeTemplates} products={products} collections={collections} />{!hasFooter&&<Footer/>}</>
 }
