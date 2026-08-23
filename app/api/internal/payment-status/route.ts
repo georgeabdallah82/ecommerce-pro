@@ -14,12 +14,12 @@ export async function POST(req: Request) {
     if (!orderId || !Object.values(PaymentStatus).includes(status)) return Response.json({ error: 'orderId and a valid payment status are required' }, { status: 400 })
 
     const result = await db.$transaction(async tx => {
-      await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${orderId} FOR UPDATE`
-      const order = await tx.order.findUnique({ where: { id: orderId, } })
+      await tx.$executeRaw`SELECT "id" FROM "Order" WHERE "id" = ${orderId} FOR UPDATE`
+      const order = await tx.order.findFirst({ where: { id: orderId } })
       if (!order) throw new Error('Order not found')
 
       if (externalId) {
-        const existing = await tx.paymentTransaction.findFirst({ where: { externalId }, order: { id: orderId } })
+        const existing = await tx.paymentTransaction.findFirst({ where: { externalId, orderId: order.id } })
         if (existing) return { orderId, paymentStatus: order.paymentStatus, duplicate: true }
         const reused = await tx.paymentTransaction.findFirst({ where: { externalId } })
         if (reused) throw new Error('Payment externalId is already associated with another order')
