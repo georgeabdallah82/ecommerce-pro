@@ -75,11 +75,6 @@ export async function getThemeState(){
   const theme=deepMerge(defaultTheme,raw)
   const sections=normalizeSections(parseJson<any[]>(sectionsSetting?.value,defaultSections),defaultSections)
 
-  theme.colors={
-    ...theme.colors,
-    primary:'#ff5a1f',secondary:'#fff0e8',announcementBg:'#ff5a1f',announcementText:'#ffffff',accent:'#e64a19',buttonText:'#ffffff',background:'#fffaf6',surface:'#ffffff',text:'#191512',muted:'#746b64',border:'#eaded4'
-  }
-
   const editorTemplates=(theme.editorTemplates&&typeof theme.editorTemplates==='object')?structuredClone(theme.editorTemplates):{}
   editorTemplates['Home page']=headerFirst(sections)
 
