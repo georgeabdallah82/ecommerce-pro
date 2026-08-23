@@ -3,6 +3,7 @@ import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { reserveStock } from '@/lib/inventory'
 import { getPaymentProvider } from '@/lib/payments'
+import { sendNewOrderPush } from '@/lib/push'
 import { json } from '@/lib/utils'
 import { PaymentMethod, PaymentStatus, OrderStatus, FulfillmentStatus } from '@prisma/client'
 
@@ -99,6 +100,7 @@ export async function POST(req: Request) {
       })
     })
 
+    await sendNewOrderPush({ id: order.id, orderNumber: order.orderNumber, grandTotal: order.grandTotal, currency: order.currency })
     await audit(actor.id, 'order.created_manual', 'Order', order.id, { orderNumber, total: grandTotal, paymentMethod, paymentStatus })
     return json({ order: { id: order.id, orderNumber: order.orderNumber, grandTotal: order.grandTotal } }, { status: 201 })
   } catch (e) {
