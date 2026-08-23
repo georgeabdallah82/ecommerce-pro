@@ -19,7 +19,7 @@ export async function POST(req: Request) {
       if (order.status === 'CANCELLED') throw new Error('Cancelled orders cannot be refunded')
       if (!['PAID', 'PARTIALLY_REFUNDED'].includes(order.paymentStatus)) throw new Error('Only paid orders can be refunded')
 
-      const refunded = order.paymentTransactions.filter(t => t.status === 'refunded').reduce((sum, t) => sum + t.amount, 0)
+      const refunded = order.paymentTransactions.filter(t => ['refunded', 'partially_refunded'].includes(t.status)).reduce((sum, t) => sum + t.amount, 0)
       const remaining = Math.max(0, order.grandTotal - refunded)
       if (remaining <= 0) throw new Error('Order is already fully refunded')
       if (requestedAmount > remaining) throw new Error(`Refund cannot exceed the remaining refundable amount of ${remaining}`)
