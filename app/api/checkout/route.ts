@@ -14,12 +14,17 @@ async function applyCoupon(code: string, subtotal: number, userId?: string | nul
   if (coupon.startsAt && coupon.startsAt > now) throw new Error('This coupon is not active yet')
   if (coupon.expiresAt && coupon.expiresAt < now) throw new Error('This coupon has expired')
   if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) throw new Error('This coupon has reached its usage limit')
-  if (coupon.minSubtotal !== null && subtotal < coupon.minSubtotal) throw new Error(`Minimum order is required for this coupon`)
-  if (coupon.firstOrderOnly && userId) {
+  if (coupon.minSubtotal !== null && subtotal < coupon.minSubtotal) throw new Error('Minimum order is required for this coupon')
+  if (coupon.firstOrderOnly) {
+    if (!userId) throw new Error('This coupon requires a customer account')
     const count = await db.order.count({ where: { userId, status: { not: 'CANCELLED' } } })
     if (count > 0) throw new Error('This coupon is for first orders only')
   }
-  const discount = coupon.type === 'PERCENTAGE' ? Math.min(subtotal, Math.floor(subtotal * coupon.value / 100)) : coupon.type === 'FIXED' ? Math.min(subtotal, coupon.value) : 0
+  const discount = coupon.type === 'PERCENTAGE'
+    ? Math.min(subtotal, Math.floor(subtotal * coupon.value / 100))
+    : coupon.type === 'FIXED'
+      ? Math.min(subtotal, coupon.value)
+      : 0
   return { discount, coupon }
 }
 
@@ -51,7 +56,7 @@ export async function POST(req: Request) {
     const shipping = await calculateShipping(input.shippingAddress.country, discountedSubtotal)
     const taxRate = await getTaxRatePercent()
     const taxTotal = Math.round(discountedSubtotal * taxRate / 100)
-    const shippingTotal = shipping.total
+    const shippingTotal = coupon?.type === 'FREE_SHIPPING' ? 0 : shipping.total
     const grandTotal = Math.max(0, discountedSubtotal + shippingTotal + taxTotal)
     const orderNumber = `ORD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
     const paymentMethod = input.paymentMethod as PaymentMethod
@@ -70,15 +75,9 @@ export async function POST(req: Request) {
           const affected = await tx.inventoryItem.updateMany({
             where: {
               id: stock.id,
-              reserved: {
-                lte: stock.quantity - canReserve,
-              },
+              reserved: { lte: stock.quantity - canReserve },
             },
-            data: {
-              reserved: {
-                increment: canReserve,
-              },
-            },
+            data: { reserved: { increment: canReserve } },
           })
 
           if (affected.count === 1) {
@@ -89,10 +88,41 @@ export async function POST(req: Request) {
         if (remaining > 0) throw new Error(`Stock changed for ${p.name}. Please try again.`)
       }
 
-      const created = await tx.order.create({ data: { orderNumber, userId: user?.id ?? null, email: input.email, phone: input.phone || null, subtotal, discountTotal: discount, shippingTotal, taxTotal, grandTotal, currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD', paymentMethod, shippingAddressJson: JSON.stringify(input.shippingAddress), couponCode: coupon?.code ?? null, shippingMethod: shipping.method, items: { create: normalized }, events: { create: { status: 'PENDING', message: 'Order placed successfully.' } }, paymentTransactions: { create: { provider: 'manual', status: 'created', amount: grandTotal, currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD' } } } })
-      if (coupon) await tx.coupon.update({ where: { id: coupon.id }, data: { usedCount: { increment: 1 } } })
-      return created
+      if (coupon) {
+        const couponUpdate = await tx.coupon.updateMany({
+          where: {
+            id: coupon.id,
+            isActive: true,
+            ...(coupon.maxUses !== null ? { usedCount: { lt: coupon.maxUses } } : {}),
+          },
+          data: { usedCount: { increment: 1 } },
+        })
+        if (couponUpdate.count !== 1) throw new Error('This coupon is no longer available')
+      }
+
+      return tx.order.create({
+        data: {
+          orderNumber,
+          userId: user?.id ?? null,
+          email: input.email,
+          phone: input.phone || null,
+          subtotal,
+          discountTotal: discount,
+          shippingTotal,
+          taxTotal,
+          grandTotal,
+          currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD',
+          paymentMethod,
+          shippingAddressJson: JSON.stringify(input.shippingAddress),
+          couponCode: coupon?.code ?? null,
+          shippingMethod: shipping.method,
+          items: { create: normalized },
+          events: { create: { status: 'PENDING', message: 'Order placed successfully.' } },
+          paymentTransactions: { create: { provider: 'manual', status: 'created', amount: grandTotal, currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD' } },
+        },
+      })
     })
+
     await audit(user?.id, 'order.created', 'Order', order.id, { orderNumber, total: grandTotal, paymentMethod })
     return json({ order: { id: order.id, orderNumber: order.orderNumber, total: order.grandTotal } }, { status: 201 })
   } catch (error) {
