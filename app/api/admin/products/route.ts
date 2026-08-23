@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     const tags: string[] = Array.isArray(b.tags) ? Array.from(new Set<string>(b.tags.map((x: unknown) => String(x).trim()).filter((x: string) => x.length > 0))) : []
     const images = Array.isArray(b.images) ? b.images.map((x: any, i: number) => ({ url: String(x?.url || x), alt: x?.alt ? String(x.alt) : null, sortOrder: i })) : []
     const variants = Array.isArray(b.variants) ? b.variants : []
-    const sharedPool = variants.length > 0 && (b.sharedInventory === true || variants.every((v: any) => Number(v.quantity || 0) === 0))
+    const sharedPool = variants.length > 0 && b.sharedInventory === true
 
     const p = await db.product.create({ data: {
       name, slug: slugify(String(b.slug || name)) || `product-${Date.now()}`, sku,
