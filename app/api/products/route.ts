@@ -3,7 +3,7 @@ import { json } from '@/lib/utils'
 
 const productInclude = {
   category: true,
-  images: { orderBy: { sortOrder: 'asc' } },
+  images: { orderBy: { sortOrder: 'asc' as const } },
   variants: { include: { inventory: true } },
   inventory: { where: { variantId: null } },
   tags: true,
