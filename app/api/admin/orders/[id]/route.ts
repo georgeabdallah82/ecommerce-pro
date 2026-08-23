@@ -44,7 +44,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const updated = await db.$transaction(async tx => {
       if (cancelling) await releaseOrderReservations(tx, order.id, 'Order cancelled')
       if (fulfilling) await fulfillOrderStock(tx, order.id)
-
       const nextPayment = paymentStatus ?? (nextStatus === OrderStatus.CANCELLED ? PaymentStatus.FAILED : order.paymentStatus)
       const nextFulfillment = fulfillmentStatus ?? (fulfilling ? FulfillmentStatus.FULFILLED : order.fulfillmentStatus)
       return tx.order.update({
@@ -60,6 +59,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       })
     })
 
+    if (order.userId && status && status !== order.status) {
+      await db.notification.create({ data: { userId: order.userId, title: `Order ${order.orderNumber} updated`, body: `Your order is now ${status.toLowerCase().replaceAll('_', ' ')}.`, type: 'ORDER_STATUS' } })
+    }
     await audit(actor.id, 'order.updated', 'Order', order.id, { status, paymentStatus, fulfillmentStatus, cancelling, fulfilling })
     return json({ order: updated })
   } catch (error) {
