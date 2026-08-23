@@ -36,15 +36,10 @@ export async function POST(req: Request) {
     const idempotencyKey = req.headers.get('x-idempotency-key')?.trim().slice(0, 190) || null
 
     if (idempotencyKey) {
-      const existing = await db.paymentTransaction.findFirst({
-        where: { provider: 'checkout', externalId: idempotencyKey },
-        include: { order: true },
-      })
+      const existing = await db.paymentTransaction.findFirst({ where: { provider: 'checkout', externalId: idempotencyKey }, include: { order: true } })
       if (existing?.order) return json({ order: { id: existing.order.id, orderNumber: existing.order.orderNumber, total: existing.order.grandTotal } }, { status: 200 })
     }
 
-    // Merge duplicate cart lines before validating stock. This prevents a client from bypassing
-    // per-line limits by submitting the same product/variant more than once.
     const merged = new Map<string, { productId: string; variantId: string | null; quantity: number }>()
     for (const item of input.items) {
       const key = `${item.productId}:${item.variantId ?? ''}`
@@ -55,10 +50,7 @@ export async function POST(req: Request) {
     }
 
     const ids = [...new Set([...merged.values()].map(i => i.productId))]
-    const products = await db.product.findMany({
-      where: { id: { in: ids }, status: 'ACTIVE' },
-      include: { variants: true, inventory: true, images: true },
-    })
+    const products = await db.product.findMany({ where: { id: { in: ids }, status: 'ACTIVE' }, include: { variants: true, inventory: true, images: true } })
     const byId = new Map(products.map(p => [p.id, p]))
     if (products.length !== ids.length) return json({ error: 'One or more products are unavailable' }, { status: 400 })
 
@@ -68,25 +60,15 @@ export async function POST(req: Request) {
       const p = byId.get(raw.productId)!
       const variant = raw.variantId ? p.variants.find(v => v.id === raw.variantId) : undefined
       if (raw.variantId && !variant) return json({ error: `Invalid variant for ${p.name}` }, { status: 400 })
-
       if (p.trackInventory && !p.continueSellingWhenOutOfStock) {
         const dedicated = raw.variantId ? p.inventory.filter(x => x.variantId === raw.variantId) : []
         const stockRows = dedicated.length ? dedicated : p.inventory.filter(x => !x.variantId)
         const available = stockRows.reduce((s, x) => s + x.quantity - x.reserved, 0)
         if (available < raw.quantity) return json({ error: `Not enough stock for ${p.name}` }, { status: 409 })
       }
-
       const unitPrice = variant?.price ?? p.basePrice
       subtotal += unitPrice * raw.quantity
-      normalized.push({
-        productId: p.id,
-        variantId: variant?.id ?? null,
-        name: p.name + (variant ? ` — ${variant.name}` : ''),
-        sku: variant?.sku ?? p.sku,
-        quantity: raw.quantity,
-        unitPrice,
-        totalPrice: unitPrice * raw.quantity,
-      })
+      normalized.push({ productId: p.id, variantId: variant?.id ?? null, name: p.name + (variant ? ` — ${variant.name}` : ''), sku: variant?.sku ?? p.sku, quantity: raw.quantity, unitPrice, totalPrice: unitPrice * raw.quantity })
     }
 
     const { discount, coupon } = await applyCoupon(input.couponCode || '', subtotal, user?.id)
@@ -100,23 +82,11 @@ export async function POST(req: Request) {
     const paymentMethod = input.paymentMethod as PaymentMethod
 
     const order = await db.$transaction(async tx => {
-      for (const item of normalized) {
-        const product = byId.get(item.productId)!
-        await reserveStock(tx, product, item.variantId, item.quantity, orderNumber)
-      }
-
+      for (const item of normalized) await reserveStock(tx, byId.get(item.productId)!, item.variantId, item.quantity, orderNumber)
       if (coupon) {
-        const couponUpdate = await tx.coupon.updateMany({
-          where: {
-            id: coupon.id,
-            isActive: true,
-            ...(coupon.maxUses !== null ? { usedCount: { lt: coupon.maxUses } } : {}),
-          },
-          data: { usedCount: { increment: 1 } },
-        })
+        const couponUpdate = await tx.coupon.updateMany({ where: { id: coupon.id, isActive: true, ...(coupon.maxUses !== null ? { usedCount: { lt: coupon.maxUses } } : {}) }, data: { usedCount: { increment: 1 } } })
         if (couponUpdate.count !== 1) throw new Error('This coupon is no longer available')
       }
-
       return tx.order.create({
         data: {
           orderNumber,
@@ -135,19 +105,14 @@ export async function POST(req: Request) {
           shippingMethod: shipping.method,
           items: { create: normalized },
           events: { create: { status: 'PENDING', message: 'Order placed successfully.' } },
-          paymentTransactions: {
-            create: {
-              provider: idempotencyKey ? 'checkout' : 'manual',
-              externalId: idempotencyKey,
-              status: 'created',
-              amount: grandTotal,
-              currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD',
-            },
-          },
+          paymentTransactions: { create: { provider: idempotencyKey ? 'checkout' : 'manual', externalId: idempotencyKey, status: 'created', amount: grandTotal, currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD' } },
         },
       })
     })
 
+    if (user?.id) {
+      await db.notification.create({ data: { userId: user.id, title: 'Order placed', body: `Order ${order.orderNumber} was placed successfully.`, type: 'ORDER_CREATED' } })
+    }
     await audit(user?.id, 'order.created', 'Order', order.id, { orderNumber, total: grandTotal, paymentMethod })
     return json({ order: { id: order.id, orderNumber: order.orderNumber, total: order.grandTotal } }, { status: 201 })
   } catch (error) {
