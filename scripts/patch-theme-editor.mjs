@@ -49,14 +49,11 @@ if (!s.includes('Selected collections')) throw new Error('Collection selector pa
 if (!s.includes('options={[{value:\'\',label:\'First active product\'}')) throw new Error('Product selector patch did not apply')
 fs.writeFileSync(editorPath,s)
 
-// The shared storefront renderer is a Client Component so both the editor and
-// the live homepage can use exactly the same section markup. Remove server-only
-// component imports and inline the product-card markup with the same CSS classes.
 const storefrontPath='components/storefront-sections.tsx'
 let st=fs.readFileSync(storefrontPath,'utf8')
 st=st.replace("import { ProductCard } from '@/components/product-card'\n",'')
 st=st.replace("import { Footer } from '@/components/footer'\n",'')
-st=st.replace(/<ProductCard key=\{p\.id\} p=\{p\} \/>/g, `<Link className=\"card productCard\" href={\`/product/${p.slug}\`}><img className=\"productImage\" src={p.images?.[0]?.url||'/placeholder-product.svg'} alt={p.images?.[0]?.alt||p.name}/><div className=\"productBody\"><span className=\"muted\" style={{fontSize:12}}>{p.category?.name||'Collection'}</span><div className=\"productName\">{p.name}</div><div className=\"price\">{(Number(p.basePrice||0)/100).toFixed(2)}</div></div></Link>`)
+st=st.replace(/<ProductCard key=\{p\.id\} p=\{p\} \/>/g, '<Link className="card productCard" href={"/product/"+p.slug}><img className="productImage" src={p.images?.[0]?.url||\'/placeholder-product.svg\'} alt={p.images?.[0]?.alt||p.name}/><div className="productBody"><span className="muted" style={{fontSize:12}}>{p.category?.name||\'Collection\'}</span><div className="productName">{p.name}</div><div className="price">{(Number(p.basePrice||0)/100).toFixed(2)}</div></div></Link>')
 st=st.replace(/\n\s*!preview && !hasFooter && <Footer \/>\n/, '\n')
 fs.writeFileSync(storefrontPath,st)
 
