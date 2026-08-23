@@ -6,7 +6,11 @@ let s=fs.readFileSync(editorPath,'utf8')
 const patches=[
   [
     "import React, { useEffect, useMemo, useState } from 'react'",
-    "import React, { useEffect, useMemo, useState } from 'react'\nimport StorefrontSections from '@/components/storefront-sections'"
+    "import React, { useEffect, useMemo, useState } from 'react'\nimport {StoreNav} from '@/components/store-nav'\nimport {CartProvider} from '@/components/cart-provider'\nimport {Footer} from '@/components/footer'"
+  ],
+  [
+    "import StorefrontSections from '@/components/storefront-sections'",
+    "import StorefrontSections from '@/components/storefront-sections'"
   ],
   [
     "function Inspector({ section, tab, update, addBlock, patchBlock, removeBlock, chooseAsset, collections }: { section: Section; tab: DrawerTab; update: (p: AnyMap) => void; addBlock: (type: string) => void; patchBlock: (id: string, p: AnyMap) => void; removeBlock: (id: string) => void; chooseAsset: (target: MediaTarget) => void; collections: CatalogCollection[] }) {",
@@ -33,19 +37,30 @@ if (s.includes(oldCollectionHelp)) s=s.replace(oldCollectionHelp,newCollectionHe
 const previewStart=s.indexOf('function PreviewSection(')
 const panelStart=s.indexOf('\nfunction Panel(', previewStart)
 if (previewStart>=0 && panelStart>previewStart) {
-  const replacement=`function PreviewSection({ section, theme, products, collections }: { section: Section; theme: Theme; products: CatalogProduct[]; collections: CatalogCollection[]; selected?: boolean; onSelect?: () => void }) {\n  return <StorefrontSections theme={theme} sections={[section]} products={products} collections={collections} preview />\n}\n`
+  const replacement=`function PreviewSection({ section, theme, products, collections, selected, onSelect }: { section: Section; theme: Theme; products: CatalogProduct[]; collections: CatalogCollection[]; selected?: boolean; onSelect?: () => void }) {\n  return <StorefrontSections theme={theme} sections={[section]} products={products} collections={collections} preview />\n}\n`
   s=s.slice(0,previewStart)+replacement+s.slice(panelStart+1)
 }
 
+// Make the editor preview use the exact same global shell as the real storefront:
+// StoreNav -> StorefrontSections -> Footer. This removes the visual drift caused
+// by the old editor-only header/renderer shell.
+const oldPreviewStart='<div className="pteStore" style={{maxWidth:device===\'mobile\'?390:device===\'tablet\'?820:1360,background:theme.colors?.background||\'#fffaf6\'}}>{current.filter(s=>s.enabled).map(s=><PreviewSection key={s.id} section={s} theme={theme} products={products} collections={collections} selected={s.id===selectedId} onSelect={()=>{setSelectedId(s.id);setDrawer(true)}}/>)}{!current.length&&<div className="pteRich"><h2>Empty template</h2><p className="pteMuted">Use Add section to start building this template.</p></div>}</div></div></main>'
+const newPreviewStart='<div className="pteStore" style={{maxWidth:device===\'mobile\'?390:device===\'tablet\'?820:1360,background:theme.colors?.background||\'#fffaf6\',[\'--store-bg\' as any]:theme.colors?.background||\'#fffaf6\',[\'--store-surface\' as any]:theme.colors?.surface||\'#fff\',[\'--store-text\' as any]:theme.colors?.text||\'#191512\',[\'--store-muted\' as any]:theme.colors?.muted||\'#746b64\',[\'--store-primary\' as any]:theme.colors?.primary||\'#ff5a1f\',[\'--store-button-text\' as any]:theme.colors?.buttonText||\'#fff\',[\'--store-border\' as any]:theme.colors?.border||\'#eaded4\',[\'--store-max\' as any]:`${theme.layout?.maxWidth||1180}px`,[\'--store-section-space\' as any]:`${theme.layout?.sectionSpacing||72}px`,[\'--store-card-radius\' as any]:`${theme.cards?.radius||18}px`,[\'--store-button-radius\' as any]:`${theme.buttons?.radius||12}px`,[\'--store-font-heading\' as any]:theme.typography?.heading||\'Inter\',[\'--store-font-body\' as any]:theme.typography?.body||\'Inter\'}}><CartProvider><div className="pteActualStoreShell"><StoreNav theme={theme} navigation={initial.navigation}/>{current.filter(s=>s.enabled).map(s=><PreviewSection key={s.id} section={s} theme={theme} products={products} collections={collections} selected={s.id===selectedId} onSelect={()=>{setSelectedId(s.id);setDrawer(true)}}/>)}{!current.length&&<div className="pteRich"><h2>Empty template</h2><p className="pteMuted">Use Add section to start building this template.</p></div>}<Footer/></div></CartProvider></div></div></main>'
+if (s.includes(oldPreviewStart)) s=s.replace(oldPreviewStart,newPreviewStart)
+
 if (!s.includes("import StorefrontSections from '@/components/storefront-sections'")) throw new Error('Shared storefront renderer import did not apply')
+if (!s.includes("import {StoreNav} from '@/components/store-nav'")) throw new Error('StoreNav import did not apply')
+if (!s.includes("import {CartProvider} from '@/components/cart-provider'")) throw new Error('CartProvider import did not apply')
 if (!s.includes('return <StorefrontSections theme={theme} sections={[section]}')) throw new Error('Shared storefront renderer patch did not apply')
+if (!s.includes('pteActualStoreShell')) throw new Error('Actual storefront shell patch did not apply')
+if (!s.includes('StoreNav theme={theme} navigation={initial.navigation}')) throw new Error('StoreNav preview patch did not apply')
+if (!s.includes('Footer/>')) throw new Error('Footer preview patch did not apply')
 if (!s.includes('collections, products }: { section: Section')) throw new Error('Theme Editor Inspector patch did not apply')
 if (!s.includes('Selected collections')) throw new Error('Collection selector patch did not apply')
 if (!s.includes('options={[{value:\'\',label:\'First active product\'}')) throw new Error('Product selector patch did not apply')
 fs.writeFileSync(editorPath,s)
 
 // Keep the shared storefront renderer source stable across builds.
-// It is used by both the live storefront and the Theme Editor preview.
 const storefrontPath='components/storefront-sections.tsx'
 let st=fs.readFileSync(storefrontPath,'utf8')
 if (!st.includes("import { ProductCard } from '@/components/product-card'")) {
