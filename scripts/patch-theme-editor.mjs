@@ -30,11 +30,6 @@ const oldCollectionHelp='<div className="pteMini">For a Collection List, choose 
 const newCollectionHelp='<div className="pteField"><span>Selected collections</span><div style={{display:\'grid\',gap:6}}>{collections.map(c=>{const ids=Array.isArray(s.collectionIds)?s.collectionIds:[];const checked=ids.includes(c.id)||ids.includes(c.slug);return <button type="button" key={c.id} onClick={()=>update({collectionIds:checked?ids.filter((x:any)=>x!==c.id&&x!==c.slug):[...ids,c.id]})} style={{border:\'1px solid #dfe3e6\',background:checked?\'var(--accent-soft)\':\'#fff\',borderRadius:7,padding:\'8px 9px\',textAlign:\'left\',fontSize:10,cursor:\'pointer\'}}>{checked?\'✓ \':\'\'}{c.name}</button>})}</div></div><div className="pteMini">Select one or more real collections. Leaving this empty shows all active collections.</div></Panel>}'
 if (s.includes(oldCollectionHelp)) s=s.replace(oldCollectionHelp,newCollectionHelp)
 
-s=s.replace(
-  "if (section.type.includes('collection')) { const items = collections.slice(0, Number(s.limit || 4));",
-  "if (section.type.includes('collection')) { const selectedCollections=s.collectionIds?.length?collections.filter(c=>s.collectionIds.includes(c.id)||s.collectionIds.includes(c.slug)):s.sourceCollection?collections.filter(c=>c.slug===s.sourceCollection||c.id===s.sourceCollection):collections; const items=selectedCollections.slice(0,Number(s.limit||4));"
-)
-
 const previewStart=s.indexOf('function PreviewSection(')
 const panelStart=s.indexOf('\nfunction Panel(', previewStart)
 if (previewStart>=0 && panelStart>previewStart) {
@@ -49,13 +44,15 @@ if (!s.includes('Selected collections')) throw new Error('Collection selector pa
 if (!s.includes('options={[{value:\'\',label:\'First active product\'}')) throw new Error('Product selector patch did not apply')
 fs.writeFileSync(editorPath,s)
 
+// Keep the shared storefront renderer source stable across builds.
+// It is used by both the live storefront and the Theme Editor preview.
 const storefrontPath='components/storefront-sections.tsx'
 let st=fs.readFileSync(storefrontPath,'utf8')
-st=st.replace("import { ProductCard } from '@/components/product-card'\n",'')
+if (!st.includes("import { ProductCard } from '@/components/product-card'")) {
+  st=st.replace("import { ArrowRight, ChevronRight, Play } from 'lucide-react'\n", "import { ArrowRight, ChevronRight, Play } from 'lucide-react'\nimport { ProductCard } from '@/components/product-card'\n")
+}
 st=st.replace("import { Footer } from '@/components/footer'\n",'')
-st=st.replace(/<ProductCard key=\{p\.id\} p=\{p\} \/>/g, '<Link className="card productCard" href={"/product/"+p.slug}><img className="productImage" src={p.images?.[0]?.url||\'/placeholder-product.svg\'} alt={p.images?.[0]?.alt||p.name}/><div className="productBody"><span className="muted" style={{fontSize:12}}>{p.category?.name||\'Collection\'}</span><div className="productName">{p.name}</div><div className="price">{(Number(p.basePrice||0)/100).toFixed(2)}</div></div></Link>')
 st=st.replace(/\n\s*!preview && !hasFooter && <Footer \/>\n/, '\n')
-// Fix the newsletter branch left with an extra closing brace by earlier automated edits.
 st=st.replace(/(if\(section\.type==='newsletter'[^\n]*<\/section>)\}/, '$1')
 fs.writeFileSync(storefrontPath,st)
 
