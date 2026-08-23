@@ -12,6 +12,10 @@ export async function POST(req: Request) {
     if (!orderId || !Number.isInteger(requestedAmount) || requestedAmount <= 0) return json({ error: 'A valid orderId and positive integer refund amount are required' }, { status: 400 })
 
     const result = await db.$transaction(async tx => {
+      // Serialize refunds for one order so concurrent requests cannot both
+      // observe the same refundable balance and over-refund it.
+      await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${orderId} FOR UPDATE`
+
       const order = await tx.order.findUnique({ where: { id: orderId }, include: { paymentTransactions: true } })
       if (!order) throw new Error('Order not found')
       if (order.status === 'CANCELLED') throw new Error('Cancelled orders cannot be refunded')
