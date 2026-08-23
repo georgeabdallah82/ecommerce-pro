@@ -39,7 +39,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const nextStatus = status ?? order.status
     const cancelling = nextStatus === OrderStatus.CANCELLED && order.status !== OrderStatus.CANCELLED
-    const fulfilling = [OrderStatus.SHIPPED, OrderStatus.DELIVERED].includes(nextStatus) && order.fulfillmentStatus !== FulfillmentStatus.FULFILLED
+    const fulfilling = (nextStatus === OrderStatus.SHIPPED || nextStatus === OrderStatus.DELIVERED) && order.fulfillmentStatus !== FulfillmentStatus.FULFILLED
 
     const updated = await db.$transaction(async tx => {
       if (cancelling) await releaseOrderReservations(tx, order.id, 'Order cancelled')
