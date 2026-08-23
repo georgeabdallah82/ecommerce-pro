@@ -3,15 +3,21 @@ import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json, slugify } from '@/lib/utils'
 
-async function getProduct(id:string){ return db.product.findUnique({where:{id},include:{category:true,images:{orderBy:{sortOrder:'asc'}},variants:{include:{inventory:true}},inventory:{where:{variantId:null}},tags:true,collections:{include:{collection:true}},metafields:{include:{definition:true}}}}) }
+async function getProduct(id:string){
+  const product=await db.product.findUnique({where:{id},include:{category:true,images:{orderBy:{sortOrder:'asc'}},variants:{include:{inventory:true}},inventory:{where:{variantId:null}},tags:true,collections:{include:{collection:true}},metafields:{include:{definition:true}}}})
+  if(!product)return null
+  const sharedInventory=product.variants.length>0&&product.variants.every(v=>v.inventory.length===0)&&product.inventory.some(x=>x.quantity>0||x.reserved>0)
+  return {...product,sharedInventory}
+}
 
 export async function GET(_req:Request,{params}:{params:Promise<{id:string}>}){try{await requirePermission('products.view');const {id}=await params;const product=await getProduct(id);if(!product)return json({error:'Product not found'},{status:404});return json({product})}catch(e){return json({error:e instanceof Error?e.message:'Forbidden'},{status:403})}}
 
 export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
   try{
     const actor=await requirePermission('products.manage');const {id}=await params;const b=await req.json()
-    const existing=await db.product.findUnique({where:{id},include:{variants:true,images:true,inventory:{where:{variantId:null}},tags:true}})
+    const existing=await db.product.findUnique({where:{id},include:{variants:{include:{inventory:true}},images:true,inventory:{where:{variantId:null}},tags:true}})
     if(!existing)return json({error:'Product not found'},{status:404})
+    const existingSharedPool=existing.variants.length>0&&existing.variants.every(v=>v.inventory.length===0)&&existing.inventory.some(x=>x.quantity>0||x.reserved>0)
     const slug=b.slug!==undefined?(slugify(String(b.slug||b.name||existing.name))||`product-${Date.now()}`):undefined
     const data:any={};const textFields=['name','brand','vendor','productType','description','shortDescription','seoTitle','seoDescription','seoImageUrl','weightUnit','productTemplate','salesChannelsJson']
     for(const k of textFields)if(b[k]!==undefined)data[k]=b[k]===null?'':String(b[k])
@@ -28,9 +34,7 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
       if(b.quantity!==undefined||b.lowStockThreshold!==undefined||b.location!==undefined){const row=await tx.inventoryItem.findFirst({where:{productId:id,variantId:null}});if(row)await tx.inventoryItem.update({where:{id:row.id},data:{quantity:Math.max(row.reserved,Math.trunc(Number(b.quantity??row.quantity))),lowStockThreshold:b.lowStockThreshold!==undefined?Math.max(0,Math.trunc(Number(b.lowStockThreshold))):row.lowStockThreshold,location:b.location!==undefined?String(b.location||''):row.location}});else await tx.inventoryItem.create({data:{productId:id,quantity:Math.max(0,Math.trunc(Number(b.quantity)||0)),lowStockThreshold:Math.max(0,Math.trunc(Number(b.lowStockThreshold)||5)),location:String(b.location||'Main')}})}
       if(Array.isArray(b.metafields)){await tx.metafieldValue.deleteMany({where:{ownerType:'PRODUCT',ownerId:id}});const vals=b.metafields.filter((m:any)=>m.definitionId&&m.value!==undefined&&String(m.value)!=='').map((m:any)=>({definitionId:String(m.definitionId),ownerType:'PRODUCT',ownerId:id,value:typeof m.value==='string'?m.value:JSON.stringify(m.value)}));if(vals.length)await tx.metafieldValue.createMany({data:vals})}
       if(Array.isArray(b.variants)){
-        const sharedRow=await tx.inventoryItem.findFirst({where:{productId:id,variantId:null}})
-        const allZero=b.variants.length>0&&b.variants.every((v:any)=>Number(v.quantity||0)===0)
-        const sharedPool=b.sharedInventory===true||(allZero&&Number(sharedRow?.quantity||0)>0)
+        const sharedPool=b.sharedInventory===true||(b.sharedInventory===undefined&&existingSharedPool)
         for(const v of b.variants){
           const variantId=v.id?String(v.id):null
           const vd:any={name:String(v.name||'Default Title'),sku:String(v.sku||`${existing.sku}-${Date.now()}`),barcode:v.barcode?String(v.barcode):null,optionJson:typeof v.optionJson==='string'?v.optionJson:JSON.stringify(v.options||{}),price:v.price===''||v.price==null?null:Math.trunc(Number(v.price)),compareAtPrice:v.compareAtPrice===''||v.compareAtPrice==null?null:Math.trunc(Number(v.compareAtPrice)),weight:v.weight===''||v.weight==null?null:Number(v.weight),weightUnit:v.weightUnit?String(v.weightUnit):null}
@@ -43,7 +47,7 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
       }
       return p
     })
-    await audit(actor.id,'product.updated','Product',id,{fields:Object.keys(data),images:Array.isArray(b.images)?b.images.length:undefined,variants:Array.isArray(b.variants)?b.variants.length:undefined})
+    await audit(actor.id,'product.updated','Product',id,{fields:Object.keys(data),images:Array.isArray(b.images)?b.images.length:undefined,variants:Array.isArray(b.variants)?b.variants.length:undefined,sharedInventory:b.sharedInventory})
     return json({product:await getProduct(id)})
   }catch(e){return json({error:e instanceof Error?e.message:'Unable to update product'},{status:400})}
 }
