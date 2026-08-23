@@ -4,10 +4,16 @@ import './focal-store-v2.css'
 import { getThemeState } from '@/lib/theme'
 import { StoreNav } from '@/components/store-nav'
 import { CartProvider } from '@/components/cart-provider'
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+}
 
 const brand = process.env.NEXT_PUBLIC_BRAND_NAME || 'Your Brand'
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '')
