@@ -5,6 +5,7 @@ import { checkoutSchema } from '@/lib/validation'
 import { json } from '@/lib/utils'
 import { calculateShipping, getTaxRatePercent } from '@/lib/pricing'
 import { reserveStock } from '@/lib/inventory'
+import { getPaymentProvider } from '@/lib/payments'
 import { PaymentMethod } from '@prisma/client'
 
 async function applyCoupon(code: string, subtotal: number, userId?: string | null) {
@@ -21,11 +22,7 @@ async function applyCoupon(code: string, subtotal: number, userId?: string | nul
     const count = await db.order.count({ where: { userId, status: { not: 'CANCELLED' } } })
     if (count > 0) throw new Error('This coupon is for first orders only')
   }
-  const discount = coupon.type === 'PERCENTAGE'
-    ? Math.min(subtotal, Math.floor(subtotal * coupon.value / 100))
-    : coupon.type === 'FIXED'
-      ? Math.min(subtotal, coupon.value)
-      : 0
+  const discount = coupon.type === 'PERCENTAGE' ? Math.min(subtotal, Math.floor(subtotal * coupon.value / 100)) : coupon.type === 'FIXED' ? Math.min(subtotal, coupon.value) : 0
   return { discount, coupon }
 }
 
@@ -34,7 +31,12 @@ export async function POST(req: Request) {
     const input = checkoutSchema.parse(await req.json())
     const user = await getCurrentUser()
     const idempotencyKey = req.headers.get('x-idempotency-key')?.trim().slice(0, 190) || null
+    const paymentMethod = input.paymentMethod as PaymentMethod
+    const paymentProvider = getPaymentProvider()
 
+    if (paymentMethod === PaymentMethod.CARD && paymentProvider.name === 'manual') {
+      return json({ error: 'Card payments are not configured yet.' }, { status: 503 })
+    }
     if (idempotencyKey) {
       const existing = await db.paymentTransaction.findFirst({ where: { provider: 'checkout', externalId: idempotencyKey }, include: { order: true } })
       if (existing?.order) return json({ order: { id: existing.order.id, orderNumber: existing.order.orderNumber, total: existing.order.grandTotal } }, { status: 200 })
@@ -79,7 +81,6 @@ export async function POST(req: Request) {
     const shippingTotal = coupon?.type === 'FREE_SHIPPING' ? 0 : shipping.total
     const grandTotal = Math.max(0, discountedSubtotal + shippingTotal + taxTotal)
     const orderNumber = `ORD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
-    const paymentMethod = input.paymentMethod as PaymentMethod
 
     const order = await db.$transaction(async tx => {
       for (const item of normalized) await reserveStock(tx, byId.get(item.productId)!, item.variantId, item.quantity, orderNumber)
@@ -105,14 +106,12 @@ export async function POST(req: Request) {
           shippingMethod: shipping.method,
           items: { create: normalized },
           events: { create: { status: 'PENDING', message: 'Order placed successfully.' } },
-          paymentTransactions: { create: { provider: idempotencyKey ? 'checkout' : 'manual', externalId: idempotencyKey, status: 'created', amount: grandTotal, currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD' } },
+          paymentTransactions: { create: { provider: idempotencyKey ? 'checkout' : paymentProvider.name, externalId: idempotencyKey, status: 'created', amount: grandTotal, currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD' } },
         },
       })
     })
 
-    if (user?.id) {
-      await db.notification.create({ data: { userId: user.id, title: 'Order placed', body: `Order ${order.orderNumber} was placed successfully.`, type: 'ORDER_CREATED' } })
-    }
+    if (user?.id) await db.notification.create({ data: { userId: user.id, title: 'Order placed', body: `Order ${order.orderNumber} was placed successfully.`, type: 'ORDER_CREATED' } })
     await audit(user?.id, 'order.created', 'Order', order.id, { orderNumber, total: grandTotal, paymentMethod })
     return json({ order: { id: order.id, orderNumber: order.orderNumber, total: order.grandTotal } }, { status: 201 })
   } catch (error) {
