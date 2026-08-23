@@ -5,6 +5,10 @@ let s=fs.readFileSync(path,'utf8')
 
 const patches=[
   [
+    "import React, { useEffect, useMemo, useState } from 'react'",
+    "import React, { useEffect, useMemo, useState } from 'react'\nimport StorefrontSections from '@/components/storefront-sections'"
+  ],
+  [
     "function Inspector({ section, tab, update, addBlock, patchBlock, removeBlock, chooseAsset, collections }: { section: Section; tab: DrawerTab; update: (p: AnyMap) => void; addBlock: (type: string) => void; patchBlock: (id: string, p: AnyMap) => void; removeBlock: (id: string) => void; chooseAsset: (target: MediaTarget) => void; collections: CatalogCollection[] }) {",
     "function Inspector({ section, tab, update, addBlock, patchBlock, removeBlock, chooseAsset, collections, products }: { section: Section; tab: DrawerTab; update: (p: AnyMap) => void; addBlock: (type: string) => void; patchBlock: (id: string, p: AnyMap) => void; removeBlock: (id: string) => void; chooseAsset: (target: MediaTarget) => void; collections: CatalogCollection[]; products: CatalogProduct[] }) {"
   ],
@@ -31,6 +35,17 @@ s=s.replace(
   "if (section.type.includes('collection')) { const selectedCollections=s.collectionIds?.length?collections.filter(c=>s.collectionIds.includes(c.id)||s.collectionIds.includes(c.slug)):s.sourceCollection?collections.filter(c=>c.slug===s.sourceCollection||c.id===s.sourceCollection):collections; const items=selectedCollections.slice(0,Number(s.limit||4));"
 )
 
+// Replace the editor's duplicate preview renderer with the exact storefront renderer.
+// This keeps the WYSIWYG output and the real storefront on one rendering path.
+const previewStart=s.indexOf('function PreviewSection(')
+const panelStart=s.indexOf('\nfunction Panel(', previewStart)
+if (previewStart>=0 && panelStart>previewStart) {
+  const replacement=`function PreviewSection({ section, theme, products, collections }: { section: Section; theme: Theme; products: CatalogProduct[]; collections: CatalogCollection[]; selected?: boolean; onSelect?: () => void }) {\n  return <StorefrontSections theme={theme} sections={[section]} products={products} collections={collections} preview />\n}\n`
+  s=s.slice(0,previewStart)+replacement+s.slice(panelStart+1)
+}
+
+if (!s.includes("import StorefrontSections from '@/components/storefront-sections'")) throw new Error('Shared storefront renderer import did not apply')
+if (!s.includes('return <StorefrontSections theme={theme} sections={[section]}')) throw new Error('Shared storefront renderer patch did not apply')
 if (!s.includes('collections, products }: { section: Section')) throw new Error('Theme Editor Inspector patch did not apply')
 if (!s.includes('Selected collections')) throw new Error('Collection selector patch did not apply')
 if (!s.includes('options={[{value:\'\',label:\'First active product\'}')) throw new Error('Product selector patch did not apply')
