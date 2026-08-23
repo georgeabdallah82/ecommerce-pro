@@ -14,8 +14,20 @@ export default function OrderAlerts({ vapidPublicKey }: { vapidPublicKey?: strin
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    if (!vapidPublicKey || !('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return
-    setState(Notification.permission === 'granted' ? 'enabled' : 'disabled')
+    let cancelled = false
+    async function inspect() {
+      if (!vapidPublicKey || !('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return
+      if (Notification.permission !== 'granted') { if (!cancelled) setState('disabled'); return }
+      try {
+        const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        const subscription = await registration.pushManager.getSubscription()
+        if (!cancelled) setState(subscription ? 'enabled' : 'disabled')
+      } catch {
+        if (!cancelled) setState('disabled')
+      }
+    }
+    void inspect()
+    return () => { cancelled = true }
   }, [vapidPublicKey])
 
   async function enable() {
