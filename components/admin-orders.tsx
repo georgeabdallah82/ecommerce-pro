@@ -60,7 +60,7 @@ export function OrdersAdminPro({ initial }: { initial: any[] }) {
   }
 
   return <div>
-    <div className="sectionHead"><div><span className="muted">COMMERCE</span><h1 className="h2">Orders</h1><p className="muted">Manage fulfillment, payment status, tracking and refunds.</p></div><span className="pill">{shown.length} shown</span></div>
+    <div className="sectionHead"><div><span className="muted">COMMERCE</span><h1 className="h2">Orders</h1><p className="muted">Manage fulfillment, payment status, tracking and refunds.</p></div><div className="inline"><Link className="btn" href="/admin/orders/new">+ Create manual order</Link><span className="pill">{shown.length} shown</span></div></div>
     {error && <div className="alert danger">{error}</div>}
     <div className="filterBar">
       <input className="input" placeholder="Search order, email or phone" value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') refresh() }} />
@@ -79,6 +79,7 @@ export function OrdersAdminPro({ initial }: { initial: any[] }) {
         <td><span className="pill">{o.status}</span>{o.trackingNumber && <div className="muted">{o.trackingNumber}</div>}</td>
         <td><div className="inline" style={{ gap: 6 }}>
           <Link className="btn ghost smallBtn" href={`/admin/orders/${o.id}`}>View</Link>
+          <Link className="btn ghost smallBtn" href={`/admin/orders/${o.id}/invoice`}>Invoice</Link>
           <select className="input compact" disabled={busy === o.id} value={o.status} onChange={e => update(o.id, { status: e.target.value })}>{statuses.map(s => <option key={s} disabled={s !== o.status && !canTransitionOrder(o.status, s as any)}>{s}{s !== o.status && !canTransitionOrder(o.status, s as any) ? ' (not available)' : ''}</option>)}</select>
           <button className="btn ghost smallBtn" disabled={busy === o.id} onClick={() => { const t = prompt('Tracking number', o.trackingNumber || ''); if (t !== null) update(o.id, { trackingNumber: t }) }}>Tracking</button>
           {o.paymentStatus !== 'REFUNDED' && o.status !== 'CANCELLED' && <button className="btn ghost smallBtn" disabled={busy === o.id} onClick={() => { setRefund({ id: o.id, number: o.orderNumber, currency: o.currency, max: o.grandTotal }); setRefundAmount('') }}>Refund</button>}
