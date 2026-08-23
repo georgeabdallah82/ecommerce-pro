@@ -8,34 +8,44 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json()
-    const orderId = typeof body.orderId === 'string' ? body.orderId : ''
-    const externalId = typeof body.externalId === 'string' ? body.externalId.slice(0, 190) : null
+    const orderId = typeof body.orderId === 'string' ? body.orderId.trim() : ''
+    const externalId = typeof body.externalId === 'string' && body.externalId.trim() ? body.externalId.trim().slice(0, 190) : null
     const status = body.status as PaymentStatus
     if (!orderId || !Object.values(PaymentStatus).includes(status)) return Response.json({ error: 'orderId and a valid payment status are required' }, { status: 400 })
 
     const result = await db.$transaction(async tx => {
       await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${orderId} FOR UPDATE`
-      const order = await tx.order.findUnique({ where: { id: orderId } })
+      const order = await tx.order.findUnique({ where: { id: orderId, } })
       if (!order) throw new Error('Order not found')
 
       if (externalId) {
-        const existing = await tx.paymentTransaction.findFirst({ where: { orderId, externalId } })
+        const existing = await tx.paymentTransaction.findFirst({ where: { externalId }, order: { id: orderId } })
         if (existing) return { orderId, paymentStatus: order.paymentStatus, duplicate: true }
+        const reused = await tx.paymentTransaction.findFirst({ where: { externalId } })
+        if (reused) throw new Error('Payment externalId is already associated with another order')
       }
 
       if (!canTransitionPayment(order.paymentStatus, status)) return { orderId, paymentStatus: order.paymentStatus, ignored: true }
 
-      const amount = Number.isInteger(body.amount) ? body.amount : order.grandTotal
+      const priorRefunded = await tx.paymentTransaction.aggregate({ _sum: { amount: true }, where: { orderId: order.id, status: { in: ['refunded', 'partially_refunded'] } } })
+      const refundedSoFar = Math.max(0, priorRefunded._sum.amount || 0)
+      const remainingRefundable = Math.max(0, order.grandTotal - refundedSoFar)
+      const amount = Number.isInteger(body.amount) ? Number(body.amount) : order.grandTotal
       if (amount <= 0) throw new Error('Payment amount must be positive')
-      if (status === PaymentStatus.PAID && amount !== order.grandTotal) throw new Error('Payment amount does not match order total')
-      if (status === PaymentStatus.PARTIALLY_REFUNDED && amount >= order.grandTotal) throw new Error('Partial refund amount must be below the order total')
 
+      if (status === PaymentStatus.PAID && amount !== order.grandTotal) throw new Error('Payment amount does not match order total')
+      if (status === PaymentStatus.PARTIALLY_REFUNDED) {
+        if (order.paymentStatus !== PaymentStatus.PAID || amount >= remainingRefundable) throw new Error('Invalid partial refund amount')
+      }
+      if (status === PaymentStatus.REFUNDED && amount !== remainingRefundable) throw new Error('Final refund amount must equal the remaining refundable balance')
+
+      const transactionStatus = status === PaymentStatus.PARTIALLY_REFUNDED ? 'partially_refunded' : status.toLowerCase()
       const updated = await tx.order.update({ where: { id: order.id }, data: { paymentStatus: status } })
       await tx.paymentTransaction.create({ data: {
         orderId: order.id,
-        provider: typeof body.provider === 'string' ? body.provider.slice(0, 80) : 'external',
+        provider: typeof body.provider === 'string' && body.provider.trim() ? body.provider.trim().slice(0, 80) : 'external',
         externalId,
-        status: status.toLowerCase(),
+        status: transactionStatus,
         amount,
         currency: order.currency,
         rawJson: JSON.stringify(body).slice(0, 20000),
