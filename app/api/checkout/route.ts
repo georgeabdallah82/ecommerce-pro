@@ -4,6 +4,7 @@ import { audit } from '@/lib/audit'
 import { checkoutSchema } from '@/lib/validation'
 import { json } from '@/lib/utils'
 import { calculateShipping, getTaxRatePercent } from '@/lib/pricing'
+import { reserveStock } from '@/lib/inventory'
 import { PaymentMethod } from '@prisma/client'
 
 async function applyCoupon(code: string, subtotal: number, userId?: string | null) {
@@ -32,23 +33,60 @@ export async function POST(req: Request) {
   try {
     const input = checkoutSchema.parse(await req.json())
     const user = await getCurrentUser()
-    const ids = [...new Set(input.items.map(i => i.productId))]
-    const products = await db.product.findMany({ where: { id: { in: ids }, status: 'ACTIVE' }, include: { variants: true, inventory: true, images: true } })
+    const idempotencyKey = req.headers.get('x-idempotency-key')?.trim().slice(0, 190) || null
+
+    if (idempotencyKey) {
+      const existing = await db.paymentTransaction.findFirst({
+        where: { provider: 'checkout', externalId: idempotencyKey },
+        include: { order: true },
+      })
+      if (existing?.order) return json({ order: { id: existing.order.id, orderNumber: existing.order.orderNumber, total: existing.order.grandTotal } }, { status: 200 })
+    }
+
+    // Merge duplicate cart lines before validating stock. This prevents a client from bypassing
+    // per-line limits by submitting the same product/variant more than once.
+    const merged = new Map<string, { productId: string; variantId: string | null; quantity: number }>()
+    for (const item of input.items) {
+      const key = `${item.productId}:${item.variantId ?? ''}`
+      const current = merged.get(key)
+      const quantity = (current?.quantity ?? 0) + item.quantity
+      if (quantity > 99) throw new Error('Maximum quantity per product is 99')
+      merged.set(key, { productId: item.productId, variantId: item.variantId ?? null, quantity })
+    }
+
+    const ids = [...new Set([...merged.values()].map(i => i.productId))]
+    const products = await db.product.findMany({
+      where: { id: { in: ids }, status: 'ACTIVE' },
+      include: { variants: true, inventory: true, images: true },
+    })
     const byId = new Map(products.map(p => [p.id, p]))
     if (products.length !== ids.length) return json({ error: 'One or more products are unavailable' }, { status: 400 })
 
     const normalized: any[] = []
     let subtotal = 0
-    for (const raw of input.items) {
+    for (const raw of merged.values()) {
       const p = byId.get(raw.productId)!
       const variant = raw.variantId ? p.variants.find(v => v.id === raw.variantId) : undefined
       if (raw.variantId && !variant) return json({ error: `Invalid variant for ${p.name}` }, { status: 400 })
-      const stockRows = p.inventory.filter(x => (variant ? x.variantId === variant.id : !x.variantId))
-      const available = stockRows.reduce((s, x) => s + x.quantity - x.reserved, 0)
-      if (available < raw.quantity) return json({ error: `Not enough stock for ${p.name}` }, { status: 409 })
+
+      if (p.trackInventory && !p.continueSellingWhenOutOfStock) {
+        const dedicated = raw.variantId ? p.inventory.filter(x => x.variantId === raw.variantId) : []
+        const stockRows = dedicated.length ? dedicated : p.inventory.filter(x => !x.variantId)
+        const available = stockRows.reduce((s, x) => s + x.quantity - x.reserved, 0)
+        if (available < raw.quantity) return json({ error: `Not enough stock for ${p.name}` }, { status: 409 })
+      }
+
       const unitPrice = variant?.price ?? p.basePrice
       subtotal += unitPrice * raw.quantity
-      normalized.push({ productId: p.id, variantId: variant?.id ?? null, name: p.name + (variant ? ` — ${variant.name}` : ''), sku: variant?.sku ?? p.sku, quantity: raw.quantity, unitPrice, totalPrice: unitPrice * raw.quantity })
+      normalized.push({
+        productId: p.id,
+        variantId: variant?.id ?? null,
+        name: p.name + (variant ? ` — ${variant.name}` : ''),
+        sku: variant?.sku ?? p.sku,
+        quantity: raw.quantity,
+        unitPrice,
+        totalPrice: unitPrice * raw.quantity,
+      })
     }
 
     const { discount, coupon } = await applyCoupon(input.couponCode || '', subtotal, user?.id)
@@ -62,30 +100,9 @@ export async function POST(req: Request) {
     const paymentMethod = input.paymentMethod as PaymentMethod
 
     const order = await db.$transaction(async tx => {
-      for (const item of input.items) {
-        const p = byId.get(item.productId)!
-        const variant = item.variantId ? p.variants.find(v => v.id === item.variantId) : undefined
-        const stockRows = p.inventory.filter(x => (variant ? x.variantId === variant.id : !x.variantId))
-        let remaining = item.quantity
-        for (const stock of stockRows) {
-          if (remaining <= 0) break
-          const canReserve = Math.min(remaining, Math.max(0, stock.quantity - stock.reserved))
-          if (canReserve <= 0) continue
-
-          const affected = await tx.inventoryItem.updateMany({
-            where: {
-              id: stock.id,
-              reserved: { lte: stock.quantity - canReserve },
-            },
-            data: { reserved: { increment: canReserve } },
-          })
-
-          if (affected.count === 1) {
-            await tx.inventoryMovement.create({ data: { inventoryId: stock.id, type: 'SALE_RESERVATION', quantity: canReserve, reason: 'Checkout reservation', referenceId: orderNumber } })
-            remaining -= canReserve
-          }
-        }
-        if (remaining > 0) throw new Error(`Stock changed for ${p.name}. Please try again.`)
+      for (const item of normalized) {
+        const product = byId.get(item.productId)!
+        await reserveStock(tx, product, item.variantId, item.quantity, orderNumber)
       }
 
       if (coupon) {
@@ -118,7 +135,15 @@ export async function POST(req: Request) {
           shippingMethod: shipping.method,
           items: { create: normalized },
           events: { create: { status: 'PENDING', message: 'Order placed successfully.' } },
-          paymentTransactions: { create: { provider: 'manual', status: 'created', amount: grandTotal, currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD' } },
+          paymentTransactions: {
+            create: {
+              provider: idempotencyKey ? 'checkout' : 'manual',
+              externalId: idempotencyKey,
+              status: 'created',
+              amount: grandTotal,
+              currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD',
+            },
+          },
         },
       })
     })
