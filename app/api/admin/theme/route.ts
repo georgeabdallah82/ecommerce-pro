@@ -3,6 +3,7 @@ import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { defaultNavigation, defaultSections, defaultTheme } from '@/lib/theme'
+import { revalidatePath } from 'next/cache'
 
 function normalizeSections(input: any[]) {
   return (Array.isArray(input) ? input : defaultSections).filter(Boolean).map((s: any) => {
@@ -55,6 +56,20 @@ export async function PATCH(req: Request) {
       db.setting.upsert({ where: { key: 'theme.sections' }, create: { key: 'theme.sections', value: JSON.stringify(sections) }, update: { value: JSON.stringify(sections) } }),
       db.setting.upsert({ where: { key: 'navigation.main' }, create: { key: 'navigation.main', value: JSON.stringify(navigation) }, update: { value: JSON.stringify(navigation) } }),
     ])
+
+    // The editor writes theme configuration directly to the database. Explicitly
+    // invalidate storefront routes so a just-saved template is visible on the
+    // next visit even when the App Router has a cached route entry.
+    revalidatePath('/', 'page')
+    revalidatePath('/shop', 'page')
+    revalidatePath('/product/[slug]', 'page')
+    revalidatePath('/collections', 'page')
+    revalidatePath('/collections/[slug]', 'page')
+    revalidatePath('/cart', 'page')
+    revalidatePath('/about', 'page')
+    revalidatePath('/blog', 'page')
+    revalidatePath('/admin/online-store/theme-editor', 'page')
+
     await audit(actor.id, 'theme.updated', 'Theme', 'theme.config', { templates: Object.keys(templates).length, sections: sections.length, navigation: navigation.length, preset: theme?.presets?.active || null })
     return json({ theme, sections, navigation }, { headers: { 'cache-control': 'no-store' } })
   } catch (e) {
