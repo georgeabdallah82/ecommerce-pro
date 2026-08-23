@@ -55,6 +55,8 @@ st=st.replace("import { ProductCard } from '@/components/product-card'\n",'')
 st=st.replace("import { Footer } from '@/components/footer'\n",'')
 st=st.replace(/<ProductCard key=\{p\.id\} p=\{p\} \/>/g, '<Link className="card productCard" href={"/product/"+p.slug}><img className="productImage" src={p.images?.[0]?.url||\'/placeholder-product.svg\'} alt={p.images?.[0]?.alt||p.name}/><div className="productBody"><span className="muted" style={{fontSize:12}}>{p.category?.name||\'Collection\'}</span><div className="productName">{p.name}</div><div className="price">{(Number(p.basePrice||0)/100).toFixed(2)}</div></div></Link>')
 st=st.replace(/\n\s*!preview && !hasFooter && <Footer \/>\n/, '\n')
+// Fix the newsletter branch left with an extra closing brace by earlier automated edits.
+st=st.replace(/(if\(section\.type==='newsletter'[^\n]*<\/section>)\}/, '$1')
 fs.writeFileSync(storefrontPath,st)
 
 console.log('Theme Editor patches applied')
