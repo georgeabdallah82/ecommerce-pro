@@ -37,10 +37,6 @@ export async function POST(req: Request) {
     if (paymentMethod === PaymentMethod.CARD && paymentProvider.name === 'manual') {
       return json({ error: 'Card payments are not configured yet.' }, { status: 503 })
     }
-    if (idempotencyKey) {
-      const existing = await db.paymentTransaction.findFirst({ where: { provider: 'checkout', externalId: idempotencyKey }, include: { order: true } })
-      if (existing?.order) return json({ order: { id: existing.order.id, orderNumber: existing.order.orderNumber, total: existing.order.grandTotal } }, { status: 200 })
-    }
 
     const merged = new Map<string, { productId: string; variantId: string | null; quantity: number }>()
     for (const item of input.items) {
@@ -82,13 +78,21 @@ export async function POST(req: Request) {
     const grandTotal = Math.max(0, discountedSubtotal + shippingTotal + taxTotal)
     const orderNumber = `ORD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
 
-    const order = await db.$transaction(async tx => {
+    const result = await db.$transaction(async tx => {
+      // Serialize requests sharing the same idempotency key. This closes the
+      // race where two concurrent requests both observe no existing order.
+      if (idempotencyKey) {
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${idempotencyKey}))`
+        const existing = await tx.paymentTransaction.findFirst({ where: { provider: 'checkout', externalId: idempotencyKey }, include: { order: true } })
+        if (existing?.order) return { existing: true as const, order: existing.order }
+      }
+
       for (const item of normalized) await reserveStock(tx, byId.get(item.productId)!, item.variantId, item.quantity, orderNumber)
       if (coupon) {
         const couponUpdate = await tx.coupon.updateMany({ where: { id: coupon.id, isActive: true, ...(coupon.maxUses !== null ? { usedCount: { lt: coupon.maxUses } } : {}) }, data: { usedCount: { increment: 1 } } })
         if (couponUpdate.count !== 1) throw new Error('This coupon is no longer available')
       }
-      return tx.order.create({
+      const order = await tx.order.create({
         data: {
           orderNumber,
           userId: user?.id ?? null,
@@ -109,8 +113,14 @@ export async function POST(req: Request) {
           paymentTransactions: { create: { provider: idempotencyKey ? 'checkout' : paymentProvider.name, externalId: idempotencyKey, status: 'created', amount: grandTotal, currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD' } },
         },
       })
+      return { existing: false as const, order }
     })
 
+    if (result.existing) {
+      return json({ order: { id: result.order.id, orderNumber: result.order.orderNumber, total: result.order.grandTotal } }, { status: 200 })
+    }
+
+    const order = result.order
     if (user?.id) await db.notification.create({ data: { userId: user.id, title: 'Order placed', body: `Order ${order.orderNumber} was placed successfully.`, type: 'ORDER_CREATED' } })
     await audit(user?.id, 'order.created', 'Order', order.id, { orderNumber, total: grandTotal, paymentMethod })
     return json({ order: { id: order.id, orderNumber: order.orderNumber, total: order.grandTotal } }, { status: 201 })
