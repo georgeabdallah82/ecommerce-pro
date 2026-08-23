@@ -1,6 +1,7 @@
 import { db } from '@/lib/prisma'
 import { requireUser } from '@/lib/auth'
 import { canCustomerCancel } from '@/lib/orders'
+import { releaseOrderReservations } from '@/lib/inventory'
 import { json } from '@/lib/utils'
 
 export async function POST(_req: Request, { params }: { params: Promise<{ orderNumber: string }> }) {
@@ -8,31 +9,20 @@ export async function POST(_req: Request, { params }: { params: Promise<{ orderN
     const user = await requireUser()
     const { orderNumber } = await params
     const result = await db.$transaction(async tx => {
-      const order = await tx.order.findFirst({ where: { orderNumber, userId: user.id }, include: { items: true } })
+      const order = await tx.order.findFirst({ where: { orderNumber, userId: user.id } })
       if (!order) throw new Error('Order not found')
       if (!canCustomerCancel(order.status)) throw new Error('This order can no longer be cancelled online')
 
-      for (const item of order.items) {
-        const rows = await tx.inventoryItem.findMany({ where: { productId: item.productId, variantId: item.variantId || null }, orderBy: { id: 'asc' } })
-        let remaining = item.quantity
-        for (const row of rows) {
-          if (remaining <= 0) break
-          const release = Math.min(remaining, row.reserved)
-          if (release <= 0) continue
-          const affected = await tx.inventoryItem.updateMany({ where: { id: row.id, reserved: { gte: release } }, data: { reserved: { decrement: release } } })
-          if (affected.count !== 1) throw new Error(`Stock reservation changed for ${item.name}. Please retry.`)
-          await tx.inventoryMovement.create({ data: { inventoryId: row.id, type: 'SALE_RELEASE', quantity: -release, reason: 'Customer cancelled order', referenceId: order.orderNumber } })
-          remaining -= release
-        }
-        if (remaining > 0) throw new Error(`Unable to release reservation for ${item.name}. Please contact support.`)
-      }
+      await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${order.id} FOR UPDATE`
+      await releaseOrderReservations(tx, order.id, 'Customer cancelled order')
 
       return tx.order.update({
         where: { id: order.id },
-        data: { status: 'CANCELLED', fulfillmentStatus: 'UNFULFILLED', events: { create: { status: 'CANCELLED', message: 'Order cancelled by customer.' } } },
+        data: { status: 'CANCELLED', fulfillmentStatus: 'UNFULFILLED', paymentStatus: order.paymentStatus === 'PAID' ? 'PAID' : 'FAILED', events: { create: { status: 'CANCELLED', message: 'Order cancelled by customer.' } } },
       })
     })
 
+    if (result.userId) await db.notification.create({ data: { userId: result.userId, title: `Order ${result.orderNumber} cancelled`, body: 'Your order was cancelled and its inventory reservation was released.', type: 'ORDER_STATUS' } })
     return json({ order: result })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unable to cancel order'
