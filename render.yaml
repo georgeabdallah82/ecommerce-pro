@@ -17,6 +17,8 @@ services:
         generateValue: true
       - key: CRON_SECRET
         generateValue: true
+      - key: PAYMENT_WEBHOOK_SECRET
+        generateValue: true
       - key: NEXT_PUBLIC_SITE_URL
         sync: false
       - key: NEXT_PUBLIC_BRAND_NAME
