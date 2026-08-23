@@ -32,6 +32,16 @@ export async function PATCH(req: Request) {
     const order = await db.order.findUnique({ where: { id: String(body.id) }, include: { items: true } })
     if (!order) return json({ error: 'Order not found' }, { status: 404 })
 
+    const noteBody = typeof body.addNote === 'string' ? body.addNote.trim() : ''
+    if (noteBody) {
+      const note = await db.orderNote.create({
+        data: { orderId: order.id, userId: actor.id, body: noteBody },
+        include: { user: true },
+      })
+      await audit(actor.id, 'order.note_added', 'Order', order.id, { noteId: note.id })
+      return json({ note })
+    }
+
     const next = body.status as any
     if (next && !canTransitionOrder(order.status, next)) return json({ error: `Cannot change ${order.status} to ${next}` }, { status: 400 })
 
