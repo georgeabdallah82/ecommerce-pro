@@ -16,9 +16,11 @@ export async function POST(req: Request) {
     if (!Number.isInteger(requestedRefund) || requestedRefund < 0) return json({ error: 'refundAmount must be a non-negative integer' }, { status: 400 })
 
     const result = await db.$transaction(async tx => {
+      await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${orderId} FOR UPDATE`
       const order = await tx.order.findUnique({ where: { id: orderId }, include: { items: true, paymentTransactions: true } })
       if (!order) throw new Error('Order not found')
       if (!['SHIPPED', 'DELIVERED'].includes(order.status)) throw new Error('Only shipped or delivered orders can be returned')
+      if (requestedRefund > 0 && !['PAID', 'PARTIALLY_REFUNDED'].includes(order.paymentStatus)) throw new Error('A return refund can only be issued for a paid order')
 
       const returnId = `RET-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
       const orderItemById = new Map(order.items.map(item => [item.id, item]))
@@ -46,14 +48,16 @@ export async function POST(req: Request) {
 
       if (restock) {
         for (const entry of normalized) {
-          const rows = await tx.inventoryItem.findMany({ where: { productId: entry.item.productId, variantId: entry.item.variantId || null }, orderBy: { id: 'asc' } })
+          const dedicated = await tx.inventoryItem.findMany({ where: { productId: entry.item.productId, variantId: entry.item.variantId || null }, orderBy: { id: 'asc' } })
+          const shared = entry.item.variantId ? await tx.inventoryItem.findMany({ where: { productId: entry.item.productId, variantId: null }, orderBy: { id: 'asc' } }) : []
+          const rows = dedicated.length ? dedicated : shared
           if (!rows.length) throw new Error(`No inventory row exists for ${entry.item.name}`)
           let remaining = entry.quantity
           for (const row of rows) {
             if (remaining <= 0) break
             const add = remaining
             await tx.inventoryItem.update({ where: { id: row.id }, data: { quantity: { increment: add } } })
-            await tx.inventoryMovement.create({ data: { inventoryId: row.id, type: 'RETURN', quantity: add, reason: `Customer return ${entry.orderItemId}: ${body.reason || 'Returned item'}`, referenceId: order.orderNumber } })
+            await tx.inventoryMovement.create({ data: { inventoryId: row.id, type: 'RETURN', quantity: add, reason: `Customer return ${entry.orderItemId}: ${String(body.reason || 'Returned item').slice(0, 1000)}`, referenceId: order.orderNumber } })
             remaining -= add
           }
           if (remaining > 0) throw new Error(`Unable to restock ${entry.item.name}`)
@@ -64,7 +68,7 @@ export async function POST(req: Request) {
       const newRefundedTotal = refunded + requestedRefund
       const paymentStatus = requestedRefund > 0 ? (newRefundedTotal >= order.grandTotal ? 'REFUNDED' : 'PARTIALLY_REFUNDED') : order.paymentStatus
       if (requestedRefund > 0) {
-        refund = await tx.paymentTransaction.create({ data: { orderId: order.id, provider: 'manual', status: 'refunded', amount: requestedRefund, currency: order.currency, rawJson: JSON.stringify({ returnId, reason: body.reason || null, actorId: actor.id }) } })
+        refund = await tx.paymentTransaction.create({ data: { orderId: order.id, provider: 'manual', status: 'refunded', amount: requestedRefund, currency: order.currency, rawJson: JSON.stringify({ returnId, reason: String(body.reason || '').slice(0, 1000) || null, actorId: actor.id }).slice(0, 5000) } })
       }
 
       const updated = await tx.order.update({ where: { id: order.id }, data: { paymentStatus, status: paymentStatus === 'REFUNDED' ? 'REFUNDED' : order.status, events: { create: { status: paymentStatus, message: `${returnId}: ${normalized.map(x => `${x.item.name} × ${x.quantity}`).join(', ')}${restock ? ' — restocked' : ' — not restocked'}${requestedRefund ? ` — refunded ${requestedRefund} ${order.currency}` : ''}` } } } })
