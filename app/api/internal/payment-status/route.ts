@@ -1,14 +1,6 @@
 import { db } from '@/lib/prisma'
+import { canTransitionPayment } from '@/lib/orders'
 import { PaymentStatus } from '@prisma/client'
-
-const rank: Record<PaymentStatus, number> = {
-  UNPAID: 0,
-  PENDING: 1,
-  FAILED: 2,
-  PAID: 3,
-  PARTIALLY_REFUNDED: 4,
-  REFUNDED: 5,
-}
 
 export async function POST(req: Request) {
   const configured = process.env.PAYMENT_WEBHOOK_SECRET
@@ -21,22 +13,24 @@ export async function POST(req: Request) {
     const status = body.status as PaymentStatus
     if (!orderId || !Object.values(PaymentStatus).includes(status)) return Response.json({ error: 'orderId and a valid payment status are required' }, { status: 400 })
 
-    const order = await db.order.findUnique({ where: { id: orderId } })
-    if (!order) return Response.json({ error: 'Order not found' }, { status: 404 })
+    const result = await db.$transaction(async tx => {
+      await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${orderId} FOR UPDATE`
+      const order = await tx.order.findUnique({ where: { id: orderId } })
+      if (!order) throw new Error('Order not found')
 
-    if (externalId) {
-      const existing = await db.paymentTransaction.findFirst({ where: { orderId, externalId } })
-      if (existing) return Response.json({ orderId, paymentStatus: order.paymentStatus, duplicate: true })
-    }
+      if (externalId) {
+        const existing = await tx.paymentTransaction.findFirst({ where: { orderId, externalId } })
+        if (existing) return { orderId, paymentStatus: order.paymentStatus, duplicate: true }
+      }
 
-    const amount = Number.isInteger(body.amount) ? body.amount : order.grandTotal
-    if (status === PaymentStatus.PAID && amount !== order.grandTotal) return Response.json({ error: 'Payment amount does not match order total' }, { status: 409 })
-    const isRefundStatus = status === PaymentStatus.PARTIALLY_REFUNDED || status === PaymentStatus.REFUNDED
-    if (rank[status] < rank[order.paymentStatus] && !isRefundStatus) {
-      return Response.json({ orderId, paymentStatus: order.paymentStatus, ignored: true })
-    }
+      if (!canTransitionPayment(order.paymentStatus, status)) return { orderId, paymentStatus: order.paymentStatus, ignored: true }
 
-    const updated = await db.$transaction(async tx => {
+      const amount = Number.isInteger(body.amount) ? body.amount : order.grandTotal
+      if (amount <= 0) throw new Error('Payment amount must be positive')
+      if (status === PaymentStatus.PAID && amount !== order.grandTotal) throw new Error('Payment amount does not match order total')
+      if (status === PaymentStatus.PARTIALLY_REFUNDED && amount >= order.grandTotal) throw new Error('Partial refund amount must be below the order total')
+
+      const updated = await tx.order.update({ where: { id: order.id }, data: { paymentStatus: status } })
       await tx.paymentTransaction.create({ data: {
         orderId: order.id,
         provider: typeof body.provider === 'string' ? body.provider.slice(0, 80) : 'external',
@@ -46,10 +40,10 @@ export async function POST(req: Request) {
         currency: order.currency,
         rawJson: JSON.stringify(body).slice(0, 20000),
       } })
-      return tx.order.update({ where: { id: order.id }, data: { paymentStatus: status } })
+      return { orderId: updated.id, paymentStatus: updated.paymentStatus }
     })
 
-    return Response.json({ orderId: updated.id, paymentStatus: updated.paymentStatus })
+    return Response.json(result)
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : 'Unable to update payment status' }, { status: 400 })
   }
