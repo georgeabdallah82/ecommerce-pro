@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { Footer } from '@/components/footer'
 import StorefrontSections from '@/components/storefront-sections'
+import ProductAvailabilityGuard from '@/components/product-availability-guard'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -12,7 +13,7 @@ const siteUrl = () => (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:300
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
-  const product = await db.product.findUnique({ where: { slug }, select: { name: true, description: true, shortDescription: true, seoTitle: true, seoDescription: true, seoImageUrl: true, images: { orderBy: { sortOrder: 'asc' }, take: 1 } } })
+  const product = await db.product.findUnique({ where: { slug }, select: { name: true, description: true, shortDescription: true, seoTitle: true, seoDescription: true, seoImageUrl: true, images: { orderBy: { sortOrder: 'asc' }, take: 1 } })
   if (!product) return {}
   return {
     title: product.seoTitle || product.name,
@@ -42,11 +43,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const variantAvailability = product.variants.map(v => {
     const dedicated = v.inventory
     const available = dedicated.length ? dedicated.reduce((sum, i) => sum + i.quantity - i.reserved, 0) : sharedAvailable
-    return { sku: v.sku, available: Math.max(0, available) }
+    return { name: v.name, sku: v.sku, available: Math.max(0, available) }
   })
-  const productAvailable = product.variants.length
-    ? Math.max(0, Math.max(...variantAvailability.map(v => v.available), 0))
-    : Math.max(0, sharedAvailable)
+  const productAvailable = product.variants.length ? Math.max(0, Math.max(...variantAvailability.map(v => v.available), 0)) : Math.max(0, sharedAvailable)
   const isAvailable = !product.trackInventory || product.continueSellingWhenOutOfStock || productAvailable > 0
 
   const structuredData = {
@@ -71,6 +70,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   return <>
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, '\\u003c') }} />
     <StorefrontSections theme={theme} sections={templates} products={related} collections={[]} product={product}/>
+    <ProductAvailabilityGuard variants={variantAvailability} productAvailable={productAvailable} trackInventory={product.trackInventory} continueSellingWhenOutOfStock={product.continueSellingWhenOutOfStock} />
     {footerEnabled && <Footer/>}
   </>
 }
