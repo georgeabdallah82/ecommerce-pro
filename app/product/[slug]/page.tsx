@@ -9,6 +9,9 @@ import {ProductCard} from '@/components/product-card'
 import Link from 'next/link'
 import {Share2,Heart} from 'lucide-react'
 
+export const dynamic='force-dynamic'
+export const revalidate=0
+
 export default async function ProductPage({params}:{params:Promise<{slug:string}>}){
  const {slug}=await params
  const {theme}=await getThemeState()
@@ -21,5 +24,7 @@ export default async function ProductPage({params}:{params:Promise<{slug:string}
  const recommendations=(sec:any)=><section className="section relatedProducts"><div className="container"><div className="sectionHead"><div><span className="muted">YOU MAY ALSO LIKE</span><h2 className="h2">{sec.settings?.heading||'Related products'}</h2></div><Link href={p.category?`/shop?category=${p.category.slug}`:'/shop'} className="btn secondary">View all</Link></div><div className="grid productGrid">{related.slice(0,Number(sec.settings?.limit||4)).map(r=><ProductCard key={r.id} p={r}/>)}</div></div></section>
  const rich=(sec:any)=><section className="section"><div className="container"><span className="muted">{sec.settings?.eyebrow||'ABOUT THE STORE'}</span><h2 className="h2">{sec.settings?.heading||''}</h2><p className="body muted">{sec.settings?.text||''}</p></div></section>
  const newsletter=(sec:any)=><section className="section"><div className="container"><div className={`newsletterHome ${sec.settings?.background||'primary'}`}><div><span className="muted">NEWSLETTER</span><h2 className="h2">{sec.settings?.heading||'Stay in the loop'}</h2><p className="muted">{sec.settings?.text||''}</p></div></div></div></section>
- return <><main>{template.filter((sec:any)=>sec.enabled!==false&&sec.type!=='header').map((sec:any)=>sec.type==='announcement'?<section key={sec.id} className="storeSection announcementSection" style={{padding:0,background:sec.settings?.background==='secondary'?theme.colors.secondary:theme.colors.primary,color:sec.settings?.textColor||'#fff'}}><div className="announcementBar"><div className="announcementInner container">{sec.settings?.text||'Free shipping on orders over $50'}</div></div></section>:sec.type==='main_product'||sec.type==='featured_product'?<div key={sec.id}>{mainProduct(sec)}</div>:sec.type==='product_recommendations'?<div key={sec.id}>{recommendations(sec)}</div>:sec.type==='rich_text'?<div key={sec.id}>{rich(sec)}</div>:sec.type==='newsletter'?<div key={sec.id}>{newsletter(sec)}</div>:sec.type==='footer'?<Footer key={sec.id}/>:null)}</main></>
+ let footerRendered=false
+ const rendered=template.filter((sec:any)=>sec.enabled!==false&&sec.settings?.enabled!==false).map((sec:any)=>sec.type==='announcement'?<section key={sec.id} className="storeSection announcementSection" style={{padding:0,background:sec.settings?.background==='secondary'?theme.colors.secondary:theme.colors.primary,color:sec.settings?.textColor||'#fff'}}><div className="announcementBar"><div className="announcementInner container">{sec.settings?.text||'Free shipping on orders over $50'}</div></div></section>:sec.type==='main_product'||sec.type==='featured_product'?<div key={sec.id}>{mainProduct(sec)}</div>:sec.type==='product_recommendations'?<div key={sec.id}>{recommendations(sec)}</div>:sec.type==='rich_text'?<div key={sec.id}>{rich(sec)}</div>:sec.type==='newsletter'?<div key={sec.id}>{newsletter(sec)}</div>:sec.type==='footer'?(footerRendered=true,<Footer key={sec.id}/>):null)
+ return <>{rendered}{!footerRendered&&<Footer/>}</>
 }
