@@ -21,29 +21,17 @@ export default function Checkout() {
     const form = event.currentTarget
     const fd = new FormData(form)
     const paymentMethod = String(fd.get('paymentMethod') || 'COD')
-    const data = {
-      email: String(fd.get('email') || ''), phone: String(fd.get('phone') || ''), paymentMethod,
-      couponCode: String(fd.get('couponCode') || ''),
-      shippingAddress: {
-        firstName: String(fd.get('firstName') || ''), lastName: String(fd.get('lastName') || ''), line1: String(fd.get('line1') || ''), line2: String(fd.get('line2') || ''),
-        city: String(fd.get('city') || ''), region: String(fd.get('region') || ''), postalCode: String(fd.get('postalCode') || ''), country: String(fd.get('country') || ''), phone: String(fd.get('phone') || ''),
-      },
-      items: items.map(item => ({ productId: item.productId, variantId: item.variantId || null, quantity: item.quantity })),
-    }
-
+    const data = { email: String(fd.get('email') || ''), phone: String(fd.get('phone') || ''), paymentMethod, couponCode: String(fd.get('couponCode') || ''), shippingAddress: { firstName: String(fd.get('firstName') || ''), lastName: String(fd.get('lastName') || ''), line1: String(fd.get('line1') || ''), line2: String(fd.get('line2') || ''), city: String(fd.get('city') || ''), region: String(fd.get('region') || ''), postalCode: String(fd.get('postalCode') || ''), country: String(fd.get('country') || ''), phone: String(fd.get('phone') || '') }, items: items.map(item => ({ productId: item.productId, variantId: item.variantId || null, quantity: item.quantity })) }
     try {
       const response = await fetch('/api/checkout', { method: 'POST', headers: { 'content-type': 'application/json', 'x-idempotency-key': idempotencyKey.current }, body: JSON.stringify(data) })
       const output = await response.json()
       if (!response.ok) throw new Error(output.error || 'Unable to place order')
-      clear()
-      router.push(`/order/success?order=${encodeURIComponent(output.order.orderNumber)}`)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unable to place order')
-    } finally { setLoading(false) }
+      clear(); router.push(`/order/success?order=${encodeURIComponent(output.order.orderNumber)}`)
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to place order') } finally { setLoading(false) }
   }
 
   return <main className="section"><div className="container split">
-    <form className="card checkoutForm" onSubmit={submit} noValidate>
+    <form className="card checkoutForm" onSubmit={submit}>
       <span className="muted">CHECKOUT</span><h1 className="h2">Secure, simple, fast.</h1>
       <h3>Contact</h3>
       <label className="fieldLabel">Email<input className="input" required name="email" type="email" autoComplete="email" inputMode="email" placeholder="you@example.com" /></label>
