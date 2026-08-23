@@ -6,6 +6,7 @@ import { json } from '@/lib/utils'
 import { calculateShipping, getTaxRatePercent } from '@/lib/pricing'
 import { reserveStock } from '@/lib/inventory'
 import { getPaymentProvider } from '@/lib/payments'
+import { sendNewOrderPush } from '@/lib/push'
 import { PaymentMethod } from '@prisma/client'
 
 async function applyCoupon(code: string, subtotal: number, userId?: string | null) {
@@ -118,6 +119,7 @@ export async function POST(req: Request) {
 
     const order = result.order
     if (user?.id) await db.notification.create({ data: { userId: user.id, title: 'Order placed', body: `Order ${order.orderNumber} was placed successfully.`, type: 'ORDER_CREATED' } })
+    await sendNewOrderPush({ id: order.id, orderNumber: order.orderNumber, grandTotal: order.grandTotal, currency: order.currency })
     await audit(user?.id, 'order.created', 'Order', order.id, { orderNumber, total: grandTotal, paymentMethod })
     return json({ order: { id: order.id, orderNumber: order.orderNumber, total: order.grandTotal } }, { status: 201 })
   } catch (error) {
