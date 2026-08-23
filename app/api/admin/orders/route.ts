@@ -27,40 +27,53 @@ export async function PATCH(req: Request) {
   try {
     const actor = await requirePermission('orders.manage')
     const body = await req.json()
-    const order = await db.order.findUnique({ where: { id: String(body.id) } })
-    if (!order) return json({ error: 'Order not found' }, { status: 404 })
+    const orderId = String(body.id || '').trim()
+    if (!orderId) return json({ error: 'Order id is required' }, { status: 400 })
 
-    const noteBody = typeof body.addNote === 'string' ? body.addNote.trim() : ''
+    const noteBody = typeof body.addNote === 'string' ? body.addNote.trim().slice(0, 5000) : ''
     if (noteBody) {
+      const order = await db.order.findUnique({ where: { id: orderId }, select: { id: true } })
+      if (!order) return json({ error: 'Order not found' }, { status: 404 })
       const note = await db.orderNote.create({ data: { orderId: order.id, userId: actor.id, body: noteBody }, include: { user: true } })
       await audit(actor.id, 'order.note_added', 'Order', order.id, { noteId: note.id })
       return json({ note }, { status: 201 })
     }
 
-    const next = typeof body.status === 'string' && body.status ? body.status as OrderStatus : undefined
-    const nextPayment = typeof body.paymentStatus === 'string' && body.paymentStatus ? body.paymentStatus as PaymentStatus : undefined
-    if (next && !ORDER_STATUSES.has(next)) return json({ error: 'Invalid order status' }, { status: 400 })
-    if (nextPayment && !PAYMENT_STATUSES.has(nextPayment)) return json({ error: 'Invalid payment status' }, { status: 400 })
-    if (next && !canTransitionOrder(order.status, next)) return json({ error: `Cannot change ${order.status} to ${next}` }, { status: 400 })
-    if (nextPayment && !canTransitionPayment(order.paymentStatus, nextPayment)) return json({ error: `Cannot change payment status ${order.paymentStatus} to ${nextPayment}` }, { status: 400 })
-    if (nextPayment === 'REFUNDED' || nextPayment === 'PARTIALLY_REFUNDED') return json({ error: 'Use the refund/return workflow to create a refund transaction' }, { status: 400 })
+    const requestedStatus = typeof body.status === 'string' && body.status ? body.status as OrderStatus : undefined
+    const requestedPayment = typeof body.paymentStatus === 'string' && body.paymentStatus ? body.paymentStatus as PaymentStatus : undefined
+    if (requestedStatus && !ORDER_STATUSES.has(requestedStatus)) return json({ error: 'Invalid order status' }, { status: 400 })
+    if (requestedPayment && !PAYMENT_STATUSES.has(requestedPayment)) return json({ error: 'Invalid payment status' }, { status: 400 })
+    if (requestedPayment === PaymentStatus.REFUNDED || requestedPayment === PaymentStatus.PARTIALLY_REFUNDED) return json({ error: 'Use the refund/return workflow to create a refund transaction' }, { status: 400 })
 
-    const updated = await db.$transaction(async tx => {
-      if (next === OrderStatus.CANCELLED && order.status !== OrderStatus.CANCELLED) await releaseOrderReservations(tx, order.id, 'Order cancelled')
-      if (next === OrderStatus.SHIPPED && order.status === OrderStatus.PROCESSING) await fulfillOrderStock(tx, order.id)
+    const result = await db.$transaction(async tx => {
+      await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${orderId} FOR UPDATE`
+      const order = await tx.order.findUnique({ where: { id: orderId } })
+      if (!order) throw new Error('Order not found')
+
+      if (requestedStatus && !canTransitionOrder(order.status, requestedStatus)) throw new Error(`Cannot change ${order.status} to ${requestedStatus}`)
+      if (requestedPayment && !canTransitionPayment(order.paymentStatus, requestedPayment)) throw new Error(`Cannot change payment status ${order.paymentStatus} to ${requestedPayment}`)
+
+      const statusChanged = !!requestedStatus && requestedStatus !== order.status
+      const paymentChanged = !!requestedPayment && requestedPayment !== order.paymentStatus
+      const cancelling = requestedStatus === OrderStatus.CANCELLED && order.status !== OrderStatus.CANCELLED
+      const fulfilling = requestedStatus === OrderStatus.SHIPPED && order.fulfillmentStatus !== 'FULFILLED'
+
+      if (cancelling) await releaseOrderReservations(tx, order.id, 'Order cancelled')
+      if (fulfilling) await fulfillOrderStock(tx, order.id)
 
       const data: any = {
-        ...(next ? { status: next, fulfillmentStatus: fulfillmentForStatus(next) } : {}),
-        ...(nextPayment ? { paymentStatus: nextPayment } : {}),
-        ...(body.trackingNumber !== undefined ? { trackingNumber: String(body.trackingNumber || '').trim() || null } : {}),
-        ...(body.notes !== undefined ? { notes: String(body.notes || '') } : {}),
+        ...(statusChanged ? { status: requestedStatus, fulfillmentStatus: fulfillmentForStatus(requestedStatus!) } : {}),
+        ...(paymentChanged ? { paymentStatus: requestedPayment } : {}),
+        ...(body.trackingNumber !== undefined ? { trackingNumber: String(body.trackingNumber || '').trim().slice(0, 120) || null } : {}),
+        ...(body.notes !== undefined ? { notes: String(body.notes || '').trim().slice(0, 5000) } : {}),
       }
-      return tx.order.update({ where: { id: order.id }, data: { ...data, events: next ? { create: { status: next, message: `Order moved from ${order.status} to ${next}.` } } : undefined } })
+      const updated = await tx.order.update({ where: { id: order.id }, data: { ...data, ...(statusChanged ? { events: { create: { status: requestedStatus!, message: `Order moved from ${order.status} to ${requestedStatus}.` } } } : {}) } })
+      return { order, updated, statusChanged, paymentChanged }
     })
 
-    if (order.userId && next && next !== order.status) await db.notification.create({ data: { userId: order.userId, title: `Order ${order.orderNumber} updated`, body: `Your order is now ${next.toLowerCase().replaceAll('_', ' ')}.`, type: 'ORDER_STATUS' } })
-    await audit(actor.id, 'order.updated', 'Order', order.id, { from: order.status, to: next || order.status, paymentFrom: order.paymentStatus, paymentTo: nextPayment || order.paymentStatus })
-    return json({ order: updated })
+    if (result.order.userId && result.statusChanged) await db.notification.create({ data: { userId: result.order.userId, title: `Order ${result.order.orderNumber} updated`, body: `Your order is now ${result.updated.status.toLowerCase().replaceAll('_', ' ')}.`, type: 'ORDER_STATUS' } })
+    await audit(actor.id, 'order.updated', 'Order', result.order.id, { from: result.order.status, to: result.updated.status, paymentFrom: result.order.paymentStatus, paymentTo: result.updated.paymentStatus, statusChanged: result.statusChanged, paymentChanged: result.paymentChanged })
+    return json({ order: result.updated })
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : 'Unable to update order' }, { status: 400 })
   }
