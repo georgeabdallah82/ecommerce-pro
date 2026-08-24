@@ -20,7 +20,7 @@ const links: Array<[string,string,Permission,any]> = [
  ['/admin/online-store/theme-editor','Theme editor','content.view',Palette],
  ['/admin/online-store/navigation','Navigation','content.view',Menu],
  ['/admin/content','Content','content.view',FileText],
- ['/admin/media','Files','media.view',Image as ImageIcon],
+ ['/admin/media','Files','media.view',ImageIcon],
  ['/admin/reports','Analytics & reports','reports.view',BarChart3],
  ['/admin/system','System health','settings.view',Activity],
  ['/admin/users','Users & roles','users.view',UserCog],
