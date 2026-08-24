@@ -2,7 +2,7 @@ import {db} from '@/lib/prisma'
 import {getThemeState} from '@/lib/theme'
 import {notFound} from 'next/navigation'
 import {Footer} from '@/components/footer'
-import StorefrontSections from '@/components/storefront-sections'
+import LiveStorefrontSections from '@/components/live-storefront-sections'
 
 export const dynamic='force-dynamic'
 export const revalidate=0
@@ -16,5 +16,5 @@ export default async function CollectionPage({params}:{params:Promise<{slug:stri
   const templates=Array.isArray(theme.editorTemplates?.Collection)&&theme.editorTemplates.Collection.length?theme.editorTemplates.Collection:[{id:'announcement',type:'announcement',enabled:true,settings:{text:'Free shipping on orders over $50',background:'primary'}},{id:'banner',type:'main_collection_banner',enabled:true,settings:{heading:collection.name,subheading:collection.description||''}},{id:'grid',type:'main_collection_grid',enabled:true,settings:{heading:'Products',limit:24,columns:4}},{id:'newsletter',type:'newsletter',enabled:true,settings:{}},{id:'footer',type:'footer',enabled:true,settings:{}}]
   const currentCollection={...collection,products:collection.products}
   const footerEnabled=templates.some((s:any)=>s.type==='footer'&&s.enabled!==false&&s.settings?.enabled!==false)
-  return <><StorefrontSections theme={theme} sections={templates} products={products} collections={[collection]} currentCollection={currentCollection}/>{footerEnabled&&<Footer/>}</>
+  return <><LiveStorefrontSections theme={theme} sections={templates} products={products} collections={[collection]} currentCollection={currentCollection}/>{footerEnabled&&<Footer/>}</>
 }
