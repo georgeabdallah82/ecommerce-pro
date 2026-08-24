@@ -1,0 +1,416 @@
+enum LocationStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum InventoryTransferStatus {
+  DRAFT
+  PENDING
+  IN_TRANSIT
+  RECEIVED
+  CANCELLED
+}
+
+enum DraftOrderStatus {
+  DRAFT
+  OPEN
+  COMPLETED
+  CANCELLED
+}
+
+enum ShipmentStatus {
+  PENDING
+  PACKED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum ReturnStatus {
+  REQUESTED
+  APPROVED
+  RECEIVED
+  REFUNDED
+  REJECTED
+  CANCELLED
+}
+
+enum GiftCardStatus {
+  ACTIVE
+  DISABLED
+  EXPIRED
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  ORDERED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+enum OrderEditStatus {
+  OPEN
+  COMMITTED
+  DISCARDED
+}
+
+enum WebhookStatus {
+  ACTIVE
+  PAUSED
+  DISABLED
+}
+
+enum ApiCredentialStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum SalesChannelStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum AbandonedCheckoutStatus {
+  OPEN
+  RECOVERED
+  EXPIRED
+}
+
+model StoreLocation {
+  id          String         @id @default(cuid())
+  name        String
+  handle      String         @unique
+  addressJson String?
+  phone       String?
+  status      LocationStatus @default(ACTIVE)
+  isDefault   Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  transfersFrom InventoryTransfer[] @relation("TransferFrom")
+  transfersTo   InventoryTransfer[] @relation("TransferTo")
+  purchaseOrders PurchaseOrder[] @relation("PurchaseLocation")
+  @@index([status])
+}
+
+model InventoryTransfer {
+  id             String                  @id @default(cuid())
+  reference      String                  @unique
+  fromLocationId String?
+  toLocationId   String?
+  status         InventoryTransferStatus @default(DRAFT)
+  notes          String?
+  shippedAt      DateTime?
+  receivedAt     DateTime?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  fromLocation   StoreLocation?         @relation("TransferFrom", fields: [fromLocationId], references: [id])
+  toLocation     StoreLocation?         @relation("TransferTo", fields: [toLocationId], references: [id])
+  items          InventoryTransferItem[]
+  @@index([status])
+  @@index([createdAt])
+}
+
+model InventoryTransferItem {
+  id         String            @id @default(cuid())
+  transferId String
+  inventoryId String?
+  productId  String
+  variantId  String?
+  quantity   Int               @default(0)
+  received   Int               @default(0)
+  transfer   InventoryTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  @@index([transferId])
+  @@index([productId, variantId])
+}
+
+model DraftOrder {
+  id                  String           @id @default(cuid())
+  orderNumber         String           @unique
+  customerId          String?
+  email               String
+  phone               String?
+  subtotal            Int              @default(0)
+  discountTotal       Int              @default(0)
+  shippingTotal       Int              @default(0)
+  taxTotal            Int              @default(0)
+  grandTotal          Int              @default(0)
+  currency            String           @default("USD")
+  status              DraftOrderStatus @default(DRAFT)
+  shippingAddressJson String?
+  billingAddressJson  String?
+  notes               String?
+  invoiceSentAt       DateTime?
+  completedOrderId    String?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  items               DraftOrderItem[]
+  @@index([customerId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model DraftOrderItem {
+  id          String     @id @default(cuid())
+  draftOrderId String
+  productId   String
+  variantId   String?
+  name        String
+  sku         String
+  quantity    Int        @default(1)
+  unitPrice   Int
+  totalPrice  Int
+  draftOrder  DraftOrder @relation(fields: [draftOrderId], references: [id], onDelete: Cascade)
+  @@index([draftOrderId])
+}
+
+model Fulfillment {
+  id              String         @id @default(cuid())
+  orderId         String
+  status          ShipmentStatus @default(PENDING)
+  trackingNumber  String?
+  trackingCompany String?
+  trackingUrl     String?
+  locationId      String?
+  shippedAt       DateTime?
+  deliveredAt     DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  lines           FulfillmentLine[]
+  @@index([orderId])
+  @@index([status])
+}
+
+model FulfillmentLine {
+  id           String      @id @default(cuid())
+  fulfillmentId String
+  orderItemId  String
+  productId    String
+  variantId    String?
+  quantity     Int         @default(1)
+  fulfillment  Fulfillment @relation(fields: [fulfillmentId], references: [id], onDelete: Cascade)
+  @@index([fulfillmentId])
+  @@index([orderItemId])
+}
+
+model ReturnRequest {
+  id            String       @id @default(cuid())
+  orderId       String
+  customerId    String?
+  status        ReturnStatus  @default(REQUESTED)
+  reason        String
+  notes         String?
+  refundAmount  Int          @default(0)
+  restock       Boolean      @default(true)
+  receivedAt    DateTime?
+  refundedAt    DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  items         ReturnItem[]
+  @@index([orderId])
+  @@index([status])
+}
+
+model ReturnItem {
+  id             String        @id @default(cuid())
+  returnRequestId String
+  orderItemId    String
+  productId      String
+  variantId      String?
+  quantity       Int           @default(1)
+  condition      String?
+  returnRequest  ReturnRequest @relation(fields: [returnRequestId], references: [id], onDelete: Cascade)
+  @@index([returnRequestId])
+}
+
+model GiftCard {
+  id            String         @id @default(cuid())
+  code          String         @unique
+  last4         String
+  customerId    String?
+  initialAmount Int
+  balance       Int
+  currency      String         @default("USD")
+  status        GiftCardStatus @default(ACTIVE)
+  expiresAt     DateTime?
+  note          String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  @@index([customerId])
+  @@index([status])
+}
+
+model CustomerTag {
+  id        String               @id @default(cuid())
+  value     String               @unique
+  createdAt DateTime             @default(now())
+  customers CustomerTagMember[]
+}
+
+model CustomerTagMember {
+  tagId     String
+  customerId String
+  createdAt DateTime @default(now())
+  tag       CustomerTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  @@id([tagId, customerId])
+  @@index([customerId])
+}
+
+model CustomerSegment {
+  id          String                 @id @default(cuid())
+  name        String
+  description String?
+  ruleJson    String
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  members     CustomerSegmentMember[]
+}
+
+model CustomerSegmentMember {
+  segmentId  String
+  customerId String
+  addedAt    DateTime         @default(now())
+  segment    CustomerSegment  @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+  @@id([segmentId, customerId])
+  @@index([customerId])
+}
+
+model PurchaseOrder {
+  id           String              @id @default(cuid())
+  number       String              @unique
+  supplierName String?
+  locationId   String?
+  status       PurchaseOrderStatus @default(DRAFT)
+  currency     String              @default("USD")
+  totalCost    Int                 @default(0)
+  orderedAt    DateTime?
+  receivedAt   DateTime?
+  notes        String?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  location     StoreLocation?     @relation("PurchaseLocation", fields: [locationId], references: [id])
+  items        PurchaseOrderItem[]
+  @@index([status])
+}
+
+model PurchaseOrderItem {
+  id             String        @id @default(cuid())
+  purchaseOrderId String
+  productId      String
+  variantId      String?
+  quantityOrdered Int          @default(0)
+  quantityReceived Int         @default(0)
+  unitCost       Int           @default(0)
+  totalCost      Int           @default(0)
+  purchaseOrder  PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  @@index([purchaseOrderId])
+}
+
+model OrderEdit {
+  id             String          @id @default(cuid())
+  orderId        String
+  status         OrderEditStatus @default(OPEN)
+  subtotalBefore Int
+  subtotalAfter  Int
+  deltaTotal     Int
+  reason         String?
+  createdBy      String?
+  committedAt    DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  items          OrderEditItem[]
+  @@index([orderId])
+  @@index([status])
+}
+
+model OrderEditItem {
+  id          String    @id @default(cuid())
+  orderEditId String
+  orderItemId String?
+  productId   String
+  variantId   String?
+  quantity    Int
+  unitPrice   Int
+  totalPrice  Int
+  orderEdit   OrderEdit @relation(fields: [orderEditId], references: [id], onDelete: Cascade)
+  @@index([orderEditId])
+}
+
+model WebhookEndpoint {
+  id          String         @id @default(cuid())
+  topic       String
+  endpointUrl String
+  secret      String
+  status      WebhookStatus  @default(ACTIVE)
+  lastStatus  Int?
+  lastError   String?
+  lastSentAt  DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  @@index([topic, status])
+}
+
+model ApiCredential {
+  id          String              @id @default(cuid())
+  name        String
+  keyPrefix   String              @unique
+  keyHash     String              @unique
+  scopesJson  String
+  status      ApiCredentialStatus @default(ACTIVE)
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model SalesChannel {
+  id          String              @id @default(cuid())
+  name        String
+  handle      String              @unique
+  status      SalesChannelStatus  @default(ACTIVE)
+  configJson  String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  publications ProductPublication[]
+}
+
+model ProductPublication {
+  id           String       @id @default(cuid())
+  productId    String
+  channelId    String
+  publishedAt  DateTime?
+  available    Boolean      @default(true)
+  channel      SalesChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  @@unique([productId, channelId])
+  @@index([productId])
+}
+
+model StoreCreditTransaction {
+  id          String   @id @default(cuid())
+  customerId  String
+  type        String
+  amount      Int
+  currency    String   @default("USD")
+  referenceId String?
+  reason      String?
+  createdAt   DateTime @default(now())
+  @@index([customerId, createdAt])
+}
+
+model AbandonedCheckout {
+  id           String                  @id @default(cuid())
+  token        String                  @unique
+  customerId   String?
+  email        String?
+  cartJson     String
+  subtotal     Int                     @default(0)
+  currency     String                  @default("USD")
+  recoveryUrl  String?
+  status       AbandonedCheckoutStatus  @default(OPEN)
+  lastActivity DateTime                @default(now())
+  recoveredAt  DateTime?
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+  @@index([status, lastActivity])
+  @@index([email])
+}
