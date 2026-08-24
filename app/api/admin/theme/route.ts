@@ -45,9 +45,14 @@ export async function PATCH(req: Request) {
     const actor = await requirePermission('content.manage')
     const body = await req.json()
     const incomingTheme = body.theme || defaultTheme
-    const templateKey = typeof body.templateKey === 'string' && body.templateKey.trim() ? body.templateKey.trim() : 'Home page'
-    const homeSections = normalizeSections(body.homeSections || body.sections || defaultSections)
+    const incomingTemplates = normalizeTemplates(incomingTheme.editorTemplates || body.editorTemplates)
+    const templateKey = typeof body.templateKey === 'string' && body.templateKey.trim()
+      ? body.templateKey.trim()
+      : (typeof incomingTheme.editorTemplateKey === 'string' && incomingTheme.editorTemplateKey.trim() ? incomingTheme.editorTemplateKey.trim() : 'Home page')
     const activeSections = normalizeSections(body.sections || defaultSections)
+    const homeSections = templateKey === 'Home page'
+      ? activeSections
+      : normalizeSections(body.homeSections || incomingTemplates['Home page'] || defaultSections)
     const templates = normalizeTemplates(body.editorTemplates || incomingTheme.editorTemplates)
     templates['Home page'] = homeSections
     templates[templateKey] = activeSections
