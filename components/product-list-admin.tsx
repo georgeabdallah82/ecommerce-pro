@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Archive, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Copy, MoreHorizontal, Plus, Search, Star, Tag, X } from 'lucide-react'
+import { Archive, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Copy, MoreHorizontal, Plus, Star, Tag, X } from 'lucide-react'
 import { money } from '@/lib/config'
 
 type ProductRow = any
@@ -82,6 +82,17 @@ export default function ProductListAdmin({ initial }: { initial: any }) {
     finally { setLoading(false) }
   }
 
+  async function duplicateProduct(id: string) {
+    setLoading(true); setError(''); setNotice('')
+    try {
+      const data = await api(`/api/admin/products/${id}/duplicate`, { method: 'POST' })
+      setNotice('Product duplicated as a draft')
+      await load(page)
+      window.location.href = `/admin/products/${data.product.id}`
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to duplicate product') }
+    finally { setLoading(false) }
+  }
+
   return <div className="catalogPage">
     <div className="sectionHead catalogHead">
       <div><span className="muted">CATALOG</span><h1 className="h2">Products</h1><p className="muted">Manage your entire catalog, inventory, variants, merchandising and SEO.</p></div>
@@ -112,7 +123,7 @@ export default function ProductListAdmin({ initial }: { initial: any }) {
 
     <div className="card productTableCard">
       <div className="tableTopline"><span className="muted">{total.toLocaleString()} products</span><div className="inline"><label className="muted">Rows <select className="input compact" value={pageSize} onChange={e => setPageSize(Number(e.target.value))}><option value={25}>25</option><option value={50}>50</option><option value={100}>100</option></select></label></div></div>
-      <div className="tableWrap"><table className="table productTable"><thead><tr><th><input type="checkbox" checked={allSelected} onChange={toggleAll}/></th><th>Product</th><th>Status</th><th>Inventory</th><th>Category</th><th>Price</th><th>Sales channels</th><th>Updated</th><th></th></tr></thead>
+      <div className="tableWrap"><table className="table productTable"><thead><tr><th><input type="checkbox" checked={allSelected} onChange={toggleAll}/></th><th>Product</th><th>Status</th><th>Inventory</th><th>Category</th><th>Price</th><th>Sales channels</th><th>Updated</th><th>Actions</th></tr></thead>
       <tbody>{rows.map(p => { const s = stockInfo(p); const featured = Boolean(p.featured); return <tr key={p.id} className={selected.includes(p.id) ? 'selectedRow' : ''}>
         <td><input type="checkbox" checked={selected.includes(p.id)} onChange={() => toggle(p.id)}/></td>
         <td><Link className="productListName" href={`/admin/products/${p.id}`}><div className="productThumb">{p.images?.[0]?.url ? <img src={p.images[0].url} alt=""/> : <span>◎</span>}</div><div><strong>{p.name}</strong><div className="muted">{p.sku}{featured ? <span className="featuredDot"> · Featured</span> : ''}</div></div></Link></td>
@@ -122,7 +133,7 @@ export default function ProductListAdmin({ initial }: { initial: any }) {
         <td><strong>{money(p.basePrice)}</strong>{p.compareAtPrice ? <div className="muted strike">{money(p.compareAtPrice)}</div> : null}</td>
         <td><span className="pill">Online Store</span></td>
         <td>{new Date(p.updatedAt).toLocaleDateString()}</td>
-        <td><Link className="iconBtn" href={`/admin/products/${p.id}`} title="Open product"><MoreHorizontal size={17}/></Link></td>
+        <td><div className="inline" style={{gap:6}}><Link className="iconBtn" href={`/admin/products/${p.id}`} title="Open product"><MoreHorizontal size={17}/></Link><button className="iconBtn" disabled={loading} onClick={() => duplicateProduct(p.id)} title="Duplicate product"><Copy size={16}/></button></div></td>
       </tr> })}</tbody></table></div>
       {!rows.length && <div className="empty">No products match your filters.</div>}
       <div className="catalogPagination"><span className="muted">Page {page} of {pages}</span><div className="inline"><button className="iconBtn" disabled={page <= 1 || loading} onClick={() => load(page - 1)}><ChevronLeft size={16}/></button><button className="iconBtn" disabled={page >= pages || loading} onClick={() => load(page + 1)}><ChevronRight size={16}/></button></div></div>
