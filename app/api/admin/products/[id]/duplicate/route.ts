@@ -16,6 +16,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       include: {
         images: { orderBy: { sortOrder: 'asc' } },
         variants: { include: { inventory: true } },
+        inventory: { where: { variantId: null } },
         tags: true,
         metafields: true,
       },
@@ -23,6 +24,8 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     if (!source) return json({ error: 'Product not found' }, { status: 404 })
 
     const suffix = `copy-${Date.now().toString(36)}`
+    const hasVariantInventory = source.variants.some(v => v.inventory.length > 0)
+    const directInventory = source.inventory[0]
     const duplicate = await db.$transaction(async tx => {
       const product = await tx.product.create({
         data: {
@@ -54,20 +57,9 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
           productTemplate: source.productTemplate,
           publishedAt: null,
           categoryId: source.categoryId,
-          images: {
-            create: source.images.map(image => ({ url: image.url, alt: image.alt, sortOrder: image.sortOrder })),
-          },
-          tags: {
-            create: source.tags.map(tag => ({ value: tag.value })),
-          },
-          inventory: {
-            create: {
-              quantity: 0,
-              reserved: 0,
-              lowStockThreshold: source.variants.length ? 5 : (source.tags.length ? 5 : 5),
-              location: 'Main',
-            },
-          },
+          images: { create: source.images.map(image => ({ url: image.url, alt: image.alt, sortOrder: image.sortOrder })) },
+          tags: { create: source.tags.map(tag => ({ value: tag.value })) },
+          inventory: !hasVariantInventory ? { create: { quantity: 0, reserved: 0, lowStockThreshold: directInventory?.lowStockThreshold ?? 5, location: directInventory?.location || 'Main' } } : undefined,
           variants: {
             create: source.variants.map((variant, index) => ({
               name: variant.name,
@@ -78,32 +70,19 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
               compareAtPrice: variant.compareAtPrice,
               weight: variant.weight,
               weightUnit: variant.weightUnit,
-              inventory: source.variants.length && source.variants.every(v => v.inventory.length > 0)
-                ? { create: { quantity: 0, reserved: 0, lowStockThreshold: variant.inventory[0]?.lowStockThreshold ?? 5, location: variant.inventory[0]?.location || 'Main' } }
-                : undefined,
+              inventory: hasVariantInventory ? { create: { quantity: 0, reserved: 0, lowStockThreshold: variant.inventory[0]?.lowStockThreshold ?? 5, location: variant.inventory[0]?.location || 'Main' } } : undefined,
             })),
           },
         },
       })
 
       if (source.metafields.length) {
-        await tx.metafieldValue.createMany({
-          data: source.metafields.map(value => ({
-            definitionId: value.definitionId,
-            ownerType: 'PRODUCT',
-            ownerId: product.id,
-            value: value.value,
-          })),
-        })
+        await tx.metafieldValue.createMany({ data: source.metafields.map(value => ({ definitionId: value.definitionId, ownerType: 'PRODUCT', ownerId: product.id, value: value.value })) })
       }
       return product
     })
 
-    await audit(actor.id, 'product.duplicated', 'Product', duplicate.id, {
-      sourceProductId: source.id,
-      sourceSku: source.sku,
-    })
-
+    await audit(actor.id, 'product.duplicated', 'Product', duplicate.id, { sourceProductId: source.id, sourceSku: source.sku })
     return json({ product: duplicate }, { status: 201 })
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : 'Unable to duplicate product' }, { status: 400 })
