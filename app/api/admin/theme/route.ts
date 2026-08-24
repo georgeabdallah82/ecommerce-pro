@@ -46,16 +46,25 @@ export async function PATCH(req: Request) {
     const body = await req.json()
     const incomingTheme = body.theme || defaultTheme
     const sections = normalizeSections(body.sections || defaultSections)
-    const navigation = Array.isArray(body.navigation) ? body.navigation : defaultNavigation
     const templates = normalizeTemplates(body.editorTemplates || incomingTheme.editorTemplates)
     templates['Home page'] = sections
     const theme = { ...incomingTheme, editorTemplates: templates }
 
-    await db.$transaction([
+    const navigationProvided = Array.isArray(body.navigation)
+    const currentNavigationSetting = navigationProvided ? null : await db.setting.findUnique({ where: { key: 'navigation.main' } })
+    const navigation = navigationProvided
+      ? body.navigation
+      : (currentNavigationSetting ? JSON.parse(currentNavigationSetting.value) : defaultNavigation)
+
+    const writes: any[] = [
       db.setting.upsert({ where: { key: 'theme.config' }, create: { key: 'theme.config', value: JSON.stringify(theme) }, update: { value: JSON.stringify(theme) } }),
       db.setting.upsert({ where: { key: 'theme.sections' }, create: { key: 'theme.sections', value: JSON.stringify(sections) }, update: { value: JSON.stringify(sections) } }),
-      db.setting.upsert({ where: { key: 'navigation.main' }, create: { key: 'navigation.main', value: JSON.stringify(navigation) }, update: { value: JSON.stringify(navigation) } }),
-    ])
+    ]
+    if (navigationProvided) {
+      writes.push(db.setting.upsert({ where: { key: 'navigation.main' }, create: { key: 'navigation.main', value: JSON.stringify(navigation) }, update: { value: JSON.stringify(navigation) } }))
+    }
+
+    await db.$transaction(writes)
 
     revalidatePath('/', 'layout')
     revalidatePath('/', 'page')
@@ -69,7 +78,7 @@ export async function PATCH(req: Request) {
     revalidatePath('/admin/online-store/theme-editor', 'page')
     revalidatePath('/admin/online-store/navigation', 'page')
 
-    await audit(actor.id, 'theme.updated', 'Theme', 'theme.config', { templates: Object.keys(templates).length, sections: sections.length, navigation: navigation.length, preset: theme?.presets?.active || null })
+    await audit(actor.id, 'theme.updated', 'Theme', 'theme.config', { templates: Object.keys(templates).length, sections: sections.length, navigation: navigation.length, navigationUpdated: navigationProvided, preset: theme?.presets?.active || null })
     return json({ theme, sections, navigation }, { headers: { 'cache-control': 'no-store' } })
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : 'Unable to save theme' }, { status: 400 })
