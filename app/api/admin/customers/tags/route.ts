@@ -17,10 +17,13 @@ export async function POST(req: Request) {
     const value = String(b.value || '').trim().slice(0, 100)
     if (!value) return json({ error: 'Tag value is required' }, { status: 400 })
     const tag = await db.customerTag.upsert({ where: { value }, update: {}, create: { value } })
-    if (Array.isArray(b.customerIds) && b.customerIds.length) {
-      await db.customerTagMember.createMany({ data: [...new Set(b.customerIds.map((x: unknown) => String(x)).filter(Boolean))].map((customerId: string) => ({ tagId: tag.id, customerId })), skipDuplicates: true })
+    const customerIds: string[] = Array.isArray(b.customerIds)
+      ? Array.from(new Set<string>(b.customerIds.map((x: unknown) => String(x)).filter((x: string) => x.length > 0)))
+      : []
+    if (customerIds.length) {
+      await db.customerTagMember.createMany({ data: customerIds.map((customerId: string) => ({ tagId: tag.id, customerId })), skipDuplicates: true })
     }
-    await audit(actor.id, 'customer_tag.updated', 'CustomerTag', tag.id, { customerCount: Array.isArray(b.customerIds) ? b.customerIds.length : 0 })
+    await audit(actor.id, 'customer_tag.updated', 'CustomerTag', tag.id, { customerCount: customerIds.length })
     return json({ tag, customers: await db.customerTagMember.findMany({ where: { tagId: tag.id } }) })
   } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to save customer tag' }, { status: 400 }) }
 }
