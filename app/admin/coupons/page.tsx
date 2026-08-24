@@ -1,6 +1,7 @@
 import { requirePermission } from '@/lib/auth'
 import { db } from '@/lib/prisma'
 import CouponsAdminPro from '@/components/coupons-admin-pro'
+import './coupons.css'
 
 export default async function Coupons() {
   await requirePermission('coupons.view')
