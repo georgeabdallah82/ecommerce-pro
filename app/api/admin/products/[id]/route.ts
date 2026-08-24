@@ -15,7 +15,7 @@ export async function GET(_req:Request,{params}:{params:Promise<{id:string}>}){t
 export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
   try{
     const actor=await requirePermission('products.manage');const {id}=await params;const b=await req.json()
-    const existing=await db.product.findUnique({where:{id},include:{variants:{include:{inventory:true}},images:true,inventory:{where:{variantId:null}},tags:true}})
+    const existing=await db.product.findUnique({where:{id},include:{variants:{include:{inventory:true,orderItems:true}},images:true,inventory:{where:{variantId:null}},tags:true}})
     if(!existing)return json({error:'Product not found'},{status:404})
     const existingSharedPool=existing.variants.length>0&&existing.variants.every(v=>v.inventory.length===0)&&existing.inventory.some(x=>x.quantity>0||x.reserved>0)
     const slug=b.slug!==undefined?(slugify(String(b.slug||b.name||existing.name))||`product-${Date.now()}`):undefined
@@ -27,17 +27,33 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
     for(const k of ['featured','requiresShipping','taxable','trackInventory','continueSellingWhenOutOfStock','giftCard'])if(b[k]!==undefined)data[k]=Boolean(b[k])
     if(b.status!==undefined)data.status=b.status;if(b.categoryId!==undefined)data.categoryId=b.categoryId||null;if(b.publishedAt!==undefined)data.publishedAt=b.publishedAt?new Date(b.publishedAt):null
 
+    if(Array.isArray(b.variants)){
+      const incomingIds=new Set(b.variants.filter((v:any)=>v.id).map((v:any)=>String(v.id)))
+      const removed=existing.variants.filter(v=>!incomingIds.has(v.id))
+      const blocked=removed.find(v=>v.orderItems.length>0)
+      if(blocked)return json({error:`Variant "${blocked.name}" cannot be deleted because it is referenced by existing orders. Archive it by removing it from the active product instead.`},{status:409})
+      const incomingSkus=new Set<string>()
+      const incomingBarcodes=new Set<string>()
+      for(const v of b.variants){
+        const sku=String(v.sku||'').trim();if(!sku)return json({error:'Every variant needs a SKU'},{status:400});if(incomingSkus.has(sku))return json({error:`Duplicate variant SKU: ${sku}`},{status:400});incomingSkus.add(sku)
+        const barcode=v.barcode?String(v.barcode).trim():'';if(barcode){if(incomingBarcodes.has(barcode))return json({error:`Duplicate variant barcode: ${barcode}`},{status:400});incomingBarcodes.add(barcode)}
+      }
+    }
+
     const product=await db.$transaction(async tx=>{
       const p=await tx.product.update({where:{id},data})
-      if(Array.isArray(b.images)){const keptIds=b.images.filter((x:any)=>x.id).map((x:any)=>String(x.id));if(keptIds.length)await tx.productImage.deleteMany({where:{productId:id,id:{notIn:keptIds}}});else await tx.productImage.deleteMany({where:{productId:id}});for(let i=0;i<b.images.length;i++){const x=b.images[i];if(x.id)await tx.productImage.update({where:{id:String(x.id)},data:{url:String(x.url),alt:x.alt?String(x.alt):null,sortOrder:i}});else await tx.productImage.create({data:{productId:id,url:String(x.url),alt:x.alt?String(x.alt):null,sortOrder:i}})}}
+      if(Array.isArray(b.images)){const keptIds=b.images.filter((x:any)=>x.id).map((x:any)=>String(x.id));if(keptIds.length)await tx.productImage.deleteMany({where:{productId:id,id:{notIn:keptIds}}});else await tx.productImage.deleteMany({where:{productId:id}});for(let i=0;i<b.images.length;i++){const x=b.images[i];const url=String(x.url||'').trim();if(!url)continue;if(x.id)await tx.productImage.update({where:{id:String(x.id)},data:{url,alt:x.alt?String(x.alt):null,sortOrder:i}});else await tx.productImage.create({data:{productId:id,url,alt:x.alt?String(x.alt):null,sortOrder:i}})}}
       if(Array.isArray(b.tags)){await tx.productTag.deleteMany({where:{productId:id}});const tags:string[]=Array.from(new Set<string>(b.tags.map((t:unknown)=>String(t).trim()).filter((t:string)=>t.length>0)));if(tags.length)await tx.productTag.createMany({data:tags.map((value:string)=>({productId:id,value}))})}
-      if(b.quantity!==undefined||b.lowStockThreshold!==undefined||b.location!==undefined){const row=await tx.inventoryItem.findFirst({where:{productId:id,variantId:null}});if(row)await tx.inventoryItem.update({where:{id:row.id},data:{quantity:Math.max(row.reserved,Math.trunc(Number(b.quantity??row.quantity))),lowStockThreshold:b.lowStockThreshold!==undefined?Math.max(0,Math.trunc(Number(b.lowStockThreshold))):row.lowStockThreshold,location:b.location!==undefined?String(b.location||''):row.location}});else await tx.inventoryItem.create({data:{productId:id,quantity:Math.max(0,Math.trunc(Number(b.quantity)||0)),lowStockThreshold:Math.max(0,Math.trunc(Number(b.lowStockThreshold)||5)),location:String(b.location||'Main')}})}
+      if(b.quantity!==undefined||b.lowStockThreshold!==undefined||b.location!==undefined){const row=await tx.inventoryItem.findFirst({where:{productId:id,variantId:null}});const requested=b.quantity!==undefined?Math.max(0,Math.trunc(Number(b.quantity))):row?.quantity??0;if(row)await tx.inventoryItem.update({where:{id:row.id},data:{quantity:Math.max(row.reserved,requested),lowStockThreshold:b.lowStockThreshold!==undefined?Math.max(0,Math.trunc(Number(b.lowStockThreshold))):row.lowStockThreshold,location:b.location!==undefined?String(b.location||''):row.location}});else await tx.inventoryItem.create({data:{productId:id,quantity:requested,lowStockThreshold:Math.max(0,Math.trunc(Number(b.lowStockThreshold)||5)),location:String(b.location||'Main')}})}
       if(Array.isArray(b.metafields)){await tx.metafieldValue.deleteMany({where:{ownerType:'PRODUCT',ownerId:id}});const vals=b.metafields.filter((m:any)=>m.definitionId&&m.value!==undefined&&String(m.value)!=='').map((m:any)=>({definitionId:String(m.definitionId),ownerType:'PRODUCT',ownerId:id,value:typeof m.value==='string'?m.value:JSON.stringify(m.value)}));if(vals.length)await tx.metafieldValue.createMany({data:vals})}
       if(Array.isArray(b.variants)){
         const sharedPool=b.sharedInventory===true||(b.sharedInventory===undefined&&existingSharedPool)
+        const incomingIds=new Set(b.variants.filter((v:any)=>v.id).map((v:any)=>String(v.id)))
+        const removed=existing.variants.filter(v=>!incomingIds.has(v.id))
+        for(const oldVariant of removed){for(const inv of oldVariant.inventory){await tx.inventoryMovement.create({data:{inventoryId:inv.id,type:'ADJUSTMENT',quantity:-inv.quantity,reason:'Variant removed from product editor',referenceId:id}});await tx.inventoryItem.delete({where:{id:inv.id}})}await tx.productVariant.delete({where:{id:oldVariant.id}})}
         for(const v of b.variants){
           const variantId=v.id?String(v.id):null
-          const vd:any={name:String(v.name||'Default Title'),sku:String(v.sku||`${existing.sku}-${Date.now()}`),barcode:v.barcode?String(v.barcode):null,optionJson:typeof v.optionJson==='string'?v.optionJson:JSON.stringify(v.options||{}),price:v.price===''||v.price==null?null:Math.trunc(Number(v.price)),compareAtPrice:v.compareAtPrice===''||v.compareAtPrice==null?null:Math.trunc(Number(v.compareAtPrice)),weight:v.weight===''||v.weight==null?null:Number(v.weight),weightUnit:v.weightUnit?String(v.weightUnit):null}
+          const vd:any={name:String(v.name||'Default Title'),sku:String(v.sku||`${existing.sku}-${Date.now()}`),barcode:v.barcode?String(v.barcode):null,optionJson:typeof v.optionJson==='string'?v.optionJson:JSON.stringify(v.options||{}),price:v.price===''||v.price==null?null:Math.trunc(Number(v.price)),compareAtPrice:v.compareAtPrice===''||v.compareAtPrice==null?null:Math.trunc(Number(v.compareAtPrice)),weight:v.weight===''||v.weight==null?null:Number(v.weight),weightUnit:v.weight?String(v.weightUnit):null}
           const variant=variantId?await tx.productVariant.update({where:{id:variantId},data:vd}):await tx.productVariant.create({data:{productId:id,...vd}})
           const qty=v.quantity===undefined?null:Math.max(0,Math.trunc(Number(v.quantity)||0))
           const inv=await tx.inventoryItem.findFirst({where:{variantId:variant.id}})
@@ -49,5 +65,9 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
     })
     await audit(actor.id,'product.updated','Product',id,{fields:Object.keys(data),images:Array.isArray(b.images)?b.images.length:undefined,variants:Array.isArray(b.variants)?b.variants.length:undefined,sharedInventory:b.sharedInventory})
     return json({product:await getProduct(id)})
-  }catch(e){return json({error:e instanceof Error?e.message:'Unable to update product'},{status:400})}
+  }catch(e){
+    const message=e instanceof Error?e.message:'Unable to update product'
+    if(typeof message==='string'&&message.includes('Unique constraint'))return json({error:'A product, SKU or barcode with the same unique value already exists.'},{status:409})
+    return json({error:message},{status:400})
+  }
 }
