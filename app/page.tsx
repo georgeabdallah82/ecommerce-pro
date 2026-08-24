@@ -1,6 +1,6 @@
 import {db} from '@/lib/prisma'
 import {getThemeState} from '@/lib/theme'
-import StorefrontSections from '@/components/storefront-sections'
+import LiveStorefrontSections from '@/components/live-storefront-sections'
 import {Footer} from '@/components/footer'
 
 export const dynamic='force-dynamic'
@@ -14,5 +14,5 @@ export default async function Home(){
   ])
   const homeTemplates=Array.isArray(theme.editorTemplates?.['Home page'])&&theme.editorTemplates['Home page'].length?theme.editorTemplates['Home page']:sections
   const footerEnabled=homeTemplates.some((s:any)=>s.type==='footer'&&s.enabled!==false&&s.settings?.enabled!==false)
-  return <><StorefrontSections theme={theme} sections={homeTemplates} products={products} collections={collections}/>{footerEnabled&&<Footer/>}</>
+  return <><LiveStorefrontSections theme={theme} sections={homeTemplates} products={products} collections={collections}/>{footerEnabled&&<Footer/>}</>
 }
