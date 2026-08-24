@@ -18,8 +18,7 @@ export async function runPlatformHealth(): Promise<{ status: HealthSeverity; che
     checks.push({ key: 'database', label: 'Database', severity: 'critical', message: error instanceof Error ? error.message : 'Database is unreachable.' })
   }
 
-  const [users, staff, products, activeProducts, variants, inventory, orders, pendingOrders, customers, coupons, shippingZones, shippingRates, themes, navigationMenus, pages, blogPosts, media, audits] = await Promise.all([
-    db.user.count(),
+  const [staff, products, activeProducts, variants, inventory, orders, pendingOrders, customers, coupons, shippingZones, shippingRates, themes, navigationMenus, pages, blogPosts, media, audits, locations, activeLocations, transfers, draftOrders, openDraftOrders, fulfillments, purchaseOrders, openPurchaseOrders, giftCards, webhooks, activeWebhooks, apiCredentials, activeApiCredentials, salesChannels, activeSalesChannels, abandonedCheckouts, openAbandonedCheckouts, orderEdits, openOrderEdits] = await Promise.all([
     db.user.count({ where: { role: { not: 'CUSTOMER' }, isActive: true } }),
     db.product.count(),
     db.product.count({ where: { status: 'ACTIVE' } }),
@@ -37,6 +36,25 @@ export async function runPlatformHealth(): Promise<{ status: HealthSeverity; che
     db.blogPost.count(),
     db.mediaAsset.count(),
     db.auditLog.count(),
+    db.storeLocation.count(),
+    db.storeLocation.count({ where: { status: 'ACTIVE' } }),
+    db.inventoryTransfer.count(),
+    db.draftOrder.count(),
+    db.draftOrder.count({ where: { status: { in: ['DRAFT', 'OPEN'] } } }),
+    db.fulfillment.count(),
+    db.purchaseOrder.count(),
+    db.purchaseOrder.count({ where: { status: { in: ['DRAFT', 'ORDERED', 'PARTIALLY_RECEIVED'] } } }),
+    db.giftCard.count({ where: { status: 'ACTIVE' } }),
+    db.webhookEndpoint.count(),
+    db.webhookEndpoint.count({ where: { status: 'ACTIVE' } }),
+    db.apiCredential.count(),
+    db.apiCredential.count({ where: { status: 'ACTIVE' } }),
+    db.salesChannel.count(),
+    db.salesChannel.count({ where: { status: 'ACTIVE' } }),
+    db.abandonedCheckout.count(),
+    db.abandonedCheckout.count({ where: { status: 'OPEN' } }),
+    db.orderEdit.count(),
+    db.orderEdit.count({ where: { status: 'OPEN' } }),
   ])
 
   const negativeInventory = inventory.filter(i => i.quantity < 0)
@@ -53,10 +71,21 @@ export async function runPlatformHealth(): Promise<{ status: HealthSeverity; che
   checks.push({ key: 'inventory-negative', label: 'Negative inventory', severity: severityFor(negativeInventory.length === 0, true), message: negativeInventory.length ? `${negativeInventory.length} inventory record(s) have negative stock.` : 'No negative inventory balances.', count: negativeInventory.length })
   checks.push({ key: 'inventory-reserved', label: 'Reservation integrity', severity: severityFor(overReserved.length === 0, true), message: overReserved.length ? `${overReserved.length} inventory record(s) reserve more than on-hand.` : 'Reserved quantities are within on-hand balances.', count: overReserved.length })
   checks.push({ key: 'low-stock', label: 'Stock monitoring', severity: lowStock.length ? 'warning' : 'ok', message: lowStock.length ? `${lowStock.length} inventory record(s) are at or below threshold.` : 'No low-stock records detected.', count: lowStock.length })
+  checks.push({ key: 'locations', label: 'Locations', severity: activeLocations > 0 ? 'ok' : 'warning', message: `${activeLocations} active location(s) out of ${locations} total.`, meta: { locations, activeLocations } })
+  checks.push({ key: 'transfers', label: 'Inventory transfers', severity: 'ok', message: `${transfers} transfer record(s).`, count: transfers })
   checks.push({ key: 'orders', label: 'Orders', severity: pendingOrders ? 'warning' : 'ok', message: `${orders} total order(s); ${pendingOrders} pending.`, meta: { orders, pendingOrders } })
+  checks.push({ key: 'draft-orders', label: 'Draft orders', severity: openDraftOrders ? 'warning' : 'ok', message: `${openDraftOrders} open draft order(s); ${draftOrders} total.`, count: openDraftOrders })
+  checks.push({ key: 'fulfillment', label: 'Fulfillment', severity: 'ok', message: `${fulfillments} fulfillment record(s).`, count: fulfillments })
+  checks.push({ key: 'purchase-orders', label: 'Purchase orders', severity: openPurchaseOrders ? 'warning' : 'ok', message: `${openPurchaseOrders} procurement order(s) require attention; ${purchaseOrders} total.`, count: openPurchaseOrders })
+  checks.push({ key: 'gift-cards', label: 'Gift cards', severity: 'ok', message: `${giftCards} active gift card(s).`, count: giftCards })
+  checks.push({ key: 'order-edits', label: 'Order edits', severity: openOrderEdits ? 'warning' : 'ok', message: `${openOrderEdits} open order edit(s); ${orderEdits} total.`, count: openOrderEdits })
   checks.push({ key: 'coupons', label: 'Discounts', severity: expiredActiveCoupons ? 'warning' : 'ok', message: expiredActiveCoupons ? `${expiredActiveCoupons} expired coupon(s) are still active.` : `${coupons} active coupon(s); no expired active coupons.`, count: expiredActiveCoupons })
   checks.push({ key: 'shipping', label: 'Shipping', severity: zonesWithoutRates ? 'warning' : 'ok', message: zonesWithoutRates ? `${zonesWithoutRates} active shipping zone(s) have no active rates.` : `${shippingZones} active zone(s), ${shippingRates} active rate(s).`, meta: { shippingZones, shippingRates } })
   checks.push({ key: 'product-publishing', label: 'Publishing integrity', severity: activeWithoutPublishDate ? 'warning' : 'ok', message: activeWithoutPublishDate ? `${activeWithoutPublishDate} active product(s) have no publishedAt timestamp.` : 'Active products have publication timestamps.', count: activeWithoutPublishDate })
+  checks.push({ key: 'sales-channels', label: 'Sales channels', severity: activeSalesChannels > 0 ? 'ok' : 'warning', message: `${activeSalesChannels} active sales channel(s) out of ${salesChannels} total.` })
+  checks.push({ key: 'webhooks', label: 'Webhooks', severity: activeWebhooks > 0 ? 'ok' : 'warning', message: `${activeWebhooks} active webhook endpoint(s) out of ${webhooks} total.` })
+  checks.push({ key: 'api-credentials', label: 'API credentials', severity: activeApiCredentials > 0 ? 'ok' : 'ok', message: `${activeApiCredentials} active credential(s) out of ${apiCredentials} total.` })
+  checks.push({ key: 'abandoned-checkouts', label: 'Abandoned checkouts', severity: openAbandonedCheckouts ? 'warning' : 'ok', message: `${openAbandonedCheckouts} open abandoned checkout(s) out of ${abandonedCheckouts} total.`, count: openAbandonedCheckouts })
   checks.push({ key: 'storefront-content', label: 'Storefront content', severity: pages + blogPosts + media > 0 ? 'ok' : 'warning', message: `${pages} page(s), ${blogPosts} blog post(s), ${media} media asset(s).`, meta: { pages, blogPosts, media } })
   checks.push({ key: 'theme', label: 'Theme system', severity: themes > 0 ? 'ok' : 'warning', message: themes > 0 ? `${themes} theme configuration(s) stored.` : 'No theme configuration exists.' })
   checks.push({ key: 'navigation', label: 'Navigation', severity: navigationMenus > 0 ? 'ok' : 'warning', message: navigationMenus > 0 ? `${navigationMenus} navigation menu(s) configured.` : 'No navigation menus configured.' })
