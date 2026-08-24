@@ -19,6 +19,8 @@ export async function PATCH(req: Request) {
     const id = String(b.id || '')
     if (!id) return json({ error: 'Inventory item id is required' }, { status: 400 })
     const delta = clampInt(b.delta, -100000, 100000, 0)
+    const reason = String(b.reason || 'Manual adjustment').trim().slice(0, 1000) || 'Manual adjustment'
+    const movementType = delta === 0 ? null : (String(b.movementType || '').toUpperCase() === 'DAMAGE' ? 'DAMAGE' : 'ADJUSTMENT')
 
     const updated = await db.$transaction(async tx => {
       await tx.$queryRaw`SELECT "id" FROM "InventoryItem" WHERE "id" = ${id} FOR UPDATE`
@@ -34,21 +36,22 @@ export async function PATCH(req: Request) {
           lowStockThreshold: b.lowStockThreshold !== undefined ? clampInt(b.lowStockThreshold, 0, 100000, item.lowStockThreshold) : undefined,
           location: b.location !== undefined ? String(b.location || '').trim().slice(0, 120) : undefined,
         },
+        include: { movements: { orderBy: { createdAt: 'desc' }, take: 10 } },
       })
-      if (delta !== 0) {
+      if (delta !== 0 && movementType) {
         await tx.inventoryMovement.create({
           data: {
             inventoryId: id,
-            type: delta > 0 ? 'ADJUSTMENT' : 'DAMAGE',
+            type: movementType,
             quantity: Math.abs(delta),
-            reason: String(b.reason || 'Manual adjustment').slice(0, 1000),
+            reason,
           },
         })
       }
       return row
     })
 
-    await audit(actor.id, 'inventory.adjusted', 'InventoryItem', id, { delta, reason: b.reason || 'Manual adjustment' })
+    await audit(actor.id, 'inventory.adjusted', 'InventoryItem', id, { delta, reason, movementType, location: b.location, lowStockThreshold: b.lowStockThreshold })
     return json({ item: updated })
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : 'Unable to adjust inventory' }, { status: 400 })
