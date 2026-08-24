@@ -26,6 +26,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     const suffix = `copy-${Date.now().toString(36)}`
     const hasVariantInventory = source.variants.some(v => v.inventory.length > 0)
     const directInventory = source.inventory[0]
+
     const duplicate = await db.$transaction(async tx => {
       const product = await tx.product.create({
         data: {
@@ -60,24 +61,43 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
           images: { create: source.images.map(image => ({ url: image.url, alt: image.alt, sortOrder: image.sortOrder })) },
           tags: { create: source.tags.map(tag => ({ value: tag.value })) },
           inventory: !hasVariantInventory ? { create: { quantity: 0, reserved: 0, lowStockThreshold: directInventory?.lowStockThreshold ?? 5, location: directInventory?.location || 'Main' } } : undefined,
-          variants: {
-            create: source.variants.map((variant, index) => ({
-              name: variant.name,
-              sku: `${variant.sku}-COPY-${index + 1}-${Date.now().toString(36).toUpperCase()}`,
-              barcode: null,
-              optionJson: variant.optionJson,
-              price: variant.price,
-              compareAtPrice: variant.compareAtPrice,
-              weight: variant.weight,
-              weightUnit: variant.weightUnit,
-              inventory: hasVariantInventory ? { create: { quantity: 0, reserved: 0, lowStockThreshold: variant.inventory[0]?.lowStockThreshold ?? 5, location: variant.inventory[0]?.location || 'Main' } } : undefined,
-            })),
-          },
         },
       })
 
+      for (let index = 0; index < source.variants.length; index += 1) {
+        const variant = source.variants[index]
+        await tx.productVariant.create({
+          data: {
+            productId: product.id,
+            name: variant.name,
+            sku: `${variant.sku}-COPY-${index + 1}-${Date.now().toString(36).toUpperCase()}`,
+            barcode: null,
+            optionJson: variant.optionJson,
+            price: variant.price,
+            compareAtPrice: variant.compareAtPrice,
+            weight: variant.weight,
+            weightUnit: variant.weightUnit,
+            ...(hasVariantInventory
+              ? {
+                  inventory: {
+                    create: {
+                      product: { connect: { id: product.id } },
+                      quantity: 0,
+                      reserved: 0,
+                      lowStockThreshold: variant.inventory[0]?.lowStockThreshold ?? 5,
+                      location: variant.inventory[0]?.location || 'Main',
+                    },
+                  },
+                }
+              : {}),
+          },
+        })
+      }
+
       if (source.metafields.length) {
-        await tx.metafieldValue.createMany({ data: source.metafields.map(value => ({ definitionId: value.definitionId, ownerType: 'PRODUCT', ownerId: product.id, value: value.value })) })
+        await tx.metafieldValue.createMany({
+          data: source.metafields.map(value => ({ definitionId: value.definitionId, ownerType: 'PRODUCT', ownerId: product.id, value: value.value })),
+        })
       }
       return product
     })
