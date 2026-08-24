@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import './inventory/inventory-admin.css'
 import { getCurrentUser } from '@/lib/auth'
 import { hasPermission, type Permission } from '@/lib/permissions'
 import { redirect } from 'next/navigation'
@@ -91,22 +92,4 @@ body:has(.adminShell) .input:focus, body:has(.adminShell) .textarea:focus { outl
 `
 
 export default async function AdminLayout({children}:{children:React.ReactNode}){
- const user=await getCurrentUser()
- if(!user||user.role==='CUSTOMER') redirect('/account/login')
- const visible=links.filter(([, ,permission])=>hasPermission(user.role,permission))
- return <>
-  <style dangerouslySetInnerHTML={{__html:adminCss}} />
-  <div className="adminShell">
-   <aside className="adminSide">
-    <div className="adminBrand"><div className="adminBrandMark"><ShieldCheck size={18}/></div><div><div className="logo">Control Center</div><div className="muted" style={{fontSize:12}}>Store operations</div></div></div>
-    <div className="pill" style={{margin:'18px 0'}}>{user.role}</div>
-    <nav aria-label="Admin navigation">{visible.map(([href,label,permission,Icon])=><Link key={href} href={href}><Icon size={16}/><span>{label}</span></Link>)}</nav>
-    <div className="adminSideBottom"><Link href="/"><Store size={16}/> View storefront</Link><form action="/api/auth/logout" method="post"><button className="sideButton" type="submit"><LogOut size={16}/> Sign out</button></form></div>
-   </aside>
-   <section className="adminMain">
-    <header className="adminTopbar"><div><div className="muted" style={{fontSize:12}}>SIGNED IN AS</div><strong>{user.name}</strong></div><div className="inline"><OrderAlerts vapidPublicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}/><div className="pill">{user.email}</div></div></header>
-    {children}
-   </section>
-  </div>
- </>
-}
+ const user=await getCurrentUser(); if(!user||user.role==='CUSTOMER') redirect('/account/login'); const visible=links.filter(([, ,permission])=>hasPermission(user.role,permission)); return <><style dangerouslySetInnerHTML={{__html:adminCss}} /><div className="adminShell"><aside className="adminSide"><div className="adminBrand"><div className="adminBrandMark"><ShieldCheck size={18}/></div><div><div className="logo">Control Center</div><div className="muted" style={{fontSize:12}}>Store operations</div></div></div><div className="pill" style={{margin:'18px 0'}}>{user.role}</div><nav aria-label="Admin navigation">{visible.map(([href,label,permission,Icon])=><Link key={href} href={href}><Icon size={16}/><span>{label}</span></Link>)}</nav><div className="adminSideBottom"><Link href="/"><Store size={16}/> View storefront</Link><form action="/api/auth/logout" method="post"><button className="sideButton" type="submit"><LogOut size={16}/> Sign out</button></form></div></aside><section className="adminMain"><header className="adminTopbar"><div><div className="muted" style={{fontSize:12}}>SIGNED IN AS</div><strong>{user.name}</strong></div><div className="inline"><OrderAlerts vapidPublicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}/><div className="pill">{user.email}</div></div></header>{children}</section></div></> }
