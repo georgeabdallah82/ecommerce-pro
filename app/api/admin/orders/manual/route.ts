@@ -68,6 +68,7 @@ export async function POST(req: Request) {
     if (paymentMethod === PaymentMethod.CARD && paymentProvider.name === 'manual') return json({ error: 'Card payments are not configured yet.' }, { status: 503 })
     const allowedInitialPaymentStatuses: PaymentStatus[] = [PaymentStatus.UNPAID, PaymentStatus.PENDING, PaymentStatus.PAID, PaymentStatus.FAILED]
     if (!allowedInitialPaymentStatuses.includes(paymentStatus)) return json({ error: 'Invalid initial payment status for a manual order' }, { status: 400 })
+    if (paymentStatus === PaymentStatus.PAID && grandTotal <= 0) return json({ error: 'A paid order must have a positive total' }, { status: 400 })
     if (status !== OrderStatus.PENDING) return json({ error: 'Manual orders must start as PENDING and can then move through the normal order workflow' }, { status: 400 })
 
     const existingUser = body.customerId ? await db.user.findUnique({ where: { id: String(body.customerId) } }) : await db.user.findUnique({ where: { email } })
@@ -101,7 +102,7 @@ export async function POST(req: Request) {
       })
     })
 
-    await sendNewOrderPush({ id: order.id, orderNumber: order.orderNumber, grandTotal: order.grandTotal, currency: order.currency })
+    void sendNewOrderPush({ id: order.id, orderNumber: order.orderNumber, grandTotal: order.grandTotal, currency: order.currency }).catch(error => console.error('[push] manual-order notification failed', error))
     await audit(actor.id, 'order.created_manual', 'Order', order.id, { orderNumber, total: grandTotal, paymentMethod, paymentStatus })
     return json({ order: { id: order.id, orderNumber: order.orderNumber, grandTotal: order.grandTotal } }, { status: 201 })
   } catch (e) {
