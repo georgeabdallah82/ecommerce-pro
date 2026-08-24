@@ -65,7 +65,7 @@ export default function LiveStorefrontSections(props: Props) {
       alive = false
       window.clearInterval(timer)
       window.removeEventListener('focus', refreshOnFocus)
-      document.removeEventListener('visibilitychange', refreshOnVisibilityChange)
+      document.removeEventListener('visibilitychange', refreshOnFocus)
       channel?.close()
     }
   }, [key])
