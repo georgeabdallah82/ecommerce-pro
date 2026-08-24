@@ -57,9 +57,7 @@ export async function PATCH(req: Request) {
       db.setting.upsert({ where: { key: 'navigation.main' }, create: { key: 'navigation.main', value: JSON.stringify(navigation) }, update: { value: JSON.stringify(navigation) } }),
     ])
 
-    // The editor writes theme configuration directly to the database. Explicitly
-    // invalidate storefront routes so a just-saved template is visible on the
-    // next visit even when the App Router has a cached route entry.
+    revalidatePath('/', 'layout')
     revalidatePath('/', 'page')
     revalidatePath('/shop', 'page')
     revalidatePath('/product/[slug]', 'page')
@@ -69,6 +67,7 @@ export async function PATCH(req: Request) {
     revalidatePath('/about', 'page')
     revalidatePath('/blog', 'page')
     revalidatePath('/admin/online-store/theme-editor', 'page')
+    revalidatePath('/admin/online-store/navigation', 'page')
 
     await audit(actor.id, 'theme.updated', 'Theme', 'theme.config', { templates: Object.keys(templates).length, sections: sections.length, navigation: navigation.length, preset: theme?.presets?.active || null })
     return json({ theme, sections, navigation }, { headers: { 'cache-control': 'no-store' } })
