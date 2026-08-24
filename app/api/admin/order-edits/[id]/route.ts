@@ -7,7 +7,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   try {
     const actor = await requirePermission('orders.manage')
     const { id } = await params
-    const edit = await db.orderEdit.findUnique({ where: { id }, include: { items: true, order: { include: { items: true } } } })
+    const edit = await db.orderEdit.findUnique({ where: { id }, include: { items: true } })
     if (!edit) return json({ error: 'Order edit not found' }, { status: 404 })
     if (edit.status !== 'OPEN') return json({ error: 'Order edit is no longer open' }, { status: 409 })
 
