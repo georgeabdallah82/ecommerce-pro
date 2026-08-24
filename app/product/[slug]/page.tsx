@@ -3,7 +3,7 @@ import { getThemeState } from '@/lib/theme'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { Footer } from '@/components/footer'
-import StorefrontSections from '@/components/storefront-sections'
+import LiveStorefrontSections from '@/components/live-storefront-sections'
 import ProductAvailabilityGuard from '@/components/product-availability-guard'
 
 export const dynamic = 'force-dynamic'
@@ -48,15 +48,10 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     : []
 
   const configuredTemplates = Array.isArray(theme.editorTemplates?.Product) ? theme.editorTemplates.Product : []
-  // A product page must always have a main product section. If the theme has a Product
-  // template but omitted/disabled that section, inject a safe fallback rather than rendering blank.
   const hasMainProduct = configuredTemplates.some((section: any) => section?.type === 'main_product' && section?.enabled !== false && section?.settings?.enabled !== false)
   const templates = hasMainProduct
     ? configuredTemplates
-    : [
-        ...configuredTemplates.filter((section: any) => section?.type !== 'main_product'),
-        { id: 'main_product_fallback', type: 'main_product', enabled: true, settings: {} },
-      ]
+    : [...configuredTemplates.filter((section: any) => section?.type !== 'main_product'), { id: 'main_product_fallback', type: 'main_product', enabled: true, settings: {} }]
 
   const footerEnabled = templates.some((section: any) => section.type === 'footer' && section.enabled !== false && section.settings?.enabled !== false)
 
@@ -81,7 +76,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, '\\u003c') }} />
-      <StorefrontSections theme={theme} sections={templates} products={related} collections={[]} product={product} />
+      <LiveStorefrontSections theme={theme} sections={templates} products={related} collections={[]} product={product} />
       <ProductAvailabilityGuard variants={variantAvailability} productAvailable={productAvailable} trackInventory={product.trackInventory} continueSellingWhenOutOfStock={product.continueSellingWhenOutOfStock} />
       {footerEnabled ? <Footer /> : null}
     </>
