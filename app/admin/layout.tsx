@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import './inventory/inventory-admin.css'
 import { getCurrentUser } from '@/lib/auth'
 import { hasPermission, type Permission } from '@/lib/permissions'
 import { redirect } from 'next/navigation'
@@ -21,8 +20,9 @@ const links: Array<[string,string,Permission,any]> = [
  ['/admin/online-store/theme-editor','Theme editor','content.view',Palette],
  ['/admin/online-store/navigation','Navigation','content.view',Menu],
  ['/admin/content','Content','content.view',FileText],
- ['/admin/media','Files','media.view',ImageIcon],
+ ['/admin/media','Files','media.view',Image as ImageIcon],
  ['/admin/reports','Analytics & reports','reports.view',BarChart3],
+ ['/admin/system','System health','settings.view',Activity],
  ['/admin/users','Users & roles','users.view',UserCog],
  ['/admin/activity','Activity log','activity.view',Activity],
  ['/admin/settings','Settings','settings.view',Settings2]
@@ -86,8 +86,9 @@ body:has(.adminShell) .btn { box-shadow:0 1px 1px rgba(0,0,0,.04); transition:tr
 body:has(.adminShell) .btn:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 5px 14px rgba(0,0,0,.08); }
 body:has(.adminShell) .btn:disabled { opacity:.55; cursor:not-allowed; }
 body:has(.adminShell) .input:focus, body:has(.adminShell) .textarea:focus { outline:none; border-color:#8e8e87; box-shadow:0 0 0 3px rgba(23,23,23,.06); }
-@media (max-width:1100px){ body:has(.adminShell) .adminShell{grid-template-columns:220px minmax(0,1fr)} body:has(.adminShell) .adminMain{padding-left:24px;padding-right:24px} body:has(.adminShell) .catalogToolbar{grid-template-columns:1fr auto}.catalogFilters{grid-column:1 / -1} }
-@media (max-width:800px){ body:has(.adminShell) .adminShell{grid-template-columns:1fr} body:has(.adminShell) .adminSide{position:relative;top:auto;height:auto;border-right:0;border-bottom:1px solid #e5e5e0} body:has(.adminShell) .adminMain{padding:0 14px 34px} body:has(.adminShell) .adminTopbar{position:relative;min-height:68px;margin-bottom:18px} body:has(.adminShell) .catalogStats{grid-template-columns:repeat(2,minmax(0,1fr))} body:has(.adminShell) .catalogToolbar{grid-template-columns:1fr auto} body:has(.adminShell) .mobileFilterBtn{display:inline-flex} body:has(.adminShell) .catalogFilters{display:none;grid-column:1 / -1;grid-template-columns:1fr} body:has(.adminShell) .catalogFilters.open{display:grid} body:has(.adminShell) .productTable{min-width:900px} }
+.systemHealthPage{max-width:1480px;margin:0 auto}.healthHero{display:flex;justify-content:space-between;gap:24px;align-items:center;padding:22px 24px;margin:8px 0 18px}.healthTimestamp{font-size:12px;color:#73736e;margin-top:10px}.healthTotals{display:flex;gap:24px}.healthTotals div{display:grid;gap:4px;min-width:74px}.healthTotals strong{font-size:28px;line-height:1}.healthTotals span{font-size:11px;color:#777}.healthGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.healthCheck{padding:18px}.healthCheckHead{display:flex;align-items:center;justify-content:space-between;gap:10px}.healthCheck h3{font-size:14px;margin:14px 0 6px}.healthCheck p{margin:0;color:#686862;font-size:13px;line-height:1.5}.healthCheck.warning{border-color:#ead9a4}.healthCheck.critical{border-color:#efc1bd}.statusPill.success{background:#eaf7ed;color:#176b35}.statusPill.warning{background:#fff7df;color:#7b5b00}.statusPill.danger{background:#fff0ef;color:#a2261a}
+@media (max-width:1100px){ body:has(.adminShell) .adminShell{grid-template-columns:220px minmax(0,1fr)} body:has(.adminShell) .adminMain{padding-left:24px;padding-right:24px} body:has(.adminShell) .catalogToolbar{grid-template-columns:1fr auto}.catalogFilters{grid-column:1 / -1}.healthGrid{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media (max-width:800px){ body:has(.adminShell) .adminShell{grid-template-columns:1fr} body:has(.adminShell) .adminSide{position:relative;top:auto;height:auto;border-right:0;border-bottom:1px solid #e5e5e0} body:has(.adminShell) .adminMain{padding:0 14px 34px} body:has(.adminShell) .adminTopbar{position:relative;min-height:68px;margin-bottom:18px} body:has(.adminShell) .catalogStats{grid-template-columns:repeat(2,minmax(0,1fr))} body:has(.adminShell) .catalogToolbar{grid-template-columns:1fr auto} body:has(.adminShell) .mobileFilterBtn{display:inline-flex} body:has(.adminShell) .catalogFilters{display:none;grid-column:1 / -1;grid-template-columns:1fr} body:has(.adminShell) .catalogFilters.open{display:grid} body:has(.adminShell) .productTable{min-width:900px}.healthHero{flex-direction:column;align-items:flex-start}.healthTotals{width:100%;justify-content:space-between}.healthGrid{grid-template-columns:1fr} }
 @media (max-width:520px){ body:has(.adminShell) .catalogStats{grid-template-columns:1fr 1fr} body:has(.adminShell) .catalogHead{align-items:flex-start;flex-direction:column} body:has(.adminShell) .catalogHead .btn{width:100%} body:has(.adminShell) .adminTopbar{align-items:flex-start} }
 `
 
