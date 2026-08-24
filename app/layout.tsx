@@ -1,6 +1,7 @@
 import './globals.css'
 import './focal-store.css'
 import './focal-store-v2.css'
+import './focal-animations.css'
 import './responsive-fixes.css'
 import { getThemeState } from '@/lib/theme'
 import StoreNavRuntime from '@/components/store-nav-runtime'
