@@ -14,6 +14,7 @@ async function applyCoupon(code: string, subtotal: number, userId?: string | nul
   const coupon = await db.coupon.findUnique({ where: { code: code.toUpperCase() } })
   const now = new Date()
   if (!coupon || !coupon.isActive) throw new Error('Invalid coupon code')
+  if (coupon.type === 'PERCENTAGE' && (coupon.value < 1 || coupon.value > 100)) throw new Error('This discount is not configured correctly')
   if (coupon.startsAt && coupon.startsAt > now) throw new Error('This coupon is not active yet')
   if (coupon.expiresAt && coupon.expiresAt < now) throw new Error('This coupon has expired')
   if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) throw new Error('This coupon has reached its usage limit')
@@ -119,7 +120,7 @@ export async function POST(req: Request) {
 
     const order = result.order
     if (user?.id) await db.notification.create({ data: { userId: user.id, title: 'Order placed', body: `Order ${order.orderNumber} was placed successfully.`, type: 'ORDER_CREATED' } })
-    await sendNewOrderPush({ id: order.id, orderNumber: order.orderNumber, grandTotal: order.grandTotal, currency: order.currency })
+    void sendNewOrderPush({ id: order.id, orderNumber: order.orderNumber, grandTotal: order.grandTotal, currency: order.currency }).catch(error => console.error('[push] new-order notification failed', error))
     await audit(user?.id, 'order.created', 'Order', order.id, { orderNumber, total: grandTotal, paymentMethod })
     return json({ order: { id: order.id, orderNumber: order.orderNumber, total: order.grandTotal } }, { status: 201 })
   } catch (error) {
