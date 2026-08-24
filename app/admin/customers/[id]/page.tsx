@@ -1,6 +1,7 @@
 import { requirePermission } from '@/lib/auth'
 import { db } from '@/lib/prisma'
 import CustomerDetailAdmin from '@/components/customer-detail-admin'
+import '../customer-detail.css'
 
 export default async function CustomerDetail({ params }: { params: Promise<{ id: string }> }) {
   await requirePermission('customers.view')
