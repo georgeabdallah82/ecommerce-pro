@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     const email = String(b.email || '').trim()
     const rawItems = Array.isArray(b.items) ? b.items : []
     if (!email || !rawItems.length) return json({ error: 'Email and at least one item are required' }, { status: 400 })
-    const ids = [...new Set(rawItems.map((x: any) => String(x.productId || '')).filter(Boolean))]
+    const ids: string[] = Array.from(new Set<string>(rawItems.map((x: any) => String(x.productId || '')).filter((x: string) => x.length > 0)))
     const products = await db.product.findMany({ where: { id: { in: ids } }, include: { variants: true } })
     const byId = new Map(products.map(p => [p.id, p]))
     const items = rawItems.map((raw: any) => {
