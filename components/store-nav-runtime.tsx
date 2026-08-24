@@ -6,50 +6,75 @@ import { StoreNav } from './store-nav'
 
 export default function StoreNavRuntime({ theme, navigation }: { theme: any; navigation: any[] }) {
   const pathname = usePathname() || '/'
+  const [currentTheme, setCurrentTheme] = useState(theme)
   const [currentNavigation, setCurrentNavigation] = useState(navigation || [])
-  const lastSerialized = useRef(JSON.stringify(navigation || []))
+  const themeSignature = useRef(JSON.stringify(theme || {}))
+  const navSignature = useRef(JSON.stringify(navigation || []))
 
   const refresh = useCallback(async () => {
     if (pathname.startsWith('/admin')) return
     try {
-      const res = await fetch('/api/navigation', {
+      const res = await fetch('/api/storefront/theme', {
         cache: 'no-store',
         headers: { accept: 'application/json' },
       })
       if (!res.ok) return
       const data = await res.json()
-      if (!Array.isArray(data.navigation)) return
-      const serialized = JSON.stringify(data.navigation)
-      if (serialized === lastSerialized.current) return
-      lastSerialized.current = serialized
-      setCurrentNavigation(data.navigation)
+      if (!data?.theme) return
+
+      const nextThemeSignature = JSON.stringify(data.theme)
+      const nextNavigation = Array.isArray(data.navigation) ? data.navigation : []
+      const nextNavSignature = JSON.stringify(nextNavigation)
+
+      if (nextThemeSignature !== themeSignature.current) {
+        themeSignature.current = nextThemeSignature
+        setCurrentTheme(data.theme)
+      }
+      if (nextNavSignature !== navSignature.current) {
+        navSignature.current = nextNavSignature
+        setCurrentNavigation(nextNavigation)
+      }
     } catch {}
   }, [pathname])
 
   useEffect(() => {
     if (pathname.startsWith('/admin')) return
 
-    refresh()
+    void refresh()
 
     const timer = window.setInterval(refresh, 3000)
-    const onFocus = () => refresh()
-    const onVisible = () => { if (document.visibilityState === 'visible') refresh() }
+    const onFocus = () => { void refresh() }
+    const onVisible = () => { if (document.visibilityState === 'visible') void refresh() }
     window.addEventListener('focus', onFocus)
     document.addEventListener('visibilitychange', onVisible)
 
-    let channel: BroadcastChannel | null = null
+    let themeChannel: BroadcastChannel | null = null
+    let navigationChannel: BroadcastChannel | null = null
     try {
-      channel = new BroadcastChannel('store-navigation')
-      channel.onmessage = event => {
+      themeChannel = new BroadcastChannel('store-theme')
+      themeChannel.onmessage = event => {
+        if (event.data?.theme) {
+          const serialized = JSON.stringify(event.data.theme)
+          if (serialized !== themeSignature.current) {
+            themeSignature.current = serialized
+            setCurrentTheme(event.data.theme)
+          }
+        }
+        void refresh()
+      }
+    } catch {}
+
+    try {
+      navigationChannel = new BroadcastChannel('store-navigation')
+      navigationChannel.onmessage = event => {
         if (Array.isArray(event.data?.navigation)) {
           const serialized = JSON.stringify(event.data.navigation)
-          if (serialized !== lastSerialized.current) {
-            lastSerialized.current = serialized
+          if (serialized !== navSignature.current) {
+            navSignature.current = serialized
             setCurrentNavigation(event.data.navigation)
           }
-        } else {
-          refresh()
         }
+        void refresh()
       }
     } catch {}
 
@@ -57,10 +82,11 @@ export default function StoreNavRuntime({ theme, navigation }: { theme: any; nav
       window.clearInterval(timer)
       window.removeEventListener('focus', onFocus)
       document.removeEventListener('visibilitychange', onVisible)
-      channel?.close()
+      themeChannel?.close()
+      navigationChannel?.close()
     }
   }, [pathname, refresh])
 
   if (pathname.startsWith('/admin')) return null
-  return <StoreNav theme={theme} navigation={currentNavigation} />
+  return <StoreNav theme={currentTheme} navigation={currentNavigation} />
 }
