@@ -1,6 +1,6 @@
-import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
+import { db } from '@/lib/prisma'
 import { json, slugify } from '@/lib/utils'
 
 export async function GET(req: Request) {
@@ -13,9 +13,16 @@ export async function GET(req: Request) {
     const sort = params.get('sort')?.trim() || 'updated_desc'
     const page = Math.max(1, Number(params.get('page') || 1))
     const pageSize = Math.min(100, Math.max(12, Number(params.get('pageSize') || 25)))
-    const where: any = { ...(status !== 'ALL' ? { status } : {}), ...(categoryId !== 'ALL' ? { categoryId } : {}), ...(q ? { OR: [{ name: { contains: q, mode: 'insensitive' } }, { sku: { contains: q, mode: 'insensitive' } }, { slug: { contains: q, mode: 'insensitive' } }, { vendor: { contains: q, mode: 'insensitive' } }, { brand: { contains: q, mode: 'insensitive' } }] } : {}) }
+    const where: any = {
+      ...(status !== 'ALL' ? { status } : {}),
+      ...(categoryId !== 'ALL' ? { categoryId } : {}),
+      ...(q ? { OR: [{ name: { contains: q, mode: 'insensitive' } }, { sku: { contains: q, mode: 'insensitive' } }, { slug: { contains: q, mode: 'insensitive' } }, { vendor: { contains: q, mode: 'insensitive' } }, { brand: { contains: q, mode: 'insensitive' } }] } : {}),
+    }
     const orderBy = sort === 'name_asc' ? { name: 'asc' as const } : sort === 'name_desc' ? { name: 'desc' as const } : sort === 'price_asc' ? { basePrice: 'asc' as const } : sort === 'price_desc' ? { basePrice: 'desc' as const } : sort === 'created_desc' ? { createdAt: 'desc' as const } : { updatedAt: 'desc' as const }
-    const [total, rows] = await Promise.all([db.product.count({ where }), db.product.findMany({ where, include: { category: true, inventory: true, variants: { include: { inventory: true } }, images: true, collections: { include: { collection: true } } }, orderBy, skip: (page - 1) * pageSize, take: pageSize })])
+    const [total, rows] = await Promise.all([
+      db.product.count({ where }),
+      db.product.findMany({ where, include: { category: true, inventory: true, variants: { include: { inventory: true } }, images: true, collections: { include: { collection: true } } }, orderBy, skip: (page - 1) * pageSize, take: pageSize }),
+    ])
     return json({ rows, total, page, pageSize, pages: Math.max(1, Math.ceil(total / pageSize)) })
   } catch (e) { return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 }) }
 }
@@ -25,7 +32,7 @@ export async function POST(req: Request) {
     const actor = await requirePermission('products.manage')
     const b = await req.json()
     if (b.action === 'bulk') {
-      const ids = Array.isArray(b.ids) ? [...new Set(b.ids.map((x: unknown) => String(x)).filter(Boolean))] : []
+      const ids: string[] = Array.from(new Set<string>(Array.isArray(b.ids) ? b.ids.map((x: unknown) => String(x)).filter((x: string) => Boolean(x)) : []))
       if (!ids.length) return json({ error: 'Select at least one product' }, { status: 400 })
       const action = String(b.bulkAction || '')
       const data: any = {}
@@ -41,15 +48,17 @@ export async function POST(req: Request) {
     const name = String(b.name || '').trim(); const sku = String(b.sku || '').trim()
     if (!name || !sku) return json({ error: 'Name and SKU are required' }, { status: 400 })
     const tags: string[] = Array.isArray(b.tags) ? Array.from(new Set<string>(b.tags.map((x: unknown) => String(x).trim()).filter((x: string) => x.length > 0))) : []
-    const images = Array.isArray(b.images) ? b.images.map((x: any, i: number) => ({ url: String(x?.url || x).trim(), alt: x?.alt ? String(x.alt) : null, sortOrder: i })).filter(x => x.url) : []
+    const images: { url: string; alt: string | null; sortOrder: number }[] = Array.isArray(b.images) ? b.images.map((x: any, i: number) => ({ url: String(x?.url || x).trim(), alt: x?.alt ? String(x.alt) : null, sortOrder: i })).filter((x: { url: string }) => Boolean(x.url)) : []
     const variants = Array.isArray(b.variants) ? b.variants : []
     const sharedPool = variants.length > 0 && b.sharedInventory === true
-
     const variantSkus = new Set<string>(); const variantBarcodes = new Set<string>()
     for (const v of variants) {
-      const vs = String(v.sku || '').trim(); if (!vs) return json({ error: 'Every variant needs a SKU' }, { status: 400 })
-      if (variantSkus.has(vs) || vs === sku) return json({ error: `Duplicate variant SKU: ${vs}` }, { status: 400 }); variantSkus.add(vs)
-      const vb = v.barcode ? String(v.barcode).trim() : ''; if (vb) { if (variantBarcodes.has(vb)) return json({ error: `Duplicate variant barcode: ${vb}` }, { status: 400 }); variantBarcodes.add(vb) }
+      const vs = String(v.sku || '').trim()
+      if (!vs) return json({ error: 'Every variant needs a SKU' }, { status: 400 })
+      if (variantSkus.has(vs) || vs === sku) return json({ error: `Duplicate variant SKU: ${vs}` }, { status: 400 })
+      variantSkus.add(vs)
+      const vb = v.barcode ? String(v.barcode).trim() : ''
+      if (vb) { if (variantBarcodes.has(vb)) return json({ error: `Duplicate variant barcode: ${vb}` }, { status: 400 }); variantBarcodes.add(vb) }
     }
 
     const p = await db.product.create({ data: {
@@ -65,7 +74,7 @@ export async function POST(req: Request) {
       images: { create: images },
       inventory: variants.length === 0 || sharedPool ? { create: { quantity: Math.max(0, Math.trunc(Number(b.quantity) || 0)), reserved: 0, lowStockThreshold: Math.max(0, Math.trunc(Number(b.lowStockThreshold) || 5)), location: b.location || 'Main' } } : undefined,
       tags: { create: tags.map((value: string) => ({ value })) },
-      variants: { create: variants.map((v: any) => ({ name: String(v.name || 'Default Title'), sku: String(v.sku).trim(), barcode: v.barcode ? String(v.barcode).trim() : null, optionJson: typeof v.optionJson === 'string' ? v.optionJson : JSON.stringify(v.options || {}), price: v.price !== undefined && v.price !== '' ? Math.trunc(Number(v.price)) : null, compareAtPrice: v.compareAtPrice !== undefined && v.compareAtPrice !== '' ? Math.trunc(Number(v.compareAtPrice)) : null, weight: v.weight !== undefined && v.weight !== '' ? Number(v.weight) : null, weightUnit: v.weightUnit || null, ...(!sharedPool ? { inventory: { create: { quantity: Math.max(0, Math.trunc(Number(v.quantity) || 0)), reserved: 0, lowStockThreshold: Math.max(0, Math.trunc(Number(v.lowStockThreshold) || 5)), location: v.location || 'Main' } } } : {}) })) }
+      variants: { create: variants.map((v: any) => ({ name: String(v.name || 'Default Title'), sku: String(v.sku).trim(), barcode: v.barcode ? String(v.barcode).trim() : null, optionJson: typeof v.optionJson === 'string' ? v.optionJson : JSON.stringify(v.options || {}), price: v.price !== undefined && v.price !== '' ? Math.trunc(Number(v.price)) : null, compareAtPrice: v.compareAtPrice !== undefined && v.compareAtPrice !== '' ? Math.trunc(Number(v.compareAtPrice)) : null, weight: v.weight !== undefined && v.weight !== '' ? Number(v.weight) : null, weightUnit: v.weightUnit || null, ...(!sharedPool ? { inventory: { create: { product: { connect: { id: '__PLACEHOLDER__' } }, quantity: Math.max(0, Math.trunc(Number(v.quantity) || 0)), reserved: 0, lowStockThreshold: Math.max(0, Math.trunc(Number(v.lowStockThreshold) || 5)), location: v.location || 'Main' } } } : {}) })) }
     } })
 
     await audit(actor.id, 'product.created', 'Product', p.id, { name: p.name, sharedInventory: sharedPool, variants: variants.length })
