@@ -8,12 +8,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const actor = await requirePermission('inventory.manage')
     const { id } = await params
     const b = await req.json()
-    const po = await db.purchaseOrder.findUnique({ where: { id }, include: { items: true } })
+    const po = await db.purchaseOrder.findUnique({ where: { id }, include: { items: true, location: true } })
     if (!po) return json({ error: 'Purchase order not found' }, { status: 404 })
     const nextStatus = String(b.status || po.status)
     const valid = ['DRAFT', 'ORDERED', 'PARTIALLY_RECEIVED', 'RECEIVED', 'CANCELLED']
     if (!valid.includes(nextStatus)) return json({ error: 'Invalid purchase order status' }, { status: 400 })
     if (po.status === 'RECEIVED' || po.status === 'CANCELLED') return json({ error: `Purchase order is already ${po.status.toLowerCase()}` }, { status: 409 })
+    if (nextStatus === 'RECEIVED' && !po.location) return json({ error: 'A receiving location is required before receiving a purchase order' }, { status: 400 })
 
     const receivedItems = Array.isArray(b.items) ? b.items.map((x: any) => ({ id: String(x.id), received: Math.max(0, Math.trunc(Number(x.received) || 0)) })) : []
     const updated = await db.$transaction(async tx => {
@@ -21,13 +22,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         for (const received of receivedItems) {
           const item = po.items.find(i => i.id === received.id)
           if (!item) continue
-          const increment = Math.max(0, received.received - item.quantityReceived)
+          const nextReceived = Math.min(item.quantityOrdered, received.received)
+          const increment = Math.max(0, nextReceived - item.quantityReceived)
           if (!increment) continue
-          await tx.purchaseOrderItem.update({ where: { id: item.id }, data: { quantityReceived: Math.min(item.quantityOrdered, received.received) } })
-          const inventory = await tx.inventoryItem.findFirst({ where: { productId: item.productId, variantId: item.variantId, location: po.locationId || undefined } })
-          if (inventory) {
-            await tx.inventoryItem.update({ where: { id: inventory.id }, data: { quantity: { increment } } })
-            await tx.inventoryMovement.create({ data: { inventoryId: inventory.id, type: 'RECEIPT', quantity: increment, reason: `Received ${po.number}`, referenceId: po.id } })
+          await tx.purchaseOrderItem.update({ where: { id: item.id }, data: { quantityReceived: nextReceived } })
+          if (po.location) {
+            const inventory = await tx.inventoryItem.findFirst({ where: { productId: item.productId, variantId: item.variantId, location: po.location.name } })
+            if (inventory) {
+              await tx.inventoryItem.update({ where: { id: inventory.id }, data: { quantity: { increment } } })
+              await tx.inventoryMovement.create({ data: { inventoryId: inventory.id, type: 'RECEIPT', quantity: increment, reason: `Received ${po.number}`, referenceId: po.id } })
+            } else {
+              const created = await tx.inventoryItem.create({ data: { productId: item.productId, variantId: item.variantId, quantity: increment, reserved: 0, lowStockThreshold: 5, location: po.location.name } })
+              await tx.inventoryMovement.create({ data: { inventoryId: created.id, type: 'RECEIPT', quantity: increment, reason: `Received ${po.number}`, referenceId: po.id } })
+            }
           }
         }
       }
