@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import StoreNav from './store-nav'
+import { StoreNav } from './store-nav'
 
 export default function StoreNavRuntime({ theme, navigation }: { theme: any; navigation: any[] }) {
   const pathname = usePathname() || '/'
