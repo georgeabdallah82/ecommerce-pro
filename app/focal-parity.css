@@ -1,0 +1,44 @@
+:root{--focal-header-height:76px;--focal-header-ease:cubic-bezier(.22,.61,.36,1)}
+.focalNav{--focal-header-bg:var(--store-surface,#fff);--focal-header-fg:var(--store-text,#191512);--focal-header-line:var(--store-border,#e7e1db);isolation:isolate;transition:background-color .35s var(--focal-header-ease),color .35s var(--focal-header-ease),box-shadow .35s var(--focal-header-ease),border-color .35s var(--focal-header-ease)}
+.focalNavInner{min-height:var(--focal-header-height);max-width:var(--store-max,1440px);margin:auto;padding-inline:clamp(16px,3vw,42px)}
+.focalLogo{white-space:nowrap;line-height:1;color:var(--focal-header-fg);transition:opacity .2s ease,transform .25s var(--focal-header-ease)}
+.focalLogo:hover{opacity:.82;transform:translateY(-1px)}
+.focalLogo img{width:auto;height:auto;max-height:52px;object-fit:contain}
+.focalNavLinks{align-items:center;justify-content:center;gap:clamp(18px,2.2vw,38px)}
+.focalNavItem{height:var(--focal-header-height)}
+.focalNavLink{position:relative;font-size:12px;font-weight:600;letter-spacing:.01em;white-space:nowrap;transition:opacity .2s ease,color .2s ease}
+.focalNavLink>a{position:relative;padding-block:8px}
+.focalNavLink>a:after{content:"";position:absolute;left:0;right:100%;bottom:1px;height:1px;background:currentColor;transition:right .28s var(--focal-header-ease)}
+.focalNavItem:hover>.focalNavLink>a:after,.focalNavLink>a:focus-visible:after{right:0}
+.focalNavChevron{width:22px;height:22px;opacity:.55;transition:transform .22s ease,opacity .2s ease}
+.focalNavItem:hover>.focalNavLink .focalNavChevron{transform:rotate(180deg);opacity:1}
+.focalDropdown{top:calc(100% + 1px);min-width:280px;border-radius:0 0 4px 4px;padding:12px;box-shadow:0 22px 55px rgba(25,21,18,.13);animation:focalParityDrop .22s var(--focal-header-ease) both}
+.focalDropdownLink{padding:11px 12px;border-radius:3px;font-size:12px;font-weight:500;transition:background-color .18s ease,transform .18s ease}
+.focalDropdownLink:hover{transform:translateX(3px)}
+.focalDropdownNested{border-radius:3px;animation:focalParityNested .2s var(--focal-header-ease) both}
+.focalNavActions{gap:2px}
+.focalNavIcon{width:42px;height:42px;border:0;background:transparent;border-radius:50%;transition:background-color .2s ease,transform .2s ease}
+.focalNavIcon:hover{background:color-mix(in srgb,var(--focal-header-fg) 7%,transparent);transform:none}
+.focalNavIcon:active{transform:scale(.93)}
+.focalCartCount{top:4px;right:3px;min-width:15px;height:15px;font-size:8px;border:2px solid var(--focal-header-bg);transition:transform .2s ease}
+.focalNavMobile{border:0;background:transparent;border-radius:50%;transition:background-color .2s ease,transform .2s ease}
+.focalNavMobile:hover{background:color-mix(in srgb,var(--focal-header-fg) 7%,transparent)}
+.focalAnnouncementGlobal{letter-spacing:.01em;transition:max-height .3s ease,opacity .3s ease}
+.focalAnnouncementGlobalInner{min-height:36px;font-size:11px;font-weight:600;letter-spacing:.025em}
+.focalAnnouncementGlobalInner a{text-underline-offset:4px}
+.focalSearchOverlay,.focalMobileOverlay,.focalCartOverlay{background:rgba(20,17,14,.34);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.focalSearchCard{margin-top:0;width:100%;max-width:none;border-radius:0 0 14px 14px;padding:28px clamp(18px,5vw,80px);box-shadow:0 30px 70px rgba(0,0,0,.16);animation:focalSearchDrop .3s var(--focal-header-ease) both}
+.focalSearchForm{max-width:1100px;margin:auto;grid-template-columns:1fr auto;align-items:center}
+.focalSearchForm input{height:58px;border:0;border-bottom:1px solid var(--focal-header-line);border-radius:0;padding:0 2px;font-size:20px;background:transparent}
+.focalSearchForm input:focus{border-bottom-color:var(--focal-header-fg);outline:none}
+.focalSearchTop{max-width:1100px;margin:0 auto 14px}
+.focalCartDrawer{border-left:1px solid var(--focal-header-line);animation:focalDrawer .32s var(--focal-header-ease) both}
+.focalCartHead{padding:22px;border-bottom:1px solid var(--focal-header-line)}
+.focalCartFoot{padding:22px}
+@keyframes focalParityDrop{from{opacity:0;transform:translate(-50%,-8px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes focalParityNested{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+@keyframes focalSearchDrop{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes focalDrawer{from{opacity:0;transform:translateX(36px)}to{opacity:1;transform:translateX(0)}}
+@media(max-width:1199px){.focalNavLinks{gap:18px}.focalNavInner{padding-inline:22px}}
+@media(max-width:900px){.focalNavInner{min-height:66px;padding-inline:16px}.focalLogo img{max-height:44px}.focalNavActions{gap:0}.focalNavIcon{width:40px;height:40px}.focalSearchCard{padding:20px 18px}.focalSearchForm input{font-size:17px}}
+@media(prefers-reduced-motion:reduce){.focalNav,.focalLogo,.focalNavLink,.focalNavLink>a:after,.focalNavChevron,.focalDropdown,.focalDropdownNested,.focalNavIcon,.focalSearchCard,.focalCartDrawer{animation:none!important;transition:none!important}}
