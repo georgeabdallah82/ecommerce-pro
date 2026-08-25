@@ -32,7 +32,15 @@ export async function GET(req: Request) {
         take: pageSize,
       }),
     ])
-    return json({ rows, total, page, pageSize, pages: Math.max(1, Math.ceil(total / pageSize)) })
+
+    const ids = rows.map(row => row.id)
+    const spendRows = ids.length
+      ? await db.order.groupBy({ by: ['userId'], where: { userId: { in: ids } }, _sum: { grandTotal: true } })
+      : []
+    const spendByCustomer = new Map(spendRows.map(row => [row.userId, row._sum.grandTotal || 0]))
+    const hydratedRows = rows.map(row => ({ ...row, totalSpent: spendByCustomer.get(row.id) || 0 }))
+
+    return json({ rows: hydratedRows, total, page, pageSize, pages: Math.max(1, Math.ceil(total / pageSize)) })
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 })
   }
