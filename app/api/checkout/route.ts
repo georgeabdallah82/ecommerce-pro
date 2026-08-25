@@ -19,7 +19,6 @@ async function applyCoupon(code: string, subtotal: number) {
   if (coupon.expiresAt && coupon.expiresAt < now) throw new Error('This coupon has expired')
   if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) throw new Error('This coupon has reached its usage limit')
   if (coupon.minSubtotal !== null && subtotal < coupon.minSubtotal) throw new Error('Minimum order is required for this coupon')
-  if (coupon.firstOrderOnly && !arguments.length) throw new Error('This coupon requires a customer account')
   const discount = coupon.type === 'PERCENTAGE' ? Math.min(subtotal, Math.floor(subtotal * coupon.value / 100)) : coupon.type === 'FIXED' ? Math.min(subtotal, coupon.value) : 0
   return { discount, coupon }
 }
