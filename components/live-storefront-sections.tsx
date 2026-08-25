@@ -20,7 +20,9 @@ function templateKey(pathname: string) {
 export default function LiveStorefrontSections(props: Props) {
   const pathname = usePathname() || '/'
   const key = useMemo(() => templateKey(pathname), [pathname])
-  const initialSections = (props.theme?.editorTemplates?.[key]?.length ? props.theme.editorTemplates[key] : props.sections) || []
+  const hasSavedTemplate = Object.prototype.hasOwnProperty.call(props.theme?.editorTemplates || {}, key)
+  const initialTemplate = props.theme?.editorTemplates?.[key]
+  const initialSections = hasSavedTemplate ? (Array.isArray(initialTemplate) ? initialTemplate : []) : (props.sections || [])
   const [theme, setTheme] = useState(props.theme)
   const [sections, setSections] = useState(initialSections)
   const signature = useRef(JSON.stringify({ theme: props.theme, sections: initialSections, key }))
@@ -43,8 +45,10 @@ export default function LiveStorefrontSections(props: Props) {
         if (!response.ok) return
         const data = await response.json()
         if (!data?.theme) return
-        const nextTemplates = data.theme.editorTemplates?.[key]
-        const nextSections = Array.isArray(nextTemplates) && nextTemplates.length ? nextTemplates : (Array.isArray(data.sections) ? data.sections : [])
+        const templates = data.theme.editorTemplates || {}
+        const hasTemplate = Object.prototype.hasOwnProperty.call(templates, key)
+        const template = templates[key]
+        const nextSections = hasTemplate ? (Array.isArray(template) ? template : []) : (Array.isArray(data.sections) ? data.sections : [])
         apply(data.theme, nextSections)
       } catch {}
     }
