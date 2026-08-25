@@ -8,8 +8,27 @@ function clampDays(value: string | null, fallback: number) {
   return Number.isFinite(n) ? Math.min(365, Math.max(1, Math.floor(n))) : fallback
 }
 
-function dayKey(d: Date) {
-  return d.toISOString().slice(0, 10)
+function bucketKey(date: Date, days: number) {
+  if (days <= 7) return date.toISOString().slice(0, 10)
+  if (days <= 90) return date.toISOString().slice(0, 10)
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+function buildBuckets(now: Date, days: number) {
+  const map = new Map<string, { revenue: number; orders: number }>()
+  if (days <= 90) {
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * 86400000)
+      map.set(d.toISOString().slice(0, 10), { revenue: 0, orders: 0 })
+    }
+  } else {
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() - i, 1))
+      map.set(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`, { revenue: 0, orders: 0 })
+    }
+  }
+  return map
 }
 
 export async function GET(req: Request) {
@@ -37,25 +56,27 @@ export async function GET(req: Request) {
       db.product.count({}),
     ])
 
-    const netRevenue = (orders: typeof currentOrders) => orders.reduce((sum, o) => {
-      const refunded = o.paymentTransactions.filter(t => ['refunded', 'partially_refunded'].includes(t.status)).reduce((s, t) => s + t.amount, 0)
-      return sum + Math.max(0, o.grandTotal - refunded)
-    }, 0)
+    const netRevenueForOrder = (order: { grandTotal: number; paymentTransactions: { status: string; amount: number }[] }) => {
+      const refunded = order.paymentTransactions
+        .filter(t => ['refunded', 'partially_refunded'].includes(t.status))
+        .reduce((sum, t) => sum + t.amount, 0)
+      return Math.max(0, order.grandTotal - refunded)
+    }
+    const netRevenue = (orders: any[]) => orders.reduce((sum, o) => sum + netRevenueForOrder(o), 0)
     const revenue = netRevenue(currentOrders)
     const previousRevenue = netRevenue(previousOrders as any)
     const itemsSold = currentOrders.reduce((sum, o) => sum + o.items.reduce((s, i) => s + i.quantity, 0), 0)
     const averageOrderValue = currentOrders.length ? Math.round(revenue / currentOrders.length) : 0
     const pct = (value: number, prev: number) => prev === 0 ? (value === 0 ? 0 : 100) : Math.round(((value - prev) / prev) * 100)
 
-    const seriesMap = new Map<string, { revenue: number; orders: number }>()
-    for (let i = days - 1; i >= 0; i--) {
-      const d = new Date(now.getTime() - i * 86400000)
-      seriesMap.set(dayKey(d), { revenue: 0, orders: 0 })
-    }
+    const seriesMap = buildBuckets(now, days)
     currentOrders.forEach(o => {
-      const key = dayKey(new Date(o.createdAt))
+      const key = bucketKey(new Date(o.createdAt), days)
       const point = seriesMap.get(key)
-      if (point) { point.orders += 1; point.revenue += o.grandTotal }
+      if (point) {
+        point.orders += 1
+        point.revenue += netRevenueForOrder(o)
+      }
     })
 
     const topProductsMap = new Map<string, { productId: string; name: string; quantity: number; sales: number }>()
@@ -66,7 +87,11 @@ export async function GET(req: Request) {
       topProductsMap.set(i.productId, existing)
     }))
 
-    const lowStock = inventory.filter(i => i.quantity - i.reserved <= i.lowStockThreshold).map(i => ({ id: i.id, product: i.product.name, sku: i.variant?.sku ?? i.product.sku, variant: i.variant?.name ?? null, available: Math.max(0, i.quantity - i.reserved), threshold: i.lowStockThreshold })).sort((a, b) => a.available - b.available).slice(0, 12)
+    const lowStock = inventory
+      .filter(i => i.quantity - i.reserved <= i.lowStockThreshold)
+      .map(i => ({ id: i.id, product: i.product.name, sku: i.variant?.sku ?? i.product.sku, variant: i.variant?.name ?? null, available: Math.max(0, i.quantity - i.reserved), threshold: i.lowStockThreshold }))
+      .sort((a, b) => a.available - b.available)
+      .slice(0, 12)
 
     return json({
       periodDays: days,
@@ -75,6 +100,7 @@ export async function GET(req: Request) {
       series: Array.from(seriesMap, ([date, value]) => ({ date, ...value })),
       topProducts: Array.from(topProductsMap.values()).sort((a, b) => b.sales - a.sales).slice(0, 10),
       lowStock,
+      granularity: days > 90 ? 'month' : 'day',
     })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unable to load analytics'
