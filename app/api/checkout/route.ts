@@ -9,7 +9,7 @@ import { getPaymentProvider } from '@/lib/payments'
 import { sendNewOrderPush } from '@/lib/push'
 import { PaymentMethod } from '@prisma/client'
 
-async function applyCoupon(code: string, subtotal: number, userId?: string | null) {
+async function applyCoupon(code: string, subtotal: number) {
   if (!code) return { discount: 0, coupon: null as any }
   const coupon = await db.coupon.findUnique({ where: { code: code.toUpperCase() } })
   const now = new Date()
@@ -19,11 +19,7 @@ async function applyCoupon(code: string, subtotal: number, userId?: string | nul
   if (coupon.expiresAt && coupon.expiresAt < now) throw new Error('This coupon has expired')
   if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) throw new Error('This coupon has reached its usage limit')
   if (coupon.minSubtotal !== null && subtotal < coupon.minSubtotal) throw new Error('Minimum order is required for this coupon')
-  if (coupon.firstOrderOnly) {
-    if (!userId) throw new Error('This coupon requires a customer account')
-    const count = await db.order.count({ where: { userId, status: { not: 'CANCELLED' } } })
-    if (count > 0) throw new Error('This coupon is for first orders only')
-  }
+  if (coupon.firstOrderOnly && !arguments.length) throw new Error('This coupon requires a customer account')
   const discount = coupon.type === 'PERCENTAGE' ? Math.min(subtotal, Math.floor(subtotal * coupon.value / 100)) : coupon.type === 'FIXED' ? Math.min(subtotal, coupon.value) : 0
   return { discount, coupon }
 }
@@ -71,7 +67,8 @@ export async function POST(req: Request) {
       normalized.push({ productId: p.id, variantId: variant?.id ?? null, name: p.name + (variant ? ` — ${variant.name}` : ''), sku: variant?.sku ?? p.sku, quantity: raw.quantity, unitPrice, totalPrice: unitPrice * raw.quantity })
     }
 
-    const { discount, coupon } = await applyCoupon(input.couponCode || '', subtotal, user?.id)
+    const { discount, coupon } = await applyCoupon(input.couponCode || '', subtotal)
+    if (coupon?.firstOrderOnly && !user?.id) throw new Error('This coupon requires a customer account')
     const discountedSubtotal = Math.max(0, subtotal - discount)
     const shipping = await calculateShipping(input.shippingAddress.country, discountedSubtotal)
     const taxRate = await getTaxRatePercent()
@@ -85,6 +82,12 @@ export async function POST(req: Request) {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${idempotencyKey}))`
         const existing = await tx.paymentTransaction.findFirst({ where: { provider: 'checkout', externalId: idempotencyKey }, include: { order: true } })
         if (existing?.order) return { existing: true as const, order: existing.order }
+      }
+
+      if (coupon?.firstOrderOnly && user?.id) {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`first-order:${user.id}`}))`
+        const existingOrder = await tx.order.findFirst({ where: { userId: user.id, status: { not: 'CANCELLED' } }, select: { id: true } })
+        if (existingOrder) throw new Error('This coupon is for first orders only')
       }
 
       for (const item of normalized) await reserveStock(tx, byId.get(item.productId)!, item.variantId, item.quantity, orderNumber)
