@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 
 function fixFile(path, replacements) {
+  if (!fs.existsSync(path)) return false
   let source = fs.readFileSync(path, 'utf8')
   let changed = false
   for (const [bad, good] of replacements) {
@@ -17,11 +18,6 @@ const themeChanged = fixFile('components/pro-theme-editor.tsx', [
   ['<DesignInspector section={selected} theme={theme} patch={patch}/>', '<DesignInspector section={selected} patch={patch}/>'],
 ])
 console.log(themeChanged ? 'Applied DesignInspector prop compatibility fix' : 'No DesignInspector compatibility fix needed')
-
-const ordersChanged = fixFile('components/admin-orders.tsx', [
-  ['import { FileText, Plus, RefreshCw, Search, Truck, X } from \'lucide-react\'', 'import { FileText, PackageCheck, Plus, RefreshCw, Search, Truck, X } from \'lucide-react\''],
-])
-console.log(ordersChanged ? 'Applied Orders icon compatibility fix' : 'No Orders icon compatibility fix needed')
 
 const navigationChanged = fixFile('components/store-nav.tsx', [
   [
