@@ -2,7 +2,7 @@ import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { db } from '@/lib/prisma'
 import { json } from '@/lib/utils'
-import { Role } from '@prisma/client'
+import { Role, OrderStatus } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
 export async function GET(req: Request) {
@@ -35,7 +35,7 @@ export async function GET(req: Request) {
 
     const ids = rows.map(row => row.id)
     const spendRows = ids.length
-      ? await db.order.groupBy({ by: ['userId'], where: { userId: { in: ids } }, _sum: { grandTotal: true } })
+      ? await db.order.groupBy({ by: ['userId'], where: { userId: { in: ids }, status: { not: OrderStatus.CANCELLED } }, _sum: { grandTotal: true } })
       : []
     const spendByCustomer = new Map(spendRows.map(row => [row.userId, row._sum.grandTotal || 0]))
     const hydratedRows = rows.map(row => ({ ...row, totalSpent: spendByCustomer.get(row.id) || 0 }))
