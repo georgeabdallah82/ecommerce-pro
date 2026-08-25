@@ -7,7 +7,7 @@ services:
     buildCommand: npm install && npm run db:deploy && npm run db:ensure-admin && npm run build
     startCommand: npm start
     initialDeployCommand: npm run db:seed
-    healthCheckPath: /
+    healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
         fromDatabase:
