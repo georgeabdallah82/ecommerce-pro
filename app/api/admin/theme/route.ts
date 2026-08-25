@@ -3,112 +3,49 @@ import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { defaultNavigation, defaultSections, defaultTheme } from '@/lib/theme'
-import { revalidatePath } from 'next/cache'
 
-function normalizeSections(input: any[]): any[] {
-  return (Array.isArray(input) ? input : defaultSections).filter(Boolean).map((s: any) => {
-    const type = s.type === 'image_banner' ? 'hero' : s.type
-    const settings = { ...(s.settings || {}) }
-    if (type === 'hero') settings.imageUrl = settings.imageUrl || settings.desktopImageUrl || settings.mobileImageUrl || ''
-    return { ...s, type, enabled: s.enabled !== false, settings, blocks: Array.isArray(s.blocks) ? s.blocks : [] }
-  })
-}
-
-function normalizeTemplates(input: any): Record<string, any[]> {
-  const source = input && typeof input === 'object' ? input : {}
-  const out: Record<string, any[]> = {}
-  for (const [key, value] of Object.entries(source)) out[key] = normalizeSections(value as any[])
-  return out
-}
-
-function parseSetting(value: string | null | undefined, fallback: any) {
-  if (!value) return fallback
-  try { return JSON.parse(value) } catch { return fallback }
-}
+function normalizeSections(input: any[]): any[] { return (Array.isArray(input) ? input : defaultSections).filter(Boolean).map((s: any) => ({ ...s, type: s.type === 'image_banner' ? 'hero' : s.type, enabled: s.enabled !== false, settings: { ...(s.settings || {}) }, blocks: Array.isArray(s.blocks) ? s.blocks : [] })) }
+function normalizeTemplates(input: any): Record<string, any[]> { const source = input && typeof input === 'object' ? input : {}; const out: Record<string, any[]> = {}; for (const [key, value] of Object.entries(source)) out[key] = normalizeSections(value as any[]); return out }
+function parseSetting(value: string | null | undefined, fallback: any) { if (!value) return fallback; try { return JSON.parse(value) } catch { return fallback } }
 
 export async function GET() {
   try {
     await requirePermission('content.view')
-    const [themeSetting, sectionsSetting, navigationSetting] = await Promise.all([
-      db.setting.findUnique({ where: { key: 'theme.config' } }),
-      db.setting.findUnique({ where: { key: 'theme.sections' } }),
-      db.setting.findUnique({ where: { key: 'navigation.main' } }),
+    const [draft, published, publishedSections, draftSections, navigation, draftNavigation] = await Promise.all([
+      db.setting.findUnique({ where: { key: 'theme.draft' } }), db.setting.findUnique({ where: { key: 'theme.config' } }),
+      db.setting.findUnique({ where: { key: 'theme.sections' } }), db.setting.findUnique({ where: { key: 'theme.draft.sections' } }),
+      db.setting.findUnique({ where: { key: 'navigation.main' } }), db.setting.findUnique({ where: { key: 'navigation.draft' } }),
     ])
-
-    const rawTheme = parseSetting(themeSetting?.value, defaultTheme)
-    const homeSections = normalizeSections(parseSetting(sectionsSetting?.value, defaultSections))
+    const publishedTheme = parseSetting(published?.value, defaultTheme)
+    const rawTheme = parseSetting(draft?.value, publishedTheme)
+    const publishedHome = normalizeSections(parseSetting(publishedSections?.value, defaultSections))
+    const home = normalizeSections(parseSetting(draftSections?.value, publishedHome))
     const editorTemplates = normalizeTemplates(rawTheme.editorTemplates)
-    if (!editorTemplates['Home page']) editorTemplates['Home page'] = homeSections
+    if (!Object.prototype.hasOwnProperty.call(editorTemplates, 'Home page')) editorTemplates['Home page'] = home
     const theme = { ...rawTheme, editorTemplates }
-
-    return json({
-      theme,
-      sections: homeSections,
-      editorTemplates,
-      navigation: parseSetting(navigationSetting?.value, defaultNavigation),
-    }, { headers: { 'cache-control': 'no-store' } })
-  } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 })
-  }
+    return json({ theme, sections: home, editorTemplates, navigation: parseSetting(draftNavigation?.value, parseSetting(navigation?.value, defaultNavigation)), draft: Boolean(draft), publishedTheme }, { headers: { 'cache-control': 'no-store' } })
+  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 }) }
 }
 
 export async function PATCH(req: Request) {
   try {
-    const actor = await requirePermission('content.manage')
-    const body = await req.json()
+    const actor = await requirePermission('content.manage'); const body = await req.json()
     const incomingTheme = body.theme && typeof body.theme === 'object' ? body.theme : defaultTheme
     const incomingTemplates = normalizeTemplates(body.editorTemplates || incomingTheme.editorTemplates)
-    const templateKey = typeof body.templateKey === 'string' && body.templateKey.trim()
-      ? body.templateKey.trim()
-      : (typeof incomingTheme.editorTemplateKey === 'string' && incomingTheme.editorTemplateKey.trim() ? incomingTheme.editorTemplateKey.trim() : 'Home page')
-
-    const activeSections = normalizeSections(body.sections || incomingTemplates[templateKey] || defaultSections)
+    const templateKey = typeof body.templateKey === 'string' && body.templateKey.trim() ? body.templateKey.trim() : (incomingTheme.editorTemplateKey || 'Home page')
+    const activeSections = normalizeSections(Object.prototype.hasOwnProperty.call(incomingTemplates, templateKey) ? incomingTemplates[templateKey] : body.sections)
     const templates = normalizeTemplates({ ...incomingTemplates, [templateKey]: activeSections })
-    if (!templates['Home page']) templates['Home page'] = normalizeSections(body.homeSections || defaultSections)
-
+    if (!Object.prototype.hasOwnProperty.call(templates, 'Home page')) templates['Home page'] = normalizeSections(body.homeSections || defaultSections)
     const theme = { ...incomingTheme, editorTemplateKey: templateKey, editorTemplates: templates }
-    const homeSections = normalizeSections(templates['Home page'])
-
+    const homeSections = templates['Home page']
     const navigationProvided = Array.isArray(body.navigation)
-    const currentNavigationSetting = navigationProvided ? null : await db.setting.findUnique({ where: { key: 'navigation.main' } })
-    const navigation = navigationProvided
-      ? body.navigation
-      : parseSetting(currentNavigationSetting?.value, defaultNavigation)
-
-    const writes: any[] = [
-      db.setting.upsert({ where: { key: 'theme.config' }, create: { key: 'theme.config', value: JSON.stringify(theme) }, update: { value: JSON.stringify(theme) } }),
-      db.setting.upsert({ where: { key: 'theme.sections' }, create: { key: 'theme.sections', value: JSON.stringify(homeSections) }, update: { value: JSON.stringify(homeSections) } }),
-    ]
-    if (navigationProvided) {
-      writes.push(db.setting.upsert({ where: { key: 'navigation.main' }, create: { key: 'navigation.main', value: JSON.stringify(navigation) }, update: { value: JSON.stringify(navigation) } }))
-    }
-
-    await db.$transaction(writes)
-
-    revalidatePath('/', 'layout')
-    revalidatePath('/', 'page')
-    revalidatePath('/shop', 'page')
-    revalidatePath('/product/[slug]', 'page')
-    revalidatePath('/collections', 'page')
-    revalidatePath('/collections/[slug]', 'page')
-    revalidatePath('/cart', 'page')
-    revalidatePath('/about', 'page')
-    revalidatePath('/blog', 'page')
-    revalidatePath('/admin/online-store/theme-editor', 'page')
-    revalidatePath('/admin/online-store/navigation', 'page')
-
-    await audit(actor.id, 'theme.updated', 'Theme', 'theme.config', {
-      templateKey,
-      templates: Object.keys(templates).length,
-      homeSections: homeSections.length,
-      activeSections: activeSections.length,
-      navigation: Array.isArray(navigation) ? navigation.length : 0,
-      navigationUpdated: navigationProvided,
-      preset: theme?.presets?.active || null,
-    })
-
-    return json({ theme, sections: activeSections, homeSections, editorTemplates: templates, navigation }, { headers: { 'cache-control': 'no-store' } })
-  } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Unable to save theme' }, { status: 400 })
-  }
+    const currentNavigation = navigationProvided ? body.navigation : parseSetting((await db.setting.findUnique({ where: { key: 'navigation.draft' } }))?.value, defaultNavigation)
+    await db.$transaction([
+      db.setting.upsert({ where: { key: 'theme.draft' }, create: { key: 'theme.draft', value: JSON.stringify(theme) }, update: { value: JSON.stringify(theme) } }),
+      db.setting.upsert({ where: { key: 'theme.draft.sections' }, create: { key: 'theme.draft.sections', value: JSON.stringify(homeSections) }, update: { value: JSON.stringify(homeSections) } }),
+      ...(navigationProvided ? [db.setting.upsert({ where: { key: 'navigation.draft' }, create: { key: 'navigation.draft', value: JSON.stringify(currentNavigation) }, update: { value: JSON.stringify(currentNavigation) } })] : []),
+    ])
+    await audit(actor.id, 'theme.draft.updated', 'Theme', 'theme.draft', { templateKey, templates: Object.keys(templates).length, activeSections: activeSections.length, navigationUpdated: navigationProvided })
+    return json({ theme, sections: activeSections, homeSections, editorTemplates: templates, navigation: currentNavigation, draft: true }, { headers: { 'cache-control': 'no-store' } })
+  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to save theme draft' }, { status: 400 }) }
 }
