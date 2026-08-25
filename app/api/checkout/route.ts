@@ -30,10 +30,21 @@ export async function POST(req: Request) {
     const idempotencyKey = req.headers.get('x-idempotency-key')?.trim().slice(0, 190) || null
     const paymentMethod = input.paymentMethod as PaymentMethod
     const paymentProvider = getPaymentProvider()
-
-    if (paymentMethod === PaymentMethod.CARD && paymentProvider.name === 'manual') {
-      return json({ error: 'Card payments are not configured yet.' }, { status: 503 })
+    const settingRows = await db.setting.findMany({
+      where: { key: { in: ['payment.cod', 'payment.card', 'payment.bank', 'payment.wallet', 'checkout.guestCheckout'] } },
+      select: { key: true, value: true },
+    })
+    const settings = Object.fromEntries(settingRows.map(row => [row.key, row.value]))
+    const guestCheckoutEnabled = settings['checkout.guestCheckout'] !== 'false'
+    const paymentEnabled: Record<PaymentMethod, boolean> = {
+      COD: settings['payment.cod'] !== 'false',
+      CARD: settings['payment.card'] === 'true' && paymentProvider.name !== 'manual',
+      BANK_TRANSFER: settings['payment.bank'] === 'true',
+      WALLET: settings['payment.wallet'] === 'true',
     }
+
+    if (!user?.id && !guestCheckoutEnabled) return json({ error: 'Guest checkout is disabled. Please sign in to continue.' }, { status: 403 })
+    if (!paymentEnabled[paymentMethod]) return json({ error: 'This payment method is currently unavailable.' }, { status: 400 })
 
     const merged = new Map<string, { productId: string; variantId: string | null; quantity: number }>()
     for (const item of input.items) {
@@ -82,13 +93,11 @@ export async function POST(req: Request) {
         const existing = await tx.paymentTransaction.findFirst({ where: { provider: 'checkout', externalId: idempotencyKey }, include: { order: true } })
         if (existing?.order) return { existing: true as const, order: existing.order }
       }
-
       if (coupon?.firstOrderOnly && user?.id) {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`first-order:${user.id}`}))`
         const existingOrder = await tx.order.findFirst({ where: { userId: user.id, status: { not: 'CANCELLED' } }, select: { id: true } })
         if (existingOrder) throw new Error('This coupon is for first orders only')
       }
-
       for (const item of normalized) await reserveStock(tx, byId.get(item.productId)!, item.variantId, item.quantity, orderNumber)
       if (coupon) {
         const couponUpdate = await tx.coupon.updateMany({ where: { id: coupon.id, isActive: true, ...(coupon.maxUses !== null ? { usedCount: { lt: coupon.maxUses } } : {}) }, data: { usedCount: { increment: 1 } } })
@@ -96,30 +105,18 @@ export async function POST(req: Request) {
       }
       const order = await tx.order.create({
         data: {
-          orderNumber,
-          userId: user?.id ?? null,
-          email: input.email,
-          phone: input.phone || null,
-          subtotal,
-          discountTotal: discount,
-          shippingTotal,
-          taxTotal,
-          grandTotal,
-          currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD',
-          paymentMethod,
-          shippingAddressJson: JSON.stringify(input.shippingAddress),
-          couponCode: coupon?.code ?? null,
-          shippingMethod: shipping.method,
-          items: { create: normalized },
+          orderNumber, userId: user?.id ?? null, email: input.email, phone: input.phone || null,
+          subtotal, discountTotal: discount, shippingTotal, taxTotal, grandTotal,
+          currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD', paymentMethod,
+          shippingAddressJson: JSON.stringify(input.shippingAddress), couponCode: coupon?.code ?? null,
+          shippingMethod: shipping.method, items: { create: normalized },
           events: { create: { status: 'PENDING', message: 'Order placed successfully.' } },
           paymentTransactions: { create: { provider: 'checkout', externalId: idempotencyKey, status: 'created', amount: grandTotal, currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD' } },
         },
       })
       return { existing: false as const, order }
     })
-
     if (result.existing) return json({ order: { id: result.order.id, orderNumber: result.order.orderNumber, total: result.order.grandTotal } }, { status: 200 })
-
     const order = result.order
     if (user?.id) await db.notification.create({ data: { userId: user.id, title: 'Order placed', body: `Order ${order.orderNumber} was placed successfully.`, type: 'ORDER_CREATED' } })
     void sendNewOrderPush({ id: order.id, orderNumber: order.orderNumber, grandTotal: order.grandTotal, currency: order.currency }).catch(error => console.error('[push] new-order notification failed', error))
