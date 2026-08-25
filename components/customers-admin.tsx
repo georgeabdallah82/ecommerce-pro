@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, ChevronRight, Eye, MoreHorizontal, Plus, Search, UserCheck, UserX, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Eye, Plus, Search, UserCheck, UserX, X } from 'lucide-react'
 import { money } from '@/lib/config'
 
 async function api(path: string, init?: RequestInit) {
@@ -39,7 +39,11 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
 
   useEffect(() => { void load(1) }, [status, pageSize])
 
-  const stats = useMemo(() => ({ active: rows.filter(x => x.isActive).length, disabled: rows.filter(x => !x.isActive).length, repeat: rows.filter(x => x._count?.orders > 1).length }), [rows])
+  const stats = useMemo(() => ({
+    active: rows.filter(x => x.isActive).length,
+    disabled: rows.filter(x => !x.isActive).length,
+    repeat: rows.filter(x => x._count?.orders > 1).length,
+  }), [rows])
 
   async function createCustomer() {
     setLoading(true); setError('')
@@ -77,7 +81,7 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
         <td><span>{c.phone || '—'}</span></td>
         <td><strong>{c._count?.orders || 0}</strong></td>
         <td>{c._count?.reviews || 0}</td>
-        <td className="muted">Open profile</td>
+        <td><strong>{money(c.totalSpent || 0)}</strong></td>
         <td><span className={c.isActive ? 'statusPill active' : 'statusPill archived'}>{c.isActive ? <UserCheck size={13}/> : <UserX size={13}/>} {c.isActive ? 'Active' : 'Disabled'}</span></td>
         <td>{new Date(c.createdAt).toLocaleDateString()}</td>
         <td><Link className="iconBtn" href={`/admin/customers/${c.id}`} title="View customer"><Eye size={16}/></Link></td>
@@ -88,8 +92,8 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
 
     {showCreate && <div className="modalOverlay" onClick={() => setShowCreate(false)}><div className="card" style={{ width: 'min(520px, 92vw)', padding: 24 }} onClick={e => e.stopPropagation()}>
       <div className="sectionHead small"><div><h2 className="h3">Add customer</h2><p className="muted">Create a customer profile without leaving the catalog.</p></div><button className="iconBtn" onClick={() => setShowCreate(false)}><X size={16}/></button></div>
-      <div className="twoColFields"><label className="fieldLabel">Name<input className="input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}/></label><label className="fieldLabel">Email<input className="input" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}/></label><label className="fieldLabel">Phone<input className="input" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })}/></label><label className="fieldLabel">Password <span className="fieldHelp">Optional; can be added later.</span><input className="input" type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })}/></label></div>
-      <div className="inline" style={{ justifyContent: 'flex-end', marginTop: 18 }}><button className="btn secondary" onClick={() => setShowCreate(false)}>Cancel</button><button className="btn" onClick={createCustomer} disabled={loading}>{loading ? 'Creating…' : 'Create customer'}</button></div>
+      <div className="twoColFields"><label className="fieldLabel">Name<input className="input" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}/></label><label className="fieldLabel">Email<input className="input" type="email" required value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}/></label><label className="fieldLabel">Phone<input className="input" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })}/></label><label className="fieldLabel">Password <span className="fieldHelp">Optional; can be added later.</span><input className="input" type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })}/></label></div>
+      <div className="inline" style={{ justifyContent: 'flex-end', marginTop: 18 }}><button className="btn secondary" onClick={() => setShowCreate(false)}>Cancel</button><button className="btn" onClick={createCustomer} disabled={loading || !form.name.trim() || !form.email.trim()}>{loading ? 'Creating…' : 'Create customer'}</button></div>
     </div></div>}
   </div>
 }
