@@ -3,30 +3,51 @@ import { getCurrentUser } from '@/lib/auth'
 import { hasPermission, type Permission } from '@/lib/permissions'
 import { redirect } from 'next/navigation'
 import OrderAlerts from '@/components/order-alerts'
-import { LogOut, Store, ShieldCheck, Palette, Menu, FileText, Settings2, ShoppingBag, Users, Tag, Truck, BarChart3, Boxes, FolderTree, Layers3, MessageSquare, Image as ImageIcon, UserCog, Activity, LayoutDashboard, Workflow } from 'lucide-react'
+import AdminSidebar, { type AdminSidebarGroup } from '@/components/admin-sidebar'
+import { LogOut, Store, ShieldCheck } from 'lucide-react'
 
-const links: Array<[string,string,Permission,any]> = [
- ['/admin','Dashboard','dashboard.view',LayoutDashboard],
- ['/admin/orders','Orders','orders.view',ShoppingBag],
- ['/admin/products','Products','products.view',Boxes],
- ['/admin/inventory','Inventory','inventory.view',Boxes],
- ['/admin/operations','Operations','inventory.view',Workflow],
- ['/admin/customers','Customers','customers.view',Users],
- ['/admin/categories','Categories','categories.view',FolderTree],
- ['/admin/collections','Collections','collections.view',Layers3],
- ['/admin/coupons','Discounts','coupons.view',Tag],
- ['/admin/reviews','Reviews','reviews.view',MessageSquare],
- ['/admin/shipping','Shipping','shipping.view',Truck],
- ['/admin/online-store','Online Store','content.view',Store],
- ['/admin/online-store/theme-editor','Theme editor','content.view',Palette],
- ['/admin/online-store/navigation','Navigation','content.view',Menu],
- ['/admin/content','Content','content.view',FileText],
- ['/admin/media','Files','media.view',ImageIcon],
- ['/admin/reports','Analytics & reports','reports.view',BarChart3],
- ['/admin/system','System health','settings.view',Activity],
- ['/admin/users','Users & roles','users.view',UserCog],
- ['/admin/activity','Activity log','activity.view',Activity],
- ['/admin/settings','Settings','settings.view',Settings2]
+const groups: AdminSidebarGroup[] = [
+  { id: 'home', label: 'Home', items: [
+    { href: '/admin', label: 'Dashboard', permission: 'dashboard.view', icon: 'dashboard' },
+  ]},
+  { id: 'orders', label: 'Orders', items: [
+    { href: '/admin/orders', label: 'Orders', permission: 'orders.view', icon: 'orders' },
+  ]},
+  { id: 'products', label: 'Products', items: [
+    { href: '/admin/products', label: 'Products', permission: 'products.view', icon: 'products' },
+    { href: '/admin/inventory', label: 'Inventory', permission: 'inventory.view', icon: 'inventory' },
+    { href: '/admin/operations', label: 'Operations', permission: 'inventory.view', icon: 'operations' },
+  ]},
+  { id: 'collections', label: 'Collections', items: [
+    { href: '/admin/collections', label: 'Collections', permission: 'collections.view', icon: 'collections' },
+    { href: '/admin/categories', label: 'Categories', permission: 'categories.view', icon: 'categories' },
+  ]},
+  { id: 'customers', label: 'Customers', items: [
+    { href: '/admin/customers', label: 'Customers', permission: 'customers.view', icon: 'customers' },
+  ]},
+  { id: 'content', label: 'Content', items: [
+    { href: '/admin/content', label: 'Content', permission: 'content.view', icon: 'content' },
+    { href: '/admin/media', label: 'Files', permission: 'media.view', icon: 'files' },
+    { href: '/admin/reviews', label: 'Reviews', permission: 'reviews.view', icon: 'reviews' },
+  ]},
+  { id: 'online-store', label: 'Online Store', items: [
+    { href: '/admin/online-store', label: 'Overview', permission: 'content.view', icon: 'store' },
+    { href: '/admin/online-store/theme-editor', label: 'Theme editor', permission: 'content.view', icon: 'theme' },
+    { href: '/admin/online-store/navigation', label: 'Navigation', permission: 'content.view', icon: 'navigation' },
+  ]},
+  { id: 'marketing', label: 'Discounts', items: [
+    { href: '/admin/coupons', label: 'Discounts', permission: 'coupons.view', icon: 'discounts' },
+  ]},
+  { id: 'analytics', label: 'Analytics', items: [
+    { href: '/admin/reports', label: 'Analytics & reports', permission: 'reports.view', icon: 'analytics' },
+  ]},
+  { id: 'settings', label: 'Settings', items: [
+    { href: '/admin/shipping', label: 'Shipping', permission: 'shipping.view', icon: 'shipping' },
+    { href: '/admin/system', label: 'System health', permission: 'settings.view', icon: 'system' },
+    { href: '/admin/users', label: 'Users & roles', permission: 'users.view', icon: 'users' },
+    { href: '/admin/activity', label: 'Activity log', permission: 'activity.view', icon: 'activity' },
+    { href: '/admin/settings', label: 'Settings', permission: 'settings.view', icon: 'settings' },
+  ]},
 ]
 
 const adminCss = `
@@ -40,6 +61,7 @@ body:has(.adminShell) .adminSide nav a:hover { background:#f1f1ed; color:#171717
 body:has(.adminShell) .adminSide nav a svg { flex:none; opacity:.85; }
 body:has(.adminShell) .adminSideBottom { margin-top:14px; padding-top:14px; }
 body:has(.adminShell) .adminSideBottom a, body:has(.adminShell) .sideButton { height:40px; font-size:13px; }
+.adminNavTree{margin-top:10px;display:grid;gap:3px}.adminNavGroup{display:grid;gap:2px}.adminNavGroupButton{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;height:38px;padding:0 11px;border:0;background:transparent;border-radius:9px;color:#3f3f3b;font:inherit;font-size:13px;font-weight:700;cursor:pointer;text-align:left}.adminNavGroupButton:hover{background:#f3f3ef;color:#171717}.adminNavGroupButton.active{color:#171717;background:#f0f0ec}.adminNavChevron{transition:transform .16s ease;opacity:.65}.adminNavChevron.open{transform:rotate(180deg)}.adminNavChildren{display:grid;grid-template-rows:0fr;overflow:hidden;transition:grid-template-rows .16s ease}.adminNavChildren.open{grid-template-rows:1fr}.adminNavChildren > *{min-height:0}.adminNavItem{height:38px !important;margin:1px 0 !important;padding:0 11px 0 27px !important;border-radius:9px !important;font-size:13px !important;font-weight:600 !important;color:#666661 !important}.adminNavItem:hover{background:#f5f5f1 !important;color:#171717 !important;transform:none !important}.adminNavItem.active{background:#e8e8e3 !important;color:#111 !important;box-shadow:inset 2px 0 0 #171717}.adminNavGroup.active > .adminNavGroupButton{color:#171717}.adminNavGroup + .adminNavGroup{margin-top:2px}
 body:has(.adminShell) .adminMain { min-width:0; padding:0 34px 48px; }
 body:has(.adminShell) .adminTopbar { position:sticky; top:0; z-index:40; min-height:76px; padding:0; margin:0 0 28px; background:rgba(246,246,244,.94); backdrop-filter:blur(14px); border-bottom:1px solid #e6e6e2; }
 body:has(.adminShell) .adminTopbar > div:first-child { padding:12px 0; }
@@ -94,4 +116,22 @@ body:has(.adminShell) .input:focus, body:has(.adminShell) .textarea:focus { outl
 `
 
 export default async function AdminLayout({children}:{children:React.ReactNode}){
- const user=await getCurrentUser(); if(!user||user.role==='CUSTOMER') redirect('/account/login'); const visible=links.filter(([, ,permission])=>hasPermission(user.role,permission)); return <><style dangerouslySetInnerHTML={{__html:adminCss}} /><div className="adminShell"><aside className="adminSide"><div className="adminBrand"><div className="adminBrandMark"><ShieldCheck size={18}/></div><div><div className="logo">Control Center</div><div className="muted" style={{fontSize:12}}>Store operations</div></div></div><div className="pill" style={{margin:'18px 0'}}>{user.role}</div><nav aria-label="Admin navigation">{visible.map(([href,label,permission,Icon])=><Link key={href} href={href}><Icon size={16}/><span>{label}</span></Link>)}</nav><div className="adminSideBottom"><Link href="/"><Store size={16}/> View storefront</Link><form action="/api/auth/logout" method="post"><button className="sideButton" type="submit"><LogOut size={16}/> Sign out</button></form></div></aside><section className="adminMain"><header className="adminTopbar"><div><div className="muted" style={{fontSize:12}}>SIGNED IN AS</div><strong>{user.name}</strong></div><div className="inline"><OrderAlerts vapidPublicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}/><div className="pill">{user.email}</div></div></header>{children}</section></div></> }
+  const user = await getCurrentUser()
+  if (!user || user.role === 'CUSTOMER') redirect('/account/login')
+  const visibleGroups = groups
+    .map(group => ({ ...group, items: group.items.filter(item => hasPermission(user.role, item.permission)) }))
+    .filter(group => group.items.length > 0)
+
+  return <>
+    <style dangerouslySetInnerHTML={{__html:adminCss}} />
+    <div className="adminShell">
+      <aside className="adminSide">
+        <div className="adminBrand"><div className="adminBrandMark"><ShieldCheck size={18}/></div><div><div className="logo">Control Center</div><div className="muted" style={{fontSize:12}}>Store operations</div></div></div>
+        <div className="pill" style={{margin:'18px 0'}}>{user.role}</div>
+        <AdminSidebar groups={visibleGroups} />
+        <div className="adminSideBottom"><Link href="/"><Store size={16}/> View storefront</Link><form action="/api/auth/logout" method="post"><button className="sideButton" type="submit"><LogOut size={16}/> Sign out</button></form></div>
+      </aside>
+      <section className="adminMain"><header className="adminTopbar"><div><div className="muted" style={{fontSize:12}}>SIGNED IN AS</div><strong>{user.name}</strong></div><div className="inline"><OrderAlerts vapidPublicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}/><div className="pill">{user.email}</div></div></header>{children}</section>
+    </div>
+  </>
+}
