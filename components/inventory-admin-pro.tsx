@@ -11,7 +11,6 @@ async function api(path: string, init?: RequestInit) {
 }
 
 type InventoryRow = any
-
 type Filter = 'ALL' | 'IN_STOCK' | 'LOW' | 'OUT'
 type DrawerTab = 'ADJUST' | 'HISTORY'
 
@@ -32,8 +31,8 @@ function statusFor(row: InventoryRow) {
 function formatMovement(row: any) {
   const type = String(row.type || '').replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (m: string) => m.toUpperCase())
   const qty = Number(row.quantity || 0)
-  const prefix = ['RECEIPT', 'RETURN', 'ADJUSTMENT'].includes(String(row.type)) ? '+' : '-'
-  return `${prefix}${qty} ${type}`
+  const sign = qty >= 0 ? '+' : '-'
+  return `${sign}${Math.abs(qty)} ${type}`
 }
 
 export default function InventoryAdminPro({ initial }: { initial: InventoryRow[] }) {
@@ -93,11 +92,15 @@ export default function InventoryAdminPro({ initial }: { initial: InventoryRow[]
   async function saveAdjustment() {
     if (!selected) return
     const change = Number(delta)
+    const thresholdValue = Number(threshold)
     if (!Number.isInteger(change)) return setError('Enter a whole-number adjustment.')
-    if (change === 0 && reason === 'Stock adjustment') return setError('Enter a quantity change or choose a setting update.')
+    if (!Number.isInteger(thresholdValue) || thresholdValue < 0) return setError('Low-stock threshold must be a non-negative whole number.')
+    if (newLocation.trim().length > 120) return setError('Location is too long.')
+    if (change === 0 && reason === 'Stock adjustment' && thresholdValue === Number(selected.lowStockThreshold ?? 5) && newLocation.trim() === String(selected.location || 'Main')) return setError('Make a change before saving.')
     setBusy(true); setError(''); setNotice('')
     try {
-      const data = await api('/api/admin/inventory', { method: 'PATCH', body: JSON.stringify({ id: selected.id, delta: change, reason, location: newLocation, lowStockThreshold: Number(threshold) }) })
+      const payload = { id: selected.id, delta: change, reason, location: newLocation.trim() || 'Main', lowStockThreshold: thresholdValue }
+      const data = await api('/api/admin/inventory', { method: 'PATCH', body: JSON.stringify(payload) })
       setRows(prev => prev.map(r => r.id === selected.id ? { ...r, ...data.item, product: r.product, variant: r.variant, movements: data.item.movements || r.movements } : r))
       setSelected(null)
       setNotice(change === 0 ? 'Inventory settings updated.' : `${change > 0 ? '+' : ''}${change} units updated.`)
@@ -110,74 +113,12 @@ export default function InventoryAdminPro({ initial }: { initial: InventoryRow[]
   const selectedStatus = selected ? statusFor(selected) : null
 
   return <div className="inventoryPage">
-    <div className="sectionHead inventoryHead">
-      <div>
-        <span className="muted tiny">PRODUCTS · INVENTORY</span>
-        <h1 className="h2">Inventory</h1>
-        <p className="muted">Keep every location accurate and every available quantity sellable.</p>
-      </div>
-      <div className="inventoryLive"><span className="inventoryLiveDot"/><span>Live inventory</span></div>
-    </div>
-
+    <div className="sectionHead inventoryHead"><div><span className="muted tiny">PRODUCTS · INVENTORY</span><h1 className="h2">Inventory</h1><p className="muted">Keep every location accurate and every available quantity sellable.</p></div><div className="inventoryLive"><span className="inventoryLiveDot"/><span>Live inventory</span></div></div>
     {error && !selected && <div className="alert danger">{error}</div>}
     {notice && <div className="alert inventoryNotice"><Check size={15}/>{notice}</div>}
-
-    <div className="inventoryStats inventoryStatsPro">
-      <button type="button" className={filter === 'ALL' ? 'inventoryStat clickable active' : 'inventoryStat clickable'} onClick={() => setFilter('ALL')}><span>All stock</span><strong>{filtered.length}</strong><small>Showing records</small></button>
-      <div className="inventoryStat"><span>Available</span><strong>{stats.available.toLocaleString()}</strong><small>Sellable units</small></div>
-      <div className="inventoryStat"><span>Reserved</span><strong>{stats.reserved.toLocaleString()}</strong><small>Held for orders</small></div>
-      <button type="button" className={filter === 'LOW' ? 'inventoryStat clickable active warning' : 'inventoryStat clickable warning'} onClick={() => setFilter('LOW')}><span>Low stock</span><strong>{stats.low}</strong><small>Needs attention</small></button>
-      <button type="button" className={filter === 'OUT' ? 'inventoryStat clickable active danger' : 'inventoryStat clickable danger'} onClick={() => setFilter('OUT')}><span>Out of stock</span><strong>{stats.out}</strong><small>Needs replenishment</small></button>
-    </div>
-
-    <div className="card inventoryControlBar">
-      <div className="inventorySearchBox"><Search size={17}/><input aria-label="Search inventory" value={q} onChange={e => setQ(e.target.value)} placeholder="Search products, SKUs, variants…"/>{q && <button type="button" className="inventorySearchClear" onClick={() => setQ('')}><X size={14}/></button>}</div>
-      <div className="inventoryControlGroup">
-        <div className="inventorySelect"><SlidersHorizontal size={15}/><select aria-label="Inventory status" value={filter} onChange={e => setFilter(e.target.value as Filter)}><option value="ALL">All stock</option><option value="IN_STOCK">In stock</option><option value="LOW">Low stock</option><option value="OUT">Out of stock</option></select><ChevronDown size={14}/></div>
-        <div className="inventorySelect"><MapPin size={15}/><select aria-label="Inventory location" value={location} onChange={e => setLocation(e.target.value)}><option value="ALL">All locations</option>{locations.map(x => <option key={x} value={x}>{x}</option>)}</select><ChevronDown size={14}/></div>
-      </div>
-    </div>
-
-    <div className="card inventoryTableShell">
-      <div className="inventoryTableHeader"><div><strong>{filtered.length.toLocaleString()} inventory records</strong><span className="muted"> · {locations.length} {locations.length === 1 ? 'location' : 'locations'}</span></div><div className="muted">Click a row to adjust stock</div></div>
-      <div className="tableWrap">
-        <table className="table inventoryTablePro">
-          <thead><tr><th>Product</th><th>Location</th><th className="num">On hand</th><th className="num">Reserved</th><th className="num">Available</th><th>Status</th><th className="actionsCol">Quick adjust</th></tr></thead>
-          <tbody>
-            {filtered.map(r => {
-              const s = availability(r); const state = statusFor(r)
-              return <tr key={r.id} className="inventoryRow" onClick={() => openAdjust(r, 0)}>
-                <td><div className="inventoryProductCell"><div className="inventoryThumb">{r.product?.images?.[0]?.url ? <img src={r.product.images[0].url} alt=""/> : <Boxes size={18}/>}</div><div><strong>{r.product?.name || 'Product'}</strong><div className="muted">{r.variant?.name || r.product?.sku || 'Default'}{r.variant?.sku ? ` · ${r.variant.sku}` : ''}</div></div></div></td>
-                <td><span className="inventoryLocation"><MapPin size={13}/>{r.location || 'Main'}</span></td>
-                <td className="num"><strong>{s.quantity}</strong></td>
-                <td className="num"><span className="reservedValue">{s.reserved}</span></td>
-                <td className="num"><strong className={s.available <= 0 ? 'inventoryQty dangerText' : s.available <= Number(r.lowStockThreshold ?? 5) ? 'inventoryQty warningText' : 'inventoryQty'}>{s.available}</strong></td>
-                <td><span className={`inventoryStatus ${state.tone}`}>{state.tone === 'success' ? <Check size={12}/> : <AlertTriangle size={12}/>} {state.label}</span></td>
-                <td className="actionsCol" onClick={e => e.stopPropagation()}><div className="inventoryQuick"><button type="button" title="Add 1" onClick={() => openAdjust(r, 1)}><Plus size={14}/></button><button type="button" title="Remove 1" onClick={() => openAdjust(r, -1)}><Minus size={14}/></button></div></td>
-              </tr>
-            })}
-          </tbody>
-        </table>
-      </div>
-      {!filtered.length && <div className="inventoryEmpty"><Boxes size={30}/><h3>No inventory found</h3><p className="muted">Try a different search, stock status, or location.</p></div>}
-    </div>
-
-    {selected && <div className="inventoryDrawerOverlay" onMouseDown={closeDrawer}>
-      <aside className="inventoryDrawer" onMouseDown={e => e.stopPropagation()}>
-        <div className="inventoryDrawerHeader"><div><span className="muted tiny">INVENTORY</span><h2>{selected.product?.name || 'Product'}</h2><p className="muted">{selected.variant?.name || selected.product?.sku || 'Default'} · {selected.location || 'Main'}</p></div><button type="button" className="inventoryClose" onClick={closeDrawer} disabled={busy}><X size={18}/></button></div>
-        <div className="inventoryDrawerStats"><div><span>On hand</span><strong>{current?.quantity}</strong></div><div><span>Reserved</span><strong>{current?.reserved}</strong></div><div><span>Available</span><strong>{current?.available}</strong></div></div>
-        <div className="inventoryDrawerStatus"><span className={`inventoryStatus ${selectedStatus?.tone}`}>{selectedStatus?.tone === 'success' ? <Check size={12}/> : <AlertTriangle size={12}/>} {selectedStatus?.label}</span><span className="muted">Threshold {selected.lowStockThreshold ?? 5}</span></div>
-        <div className="inventoryDrawerTabs"><button type="button" className={drawerTab === 'ADJUST' ? 'active' : ''} onClick={() => setDrawerTab('ADJUST')}>Adjust</button><button type="button" className={drawerTab === 'HISTORY' ? 'active' : ''} onClick={() => setDrawerTab('HISTORY')}>History</button></div>
-
-        {drawerTab === 'ADJUST' ? <div className="inventoryDrawerBody">
-          <div className="inventoryAmountBlock"><div className="inventoryFieldLabel"><span>Quantity adjustment</span><small>Use + for receiving and − for reductions</small></div><div className="inventoryQuickAmounts">{[-10, -5, -1, 1, 5, 10].map(v => <button type="button" key={v} className={delta === String(v) ? 'active' : ''} onClick={() => setDelta(String(v))}>{v > 0 ? `+${v}` : v}</button>)}</div><input className="inventoryAmountInput" aria-label="Quantity adjustment" type="number" step="1" value={delta} onChange={e => setDelta(e.target.value)}/></div>
-          <label className="inventoryFieldLabel"><span>Reason</span><select className="input" value={reason} onChange={e => setReason(e.target.value)}><option>Stock received</option><option>Stock return</option><option>Stock count correction</option><option>Stock reduction</option><option>Damaged stock</option><option>Stock adjustment</option></select></label>
-          <div className="inventoryTwoFields"><label className="inventoryFieldLabel"><span>Location</span><input className="input" value={newLocation} onChange={e => setNewLocation(e.target.value)} placeholder="Main"/></label><label className="inventoryFieldLabel"><span>Low-stock threshold</span><input className="input" min="0" type="number" value={threshold} onChange={e => setThreshold(e.target.value)}/></label></div>
-          {Number(delta) !== 0 && current && <div className="inventoryPreview"><div><span>Current available</span><strong>{current.available}</strong></div><div><span>After adjustment</span><strong>{Math.max(0, current.quantity + Number(delta) - current.reserved)}</strong></div></div>}
-          {error && <div className="alert danger">{error}</div>}
-          <div className="inventoryDrawerActions"><button type="button" className="btn secondary" disabled={busy} onClick={closeDrawer}>Cancel</button><button type="button" className="btn" disabled={busy} onClick={saveAdjustment}>{busy ? 'Saving…' : 'Save adjustment'}</button></div>
-        </div> : <div className="inventoryHistoryList">{(selected.movements || []).length ? selected.movements.map((m: any) => <div className="inventoryHistoryItem" key={m.id}><div className="historyIcon"><History size={14}/></div><div><strong>{formatMovement(m)}</strong><div className="muted">{m.reason || 'Inventory update'} · {new Date(m.createdAt).toLocaleString()}</div></div></div>) : <div className="inventoryEmpty compact"><History size={24}/><p className="muted">No inventory movements yet.</p></div>}</div>}
-      </aside>
-    </div>}
+    <div className="inventoryStats inventoryStatsPro"><button type="button" className={filter === 'ALL' ? 'inventoryStat clickable active' : 'inventoryStat clickable'} onClick={() => setFilter('ALL')}><span>All stock</span><strong>{filtered.length}</strong><small>Showing records</small></button><div className="inventoryStat"><span>Available</span><strong>{stats.available.toLocaleString()}</strong><small>Sellable units</small></div><div className="inventoryStat"><span>Reserved</span><strong>{stats.reserved.toLocaleString()}</strong><small>Held for orders</small></div><button type="button" className={filter === 'LOW' ? 'inventoryStat clickable active warning' : 'inventoryStat clickable warning'} onClick={() => setFilter('LOW')}><span>Low stock</span><strong>{stats.low}</strong><small>Needs attention</small></button><button type="button" className={filter === 'OUT' ? 'inventoryStat clickable active danger' : 'inventoryStat clickable danger'} onClick={() => setFilter('OUT')}><span>Out of stock</span><strong>{stats.out}</strong><small>Needs replenishment</small></button></div>
+    <div className="card inventoryControlBar"><div className="inventorySearchBox"><Search size={17}/><input aria-label="Search inventory" value={q} onChange={e => setQ(e.target.value)} placeholder="Search products, SKUs, variants…"/>{q && <button type="button" className="inventorySearchClear" onClick={() => setQ('')}><X size={14}/></button>}</div><div className="inventoryControlGroup"><div className="inventorySelect"><SlidersHorizontal size={15}/><select aria-label="Inventory status" value={filter} onChange={e => setFilter(e.target.value as Filter)}><option value="ALL">All stock</option><option value="IN_STOCK">In stock</option><option value="LOW">Low stock</option><option value="OUT">Out of stock</option></select><ChevronDown size={14}/></div><div className="inventorySelect"><MapPin size={15}/><select aria-label="Inventory location" value={location} onChange={e => setLocation(e.target.value)}><option value="ALL">All locations</option>{locations.map(x => <option key={x} value={x}>{x}</option>)}</select><ChevronDown size={14}/></div></div></div>
+    <div className="card inventoryTableShell"><div className="inventoryTableHeader"><div><strong>{filtered.length.toLocaleString()} inventory records</strong><span className="muted"> · {locations.length} {locations.length === 1 ? 'location' : 'locations'}</span></div><div className="muted">Click a row to adjust stock</div></div><div className="tableWrap"><table className="table inventoryTablePro"><thead><tr><th>Product</th><th>Location</th><th className="num">On hand</th><th className="num">Reserved</th><th className="num">Available</th><th>Status</th><th className="actionsCol">Quick adjust</th></tr></thead><tbody>{filtered.map(r => { const s = availability(r); const state = statusFor(r); return <tr key={r.id} className="inventoryRow" onClick={() => openAdjust(r, 0)}><td><div className="inventoryProductCell"><div className="inventoryThumb">{r.product?.images?.[0]?.url ? <img src={r.product.images[0].url} alt=""/> : <Boxes size={18}/>}</div><div><strong>{r.product?.name || 'Product'}</strong><div className="muted">{r.variant?.name || r.product?.sku || 'Default'}{r.variant?.sku ? ` · ${r.variant.sku}` : ''}</div></div></div></td><td><span className="inventoryLocation"><MapPin size={13}/>{r.location || 'Main'}</span></td><td className="num"><strong>{s.quantity}</strong></td><td className="num"><span className="reservedValue">{s.reserved}</span></td><td className="num"><strong className={s.available <= 0 ? 'inventoryQty dangerText' : s.available <= Number(r.lowStockThreshold ?? 5) ? 'inventoryQty warningText' : 'inventoryQty'}>{s.available}</strong></td><td><span className={`inventoryStatus ${state.tone}`}>{state.tone === 'success' ? <Check size={12}/> : <AlertTriangle size={12}/>} {state.label}</span></td><td className="actionsCol" onClick={e => e.stopPropagation()}><div className="inventoryQuick"><button type="button" title="Add 1" onClick={() => openAdjust(r, 1)}><Plus size={14}/></button><button type="button" title="Remove 1" onClick={() => openAdjust(r, -1)}><Minus size={14}/></button></div></td></tr>})}</tbody></table></div>{!filtered.length && <div className="inventoryEmpty"><Boxes size={30}/><h3>No inventory found</h3><p className="muted">Try a different search, stock status, or location.</p></div>}</div>
+    {selected && <div className="inventoryDrawerOverlay" onMouseDown={closeDrawer}><aside className="inventoryDrawer" onMouseDown={e => e.stopPropagation()}><div className="inventoryDrawerHeader"><div><span className="muted tiny">INVENTORY</span><h2>{selected.product?.name || 'Product'}</h2><p className="muted">{selected.variant?.name || selected.product?.sku || 'Default'} · {selected.location || 'Main'}</p></div><button type="button" className="inventoryClose" onClick={closeDrawer} disabled={busy}><X size={18}/></button></div><div className="inventoryDrawerStats"><div><span>On hand</span><strong>{current?.quantity}</strong></div><div><span>Reserved</span><strong>{current?.reserved}</strong></div><div><span>Available</span><strong>{current?.available}</strong></div></div><div className="inventoryDrawerStatus"><span className={`inventoryStatus ${selectedStatus?.tone}`}>{selectedStatus?.tone === 'success' ? <Check size={12}/> : <AlertTriangle size={12}/>} {selectedStatus?.label}</span><span className="muted">Threshold {selected.lowStockThreshold ?? 5}</span></div><div className="inventoryDrawerTabs"><button type="button" className={drawerTab === 'ADJUST' ? 'active' : ''} onClick={() => setDrawerTab('ADJUST')}>Adjust</button><button type="button" className={drawerTab === 'HISTORY' ? 'active' : ''} onClick={() => setDrawerTab('HISTORY')}>History</button></div>{drawerTab === 'ADJUST' ? <div className="inventoryDrawerBody"><div className="inventoryAmountBlock"><div className="inventoryFieldLabel"><span>Quantity adjustment</span><small>Use + for receiving and − for reductions</small></div><div className="inventoryQuickAmounts">{[-10, -5, -1, 1, 5, 10].map(v => <button type="button" key={v} className={delta === String(v) ? 'active' : ''} onClick={() => setDelta(String(v))}>{v > 0 ? `+${v}` : v}</button>)}</div><input className="inventoryAmountInput" aria-label="Quantity adjustment" type="number" step="1" value={delta} onChange={e => setDelta(e.target.value)}/></div><label className="inventoryFieldLabel"><span>Reason</span><select className="input" value={reason} onChange={e => setReason(e.target.value)}><option>Stock received</option><option>Stock return</option><option>Stock count correction</option><option>Stock reduction</option><option>Damaged stock</option><option>Stock adjustment</option></select></label><div className="inventoryTwoFields"><label className="inventoryFieldLabel"><span>Location</span><input className="input" value={newLocation} onChange={e => setNewLocation(e.target.value)} placeholder="Main"/></label><label className="inventoryFieldLabel"><span>Low-stock threshold</span><input className="input" min="0" type="number" value={threshold} onChange={e => setThreshold(e.target.value)}/></label></div>{Number(delta) !== 0 && current && <div className="inventoryPreview"><div><span>Current available</span><strong>{current.available}</strong></div><div><span>After adjustment</span><strong>{Math.max(0, current.quantity + Number(delta) - current.reserved)}</strong></div></div>}{error && <div className="alert danger">{error}</div>}<div className="inventoryDrawerActions"><button type="button" className="btn secondary" disabled={busy} onClick={closeDrawer}>Cancel</button><button type="button" className="btn" disabled={busy} onClick={saveAdjustment}>{busy ? 'Saving…' : 'Save adjustment'}</button></div></div> : <div className="inventoryHistoryList">{(selected.movements || []).length ? selected.movements.map((m: any) => <div className="inventoryHistoryItem" key={m.id}><div className="historyIcon"><History size={14}/></div><div><strong>{formatMovement(m)}</strong><div className="muted">{m.reason || 'Inventory update'} · {new Date(m.createdAt).toLocaleString()}</div></div></div>) : <div className="inventoryEmpty compact"><History size={24}/><p className="muted">No inventory movements yet.</p></div>}</div>}</aside></div>}
   </div>
 }
