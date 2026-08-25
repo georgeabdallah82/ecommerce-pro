@@ -38,6 +38,10 @@ The endpoint rejects mismatched successful amounts, ignores stale status updates
 
 `/api/admin/orders/:id` supports authenticated order viewing and controlled status updates. Cancelling an order releases reservations. Moving an inventory-tracked order to `SHIPPED` or `DELIVERED` fulfills its reserved stock exactly once.
 
+## Health check
+
+`GET /api/health` is the Render web-service health endpoint. It performs a lightweight PostgreSQL reachability check and returns HTTP `200` with `{ ok: true }` when the app and database are healthy, or HTTP `503` when the database is unreachable.
+
 ## SEO and security
 
 - `/robots.txt` excludes admin, API, and account paths.
@@ -51,8 +55,9 @@ The endpoint rejects mismatched successful amounts, ignores stale status updates
 1. Set `NEXT_PUBLIC_SITE_URL`.
 2. Set all production secrets in Render.
 3. Verify `DATABASE_URL` points to the production database.
-4. Run the CI build/typecheck successfully.
-5. Test COD checkout with stock, shared inventory, variants, coupons, cancellation, and fulfillment.
-6. Test payment webhooks with duplicate and out-of-order events.
-7. Configure the reservation cleanup scheduler.
-8. Verify `/robots.txt` and `/sitemap.xml` on the production domain.
+4. Confirm Render health checks `/api/health` successfully after deployment.
+5. Run the CI build/typecheck successfully.
+6. Test COD checkout with stock, shared inventory, variants, coupons, cancellation, and fulfillment.
+7. Test payment webhooks with duplicate and out-of-order events.
+8. Configure the reservation cleanup scheduler.
+9. Verify `/robots.txt` and `/sitemap.xml` on the production domain.
