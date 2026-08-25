@@ -69,10 +69,9 @@ export async function fulfillOrderStock(tx: any, orderId: string) {
       where: {
         referenceId: order.orderNumber,
         type: InventoryMovementType.SALE_RESERVATION,
-        inventory: {
-          productId: item.productId,
-          ...(item.variantId ? { variantId: item.variantId } : { variantId: null }),
-        },
+        inventory: item.variantId
+          ? { productId: item.productId, OR: [{ variantId: item.variantId }, { variantId: null }] }
+          : { productId: item.productId, variantId: null },
       },
       orderBy: { createdAt: 'asc' },
     })
