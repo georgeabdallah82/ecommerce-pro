@@ -1,6 +1,6 @@
 import { requirePermission } from '@/lib/auth'
 import { getThemeState } from '@/lib/theme'
-import ShopifyThemeEditorV3 from '@/components/shopify-theme-editor-v3'
+import ShopifyThemeEditorPage from '@/components/shopify-theme-editor-page'
 import ThemePublishBar from '@/components/theme-publish-bar'
 
 export const dynamic = 'force-dynamic'
@@ -11,7 +11,7 @@ export default async function ThemeEditorPage() {
   const state = await getThemeState()
   return (
     <>
-      <ShopifyThemeEditorV3
+      <ShopifyThemeEditorPage
         initial={{
           theme: JSON.parse(JSON.stringify(state.theme)),
           sections: JSON.parse(JSON.stringify(state.sections)),
