@@ -3,10 +3,12 @@ import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json, clampInt } from '@/lib/utils'
 
+const HISTORY_LIMIT = 50
+
 export async function GET() {
   try {
     await requirePermission('inventory.view')
-    return json(await db.inventoryItem.findMany({ include: { product: true, variant: true, movements: { orderBy: { createdAt: 'desc' }, take: 10 } }, orderBy: { quantity: 'asc' } }))
+    return json(await db.inventoryItem.findMany({ include: { product: true, variant: true, movements: { orderBy: { createdAt: 'desc' }, take: HISTORY_LIMIT } }, orderBy: { quantity: 'asc' } }))
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 })
   }
@@ -21,7 +23,9 @@ export async function PATCH(req: Request) {
     const delta = clampInt(b.delta, -100000, 100000, 0)
     const reason = String(b.reason || 'Manual adjustment').trim().slice(0, 1000) || 'Manual adjustment'
     const movementType = String(b.movementType || '').toUpperCase() === 'DAMAGE' ? 'DAMAGE' : 'ADJUSTMENT'
+    if (movementType === 'DAMAGE' && delta >= 0) return json({ error: 'Damage movements must reduce stock.' }, { status: 400 })
     const requestedLocation = b.location !== undefined ? String(b.location || '').trim().slice(0, 120) || 'Main' : undefined
+    const threshold = b.lowStockThreshold !== undefined ? clampInt(b.lowStockThreshold, 0, 100000, 5) : undefined
 
     const updated = await db.$transaction(async tx => {
       await tx.$queryRaw`SELECT "id" FROM "InventoryItem" WHERE "id" = ${id} FOR UPDATE`
@@ -32,40 +36,28 @@ export async function PATCH(req: Request) {
 
       if (requestedLocation !== undefined && requestedLocation !== (item.location || 'Main')) {
         const collision = await tx.inventoryItem.findFirst({
-          where: {
-            id: { not: id },
-            productId: item.productId,
-            variantId: item.variantId,
-            location: requestedLocation,
-          },
+          where: { id: { not: id }, productId: item.productId, variantId: item.variantId, location: requestedLocation },
           select: { id: true },
         })
         if (collision) throw new Error('That product/variant already has inventory at the selected location. Adjust the existing location record instead.')
       }
 
-      const row = await tx.inventoryItem.update({
+      await tx.inventoryItem.update({
         where: { id },
-        data: {
-          quantity: next,
-          lowStockThreshold: b.lowStockThreshold !== undefined ? clampInt(b.lowStockThreshold, 0, 100000, item.lowStockThreshold) : undefined,
-          location: requestedLocation,
-        },
-        include: { movements: { orderBy: { createdAt: 'desc' }, take: 10 } },
+        data: { quantity: next, lowStockThreshold: threshold, location: requestedLocation },
       })
+
       if (delta !== 0) {
-        await tx.inventoryMovement.create({
-          data: {
-            inventoryId: id,
-            type: movementType,
-            quantity: delta,
-            reason,
-          },
-        })
+        await tx.inventoryMovement.create({ data: { inventoryId: id, type: movementType, quantity: delta, reason } })
       }
-      return row
+
+      return tx.inventoryItem.findUniqueOrThrow({
+        where: { id },
+        include: { product: { include: { images: { orderBy: { sortOrder: 'asc' }, take: 1 } } }, variant: true, movements: { orderBy: { createdAt: 'desc' }, take: HISTORY_LIMIT } },
+      })
     })
 
-    await audit(actor.id, 'inventory.adjusted', 'InventoryItem', id, { delta, reason, movementType, location: requestedLocation, lowStockThreshold: b.lowStockThreshold })
+    await audit(actor.id, 'inventory.adjusted', 'InventoryItem', id, { delta, reason, movementType, location: requestedLocation, lowStockThreshold: threshold })
     return json({ item: updated })
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : 'Unable to adjust inventory' }, { status: 400 })
