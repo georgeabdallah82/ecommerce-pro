@@ -25,6 +25,14 @@ const storefrontChanged = patch('components/storefront-sections.tsx', [
   [
     "function QuickView({product,theme,onClose}:{product:AnyMap;theme:AnyMap;onClose:()=>void}){const {addItem}=useCart();const [qty,setQty]=useState(1);const [variantId,setVariantId]=useState<string|null>(product.variants?.[0]?.id||null);",
     "function QuickView({product,theme,onClose}:{product:AnyMap;theme:AnyMap;onClose:()=>void}){const {addItem}=useCart();const [qty,setQty]=useState(1);const [variantId,setVariantId]=useState<string|null>(product.variants?.[0]?.id||null);useEffect(()=>{setVariantId(product.variants?.[0]?.id||null);setQty(1)},[product?.id]);"
+  ],
+  [
+    "const [wishlist,setWishlist]=useState<Record<string,boolean>>({});const activeProduct=product||products[0]||null;",
+    "const [wishlist,setWishlist]=useState<Record<string,boolean>>({});const activeProduct=product||products[0]||null;useEffect(()=>{let alive=true;(async()=>{try{const response=await fetch('/api/wishlist',{cache:'no-store'});if(!response.ok)return;const data=await response.json();const next:Record<string,boolean>={};for(const item of Array.isArray(data.items)?data.items:[])if(item?.productId)next[item.productId]=true;if(alive)setWishlist(next)}catch{}})();return()=>{alive=false}},[]);"
+  ],
+  [
+    "const toggleWish=(id:string)=>setWishlist(w=>({...w,[id]:!w[id]}));",
+    "const toggleWish=async(id:string)=>{const previous=Boolean(wishlist[id]);setWishlist(w=>({...w,[id]:!previous}));try{const response=await fetch('/api/wishlist',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({productId:id})});if(!response.ok){setWishlist(w=>({...w,[id]:previous}))}}catch{setWishlist(w=>({...w,[id]:previous}))}};"
   ]
 ])
 
