@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { db } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { audit } from '@/lib/audit'
@@ -8,6 +9,26 @@ import { reserveStock } from '@/lib/inventory'
 import { getPaymentProvider } from '@/lib/payments'
 import { sendNewOrderPush } from '@/lib/push'
 import { PaymentMethod } from '@prisma/client'
+
+function stableSerialize(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value)
+  if (Array.isArray(value)) return `[${value.map(stableSerialize).join(',')}]`
+  return `{${Object.keys(value as Record<string, unknown>).sort().map(key => `${JSON.stringify(key)}:${stableSerialize((value as Record<string, unknown>)[key])}`).join(',')}}`
+}
+
+function checkoutFingerprint(userId: string | null, input: any, merged: Map<string, { productId: string; variantId: string | null; quantity: number }>) {
+  const items = [...merged.values()].sort((a, b) => `${a.productId}:${a.variantId ?? ''}`.localeCompare(`${b.productId}:${b.variantId ?? ''}`))
+  const payload = {
+    userId,
+    email: input.email,
+    phone: input.phone || null,
+    items,
+    couponCode: input.couponCode || null,
+    paymentMethod: input.paymentMethod,
+    shippingAddress: input.shippingAddress,
+  }
+  return createHash('sha256').update(stableSerialize(payload)).digest('hex')
+}
 
 async function applyCoupon(code: string, subtotal: number) {
   if (!code) return { discount: 0, coupon: null as any }
@@ -54,6 +75,7 @@ export async function POST(req: Request) {
       if (quantity > 99) throw new Error('Maximum quantity per product is 99')
       merged.set(key, { productId: item.productId, variantId: item.variantId ?? null, quantity })
     }
+    if (merged.size === 0) return json({ error: 'Your cart is empty.' }, { status: 400 })
 
     const ids = [...new Set([...merged.values()].map(i => i.productId))]
     const products = await db.product.findMany({ where: { id: { in: ids }, status: 'ACTIVE' }, include: { variants: true, inventory: true, images: true } })
@@ -86,12 +108,25 @@ export async function POST(req: Request) {
     const shippingTotal = coupon?.type === 'FREE_SHIPPING' ? 0 : shipping.total
     const grandTotal = Math.max(0, discountedSubtotal + shippingTotal + taxTotal)
     const orderNumber = `ORD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
+    const fingerprint = checkoutFingerprint(user?.id ?? null, input, merged)
 
     const result = await db.$transaction(async tx => {
       if (idempotencyKey) {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${idempotencyKey}))`
         const existing = await tx.paymentTransaction.findFirst({ where: { provider: 'checkout', externalId: idempotencyKey }, include: { order: true } })
-        if (existing?.order) return { existing: true as const, order: existing.order }
+        if (existing?.order) {
+          let existingFingerprint: string | null = null
+          if (existing.rawJson) {
+            try {
+              const parsed = JSON.parse(existing.rawJson) as { fingerprint?: unknown }
+              existingFingerprint = typeof parsed.fingerprint === 'string' ? parsed.fingerprint : null
+            } catch {
+              existingFingerprint = null
+            }
+          }
+          if (existingFingerprint && existingFingerprint !== fingerprint) throw new Error('This idempotency key was already used for a different checkout')
+          return { existing: true as const, order: existing.order }
+        }
       }
       if (coupon?.firstOrderOnly && user?.id) {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`first-order:${user.id}`}))`
@@ -111,7 +146,7 @@ export async function POST(req: Request) {
           shippingAddressJson: JSON.stringify(input.shippingAddress), couponCode: coupon?.code ?? null,
           shippingMethod: shipping.method, items: { create: normalized },
           events: { create: { status: 'PENDING', message: 'Order placed successfully.' } },
-          paymentTransactions: { create: { provider: 'checkout', externalId: idempotencyKey, status: 'created', amount: grandTotal, currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD' } },
+          paymentTransactions: { create: { provider: 'checkout', externalId: idempotencyKey, status: 'created', amount: grandTotal, currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD', rawJson: idempotencyKey ? JSON.stringify({ fingerprint }) : null } },
         },
       })
       return { existing: false as const, order }
@@ -124,6 +159,7 @@ export async function POST(req: Request) {
     return json({ order: { id: order.id, orderNumber: order.orderNumber, total: order.grandTotal } }, { status: 201 })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to place order'
-    return json({ error: message }, { status: 400 })
+    const status = message === 'This idempotency key was already used for a different checkout' ? 409 : 400
+    return json({ error: message }, { status })
   }
 }
