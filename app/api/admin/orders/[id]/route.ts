@@ -14,7 +14,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   try {
     await requirePermission('orders.view')
     const { id } = await params
-    const order = await db.order.findUnique({ where: { id }, include: { items: true, events: { orderBy: { createdAt: 'desc' } }, paymentTransactions: { orderBy: { createdAt: 'desc' } } } })
+    const order = await db.order.findUnique({ where: { id }, include: { items: true, events: { orderBy: { createdAt: 'desc' } }, paymentTransactions: { orderBy: { createdAt: 'desc' }, select: { id: true, orderId: true, provider: true, externalId: true, status: true, amount: true, currency: true, createdAt: true } } } })
     if (!order) return json({ error: 'Order not found' }, { status: 404 })
     return json({ order })
   } catch (error) {
@@ -68,7 +68,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return { order, updated, statusChanged, paymentChanged }
     })
 
-    if (result.order.userId && result.statusChanged) await db.notification.create({ data: { userId: result.order.userId, title: `Order ${result.order.orderNumber} updated`, body: `Your order is now ${result.updated.status.toLowerCase().replaceAll('_', ' ')}.`, type: 'ORDER_STATUS' } })
+    if (result.order.userId && result.statusChanged) await db.notification.create({ data: { userId: result.order.userId, title: `Order ${result.order.orderNumber} updated`, body: `Your order is now ${result.updated.status.toLowerCase().replaceAll('_', ' ')}.`, type: 'ORDER_STATUS' } }).catch(() => undefined)
     await audit(actor.id, 'order.updated', 'Order', result.order.id, { from: result.order.status, to: result.updated.status, paymentFrom: result.order.paymentStatus, paymentTo: result.updated.paymentStatus, statusChanged: result.statusChanged, paymentChanged: result.paymentChanged })
     return json({ order: result.updated })
   } catch (error) {
