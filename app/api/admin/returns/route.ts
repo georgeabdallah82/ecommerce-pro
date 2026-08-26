@@ -1,6 +1,5 @@
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
-import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 
 export async function POST(req: Request) {
@@ -31,14 +30,21 @@ export async function POST(req: Request) {
         if (match) alreadyReturned.set(match[1], (alreadyReturned.get(match[1]) || 0) + Math.max(0, movement.quantity))
       }
 
-      const normalized: Array<{ orderItemId: string; quantity: number; item: typeof order.items[number] }> = []
+      const requestedQuantities = new Map<string, number>()
       for (const raw of inputItems) {
         const orderItemId = String(raw.orderItemId || '').trim()
         const quantity = Number(raw.quantity)
         const item = orderItemById.get(orderItemId)
         if (!item) throw new Error(`Order item ${orderItemId} was not found`)
         if (!Number.isInteger(quantity) || quantity <= 0) throw new Error(`Invalid return quantity for ${item.name}`)
-        if ((alreadyReturned.get(orderItemId) || 0) + quantity > item.quantity) throw new Error(`Return quantity for ${item.name} exceeds the quantity purchased`)
+        const totalRequested = (requestedQuantities.get(orderItemId) || 0) + quantity
+        if (totalRequested + (alreadyReturned.get(orderItemId) || 0) > item.quantity) throw new Error(`Return quantity for ${item.name} exceeds the quantity purchased`)
+        requestedQuantities.set(orderItemId, totalRequested)
+      }
+
+      const normalized: Array<{ orderItemId: string; quantity: number; item: typeof order.items[number] }> = []
+      for (const [orderItemId, quantity] of requestedQuantities) {
+        const item = orderItemById.get(orderItemId)!
         normalized.push({ orderItemId, quantity, item })
       }
 
@@ -72,12 +78,29 @@ export async function POST(req: Request) {
       }
 
       const updated = await tx.order.update({ where: { id: order.id }, data: { paymentStatus, status: paymentStatus === 'REFUNDED' ? 'REFUNDED' : order.status, events: { create: { status: paymentStatus, message: `${returnId}: ${normalized.map(x => `${x.item.name} × ${x.quantity}`).join(', ')}${restock ? ' — restocked' : ' — not restocked'}${requestedRefund ? ` — refunded ${requestedRefund} ${order.currency}` : ''}` } } } })
+
+      await tx.auditLog.create({ data: {
+        actorId: actor.id,
+        action: 'order.returned',
+        entity: 'Order',
+        entityId: order.id,
+        metadataJson: JSON.stringify({ returnId, items: normalized.map(x => ({ orderItemId: x.orderItemId, quantity: x.quantity })), restocked: restock, refundId: refund?.id || null, refundAmount: requestedRefund }),
+      } })
+
       return { order: updated, returnId, refund, items: normalized.map(x => ({ orderItemId: x.orderItemId, quantity: x.quantity })), restocked: restock }
     })
 
-    await audit(actor.id, 'order.returned', 'Order', orderId, { returnId: result.returnId, items: result.items, restocked: result.restocked, refundId: result.refund?.id || null, refundAmount: requestedRefund })
+    if (result.order.userId) {
+      try {
+        await db.notification.create({ data: { userId: result.order.userId, title: `Return for ${result.order.orderNumber}`, body: `Your return ${result.returnId} was processed${result.refund ? ` with a ${requestedRefund} ${result.order.currency} refund` : ''}.`, type: 'ORDER_REFUND' } })
+      } catch {
+        // Notification delivery must never make a committed return retryable.
+      }
+    }
+
     return json(result, { status: 201 })
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Unable to process return' }, { status: 400 })
+    const message = e instanceof Error ? e.message : 'Unable to process return'
+    return json({ error: message }, { status: message === 'Order not found' ? 404 : message === 'UNAUTHORIZED' ? 401 : message === 'FORBIDDEN' ? 403 : 400 })
   }
 }
