@@ -10,6 +10,9 @@ export function middleware(request: NextRequest) {
       },
     })
   }
+
+  const response = new Response(null, { status: 200 })
+  return response
 }
 
 export const config = {
