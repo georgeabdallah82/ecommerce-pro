@@ -3,11 +3,11 @@ import './focal-store.css'
 import './focal-store-v2.css'
 import './focal-animations.css'
 import './focal-nav-enhancements.css'
-import './focal-parity.css'
 import './responsive-fixes.css'
 import './shopify-polish.css'
 import './ui-polish.css'
 import './ui-polish-v2.css'
+import './production-polish.css'
 import { getThemeState } from '@/lib/theme'
 import StoreNavRuntime from '@/components/store-nav-runtime'
 import StoreNavScroll from '@/components/store-nav-scroll'
@@ -57,5 +57,5 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     '--store-btn-hover': theme.buttons?.hover || 'lift',
     '--store-header-logo-width': `${theme.header?.logoWidth || 160}px`,
   } as React.CSSProperties
-  return <html lang="en"><head><link rel="stylesheet" href="/theme-fallback.css?v=9"/>{theme.faviconUrl && <link rel="icon" href={theme.faviconUrl}/>} {theme.customCss && <style dangerouslySetInnerHTML={{ __html: theme.customCss }}/>}</head><body style={vars} className={theme.animations?.enabled ? 'animations-enabled' : ''}><CartProvider><StoreNavRuntime theme={theme} navigation={navigation}/><StoreNavScroll/>{children}</CartProvider></body></html>
+  return <html lang="en"><head><link rel="stylesheet" href="/theme-fallback.css?v=10"/>{theme.faviconUrl && <link rel="icon" href={theme.faviconUrl}/>} {theme.customCss && <style dangerouslySetInnerHTML={{ __html: theme.customCss }}/>}</head><body style={vars} className={theme.animations?.enabled ? 'animations-enabled' : ''}><CartProvider><StoreNavRuntime theme={theme} navigation={navigation}/><StoreNavScroll/>{children}</CartProvider></body></html>
 }
