@@ -33,7 +33,6 @@ export default function Cart() {
                   <span className="price">{money(item.price)}</span>
                 </div>
                 <div className="cartControls">
-                  <label className="srOnly" htmlFor={`quantity-${key}`}>Quantity for {item.name}</label>
                   <input id={`quantity-${key}`} aria-label={`Quantity for ${item.name}`} className="input" type="number" min="1" max="99" value={item.quantity} onChange={e => updateQty(key, Math.max(1, Math.min(99, Number(e.target.value) || 1)))} />
                   <button className="textButton" type="button" onClick={() => removeItem(key)} aria-label={`Remove ${item.name} from cart`}>Remove</button>
                 </div>
