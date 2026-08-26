@@ -5,7 +5,7 @@ const checks = [
   ['components/storefront-sections.tsx', source => source.includes('setSelectedVariantId(product?.variants?.[0]?.id||null)') && source.includes('setQty(1)')],
   ['components/storefront-sections.tsx', source => source.includes("s.type==='footer'&&s.enabled!==false")],
   ['components/inventory-admin-pro.tsx', source => source.includes('disabled={availability(r).available <= 0}')],
-  ['components/live-storefront-sections.tsx', source => source.includes('window.setInterval(load, 15000)')],
+  ['components/live-storefront-sections.tsx', source => source.includes('window.setInterval(load, 30000)')],
   ['components/focal-theme-editor.tsx', source => {
     const prefix = "const changePage = (nextPage:string) => { if (nextPage === page) return;"
     const count = source.split(prefix).length - 1
