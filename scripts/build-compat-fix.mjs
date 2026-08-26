@@ -69,11 +69,15 @@ console.log(navigationChanged ? 'Applied storefront navigation layout and animat
 const previewChanged = fixFile('components/storefront-sections.tsx', [
   [
     "const visible=(sections||[]).filter((s:any)=>s&&s.enabled!==false&&s.settings?.enabled!==false&&s.type!=='header'&&s.type!=='footer'&&s.type!=='announcement')",
-    "const visible=(sections||[]).filter((s:any)=>s&&s.enabled!==false&&s.settings?.enabled!==false&&s.type!=='header'&&s.type!=='announcement'&&(preview||s.type!=='footer'))"
+    "const visible=(sections||[]).filter((s:any)=>s&&s.enabled!==false&&s.settings?.enabled!==false&&s.type!=='header'&&s.type!=='announcement')"
+  ],
+  [
+    '{preview&&<div className="themeEditorFooter"><Footer/></div>}',
+    '{preview&&(sections||[]).some((s:any)=>s&&s.type===\'footer\'&&s.enabled!==false&&s.settings?.enabled!==false)&&<div className="themeEditorFooter"><Footer/></div>}'
   ],
   [
     '.themeEditorPreview .themeEditorFooter{margin-top:0}',
     '.themeEditorPreview .themeEditorFooter{margin-top:0}.themeEditorPreview .focalType-featured_product .focalProductMedia{max-height:520px}.themeEditorPreview .focalType-featured_product .focalProductMedia img{max-height:520px;aspect-ratio:4/5;object-fit:cover}@media(max-width:850px){.themeEditorPreview .focalType-featured_product .focalProductMedia,.themeEditorPreview .focalType-featured_product .focalProductMedia img{max-height:360px}}@media(max-width:560px){.themeEditorPreview .focalType-featured_product .focalProductMedia,.themeEditorPreview .focalType-featured_product .focalProductMedia img{max-height:300px}}'
   ]
 ])
-console.log(previewChanged ? 'Applied Focal theme preview footer and featured-product fixes' : 'No Focal theme preview compatibility fix needed')
+console.log(previewChanged ? 'Applied Focal theme preview fixes' : 'No Focal theme preview compatibility fix needed')
