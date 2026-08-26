@@ -1,0 +1,63 @@
+/* High-end Shopify-inspired storefront + admin polish */
+:root{
+  --shop-ink:#202223;
+  --shop-muted:#6d7175;
+  --shop-border:#e1e3e5;
+  --shop-surface:#fff;
+  --shop-page:#f6f6f7;
+  --shop-green:#008060;
+  --shop-green-dark:#006e52;
+  --shop-shadow:0 1px 0 rgba(0,0,0,.04),0 2px 8px rgba(0,0,0,.04);
+}
+
+/* Store chrome */
+.focalNav{box-shadow:0 1px 0 rgba(0,0,0,.04);transition:background .18s ease,box-shadow .18s ease}.focalNav:hover{box-shadow:0 2px 12px rgba(0,0,0,.05)}
+.focalNavInner{max-width:1280px!important;padding:0 22px}.focalLogo{font-size:21px!important;color:var(--shop-ink)}
+.focalNavLinks{gap:28px!important}.focalNavLink{font-size:13px!important;font-weight:650!important;color:#3d4043!important}.focalNavLink:hover{color:var(--shop-ink)!important}
+.focalNavActions{gap:6px!important}.focalNavIcon{border-color:transparent!important;background:transparent!important;border-radius:10px!important}.focalNavIcon:hover{background:#f3f4f5!important}.focalCartCount{background:var(--shop-ink)!important}
+.focalAnnouncementGlobal{background:#1f1f1f!important}.focalAnnouncementGlobalInner{min-height:34px!important;font-size:11px!important;letter-spacing:.01em}
+
+/* Store layout */
+.focalStorefront{color:var(--shop-ink)}
+.focalContainer{width:min(1280px,calc(100% - 44px))!important}
+.focalSection{padding-left:0;padding-right:0}
+.focalSection .focalContainer{margin-left:auto;margin-right:auto}
+.focalType-rich_text h2,.focalType-hero h1,.focalType-main_product h1,.focalType-product_grid h2{letter-spacing:-.035em}
+.focalType-rich_text p{color:#5f6368;max-width:62ch}
+
+/* Product cards */
+.focalProductCard{background:#fff!important;border:0!important;border-radius:0!important;overflow:visible!important;transition:transform .18s ease}.focalProductCard:hover{transform:translateY(-2px)}
+.focalProductMedia{position:relative!important;border-radius:12px!important;overflow:hidden!important;background:#f4f5f5!important;box-shadow:inset 0 0 0 1px rgba(0,0,0,.04)}
+.focalProductMedia img{transition:transform .45s cubic-bezier(.2,.7,.2,1)!important}.focalProductCard:hover .focalProductMedia img{transform:scale(1.025)}
+.focalBadge{border-radius:6px!important;font-size:10px!important;font-weight:700!important;padding:5px 7px!important;background:#fff!important;color:#202223!important;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.focalProductActions{opacity:0!important;transform:translateY(4px);transition:.18s ease}.focalProductCard:hover .focalProductActions{opacity:1!important;transform:none}
+.focalProductActions button{background:#fff!important;border:1px solid #e1e3e5!important;color:#202223!important;border-radius:8px!important;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.focalProductBody{padding:12px 2px 4px!important}.focalProductBody h3{font-size:14px!important;line-height:1.35!important;font-weight:650!important;margin:4px 0!important}.focalEyebrow{font-size:10px!important;letter-spacing:.06em!important;font-weight:700!important;color:#6d7175!important}.focalPrice strong{font-size:14px!important;font-weight:700!important}.focalPrice del{font-size:12px!important;color:#8c9196!important}
+
+/* Toolbar / collections */
+.focalCollectionToolbar,.focalShopFilters{max-width:1280px!important;margin:0 auto!important;padding:12px 0!important;border:0!important;background:transparent!important}.focalCollectionToolbar{display:grid!important;grid-template-columns:minmax(220px,1fr) 180px 180px;gap:10px!important}.focalToolbarSearch{height:44px!important;border:1px solid var(--shop-border)!important;background:#fff!important;border-radius:9px!important;box-shadow:var(--shop-shadow)}
+.focalCollectionToolbar select,.focalShopFilters select,.focalShopFilters input{height:44px!important;border:1px solid var(--shop-border)!important;border-radius:9px!important;background:#fff!important;color:var(--shop-ink)!important;box-shadow:none!important}
+.focalShopFilters{display:grid!important;grid-template-columns:minmax(220px,1fr) 180px 180px auto!important;gap:10px!important;align-items:center}
+.focalShopFilters button,.focalButton.primary{background:var(--shop-ink)!important;border-color:var(--shop-ink)!important;border-radius:9px!important;min-height:44px!important}.focalButton.secondary{border-radius:9px!important}
+
+/* Product detail */
+.focalProductDetail{max-width:1280px!important;grid-template-columns:minmax(0,1.1fr) minmax(360px,.9fr)!important;gap:56px!important}.focalProductGallery{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}.focalProductGallery img{border-radius:12px!important;background:#f4f5f5!important}.focalProductInfo{padding-top:8px!important}.focalProductInfo h1{font-size:clamp(34px,4.5vw,56px)!important;line-height:1.02!important;font-weight:650!important}.focalRating{font-size:13px!important;color:#333!important}.focalRating span{color:#6d7175!important}.focalPrice.big{font-size:28px!important;font-weight:700!important}.focalOptionLabel{font-size:12px!important;font-weight:700!important;margin-bottom:8px}.focalVariantList{gap:8px!important}.focalVariantList button{border-radius:8px!important;border:1px solid var(--shop-border)!important;background:#fff!important}.focalVariantList button.selected{border-color:var(--shop-ink)!important;box-shadow:0 0 0 1px var(--shop-ink) inset!important}.focalPurchaseRow{gap:10px!important}.focalQty{border:1px solid var(--shop-border)!important;border-radius:9px!important;background:#fff!important}.focalQty button{border:0!important;background:transparent!important}.focalWishlist{width:44px!important;height:44px!important;border:1px solid var(--shop-border)!important;border-radius:9px!important;background:#fff!important}.focalTrustGrid{grid-template-columns:repeat(3,1fr)!important;gap:8px!important;color:#6d7175!important;font-size:11px!important}.focalAccordions details{border-top:1px solid var(--shop-border)!important}.focalAccordions summary{padding:16px 0!important;font-weight:650!important}
+
+/* Cart drawer and cart page */
+.focalCartDrawer{width:min(470px,100%)!important}.focalCartHead{padding:20px!important}.focalCartItem{padding:14px 0!important}.focalCartItem img{border-radius:8px!important}.focalCartFoot{padding:18px!important}.summaryCard{border:1px solid var(--shop-border)!important;border-radius:12px!important;background:#fff!important;box-shadow:var(--shop-shadow)!important}.cartRow{border:1px solid var(--shop-border)!important;border-radius:12px!important;background:#fff!important;box-shadow:none!important}.cartRow img{border-radius:8px!important}.btn{border-radius:9px!important;min-height:44px}.btn:not(.secondary):not(.ghost){background:var(--shop-ink);border-color:var(--shop-ink)}
+
+/* Admin shell */
+body:has(.adminShell){background:#f6f6f7!important;color:#202223!important}.adminMain{padding-bottom:60px!important}.adminTopbar{border-color:#e1e3e5!important;background:rgba(246,246,247,.94)!important}
+.adminSide{background:#fff!important;border-right-color:#e1e3e5!important}.adminSide a{color:#5d6165!important}.adminSide a:hover{background:#f1f2f3!important;color:#202223!important}.adminNavGroupButton.active,.adminNavItem.active{background:#e7f3ef!important;color:#005e46!important;box-shadow:inset 2px 0 0 #008060!important}
+.adminPanel,.card{border-color:#e1e3e5!important;border-radius:12px!important;box-shadow:0 1px 2px rgba(0,0,0,.03)!important}.adminPanel{background:#fff!important}.adminMain .sectionHead .h2{font-weight:650!important}
+.input,.textarea,.catalogToolbar,.productSearch,.opsTabs{border-color:#c9cccf!important;border-radius:9px!important}.input:focus,.textarea:focus,.productSearch:focus-within{border-color:#008060!important;box-shadow:0 0 0 1px #008060 inset,0 0 0 3px rgba(0,128,96,.08)!important}
+body:has(.adminShell) .btn:not(.secondary):not(.ghost){background:#008060!important;border-color:#008060!important}.statusPill.active{background:#e3f1ed!important;color:#006e52!important}
+
+/* Order detail */
+.orderDetailGrid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:20px;align-items:start}.orderDetailMain,.orderDetailRail{display:grid;gap:16px}.orderItemRow{display:grid;grid-template-columns:48px 1fr auto auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid #eef0f1}.orderItemImage{width:48px;height:48px;border-radius:8px;background:#f4f5f5;overflow:hidden;display:grid;place-items:center;color:#8c9196}.orderItemImage img{width:100%;height:100%;object-fit:cover}.summaryBox{margin-top:14px;padding-top:10px;border-top:1px solid #e1e3e5;display:grid;gap:6px}.summaryBox>div{display:flex;justify-content:space-between;gap:12px}.summaryBox .total{font-size:18px;font-weight:700;padding-top:10px;margin-top:6px;border-top:1px solid #e1e3e5}.orderDetailRail .adminPanel{position:relative}.orderDetailRail .adminPanel .input{margin-top:6px}.editAddressGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.editAddressGrid .full{grid-column:1/-1}.orderEditToolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;margin-bottom:14px;border:1px solid #d9dde1;background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+
+/* Hero polish */
+.focalType-hero{border-bottom:1px solid #eceff0}.focalType-hero .focalContainer{min-height:560px}.focalType-hero h1{font-weight:650!important}.focalType-hero .focalButton{border-radius:9px!important}
+
+@media(max-width:900px){.focalCollectionToolbar,.focalShopFilters{grid-template-columns:1fr!important}.focalProductDetail{grid-template-columns:1fr!important;gap:28px!important}.orderDetailGrid{grid-template-columns:1fr}.orderDetailRail{order:-1}.editAddressGrid{grid-template-columns:1fr}.editAddressGrid .full{grid-column:auto}.focalProductActions{opacity:1!important;transform:none!important}.focalType-hero .focalContainer{min-height:460px}}
+@media(max-width:600px){.focalContainer{width:min(100% - 24px,1280px)!important}.focalNavInner{padding:0 12px!important}.focalProductGallery{gap:8px!important}.focalProductInfo h1{font-size:32px!important}.focalTrustGrid{grid-template-columns:1fr!important}.orderItemRow{grid-template-columns:40px 1fr auto}.orderItemRow>strong:last-child{grid-column:2/-1}.orderItemImage{width:40px;height:40px}}
