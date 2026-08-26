@@ -24,7 +24,7 @@
     "zod": "^4.0.17"
   },
   "devDependencies": {
-    "@types/node": "^24.0.0",
+    "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/web-push": "^3.6.4",
@@ -33,6 +33,6 @@
     "typescript": "^5.9.2"
   },
   "engines": {
-    "node": ">=24.19.0 <25"
+    "node": ">=22.20.0 <23"
   }
 }
