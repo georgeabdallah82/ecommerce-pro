@@ -7,9 +7,9 @@ on:
     branches: [main]
 
 jobs:
-  verify:
+  quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -17,23 +17,20 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22.23.2
+          node-version: 24.15.0
           cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Validate Prisma schema
-        run: npx prisma validate
-
-      - name: Generate Prisma Client
-        run: npx prisma generate
-
-      - name: Backend audit
-        run: npm run backend:audit
+      - name: Prisma generate
+        run: npx prisma generate --schema=prisma
 
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Production build
+      - name: Backend audit
+        run: npm run backend:audit
+
+      - name: Build
         run: npm run build
