@@ -53,6 +53,28 @@ export async function PATCH(req: Request) {
     if (requestedPayment && !PAYMENT_STATUSES.has(requestedPayment)) return json({ error: 'Invalid payment status' }, { status: 400 })
     if (requestedPayment === PaymentStatus.REFUNDED || requestedPayment === PaymentStatus.PARTIALLY_REFUNDED) return json({ error: 'Use the refund/return workflow to create a refund transaction' }, { status: 400 })
 
+    const detailsPatch: Record<string, unknown> = {}
+    if (body.email !== undefined) {
+      const email = String(body.email || '').trim().slice(0, 320)
+      if (!email || !email.includes('@')) return json({ error: 'A valid customer email is required' }, { status: 400 })
+      detailsPatch.email = email
+    }
+    if (body.phone !== undefined) detailsPatch.phone = String(body.phone || '').trim().slice(0, 80) || null
+    if (body.shippingAddressJson !== undefined) {
+      const value = String(body.shippingAddressJson || '').trim()
+      if (!value) return json({ error: 'Shipping address is required' }, { status: 400 })
+      try { JSON.parse(value) } catch { return json({ error: 'Shipping address must be valid JSON' }, { status: 400 }) }
+      detailsPatch.shippingAddressJson = value.slice(0, 12000)
+    }
+    if (body.billingAddressJson !== undefined) {
+      const value = String(body.billingAddressJson || '').trim()
+      detailsPatch.billingAddressJson = value ? value.slice(0, 12000) : null
+      if (value) { try { JSON.parse(value) } catch { return json({ error: 'Billing address must be valid JSON' }, { status: 400 }) } }
+    }
+    if (body.notes !== undefined) detailsPatch.notes = String(body.notes || '').trim().slice(0, 5000) || null
+    if (body.trackingNumber !== undefined) detailsPatch.trackingNumber = String(body.trackingNumber || '').trim().slice(0, 120) || null
+
+    const hasOnlyDetails = Object.keys(detailsPatch).length > 0 && !requestedStatus && !requestedPayment
     const result = await db.$transaction(async tx => {
       await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${orderId} FOR UPDATE`
       const order = await tx.order.findUnique({ where: { id: orderId } })
@@ -65,12 +87,16 @@ export async function PATCH(req: Request) {
       const fulfilling = requestedStatus === OrderStatus.SHIPPED && order.fulfillmentStatus !== 'FULFILLED'
       if (cancelling) await releaseOrderReservations(tx, order.id, 'Order cancelled')
       if (fulfilling) await fulfillOrderStock(tx, order.id)
-      const data: any = { ...(statusChanged ? { status: requestedStatus, fulfillmentStatus: fulfillmentForStatus(requestedStatus!) } : {}), ...(paymentChanged ? { paymentStatus: requestedPayment } : {}), ...(body.trackingNumber !== undefined ? { trackingNumber: String(body.trackingNumber || '').trim().slice(0, 120) || null } : {}), ...(body.notes !== undefined ? { notes: String(body.notes || '').trim().slice(0, 5000) } : {}) }
+      const data: any = {
+        ...detailsPatch,
+        ...(statusChanged ? { status: requestedStatus, fulfillmentStatus: fulfillmentForStatus(requestedStatus!) } : {}),
+        ...(paymentChanged ? { paymentStatus: requestedPayment } : {}),
+      }
       const updated = await tx.order.update({ where: { id: order.id }, data: { ...data, ...(statusChanged ? { events: { create: { status: requestedStatus!, message: `Order moved from ${order.status} to ${requestedStatus}.` } } } : {}) } })
-      return { order, updated, statusChanged, paymentChanged }
+      return { order, updated, statusChanged, paymentChanged, hasOnlyDetails }
     })
     if (result.order.userId && result.statusChanged) await db.notification.create({ data: { userId: result.order.userId, title: `Order ${result.order.orderNumber} updated`, body: `Your order is now ${result.updated.status.toLowerCase().replaceAll('_', ' ')}.`, type: 'ORDER_STATUS' } })
-    await audit(actor.id, 'order.updated', 'Order', result.order.id, { from: result.order.status, to: result.updated.status, paymentFrom: result.order.paymentStatus, paymentTo: result.updated.paymentStatus, statusChanged: result.statusChanged, paymentChanged: result.paymentChanged })
+    await audit(actor.id, 'order.updated', 'Order', result.order.id, { from: result.order.status, to: result.updated.status, paymentFrom: result.order.paymentStatus, paymentTo: result.updated.paymentStatus, statusChanged: result.statusChanged, paymentChanged: result.paymentChanged, detailsEdited: Object.keys(detailsPatch) })
     return json({ order: result.updated })
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : 'Unable to update order' }, { status: 400 })
