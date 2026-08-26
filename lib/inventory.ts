@@ -1,5 +1,21 @@
 import { InventoryMovementType } from '@prisma/client'
 
+type ReservationMovement = {
+  inventoryId: string
+  quantity: number
+}
+
+type InventoryMovementRow = {
+  inventoryId: string
+  quantity: number
+}
+
+type InventoryAllocationRow = {
+  id: string
+  productId: string
+  variantId: string | null
+}
+
 export function availableQuantity(row: { quantity: number; reserved: number }) {
   return Math.max(0, row.quantity - row.reserved)
 }
@@ -45,10 +61,10 @@ export async function releaseOrderReservations(tx: any, orderId: string, reason 
   const order = await tx.order.findUnique({ where: { id: orderId } })
   if (!order) throw new Error('Order not found')
 
-  const reservations = await tx.inventoryMovement.findMany({
+  const reservations = (await tx.inventoryMovement.findMany({
     where: { type: InventoryMovementType.SALE_RESERVATION, referenceId: order.orderNumber },
     orderBy: { createdAt: 'asc' },
-  })
+  })) as ReservationMovement[]
 
   for (const reservation of reservations) {
     const [released, fulfilled] = await Promise.all([
@@ -89,12 +105,12 @@ export async function fulfillOrderStock(tx: any, orderId: string) {
   const order = await tx.order.findUnique({ where: { id: orderId }, include: { items: { include: { product: true } } } })
   if (!order) throw new Error('Order not found')
 
-  const reservations = await tx.inventoryMovement.findMany({
+  const reservations = (await tx.inventoryMovement.findMany({
     where: { referenceId: order.orderNumber, type: InventoryMovementType.SALE_RESERVATION },
     orderBy: { createdAt: 'asc' },
-  })
+  })) as ReservationMovement[]
 
-  const [releasedRows, fulfilledRows] = await Promise.all([
+  const [releasedRows, fulfilledRows] = (await Promise.all([
     tx.inventoryMovement.findMany({
       where: { referenceId: order.orderNumber, type: InventoryMovementType.SALE_RELEASE },
       select: { inventoryId: true, quantity: true },
@@ -103,7 +119,7 @@ export async function fulfillOrderStock(tx: any, orderId: string) {
       where: { referenceId: order.orderNumber, type: InventoryMovementType.SALE_FULFILLMENT },
       select: { inventoryId: true, quantity: true },
     }),
-  ])
+  ])) as [InventoryMovementRow[], InventoryMovementRow[]]
 
   const releasedByInventory = new Map<string, number>()
   for (const row of releasedRows) releasedByInventory.set(row.inventoryId, (releasedByInventory.get(row.inventoryId) ?? 0) + row.quantity)
@@ -117,11 +133,11 @@ export async function fulfillOrderStock(tx: any, orderId: string) {
     if (remaining > 0) remainingReservationByInventory.set(reservation.inventoryId, (remainingReservationByInventory.get(reservation.inventoryId) ?? 0) + remaining)
   }
 
-  const inventoryRows = await tx.inventoryItem.findMany({
+  const inventoryRows = (await tx.inventoryItem.findMany({
     where: { id: { in: [...remainingReservationByInventory.keys()] } },
     select: { id: true, productId: true, variantId: true },
-  })
-  const inventoryById = new Map(inventoryRows.map((row: any) => [row.id, row]))
+  })) as InventoryAllocationRow[]
+  const inventoryById = new Map<string, InventoryAllocationRow>(inventoryRows.map(row => [row.id, row]))
 
   const demands = new Map<string, { productId: string; variantId: string | null; quantity: number; name: string }>()
   for (const item of order.items) {
@@ -136,7 +152,7 @@ export async function fulfillOrderStock(tx: any, orderId: string) {
   }
 
   for (const demand of demands.values()) {
-    const eligibleReservations = reservations.filter(reservation => {
+    const eligibleReservations = reservations.filter((reservation: ReservationMovement) => {
       const inventory = inventoryById.get(reservation.inventoryId)
       if (!inventory) return false
       if (demand.variantId) return inventory.productId === demand.productId && inventory.variantId === demand.variantId
