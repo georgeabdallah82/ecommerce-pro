@@ -7,8 +7,9 @@ const checks = [
   ['components/inventory-admin-pro.tsx', source => source.includes('disabled={availability(r).available <= 0}')],
   ['components/live-storefront-sections.tsx', source => source.includes('window.setInterval(load, 15000)')],
   ['components/focal-theme-editor.tsx', source => {
-    const declaration = "const changePage = (nextPage:string) => { if (nextPage === page) return;"
-    return source.includes("!['announcement','header'].includes(key)") && source.includes('You have unsaved changes. Switch templates anyway?') && (source.match(new RegExp(declaration.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&'), 'g')) || []).length === 1
+    const prefix = "const changePage = (nextPage:string) => { if (nextPage === page) return;"
+    const count = source.split(prefix).length - 1
+    return source.includes("!['announcement','header'].includes(key)") && source.includes('You have unsaved changes. Switch templates anyway?') && count === 1
   }],
   ['components/orders-admin-shopify.tsx', source => source.includes("if(['CANCELLED','REFUNDED'].includes(o.status))return sum")],
 ]
