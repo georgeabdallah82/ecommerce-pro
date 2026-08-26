@@ -22,12 +22,7 @@ const storefrontChanged = patch('components/storefront-sections.tsx', [
   ["const toggleWish=(id:string)=>setWishlist(w=>({...w,[id]:!w[id]}));", "const toggleWish=async(id:string)=>{const previous=Boolean(wishlist[id]);setWishlist(w=>({...w,[id]:!previous}));try{const response=await fetch('/api/wishlist',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({productId:id})});if(!response.ok){setWishlist(w=>({...w,[id]:previous}))}}catch{setWishlist(w=>({...w,[id]:previous}))}};"]
 ])
 
-const inventoryChanged = patch('components/inventory-admin-pro.tsx', [
-  ["if (!Number.isInteger(thresholdValue) || thresholdValue < 0) return setError('Low-stock threshold must be a non-negative whole number.')", "if (!Number.isInteger(thresholdValue) || thresholdValue < 0) return setError('Low-stock threshold must be a non-negative whole number.')\n    const availableBefore = selected ? availability(selected).available : 0\n    if (change < -availableBefore) return setError(`Cannot reduce stock by ${Math.abs(change)}. Only ${availableBefore} units are available after reservations.`)"],
-  ["{[-10, -5, -1, 1, 5, 10].map(v => <button type=\"button\" key={v} className={delta === String(v) ? 'active' : ''} onClick={() => setDelta(String(v))}>{v > 0 ? `+${v}` : v}</button>)}", "{[-10, -5, -1, 1, 5, 10].map(v => <button type=\"button\" key={v} className={delta === String(v) ? 'active' : ''} disabled={v < 0 && !!current && current.available + v < 0} onClick={() => setDelta(String(v))}>{v > 0 ? `+${v}` : v}</button>)}"],
-  ["<td className=\"actionsCol\" onClick={e => e.stopPropagation()}><div className=\"inventoryQuick\"><button type=\"button\" title=\"Add 1\" onClick={() => openAdjust(r, 1)}><Plus size={14}/></button><button type=\"button\" title=\"Remove 1\" onClick={() => openAdjust(r, -1)}><Minus size={14}/></button></div></td>", "<td className=\"actionsCol\" onClick={e => e.stopPropagation()}><div className=\"inventoryQuick\"><button type=\"button\" title=\"Add 1\" onClick={() => openAdjust(r, 1)}><Plus size={14}/></button><button type=\"button\" title=\"Remove 1\" onClick={() => openAdjust(r, -1)}><Minus size={14}/></button></div></td>"]
-])
-
+const inventoryChanged = patch('components/inventory-admin-pro.tsx', [])
 const checkoutChanged = patch('app/checkout/page.tsx', [["useEffect(()=>{if(enabledMethods.length && !enabledMethods.some(([value])=>value===paymentMethod)) setPaymentMethod(enabledMethods[0][0])},[enabledMethods.length,paymentMethod])", "useEffect(()=>{if(enabledMethods.length && !enabledMethods.some(([value])=>value===paymentMethod)) setPaymentMethod(enabledMethods[0][0])},[settings?.payment.cod,settings?.payment.card,settings?.payment.bank,settings?.payment.wallet,paymentMethod])"]])
 const storefrontRefreshChanged = patch('components/live-storefront-sections.tsx', [["const timer = window.setInterval(load, 3000)", "const timer = window.setInterval(load, 15000)"]])
 
@@ -35,22 +30,28 @@ let focalChanged = false
 if (fs.existsSync('components/focal-theme-editor.tsx')) {
   let source = fs.readFileSync('components/focal-theme-editor.tsx', 'utf8')
   const declaration = "const changePage = (nextPage:string) => { if (nextPage === page) return; if (dirty && typeof window !== 'undefined' && !window.confirm('You have unsaved changes. Switch templates anyway?')) return; setPage(nextPage); setSelectedId(''); setDrawer(false) }"
-  const declarationCount = source.split(declaration).length - 1
-  if (declarationCount === 0) {
-    const marker = "const save = async () => {"
-    if (source.includes(marker)) { source = source.replace(marker, `${declaration}\n  ${marker}`); focalChanged = true }
-  } else if (declarationCount > 1) {
-    const first = source.indexOf(declaration)
-    let cursor = first + declaration.length
-    while (source.slice(cursor).includes(declaration)) {
-      const duplicateIndex = cursor + source.slice(cursor).indexOf(declaration)
-      source = source.slice(0, duplicateIndex) + source.slice(duplicateIndex + declaration.length)
+  let count = source.split(declaration).length - 1
+  if (count === 0) {
+    const marker = '  const save = async () => {'
+    if (source.includes(marker)) {
+      source = source.replace(marker, `  ${declaration}\n${marker}`)
+      focalChanged = true
+      count = 1
     }
+  }
+  while (count > 1) {
+    const first = source.indexOf(declaration)
+    const second = source.indexOf(declaration, first + declaration.length)
+    if (second < 0) break
+    source = source.slice(0, second) + source.slice(second + declaration.length)
+    count -= 1
     focalChanged = true
   }
-  source = source.replace("onChange={event => { setPage(event.target.value); setSelectedId(''); setDrawer(false) }}", "onChange={event => changePage(event.target.value)}")
-  source = source.replace("Object.entries(META).filter(([key]) => !['announcement','header','footer'].includes(key))", "Object.entries(META).filter(([key]) => !['announcement','header'].includes(key))")
-  fs.writeFileSync('components/focal-theme-editor.tsx', source)
+  const next = source
+    .replace("onChange={event => { setPage(event.target.value); setSelectedId(''); setDrawer(false) }}", "onChange={event => changePage(event.target.value)}")
+    .replace("Object.entries(META).filter(([key]) => !['announcement','header','footer'].includes(key))", "Object.entries(META).filter(([key]) => !['announcement','header'].includes(key))")
+  if (next !== source) focalChanged = true
+  fs.writeFileSync('components/focal-theme-editor.tsx', next)
 }
 
 console.log(`Finalization fix: storefront=${storefrontChanged?'updated':'unchanged'} inventory=${inventoryChanged?'updated':'unchanged'} checkout=${checkoutChanged?'updated':'unchanged'} refresh=${storefrontRefreshChanged?'updated':'unchanged'} focal=${focalChanged?'updated':'unchanged'}`)
