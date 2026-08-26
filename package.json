@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/build-compat-fix.mjs && node scripts/finalization-fix.mjs && node scripts/finalization-assert.mjs && node scripts/final-ts-fix.mjs && npm run backend:audit && prisma generate --schema=prisma && npm run typecheck && next build",
+    "build": "node scripts/build-compat-fix.mjs && node scripts/finalization-fix.mjs && node scripts/focal-finalization-fix.mjs && node scripts/finalization-assert.mjs && node scripts/final-ts-fix.mjs && npm run backend:audit && prisma generate --schema=prisma && npm run typecheck && next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "backend:audit": "node scripts/backend-audit.mjs",
@@ -27,6 +27,7 @@
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/web-push": "^3.6.4",
     "@types/web-push": "^3.6.4",
     "prisma": "^6.15.0",
     "tsx": "^4.19.4",
