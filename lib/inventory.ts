@@ -50,15 +50,15 @@ export async function releaseOrderReservations(tx: any, orderId: string, reason 
     const fulfilled = await tx.inventoryMovement.aggregate({ _sum: { quantity: true }, where: { inventoryId: reservation.inventoryId, referenceId: order.orderNumber, type: InventoryMovementType.SALE_FULFILLMENT } })
     const remaining = Math.max(0, reservation.quantity - (released._sum.quantity ?? 0) - (fulfilled._sum.quantity ?? 0))
     if (!remaining) continue
-    const releaseQty = await tx.inventoryItem.updateMany({
-      where: { id: reservation.inventoryId, reserved: { gt: 0 } },
-      data: { reserved: { decrement: Math.min(remaining, 1) } },
-    })
-    if (releaseQty.count !== 1) continue
     const row = await tx.inventoryItem.findUnique({ where: { id: reservation.inventoryId }, select: { reserved: true } })
-    const actualReleased = Math.min(remaining, Math.max(0, (row?.reserved ?? 0) + Math.min(remaining, 1) - (row?.reserved ?? 0)))
-    if (!actualReleased) continue
-    await tx.inventoryMovement.create({ data: { inventoryId: reservation.inventoryId, type: InventoryMovementType.SALE_RELEASE, quantity: actualReleased, reason, referenceId: order.orderNumber } })
+    if (!row?.reserved) continue
+    const releaseQty = Math.min(row.reserved, remaining)
+    const updated = await tx.inventoryItem.updateMany({
+      where: { id: reservation.inventoryId, reserved: { gte: releaseQty } },
+      data: { reserved: { decrement: releaseQty } },
+    })
+    if (updated.count !== 1) continue
+    await tx.inventoryMovement.create({ data: { inventoryId: reservation.inventoryId, type: InventoryMovementType.SALE_RELEASE, quantity: releaseQty, reason, referenceId: order.orderNumber } })
   }
 }
 
