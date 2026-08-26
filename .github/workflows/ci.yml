@@ -32,4 +32,6 @@ jobs:
         run: npm run backend:audit
 
       - name: Build
+        env:
+          AUTH_SECRET: ci-build-only-secret-do-not-use-in-production
         run: npm run build
