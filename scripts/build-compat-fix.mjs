@@ -15,69 +15,36 @@ function fixFile(path, replacements) {
 }
 
 const navigationChanged = fixFile('components/store-nav.tsx', [
-  [
-    '.focalNavInner{height:76px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:28px}',
-    '.focalNavInner{height:76px;display:grid;grid-template-columns:auto auto 1fr;align-items:center;gap:38px}'
-  ],
-  [
-    '.focalNavLinks{display:flex;justify-content:center;gap:24px;height:100%}',
-    '.focalNavLinks{display:flex;justify-content:flex-start;gap:30px;height:100%;animation:focalLinksIn .7s cubic-bezier(.22,1,.36,1) .12s both}'
-  ],
-  [
-    '.focalLogo{font-size:22px;font-weight:900;letter-spacing:-.045em;display:flex;align-items:center;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}',
-    '.focalLogo{font-size:22px;font-weight:900;letter-spacing:-.045em;display:flex;align-items:center;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important;animation:focalLogoIn .72s cubic-bezier(.22,1,.36,1) .06s both;transition:transform .25s ease,opacity .25s ease}.focalLogo:hover{transform:translateY(-1px) scale(1.015);opacity:.9}'
-  ],
-  [
-    '.focalNav{z-index:50;border-bottom:1px solid var(--focal-line);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}',
-    '.focalNav{z-index:50;border-bottom:1px solid var(--focal-line);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);animation:focalNavIn .62s cubic-bezier(.22,1,.36,1) both;transition:background .35s ease,border-color .35s ease,box-shadow .35s ease}'
-  ],
-  [
-    '.focalNavLinks>a,.focalNavItem>a,.focalNavLinkButton{border:0;background:transparent;color:inherit;font-size:13px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:5px;height:100%;padding:0}',
-    '.focalNavLinks>a,.focalNavItem>a,.focalNavLinkButton{position:relative;border:0;background:transparent;color:inherit;font-size:13px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:5px;height:100%;padding:0;transition:color .22s ease,transform .22s ease}.focalNavLinks>a:after,.focalNavItem>a:after,.focalNavLinkButton:after{content:"";position:absolute;left:0;right:0;bottom:20px;height:2px;border-radius:99px;background:currentColor;transform:scaleX(0);transform-origin:center;transition:transform .28s cubic-bezier(.22,1,.36,1)}.focalNavLinks>a:hover,.focalNavItem>a:hover,.focalNavLinkButton:hover{transform:translateY(-1px)}.focalNavLinks>a:hover:after,.focalNavItem>a:hover:after,.focalNavLinkButton:hover:after{transform:scaleX(1)}'
-  ],
-  [
-    '.focalMega{position:absolute;top:100%;left:50%;transform:translateX(-50%);width:620px',
-    '.focalMega{position:absolute;top:calc(100% + 10px);left:50%;transform:translateX(-50%) translateY(-8px) scale(.98);transform-origin:top center;width:620px'
-  ],
-  [
-    '.focalNavIcon{width:42px;height:42px;border:1px solid var(--focal-line);background:var(--focal-surface);color:var(--focal-ink);border-radius:12px;display:grid;place-items:center;position:relative;cursor:pointer}',
-    '.focalNavIcon{width:42px;height:42px;border:1px solid var(--focal-line);background:var(--focal-surface);color:var(--focal-ink);border-radius:12px;display:grid;place-items:center;position:relative;cursor:pointer;transition:transform .22s ease,box-shadow .22s ease,background .22s ease,border-color .22s ease}.focalNavIcon:hover{transform:translateY(-2px) scale(1.025);box-shadow:0 8px 22px rgba(25,21,18,.10)}.focalNavIcon:active{transform:scale(.94)}'
-  ],
-  [
-    '.focalAnnouncementGlobal{background:var(--focal-primary);color:#fff}',
-    '.focalAnnouncementGlobal{background:var(--focal-primary);color:#fff;animation:focalAnnouncementIn .55s cubic-bezier(.22,1,.36,1) both}'
-  ],
-  [
-    '.focalSearchOverlay,.focalMobileOverlay,.focalCartOverlay{position:fixed;inset:0;z-index:100;background:rgba(25,21,18,.28);backdrop-filter:blur(8px)}',
-    '.focalSearchOverlay,.focalMobileOverlay,.focalCartOverlay{position:fixed;inset:0;z-index:100;background:rgba(25,21,18,.28);backdrop-filter:blur(8px);animation:focalOverlayIn .25s ease both}'
-  ],
-  [
-    '.focalSearchCard{width:min(760px,calc(100% - 24px));margin-top:80px;background:#fff;border-radius:18px;box-shadow:0 28px 80px rgba(0,0,0,.2);padding:20px}',
-    '.focalSearchCard{width:min(760px,calc(100% - 24px));margin-top:80px;background:#fff;border-radius:18px;box-shadow:0 28px 80px rgba(0,0,0,.2);padding:20px;animation:focalSearchIn .42s cubic-bezier(.22,1,.36,1) both}'
-  ],
-  [
-    '.focalMobilePanel{margin-left:auto;width:min(390px,88%);height:100%;background:#fff;padding:20px;overflow:auto}',
-    '.focalMobilePanel{margin-left:auto;width:min(390px,88%);height:100%;background:#fff;padding:20px;overflow:auto;animation:focalDrawerIn .38s cubic-bezier(.22,1,.36,1) both}'
-  ],
-  [
-    '.focalCartDrawer{width:min(440px,100%);height:100%;background:#fff;display:flex;flex-direction:column;box-shadow:-20px 0 60px rgba(0,0,0,.18)}',
-    '.focalCartDrawer{width:min(440px,100%);height:100%;background:#fff;display:flex;flex-direction:column;box-shadow:-20px 0 60px rgba(0,0,0,.18);animation:focalDrawerIn .38s cubic-bezier(.22,1,.36,1) both}'
-  ]
+  ['.focalNavInner{height:76px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:28px}', '.focalNavInner{height:76px;display:grid;grid-template-columns:auto auto 1fr;align-items:center;gap:38px}'],
+  ['.focalNavLinks{display:flex;justify-content:center;gap:24px;height:100%}', '.focalNavLinks{display:flex;justify-content:flex-start;gap:30px;height:100%;animation:focalLinksIn .7s cubic-bezier(.22,1,.36,1) .12s both}'],
+  ['.focalLogo{font-size:22px;font-weight:900;letter-spacing:-.045em;display:flex;align-items:center;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}', '.focalLogo{font-size:22px;font-weight:900;letter-spacing:-.045em;display:flex;align-items:center;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important;animation:focalLogoIn .72s cubic-bezier(.22,1,.36,1) .06s both;transition:transform .25s ease,opacity .25s ease}.focalLogo:hover{transform:translateY(-1px) scale(1.015);opacity:.9}'],
+  ['.focalNav{z-index:50;border-bottom:1px solid var(--focal-line);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}', '.focalNav{z-index:50;border-bottom:1px solid var(--focal-line);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);animation:focalNavIn .62s cubic-bezier(.22,1,.36,1) both;transition:background .35s ease,border-color .35s ease,box-shadow .35s ease}'],
+  ['.focalNavLinks>a,.focalNavItem>a,.focalNavLinkButton{border:0;background:transparent;color:inherit;font-size:13px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:5px;height:100%;padding:0}', '.focalNavLinks>a,.focalNavItem>a,.focalNavLinkButton{position:relative;border:0;background:transparent;color:inherit;font-size:13px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:5px;height:100%;padding:0;transition:color .22s ease,transform .22s ease}.focalNavLinks>a:after,.focalNavItem>a:after,.focalNavLinkButton:after{content:"";position:absolute;left:0;right:0;bottom:20px;height:2px;border-radius:99px;background:currentColor;transform:scaleX(0);transform-origin:center;transition:transform .28s cubic-bezier(.22,1,.36,1)}.focalNavLinks>a:hover,.focalNavItem>a:hover,.focalNavLinkButton:hover{transform:translateY(-1px)}.focalNavLinks>a:hover:after,.focalNavItem>a:hover:after,.focalNavLinkButton:hover:after{transform:scaleX(1)}'],
+  ['.focalMega{position:absolute;top:100%;left:50%;transform:translateX(-50%);width:620px', '.focalMega{position:absolute;top:calc(100% + 10px);left:50%;transform:translateX(-50%) translateY(-8px) scale(.98);transform-origin:top center;width:620px'],
+  ['.focalNavIcon{width:42px;height:42px;border:1px solid var(--focal-line);background:var(--focal-surface);color:var(--focal-ink);border-radius:12px;display:grid;place-items:center;position:relative;cursor:pointer}', '.focalNavIcon{width:42px;height:42px;border:1px solid var(--focal-line);background:var(--focal-surface);color:var(--focal-ink);border-radius:12px;display:grid;place-items:center;position:relative;cursor:pointer;transition:transform .22s ease,box-shadow .22s ease,background .22s ease,border-color .22s ease}.focalNavIcon:hover{transform:translateY(-2px) scale(1.025);box-shadow:0 8px 22px rgba(25,21,18,.10)}.focalNavIcon:active{transform:scale(.94)}'],
+  ['.focalAnnouncementGlobal{background:var(--focal-primary);color:#fff}', '.focalAnnouncementGlobal{background:var(--focal-primary);color:#fff;animation:focalAnnouncementIn .55s cubic-bezier(.22,1,.36,1) both}'],
+  ['.focalSearchOverlay,.focalMobileOverlay,.focalCartOverlay{position:fixed;inset:0;z-index:100;background:rgba(25,21,18,.28);backdrop-filter:blur(8px)}', '.focalSearchOverlay,.focalMobileOverlay,.focalCartOverlay{position:fixed;inset:0;z-index:100;background:rgba(25,21,18,.28);backdrop-filter:blur(8px);animation:focalOverlayIn .25s ease both}'],
+  ['.focalSearchCard{width:min(760px,calc(100% - 24px));margin-top:80px;background:#fff;border-radius:18px;box-shadow:0 28px 80px rgba(0,0,0,.2);padding:20px}', '.focalSearchCard{width:min(760px,calc(100% - 24px));margin-top:80px;background:#fff;border-radius:18px;box-shadow:0 28px 80px rgba(0,0,0,.2);padding:20px;animation:focalSearchIn .42s cubic-bezier(.22,1,.36,1) both}'],
+  ['.focalMobilePanel{margin-left:auto;width:min(390px,88%);height:100%;background:#fff;padding:20px;overflow:auto}', '.focalMobilePanel{margin-left:auto;width:min(390px,88%);height:100%;background:#fff;padding:20px;overflow:auto;animation:focalDrawerIn .38s cubic-bezier(.22,1,.36,1) both}'],
+  ['.focalCartDrawer{width:min(440px,100%);height:100%;background:#fff;display:flex;flex-direction:column;box-shadow:-20px 0 60px rgba(0,0,0,.18)}', '.focalCartDrawer{width:min(440px,100%);height:100%;background:#fff;display:flex;flex-direction:column;box-shadow:-20px 0 60px rgba(0,0,0,.18);animation:focalDrawerIn .38s cubic-bezier(.22,1,.36,1) both}']
 ])
 console.log(navigationChanged ? 'Applied storefront navigation layout and animation polish' : 'No storefront navigation polish needed')
 
 const previewChanged = fixFile('components/storefront-sections.tsx', [
-  [
-    "const visible=(sections||[]).filter((s:any)=>s&&s.enabled!==false&&s.settings?.enabled!==false&&s.type!=='header'&&s.type!=='footer'&&s.type!=='announcement')",
-    "const visible=(sections||[]).filter((s:any)=>s&&s.enabled!==false&&s.settings?.enabled!==false&&s.type!=='header'&&s.type!=='announcement')"
-  ],
-  [
-    '{preview&&<div className="themeEditorFooter"><Footer/></div>}',
-    '{preview&&(sections||[]).some((s:any)=>s&&s.type===\'footer\'&&s.enabled!==false&&s.settings?.enabled!==false)&&<div className="themeEditorFooter"><Footer/></div>}'
-  ],
-  [
-    '.themeEditorPreview .themeEditorFooter{margin-top:0}',
-    '.themeEditorPreview .themeEditorFooter{margin-top:0}.themeEditorPreview .focalType-featured_product .focalProductMedia{max-height:520px}.themeEditorPreview .focalType-featured_product .focalProductMedia img{max-height:520px;aspect-ratio:4/5;object-fit:cover}@media(max-width:850px){.themeEditorPreview .focalType-featured_product .focalProductMedia,.themeEditorPreview .focalType-featured_product .focalProductMedia img{max-height:360px}}@media(max-width:560px){.themeEditorPreview .focalType-featured_product .focalProductMedia,.themeEditorPreview .focalType-featured_product .focalProductMedia img{max-height:300px}}'
-  ]
+  ["const visible=(sections||[]).filter((s:any)=>s&&s.enabled!==false&&s.settings?.enabled!==false&&s.type!=='header'&&s.type!=='footer'&&s.type!=='announcement')", "const visible=(sections||[]).filter((s:any)=>s&&s.enabled!==false&&s.settings?.enabled!==false&&s.type!=='header'&&s.type!=='announcement')"],
+  ["{preview&&<div className=\"themeEditorFooter\"><Footer/></div>}", "{preview&&(sections||[]).some((s:any)=>s&&s.type==='footer'&&s.enabled!==false&&s.settings?.enabled!==false)&&<div className=\"themeEditorFooter\"><Footer/></div>}"],
+  ['.themeEditorPreview .themeEditorFooter{margin-top:0}', '.themeEditorPreview .themeEditorFooter{margin-top:0}.themeEditorPreview .focalType-featured_product .focalProductMedia{max-height:520px}.themeEditorPreview .focalType-featured_product .focalProductMedia img{max-height:520px;aspect-ratio:4/5;object-fit:cover}@media(max-width:850px){.themeEditorPreview .focalType-featured_product .focalProductMedia,.themeEditorPreview .focalType-featured_product .focalProductMedia img{max-height:360px}}@media(max-width:560px){.themeEditorPreview .focalType-featured_product .focalProductMedia,.themeEditorPreview .focalType-featured_product .focalProductMedia img{max-height:300px}}'],
+  ['const quickAdd=(e:React.MouseEvent)=>{e.preventDefault();e.stopPropagation();addItem({productId:p.id,variantId:null,name:p.name,sku:p.sku||p.slug,price,image:img(image),quantity:1})}', 'const quickAdd=(e:React.MouseEvent)=>{e.preventDefault();e.stopPropagation();if(Array.isArray(p.variants)&&p.variants.length){onQuickView(p);return}addItem({productId:p.id,variantId:null,name:p.name,sku:p.sku||p.slug,price,image:img(image),quantity:1})}'],
+  ['const [selectedVariantId,setSelectedVariantId]=useState<string|null>(product?.variants?.[0]?.id||null);const [qty,setQty]=useState(1);if(!product)return null;', 'const [selectedVariantId,setSelectedVariantId]=useState<string|null>(product?.variants?.[0]?.id||null);const [qty,setQty]=useState(1);useEffect(()=>{setSelectedVariantId(product?.variants?.[0]?.id||null);setQty(1)},[product?.id]);if(!product)return null;']
 ])
-console.log(previewChanged ? 'Applied Focal theme preview fixes' : 'No Focal theme preview compatibility fix needed')
+console.log(previewChanged ? 'Applied Focal preview and storefront interaction fixes' : 'No Focal preview compatibility fix needed')
+
+const editorChanged = fixFile('components/focal-theme-editor.tsx', [
+  ['const [dragId, setDragId] = useState<string | null>(null)', 'const [dragId, setDragId] = useState<string | null>(null)'],
+  ['const footerEnabled = current.some(section => section.type === \'footer\' && section.enabled !== false)\n  const previewTheme = useMemo(() => ({ ...theme, editorTemplates: { ...(theme.editorTemplates || {}), Pages: current } }), [theme, current])\n', ''],
+  ['useEffect(() => { if (!current.some(section => section.id === selectedId)) { setSelectedId(current[0]?.id || \'\'); setDrawer(false) } }, [current, selectedId])', 'useEffect(() => { if (!current.some(section => section.id === selectedId)) { setSelectedId(current[0]?.id || \'\'); setDrawer(false) } }, [current, selectedId])\n  useEffect(() => { if (!selectedId || typeof document === \'undefined\') return; const visibleIndex = current.filter(section => section.enabled !== false && section.settings?.enabled !== false && section.type !== \'header\' && section.type !== \'announcement\' && section.type !== \'footer\').findIndex(section => section.id === selectedId); if (visibleIndex < 0) return; const node = document.querySelector<HTMLDivElement>(\`.themeEditorPreview .focalSection:nth-of-type(${visibleIndex + 1})\`); node?.scrollIntoView({ behavior: \'smooth\', block: \'center\' }) }, [selectedId, page])'],
+  ['const save = async () => {', 'const changePage = (nextPage:string) => { if (nextPage === page) return; if (dirty && typeof window !== \'undefined\' && !window.confirm(\'You have unsaved changes. Switch templates anyway?\')) return; setPage(nextPage); setSelectedId(\'\'); setDrawer(false) }\n  const save = async () => {'],
+  ['onChange={event => { setPage(event.target.value); setSelectedId(\'\'); setDrawer(false) }}', 'onChange={event => changePage(event.target.value)}'],
+  ["Object.entries(META).filter(([key]) => !['announcement','header','footer'].includes(key))", "Object.entries(META).filter(([key]) => !['announcement','header'].includes(key))"]
+])
+console.log(editorChanged ? 'Applied Focal editor state and picker hardening' : 'No Focal editor compatibility fix needed')
