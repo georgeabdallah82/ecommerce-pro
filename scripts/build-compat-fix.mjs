@@ -62,10 +62,18 @@ const navigationChanged = fixFile('components/store-nav.tsx', [
   [
     '.focalCartDrawer{width:min(440px,100%);height:100%;background:#fff;display:flex;flex-direction:column;box-shadow:-20px 0 60px rgba(0,0,0,.18)}',
     '.focalCartDrawer{width:min(440px,100%);height:100%;background:#fff;display:flex;flex-direction:column;box-shadow:-20px 0 60px rgba(0,0,0,.18);animation:focalDrawerIn .38s cubic-bezier(.22,1,.36,1) both}'
-  ],
-  [
-    '@media(max-width:600px){.focalNavInner{height:66px}.focalNavIcon{width:38px;height:38px}.focalLogo{font-size:18px}.focalAnnouncementGlobalInner{font-size:11px;min-height:38px}.focalSearchForm{grid-template-columns:1fr}.focalCartItem{grid-template-columns:64px 1fr auto}.focalCartItem img{width:64px;height:76px}}`',
-    '@media(max-width:600px){.focalNavInner{height:66px}.focalNavIcon{width:38px;height:38px}.focalLogo{font-size:18px}.focalAnnouncementGlobalInner{font-size:11px;min-height:38px}.focalSearchForm{grid-template-columns:1fr}.focalCartItem{grid-template-columns:64px 1fr auto}.focalCartItem img{width:64px;height:76px}}@keyframes focalAnnouncementIn{from{opacity:0;transform:translateY(-100%)}to{opacity:1;transform:translateY(0)}}@keyframes focalNavIn{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:translateY(0)}}@keyframes focalLogoIn{from{opacity:0;transform:translateX(-14px) scale(.98)}to{opacity:1;transform:translateX(0) scale(1)}}@keyframes focalLinksIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}@keyframes focalOverlayIn{from{opacity:0}to{opacity:1}}@keyframes focalSearchIn{from{opacity:0;transform:translateY(-18px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}@keyframes focalDrawerIn{from{opacity:0;transform:translateX(100%)}to{opacity:1;transform:translateX(0)}}@keyframes focalMegaIn{from{opacity:0;transform:translateX(-50%) translateY(-8px) scale(.98)}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}@media(prefers-reduced-motion:reduce){.focalNav,.focalLogo,.focalNavLinks,.focalAnnouncementGlobal,.focalSearchOverlay,.focalSearchCard,.focalMobilePanel,.focalCartDrawer{animation:none!important}.focalNavLinks>a,.focalNavItem>a,.focalNavLinkButton,.focalNavIcon,.focalLogo{transition:none!important}}`'
   ]
 ])
 console.log(navigationChanged ? 'Applied storefront navigation layout and animation polish' : 'No storefront navigation polish needed')
+
+const previewChanged = fixFile('components/storefront-sections.tsx', [
+  [
+    "const visible=(sections||[]).filter((s:any)=>s&&s.enabled!==false&&s.settings?.enabled!==false&&s.type!=='header'&&s.type!=='footer'&&s.type!=='announcement')",
+    "const visible=(sections||[]).filter((s:any)=>s&&s.enabled!==false&&s.settings?.enabled!==false&&s.type!=='header'&&s.type!=='announcement'&&(preview||s.type!=='footer'))"
+  ],
+  [
+    '.themeEditorPreview .themeEditorFooter{margin-top:0}',
+    '.themeEditorPreview .themeEditorFooter{margin-top:0}.themeEditorPreview .focalType-featured_product .focalProductMedia{max-height:520px}.themeEditorPreview .focalType-featured_product .focalProductMedia img{max-height:520px;aspect-ratio:4/5;object-fit:cover}@media(max-width:850px){.themeEditorPreview .focalType-featured_product .focalProductMedia,.themeEditorPreview .focalType-featured_product .focalProductMedia img{max-height:360px}}@media(max-width:560px){.themeEditorPreview .focalType-featured_product .focalProductMedia,.themeEditorPreview .focalType-featured_product .focalProductMedia img{max-height:300px}}'
+  ]
+])
+console.log(previewChanged ? 'Applied Focal theme preview footer and featured-product fixes' : 'No Focal theme preview compatibility fix needed')
