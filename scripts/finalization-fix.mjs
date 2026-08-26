@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 
 function patch(file, replacements) {
+  if (!fs.existsSync(file)) return false
   let source = fs.readFileSync(file, 'utf8')
   let changed = false
   for (const [from, to] of replacements) {
@@ -16,7 +17,7 @@ function patch(file, replacements) {
 const storefrontChanged = patch('components/storefront-sections.tsx', [
   [
     "const quickAdd=(e:React.MouseEvent)=>{e.preventDefault();e.stopPropagation();addItem({productId:p.id,variantId:null,name:p.name,sku:p.sku||p.slug,price,image:img(image),quantity:1})};",
-    "const quickAdd=(e:React.MouseEvent)=>{e.preventDefault();e.stopPropagation();if(Array.isArray(p.variants)&&p.variants.length>0){onQuickView(p);return}addItem({productId:p.id,variantId:null,name:p.name,sku:p.sku||p.slug,price,image:img(image),quantity:1})};"
+    "const quickAdd=(e:React.MouseEvent)=>{e.preventDefault();e.stopPropagation();if(Array.isArray(p.variants)&&p.variants.length>0){onQuickView(p);return}addItem({productId:p.id,variantId:null,name:p.name,sku:p.sku||p.slug,price,image:img(image),quantity:1)};"
   ],
   [
     "function MainProductSection({section,theme,product,preview,selected,onSelect,wishlist,toggleWish}:{section:AnyMap;theme:AnyMap;product:AnyMap|null;preview?:boolean;selected?:boolean;onSelect?:(id:string)=>void;wishlist:Record<string,boolean>;toggleWish:(id:string)=>void}){const {addItem}=useCart();const [selectedVariantId,setSelectedVariantId]=useState<string|null>(product?.variants?.[0]?.id||null);const [qty,setQty]=useState(1);",
