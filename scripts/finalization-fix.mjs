@@ -63,4 +63,19 @@ const storefrontRefreshChanged = patch('components/live-storefront-sections.tsx'
   ["const timer = window.setInterval(load, 3000)", "const timer = window.setInterval(load, 15000)"]
 ])
 
-console.log(`Finalization fix: storefront=${storefrontChanged?'updated':'unchanged'} inventory=${inventoryChanged?'updated':'unchanged'} checkout=${checkoutChanged?'updated':'unchanged'} refresh=${storefrontRefreshChanged?'updated':'unchanged'}`)
+const focalChanged = patch('components/focal-theme-editor.tsx', [
+  [
+    "const save = async () => {",
+    "const changePage = (nextPage:string) => { if (nextPage === page) return; if (dirty && typeof window !== 'undefined' && !window.confirm('You have unsaved changes. Switch templates anyway?')) return; setPage(nextPage); setSelectedId(''); setDrawer(false) }\n  const save = async () => {"
+  ],
+  [
+    "onChange={event => { setPage(event.target.value); setSelectedId(''); setDrawer(false) }}",
+    "onChange={event => changePage(event.target.value)}"
+  ],
+  [
+    "Object.entries(META).filter(([key]) => !['announcement','header','footer'].includes(key))",
+    "Object.entries(META).filter(([key]) => !['announcement','header'].includes(key))"
+  ]
+])
+
+console.log(`Finalization fix: storefront=${storefrontChanged?'updated':'unchanged'} inventory=${inventoryChanged?'updated':'unchanged'} checkout=${checkoutChanged?'updated':'unchanged'} refresh=${storefrontRefreshChanged?'updated':'unchanged'} focal=${focalChanged?'updated':'unchanged'}`)
