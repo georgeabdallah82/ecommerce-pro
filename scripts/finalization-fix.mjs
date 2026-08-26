@@ -29,7 +29,10 @@ const inventoryChanged = patch('components/inventory-admin-pro.tsx', [
 ])
 
 const checkoutChanged = patch('app/checkout/page.tsx', [["useEffect(()=>{if(enabledMethods.length && !enabledMethods.some(([value])=>value===paymentMethod)) setPaymentMethod(enabledMethods[0][0])},[enabledMethods.length,paymentMethod])", "useEffect(()=>{if(enabledMethods.length && !enabledMethods.some(([value])=>value===paymentMethod)) setPaymentMethod(enabledMethods[0][0])},[settings?.payment.cod,settings?.payment.card,settings?.payment.bank,settings?.payment.wallet,paymentMethod])"]])
-const storefrontRefreshChanged = patch('components/live-storefront-sections.tsx', [["const timer = window.setInterval(load, 3000)", "const timer = window.setInterval(load, 15000)"]])
+const storefrontRefreshChanged = patch('components/live-storefront-sections.tsx', [
+  ["const timer = window.setInterval(load, 3000)", "const timer = window.setInterval(load, 30000)"],
+  ["const timer = window.setInterval(load, 15000)", "const timer = window.setInterval(load, 30000)"],
+])
 
 const ordersChanged = patch('components/orders-admin-shopify.tsx', [
   ["revenue:rows.reduce((sum,o)=>sum+Number(o.grandTotal||0),0)", "revenue:rows.reduce((sum,o)=>{if(['CANCELLED','REFUNDED'].includes(o.status))return sum;const refunded=Number(o.refundedTotal||o.refundedAmount||0);return sum+Math.max(0,Number(o.grandTotal||0)-refunded)},0)"],
