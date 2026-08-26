@@ -43,12 +43,12 @@ export async function GET(req:Request){
     const contentType=upstream.headers.get('content-type')||''
     if(!contentType.toLowerCase().startsWith('image/')) return new NextResponse('URL did not return an image',{status:415})
 
+    const body=await upstream.arrayBuffer()
     const headers=new Headers()
     headers.set('content-type',contentType)
     headers.set('cache-control','public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800')
-    const length=upstream.headers.get('content-length')
-    if(length) headers.set('content-length',length)
-    return new NextResponse(upstream.body,{status:200,headers})
+    headers.set('content-length',String(body.byteLength))
+    return new NextResponse(body,{status:200,headers})
   }catch(e){
     return new NextResponse(e instanceof Error?e.message:'Unable to load image',{status:502})
   }
