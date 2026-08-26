@@ -7,7 +7,7 @@ services:
     buildCommand: npm install && npm run db:deploy && npm run db:ensure-admin && npm run build
     startCommand: npm start
     initialDeployCommand: npm run db:seed
-    healthCheckPath: /api/health
+    healthCheckPath: /health.txt
     envVars:
       - key: NODE_VERSION
         value: 24.19.0
