@@ -6,7 +6,7 @@ const checks = [
   ['components/storefront-sections.tsx', source => source.includes("s.type==='footer'&&s.enabled!==false")],
   ['components/inventory-admin-pro.tsx', source => source.includes('disabled={availability(r).available <= 0}')],
   ['components/live-storefront-sections.tsx', source => source.includes('window.setInterval(load, 15000)')],
-  ['components/focal-theme-editor.tsx', source => source.includes("!['announcement','header'].includes(key)" ) && source.includes('You have unsaved changes. Switch templates anyway?')],
+  ['components/focal-theme-editor.tsx', source => source.includes("!['announcement','header'].includes(key)") && source.includes('You have unsaved changes. Switch templates anyway?') && source.includes('const changePage = (nextPage:string)')],
   ['components/orders-admin-shopify.tsx', source => source.includes("if(['CANCELLED','REFUNDED'].includes(o.status))return sum")],
 ]
 
