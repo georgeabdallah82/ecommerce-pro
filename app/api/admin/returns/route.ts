@@ -1,6 +1,5 @@
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
-import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 
 export async function POST(req: Request) {
@@ -79,10 +78,26 @@ export async function POST(req: Request) {
       }
 
       const updated = await tx.order.update({ where: { id: order.id }, data: { paymentStatus, status: paymentStatus === 'REFUNDED' ? 'REFUNDED' : order.status, events: { create: { status: paymentStatus, message: `${returnId}: ${normalized.map(x => `${x.item.name} × ${x.quantity}`).join(', ')}${restock ? ' — restocked' : ' — not restocked'}${requestedRefund ? ` — refunded ${requestedRefund} ${order.currency}` : ''}` } } } })
+
+      await tx.auditLog.create({ data: {
+        actorId: actor.id,
+        action: 'order.returned',
+        entity: 'Order',
+        entityId: order.id,
+        metadataJson: JSON.stringify({ returnId, items: normalized.map(x => ({ orderItemId: x.orderItemId, quantity: x.quantity })), restocked: restock, refundId: refund?.id || null, refundAmount: requestedRefund }),
+      } })
+
       return { order: updated, returnId, refund, items: normalized.map(x => ({ orderItemId: x.orderItemId, quantity: x.quantity })), restocked: restock }
     })
 
-    await audit(actor.id, 'order.returned', 'Order', orderId, { returnId: result.returnId, items: result.items, restocked: result.restocked, refundId: result.refund?.id || null, refundAmount: requestedRefund })
+    if (result.order.userId) {
+      try {
+        await db.notification.create({ data: { userId: result.order.userId, title: `Return for ${result.order.orderNumber}`, body: `Your return ${result.returnId} was processed${result.refund ? ` with a ${requestedRefund} ${result.order.currency} refund` : ''}.`, type: 'ORDER_REFUND' } })
+      } catch {
+        // Notification delivery must never make a committed return retryable.
+      }
+    }
+
     return json(result, { status: 201 })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unable to process return'
