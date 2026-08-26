@@ -50,4 +50,8 @@ const checkoutChanged = patch('app/checkout/page.tsx', [
   ]
 ])
 
-console.log(`Finalization fix: storefront=${storefrontChanged?'updated':'unchanged'} inventory=${inventoryChanged?'updated':'unchanged'} checkout=${checkoutChanged?'updated':'unchanged'}`)
+const storefrontRefreshChanged = patch('components/live-storefront-sections.tsx', [
+  ["const timer = window.setInterval(load, 3000)", "const timer = window.setInterval(load, 15000)"]
+])
+
+console.log(`Finalization fix: storefront=${storefrontChanged?'updated':'unchanged'} inventory=${inventoryChanged?'updated':'unchanged'} checkout=${checkoutChanged?'updated':'unchanged'} refresh=${storefrontRefreshChanged?'updated':'unchanged'}`)
