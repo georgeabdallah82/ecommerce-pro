@@ -44,21 +44,44 @@ export async function reserveStock(tx: any, product: any, variantId: string | nu
 export async function releaseOrderReservations(tx: any, orderId: string, reason = 'Order reservation released') {
   const order = await tx.order.findUnique({ where: { id: orderId } })
   if (!order) throw new Error('Order not found')
-  const reservations = await tx.inventoryMovement.findMany({ where: { type: InventoryMovementType.SALE_RESERVATION, referenceId: order.orderNumber } })
+
+  const reservations = await tx.inventoryMovement.findMany({
+    where: { type: InventoryMovementType.SALE_RESERVATION, referenceId: order.orderNumber },
+    orderBy: { createdAt: 'asc' },
+  })
+
   for (const reservation of reservations) {
-    const released = await tx.inventoryMovement.aggregate({ _sum: { quantity: true }, where: { inventoryId: reservation.inventoryId, referenceId: order.orderNumber, type: InventoryMovementType.SALE_RELEASE } })
-    const fulfilled = await tx.inventoryMovement.aggregate({ _sum: { quantity: true }, where: { inventoryId: reservation.inventoryId, referenceId: order.orderNumber, type: InventoryMovementType.SALE_FULFILLMENT } })
+    const [released, fulfilled] = await Promise.all([
+      tx.inventoryMovement.aggregate({
+        _sum: { quantity: true },
+        where: { inventoryId: reservation.inventoryId, referenceId: order.orderNumber, type: InventoryMovementType.SALE_RELEASE },
+      }),
+      tx.inventoryMovement.aggregate({
+        _sum: { quantity: true },
+        where: { inventoryId: reservation.inventoryId, referenceId: order.orderNumber, type: InventoryMovementType.SALE_FULFILLMENT },
+      }),
+    ])
+
     const remaining = Math.max(0, reservation.quantity - (released._sum.quantity ?? 0) - (fulfilled._sum.quantity ?? 0))
     if (!remaining) continue
-    const row = await tx.inventoryItem.findUnique({ where: { id: reservation.inventoryId }, select: { reserved: true } })
-    if (!row?.reserved) continue
-    const releaseQty = Math.min(row.reserved, remaining)
+
     const updated = await tx.inventoryItem.updateMany({
-      where: { id: reservation.inventoryId, reserved: { gte: releaseQty } },
-      data: { reserved: { decrement: releaseQty } },
+      where: { id: reservation.inventoryId, reserved: { gte: remaining } },
+      data: { reserved: { decrement: remaining } },
     })
-    if (updated.count !== 1) continue
-    await tx.inventoryMovement.create({ data: { inventoryId: reservation.inventoryId, type: InventoryMovementType.SALE_RELEASE, quantity: releaseQty, reason, referenceId: order.orderNumber } })
+    if (updated.count !== 1) {
+      throw new Error(`Unable to release reserved stock for order ${order.orderNumber}`)
+    }
+
+    await tx.inventoryMovement.create({
+      data: {
+        inventoryId: reservation.inventoryId,
+        type: InventoryMovementType.SALE_RELEASE,
+        quantity: remaining,
+        reason,
+        referenceId: order.orderNumber,
+      },
+    })
   }
 }
 
@@ -66,34 +89,86 @@ export async function fulfillOrderStock(tx: any, orderId: string) {
   const order = await tx.order.findUnique({ where: { id: orderId }, include: { items: { include: { product: true } } } })
   if (!order) throw new Error('Order not found')
 
+  const reservations = await tx.inventoryMovement.findMany({
+    where: { referenceId: order.orderNumber, type: InventoryMovementType.SALE_RESERVATION },
+    orderBy: { createdAt: 'asc' },
+  })
+
+  const [releasedRows, fulfilledRows] = await Promise.all([
+    tx.inventoryMovement.findMany({
+      where: { referenceId: order.orderNumber, type: InventoryMovementType.SALE_RELEASE },
+      select: { inventoryId: true, quantity: true },
+    }),
+    tx.inventoryMovement.findMany({
+      where: { referenceId: order.orderNumber, type: InventoryMovementType.SALE_FULFILLMENT },
+      select: { inventoryId: true, quantity: true },
+    }),
+  ])
+
+  const releasedByInventory = new Map<string, number>()
+  for (const row of releasedRows) releasedByInventory.set(row.inventoryId, (releasedByInventory.get(row.inventoryId) ?? 0) + row.quantity)
+
+  const fulfilledByInventory = new Map<string, number>()
+  for (const row of fulfilledRows) fulfilledByInventory.set(row.inventoryId, (fulfilledByInventory.get(row.inventoryId) ?? 0) + row.quantity)
+
+  const remainingReservationByInventory = new Map<string, number>()
+  for (const reservation of reservations) {
+    const remaining = Math.max(0, reservation.quantity - (releasedByInventory.get(reservation.inventoryId) ?? 0) - (fulfilledByInventory.get(reservation.inventoryId) ?? 0))
+    if (remaining > 0) remainingReservationByInventory.set(reservation.inventoryId, (remainingReservationByInventory.get(reservation.inventoryId) ?? 0) + remaining)
+  }
+
+  const inventoryRows = await tx.inventoryItem.findMany({
+    where: { id: { in: [...remainingReservationByInventory.keys()] } },
+    select: { id: true, productId: true, variantId: true },
+  })
+  const inventoryById = new Map(inventoryRows.map((row: any) => [row.id, row]))
+
+  const demands = new Map<string, { productId: string; variantId: string | null; quantity: number; name: string }>()
   for (const item of order.items) {
     if (!item.product.trackInventory || item.product.continueSellingWhenOutOfStock) continue
-    const reservations = await tx.inventoryMovement.findMany({
-      where: {
-        referenceId: order.orderNumber,
-        type: InventoryMovementType.SALE_RESERVATION,
-        inventory: item.variantId
-          ? { productId: item.productId, OR: [{ variantId: item.variantId }, { variantId: null }] }
-          : { productId: item.productId, variantId: null },
-      },
-      orderBy: { createdAt: 'asc' },
+
+    const dedicatedVariantRows = await tx.inventoryItem.count({ where: { productId: item.productId, variantId: item.variantId ?? undefined } })
+    const usesDedicatedVariant = !!item.variantId && dedicatedVariantRows > 0
+    const key = usesDedicatedVariant ? `${item.productId}:variant:${item.variantId}` : `${item.productId}:shared`
+    const current = demands.get(key)
+    if (current) current.quantity += item.quantity
+    else demands.set(key, { productId: item.productId, variantId: usesDedicatedVariant ? item.variantId : null, quantity: item.quantity, name: item.name })
+  }
+
+  for (const demand of demands.values()) {
+    const eligibleReservations = reservations.filter(reservation => {
+      const inventory = inventoryById.get(reservation.inventoryId)
+      if (!inventory) return false
+      if (demand.variantId) return inventory.productId === demand.productId && inventory.variantId === demand.variantId
+      return inventory.productId === demand.productId && inventory.variantId === null
     })
-    let remaining = item.quantity
-    for (const reservation of reservations) {
+
+    let remaining = demand.quantity
+    for (const reservation of eligibleReservations) {
       if (remaining <= 0) break
-      const released = await tx.inventoryMovement.aggregate({ _sum: { quantity: true }, where: { inventoryId: reservation.inventoryId, referenceId: order.orderNumber, type: InventoryMovementType.SALE_RELEASE } })
-      const fulfilled = await tx.inventoryMovement.aggregate({ _sum: { quantity: true }, where: { inventoryId: reservation.inventoryId, referenceId: order.orderNumber, type: InventoryMovementType.SALE_FULFILLMENT } })
-      const availableReserved = Math.max(0, reservation.quantity - (released._sum.quantity ?? 0) - (fulfilled._sum.quantity ?? 0))
+      const availableReserved = remainingReservationByInventory.get(reservation.inventoryId) ?? 0
       const qty = Math.min(remaining, availableReserved)
       if (!qty) continue
+
       const updated = await tx.inventoryItem.updateMany({
         where: { id: reservation.inventoryId, quantity: { gte: qty }, reserved: { gte: qty } },
         data: { quantity: { decrement: qty }, reserved: { decrement: qty } },
       })
-      if (updated.count !== 1) throw new Error(`Unable to fulfill stock for ${item.name}`)
-      await tx.inventoryMovement.create({ data: { inventoryId: reservation.inventoryId, type: InventoryMovementType.SALE_FULFILLMENT, quantity: qty, reason: 'Order fulfilled', referenceId: order.orderNumber } })
+      if (updated.count !== 1) throw new Error(`Unable to fulfill stock for ${demand.name}`)
+
+      await tx.inventoryMovement.create({
+        data: {
+          inventoryId: reservation.inventoryId,
+          type: InventoryMovementType.SALE_FULFILLMENT,
+          quantity: qty,
+          reason: 'Order fulfilled',
+          referenceId: order.orderNumber,
+        },
+      })
+      remainingReservationByInventory.set(reservation.inventoryId, availableReserved - qty)
       remaining -= qty
     }
-    if (remaining > 0) throw new Error(`Unable to fulfill stock for ${item.name}`)
+
+    if (remaining > 0) throw new Error(`Unable to fulfill stock for ${demand.name}`)
   }
 }
