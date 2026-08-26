@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import StorefrontSections from '@/components/storefront-sections'
 
 type Props = React.ComponentProps<typeof StorefrontSections>
+const REFRESH_MS = 30000
 
 function templateKey(pathname: string) {
   if (pathname === '/') return 'Home page'
@@ -26,6 +27,7 @@ export default function LiveStorefrontSections(props: Props) {
   const [theme, setTheme] = useState(props.theme)
   const [sections, setSections] = useState(initialSections)
   const signature = useRef(JSON.stringify({ theme: props.theme, sections: initialSections, key }))
+  const inFlight = useRef<AbortController | null>(null)
 
   useEffect(() => {
     let alive = true
@@ -33,37 +35,38 @@ export default function LiveStorefrontSections(props: Props) {
       const nextSignature = JSON.stringify({ theme: nextTheme, sections: nextSections, key })
       if (nextSignature === signature.current) return
       signature.current = nextSignature
-      if (alive) {
-        setTheme(nextTheme)
-        setSections(nextSections)
-      }
+      if (alive) { setTheme(nextTheme); setSections(nextSections) }
     }
 
     const load = async () => {
+      inFlight.current?.abort()
+      const controller = new AbortController()
+      inFlight.current = controller
       try {
-        const response = await fetch('/api/storefront/theme', { cache: 'no-store' })
-        if (!response.ok) return
+        const response = await fetch('/api/storefront/theme', { cache: 'no-store', signal: controller.signal })
+        if (!response.ok || controller.signal.aborted) return
         const data = await response.json()
-        if (!data?.theme) return
+        if (!data?.theme || controller.signal.aborted) return
         const templates = data.theme.editorTemplates || {}
         const hasTemplate = Object.prototype.hasOwnProperty.call(templates, key)
         const template = templates[key]
         const nextSections = hasTemplate ? (Array.isArray(template) ? template : []) : (Array.isArray(data.sections) ? data.sections : [])
         apply(data.theme, nextSections)
-      } catch {}
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return
+      } finally {
+        if (inFlight.current === controller) inFlight.current = null
+      }
     }
 
     const refreshOnFocus = () => { void load() }
     void load()
-    const timer = window.setInterval(load, 3000)
+    const timer = window.setInterval(load, REFRESH_MS)
     window.addEventListener('focus', refreshOnFocus)
     document.addEventListener('visibilitychange', refreshOnFocus)
 
     let channel: BroadcastChannel | null = null
-    try {
-      channel = new BroadcastChannel('store-theme')
-      channel.onmessage = () => { void load() }
-    } catch {}
+    try { channel = new BroadcastChannel('store-theme'); channel.onmessage = () => { void load() } } catch {}
 
     return () => {
       alive = false
@@ -71,6 +74,7 @@ export default function LiveStorefrontSections(props: Props) {
       window.removeEventListener('focus', refreshOnFocus)
       document.removeEventListener('visibilitychange', refreshOnFocus)
       channel?.close()
+      inFlight.current?.abort()
     }
   }, [key])
 
