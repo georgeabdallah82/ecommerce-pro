@@ -31,14 +31,21 @@ export async function POST(req: Request) {
         if (match) alreadyReturned.set(match[1], (alreadyReturned.get(match[1]) || 0) + Math.max(0, movement.quantity))
       }
 
-      const normalized: Array<{ orderItemId: string; quantity: number; item: typeof order.items[number] }> = []
+      const requestedQuantities = new Map<string, number>()
       for (const raw of inputItems) {
         const orderItemId = String(raw.orderItemId || '').trim()
         const quantity = Number(raw.quantity)
         const item = orderItemById.get(orderItemId)
         if (!item) throw new Error(`Order item ${orderItemId} was not found`)
         if (!Number.isInteger(quantity) || quantity <= 0) throw new Error(`Invalid return quantity for ${item.name}`)
-        if ((alreadyReturned.get(orderItemId) || 0) + quantity > item.quantity) throw new Error(`Return quantity for ${item.name} exceeds the quantity purchased`)
+        const totalRequested = (requestedQuantities.get(orderItemId) || 0) + quantity
+        if (totalRequested + (alreadyReturned.get(orderItemId) || 0) > item.quantity) throw new Error(`Return quantity for ${item.name} exceeds the quantity purchased`)
+        requestedQuantities.set(orderItemId, totalRequested)
+      }
+
+      const normalized: Array<{ orderItemId: string; quantity: number; item: typeof order.items[number] }> = []
+      for (const [orderItemId, quantity] of requestedQuantities) {
+        const item = orderItemById.get(orderItemId)!
         normalized.push({ orderItemId, quantity, item })
       }
 
@@ -78,6 +85,7 @@ export async function POST(req: Request) {
     await audit(actor.id, 'order.returned', 'Order', orderId, { returnId: result.returnId, items: result.items, restocked: result.restocked, refundId: result.refund?.id || null, refundAmount: requestedRefund })
     return json(result, { status: 201 })
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Unable to process return' }, { status: 400 })
+    const message = e instanceof Error ? e.message : 'Unable to process return'
+    return json({ error: message }, { status: message === 'Order not found' ? 404 : message === 'UNAUTHORIZED' ? 401 : message === 'FORBIDDEN' ? 403 : 400 })
   }
 }
