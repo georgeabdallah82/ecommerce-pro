@@ -37,8 +37,9 @@ export default function Checkout() {
     settings.payment.wallet && ['WALLET','Wallet'],
   ].filter(Boolean) as [string,string][] : []
   const guestBlocked = Boolean(settings && sessionLoaded && !authenticated && settings.checkout.guestCheckout===false)
+  const enabledMethodSignature = enabledMethods.map(([value])=>value).join('|')
 
-  useEffect(()=>{if(enabledMethods.length && !enabledMethods.some(([value])=>value===paymentMethod)) setPaymentMethod(enabledMethods[0][0])},[enabledMethods.length,paymentMethod])
+  useEffect(()=>{if(enabledMethods.length && !enabledMethods.some(([value])=>value===paymentMethod)) setPaymentMethod(enabledMethods[0][0])},[enabledMethodSignature,paymentMethod])
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError('')
