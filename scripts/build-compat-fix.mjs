@@ -14,11 +14,6 @@ function fixFile(path, replacements) {
   return changed
 }
 
-const themeChanged = fixFile('components/pro-theme-editor.tsx', [
-  ['<DesignInspector section={selected} theme={theme} patch={patch}/>', '<DesignInspector section={selected} patch={patch}/>'],
-])
-console.log(themeChanged ? 'Applied DesignInspector prop compatibility fix' : 'No DesignInspector compatibility fix needed')
-
 const navigationChanged = fixFile('components/store-nav.tsx', [
   [
     '.focalNavInner{height:76px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:28px}',
