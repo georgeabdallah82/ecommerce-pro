@@ -1,6 +1,5 @@
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
-import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 
 export async function POST(req: Request) {
@@ -38,13 +37,34 @@ export async function POST(req: Request) {
       const paymentStatus = newRefundedTotal >= order.grandTotal ? 'REFUNDED' : 'PARTIALLY_REFUNDED'
       const status = paymentStatus === 'REFUNDED' ? 'REFUNDED' : order.status
       const updated = await tx.order.update({ where: { id: order.id }, data: { paymentStatus, status, events: { create: { status, message: paymentStatus === 'REFUNDED' ? `Order fully refunded (${requestedAmount} ${order.currency}).` : `Order partially refunded (${requestedAmount} ${order.currency}).` } } } })
+
+      // Keep the audit record in the same transaction as the refund so a post-commit
+      // audit failure cannot make a successful refund look like a failed request.
+      await tx.auditLog.create({ data: {
+        actorId: actor.id,
+        action: 'order.refunded',
+        entity: 'Order',
+        entityId: order.id,
+        metadataJson: JSON.stringify({ amount: requestedAmount, transactionId: transaction.id, refundedTotal: newRefundedTotal }),
+      } })
+
       return { order: updated, transaction, refundedTotal: newRefundedTotal }
     })
 
-    if (result.order.userId) await db.notification.create({ data: { userId: result.order.userId, title: `Refund for ${result.order.orderNumber}`, body: `A refund of ${requestedAmount} ${result.order.currency} was recorded.`, type: 'ORDER_REFUND' } })
-    await audit(actor.id, 'order.refunded', 'Order', orderId, { amount: requestedAmount, transactionId: result.transaction.id, refundedTotal: result.refundedTotal })
+    // Notifications are intentionally best-effort after the financial transaction
+    // commits. A notification outage must never cause an already-applied refund to
+    // be returned to the caller as a failed operation and retried.
+    if (result.order.userId) {
+      try {
+        await db.notification.create({ data: { userId: result.order.userId, title: `Refund for ${result.order.orderNumber}`, body: `A refund of ${requestedAmount} ${result.order.currency} was recorded.`, type: 'ORDER_REFUND' } })
+      } catch {
+        // Do not roll back or re-report a committed financial operation.
+      }
+    }
+
     return json({ order: result.order, refund: result.transaction, refundedTotal: result.refundedTotal }, { status: 201 })
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Unable to refund order' }, { status: 400 })
+    const message = e instanceof Error ? e.message : 'Unable to refund order'
+    return json({ error: message }, { status: message === 'UNAUTHORIZED' ? 401 : message === 'FORBIDDEN' ? 403 : message === 'Order not found' ? 404 : 400 })
   }
 }
