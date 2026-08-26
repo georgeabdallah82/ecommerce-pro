@@ -6,13 +6,11 @@ const checks = [
   ['components/storefront-sections.tsx', source => source.includes("s.type==='footer'&&s.enabled!==false")],
   ['components/inventory-admin-pro.tsx', source => source.includes('disabled={availability(r).available <= 0}')],
   ['components/live-storefront-sections.tsx', source => {
-    const refreshConstant = /const\s+REFRESH_MS\s*=\s*30000\b/.test(source)
-    const directInterval = source.includes('window.setInterval(load, 30000)')
-    const variableInterval = source.includes('window.setInterval(load, REFRESH_MS)')
-    return (refreshConstant && variableInterval) || directInterval
+    // Live storefront must not poll the theme endpoint in the browser.
+    // Theme updates are pushed through BroadcastChannel and server-rendered initial state.
+    return !source.includes('setInterval(') && !source.includes('setTimeout(load')
   }],
   ['components/focal-theme-editor.tsx', source => {
-    const prefix = "const changePage = (nextPage:string) => { if (nextPage === page);"
     const count = source.split("const changePage = (nextPage:string) => {").length - 1
     return source.includes("!['announcement','header'].includes(key)") && source.includes('You have unsaved changes. Switch templates anyway?') && count === 1
   }],
