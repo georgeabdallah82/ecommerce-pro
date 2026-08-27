@@ -49,5 +49,3 @@ export async function GET(req: Request) {
     return Response.redirect(new URL(`/order/success?order=${encodeURIComponent(order.orderNumber)}&payment=pending`, url.origin))
   }
 }
-
-export { webhookToken }
