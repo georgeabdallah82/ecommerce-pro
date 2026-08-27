@@ -5,7 +5,7 @@ import { decryptPaymentSecret } from '@/lib/payment-config'
 export type PaymentStatus = 'created' | 'pending' | 'paid' | 'failed'
 export type PaymentCreateInput = { orderId: string; amount: number; currency: string; email?: string; returnUrl?: string }
 export type PaymentCreateResult = { provider: string; externalId?: string; checkoutUrl?: string; clientCheckout?: { type: 'mpgs'; merchantId: string; sessionId: string; scriptUrl: string; successIndicator?: string }; status: PaymentStatus }
-export interface PaymentProvider { readonly name: string; createPayment(input: PaymentCreateInput): Promise<PaymentCreateResult>; getPaymentStatus(externalId: string, orderId: string): Promise<'pending' | 'paid' | 'failed'>; refundPayment?(externalId: string, amount: number, currency: string): Promise<void> }
+export interface PaymentProvider { readonly name: string; createPayment(input: PaymentCreateInput): Promise<PaymentCreateResult>; getPaymentStatus(externalId: string, orderId: string): Promise<'pending' | 'paid' | 'failed'>; refundPayment?(externalId: string, amount: number, currency: string): Promise<'pending' | 'refunded'> }
 
 export const manualPaymentProvider: PaymentProvider = { name: 'manual', async createPayment() { return { provider: 'manual', status: 'created' } }, async getPaymentStatus() { return 'pending' } }
 function setting(map: Map<string, string>, key: string, fallback = '') { return map.get(key) || fallback }
@@ -62,8 +62,9 @@ export const areebaMpgsPaymentProvider: PaymentProvider = {
     const refundTransactionId=`refund-${randomUUID().replace(/-/g,'').slice(0,24)}`
     const refundEndpoint=`${config.apiBaseUrl}/version/${encodeURIComponent(config.apiVersion)}/merchant/${encodeURIComponent(config.merchantId)}/order/${encodeURIComponent(localTransaction.order.orderNumber)}/transaction/${encodeURIComponent(refundTransactionId)}`
     const response=await fetch(refundEndpoint,{method:'PUT',headers:{...auth,'content-type':'application/json'},body:JSON.stringify({apiOperation:'REFUND',transaction:{amount:(amount/100).toFixed(2),currency,targetTransactionId:targetId}})})
-    const body=await response.json().catch(()=>({})) as Record<string,any>
-    if(!response.ok||body.result==='ERROR'||!['SUCCESS','PENDING'].includes(String(body.result||'').toUpperCase()))throw new Error(safeError(body))
+    const body=await response.json().catch(()=>({})) as Record<string,any>; const result=String(body.result||'').toUpperCase()
+    if(!response.ok||body.result==='ERROR'||!['SUCCESS','PENDING'].includes(result))throw new Error(safeError(body))
+    return result==='PENDING'?'pending':'refunded'
   },
 }
 
