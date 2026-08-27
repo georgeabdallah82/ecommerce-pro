@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from 'node:crypto'
+import { createHash, randomUUID, timingSafeEqual } from 'node:crypto'
 import { db } from '@/lib/prisma'
 import { decryptPaymentSecret } from '@/lib/payment-config'
 
@@ -19,9 +19,11 @@ async function getAreebaConfig() {
   const map = new Map(rows.map(row => [row.key, row.value]))
   const encrypted = setting(map, 'payment.areeba.apiPassword')
   if (!encrypted) throw new Error('Areeba API password is not configured')
+  const base = new URL(setting(map, 'payment.areeba.apiBaseUrl','https://epayment.areeba.com/api/rest'))
+  if (base.protocol !== 'https:' || base.hostname !== 'epayment.areeba.com') throw new Error('Areeba API base URL must use the trusted Areeba host')
   const script = new URL(setting(map, 'payment.areeba.checkoutScriptUrl', 'https://epayment.areeba.com/static/checkout/checkout.min.js'))
   if (script.protocol !== 'https:' || script.hostname !== 'epayment.areeba.com') throw new Error('Areeba checkout script URL must use the trusted Areeba host')
-  return { merchantId: setting(map,'payment.areeba.merchantId'), merchantName: setting(map,'payment.areeba.merchantName'), apiBaseUrl: setting(map,'payment.areeba.apiBaseUrl','https://epayment.areeba.com/api/rest'), apiVersion: setting(map,'payment.areeba.apiVersion','78'), checkoutScriptUrl: script.toString(), apiPassword: decryptPaymentSecret(encrypted) }
+  return { merchantId: setting(map,'payment.areeba.merchantId'), merchantName: setting(map,'payment.areeba.merchantName'), apiBaseUrl: base.toString().replace(/\/$/,''), apiVersion: setting(map,'payment.areeba.apiVersion','78'), checkoutScriptUrl: script.toString(), apiPassword: decryptPaymentSecret(encrypted) }
 }
 
 const safeError = (body: unknown) => { if (!body || typeof body !== 'object') return 'Payment gateway rejected the request'; const record=body as Record<string,any>; if(typeof record.error?.explanation==='string')return record.error.explanation; if(typeof record.error?.message==='string')return record.error.message; if(typeof record.message==='string')return record.message; return 'Payment gateway rejected the request' }
@@ -43,6 +45,25 @@ export const areebaMpgsPaymentProvider: PaymentProvider = {
     const response=await fetch(endpoint,{headers:{authorization:`Basic ${Buffer.from(`merchant.${config.merchantId}:${config.apiPassword}`).toString('base64')}`},cache:'no-store'})
     const body=await response.json().catch(()=>({})) as Record<string,any>; if(!response.ok)throw new Error(safeError(body))
     const status=String(body.order?.status||'').toUpperCase(); if(['CAPTURED','AUTHORIZED','PARTIALLY_CAPTURED'].includes(status))return 'paid'; if(['FAILED','CANCELLED','REFUNDED','EXCESSIVELY_REFUNDED'].includes(status))return 'failed'; return 'pending'
+  },
+  async refundPayment(externalId, amount, currency) {
+    const localTransaction = await db.paymentTransaction.findFirst({ where: { externalId, provider: 'areeba_mpgs' }, include: { order: { select: { orderNumber: true, grandTotal: true, currency: true } } } })
+    if (!localTransaction) throw new Error('Areeba payment transaction not found')
+    if (localTransaction.currency !== currency || amount <= 0 || amount > localTransaction.amount) throw new Error('Invalid refund amount or currency')
+    const config=await getAreebaConfig()
+    const orderEndpoint=`${config.apiBaseUrl}/version/${encodeURIComponent(config.apiVersion)}/merchant/${encodeURIComponent(config.merchantId)}/order/${encodeURIComponent(localTransaction.order.orderNumber)}`
+    const auth={authorization:`Basic ${Buffer.from(`merchant.${config.merchantId}:${config.apiPassword}`).toString('base64')}`}
+    const orderResponse=await fetch(orderEndpoint,{headers:auth,cache:'no-store'}); const orderBody=await orderResponse.json().catch(()=>({})) as Record<string,any>
+    if(!orderResponse.ok)throw new Error(safeError(orderBody))
+    const transactions=Array.isArray(orderBody.transaction)?orderBody.transaction as Array<Record<string,any>>:[]
+    const refundable=transactions.filter(tx=>['PAYMENT','CAPTURE'].includes(String(tx.transaction?.type||'').toUpperCase())&&['APPROVED','APPROVED_PENDING_SETTLEMENT'].includes(String(tx.response?.gatewayCode||'').toUpperCase())).sort((a,b)=>String(b.transaction?.time||'').localeCompare(String(a.transaction?.time||'')))[0]
+    const targetId=typeof refundable?.transaction?.id==='string'?refundable.transaction.id:''
+    if(!targetId)throw new Error('No captured Areeba transaction is available for refund')
+    const refundTransactionId=`refund-${randomUUID().replace(/-/g,'').slice(0,24)}`
+    const refundEndpoint=`${config.apiBaseUrl}/version/${encodeURIComponent(config.apiVersion)}/merchant/${encodeURIComponent(config.merchantId)}/order/${encodeURIComponent(localTransaction.order.orderNumber)}/transaction/${encodeURIComponent(refundTransactionId)}`
+    const response=await fetch(refundEndpoint,{method:'PUT',headers:{...auth,'content-type':'application/json'},body:JSON.stringify({apiOperation:'REFUND',transaction:{amount:(amount/100).toFixed(2),currency,targetTransactionId:targetId}})})
+    const body=await response.json().catch(()=>({})) as Record<string,any>
+    if(!response.ok||body.result==='ERROR'||!['SUCCESS','PENDING'].includes(String(body.result||'').toUpperCase()))throw new Error(safeError(body))
   },
 }
 
