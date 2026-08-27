@@ -42,7 +42,8 @@ export async function GET(req: Request) {
 
     return json({ rows: hydratedRows, total, page, pageSize, pages: Math.max(1, Math.ceil(total / pageSize)) })
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 })
+    console.error('[admin/customers] GET failed', e)
+    return json({ error: 'Unable to load customers' }, { status: 500 })
   }
 }
 
@@ -63,6 +64,7 @@ export async function POST(req: Request) {
     await audit(actor.id, 'customer.created', 'User', customer.id, { email: customer.email })
     return json({ customer: { id: customer.id, name: customer.name, email: customer.email, phone: customer.phone, isActive: customer.isActive } }, { status: 201 })
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Unable to create customer' }, { status: 400 })
+    console.error('[admin/customers] POST failed', e)
+    return json({ error: 'Unable to create customer' }, { status: 500 })
   }
 }
