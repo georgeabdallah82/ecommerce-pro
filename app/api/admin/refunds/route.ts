@@ -1,6 +1,5 @@
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
-import { audit } from '@/lib/audit'
 import { getPaymentProvider } from '@/lib/payments'
 import { json } from '@/lib/utils'
 
@@ -39,14 +38,19 @@ export async function POST(req: Request) {
           rawJson: JSON.stringify({ reason: String(body.reason || '').slice(0, 1000) || null, actorId: actor.id }),
         },
       })
-      return { order, transaction, provider, externalId: original?.externalId || null, remaining }
+      return { order, transaction, provider, externalId: original?.externalId || null }
     })
 
     if (prepared.provider !== 'manual') {
       try {
         const provider = await getPaymentProvider(prepared.provider)
         if (provider.name !== prepared.provider || !provider.refundPayment || !prepared.externalId) throw new Error(`Payment provider ${prepared.provider} is not available for refunds`)
-        await provider.refundPayment(prepared.externalId, requestedAmount, prepared.order.currency)
+        const refundResult = await provider.refundPayment(prepared.externalId, requestedAmount, prepared.order.currency)
+        if (refundResult === 'pending') {
+          await db.paymentTransaction.update({ where: { id: prepared.transaction.id }, data: { status: 'refund_pending', rawJson: JSON.stringify({ reason: String(body.reason || '').slice(0, 1000) || null, actorId: actor.id, gatewayStatus: 'PENDING' }) } })
+          await db.auditLog.create({ data: { actorId: actor.id, action: 'order.refund_pending', entity: 'Order', entityId: prepared.order.id, metadataJson: JSON.stringify({ amount: requestedAmount, transactionId: prepared.transaction.id, provider: prepared.provider }) } })
+          return json({ order: prepared.order, refund: { ...prepared.transaction, status: 'refund_pending' }, refundedTotal: null, status: 'pending' }, { status: 202 })
+        }
       } catch (error) {
         await db.paymentTransaction.update({ where: { id: prepared.transaction.id }, data: { status: 'refund_failed', rawJson: JSON.stringify({ reason: String(body.reason || '').slice(0, 1000) || null, actorId: actor.id, error: error instanceof Error ? error.message : 'Gateway refund failed' }).slice(0, 5000) } })
         throw error
