@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     })
 
     const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL
-    const resetUrl = appUrl ? `${appUrl.replace(/\/$/, '')}/reset-password?token=${encodeURIComponent(token)}` : null
+    const resetUrl = appUrl ? `${appUrl.replace(/\/$/, '')}/account/reset-password?token=${encodeURIComponent(token)}` : null
     const webhook = process.env.PASSWORD_RESET_EMAIL_WEBHOOK_URL
 
     if (webhook && resetUrl) {
