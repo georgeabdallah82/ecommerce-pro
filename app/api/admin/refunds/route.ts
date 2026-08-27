@@ -18,9 +18,12 @@ export async function POST(req: Request) {
       if (order.status === 'CANCELLED') throw new Error('Cancelled orders cannot be refunded')
       if (!['PAID', 'PARTIALLY_REFUNDED'].includes(order.paymentStatus)) throw new Error('Only paid orders can be refunded')
 
-      const refunded = order.paymentTransactions.filter(t => ['refunded', 'partially_refunded', 'refund_pending'].includes(t.status)).reduce((sum, t) => sum + t.amount, 0)
+      const pendingRefunds = order.paymentTransactions.filter(t => t.status === 'refund_pending')
+      if (pendingRefunds.length) throw new Error('A refund is already in progress for this order')
+
+      const refunded = order.paymentTransactions.filter(t => ['refunded', 'partially_refunded'].includes(t.status)).reduce((sum, t) => sum + t.amount, 0)
       const remaining = Math.max(0, order.grandTotal - refunded)
-      if (remaining <= 0) throw new Error('Order is already fully refunded or has a refund in progress')
+      if (remaining <= 0) throw new Error('Order is already fully refunded')
       if (requestedAmount > remaining) throw new Error(`Refund cannot exceed the remaining refundable amount of ${remaining}`)
 
       const original = order.paymentTransactions.filter(t => t.provider !== 'manual' && ['paid', 'captured', 'authorized'].includes(t.status) && t.externalId).sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
@@ -71,7 +74,7 @@ export async function POST(req: Request) {
     })
 
     if (result.order.userId) {
-      try { await db.notification.create({ data: { userId: result.order.userId, title: `Refund for ${result.order.orderNumber}`, body: `A refund of ${requestedAmount} ${result.order.currency} was processed.`, type: 'ORDER_REFUND' } }) } catch {}
+      try { await db.notification.create({ data: { userId: result.order.userId, title: `Refund for ${result.order.orderNumber}`, body: `A refund of ${requestedAmount} ${result.order.currency} was processed.`, type: 'ORDER_REFUND' }) } catch {}
     }
     return json({ order: result.order, refund: result.transaction, refundedTotal: result.refundedTotal }, { status: 201 })
   } catch (e) {
