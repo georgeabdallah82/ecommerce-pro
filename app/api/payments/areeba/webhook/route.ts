@@ -31,7 +31,7 @@ async function reconcileRefunds(orderId: string, body: Record<string, any>) {
 async function processPaymentNotification(orderNumber: string, body: Record<string, any>) {
   const order = await db.order.findUnique({ where: { orderNumber }, select: { id: true, orderNumber: true, grandTotal: true, currency: true, paymentStatus: true } })
   if (!order) return false
-  await reconcileRefunds(order.id, body)
+  if (await reconcileRefunds(order.id, body)) return true
   if (['REFUNDED', 'PARTIALLY_REFUNDED'].includes(order.paymentStatus)) return true
 
   const transaction = await db.paymentTransaction.findFirst({ where: { orderId: order.id, provider: 'areeba_mpgs', status: { in: ['pending', 'paid', 'failed'] } }, orderBy: { createdAt: 'desc' } })
