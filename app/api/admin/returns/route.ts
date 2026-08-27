@@ -1,5 +1,7 @@
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
+import { getPaymentProvider } from '@/lib/payments'
+import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 
 export async function POST(req: Request) {
@@ -70,35 +72,79 @@ export async function POST(req: Request) {
         }
       }
 
-      let refund: any = null
-      const newRefundedTotal = refunded + requestedRefund
-      const paymentStatus = requestedRefund > 0 ? (newRefundedTotal >= order.grandTotal ? 'REFUNDED' : 'PARTIALLY_REFUNDED') : order.paymentStatus
-      if (requestedRefund > 0) {
-        refund = await tx.paymentTransaction.create({ data: { orderId: order.id, provider: 'manual', status: 'refunded', amount: requestedRefund, currency: order.currency, rawJson: JSON.stringify({ returnId, reason: String(body.reason || '').slice(0, 1000) || null, actorId: actor.id }).slice(0, 5000) } })
-      }
+      const original = order.paymentTransactions
+        .filter(t => t.provider !== 'manual' && ['paid', 'captured', 'authorized'].includes(t.status) && t.externalId)
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
+      const refundProvider = original?.provider || 'manual'
+      const refundStatus = requestedRefund > 0 ? (refundProvider === 'manual' ? 'refunded' : 'refund_pending') : null
+      const refund = requestedRefund > 0
+        ? await tx.paymentTransaction.create({
+            data: {
+              orderId: order.id,
+              provider: refundProvider,
+              externalId: original?.externalId || null,
+              status: refundStatus!,
+              amount: requestedRefund,
+              currency: order.currency,
+              rawJson: JSON.stringify({ returnId, reason: String(body.reason || '').slice(0, 1000) || null, actorId: actor.id }),
+            },
+          })
+        : null
 
-      const updated = await tx.order.update({ where: { id: order.id }, data: { paymentStatus, status: paymentStatus === 'REFUNDED' ? 'REFUNDED' : order.status, events: { create: { status: paymentStatus, message: `${returnId}: ${normalized.map(x => `${x.item.name} × ${x.quantity}`).join(', ')}${restock ? ' — restocked' : ' — not restocked'}${requestedRefund ? ` — refunded ${requestedRefund} ${order.currency}` : ''}` } } } })
+      const newRefundedTotal = refunded + (requestedRefund > 0 && refundStatus === 'refunded' ? requestedRefund : 0)
+      const paymentStatus = refundStatus === 'refunded'
+        ? (newRefundedTotal >= order.grandTotal ? 'REFUNDED' : 'PARTIALLY_REFUNDED')
+        : order.paymentStatus
+      const updated = await tx.order.update({ where: { id: order.id }, data: { paymentStatus, status: paymentStatus === 'REFUNDED' ? 'REFUNDED' : order.status, events: { create: { status: paymentStatus, message: `${returnId}: ${normalized.map(x => `${x.item.name} × ${x.quantity}`).join(', ')}${restock ? ' — restocked' : ' — not restocked'}${requestedRefund ? ` — ${refundStatus === 'refunded' ? `refunded ${requestedRefund} ${order.currency}` : `refund pending ${requestedRefund} ${order.currency}`}` : ''}` } } } })
 
-      await tx.auditLog.create({ data: {
-        actorId: actor.id,
-        action: 'order.returned',
-        entity: 'Order',
-        entityId: order.id,
-        metadataJson: JSON.stringify({ returnId, items: normalized.map(x => ({ orderItemId: x.orderItemId, quantity: x.quantity })), restocked: restock, refundId: refund?.id || null, refundAmount: requestedRefund }),
-      } })
+      await audit(actor.id, 'order.returned', 'Order', order.id, {
+        returnId,
+        items: normalized.map(x => ({ orderItemId: x.orderItemId, quantity: x.quantity })),
+        restocked: restock,
+        refundId: refund?.id || null,
+        refundAmount: requestedRefund,
+        refundProvider,
+      })
 
-      return { order: updated, returnId, refund, items: normalized.map(x => ({ orderItemId: x.orderItemId, quantity: x.quantity })), restocked: restock }
+      return { order: updated, returnId, refund, refundProvider, refundExternalId: original?.externalId || null, items: normalized.map(x => ({ orderItemId: x.orderItemId, quantity: x.quantity })), restocked: restock }
     })
+
+    if (result.refund && result.refundProvider !== 'manual') {
+      try {
+        if (!result.refundExternalId) throw new Error('Paid gateway transaction is missing its external reference')
+        const provider = await getPaymentProvider(result.refundProvider)
+        if (provider.name !== result.refundProvider || !provider.refundPayment) throw new Error(`Payment provider ${result.refundProvider} is not available for refunds`)
+        const gatewayResult = await provider.refundPayment(result.refundExternalId, result.refund.amount, result.refund.currency)
+        if (gatewayResult === 'refunded') {
+          await db.$transaction(async tx => {
+            await tx.paymentTransaction.update({ where: { id: result.refund!.id }, data: { status: 'refunded' } })
+            await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${result.order.id} FOR UPDATE`
+            const order = await tx.order.findUnique({ where: { id: result.order.id }, include: { paymentTransactions: true } })
+            if (!order) throw new Error('Order not found')
+            const successfulRefunds = order.paymentTransactions.filter(t => ['refunded', 'partially_refunded'].includes(t.status)).reduce((sum, t) => sum + t.amount, 0)
+            const paymentStatus = successfulRefunds >= order.grandTotal ? 'REFUNDED' : 'PARTIALLY_REFUNDED'
+            await tx.order.update({ where: { id: order.id }, data: { paymentStatus, status: paymentStatus === 'REFUNDED' ? 'REFUNDED' : order.status } })
+            await tx.auditLog.create({ data: { actorId: actor.id, action: 'order.return_refund_completed', entity: 'Order', entityId: order.id, metadataJson: JSON.stringify({ returnId: result.returnId, refundId: result.refund!.id, amount: result.refund!.amount, provider: result.refundProvider }) } })
+          })
+        } else {
+          await audit(actor.id, 'order.return_refund_pending', 'Order', result.order.id, { returnId: result.returnId, refundId: result.refund.id, amount: result.refund.amount, provider: result.refundProvider })
+        }
+      } catch (error) {
+        await db.paymentTransaction.update({ where: { id: result.refund.id }, data: { status: 'refund_failed', rawJson: JSON.stringify({ returnId: result.returnId, error: error instanceof Error ? error.message : 'Gateway refund failed' }).slice(0, 5000) } })
+        await audit(actor.id, 'order.return_refund_failed', 'Order', result.order.id, { returnId: result.returnId, refundId: result.refund.id, provider: result.refundProvider })
+        return json({ ...result, error: 'Return processed, but the gateway refund failed. The refund remains marked failed for admin retry.' }, { status: 502 })
+      }
+    }
 
     if (result.order.userId) {
       try {
-        await db.notification.create({ data: { userId: result.order.userId, title: `Return for ${result.order.orderNumber}`, body: `Your return ${result.returnId} was processed${result.refund ? ` with a ${requestedRefund} ${result.order.currency} refund` : ''}.`, type: 'ORDER_REFUND' } })
+        await db.notification.create({ data: { userId: result.order.userId, title: `Return for ${result.order.orderNumber}`, body: `Your return ${result.returnId} was processed${result.refund ? ` with a ${result.refund.amount} ${result.order.currency} refund` : ''}.`, type: 'ORDER_REFUND' } })
       } catch {
         // Notification delivery must never make a committed return retryable.
       }
     }
 
-    return json(result, { status: 201 })
+    return json(result, { status: result.refund && result.refundProvider !== 'manual' && result.refund.status === 'refund_pending' ? 202 : 201 })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unable to process return'
     return json({ error: message }, { status: message === 'Order not found' ? 404 : message === 'UNAUTHORIZED' ? 401 : message === 'FORBIDDEN' ? 403 : 400 })

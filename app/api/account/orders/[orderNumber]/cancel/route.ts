@@ -19,7 +19,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ orderN
 
       await releaseOrderReservations(tx, order.id, 'Customer cancelled order')
 
-      return tx.order.update({
+      const updated = await tx.order.update({
         where: { id: order.id },
         data: {
           status: 'CANCELLED',
@@ -28,11 +28,22 @@ export async function POST(_req: Request, { params }: { params: Promise<{ orderN
           paymentStatus: order.paymentStatus,
           events: { create: { status: 'CANCELLED', message: 'Order cancelled by customer.' } },
         },
+        select: {
+          id: true,
+          orderNumber: true,
+          status: true,
+          paymentStatus: true,
+          fulfillmentStatus: true,
+          grandTotal: true,
+          currency: true,
+        },
       })
+
+      return { updated, userId: order.userId }
     })
 
-    if (result.userId) await db.notification.create({ data: { userId: result.userId, title: `Order ${result.orderNumber} cancelled`, body: 'Your order was cancelled and its inventory reservation was released.', type: 'ORDER_STATUS' } })
-    return json({ order: result })
+    if (result.userId) await db.notification.create({ data: { userId: result.userId, title: `Order ${result.updated.orderNumber} cancelled`, body: 'Your order was cancelled and its inventory reservation was released.', type: 'ORDER_STATUS' } })
+    return json({ order: result.updated })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unable to cancel order'
     return json({ error: message }, { status: message === 'UNAUTHORIZED' ? 401 : message === 'Order not found' ? 404 : 400 })

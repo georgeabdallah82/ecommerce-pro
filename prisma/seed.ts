@@ -3,10 +3,15 @@ import bcrypt from 'bcryptjs'
 import {defaultTheme,defaultSections,defaultNavigation} from '../lib/theme-defaults'
 const db=new PrismaClient()
 async function main(){
- const adminPassword=process.env.SEED_ADMIN_PASSWORD||'ChangeMe123!'; const passwordHash=await bcrypt.hash(adminPassword,12)
+ const isProduction=process.env.NODE_ENV==='production'
+ const configuredAdminPassword=process.env.SEED_ADMIN_PASSWORD
+ if(isProduction && !configuredAdminPassword) throw new Error('SEED_ADMIN_PASSWORD must be configured before running the production seed')
+ const adminPassword=configuredAdminPassword||'ChangeMe123!'; const passwordHash=await bcrypt.hash(adminPassword,12)
  const admin=await db.user.upsert({where:{email:'admin@example.com'},update:{role:Role.SUPER_ADMIN,isActive:true,passwordHash,name:'Store Admin'},create:{name:'Store Admin',email:'admin@example.com',passwordHash,role:Role.SUPER_ADMIN}})
- const customerHash=await bcrypt.hash('Customer123!',12)
- await db.user.upsert({where:{email:'customer@example.com'},update:{passwordHash:customerHash},create:{name:'Demo Customer',email:'customer@example.com',passwordHash:customerHash,role:Role.CUSTOMER}})
+ if(!isProduction){
+   const customerHash=await bcrypt.hash('Customer123!',12)
+   await db.user.upsert({where:{email:'customer@example.com'},update:{passwordHash:customerHash},create:{name:'Demo Customer',email:'customer@example.com',passwordHash,role:Role.CUSTOMER}})
+ }
  const featured=await db.category.upsert({where:{slug:'featured'},update:{},create:{name:'Featured',slug:'featured',description:'Curated products',sortOrder:0}})
  const home=await db.category.upsert({where:{slug:'home-essentials'},update:{},create:{name:'Home Essentials',slug:'home-essentials',description:'Practical everyday products',sortOrder:1}})
  const products=[['Essential Starter Kit','essential-starter-kit',3900,'SKU-001',true],['Everyday Home Set','everyday-home-set',5900,'SKU-002',true],['Premium Care Bundle','premium-care-bundle',7900,'SKU-003',false],['Smart Organizer','smart-organizer',2900,'SKU-004',false],['Daily Essentials Pack','daily-essentials-pack',4500,'SKU-005',true],['Signature Value Box','signature-value-box',9900,'SKU-006',false]] as const
@@ -21,6 +26,6 @@ async function main(){
  await db.setting.upsert({where:{key:'theme.config'},update:{value:JSON.stringify(defaultTheme)},create:{key:'theme.config',value:JSON.stringify(defaultTheme)}})
  await db.setting.upsert({where:{key:'theme.sections'},update:{value:JSON.stringify(defaultSections)},create:{key:'theme.sections',value:JSON.stringify(defaultSections)}})
  await db.setting.upsert({where:{key:'navigation.main'},update:{value:JSON.stringify(defaultNavigation)},create:{key:'navigation.main',value:JSON.stringify(defaultNavigation)}})
- console.log(`Seeded ${admin.email}. Admin password comes from SEED_ADMIN_PASSWORD or defaults to ChangeMe123!`)
+ console.log(`Seeded ${admin.email}.`)
 }
 main().catch(e=>{console.error(e);process.exit(1)}).finally(()=>db.$disconnect())

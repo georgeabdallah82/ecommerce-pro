@@ -5,7 +5,33 @@ import { json } from '@/lib/utils'
 export async function GET() {
   const user = await getCurrentUser()
   if (!user) return json({ items: [] })
-  return json(await db.wishlistItem.findMany({ where: { userId: user.id, product: { status: 'ACTIVE' } }, include: { product: { include: { images: true, category: true } } }, orderBy: { createdAt: 'desc' } }))
+
+  const items = await db.wishlistItem.findMany({
+    where: { userId: user.id, product: { status: 'ACTIVE' } },
+    select: {
+      id: true,
+      productId: true,
+      createdAt: true,
+      product: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          basePrice: true,
+          compareAtPrice: true,
+          status: true,
+          images: {
+            select: { id: true, url: true, alt: true, sortOrder: true },
+            orderBy: { sortOrder: 'asc' },
+          },
+          category: { select: { id: true, name: true, slug: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  return json({ items })
 }
 
 export async function POST(req: Request) {
