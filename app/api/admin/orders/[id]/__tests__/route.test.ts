@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, it } from 'node:test'
+import assert from 'node:assert/strict'
 
 describe('admin order response hardening', () => {
   it('does not expose payment rawJson in the order response contract', () => {
@@ -11,6 +12,7 @@ describe('admin order response hardening', () => {
       currency: 'USD',
       createdAt: new Date(),
     }
-    expect('rawJson' in safeTransaction).toBe(false)
+
+    assert.equal('rawJson' in safeTransaction, false)
   })
 })
