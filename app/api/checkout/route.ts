@@ -4,8 +4,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { checkoutSchema } from '@/lib/validation'
 import { json } from '@/lib/utils'
-import { calculateShipping, getTaxRatePercent } from '@/lib/pricing'
-import { reserveStock } from '@/lib/inventory'
+import { releaseOrderReservations, reserveStock } from '@/lib/inventory'
 import { getPaymentProvider } from '@/lib/payments'
 import { sendNewOrderPush } from '@/lib/push'
 import { PaymentMethod } from '@prisma/client'
@@ -18,16 +17,7 @@ function stableSerialize(value: unknown): string {
 
 function checkoutFingerprint(userId: string | null, input: any, merged: Map<string, { productId: string; variantId: string | null; quantity: number }>) {
   const items = [...merged.values()].sort((a, b) => `${a.productId}:${a.variantId ?? ''}`.localeCompare(`${b.productId}:${b.variantId ?? ''}`))
-  const payload = {
-    userId,
-    email: input.email,
-    phone: input.phone || null,
-    items,
-    couponCode: input.couponCode || null,
-    paymentMethod: input.paymentMethod,
-    shippingAddress: input.shippingAddress,
-  }
-  return createHash('sha256').update(stableSerialize(payload)).digest('hex')
+  return createHash('sha256').update(stableSerialize({ userId, email: input.email, phone: input.phone || null, items, couponCode: input.couponCode || null, paymentMethod: input.paymentMethod, shippingAddress: input.shippingAddress })).digest('hex')
 }
 
 async function applyCoupon(code: string, subtotal: number) {
@@ -50,11 +40,8 @@ export async function POST(req: Request) {
     const user = await getCurrentUser()
     const idempotencyKey = req.headers.get('x-idempotency-key')?.trim().slice(0, 190) || null
     const paymentMethod = input.paymentMethod as PaymentMethod
-    const paymentProvider = getPaymentProvider()
-    const settingRows = await db.setting.findMany({
-      where: { key: { in: ['payment.cod', 'payment.card', 'payment.bank', 'payment.wallet', 'checkout.guestCheckout'] } },
-      select: { key: true, value: true },
-    })
+    const paymentProvider = await getPaymentProvider()
+    const settingRows = await db.setting.findMany({ where: { key: { in: ['payment.cod', 'payment.card', 'payment.bank', 'payment.wallet', 'checkout.guestCheckout'] } }, select: { key: true, value: true } })
     const settings = Object.fromEntries(settingRows.map(row => [row.key, row.value]))
     const guestCheckoutEnabled = settings['checkout.guestCheckout'] !== 'false'
     const paymentEnabled: Record<PaymentMethod, boolean> = {
@@ -117,12 +104,7 @@ export async function POST(req: Request) {
         if (existing?.order) {
           let existingFingerprint: string | null = null
           if (existing.rawJson) {
-            try {
-              const parsed = JSON.parse(existing.rawJson) as { fingerprint?: unknown }
-              existingFingerprint = typeof parsed.fingerprint === 'string' ? parsed.fingerprint : null
-            } catch {
-              existingFingerprint = null
-            }
+            try { const parsed = JSON.parse(existing.rawJson) as { fingerprint?: unknown }; existingFingerprint = typeof parsed.fingerprint === 'string' ? parsed.fingerprint : null } catch { existingFingerprint = null }
           }
           if (existingFingerprint && existingFingerprint !== fingerprint) throw new Error('This idempotency key was already used for a different checkout')
           return { existing: true as const, order: existing.order }
@@ -151,12 +133,29 @@ export async function POST(req: Request) {
       })
       return { existing: false as const, order }
     })
+
     if (result.existing) return json({ order: { id: result.order.id, orderNumber: result.order.orderNumber, total: result.order.grandTotal } }, { status: 200 })
+
     const order = result.order
+    let clientCheckout: any = null
+    if (paymentMethod === PaymentMethod.CARD) {
+      try {
+        const payment = await paymentProvider.createPayment({ orderId: order.orderNumber, amount: order.grandTotal, currency: order.currency, email: order.email, returnUrl: `${process.env.NEXT_PUBLIC_SITE_URL || ''}/order/success?order=${encodeURIComponent(order.orderNumber)}` })
+        await db.paymentTransaction.updateMany({ where: { orderId: order.id, provider: 'checkout', externalId: idempotencyKey }, data: { provider: payment.provider, externalId: payment.externalId, status: payment.status, rawJson: JSON.stringify({ clientCheckout: payment.clientCheckout ? { type: payment.clientCheckout.type, merchantId: payment.clientCheckout.merchantId, sessionId: payment.clientCheckout.sessionId } : null }) } })
+        clientCheckout = payment.clientCheckout || null
+      } catch (paymentError) {
+        await db.$transaction(async tx => {
+          await releaseOrderReservations(tx, order.id, 'Online payment initialization failed')
+          await tx.order.update({ where: { id: order.id }, data: { status: 'CANCELLED', fulfillmentStatus: 'UNFULFILLED', events: { create: { status: 'CANCELLED', message: 'Online payment initialization failed.' } } } })
+        })
+        throw paymentError
+      }
+    }
+
     if (user?.id) await db.notification.create({ data: { userId: user.id, title: 'Order placed', body: `Order ${order.orderNumber} was placed successfully.`, type: 'ORDER_CREATED' } })
     void sendNewOrderPush({ id: order.id, orderNumber: order.orderNumber, grandTotal: order.grandTotal, currency: order.currency }).catch(error => console.error('[push] new-order notification failed', error))
-    await audit(user?.id, 'order.created', 'Order', order.id, { orderNumber, total: grandTotal, paymentMethod })
-    return json({ order: { id: order.id, orderNumber: order.orderNumber, total: order.grandTotal } }, { status: 201 })
+    await audit(user?.id, 'order.created', 'Order', order.id, { orderNumber, total: grandTotal, paymentMethod, paymentProvider: paymentMethod === PaymentMethod.CARD ? paymentProvider.name : 'manual' })
+    return json({ order: { id: order.id, orderNumber: order.orderNumber, total: order.grandTotal }, payment: clientCheckout }, { status: 201 })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to place order'
     const status = message === 'This idempotency key was already used for a different checkout' ? 409 : 400
