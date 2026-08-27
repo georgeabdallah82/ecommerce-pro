@@ -44,7 +44,7 @@ export async function POST(req: Request) {
 
     if (prepared.provider !== 'manual') {
       try {
-        const provider = await getPaymentProvider()
+        const provider = await getPaymentProvider(prepared.provider)
         if (provider.name !== prepared.provider || !provider.refundPayment || !prepared.externalId) throw new Error(`Payment provider ${prepared.provider} is not available for refunds`)
         await provider.refundPayment(prepared.externalId, requestedAmount, prepared.order.currency)
       } catch (error) {
