@@ -5,9 +5,9 @@ import { decryptPaymentSecret } from '@/lib/payment-config'
 export type PaymentStatus = 'created' | 'pending' | 'paid' | 'failed'
 export type PaymentCreateInput = { orderId: string; amount: number; currency: string; email?: string; returnUrl?: string }
 export type PaymentCreateResult = { provider: string; externalId?: string; checkoutUrl?: string; clientCheckout?: { type: 'mpgs'; merchantId: string; sessionId: string; scriptUrl: string; successIndicator?: string }; status: PaymentStatus }
-export interface PaymentProvider { readonly name: string; createPayment(input: PaymentCreateInput): Promise<PaymentCreateResult>; getPaymentStatus?(externalId: string, orderId: string): Promise<'pending' | 'paid' | 'failed'>; refundPayment?(externalId: string, amount: number, currency: string): Promise<void> }
+export interface PaymentProvider { readonly name: string; createPayment(input: PaymentCreateInput): Promise<PaymentCreateResult>; getPaymentStatus(externalId: string, orderId: string): Promise<'pending' | 'paid' | 'failed'>; refundPayment?(externalId: string, amount: number, currency: string): Promise<void> }
 
-export const manualPaymentProvider: PaymentProvider = { name: 'manual', async createPayment() { return { provider: 'manual', status: 'created' } } }
+export const manualPaymentProvider: PaymentProvider = { name: 'manual', async createPayment() { return { provider: 'manual', status: 'created' } }, async getPaymentStatus() { return 'pending' } }
 function setting(map: Map<string, string>, key: string, fallback = '') { return map.get(key) || fallback }
 function areebaWebhookToken() { const secret = process.env.AUTH_SECRET; if (!secret) throw new Error('AUTH_SECRET is required'); return createHash('sha256').update(`areeba-webhook:${secret}`).digest('hex') }
 
