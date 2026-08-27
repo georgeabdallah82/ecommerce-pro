@@ -67,9 +67,10 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({})) as Record<string, any>
     const orderNumber = typeof body.order?.id === 'string' ? body.order.id.trim() : typeof body.orderId === 'string' ? body.orderId.trim() : ''
     if (!orderNumber) return Response.json({ error: 'order.id is required' }, { status: 400 })
-    await processPaymentNotification(orderNumber, body)
+    const processed = await processPaymentNotification(orderNumber, body)
+    if (!processed) return Response.json({ error: 'Payment notification could not be reconciled' }, { status: 409 })
     return Response.json({ ok: true })
   } catch {
-    return Response.json({ ok: false }, { status: 200 })
+    return Response.json({ error: 'Webhook processing failed; retry required' }, { status: 500 })
   }
 }
