@@ -47,7 +47,7 @@ export const areebaMpgsPaymentProvider: PaymentProvider = {
     const status=String(body.order?.status||'').toUpperCase(); if(['CAPTURED','AUTHORIZED','PARTIALLY_CAPTURED'].includes(status))return 'paid'; if(['FAILED','CANCELLED','REFUNDED','EXCESSIVELY_REFUNDED'].includes(status))return 'failed'; return 'pending'
   },
   async refundPayment(externalId, amount, currency) {
-    const localTransaction = await db.paymentTransaction.findFirst({ where: { externalId, provider: 'areeba_mpgs' }, include: { order: { select: { orderNumber: true, grandTotal: true, currency: true } } } })
+    const localTransaction = await db.paymentTransaction.findFirst({ where: { externalId, provider: 'areeba_mpgs', status: { in: ['paid', 'captured', 'authorized'] } }, include: { order: { select: { orderNumber: true, grandTotal: true, currency: true } } } })
     if (!localTransaction) throw new Error('Areeba payment transaction not found')
     if (localTransaction.currency !== currency || amount <= 0 || amount > localTransaction.amount) throw new Error('Invalid refund amount or currency')
     const config=await getAreebaConfig()
@@ -67,7 +67,9 @@ export const areebaMpgsPaymentProvider: PaymentProvider = {
   },
 }
 
-export async function getPaymentProvider(): Promise<PaymentProvider> {
+export async function getPaymentProvider(requestedName?: string): Promise<PaymentProvider> {
+  if (requestedName === 'manual') return manualPaymentProvider
+  if (requestedName === 'areeba_mpgs') return areebaMpgsPaymentProvider
   const rows=await db.setting.findMany({where:{key:{in:['payment.provider','payment.card']}}}); const map=new Map(rows.map(row=>[row.key,row.value])); const name=(map.get('payment.provider')||process.env.PAYMENT_PROVIDER||'manual').toLowerCase(); const enabled=map.get('payment.card')!=='false'
   if(!enabled||name==='manual')return manualPaymentProvider; if(name==='areeba_mpgs')return areebaMpgsPaymentProvider; throw new Error(`Payment provider ${name} is not configured`)
 }
