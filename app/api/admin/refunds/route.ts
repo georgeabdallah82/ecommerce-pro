@@ -74,7 +74,18 @@ export async function POST(req: Request) {
     })
 
     if (result.order.userId) {
-      try { await db.notification.create({ data: { userId: result.order.userId, title: `Refund for ${result.order.orderNumber}`, body: `A refund of ${requestedAmount} ${result.order.currency} was processed.`, type: 'ORDER_REFUND' }) } catch {}
+      try {
+        await db.notification.create({
+          data: {
+            userId: result.order.userId,
+            title: `Refund for ${result.order.orderNumber}`,
+            body: `A refund of ${requestedAmount} ${result.order.currency} was processed.`,
+            type: 'ORDER_REFUND',
+          },
+        })
+      } catch {
+        // Notifications are best-effort and must not turn a committed refund into a failure.
+      }
     }
     return json({ order: result.order, refund: result.transaction, refundedTotal: result.refundedTotal }, { status: 201 })
   } catch (e) {
