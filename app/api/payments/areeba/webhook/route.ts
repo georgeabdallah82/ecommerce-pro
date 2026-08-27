@@ -4,7 +4,7 @@ import { areebaMpgsPaymentProvider } from '@/lib/payments'
 
 function webhookToken() { const secret = process.env.AUTH_SECRET; if (!secret) throw new Error('AUTH_SECRET is required'); return createHash('sha256').update(`areeba-webhook:${secret}`).digest('hex') }
 
-async function process(orderNumber: string) {
+async function processPaymentNotification(orderNumber: string) {
   const order = await db.order.findUnique({ where: { orderNumber }, select: { id: true, orderNumber: true, grandTotal: true, currency: true, paymentStatus: true } })
   if (!order) return false
   const transaction = await db.paymentTransaction.findFirst({ where: { orderId: order.id, provider: 'areeba_mpgs' }, orderBy: { createdAt: 'desc' } })
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({})) as Record<string, any>
     const orderNumber = typeof body.order?.id === 'string' ? body.order.id.trim() : typeof body.orderId === 'string' ? body.orderId.trim() : ''
     if (!orderNumber) return Response.json({ error: 'order.id is required' }, { status: 400 })
-    await process(orderNumber)
+    await processPaymentNotification(orderNumber)
     return Response.json({ ok: true })
   } catch {
     return Response.json({ ok: false }, { status: 200 })
