@@ -20,6 +20,11 @@ async function applyCoupon(code: string, subtotal: number) {
   const discount=coupon.type==='PERCENTAGE'?Math.min(subtotal,Math.floor(subtotal*coupon.value/100)):coupon.type==='FIXED'?Math.min(subtotal,coupon.value):0; return {discount,coupon}
 }
 
+function providerCheckout(rawJson: string | null) {
+  if (!rawJson) return null
+  try { const parsed=JSON.parse(rawJson) as { clientCheckout?: unknown }; return parsed.clientCheckout || null } catch { return null }
+}
+
 export async function POST(req: Request) {
   try {
     const input=checkoutSchema.parse(await req.json()); const user=await getCurrentUser(); const idempotencyKey=req.headers.get('x-idempotency-key')?.trim().slice(0,190)||null; const paymentMethod=input.paymentMethod as PaymentMethod; const paymentProvider=await getPaymentProvider()
@@ -42,10 +47,14 @@ export async function POST(req: Request) {
       if(coupon){const couponUpdate=await tx.coupon.updateMany({where:{id:coupon.id,isActive:true,...(coupon.maxUses!==null?{usedCount:{lt:coupon.maxUses}}:{})},data:{usedCount:{increment:1}}});if(couponUpdate.count!==1)throw new Error('This coupon is no longer available')}
       const order=await tx.order.create({data:{orderNumber,userId:user?.id??null,email:input.email,phone:input.phone||null,subtotal,discountTotal:discount,shippingTotal,taxTotal,grandTotal,currency:process.env.NEXT_PUBLIC_CURRENCY||'USD',paymentMethod,shippingAddressJson:JSON.stringify(input.shippingAddress),couponCode:coupon?.code??null,shippingMethod:shipping.method,items:{create:normalized},events:{create:{status:'PENDING',message:'Order placed successfully.'}},paymentTransactions:{create:{provider:'checkout',externalId:idempotencyKey,status:'created',amount:grandTotal,currency:process.env.NEXT_PUBLIC_CURRENCY||'USD',rawJson:idempotencyKey?JSON.stringify({fingerprint}):null}}}});return {existing:false as const,order}
     })
-    if(result.existing)return json({order:{id:result.order.id,orderNumber:result.order.orderNumber,total:result.order.grandTotal}},{status:200})
+
+    if(result.existing){
+      const providerTx=paymentMethod===PaymentMethod.CARD?await db.paymentTransaction.findFirst({where:{orderId:result.order.id,provider:paymentProvider.name},orderBy:{createdAt:'desc'}}):null
+      return json({order:{id:result.order.id,orderNumber:result.order.orderNumber,total:result.order.grandTotal},payment:providerCheckout(providerTx?.rawJson||null)},{status:200})
+    }
 
     const order=result.order; let clientCheckout:any=null
-    if(paymentMethod===PaymentMethod.CARD){try{const payment=await paymentProvider.createPayment({orderId:order.orderNumber,amount:order.grandTotal,currency:order.currency,email:order.email,returnUrl:`${process.env.NEXT_PUBLIC_SITE_URL||''}/api/payments/areeba/return?order=${encodeURIComponent(order.orderNumber)}`});if(payment.externalId){await db.paymentTransaction.create({data:{orderId:order.id,provider:payment.provider,externalId:payment.externalId,status:payment.status,amount:order.grandTotal,currency:order.currency,rawJson:JSON.stringify({clientCheckout:payment.clientCheckout?{type:payment.clientCheckout.type,merchantId:payment.clientCheckout.merchantId,sessionId:payment.clientCheckout.sessionId}:null})}})}clientCheckout=payment.clientCheckout||null}catch(paymentError){await db.$transaction(async tx=>{await releaseOrderReservations(tx,order.id,'Online payment initialization failed');await tx.order.update({where:{id:order.id},data:{status:'CANCELLED',fulfillmentStatus:'UNFULFILLED',events:{create:{status:'CANCELLED',message:'Online payment initialization failed.'}}}})});throw paymentError}}
+    if(paymentMethod===PaymentMethod.CARD){try{const payment=await paymentProvider.createPayment({orderId:order.orderNumber,amount:order.grandTotal,currency:order.currency,email:order.email,returnUrl:`${process.env.NEXT_PUBLIC_SITE_URL||''}/api/payments/areeba/return?order=${encodeURIComponent(order.orderNumber)}`});if(payment.externalId){await db.paymentTransaction.create({data:{orderId:order.id,provider:payment.provider,externalId:payment.externalId,status:payment.status,amount:order.grandTotal,currency:order.currency,rawJson:JSON.stringify({clientCheckout:payment.clientCheckout?{type:payment.clientCheckout.type,merchantId:payment.clientCheckout.merchantId,sessionId:payment.clientCheckout.sessionId}:null,successIndicator:payment.clientCheckout?.successIndicator||null})}})}clientCheckout=payment.clientCheckout||null}catch(paymentError){await db.$transaction(async tx=>{await releaseOrderReservations(tx,order.id,'Online payment initialization failed');await tx.order.update({where:{id:order.id},data:{status:'CANCELLED',fulfillmentStatus:'UNFULFILLED',events:{create:{status:'CANCELLED',message:'Online payment initialization failed.'}}}})});throw paymentError}}
     if(user?.id)await db.notification.create({data:{userId:user.id,title:'Order placed',body:`Order ${order.orderNumber} was placed successfully.`,type:'ORDER_CREATED'}}); void sendNewOrderPush({id:order.id,orderNumber:order.orderNumber,grandTotal:order.grandTotal,currency:order.currency}).catch(error=>console.error('[push] new-order notification failed',error)); await audit(user?.id,'order.created','Order',order.id,{orderNumber,total:grandTotal,paymentMethod,paymentProvider:paymentMethod===PaymentMethod.CARD?paymentProvider.name:'manual'}); return json({order:{id:order.id,orderNumber:order.orderNumber,total:order.grandTotal},payment:clientCheckout},{status:201})
   } catch(error){const message=error instanceof Error?error.message:'Unable to place order';const status=message==='This idempotency key was already used for a different checkout'?409:400;return json({error:message},{status})}
 }
