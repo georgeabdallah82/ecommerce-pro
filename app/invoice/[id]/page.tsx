@@ -1,4 +1,5 @@
-import { requirePermission } from '@/lib/auth'
+import { requireUser } from '@/lib/auth'
+import { hasPermission } from '@/lib/permissions'
 import { db } from '@/lib/prisma'
 import { getThemeState } from '@/lib/theme'
 import { notFound } from 'next/navigation'
@@ -21,12 +22,13 @@ function address(raw: string | null | undefined) {
 }
 
 export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
-  await requirePermission('orders.view')
+  const viewer = await requireUser()
+  const isStaff = hasPermission(viewer.role, 'orders.view')
   const { id } = await params
   const [o, { theme }] = await Promise.all([
-    db.order.findUnique({
-      where: { id },
-      include: { items: { include: { variant: true } }, user: true, paymentTransactions: { orderBy: { createdAt: 'desc' } } },
+    db.order.findFirst({
+      where: { id, ...(isStaff ? {} : { userId: viewer.id }) },
+      include: { items: { include: { variant: true } }, user: true },
     }),
     getThemeState(),
   ])
