@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { db } from '@/lib/prisma'
 import { decryptPaymentSecret } from '@/lib/payment-config'
 
@@ -8,6 +9,7 @@ export interface PaymentProvider { readonly name: string; createPayment(input: P
 
 export const manualPaymentProvider: PaymentProvider = { name: 'manual', async createPayment() { return { provider: 'manual', status: 'created' } } }
 function setting(map: Map<string, string>, key: string, fallback = '') { return map.get(key) || fallback }
+function areebaWebhookToken() { const secret = process.env.AUTH_SECRET; if (!secret) throw new Error('AUTH_SECRET is required'); return createHash('sha256').update(`areeba-webhook:${secret}`).digest('hex') }
 
 async function getAreebaConfig() {
   const rows = await db.setting.findMany({ where: { key: { in: ['payment.areeba.merchantId','payment.areeba.merchantName','payment.areeba.apiBaseUrl','payment.areeba.apiVersion','payment.areeba.checkoutScriptUrl','payment.areeba.apiPassword'] } } })
@@ -26,8 +28,9 @@ export const areebaMpgsPaymentProvider: PaymentProvider = {
   async createPayment(input) {
     const config=await getAreebaConfig(); if(!config.merchantId||!config.merchantName)throw new Error('Areeba merchant configuration is incomplete')
     const siteUrl=process.env.NEXT_PUBLIC_SITE_URL; if(!siteUrl)throw new Error('NEXT_PUBLIC_SITE_URL is required for online payments')
+    const webhookUrl=`${siteUrl}/api/payments/areeba/webhook?token=${areebaWebhookToken()}`
     const endpoint=`${config.apiBaseUrl}/version/${encodeURIComponent(config.apiVersion)}/merchant/${encodeURIComponent(config.merchantId)}/session`
-    const response=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json',authorization:`Basic ${Buffer.from(`merchant.${config.merchantId}:${config.apiPassword}`).toString('base64')}`},body:JSON.stringify({apiOperation:'INITIATE_CHECKOUT',checkoutMode:'WEBSITE',interaction:{operation:'PURCHASE',merchant:{name:config.merchantName,url:siteUrl},returnUrl:input.returnUrl||`${siteUrl}/api/payments/areeba/return?order=${encodeURIComponent(input.orderId)}`},order:{id:input.orderId,amount:(input.amount/100).toFixed(2),currency:input.currency,description:`Order ${input.orderId}`,notificationUrl:`${siteUrl}/api/payments/areeba/webhook`}})})
+    const response=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json',authorization:`Basic ${Buffer.from(`merchant.${config.merchantId}:${config.apiPassword}`).toString('base64')}`},body:JSON.stringify({apiOperation:'INITIATE_CHECKOUT',checkoutMode:'WEBSITE',interaction:{operation:'PURCHASE',merchant:{name:config.merchantName,url:siteUrl},returnUrl:input.returnUrl||`${siteUrl}/api/payments/areeba/return?order=${encodeURIComponent(input.orderId)}`},order:{id:input.orderId,amount:(input.amount/100).toFixed(2),currency:input.currency,description:`Order ${input.orderId}`,notificationUrl:webhookUrl}})})
     const body=await response.json().catch(()=>({})) as Record<string,any>; const sessionId=typeof body.session?.id==='string'?body.session.id:''; const successIndicator=typeof body.successIndicator==='string'?body.successIndicator:''
     if(!response.ok||body.result==='ERROR'||!sessionId)throw new Error(safeError(body))
     return {provider:this.name,externalId:sessionId,clientCheckout:{type:'mpgs',merchantId:config.merchantId,sessionId,scriptUrl:config.checkoutScriptUrl,successIndicator:successIndicator||undefined},status:'pending'}
