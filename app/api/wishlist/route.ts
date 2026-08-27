@@ -17,9 +17,8 @@ export async function GET() {
           id: true,
           name: true,
           slug: true,
-          price: true,
+          basePrice: true,
           compareAtPrice: true,
-          currency: true,
           status: true,
           images: {
             select: { id: true, url: true, alt: true, sortOrder: true },
