@@ -1,9 +1,10 @@
 import { db } from '@/lib/prisma'
 import { decryptPaymentSecret } from '@/lib/payment-config'
 
+export type PaymentStatus = 'created' | 'pending' | 'paid' | 'failed'
 export type PaymentCreateInput = { orderId: string; amount: number; currency: string; email?: string; returnUrl?: string }
-export type PaymentCreateResult = { provider: string; externalId?: string; checkoutUrl?: string; clientCheckout?: { type: 'mpgs'; merchantId: string; sessionId: string; scriptUrl: string }; status: 'created' | 'pending' | 'paid' | 'failed' }
-export interface PaymentProvider { readonly name: string; createPayment(input: PaymentCreateInput): Promise<PaymentCreateResult>; getPaymentStatus?(externalId: string, orderId: string): Promise<'pending' | 'paid' | 'failed'>; refund?(externalId: string, amount: number, currency: string): Promise<void> }
+export type PaymentCreateResult = { provider: string; externalId?: string; checkoutUrl?: string; clientCheckout?: { type: 'mpgs'; merchantId: string; sessionId: string; scriptUrl: string; successIndicator?: string }; status: PaymentStatus }
+export interface PaymentProvider { readonly name: string; createPayment(input: PaymentCreateInput): Promise<PaymentCreateResult>; getPaymentStatus?(externalId: string, orderId: string): Promise<'pending' | 'paid' | 'failed'>; refundPayment?(externalId: string, amount: number, currency: string): Promise<void> }
 
 export const manualPaymentProvider: PaymentProvider = { name: 'manual', async createPayment() { return { provider: 'manual', status: 'created' } } }
 function setting(map: Map<string, string>, key: string, fallback = '') { return map.get(key) || fallback }
@@ -13,7 +14,9 @@ async function getAreebaConfig() {
   const map = new Map(rows.map(row => [row.key, row.value]))
   const encrypted = setting(map, 'payment.areeba.apiPassword')
   if (!encrypted) throw new Error('Areeba API password is not configured')
-  return { merchantId: setting(map,'payment.areeba.merchantId'), merchantName: setting(map,'payment.areeba.merchantName'), apiBaseUrl: setting(map,'payment.areeba.apiBaseUrl','https://epayment.areeba.com/api/rest'), apiVersion: setting(map,'payment.areeba.apiVersion','78'), checkoutScriptUrl: setting(map,'payment.areeba.checkoutScriptUrl','https://epayment.areeba.com/static/checkout/checkout.min.js'), apiPassword: decryptPaymentSecret(encrypted) }
+  const script = new URL(setting(map, 'payment.areeba.checkoutScriptUrl', 'https://epayment.areeba.com/static/checkout/checkout.min.js'))
+  if (script.protocol !== 'https:' || script.hostname !== 'epayment.areeba.com') throw new Error('Areeba checkout script URL must use the trusted Areeba host')
+  return { merchantId: setting(map,'payment.areeba.merchantId'), merchantName: setting(map,'payment.areeba.merchantName'), apiBaseUrl: setting(map,'payment.areeba.apiBaseUrl','https://epayment.areeba.com/api/rest'), apiVersion: setting(map,'payment.areeba.apiVersion','78'), checkoutScriptUrl: script.toString(), apiPassword: decryptPaymentSecret(encrypted) }
 }
 
 const safeError = (body: unknown) => { if (!body || typeof body !== 'object') return 'Payment gateway rejected the request'; const record=body as Record<string,any>; if(typeof record.error?.explanation==='string')return record.error.explanation; if(typeof record.error?.message==='string')return record.error.message; if(typeof record.message==='string')return record.message; return 'Payment gateway rejected the request' }
@@ -25,9 +28,9 @@ export const areebaMpgsPaymentProvider: PaymentProvider = {
     const siteUrl=process.env.NEXT_PUBLIC_SITE_URL; if(!siteUrl)throw new Error('NEXT_PUBLIC_SITE_URL is required for online payments')
     const endpoint=`${config.apiBaseUrl}/version/${encodeURIComponent(config.apiVersion)}/merchant/${encodeURIComponent(config.merchantId)}/session`
     const response=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json',authorization:`Basic ${Buffer.from(`merchant.${config.merchantId}:${config.apiPassword}`).toString('base64')}`},body:JSON.stringify({apiOperation:'INITIATE_CHECKOUT',checkoutMode:'WEBSITE',interaction:{operation:'PURCHASE',merchant:{name:config.merchantName,url:siteUrl},returnUrl:input.returnUrl||`${siteUrl}/api/payments/areeba/return?order=${encodeURIComponent(input.orderId)}`},order:{id:input.orderId,amount:(input.amount/100).toFixed(2),currency:input.currency,description:`Order ${input.orderId}`,notificationUrl:`${siteUrl}/api/payments/areeba/webhook`}})})
-    const body=await response.json().catch(()=>({})) as Record<string,any>; const sessionId=typeof body.session?.id==='string'?body.session.id:''
+    const body=await response.json().catch(()=>({})) as Record<string,any>; const sessionId=typeof body.session?.id==='string'?body.session.id:''; const successIndicator=typeof body.successIndicator==='string'?body.successIndicator:''
     if(!response.ok||body.result==='ERROR'||!sessionId)throw new Error(safeError(body))
-    return {provider:this.name,externalId:sessionId,clientCheckout:{type:'mpgs',merchantId:config.merchantId,sessionId,scriptUrl:config.checkoutScriptUrl},status:'pending'}
+    return {provider:this.name,externalId:sessionId,clientCheckout:{type:'mpgs',merchantId:config.merchantId,sessionId,scriptUrl:config.checkoutScriptUrl,successIndicator:successIndicator||undefined},status:'pending'}
   },
   async getPaymentStatus(_externalId,orderId) {
     const config=await getAreebaConfig(); const endpoint=`${config.apiBaseUrl}/version/${encodeURIComponent(config.apiVersion)}/merchant/${encodeURIComponent(config.merchantId)}/order/${encodeURIComponent(orderId)}`
