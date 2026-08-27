@@ -7,7 +7,10 @@ import { useCart } from '@/components/cart-provider'
 import { money } from '@/lib/config'
 
 type StoreSettings = { payment: { cod:boolean; card:boolean; bank:boolean; wallet:boolean }; checkout:{ guestCheckout:boolean } }
+type ClientCheckout = { type:'mpgs'; merchantId:string; sessionId:string; scriptUrl:string }
 const defaultSettings:StoreSettings={payment:{cod:true,card:false,bank:false,wallet:false},checkout:{guestCheckout:true}}
+
+declare global { interface Window { Checkout?: { configure: (options: unknown) => void; showPaymentPage: () => void } } }
 
 export default function Checkout() {
   const { items, subtotal, clear } = useCart()
@@ -20,6 +23,7 @@ export default function Checkout() {
   const [authenticated, setAuthenticated] = useState(false)
   const [sessionLoaded, setSessionLoaded] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState('COD')
+  const [clientCheckout, setClientCheckout] = useState<ClientCheckout|null>(null)
 
   useEffect(()=>{
     let active=true
@@ -30,15 +34,23 @@ export default function Checkout() {
     return ()=>{active=false}
   },[])
 
+  useEffect(()=>{
+    if(!clientCheckout) return
+    const launch=()=>{
+      if(!window.Checkout) return
+      window.Checkout.configure({ merchant: clientCheckout.merchantId, session: { id: clientCheckout.sessionId } })
+      window.Checkout.showPaymentPage()
+    }
+    if(window.Checkout){launch();return}
+    const script=document.createElement('script');script.src=clientCheckout.scriptUrl;script.async=true;script.onload=launch;script.onerror=()=>setError('Unable to load the secure payment page. Please try again.');document.body.appendChild(script)
+    return ()=>{script.onload=null}
+  },[clientCheckout])
+
   const enabledMethods = settings ? [
-    settings.payment.cod && ['COD','Cash on delivery'],
-    settings.payment.card && ['CARD','Card'],
-    settings.payment.bank && ['BANK_TRANSFER','Bank transfer'],
-    settings.payment.wallet && ['WALLET','Wallet'],
+    settings.payment.cod && ['COD','Cash on delivery'], settings.payment.card && ['CARD','Card'], settings.payment.bank && ['BANK_TRANSFER','Bank transfer'], settings.payment.wallet && ['WALLET','Wallet'],
   ].filter(Boolean) as [string,string][] : []
   const guestBlocked = Boolean(settings && sessionLoaded && !authenticated && settings.checkout.guestCheckout===false)
   const enabledMethodSignature = enabledMethods.map(([value])=>value).join('|')
-
   useEffect(()=>{if(enabledMethods.length && !enabledMethods.some(([value])=>value===paymentMethod)) setPaymentMethod(enabledMethods[0][0])},[enabledMethodSignature,paymentMethod])
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -51,9 +63,16 @@ export default function Checkout() {
     setLoading(true)
     const form = event.currentTarget; const fd = new FormData(form)
     const data = { email: String(fd.get('email') || ''), phone: String(fd.get('phone') || ''), paymentMethod, couponCode: String(fd.get('couponCode') || ''), shippingAddress: { firstName: String(fd.get('firstName') || ''), lastName: String(fd.get('lastName') || ''), line1: String(fd.get('line1') || ''), line2: String(fd.get('line2') || ''), city: String(fd.get('city') || ''), region: String(fd.get('region') || ''), postalCode: String(fd.get('postalCode') || ''), country: String(fd.get('country') || ''), phone: String(fd.get('phone') || '') }, items: items.map(item => ({ productId: item.productId, variantId: item.variantId || null, quantity: item.quantity })) }
-    try { const response=await fetch('/api/checkout',{method:'POST',headers:{'content-type':'application/json','x-idempotency-key':idempotencyKey.current},body:JSON.stringify(data)});const output=await response.json();if(!response.ok)throw new Error(output.error||'Unable to place order');clear();router.push(`/order/success?order=${encodeURIComponent(output.order.orderNumber)}`) }
-    catch(e){setError(e instanceof Error?e.message:'Unable to place order')} finally{setLoading(false)}
+    try {
+      const response=await fetch('/api/checkout',{method:'POST',headers:{'content-type':'application/json','x-idempotency-key':idempotencyKey.current},body:JSON.stringify(data)})
+      const output=await response.json(); if(!response.ok)throw new Error(output.error||'Unable to place order')
+      clear()
+      if(output.payment?.type==='mpgs'){setClientCheckout(output.payment as ClientCheckout);setLoading(false);return}
+      router.push(`/order/success?order=${encodeURIComponent(output.order.orderNumber)}`)
+    } catch(e){setError(e instanceof Error?e.message:'Unable to place order');setLoading(false)}
   }
+
+  if(clientCheckout) return <main className="section"><div className="container narrow"><div className="card" style={{textAlign:'center'}}><span className="muted">SECURE PAYMENT</span><h1 className="h2">Continue to secure card payment</h1><p className="muted">Your payment details are entered directly on the payment provider's secure page.</p><div className="alert">Loading secure payment…</div><Link className="textLink" href="/cart">Return to cart</Link></div></div></main>
 
   return <main className="section"><div className="container split"><form className="card checkoutForm" onSubmit={submit}>
     <span className="muted">CHECKOUT</span><h1 className="h2">Secure, simple, fast.</h1>
