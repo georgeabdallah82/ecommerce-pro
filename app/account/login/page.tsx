@@ -17,6 +17,9 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
           <input className="input" id="email" name="email" type="email" autoComplete="email" placeholder="you@example.com" required />
           <label className="fieldLabel" htmlFor="password" style={{ marginTop: 14 }}>Password</label>
           <input className="input" id="password" name="password" type="password" autoComplete="current-password" placeholder="Password" required />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+            <Link href="/account/forgot-password" className="muted" style={{ textDecoration: 'underline' }}>Forgot password?</Link>
+          </div>
           <button className="btn" style={{ width: '100%', marginTop: 16 }}>Sign in</button>
         </form>
         <p className="muted" style={{ marginTop: 16 }}>New here? <Link href="/account/register" style={{ textDecoration: 'underline' }}>Create an account</Link></p>
