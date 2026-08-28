@@ -8,7 +8,7 @@ export type PaymentMethodConfig = {
 }
 
 const KEYS = [
-  'payment.cod', 'payment.card', 'payment.bank', 'payment.wallet',
+  'payment.cod', 'payment.card', 'payment.bank', 'payment.wallet', 'payment.provider',
   'payment.bank.name', 'payment.bank.accountName', 'payment.bank.iban', 'payment.bank.instructions',
   'payment.wallet.provider', 'payment.wallet.accountName', 'payment.wallet.accountNumber', 'payment.wallet.instructions',
 ]

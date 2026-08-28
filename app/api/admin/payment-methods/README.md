@@ -1,0 +1,1 @@
+The payment methods endpoint is protected by settings permissions. Public checkout reads only non-secret payment instructions. Gateway credentials remain in the existing protected payment-provider configuration.
