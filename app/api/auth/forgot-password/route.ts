@@ -1,33 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'node:crypto'
 import { db } from '@/lib/prisma'
+import { consumeRateLimit } from '@/lib/rate-limit'
 
 const WINDOW_MS = 60 * 60 * 1000
 const MAX_PER_IP = 5
 const MAX_PER_EMAIL = 3
-const attempts = new Map<string, { count: number; resetAt: number }>()
-
-function limited(key: string, max: number) {
-  const now = Date.now()
-  const current = attempts.get(key)
-  if (!current || current.resetAt <= now) {
-    attempts.set(key, { count: 1, resetAt: now + WINDOW_MS })
-    return false
-  }
-  current.count += 1
-  return current.count > max
-}
 
 export async function POST(request: NextRequest) {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-  if (limited(`ip:${ip}`, MAX_PER_IP)) {
-    return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429, headers: { 'Retry-After': '3600' } })
+  const ipLimit = consumeRateLimit(`password-recovery:ip:${ip}`, MAX_PER_IP, WINDOW_MS)
+  if (!ipLimit.allowed) {
+    return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429, headers: { 'Retry-After': String(ipLimit.retryAfterSeconds) } })
   }
 
   const body = await request.json().catch(() => null)
   const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : ''
   if (!email || !email.includes('@')) return NextResponse.json({ message: 'If an account exists, recovery instructions have been sent.' })
-  if (limited(`email:${email}`, MAX_PER_EMAIL)) {
+
+  const emailLimit = consumeRateLimit(`password-recovery:email:${email}`, MAX_PER_EMAIL, WINDOW_MS)
+  if (!emailLimit.allowed) {
     return NextResponse.json({ message: 'If an account exists, recovery instructions have been sent.' })
   }
 
@@ -45,8 +37,6 @@ export async function POST(request: NextRequest) {
       })
     })
 
-    // Render config exposes NEXT_PUBLIC_SITE_URL, so use it as the canonical
-    // production fallback. APP_URL/NEXT_PUBLIC_APP_URL remain supported.
     const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL
     const resetUrl = appUrl ? `${appUrl.replace(/\/$/, '')}/account/reset-password?token=${encodeURIComponent(token)}` : null
     const webhook = process.env.PASSWORD_RESET_EMAIL_WEBHOOK_URL
