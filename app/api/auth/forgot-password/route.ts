@@ -31,25 +31,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'If an account exists, recovery instructions have been sent.' })
   }
 
-  const users = await db.$queryRaw<{ id: string; email: string; isActive: boolean }[]>`
-    SELECT id, email, "isActive" FROM "User" WHERE email = ${email} LIMIT 1
-  `
-  const user = users[0]
+  const user = await db.user.findUnique({ where: { email }, select: { id: true, email: true, isActive: true } })
 
   if (user?.isActive) {
     const token = crypto.randomBytes(32).toString('hex')
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000)
-    const id = crypto.randomUUID()
 
     await db.$transaction(async (tx) => {
-      await tx.$executeRaw`DELETE FROM "PasswordResetToken" WHERE "userId" = ${user.id}`
-      await tx.$executeRaw`INSERT INTO "PasswordResetToken" (id, "userId", "tokenHash", "expiresAt", "createdAt") VALUES (${id}, ${user.id}, ${tokenHash}, ${expiresAt}, NOW())`
+      await tx.passwordResetToken.deleteMany({ where: { userId: user.id } })
+      await tx.passwordResetToken.create({
+        data: { tokenHash, expiresAt, userId: user.id },
+      })
     })
 
     // Render config exposes NEXT_PUBLIC_SITE_URL, so use it as the canonical
-    // production fallback. APP_URL/NEXT_PUBLIC_APP_URL remain supported for
-    // deployments that use those names instead.
+    // production fallback. APP_URL/NEXT_PUBLIC_APP_URL remain supported.
     const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL
     const resetUrl = appUrl ? `${appUrl.replace(/\/$/, '')}/account/reset-password?token=${encodeURIComponent(token)}` : null
     const webhook = process.env.PASSWORD_RESET_EMAIL_WEBHOOK_URL
