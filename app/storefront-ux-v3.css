@@ -1,0 +1,205 @@
+/* Storefront UX v3: navigation, discovery, product and cart polish */
+:root{
+  --ux-radius:18px;
+  --ux-radius-sm:12px;
+  --ux-shadow:0 10px 30px rgba(25,21,18,.08);
+  --ux-shadow-hover:0 18px 44px rgba(25,21,18,.14);
+  --ux-focus:rgba(255,90,31,.18);
+}
+
+/* Global storefront rhythm */
+.focalStorefront,.focalStorefront *{min-width:0}
+.focalStorefront .focalContainer{width:min(var(--store-max,1280px),calc(100% - 40px));margin-inline:auto}
+.focalStorefront .focalSectionHead{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:24px}
+.focalStorefront .focalSectionHead h2{margin:5px 0 0;font-size:clamp(28px,3.4vw,44px);line-height:1.03;letter-spacing:-.045em}
+.focalStorefront .focalSectionHead p{margin:9px 0 0;color:var(--focal-muted);max-width:58ch;line-height:1.6}
+.focalStorefront .focalTextLink{display:inline-flex;align-items:center;gap:6px;font-weight:850;font-size:13px;padding:8px 2px;white-space:nowrap}
+.focalStorefront .focalTextLink:hover{text-decoration:underline;text-underline-offset:4px}
+
+/* Navigation */
+.focalNav{box-shadow:0 1px 0 rgba(25,21,18,.03)}
+.focalNavInner{width:min(var(--store-max,1280px),calc(100% - 40px))!important;margin-inline:auto}
+.focalNavLinks{align-items:center}
+.focalNavLinks a,.focalNavLinkButton{position:relative;transition:color .16s ease,opacity .16s ease}
+.focalNavLinks a::after,.focalNavLinkButton::after{content:"";position:absolute;left:0;right:0;bottom:14px;height:2px;border-radius:99px;background:var(--focal-primary);transform:scaleX(0);transform-origin:center;transition:transform .18s ease}
+.focalNavLinks a:hover,.focalNavLinkButton:hover{color:var(--focal-primary)}
+.focalNavLinks a:hover::after,.focalNavLinkButton:hover::after{transform:scaleX(.6)}
+.focalNavLinks a[aria-current="page"]{color:var(--focal-primary)}
+.focalNavLinks a[aria-current="page"]::after{transform:scaleX(1)}
+.focalNavItem{height:100%}
+.focalMega{padding:12px!important;width:min(720px,calc(100vw - 32px))!important;border-radius:16px!important;top:calc(100% + 8px)!important}
+.focalMegaGrid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important}
+.focalMegaGrid a{display:block;padding:14px!important;border:1px solid transparent}
+.focalMegaGrid a:hover{border-color:var(--focal-line);background:var(--focal-soft)}
+.focalNavIcon{transition:transform .16s ease,background .16s ease,border-color .16s ease,box-shadow .16s ease}
+.focalNavIcon:hover{transform:translateY(-1px);border-color:#d9c8bd;box-shadow:0 7px 18px rgba(25,21,18,.08)}
+.focalNavIcon:focus-visible,.focalNavMobile:focus-visible,.focalNavLinkButton:focus-visible{outline:3px solid var(--ux-focus);outline-offset:2px}
+.focalAnnouncementGlobalInner{max-width:var(--store-max,1280px);margin:auto;position:relative}
+
+/* Search overlay */
+.focalSearchOverlay{background:rgba(25,21,18,.42)!important}
+.focalSearchCard{margin-top:92px!important;border-radius:22px!important;padding:24px!important;box-shadow:0 28px 90px rgba(0,0,0,.24)!important}
+.focalSearchTop strong{font-size:18px;letter-spacing:-.02em}
+.focalSearchForm input{font-size:16px!important;background:#fbfaf8!important}
+
+/* Product cards */
+.focalStorefront .focalProductGrid{display:grid;gap:26px 18px!important}
+.focalStorefront .focalProductCard{display:block;position:relative;border-radius:18px;overflow:visible;transition:transform .18s ease}
+.focalStorefront .focalProductCard:hover{transform:translateY(-3px)}
+.focalStorefront .focalProductMedia{position:relative;border-radius:18px!important;box-shadow:0 1px 0 rgba(25,21,18,.04);overflow:hidden}
+.focalStorefront .focalProductMedia img{display:block;width:100%;height:100%;object-fit:cover;background:#f7f3ef;transition:transform .38s cubic-bezier(.2,.8,.2,1),opacity .24s ease}
+.focalStorefront .focalProductCard:hover .focalProductMedia img{transform:scale(1.04)}
+.focalStorefront .focalProductBody{padding:13px 3px 0!important}
+.focalStorefront .focalProductBody .focalEyebrow{display:block;margin-bottom:6px;font-size:10px;letter-spacing:.1em}
+.focalStorefront .focalProductBody h3{margin:0 0 8px;font-size:15px;line-height:1.32;letter-spacing:-.015em}
+.focalStorefront .focalPrice{display:flex;align-items:center;gap:9px}
+.focalStorefront .focalPrice strong{font-size:14px}
+.focalStorefront .focalPrice del{font-size:12px;color:var(--focal-muted)}
+.focalStorefront .focalBadge{top:12px!important;left:12px!important;right:auto!important;border-radius:999px!important;padding:7px 9px!important;font-size:10px!important;letter-spacing:.03em}
+.focalStorefront .focalProductActions{left:auto!important;right:12px!important;bottom:12px!important;flex-direction:column!important;opacity:0!important;transform:translateY(6px)!important}
+.focalStorefront .focalProductCard:hover .focalProductActions,.focalStorefront .focalProductCard:focus-within .focalProductActions{opacity:1!important;transform:none!important}
+.focalStorefront .focalProductActions button{box-shadow:0 8px 20px rgba(25,21,18,.12)}
+
+/* Collections */
+.focalStorefront .focalCollectionGrid{display:grid;gap:18px!important}
+.focalStorefront .focalCollectionCard{display:block;border-radius:18px;overflow:hidden;background:var(--focal-surface);border:1px solid var(--focal-line);box-shadow:0 2px 0 rgba(25,21,18,.02);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.focalStorefront .focalCollectionCard:hover{transform:translateY(-4px);box-shadow:var(--ux-shadow-hover);border-color:#dcc8bb}
+.focalStorefront .focalCollectionMedia{aspect-ratio:4/3;overflow:hidden;background:#f4eee9}
+.focalStorefront .focalCollectionMedia img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .4s ease; background:#f4eee9}
+.focalStorefront .focalCollectionCard:hover .focalCollectionMedia img{transform:scale(1.045)}
+.focalStorefront .focalCollectionCopy{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:15px 15px 16px}
+.focalStorefront .focalCollectionCopy h3{margin:5px 0 0;font-size:17px;line-height:1.15}
+.focalStorefront .focalCollectionCopy>span{display:inline-flex;align-items:center;gap:5px;font-weight:800;font-size:11px;white-space:nowrap}
+.focalStorefront .focalCollectionHero{grid-template-columns:minmax(0,1.05fr) minmax(320px,.95fr)!important;gap:44px!important;padding:18px 0!important}
+.focalStorefront .focalCollectionHeroCopy{padding:18px 0}
+.focalStorefront .focalCollectionHeroCopy h2{max-width:10ch}
+.focalStorefront .focalCollectionHeroImage{min-height:430px!important;border-radius:24px!important;box-shadow:var(--ux-shadow);border:1px solid var(--focal-line)}
+.focalStorefront .focalCollectionHeroImage img{min-height:430px!important}
+
+/* Collection/shop filters */
+.focalStorefront .focalCollectionToolbar,.focalStorefront .focalStorefrontFilterBar{background:rgba(255,255,255,.86);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--focal-line);border-radius:16px}
+.focalStorefront .focalCollectionToolbar{justify-content:space-between!important;padding:9px!important;margin:0 0 22px!important;position:sticky;top:84px;z-index:15;box-shadow:0 8px 24px rgba(25,21,18,.05)}
+.focalStorefront .focalToolbarSearch{min-width:min(360px,100%)!important;height:44px!important;background:#fff!important;border-color:var(--focal-line)!important;border-radius:12px!important}
+.focalStorefront .focalCollectionToolbar select{height:44px!important;border-radius:12px!important;background:#fff!important}
+.focalStorefront .focalStorefrontFilterBar{margin:14px auto 0;width:min(var(--store-max,1280px),calc(100% - 40px));padding:10px;position:sticky;top:84px;z-index:15;box-shadow:0 8px 24px rgba(25,21,18,.05)}
+.focalStorefront .focalShopFilters{display:grid;grid-template-columns:minmax(0,1fr) 190px 190px auto;gap:10px!important;align-items:center}
+.focalStorefront .focalShopFilters .focalInput,.focalStorefront .focalShopFilters .focalSelect{height:44px!important;border-radius:12px!important;background:#fff!important}
+.focalStorefront .focalShopFilters .focalButton{height:44px;min-width:100px}
+
+/* Product detail */
+.focalStorefront .focalProductDetail{grid-template-columns:minmax(0,1.04fr) minmax(360px,.8fr)!important;gap:56px!important;align-items:start}
+.focalStorefront .focalProductGallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px!important;position:sticky;top:102px;align-self:start}
+.focalStorefront .focalProductGallery img{width:100%;aspect-ratio:1/1;display:block;object-fit:cover;border-radius:16px!important;background:#f4eee9;box-shadow:0 1px 0 rgba(25,21,18,.03)}
+.focalStorefront .focalProductGallery img:first-child{grid-column:span 2;aspect-ratio:4/4.35}
+.focalStorefront .focalProductInfo{background:rgba(255,255,255,.72);border:1px solid var(--focal-line);border-radius:24px;padding:30px!important;box-shadow:0 12px 32px rgba(25,21,18,.05);position:sticky;top:102px}
+.focalStorefront .focalProductInfo h1{font-size:clamp(34px,4vw,56px)!important;line-height:.98!important;letter-spacing:-.055em!important;margin:8px 0 12px!important}
+.focalStorefront .focalProductInfo>p{font-size:15px!important;line-height:1.75!important;color:var(--focal-muted)!important;max-width:58ch}
+.focalStorefront .focalRating{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px;color:#a76818}
+.focalStorefront .focalRating span{color:var(--focal-muted);font-size:12px}
+.focalStorefront .focalPrice.big{font-size:31px!important;letter-spacing:-.025em}
+.focalStorefront .focalProductOptions{padding-top:5px}
+.focalStorefront .focalOptionLabel{font-size:12px!important;text-transform:uppercase;letter-spacing:.08em;color:var(--focal-muted)}
+.focalStorefront .focalVariantList{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px!important}
+.focalStorefront .focalVariantList button{min-height:46px;border-radius:12px!important;text-align:left;padding:11px 13px!important;font-size:13px;font-weight:750}
+.focalStorefront .focalVariantList button:hover{border-color:#d7c5b9}
+.focalStorefront .focalVariantList button.selected{background:var(--focal-soft)}
+.focalStorefront .focalQty{min-height:48px;border-radius:13px!important}
+.focalStorefront .focalPurchaseRow{grid-template-columns:auto minmax(0,1fr) auto!important;gap:10px!important;margin-top:8px}
+.focalStorefront .focalPurchaseRow .focalButton{min-height:48px}
+.focalStorefront .focalWishlist{width:48px!important;height:48px!important;border-radius:13px!important}
+.focalStorefront .focalTrustGrid{margin-top:16px!important;background:#fffaf6!important;padding:14px!important}
+.focalStorefront .focalAccordions{border-top:1px solid var(--focal-line);margin-top:22px;padding-top:3px}
+.focalStorefront .focalAccordions details{border-bottom:1px solid var(--focal-line);padding:0!important}
+.focalStorefront .focalAccordions summary{padding:16px 0!important;font-weight:850}
+.focalStorefront .focalAccordions p{color:var(--focal-muted);line-height:1.65;font-size:13px;padding:0 0 15px;margin:0}
+
+/* Quick view */
+.focalStorefront .focalModal{background:rgba(25,21,18,.5)!important;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.focalStorefront .focalQuickView{border-radius:24px!important;box-shadow:0 30px 110px rgba(0,0,0,.28)!important}
+.focalStorefront .focalQuickImage img{display:block;width:100%;height:100%;object-fit:cover}
+.focalStorefront .focalQuickInfo{padding:42px!important}
+
+/* Full cart page */
+.cartPage{padding:56px 0 80px}
+.cartPage .cartHeader{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:24px}
+.cartPage .cartHeader h1{margin:4px 0 0;font-size:clamp(34px,5vw,52px);line-height:.98;letter-spacing:-.055em}
+.cartPage .cartHeader p{margin:8px 0 0;color:var(--focal-muted);font-size:14px}
+.cartPage .cartLayout{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,.43fr);gap:24px;align-items:start}
+.cartPage .cartItemsCard{border:1px solid var(--focal-line);border-radius:22px;background:#fff;overflow:hidden}
+.cartPage .cartItemsHead{display:flex;align-items:center;justify-content:space-between;padding:17px 20px;border-bottom:1px solid var(--focal-line);font-size:12px;font-weight:850;letter-spacing:.08em;text-transform:uppercase}
+.cartPage .cartRowUX{display:grid;grid-template-columns:116px minmax(0,1fr) auto;gap:18px;padding:18px 20px;align-items:center;border-bottom:1px solid var(--focal-line);transition:background .15s ease}
+.cartPage .cartRowUX:last-child{border-bottom:0}
+.cartPage .cartRowUX:hover{background:#fffaf6}
+.cartPage .cartImageUX{width:116px;height:116px;object-fit:cover;border-radius:15px;background:#f4eee9;display:block}
+.cartPage .cartInfoUX{display:grid;gap:6px}
+.cartPage .cartInfoUX a{font-size:16px;font-weight:850;letter-spacing:-.015em}
+.cartPage .cartInfoUX .sku{font-size:11px;color:var(--focal-muted)}
+.cartPage .cartInfoUX .unitPrice{font-size:13px;color:var(--focal-muted)}
+.cartPage .cartLineTotal{font-size:15px;font-weight:900;margin-top:3px}
+.cartPage .cartControlsUX{display:flex;align-items:center;gap:10px;justify-content:flex-end}
+.cartPage .qtyUX{display:inline-flex;align-items:center;border:1px solid var(--focal-line);border-radius:12px;padding:4px;background:#fff}
+.cartPage .qtyUX button{width:34px;height:34px;border:0;background:transparent;border-radius:9px;display:grid;place-items:center;cursor:pointer}
+.cartPage .qtyUX button:hover{background:var(--focal-soft)}
+.cartPage .qtyUX input{width:42px;height:34px;border:0;text-align:center;outline:0;background:transparent;font-weight:800}
+.cartPage .removeUX{min-height:34px;padding:0 10px;border:1px solid var(--focal-line);background:#fff;border-radius:10px;cursor:pointer;font-weight:750;color:var(--focal-muted)}
+.cartPage .removeUX:hover{color:#9a2418;border-color:#f0c8c2;background:#fff7f6}
+.cartPage .summaryUX{position:sticky;top:102px;border:1px solid var(--focal-line);border-radius:22px;background:#fff;padding:22px;box-shadow:var(--ux-shadow)}
+.cartPage .summaryUX h2{font-size:17px;margin:0 0 14px;letter-spacing:-.02em}
+.cartPage .summaryLineUX{display:flex;justify-content:space-between;gap:14px;padding:11px 0;border-bottom:1px solid var(--focal-line);font-size:13px}
+.cartPage .summaryTotalUX{display:flex;justify-content:space-between;gap:14px;padding:16px 0 6px;font-size:20px;font-weight:900}
+.cartPage .summaryNoteUX{font-size:11px;color:var(--focal-muted);line-height:1.6;margin:0 0 14px}
+.cartPage .cartActionUX{display:grid;gap:9px}
+.cartPage .cartActionUX a{min-height:50px;border-radius:13px}
+.cartPage .emptyCartUX{border:1px dashed #d9c8bd;border-radius:22px;background:linear-gradient(180deg,#fff,#fffaf6);padding:64px 24px;text-align:center}
+.cartPage .emptyCartUX .icon{width:58px;height:58px;border-radius:18px;display:grid;place-items:center;background:var(--focal-soft);margin:0 auto 16px}
+.cartPage .emptyCartUX h2{font-size:26px;letter-spacing:-.03em;margin:0 0 6px}
+.cartPage .emptyCartUX p{color:var(--focal-muted);max-width:40ch;margin:0 auto 20px;line-height:1.6}
+
+/* Mobile */
+@media(max-width:1000px){
+  .focalStorefront .focalProductDetail{grid-template-columns:1fr!important;gap:26px!important}
+  .focalStorefront .focalProductGallery,.focalStorefront .focalProductInfo{position:static}
+  .focalStorefront .focalProductInfo{padding:24px!important}
+  .focalStorefront .focalCollectionHero{grid-template-columns:1fr!important}
+  .focalStorefront .focalCollectionHeroImage,.focalStorefront .focalCollectionHeroImage img{min-height:330px!important}
+  .focalStorefront .focalShopFilters{grid-template-columns:1fr 1fr!important}
+  .focalStorefront .focalShopFilters .focalInput{grid-column:1/-1}
+  .cartPage .cartLayout{grid-template-columns:1fr}
+  .cartPage .summaryUX{position:static}
+}
+@media(max-width:700px){
+  .focalNavInner{height:68px!important}
+  .focalNavActions{gap:5px!important}
+  .focalNavIcon{width:38px!important;height:38px!important}
+  .focalStorefront .focalContainer,.focalStorefront .focalNavInner{width:min(100% - 24px,1280px)!important}
+  .focalStorefront .focalSectionHead{align-items:flex-start;flex-direction:column;gap:9px}
+  .focalStorefront .focalSectionHead h2{font-size:31px}
+  .focalStorefront .focalProductGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:20px 11px!important}
+  .focalStorefront .focalProductMedia{border-radius:14px!important}
+  .focalStorefront .focalProductBody h3{font-size:13px}
+  .focalStorefront .focalCollectionGrid{grid-template-columns:1fr 1fr!important;gap:10px!important}
+  .focalStorefront .focalCollectionCopy{padding:11px}
+  .focalStorefront .focalCollectionCopy h3{font-size:14px}
+  .focalStorefront .focalCollectionToolbar,.focalStorefront .focalStorefrontFilterBar{position:static!important}
+  .focalStorefront .focalCollectionToolbar{display:grid!important;grid-template-columns:1fr 1fr;gap:7px!important}
+  .focalStorefront .focalToolbarSearch{grid-column:1/-1;min-width:0!important}
+  .focalStorefront .focalShopFilters{grid-template-columns:1fr!important}
+  .focalStorefront .focalShopFilters .focalInput{grid-column:auto}
+  .focalStorefront .focalShopFilters .focalButton{width:100%}
+  .focalStorefront .focalProductGallery{grid-template-columns:1fr 1fr!important}
+  .focalStorefront .focalProductGallery img:first-child{grid-column:span 2}
+  .focalStorefront .focalProductInfo{border-radius:18px!important;padding:20px!important}
+  .focalStorefront .focalVariantList{grid-template-columns:1fr 1fr!important}
+  .focalStorefront .focalPurchaseRow{grid-template-columns:auto 1fr!important}
+  .focalStorefront .focalWishlist{grid-column:2;justify-self:end}
+  .focalStorefront .focalQuickInfo{padding:24px!important}
+  .cartPage{padding:36px 0 60px}
+  .cartPage .cartHeader{align-items:flex-start;flex-direction:column}
+  .cartPage .cartRowUX{grid-template-columns:76px minmax(0,1fr);gap:11px;padding:14px}
+  .cartPage .cartImageUX{width:76px;height:76px;border-radius:12px}
+  .cartPage .cartControlsUX{grid-column:1/-1;justify-content:space-between}
+  .cartPage .summaryUX{border-radius:18px;padding:18px}
+}
+@media(prefers-reduced-motion:reduce){
+  .focalStorefront .focalProductCard,.focalStorefront .focalProductMedia img,.focalStorefront .focalCollectionCard,.focalStorefront .focalCollectionMedia img,.focalNavLinks a::after,.focalNavLinkButton::after,.focalNavIcon{transition:none!important}
+}
