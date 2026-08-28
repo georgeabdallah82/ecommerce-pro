@@ -44,7 +44,7 @@ export async function GET(req: Request) {
     const [currentOrders, previousOrders, customers, inventory, products] = await Promise.all([
       db.order.findMany({
         where: { createdAt: { gte: since }, status: { not: OrderStatus.CANCELLED } },
-        select: { id: true, createdAt: true, grandTotal: true, items: { select: { productId: true, quantity: true, totalPrice: true, name: true } }, paymentTransactions: { select: { status: true, amount: true } } },
+        select: { createdAt: true, grandTotal: true, items: { select: { productId: true, quantity: true, totalPrice: true, name: true } }, paymentTransactions: { select: { status: true, amount: true } } },
         orderBy: { createdAt: 'asc' },
       }),
       db.order.findMany({
@@ -52,7 +52,16 @@ export async function GET(req: Request) {
         select: { grandTotal: true, paymentTransactions: { select: { status: true, amount: true } } },
       }),
       db.user.count({ where: { role: 'CUSTOMER', createdAt: { gte: since } } }),
-      db.inventoryItem.findMany({ include: { product: { select: { id: true, name: true, sku: true } }, variant: { select: { name: true, sku: true } } } }),
+      db.inventoryItem.findMany({
+        select: {
+          id: true,
+          quantity: true,
+          reserved: true,
+          lowStockThreshold: true,
+          product: { select: { name: true, sku: true } },
+          variant: { select: { name: true, sku: true } },
+        },
+      }),
       db.product.count({}),
     ])
 
@@ -102,8 +111,10 @@ export async function GET(req: Request) {
       lowStock,
       granularity: days > 90 ? 'month' : 'day',
     })
-  } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to load analytics'
-    return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 401 })
+  } catch (error) {
+    if (error instanceof Error && error.message === 'FORBIDDEN') return json({ error: 'Forbidden' }, { status: 403 })
+    if (error instanceof Error && error.message === 'UNAUTHORIZED') return json({ error: 'Unauthorized' }, { status: 401 })
+    console.error('[admin/analytics] unexpected failure', error)
+    return json({ error: 'Unable to load analytics' }, { status: 500 })
   }
 }
