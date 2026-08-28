@@ -1,11 +1,19 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+function getRequestOrigin(request: NextRequest) {
+  const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim()
+  const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim()
+  const host = forwardedHost || request.headers.get('host') || request.nextUrl.host
+  const proto = forwardedProto || request.nextUrl.protocol.replace(':', '')
+  return `${proto}://${host}`
+}
+
 function isSameOrigin(request: NextRequest) {
   const origin = request.headers.get('origin')
   if (!origin) return true
   try {
-    return new URL(origin).origin === request.nextUrl.origin
+    return new URL(origin).origin === getRequestOrigin(request)
   } catch {
     return false
   }
@@ -37,7 +45,6 @@ export function middleware(request: NextRequest) {
   response.headers.set('X-DNS-Prefetch-Control', 'on')
 
   if (isApi && hasSession) {
-    // Never allow authenticated API responses to become shared-cache entries.
     response.headers.set('Cache-Control', 'private, no-store')
   }
 
