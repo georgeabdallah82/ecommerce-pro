@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Mail, MapPin, Phone, Save, ShieldOff, UserCheck, Plus, X, CreditCard, UsersRound } from 'lucide-react'
+import { ArrowLeft, Mail, MapPin, Phone, Save, ShieldOff, UserCheck, Plus, X, CreditCard, UsersRound, Coins } from 'lucide-react'
 import { money } from '@/lib/config'
 
 async function api(path: string, init?: RequestInit) {
@@ -24,6 +24,9 @@ export default function CustomerDetailAdmin({ initial }: { initial: any }) {
   const [creditAmount, setCreditAmount] = useState('')
   const [creditReason, setCreditReason] = useState('')
   const [creditBusy, setCreditBusy] = useState(false)
+  const [coinAmount, setCoinAmount] = useState('')
+  const [coinReason, setCoinReason] = useState('')
+  const [coinBusy, setCoinBusy] = useState(false)
 
   async function save() {
     setSaving(true); setMessage(''); setError('')
@@ -71,9 +74,21 @@ export default function CustomerDetailAdmin({ initial }: { initial: any }) {
       const minor = Math.round(entered * 100)
       const data = await api(`/api/admin/customers/${customer.id}/credit`, { method: 'POST', body: JSON.stringify({ amount: minor, currency: customer.orders?.[0]?.currency || 'USD', reason: creditReason || 'Admin adjustment' }) })
       setCustomer((c: any) => ({ ...c, creditBalance: data.balance, creditTransactions: [data.transaction, ...(c.creditTransactions || [])] }))
-      setCreditAmount(''); setCreditReason(''); setMessage('Store credit updated')
-    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to adjust store credit') }
+      setCreditAmount(''); setCreditReason(''); setMessage('Wallet updated')
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to adjust wallet') }
     finally { setCreditBusy(false) }
+  }
+
+  async function adjustCoins() {
+    const entered = Number(coinAmount)
+    if (!Number.isInteger(entered) || entered === 0) return setError('Enter a non-zero whole-number coin adjustment.')
+    setCoinBusy(true); setError('')
+    try {
+      const data = await api(`/api/admin/customers/${customer.id}/coins`, { method: 'POST', body: JSON.stringify({ amount: entered, reason: coinReason || 'Admin adjustment' }) })
+      setCustomer((c: any) => ({ ...c, coinBalance: data.balance, coinTransactions: [data.transaction, ...(c.coinTransactions || [])] }))
+      setCoinAmount(''); setCoinReason(''); setMessage('Coins updated')
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to adjust coins') }
+    finally { setCoinBusy(false) }
   }
 
   const totalOrders = customer.orders?.length || 0
@@ -90,7 +105,7 @@ export default function CustomerDetailAdmin({ initial }: { initial: any }) {
 
     <div className="card customerHero"><div className="customerHeroAvatar">{initials(customer.name)}</div><div className="customerHeroInfo"><h2>{customer.name}</h2><div className="muted">Customer since {new Date(customer.createdAt).toLocaleDateString()}</div><div className="inline customerContacts"><span className="muted"><Mail size={14}/> {customer.email}</span>{customer.phone && <span className="muted"><Phone size={14}/> {customer.phone}</span>}</div></div><div className="customerHeroActions"><a className="btn secondary" href={`mailto:${customer.email}`}><Mail size={15}/> Email</a>{customer.phone && <a className="btn secondary" href={`tel:${customer.phone}`}><Phone size={15}/> Call</a>}</div></div>
 
-    <div className="accountStats"><div className="card stat"><span className="muted">Total spent</span><strong>{money(totalSpent)}</strong></div><div className="card stat"><span className="muted">Orders</span><strong>{totalOrders}</strong></div><div className="card stat"><span className="muted">Average order</span><strong>{money(average)}</strong></div><div className="card stat"><span className="muted">Store credit</span><strong>{money(customer.creditBalance || 0)}</strong></div></div>
+    <div className="accountStats"><div className="card stat"><span className="muted">Total spent</span><strong>{money(totalSpent)}</strong></div><div className="card stat"><span className="muted">Orders</span><strong>{totalOrders}</strong></div><div className="card stat"><span className="muted">Average order</span><strong>{money(average)}</strong></div><div className="card stat"><span className="muted">Wallet</span><strong>{money(customer.creditBalance || 0)}</strong></div><div className="card stat"><span className="muted">Coins</span><strong>{Number(customer.coinBalance || 0).toLocaleString()}</strong></div></div>
 
     <div className="customerWorkspace"><main className="customerMain">
       <section className="editorCard"><div className="editorCardHead"><div><h3>Customer information</h3><p>Contact details used across orders and account communications.</p></div></div><div className="editorCardBody"><div className="twoColFields"><label className="fieldLabel">Full name<input className="input" value={customer.name} onChange={e => setCustomer({ ...customer, name: e.target.value })}/></label><label className="fieldLabel">Email<input className="input" value={customer.email} onChange={e => setCustomer({ ...customer, email: e.target.value })}/></label><label className="fieldLabel">Phone<input className="input" value={customer.phone || ''} onChange={e => setCustomer({ ...customer, phone: e.target.value })}/></label><label className="fieldLabel">Account status<select className="input" value={customer.isActive ? 'ACTIVE' : 'DISABLED'} onChange={e => setCustomer({ ...customer, isActive: e.target.value === 'ACTIVE' })}><option value="ACTIVE">Active</option><option value="DISABLED">Disabled</option></select></label></div></div></section>
@@ -103,7 +118,9 @@ export default function CustomerDetailAdmin({ initial }: { initial: any }) {
     </main>
 
     <aside className="customerRail">
-      <section className="editorCard"><div className="editorCardHead"><div><h3>Store credit</h3><p>Adjustable customer balance with an immutable ledger.</p></div><CreditCard size={18}/></div><div className="editorCardBody"><div className="creditBalance">{money(customer.creditBalance || 0)}<span>available credit</span></div><div className="twoColFields"><label className="fieldLabel">Adjustment<input className="input" type="number" step="0.01" placeholder="+50 or -25" value={creditAmount} onChange={e => setCreditAmount(e.target.value)}/></label><label className="fieldLabel">Reason<input className="input" value={creditReason} onChange={e => setCreditReason(e.target.value)} placeholder="Customer goodwill"/></label></div><button className="btn" onClick={adjustCredit} disabled={creditBusy || !creditAmount}>{creditBusy ? 'Updating…' : 'Adjust balance'}</button><div className="creditHistory">{(customer.creditTransactions || []).slice(0, 8).map((tx: any) => <div className="summaryLine" key={tx.id}><span>{tx.reason || tx.type}<small className="muted">{new Date(tx.createdAt).toLocaleDateString()}</small></span><strong className={tx.amount >= 0 ? 'creditPositive' : 'creditNegative'}>{tx.amount >= 0 ? '+' : ''}{money(tx.amount, tx.currency)}</strong></div>)}</div></div></section>
+      <section className="editorCard"><div className="editorCardHead"><div><h3>Wallet</h3><p>Store credit balance with a protected ledger.</p></div><CreditCard size={18}/></div><div className="editorCardBody"><div className="creditBalance">{money(customer.creditBalance || 0)}<span>available wallet balance</span></div><div className="twoColFields"><label className="fieldLabel">Adjustment<input className="input" type="number" step="0.01" placeholder="+50 or -25" value={creditAmount} onChange={e => setCreditAmount(e.target.value)}/></label><label className="fieldLabel">Reason<input className="input" value={creditReason} onChange={e => setCreditReason(e.target.value)} placeholder="Customer goodwill"/></label></div><button className="btn" onClick={adjustCredit} disabled={creditBusy || !creditAmount}>{creditBusy ? 'Updating…' : 'Adjust wallet'}</button><div className="creditHistory">{(customer.creditTransactions || []).slice(0, 8).map((tx: any) => <div className="summaryLine" key={tx.id}><span>{tx.reason || tx.type}<small className="muted">{new Date(tx.createdAt).toLocaleDateString()}</small></span><strong className={tx.amount >= 0 ? 'creditPositive' : 'creditNegative'}>{tx.amount >= 0 ? '+' : ''}{money(tx.amount, tx.currency)}</strong></div>)}</div></div></section>
+
+      <section className="editorCard"><div className="editorCardHead"><div><h3>Coins</h3><p>1 coin redeems as 0.01 store currency unit.</p></div><Coins size={18}/></div><div className="editorCardBody"><div className="creditBalance">{Number(customer.coinBalance || 0).toLocaleString()}<span>available coins</span></div><div className="twoColFields"><label className="fieldLabel">Adjustment<input className="input" type="number" step="1" placeholder="+500 or -100" value={coinAmount} onChange={e => setCoinAmount(e.target.value)}/></label><label className="fieldLabel">Reason<input className="input" value={coinReason} onChange={e => setCoinReason(e.target.value)} placeholder="Loyalty bonus"/></label></div><button className="btn" onClick={adjustCoins} disabled={coinBusy || !coinAmount}>{coinBusy ? 'Updating…' : 'Adjust coins'}</button><div className="creditHistory">{(customer.coinTransactions || []).slice(0, 8).map((tx: any) => <div className="summaryLine" key={tx.id}><span>{tx.reason || tx.type}<small className="muted">{new Date(tx.createdAt).toLocaleDateString()}</small></span><strong className={tx.amount >= 0 ? 'creditPositive' : 'creditNegative'}>{tx.amount >= 0 ? '+' : ''}{tx.amount}</strong></div>)}</div></div></section>
 
       <section className="editorCard"><div className="editorCardHead"><div><h3>Addresses</h3><p>Saved customer addresses.</p></div></div><div className="editorCardBody">{!customer.addresses?.length ? <div className="emptyInline">No saved addresses.</div> : customer.addresses.map((a: any) => <div className="addressItem" key={a.id}><div className="inline"><MapPin size={15}/><strong>{a.label || 'Address'}</strong>{a.isDefault && <span className="pill">Default</span>}</div><div>{a.firstName} {a.lastName}</div><div>{a.line1}{a.line2 ? `, ${a.line2}` : ''}</div><div>{a.city}{a.region ? `, ${a.region}` : ''} {a.postalCode || ''}</div><div>{a.country}</div></div>)}</div></section>
 
