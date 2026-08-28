@@ -1,14 +1,25 @@
 import { db } from '@/lib/prisma'
 import { audit } from '@/lib/audit'
 import { releaseOrderReservations } from '@/lib/inventory'
+import { consumeRateLimit } from '@/lib/rate-limit'
 import { areebaMpgsPaymentProvider, paymentReturnToken, safeTokenEqual } from '@/lib/payments'
+
+function clientIp(req: Request) {
+  return req.headers.get('x-real-ip')?.trim() || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+}
 
 export async function GET(req: Request) {
   const url = new URL(req.url)
   const orderNumber = url.searchParams.get('order')?.trim() || ''
   const token = url.searchParams.get('token')?.trim() || ''
   const resultIndicator = url.searchParams.get('resultIndicator')?.trim() || ''
-  if (!orderNumber || !safeTokenEqual(token, paymentReturnToken(orderNumber))) return Response.redirect(new URL('/checkout?payment=invalid_return', url.origin))
+
+  if (!orderNumber || orderNumber.length > 100 || !safeTokenEqual(token, paymentReturnToken(orderNumber))) {
+    return Response.redirect(new URL('/checkout?payment=invalid_return', url.origin))
+  }
+
+  const limit = consumeRateLimit(`areeba-return:${clientIp(req)}:${orderNumber}`, 20, 60 * 1000)
+  if (!limit.allowed) return Response.redirect(new URL('/checkout?payment=retry_later', url.origin))
 
   const order = await db.order.findUnique({ where: { orderNumber }, select: { id: true, orderNumber: true, paymentStatus: true, grandTotal: true, currency: true, couponCode: true } })
   if (!order) return Response.redirect(new URL('/checkout?payment=order_not_found', url.origin))
@@ -17,8 +28,6 @@ export async function GET(req: Request) {
     const transaction = await db.paymentTransaction.findFirst({ where: { orderId: order.id, provider: 'areeba_mpgs' }, orderBy: { createdAt: 'desc' } })
     if (!transaction?.externalId) return Response.redirect(new URL(`/order/success?order=${encodeURIComponent(order.orderNumber)}&payment=pending`, url.origin))
 
-    // Areeba documents resultIndicator as the returnUrl integrity value. If a success
-    // indicator was stored, the gateway must return the matching indicator.
     const raw = transaction.rawJson ? JSON.parse(transaction.rawJson) as { successIndicator?: unknown } : {}
     const successIndicator = typeof raw.successIndicator === 'string' ? raw.successIndicator : ''
     if (successIndicator && (!resultIndicator || !safeTokenEqual(successIndicator, resultIndicator))) {
@@ -36,12 +45,11 @@ export async function GET(req: Request) {
       await audit(null, 'payment.paid', 'Order', order.id, { provider: 'areeba_mpgs', orderNumber: order.orderNumber })
       return Response.redirect(new URL(`/order/success?order=${encodeURIComponent(order.orderNumber)}&payment=paid`, url.origin))
     }
+
     if (status === 'failed') {
       let transitioned = false
       await db.$transaction(async tx => {
         const current = await tx.order.findUnique({ where: { id: order.id }, select: { paymentStatus: true, status: true, couponCode: true } })
-        // Failed payment reconciliation is idempotent. A repeated gateway return/webhook
-        // must not release reservations or decrement coupon usage a second time.
         if (!current || ['PAID', 'FAILED', 'REFUNDED', 'PARTIALLY_REFUNDED'].includes(current.paymentStatus)) return
         await releaseOrderReservations(tx, order.id, 'Online payment failed')
         if (current.couponCode) await tx.coupon.updateMany({ where: { code: current.couponCode, usedCount: { gt: 0 } }, data: { usedCount: { decrement: 1 } } })
@@ -52,6 +60,7 @@ export async function GET(req: Request) {
       if (transitioned) await audit(null, 'payment.failed', 'Order', order.id, { provider: 'areeba_mpgs', orderNumber: order.orderNumber })
       return Response.redirect(new URL(`/order/success?order=${encodeURIComponent(order.orderNumber)}&payment=failed`, url.origin))
     }
+
     return Response.redirect(new URL(`/order/success?order=${encodeURIComponent(order.orderNumber)}&payment=pending`, url.origin))
   } catch {
     return Response.redirect(new URL(`/order/success?order=${encodeURIComponent(order.orderNumber)}&payment=pending`, url.origin))
