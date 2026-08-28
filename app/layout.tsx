@@ -19,6 +19,7 @@ import './storefront-home-ux-v8.css'
 import './storefront-mobile-drawer-ux-v8.css'
 import './storefront-production-ux-v9.css'
 import './storefront-mobile-ux-v10.css'
+import './storefront-mobile-production-v11.css'
 import { getThemeState } from '@/lib/theme'
 import StoreNavRuntime from '@/components/store-nav-runtime'
 import StoreNavScroll from '@/components/store-nav-scroll'
@@ -68,5 +69,5 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     '--store-btn-hover': theme.buttons?.hover || 'lift',
     '--store-header-logo-width': `${theme.header?.logoWidth || 160}px`,
   } as React.CSSProperties
-  return <html lang="en"><head><link rel="stylesheet" href="/theme-fallback.css?v=10"/>{theme.faviconUrl && <link rel="icon" href={theme.faviconUrl}/>} {theme.customCss && <style dangerouslySetInnerHTML={{ __html: theme.customCss }}/>}</head><body style={vars} className={theme.animations?.enabled ? 'animations-enabled' : ''}><CartProvider><StoreNavRuntime theme={theme} navigation={navigation}/><StoreNavScroll/>{children}</CartProvider></body></html>
+  return <html lang="en"><head><link rel="stylesheet" href="/theme-fallback.css?v=11"/>{theme.faviconUrl && <link rel="icon" href={theme.faviconUrl}/>} {theme.customCss && <style dangerouslySetInnerHTML={{ __html: theme.customCss }}/>}</head><body style={vars} className={theme.animations?.enabled ? 'animations-enabled' : ''}><CartProvider><StoreNavRuntime theme={theme} navigation={navigation}/><StoreNavScroll/>{children}</CartProvider></body></html>
 }
