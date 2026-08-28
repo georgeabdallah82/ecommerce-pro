@@ -19,6 +19,19 @@ async function tableExists(name) {
   return Boolean(rows[0]?.exists)
 }
 
+async function migrationApplied(name) {
+  if (!(await tableExists('_prisma_migrations'))) return false
+  const rows = await db.$queryRaw`
+    SELECT EXISTS (
+      SELECT 1
+      FROM "_prisma_migrations"
+      WHERE migration_name = ${name}
+        AND finished_at IS NOT NULL
+    ) AS applied
+  `
+  return Boolean(rows[0]?.applied)
+}
+
 async function ensurePasswordResetTable() {
   await db.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS "PasswordResetToken" (
@@ -126,14 +139,31 @@ async function ensureWalletAndCoinsTables() {
 }
 
 async function main() {
-  const legacyDatabase = await tableExists('User') && !(await tableExists('_prisma_migrations'))
+  const migrationsTableExists = await tableExists('_prisma_migrations')
+  const userTableExists = await tableExists('User')
 
-  if (legacyDatabase) {
+  if (userTableExists && !migrationsTableExists) {
     console.log('[production-migrations] legacy database detected; ensuring additive production tables directly')
     await ensurePasswordResetTable()
     await ensureWalletAndCoinsTables()
     console.log('[production-migrations] additive production tables are ready')
     return
+  }
+
+  // A previous bootstrap may have recorded an additive migration as applied
+  // while its tables were not actually present. Repair that state before the
+  // normal Prisma migration command runs.
+  const passwordResetApplied = await migrationApplied('20260828000000_add_password_reset_tokens')
+  const walletCoinsApplied = await migrationApplied('20260829000000_add_customer_wallet_and_coins')
+
+  if (passwordResetApplied && !(await tableExists('PasswordResetToken'))) {
+    console.log('[production-migrations] repairing missing PasswordResetToken table')
+    await ensurePasswordResetTable()
+  }
+
+  if (walletCoinsApplied && (!(await tableExists('WalletTransaction')) || !(await tableExists('CoinTransaction')))) {
+    console.log('[production-migrations] repairing missing wallet/coin tables')
+    await ensureWalletAndCoinsTables()
   }
 
   await db.$disconnect()
