@@ -27,8 +27,13 @@ const css = `
 .adminNavSearchWrap input::placeholder{color:#9a9a94}
 .adminNavSearchWrap kbd{border:1px solid #deded7;border-radius:6px;background:#fff;color:#8a8a84;font:600 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace;padding:4px 5px;white-space:nowrap}
 .adminNavSearchMeta{padding:0 10px 7px;font-size:10px;color:#8b8b85;text-transform:uppercase;letter-spacing:.07em;font-weight:800}
-.adminNavActiveDot{width:5px;height:5px;border-radius:50%;background:#171717;flex:none}
+.adminNavActiveDot{display:none!important}
 .adminNavEmpty{padding:14px 10px;border:1px dashed #dddcd5;border-radius:10px;color:#898982;font-size:12px;line-height:1.5;text-align:center;background:#fbfbf9}
+.adminNavTree,.adminNavGroup,.adminNavChildren{overflow-anchor:none}
+.adminNavGroupButton{appearance:none;-webkit-appearance:none;transition:background .16s ease,color .16s ease}
+.adminNavGroupButton:focus-visible{outline:3px solid rgba(0,128,96,.14);outline-offset:2px}
+.adminNavItem{transform:none!important;transition:background .16s ease,color .16s ease,box-shadow .16s ease}
+.adminNavItem:hover{transform:none!important}
 @media(max-width:900px){.adminNavSearchWrap{max-width:520px}.adminNavSearchWrap kbd{display:none}}
 `
 
@@ -99,15 +104,16 @@ export default function AdminSidebar({ groups }: { groups: AdminSidebarGroup[] }
       {visibleGroups.map(group => {
         const groupActive = activeGroups.has(group.id)
         const open = normalizedQuery ? true : (openGroups[group.id] ?? false)
+        const panelId = `admin-nav-${group.id}-items`
         return <div className={`adminNavGroup${groupActive ? ' active' : ''}`} key={group.id}>
-          <button type="button" className={`adminNavGroupButton${groupActive ? ' active' : ''}`} aria-expanded={open} onClick={() => toggleGroup(group.id)}>
+          <button type="button" className={`adminNavGroupButton${groupActive ? ' active' : ''}`} aria-expanded={open} aria-controls={panelId} onClick={() => toggleGroup(group.id)}>
             <span>{group.label}</span><ChevronDown className={`adminNavChevron${open ? ' open' : ''}`} size={15} />
           </button>
-          <div className={`adminNavChildren${open ? ' open' : ''}`}>
+          <div id={panelId} className={`adminNavChildren${open ? ' open' : ''}`} aria-hidden={!open}>
             {group.items.map(item => {
               const active = isActivePath(pathname, item.href); const Icon = iconMap[item.icon] ?? Boxes
               return <Link key={item.href} href={item.href} className={`adminNavItem${active ? ' active' : ''}`} aria-current={active ? 'page' : undefined}>
-                <Icon size={16} /><span>{item.label}</span>{active && <span className="adminNavActiveDot" aria-hidden="true" />}
+                <Icon size={16} /><span>{item.label}</span>
               </Link>
             })}
           </div>
