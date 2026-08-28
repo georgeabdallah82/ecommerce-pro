@@ -15,16 +15,11 @@ function isHttpsUrl(value: string) {
   }
 }
 
-function maskSecret(secret: string) {
-  if (secret.length <= 10) return '••••'
-  return `${secret.slice(0, 6)}••••${secret.slice(-4)}`
-}
-
 export async function GET() {
   try {
     await requirePermission('settings.view')
     const rows = await db.webhookEndpoint.findMany({ orderBy: { createdAt: 'desc' } })
-    return json(rows.map(r => ({ ...r, secret: maskSecret(r.secret) })))
+    return json(rows.map(({ secret: _secret, ...r }) => ({ ...r, secretConfigured: true })))
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Forbidden'
     return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 401 })
@@ -46,7 +41,7 @@ export async function POST(req: Request) {
 
     const webhook = await db.webhookEndpoint.create({ data: { topic, endpointUrl, secret, status: 'ACTIVE' } })
     await audit(actor.id, 'webhook.created', 'WebhookEndpoint', webhook.id, { topic, endpointUrl })
-    return json({ webhook: { ...webhook, secret: maskSecret(webhook.secret) } }, { status: 201 })
+    return json({ webhook: { ...webhook, secret: undefined, secretConfigured: true } }, { status: 201 })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unable to create webhook endpoint'
     return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 400 })
@@ -80,7 +75,7 @@ export async function PATCH(req: Request) {
 
     const webhook = await db.webhookEndpoint.update({ where: { id }, data })
     await audit(actor.id, 'webhook.updated', 'WebhookEndpoint', id, { fields: Object.keys(data) })
-    return json({ webhook: { ...webhook, secret: maskSecret(webhook.secret) } })
+    return json({ webhook: { ...webhook, secret: undefined, secretConfigured: true } })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unable to update webhook endpoint'
     const status = message === 'FORBIDDEN' ? 403 : message.includes('Record to update not found') ? 404 : 400
