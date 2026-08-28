@@ -42,7 +42,21 @@ export async function POST(_req: Request, { params }: { params: Promise<{ orderN
       return { updated, userId: order.userId }
     })
 
-    if (result.userId) await db.notification.create({ data: { userId: result.userId, title: `Order ${result.updated.orderNumber} cancelled`, body: 'Your order was cancelled and its inventory reservation was released.', type: 'ORDER_STATUS' } })
+    if (result.userId) {
+      try {
+        await db.notification.create({
+          data: {
+            userId: result.userId,
+            title: `Order ${result.updated.orderNumber} cancelled`,
+            body: 'Your order was cancelled and its inventory reservation was released.',
+            type: 'ORDER_STATUS',
+          },
+        })
+      } catch (error) {
+        console.error('[account/orders/cancel] notification failed', error)
+      }
+    }
+
     return json({ order: result.updated })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unable to cancel order'
