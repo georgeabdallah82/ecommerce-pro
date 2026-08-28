@@ -34,6 +34,8 @@ const css = `
 .adminNavGroupButton:focus-visible{outline:3px solid rgba(0,128,96,.14);outline-offset:2px}
 .adminNavItem{transform:none!important;transition:background .16s ease,color .16s ease,box-shadow .16s ease}
 .adminNavItem:hover{transform:none!important}
+body:has(.adminShell) .adminSide nav a.adminNavItem:hover{transform:none!important}
+body:has(.adminShell) .adminSide nav a.adminNavItem{will-change:auto!important}
 @media(max-width:900px){.adminNavSearchWrap{max-width:520px}.adminNavSearchWrap kbd{display:none}}
 `
 
