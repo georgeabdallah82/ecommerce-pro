@@ -1,6 +1,16 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+function isSameOrigin(request: NextRequest) {
+  const origin = request.headers.get('origin')
+  if (!origin) return true
+  try {
+    return new URL(origin).origin === request.nextUrl.origin
+  } catch {
+    return false
+  }
+}
+
 export function middleware(request: NextRequest) {
   if (request.headers.get('Render-Health-Check') === '1') {
     return new Response('ok', {
@@ -10,6 +20,15 @@ export function middleware(request: NextRequest) {
         'cache-control': 'no-store',
       },
     })
+  }
+
+  if (
+    request.nextUrl.pathname.startsWith('/api/') &&
+    ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method) &&
+    request.cookies.has('session') &&
+    !isSameOrigin(request)
+  ) {
+    return NextResponse.json({ error: 'Cross-site request blocked' }, { status: 403 })
   }
 
   const response = NextResponse.next()
