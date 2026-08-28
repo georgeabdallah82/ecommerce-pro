@@ -34,9 +34,9 @@ export default function Cart() {
               const key = keyOf(item)
               const lineTotal = item.price * item.quantity
               return <article className="cartRowUX" key={key}>
-                <img className="cartImageUX" src={item.image || '/placeholder-product.svg'} alt="" loading="lazy" decoding="async" />
+                <img className="cartImageUX" src={item.image || '/placeholder-product.svg'} alt="" loading="lazy" decoding="async" width={116} height={116} />
                 <div className="cartInfoUX">
-                  <a href="#" onClick={e => e.preventDefault()} aria-label={item.name}>{item.name}</a>
+                  <div className="cartProductName" title={item.name}>{item.name}</div>
                   {item.sku && <span className="sku">SKU {item.sku}</span>}
                   <span className="unitPrice">{money(item.price)} each</span>
                   <span className="cartLineTotal">{money(lineTotal)}</span>
@@ -47,7 +47,7 @@ export default function Cart() {
                     <input aria-label={`Quantity for ${item.name}`} type="number" min="1" max="99" value={item.quantity} onChange={e => updateQty(key, Math.max(1, Math.min(99, Number(e.target.value) || 1)))} />
                     <button type="button" onClick={() => updateQty(key, Math.min(99, item.quantity + 1))} aria-label={`Increase ${item.name} quantity`}><Plus size={15} /></button>
                   </div>
-                  <button className="removeUX" type="button" onClick={() => removeItem(key)} aria-label={`Remove ${item.name} from cart`}><Trash2 size={14} /> Remove</button>
+                  <button className="removeUX" type="button" onClick={() => removeItem(key)} aria-label={`Remove ${item.name} from cart`}><Trash2 size={14} /> <span>Remove</span></button>
                 </div>
               </article>
             })}
