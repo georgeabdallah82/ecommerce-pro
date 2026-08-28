@@ -1,13 +1,64 @@
 import { db } from '@/lib/prisma'
 import { json } from '@/lib/utils'
 
-const productInclude = {
-  category: true,
-  images: { orderBy: { sortOrder: 'asc' as const } },
-  variants: { include: { inventory: true } },
-  inventory: { where: { variantId: null } },
-  tags: true,
-  collections: { include: { collection: true } },
+const publicProductSelect = {
+  id: true,
+  name: true,
+  slug: true,
+  description: true,
+  shortDescription: true,
+  brand: true,
+  vendor: true,
+  productType: true,
+  basePrice: true,
+  compareAtPrice: true,
+  sku: true,
+  status: true,
+  featured: true,
+  seoTitle: true,
+  seoDescription: true,
+  seoImageUrl: true,
+  weight: true,
+  weightUnit: true,
+  requiresShipping: true,
+  taxable: true,
+  trackInventory: true,
+  continueSellingWhenOutOfStock: true,
+  giftCard: true,
+  productTemplate: true,
+  publishedAt: true,
+  category: {
+    select: { id: true, name: true, slug: true, description: true, imageUrl: true },
+  },
+  images: {
+    select: { id: true, url: true, alt: true, sortOrder: true },
+    orderBy: { sortOrder: 'asc' as const },
+  },
+  variants: {
+    select: {
+      id: true,
+      name: true,
+      sku: true,
+      barcode: true,
+      optionJson: true,
+      price: true,
+      compareAtPrice: true,
+      weight: true,
+      weightUnit: true,
+    },
+  },
+  tags: { select: { id: true, value: true } },
+  collections: {
+    select: {
+      sortOrder: true,
+      collection: { select: { id: true, name: true, slug: true, description: true, imageUrl: true } },
+    },
+    orderBy: { sortOrder: 'asc' as const },
+  },
+} as const
+
+async function findPublicProduct(where: Record<string, unknown>) {
+  return db.product.findFirst({ where: { ...where, status: 'ACTIVE' }, select: publicProductSelect })
 }
 
 export async function GET(req: Request) {
@@ -19,32 +70,35 @@ export async function GET(req: Request) {
     const category = searchParams.get('category')?.trim() || ''
 
     if (id) {
-      const product = await db.product.findFirst({
-        where: { id, status: 'ACTIVE' },
-        include: productInclude,
-      })
+      const product = await findPublicProduct({ id })
       if (!product) return json({ error: 'Product not found' }, { status: 404 })
       return json(product)
     }
 
     if (slug) {
-      const product = await db.product.findFirst({
-        where: { slug, status: 'ACTIVE' },
-        include: productInclude,
-      })
+      const product = await findPublicProduct({ slug })
       if (!product) return json({ error: 'Product not found' }, { status: 404 })
       return json(product)
     }
 
-    const where: any = {
-      status: 'ACTIVE',
+    const where = {
+      status: 'ACTIVE' as const,
       ...(category ? { category: { slug: category } } : {}),
-      ...(q ? { OR: [{ name: { contains: q } }, { sku: { contains: q } }, { description: { contains: q } }, { shortDescription: { contains: q } }] } : {}),
+      ...(q
+        ? {
+            OR: [
+              { name: { contains: q } },
+              { sku: { contains: q } },
+              { description: { contains: q } },
+              { shortDescription: { contains: q } },
+            ],
+          }
+        : {}),
     }
 
     const products = await db.product.findMany({
       where,
-      include: productInclude,
+      select: publicProductSelect,
       orderBy: [{ featured: 'desc' }, { createdAt: 'desc' }],
       take: 100,
     })
