@@ -29,9 +29,17 @@ export async function getCurrentUser() {
   if (!token) return null
   try {
     const { payload } = await jwtVerify(token, secret)
-    if (!payload.sub || payload.type !== 'session') return null
+    if (!payload.sub || payload.type !== 'session' || typeof payload.iat !== 'number') return null
     const user = await db.user.findUnique({ where: { id: payload.sub } })
     if (!user || !user.isActive) return null
+
+    // User.updatedAt changes whenever credentials/profile/security-sensitive account
+    // state changes. Treat tokens issued before that change as stale. A one-second
+    // tolerance accounts for JWT `iat` being second-precision while Prisma timestamps
+    // are millisecond-precision.
+    const updatedAtSeconds = Math.floor(user.updatedAt.getTime() / 1000)
+    if (payload.iat < updatedAtSeconds - 1) return null
+
     return user
   } catch { return null }
 }
