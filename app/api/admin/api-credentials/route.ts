@@ -8,7 +8,7 @@ function hash(value: string) { return createHash('sha256').update(value).digest(
 
 export async function GET() {
   try {
-    await requirePermission('users.view')
+    await requirePermission('apiCredentials.view')
     const rows = await db.apiCredential.findMany({ orderBy: { createdAt: 'desc' } })
     return json(rows.map(r => ({ ...r, keyHash: undefined })))
   } catch (e) { return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 }) }
@@ -16,7 +16,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const actor = await requirePermission('users.manage')
+    const actor = await requirePermission('apiCredentials.manage')
     const b = await req.json()
     const name = String(b.name || '').trim()
     if (!name) return json({ error: 'Credential name is required' }, { status: 400 })
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const actor = await requirePermission('users.manage')
+    const actor = await requirePermission('apiCredentials.manage')
     const b = await req.json()
     const id = String(b.id || '')
     if (!id) return json({ error: 'Credential id is required' }, { status: 400 })
