@@ -1,5 +1,6 @@
+import { createHash, randomUUID } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
-import { randomUUID } from 'node:crypto'
+import { readFile } from 'node:fs/promises'
 import { PrismaClient } from '@prisma/client'
 
 const db = new PrismaClient()
@@ -49,14 +50,20 @@ async function ensureMigrationTable() {
   `)
 }
 
+async function migrationChecksum(name) {
+  const sql = await readFile(`prisma/migrations/${name}/migration.sql`, 'utf8')
+  return createHash('sha256').update(sql).digest('hex')
+}
+
 async function markApplied(migrationName) {
   const applied = await migrationNames()
   if (applied.has(migrationName)) return
+  const checksum = await migrationChecksum(migrationName)
   await db.$executeRaw`
     INSERT INTO "_prisma_migrations"
       ("id", "checksum", "finished_at", "migration_name", "started_at", "applied_steps_count")
     VALUES
-      (${randomUUID()}, '', CURRENT_TIMESTAMP, ${migrationName}, CURRENT_TIMESTAMP, 0)
+      (${randomUUID()}, ${checksum}, CURRENT_TIMESTAMP, ${migrationName}, CURRENT_TIMESTAMP, 1)
   `
 }
 
