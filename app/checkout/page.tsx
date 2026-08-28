@@ -6,9 +6,13 @@ import Link from 'next/link'
 import { useCart } from '@/components/cart-provider'
 import { money } from '@/lib/config'
 
-type StoreSettings = { payment: { cod:boolean; card:boolean; bank:boolean; wallet:boolean }; checkout:{ guestCheckout:boolean } }
+type PaymentDetails = {
+  bank: { bankName:string; accountName:string; iban:string; instructions:string } | null
+  wallet: { provider:string; accountName:string; accountNumber:string; instructions:string } | null
+}
+type StoreSettings = { payment: { cod:boolean; card:boolean; bank:boolean; wallet:boolean; details:PaymentDetails }; checkout:{ guestCheckout:boolean } }
 type ClientCheckout = { type:'mpgs'; merchantId:string; sessionId:string; scriptUrl:string }
-const defaultSettings:StoreSettings={payment:{cod:true,card:false,bank:false,wallet:false},checkout:{guestCheckout:true}}
+const defaultSettings:StoreSettings={payment:{cod:true,card:false,bank:false,wallet:false,details:{bank:null,wallet:null}},checkout:{guestCheckout:true}}
 
 declare global { interface Window { Checkout?: { configure: (options: unknown) => void; showPaymentPage: () => void } } }
 
@@ -72,6 +76,11 @@ export default function Checkout() {
     } catch(e){setError(e instanceof Error?e.message:'Unable to place order');setLoading(false)}
   }
 
+  const bankDetails = settings?.payment.details.bank
+  const walletDetails = settings?.payment.details.wallet
+  const showBankDetails = paymentMethod==='BANK_TRANSFER' && bankDetails
+  const showWalletDetails = paymentMethod==='WALLET' && walletDetails
+
   if(clientCheckout) return <main className="section"><div className="container narrow"><div className="card" style={{textAlign:'center'}}><span className="muted">SECURE PAYMENT</span><h1 className="h2">Continue to secure card payment</h1><p className="muted">Your payment details are entered directly on the payment provider's secure page.</p><div className="alert">Loading secure payment…</div><Link className="textLink" href="/cart">Return to cart</Link></div></div></main>
 
   return <main className="section"><div className="container split"><form className="card checkoutForm" onSubmit={submit}>
@@ -84,6 +93,8 @@ export default function Checkout() {
     <label className="fieldLabel">Address<input className="input" required name="line1" autoComplete="address-line1" placeholder="Street address" /></label><label className="fieldLabel">Apartment, floor, etc. <span className="muted">(optional)</span><input className="input" name="line2" autoComplete="address-line2" placeholder="Apartment, floor, etc." /></label>
     <div className="grid two"><label className="fieldLabel">City<input className="input" required name="city" autoComplete="address-level2" placeholder="City" /></label><label className="fieldLabel">Region<input className="input" name="region" autoComplete="address-level1" placeholder="Region" /></label></div><div className="grid two"><label className="fieldLabel">Postal code<input className="input" name="postalCode" autoComplete="postal-code" inputMode="numeric" placeholder="Postal code" /></label><label className="fieldLabel">Country<input className="input" required name="country" autoComplete="country-name" placeholder="Country" defaultValue="Lebanon" /></label></div>
     <h3>Payment</h3>{settings&&enabledMethods.length>0?<label className="fieldLabel">Payment method<select className="input" name="paymentMethod" value={paymentMethod} onChange={e=>setPaymentMethod(e.target.value)}>{enabledMethods.map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></label>:settings?<div className="alert danger">No payment methods are currently enabled. Please contact the store.</div>:null}
+    {showBankDetails && <div className="alert"><strong>Bank transfer details</strong><div>Bank: {bankDetails.bankName || '—'}</div><div>Account name: {bankDetails.accountName || '—'}</div><div>IBAN: {bankDetails.iban || '—'}</div>{bankDetails.instructions && <div>{bankDetails.instructions}</div>}</div>}
+    {showWalletDetails && <div className="alert"><strong>{walletDetails.provider || 'Wallet'} payment details</strong><div>Account name: {walletDetails.accountName || '—'}</div><div>Account number: {walletDetails.accountNumber || '—'}</div>{walletDetails.instructions && <div>{walletDetails.instructions}</div>}</div>}
     <label className="fieldLabel">Coupon <span className="muted">(optional)</span><input className="input" name="couponCode" autoCapitalize="characters" placeholder="Coupon code" /></label>
     {error&&<div className="alert danger" role="alert" aria-live="polite">{error}</div>}
     <button className="btn" type="submit" disabled={loading||!items.length||!settings||!sessionLoaded||enabledMethods.length===0||guestBlocked} aria-busy={loading}>{loading?'Placing order…':'Place order'}</button><Link className="textLink" href="/cart">Back to cart</Link>
