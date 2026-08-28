@@ -90,6 +90,7 @@ model User {
   auditLogs        AuditLog[]
   orderNotes       OrderNote[]
   notifications    Notification[]
+  passwordResetTokens PasswordResetToken[]
 }
 
 model Address {
@@ -313,7 +314,7 @@ model ShippingRate {
   id             String       @id @default(cuid())
   zoneId         String
   name           String
-  price          Int
+  price           Int
   freeAbove      Int?
   estimatedDays  Int?
   isActive       Boolean      @default(true)
@@ -457,7 +458,6 @@ model Setting {
   updatedAt DateTime @updatedAt
 }
 
-
 model MetafieldDefinition {
   id          String   @id @default(cuid())
   namespace   String
@@ -585,4 +585,16 @@ model Redirect {
   hits       Int      @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
