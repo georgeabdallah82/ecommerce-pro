@@ -1,11 +1,10 @@
+import { createHash, randomUUID } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
+import { readFile } from 'node:fs/promises'
 import { PrismaClient } from '@prisma/client'
 
 const db = new PrismaClient()
-const MIGRATIONS = [
-  '20260828000000_add_password_reset_tokens',
-  '20260829000000_add_customer_wallet_and_coins',
-]
+const BASELINE = '0_legacy_baseline'
 
 function prisma(args) {
   const command = process.platform === 'win32' ? 'npx.cmd' : 'npx'
@@ -21,38 +20,44 @@ async function hasMigrationTable() {
   return tableExists('_prisma_migrations')
 }
 
-async function appliedMigrations() {
-  if (!await hasMigrationTable()) return new Set()
-  const rows = await db.$queryRaw`SELECT migration_name FROM "_prisma_migrations"`
-  return new Set(rows.map(row => row.migration_name))
+async function ensureLegacyBaseline() {
+  if (await hasMigrationTable()) return
+  const userExists = await tableExists('"User"')
+  if (!userExists) return
+
+  const migrationSql = await readFile(`prisma/migrations/${BASELINE}/migration.sql`, 'utf8')
+  const checksum = createHash('sha256').update(migrationSql).digest('hex')
+
+  console.log('Initializing Prisma migration history for the existing production database')
+  await db.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "_prisma_migrations" (
+      "id" TEXT NOT NULL,
+      "checksum" TEXT NOT NULL,
+      "finished_at" TIMESTAMP(3),
+      "migration_name" TEXT NOT NULL,
+      "logs" TEXT,
+      "rolled_back_at" TIMESTAMP(3),
+      "started_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "applied_steps_count" INTEGER NOT NULL DEFAULT 0,
+      CONSTRAINT "_prisma_migrations_pkey" PRIMARY KEY ("id")
+    )
+  `)
+
+  const existing = await db.$queryRaw<Array<{ migration_name: string }>>`
+    SELECT migration_name FROM "_prisma_migrations" WHERE migration_name = ${BASELINE}
+  `
+  if (!existing.length) {
+    await db.$executeRaw`
+      INSERT INTO "_prisma_migrations"
+        ("id", "checksum", "finished_at", "migration_name", "started_at", "applied_steps_count")
+      VALUES
+        (${randomUUID()}, ${checksum}, CURRENT_TIMESTAMP, ${BASELINE}, CURRENT_TIMESTAMP, 1)
+    `
+  }
 }
 
 async function main() {
-  const existing = await appliedMigrations()
-  const migrationTableExists = existing.size > 0 || await hasMigrationTable()
-  const userTableExists = await tableExists('"User"')
-  const passwordResetExists = await tableExists('"PasswordResetToken"')
-  const walletExists = await tableExists('"WalletTransaction"')
-  const coinsExists = await tableExists('"CoinTransaction"')
-
-  if (!migrationTableExists && userTableExists) {
-    // The production database predates Prisma Migrate. Baseline only migrations
-    // whose schema changes are already present, then let Migrate apply anything missing.
-    if (passwordResetExists) {
-      console.log('Baselining existing PasswordResetToken migration')
-      prisma(['migrate', 'resolve', '--applied', MIGRATIONS[0], '--schema=prisma'])
-    }
-
-    if (walletExists !== coinsExists) {
-      throw new Error('Wallet/Coin schema is inconsistent: both WalletTransaction and CoinTransaction must exist together.')
-    }
-
-    if (walletExists && coinsExists) {
-      console.log('Baselining existing wallet/coin migration')
-      prisma(['migrate', 'resolve', '--applied', MIGRATIONS[1], '--schema=prisma'])
-    }
-  }
-
+  await ensureLegacyBaseline()
   await db.$disconnect()
   prisma(['migrate', 'deploy', '--schema=prisma'])
 }
