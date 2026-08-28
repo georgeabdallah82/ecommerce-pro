@@ -16,6 +16,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ orderN
       const order = await tx.order.findUnique({ where: { id: existing.id } })
       if (!order || order.userId !== user.id) throw new Error('Order not found')
       if (!canCustomerCancel(order.status)) throw new Error('This order can no longer be cancelled online')
+      if (order.paymentStatus === 'PAID' || order.paymentStatus === 'PARTIALLY_REFUNDED') throw new Error('Paid orders cannot be cancelled online; use the refund workflow')
 
       await releaseOrderReservations(tx, order.id, 'Customer cancelled order')
 
@@ -24,7 +25,6 @@ export async function POST(_req: Request, { params }: { params: Promise<{ orderN
         data: {
           status: 'CANCELLED',
           fulfillmentStatus: 'UNFULFILLED',
-          // Cancelling does not change whether money was actually paid.
           paymentStatus: order.paymentStatus,
           events: { create: { status: 'CANCELLED', message: 'Order cancelled by customer.' } },
         },
