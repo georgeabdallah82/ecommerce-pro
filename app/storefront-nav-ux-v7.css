@@ -1,0 +1,49 @@
+/* Storefront mobile navigation UX v7 */
+@media (max-width: 900px) {
+  .focalMobileOverlay {
+    display: block !important;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 100 !important;
+    background: rgba(20, 18, 16, .42) !important;
+    backdrop-filter: blur(6px) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
+    overflow: hidden !important;
+  }
+  .focalMobilePanel {
+    width: min(92vw, 420px) !important;
+    height: 100dvh !important;
+    min-height: 100vh !important;
+    margin-left: auto !important;
+    padding: 18px 18px 28px !important;
+    background: var(--focal-surface, #fff) !important;
+    color: var(--focal-ink, #171411) !important;
+    box-shadow: -24px 0 70px rgba(20, 18, 16, .20) !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .focalMobilePanel > .focalSearchTop {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 3 !important;
+    margin: -18px -18px 10px !important;
+    padding: 18px !important;
+    background: color-mix(in srgb, var(--focal-surface, #fff) 94%, transparent) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+    border-bottom: 1px solid var(--focal-line, #e8e3dc) !important;
+  }
+  .focalMobilePanel > .focalSearchTop strong { font-size: 18px !important; font-weight: 900 !important; letter-spacing: -.03em !important; }
+  .focalMobilePanel > .focalSearchTop .focalNavIcon { width: 36px !important; height: 36px !important; min-width: 36px !important; border-radius: 10px !important; background: transparent !important; }
+  .focalMobileRow { min-height: 56px !important; padding: 8px 0 !important; margin: 0 !important; border-top: 1px solid var(--focal-line, #e8e3dc) !important; }
+  .focalMobileRow > a { min-width: 0 !important; padding: 10px 4px !important; font-size: 15px !important; line-height: 1.2 !important; font-weight: 800 !important; color: var(--focal-ink, #171411) !important; }
+  .focalMobileRow > a:active { opacity: .7; }
+  .focalMobileToggle { width: 38px !important; height: 38px !important; min-width: 38px !important; border-radius: 11px !important; border: 1px solid var(--focal-line, #e8e3dc) !important; background: var(--focal-soft, #f7f3ee) !important; color: var(--focal-ink, #171411) !important; box-shadow: none !important; }
+  .focalMobileRow:first-of-type { border-top: 0 !important; }
+  .focalMobileChildren { margin: 0 0 8px 4px !important; padding: 4px 0 8px 14px !important; border-left: 2px solid var(--focal-line, #e8e3dc) !important; gap: 0 !important; }
+  .focalMobileChild, .focalMobileChild.level2 { display: flex !important; align-items: center !important; min-height: 40px !important; padding: 8px 8px !important; font-size: 13px !important; line-height: 1.25 !important; color: var(--focal-muted, #766f67) !important; text-decoration: none !important; border-radius: 8px !important; }
+  .focalMobileChild:hover, .focalMobileChild:focus-visible { background: var(--focal-soft, #f7f3ee) !important; color: var(--focal-ink, #171411) !important; outline: none !important; }
+  .focalMobileChildren .focalMobileChildren { margin-left: 2px !important; padding-left: 12px !important; }
+}
+@media (max-width: 520px) { .focalMobilePanel { width: 100vw !important; } }
