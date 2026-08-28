@@ -1,5 +1,6 @@
 import dns from 'node:dns/promises'
 import { NextResponse } from 'next/server'
+import { consumeRateLimit } from '@/lib/rate-limit'
 
 function blockedHost(hostname:string){
   const h=hostname.toLowerCase().replace(/^\[|\]$/g,'')
@@ -17,11 +18,12 @@ function blockedAddress(address:string){
   return false
 }
 
+function clientIp(req: Request) {
+  return req.headers.get('x-real-ip')?.trim() || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+}
+
 async function assertPublicHostname(hostname:string){
   if(blockedHost(hostname)) throw new Error('Blocked host')
-  // Resolve before every upstream request/redirect and reject private/link-local
-  // answers. This prevents the proxy from being used to reach internal services
-  // through a hostname that resolves to a private address.
   const records=await dns.lookup(hostname,{all:true,verbatim:true})
   if(!records.length||records.some(record=>blockedAddress(record.address))) throw new Error('Blocked host')
 }
@@ -70,16 +72,20 @@ async function fetchSafeImage(initial:string){
 
 export async function GET(req:Request){
   try{
+    const limit=consumeRateLimit(`image-proxy:${clientIp(req)}`,30,60*1000)
+    if(!limit.allowed) return new NextResponse('Too many image requests',{status:429,headers:{'Retry-After':String(limit.retryAfterSeconds),'Cache-Control':'no-store'}})
+
     const raw=new URL(req.url).searchParams.get('url')||''
     if(!raw) return new NextResponse('Missing url',{status:400})
     const target=normalizeRemote(raw)
     let parsed:URL
     try{ parsed=new URL(target) }catch{return new NextResponse('Invalid url',{status:400}) }
     if(!['http:','https:'].includes(parsed.protocol)) return new NextResponse('Unsupported protocol',{status:400})
+    if(target.length>2048) return new NextResponse('URL is too long',{status:400})
     await assertPublicHostname(parsed.hostname)
 
     const {upstream}=await fetchSafeImage(parsed.toString())
-    if(!upstream.ok) return new NextResponse(`Upstream image request failed: ${upstream.status}`,{status:502})
+    if(!upstream.ok) return new NextResponse('Upstream image request failed',{status:502})
 
     const contentType=upstream.headers.get('content-type')||''
     if(!contentType.toLowerCase().startsWith('image/')) return new NextResponse('URL did not return an image',{status:415})
@@ -96,7 +102,7 @@ export async function GET(req:Request){
     return new NextResponse(body,{status:200,headers})
   }catch(e){
     const message=e instanceof Error?e.message:'Unable to load image'
-    const status=message==='Blocked host'?403:message==='Unsupported protocol'||message==='Invalid url'?400:message==='Image is too large'?413:502
+    const status=message==='Blocked host'?403:message==='Unsupported protocol'||message==='Invalid url'||message==='URL is too long'?400:message==='Image is too large'?413:502
     return new NextResponse(message,{status})
   }
 }
