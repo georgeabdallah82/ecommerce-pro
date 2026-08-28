@@ -28,13 +28,19 @@ export default function Checkout() {
   const [sessionLoaded, setSessionLoaded] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState('COD')
   const [clientCheckout, setClientCheckout] = useState<ClientCheckout|null>(null)
+  const [walletBalance, setWalletBalance] = useState(0)
+  const [walletCurrency, setWalletCurrency] = useState('USD')
+  const [coinBalance, setCoinBalance] = useState(0)
+  const [coinsToUse, setCoinsToUse] = useState(0)
 
   useEffect(()=>{
     let active=true
     Promise.all([
       fetch('/api/store/settings',{cache:'no-store'}).then(async response=>{const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'Unable to load checkout settings');return data.settings||defaultSettings}),
       fetch('/api/auth/session',{cache:'no-store'}).then(async response=>{const data=await response.json().catch(()=>({authenticated:false}));return Boolean(response.ok&&data.authenticated)}),
-    ]).then(([storeSettings,isAuthenticated])=>{if(active){setSettings(storeSettings);setAuthenticated(isAuthenticated);setSessionLoaded(true)}}).catch(e=>{if(active){setSettings(defaultSettings);setAuthenticated(false);setSessionLoaded(true);setSettingsError(e instanceof Error?e.message:'Unable to load checkout settings')}})
+      fetch('/api/account/wallet',{cache:'no-store'}).then(async response=>{if(!response.ok)return null;return response.json().catch(()=>null)}),
+      fetch('/api/account/coins',{cache:'no-store'}).then(async response=>{if(!response.ok)return null;return response.json().catch(()=>null)}),
+    ]).then(([storeSettings,isAuthenticated,wallet,coins])=>{if(active){setSettings(storeSettings);setAuthenticated(isAuthenticated);setSessionLoaded(true);if(isAuthenticated&&wallet){setWalletBalance(Math.max(0,Number(wallet.balance||0)));setWalletCurrency(wallet.currency||'USD')}else{setWalletBalance(0)}if(isAuthenticated&&coins){setCoinBalance(Math.max(0,Number(coins.balance||0)))}else{setCoinBalance(0)}}}).catch(e=>{if(active){setSettings(defaultSettings);setAuthenticated(false);setSessionLoaded(true);setWalletBalance(0);setCoinBalance(0);setSettingsError(e instanceof Error?e.message:'Unable to load checkout settings')}})
     return ()=>{active=false}
   },[])
 
@@ -51,7 +57,7 @@ export default function Checkout() {
   },[clientCheckout])
 
   const enabledMethods = settings ? [
-    settings.payment.cod && ['COD','Cash on delivery'], settings.payment.card && ['CARD','Card'], settings.payment.bank && ['BANK_TRANSFER','Bank transfer'], settings.payment.wallet && ['WALLET','Wallet'],
+    settings.payment.cod && ['COD','Cash on delivery'], settings.payment.card && ['CARD','Card'], settings.payment.bank && ['BANK_TRANSFER','Bank transfer'], settings.payment.wallet && authenticated && ['WALLET',`Wallet · ${money(walletBalance,walletCurrency)} available`],
   ].filter(Boolean) as [string,string][] : []
   const guestBlocked = Boolean(settings && sessionLoaded && !authenticated && settings.checkout.guestCheckout===false)
   const enabledMethodSignature = enabledMethods.map(([value])=>value).join('|')
@@ -64,9 +70,10 @@ export default function Checkout() {
     if (!sessionLoaded) { setError('Authentication status is still loading. Please try again in a moment.'); return }
     if (guestBlocked) { setError('Guest checkout is disabled. Please sign in to continue.'); return }
     if (!enabledMethods.some(([value])=>value===paymentMethod)) { setError('Please choose an available payment method.'); return }
+    if (coinsToUse > coinBalance) { setError('You do not have enough coins for this redemption.'); return }
     setLoading(true)
     const form = event.currentTarget; const fd = new FormData(form)
-    const data = { email: String(fd.get('email') || ''), phone: String(fd.get('phone') || ''), paymentMethod, couponCode: String(fd.get('couponCode') || ''), shippingAddress: { firstName: String(fd.get('firstName') || ''), lastName: String(fd.get('lastName') || ''), line1: String(fd.get('line1') || ''), line2: String(fd.get('line2') || ''), city: String(fd.get('city') || ''), region: String(fd.get('region') || ''), postalCode: String(fd.get('postalCode') || ''), country: String(fd.get('country') || ''), phone: String(fd.get('phone') || '') }, items: items.map(item => ({ productId: item.productId, variantId: item.variantId || null, quantity: item.quantity })) }
+    const data = { email: String(fd.get('email') || ''), phone: String(fd.get('phone') || ''), paymentMethod, couponCode: String(fd.get('couponCode') || ''), coinsToUse, shippingAddress: { firstName: String(fd.get('firstName') || ''), lastName: String(fd.get('lastName') || ''), line1: String(fd.get('line1') || ''), line2: String(fd.get('line2') || ''), city: String(fd.get('city') || ''), region: String(fd.get('region') || ''), postalCode: String(fd.get('postalCode') || ''), country: String(fd.get('country') || ''), phone: String(fd.get('phone') || '') }, items: items.map(item => ({ productId: item.productId, variantId: item.variantId || null, quantity: item.quantity })) }
     try {
       const response=await fetch('/api/checkout',{method:'POST',headers:{'content-type':'application/json','x-idempotency-key':idempotencyKey.current},body:JSON.stringify(data)})
       const output=await response.json(); if(!response.ok)throw new Error(output.error||'Unable to place order')
@@ -93,6 +100,8 @@ export default function Checkout() {
     <label className="fieldLabel">Address<input className="input" required name="line1" autoComplete="address-line1" placeholder="Street address" /></label><label className="fieldLabel">Apartment, floor, etc. <span className="muted">(optional)</span><input className="input" name="line2" autoComplete="address-line2" placeholder="Apartment, floor, etc." /></label>
     <div className="grid two"><label className="fieldLabel">City<input className="input" required name="city" autoComplete="address-level2" placeholder="City" /></label><label className="fieldLabel">Region<input className="input" name="region" autoComplete="address-level1" placeholder="Region" /></label></div><div className="grid two"><label className="fieldLabel">Postal code<input className="input" name="postalCode" autoComplete="postal-code" inputMode="numeric" placeholder="Postal code" /></label><label className="fieldLabel">Country<input className="input" required name="country" autoComplete="country-name" placeholder="Country" defaultValue="Lebanon" /></label></div>
     <h3>Payment</h3>{settings&&enabledMethods.length>0?<label className="fieldLabel">Payment method<select className="input" name="paymentMethod" value={paymentMethod} onChange={e=>setPaymentMethod(e.target.value)}>{enabledMethods.map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></label>:settings?<div className="alert danger">No payment methods are currently enabled. Please contact the store.</div>:null}
+    {paymentMethod==='WALLET' && authenticated && <div className={walletBalance>0?'alert':'alert danger'}><strong>Wallet balance</strong><div>{money(walletBalance,walletCurrency)} available for this order.</div></div>}
+    {authenticated && coinBalance>0 && <div className="card" style={{padding:16,marginTop:12}}><strong>Use loyalty coins</strong><p className="muted" style={{marginTop:4}}>1 coin = 0.01 in store currency.</p><div className="inline" style={{marginTop:10,gap:10}}><input className="input" type="number" min="0" max={coinBalance} step="1" inputMode="numeric" value={coinsToUse||''} onChange={e=>setCoinsToUse(Math.max(0,Math.min(coinBalance,Number(e.target.value)||0)))} placeholder="Coins to use" /><button className="btn secondary" type="button" onClick={()=>setCoinsToUse(coinBalance)}>Use all</button></div>{coinsToUse>0&&<div className="muted" style={{marginTop:8}}>Discount: {money(coinsToUse)}</div>}</div>}
     {showBankDetails && <div className="alert"><strong>Bank transfer details</strong><div>Bank: {bankDetails.bankName || '—'}</div><div>Account name: {bankDetails.accountName || '—'}</div><div>IBAN: {bankDetails.iban || '—'}</div>{bankDetails.instructions && <div>{bankDetails.instructions}</div>}</div>}
     {showWalletDetails && <div className="alert"><strong>{walletDetails.provider || 'Wallet'} payment details</strong><div>Account name: {walletDetails.accountName || '—'}</div><div>Account number: {walletDetails.accountNumber || '—'}</div>{walletDetails.instructions && <div>{walletDetails.instructions}</div>}</div>}
     <label className="fieldLabel">Coupon <span className="muted">(optional)</span><input className="input" name="couponCode" autoCapitalize="characters" placeholder="Coupon code" /></label>
