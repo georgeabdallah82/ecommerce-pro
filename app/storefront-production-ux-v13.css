@@ -1,0 +1,169 @@
+/* Storefront production UX v13: mobile drawer, touch targets, stable media, and restrained motion */
+
+.focalMobileOverlay,
+.focalSearchOverlay,
+.focalCartOverlay {
+  overscroll-behavior: contain;
+  touch-action: none;
+}
+
+.focalMobilePanel,
+.focalCartDrawer,
+.focalSearchCard {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+.focalMobilePanel {
+  width: min(400px, 92vw) !important;
+  max-width: 400px;
+  padding: max(18px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom)) !important;
+  box-sizing: border-box;
+  border-left: 1px solid var(--focal-line);
+  box-shadow: -24px 0 70px rgba(25, 21, 18, .16);
+  animation: focalMobileDrawerIn .22s cubic-bezier(.22,.8,.26,1) both;
+}
+
+@keyframes focalMobileDrawerIn {
+  from { opacity: 0; transform: translateX(18px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.focalSearchTop {
+  gap: 16px;
+}
+
+.focalMobilePanel .focalSearchTop {
+  min-height: 44px;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--focal-line);
+}
+
+.focalMobilePanel .focalSearchTop strong {
+  font-size: 20px;
+  letter-spacing: -.02em;
+}
+
+.focalMobileGroup {
+  gap: 5px;
+  padding: 16px 0;
+}
+
+.focalMobileGroup > a {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  border-radius: 10px;
+  padding: 0 12px;
+  text-decoration: none;
+}
+
+.focalMobileGroup > a[aria-current="page"] {
+  background: var(--focal-soft);
+  color: var(--focal-primary);
+}
+
+.focalMobileGroup > a.sub {
+  min-height: 40px;
+  margin-left: 8px;
+  padding-left: 14px;
+  font-size: 13px;
+}
+
+.focalMobileGroup > a:hover,
+.focalMobileGroup > a:focus-visible {
+  background: var(--focal-soft);
+  outline: none;
+}
+
+.focalMobilePanel .focalNavIcon,
+.focalSearchCard .focalNavIcon,
+.focalCartDrawer .focalNavIcon {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.focalNavMobile {
+  min-width: 44px !important;
+  min-height: 44px !important;
+}
+
+.focalCartDrawer {
+  width: min(440px, 100vw);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.focalCartHead {
+  padding: 16px 18px;
+  min-height: 72px;
+}
+
+.focalCartItems {
+  padding: 10px 16px;
+}
+
+.focalCartItem img {
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+}
+
+.focalCartQty button {
+  width: 32px;
+  height: 32px;
+}
+
+.focalCartFoot {
+  padding: 14px 16px max(16px, env(safe-area-inset-bottom));
+}
+
+.focalStorefront .focalProductMedia,
+.focalStorefront .focalCollectionMedia {
+  overflow: hidden;
+  background: var(--ux-soft, #f5f1ec);
+}
+
+.focalStorefront .focalProductMedia img,
+.focalStorefront .focalCollectionMedia img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.focalStorefront button:focus-visible,
+.focalStorefront a:focus-visible,
+.focalStorefront input:focus-visible,
+.focalStorefront select:focus-visible,
+.focalStorefront textarea:focus-visible {
+  outline: 2px solid var(--focal-primary);
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .focalMobileOverlay,
+  .focalCartOverlay {
+    background: rgba(25, 21, 18, .38);
+  }
+
+  .focalMobilePanel {
+    width: min(400px, 92vw) !important;
+    max-width: calc(100vw - 18px);
+    padding-inline: 16px !important;
+  }
+
+  .focalCartDrawer {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .focalSearchCard {
+    width: calc(100% - 24px);
+    margin-top: max(64px, env(safe-area-inset-top));
+    padding: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .focalMobilePanel { animation: none !important; }
+}
