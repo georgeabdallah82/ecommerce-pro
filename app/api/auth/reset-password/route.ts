@@ -2,25 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'node:crypto'
 import { db } from '@/lib/prisma'
 import { hashPassword } from '@/lib/auth'
+import { consumeRateLimit } from '@/lib/rate-limit'
 
 const WINDOW_MS = 60 * 60 * 1000
 const MAX_PER_IP = 10
-const attempts = new Map<string, { count: number; resetAt: number }>()
-
-function limited(key: string) {
-  const now = Date.now()
-  const current = attempts.get(key)
-  if (!current || current.resetAt <= now) {
-    attempts.set(key, { count: 1, resetAt: now + WINDOW_MS })
-    return false
-  }
-  current.count += 1
-  return current.count > MAX_PER_IP
-}
 
 export async function POST(request: NextRequest) {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-  if (limited(ip)) return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429, headers: { 'Retry-After': '3600' } })
+  const limit = consumeRateLimit(`password-reset:ip:${ip}`, MAX_PER_IP, WINDOW_MS)
+  if (!limit.allowed) return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } })
 
   const body = await request.json().catch(() => null)
   const token = typeof body?.token === 'string' ? body.token.trim() : ''
@@ -32,8 +22,6 @@ export async function POST(request: NextRequest) {
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
   const passwordHash = await hashPassword(password)
   const updated = await db.$transaction(async (tx) => {
-    // Find only unexpired tokens. The row is then consumed atomically with the
-    // password update so a token can never be successfully reused.
     const resetToken = await tx.passwordResetToken.findUnique({
       where: { tokenHash },
       select: { id: true, userId: true, expiresAt: true },
