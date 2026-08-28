@@ -1,11 +1,29 @@
-import {NextResponse} from 'next/server'
+import dns from 'node:dns/promises'
+import { NextResponse } from 'next/server'
 
 function blockedHost(hostname:string){
-  const h=hostname.toLowerCase()
+  const h=hostname.toLowerCase().replace(/^\[|\]$/g,'')
   if(h==='localhost'||h==='127.0.0.1'||h==='0.0.0.0'||h==='::1') return true
   if(/^10\./.test(h)||/^192\.168\./.test(h)||/^172\.(1[6-9]|2\d|3[0-1])\./.test(h)) return true
-  if(h==='169.254.169.254'||h==='metadata.google.internal') return true
+  if(/^169\.254\./.test(h)||h==='169.254.169.254'||h==='metadata.google.internal') return true
+  if(h==='::ffff:127.0.0.1'||h.startsWith('fc')||h.startsWith('fd')||h.startsWith('fe80:')) return true
   return false
+}
+
+function blockedAddress(address:string){
+  const normalized=address.toLowerCase()
+  if(blockedHost(normalized)) return true
+  if(normalized.startsWith('::ffff:')) return blockedAddress(normalized.slice(7))
+  return false
+}
+
+async function assertPublicHostname(hostname:string){
+  if(blockedHost(hostname)) throw new Error('Blocked host')
+  // Resolve before every upstream request/redirect and reject private/link-local
+  // answers. This prevents the proxy from being used to reach internal services
+  // through a hostname that resolves to a private address.
+  const records=await dns.lookup(hostname,{all:true,verbatim:true})
+  if(!records.length||records.some(record=>blockedAddress(record.address))) throw new Error('Blocked host')
 }
 
 function normalizeRemote(raw:string){
@@ -29,7 +47,7 @@ async function fetchSafeImage(initial:string){
   for(let redirects=0;redirects<=3;redirects++){
     const parsed=new URL(current)
     if(!['http:','https:'].includes(parsed.protocol)) throw new Error('Unsupported protocol')
-    if(blockedHost(parsed.hostname)) throw new Error('Blocked host')
+    await assertPublicHostname(parsed.hostname)
 
     const upstream=await fetch(parsed.toString(),{
       headers:{'user-agent':'Mozilla/5.0 EcommercePro Image Proxy'},
@@ -58,7 +76,7 @@ export async function GET(req:Request){
     let parsed:URL
     try{ parsed=new URL(target) }catch{return new NextResponse('Invalid url',{status:400}) }
     if(!['http:','https:'].includes(parsed.protocol)) return new NextResponse('Unsupported protocol',{status:400})
-    if(blockedHost(parsed.hostname)) return new NextResponse('Blocked host',{status:403})
+    await assertPublicHostname(parsed.hostname)
 
     const {upstream}=await fetchSafeImage(parsed.toString())
     if(!upstream.ok) return new NextResponse(`Upstream image request failed: ${upstream.status}`,{status:502})
