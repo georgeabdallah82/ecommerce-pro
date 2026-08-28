@@ -3,6 +3,25 @@ import { requirePermission } from '@/lib/auth'
 import { getPaymentProvider } from '@/lib/payments'
 import { json } from '@/lib/utils'
 
+const REFUND_MESSAGES = new Set([
+  'Order not found',
+  'Cancelled orders cannot be refunded',
+  'Only paid orders can be refunded',
+  'A refund is already in progress for this order',
+  'Order is already fully refunded',
+  'Paid gateway transaction is missing its external reference',
+])
+
+function refundFailure(error: unknown) {
+  if (error instanceof Error && (REFUND_MESSAGES.has(error.message) || error.message.startsWith('Refund cannot exceed the remaining refundable amount of '))) {
+    return { message: error.message, status: error.message === 'Order not found' ? 404 : 400 }
+  }
+  if (error instanceof Error && error.message === 'UNAUTHORIZED') return { message: 'Unauthorized', status: 401 }
+  if (error instanceof Error && error.message === 'FORBIDDEN') return { message: 'Forbidden', status: 403 }
+  console.error('[admin/refunds] unexpected failure', error)
+  return { message: 'Unable to process the refund right now.', status: 500 }
+}
+
 export async function POST(req: Request) {
   try {
     const actor = await requirePermission('orders.refund')
@@ -89,7 +108,7 @@ export async function POST(req: Request) {
     }
     return json({ order: result.order, refund: result.transaction, refundedTotal: result.refundedTotal }, { status: 201 })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to refund order'
-    return json({ error: message }, { status: message === 'UNAUTHORIZED' ? 401 : message === 'FORBIDDEN' ? 403 : message === 'Order not found' ? 404 : 400 })
+    const failure = refundFailure(e)
+    return json({ error: failure.message }, { status: failure.status })
   }
 }
