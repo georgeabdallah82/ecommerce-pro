@@ -4,6 +4,20 @@ import { canCustomerCancel } from '@/lib/orders'
 import { releaseOrderReservations } from '@/lib/inventory'
 import { json } from '@/lib/utils'
 
+const CUSTOMER_CANCEL_MESSAGES = new Set([
+  'Order not found',
+  'This order can no longer be cancelled online',
+  'Paid orders cannot be cancelled online; use the refund workflow',
+])
+
+function cancelFailure(error: unknown) {
+  const message = error instanceof Error ? error.message : ''
+  if (message === 'UNAUTHORIZED') return { status: 401, error: 'Unauthorized' }
+  if (CUSTOMER_CANCEL_MESSAGES.has(message)) return { status: message === 'Order not found' ? 404 : 400, error: message }
+  console.error('[account/orders/cancel] unexpected failure', error)
+  return { status: 500, error: 'Unable to cancel order right now' }
+}
+
 export async function POST(_req: Request, { params }: { params: Promise<{ orderNumber: string }> }) {
   try {
     const user = await requireUser()
@@ -57,9 +71,9 @@ export async function POST(_req: Request, { params }: { params: Promise<{ orderN
       }
     }
 
-    return json({ order: result.updated })
+    return json({ order: result.updated }, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to cancel order'
-    return json({ error: message }, { status: message === 'UNAUTHORIZED' ? 401 : message === 'Order not found' ? 404 : 400 })
+    const failure = cancelFailure(e)
+    return json({ error: failure.error }, { status: failure.status, headers: { 'Cache-Control': 'private, no-store' } })
   }
 }
