@@ -55,6 +55,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         orderBy: { createdAt: 'desc' },
         include: { user: { select: { name: true } } },
       },
+      tags: true,
       collections: { include: { collection: true } },
     },
   })
