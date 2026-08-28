@@ -1,6 +1,7 @@
 import { db } from '@/lib/prisma'
 import { getPaymentProvider } from '@/lib/payments'
 import { json } from '@/lib/utils'
+import { getPublicPaymentMethods } from '@/lib/payment-methods-public'
 
 const PUBLIC_KEYS = [
   'payment.cod', 'payment.card', 'payment.bank', 'payment.wallet',
@@ -10,9 +11,10 @@ const PUBLIC_KEYS = [
 
 export async function GET(){
   try{
-    const [rows,paymentProvider]=await Promise.all([
+    const [rows,paymentProvider,paymentMethods]=await Promise.all([
       db.setting.findMany({where:{key:{in:PUBLIC_KEYS}},select:{key:true,value:true}}),
       Promise.resolve(getPaymentProvider()),
+      getPublicPaymentMethods(),
     ])
     const map=Object.fromEntries(rows.map(row=>[row.key,row.value]))
     return json({settings:{
@@ -21,6 +23,7 @@ export async function GET(){
         card:map['payment.card']==='true' && paymentProvider.name!=='manual',
         bank:map['payment.bank']==='true',
         wallet:map['payment.wallet']==='true',
+        details: paymentMethods,
       },
       checkout:{guestCheckout:map['checkout.guestCheckout']!=='false',freeShippingThreshold:map['checkout.freeShippingThreshold']||'100',taxRatePercent:map['checkout.taxRatePercent']||'0'},
       store:{currency:map['store.currency']||'USD',country:map['store.country']||'Lebanon'},
