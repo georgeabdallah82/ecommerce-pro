@@ -96,9 +96,22 @@ The application includes a payment-provider adapter and manual payment methods, 
 
 Before a real production launch, configure a managed database/storage provider, HTTPS, backups, error monitoring, transactional email, payment webhooks, and deployment secrets.
 
-## Verification performed in the build environment
+## Verification
 
-All TypeScript/TSX source files were syntax-transpiled successfully with TypeScript. A full dependency install and Next.js production build could not be completed in this environment because npm registry access timed out / packages were not available in the offline cache. The project therefore should be dependency-installed and `npm run typecheck && npm run build` run on the target machine before production deployment.
+The production CI pipeline runs dependency installation, Prisma generation, TypeScript typechecking, the backend audit, and the Next.js production build. Render must complete its build and start the resulting service before live functional verification is considered complete.
+
+Recommended verification after install:
+
+```powershell
+npm install
+Copy-Item .env.example .env
+npx prisma generate
+npx prisma db push
+npm run db:seed
+npm run typecheck
+npm run build
+npm run dev
+```
 
 ## Shopify-style v3 refinement
 
@@ -133,11 +146,6 @@ This revision adds a visual Theme Studio and a full product editor designed arou
 - Order detail view with items, financial summary, timeline, fulfillment, tracking, payment and customer information
 - Product list with status, inventory and quick access to the full editor
 
-### Verification
-- 95 TypeScript/TSX files parsed successfully for syntax in this environment.
-- Full npm dependency installation and Next.js production build could not be completed here because the package registry install timed out in the execution environment. Run `npm install`, `npx prisma generate`, `npx prisma db push`, `npm run db:seed`, then `npm run typecheck` and `npm run build` locally.
-
-
 ## v6 Theme Editor enhancements
 - Shopify-style image banner media editor with desktop/mobile images, focal point, fit, overlay, content positioning, and live preview.
 - Announcement bar can be positioned above or below the header and configured from Theme Studio.
@@ -159,18 +167,5 @@ Highlights:
 - No side-effect fetching during render; media is loaded in `useEffect`.
 - No nested interactive controls inside preview section wrappers.
 - Responsive studio layout that collapses cleanly on narrower screens.
-
-Recommended verification after install:
-
-```powershell
-npm install
-Copy-Item .env.example .env
-npx prisma generate
-npx prisma db push
-npm run db:seed
-npm run typecheck
-npm run build
-npm run dev
-```
 
 Theme Studio: `http://localhost:3000/admin/online-store/theme-editor`
