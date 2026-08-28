@@ -72,7 +72,13 @@ export async function POST(req: Request) {
 
     const url = new URL(req.url)
     if (!safeTokenEqual(url.searchParams.get('token')?.trim() || '', areebaWebhookToken())) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: { 'Cache-Control': 'no-store' } })
-    const body = await req.json().catch(() => ({})) as Record<string, any>
+
+    const contentLength = Number(req.headers.get('content-length') || 0)
+    if (contentLength > 128 * 1024) return Response.json({ error: 'Webhook payload too large' }, { status: 413, headers: { 'Cache-Control': 'no-store' } })
+    const rawBody = await req.text()
+    if (rawBody.length > 128 * 1024) return Response.json({ error: 'Webhook payload too large' }, { status: 413, headers: { 'Cache-Control': 'no-store' } })
+    const body = (() => { try { return JSON.parse(rawBody) } catch { return {} } })() as Record<string, any>
+
     const orderNumber = typeof body.order?.id === 'string' ? body.order.id.trim() : typeof body.orderId === 'string' ? body.orderId.trim() : ''
     if (!orderNumber || orderNumber.length > 100) return Response.json({ error: 'Invalid payment notification' }, { status: 400 })
     const processed = await processPaymentNotification(orderNumber, body)
