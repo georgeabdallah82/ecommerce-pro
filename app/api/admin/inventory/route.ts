@@ -8,9 +8,16 @@ const HISTORY_LIMIT = 50
 export async function GET() {
   try {
     await requirePermission('inventory.view')
-    return json(await db.inventoryItem.findMany({ include: { product: true, variant: true, movements: { orderBy: { createdAt: 'desc' }, take: HISTORY_LIMIT } }, orderBy: { quantity: 'asc' } }))
+    const rows = await db.inventoryItem.findMany({
+      include: { product: true, variant: true, movements: { orderBy: { createdAt: 'desc' }, take: HISTORY_LIMIT } },
+      orderBy: { quantity: 'asc' },
+    })
+    return json(rows, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 })
+    const message = e instanceof Error ? e.message : ''
+    const status = message === 'UNAUTHORIZED' ? 401 : 403
+    if (status === 403 && message !== 'FORBIDDEN') console.error('[admin/inventory:get]', e)
+    return json({ error: status === 401 ? 'Unauthorized' : 'Forbidden' }, { status, headers: { 'Cache-Control': 'private, no-store' } })
   }
 }
 
@@ -18,7 +25,7 @@ export async function PATCH(req: Request) {
   try {
     const actor = await requirePermission('inventory.manage')
     const b = await req.json()
-    const id = String(b.id || '')
+    const id = String(b.id || '').trim()
     if (!id) return json({ error: 'Inventory item id is required' }, { status: 400 })
     const delta = clampInt(b.delta, -100000, 100000, 0)
     const reason = String(b.reason || 'Manual adjustment').trim().slice(0, 1000) || 'Manual adjustment'
@@ -58,8 +65,19 @@ export async function PATCH(req: Request) {
     })
 
     await audit(actor.id, 'inventory.adjusted', 'InventoryItem', id, { delta, reason, movementType, location: requestedLocation, lowStockThreshold: threshold })
-    return json({ item: updated })
+    return json({ item: updated }, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Unable to adjust inventory' }, { status: 400 })
+    const message = e instanceof Error ? e.message : ''
+    const known = new Set([
+      'Inventory item not found',
+      'Cannot reduce stock below reserved quantity',
+      'That product/variant already has inventory at the selected location. Adjust the existing location record instead.',
+      'UNAUTHORIZED',
+      'FORBIDDEN',
+    ])
+    if (!known.has(message)) console.error('[admin/inventory:patch]', e)
+    const status = message === 'UNAUTHORIZED' ? 401 : message === 'FORBIDDEN' ? 403 : message === 'Inventory item not found' ? 404 : known.has(message) ? 409 : 500
+    const error = message === 'UNAUTHORIZED' ? 'Unauthorized' : message === 'FORBIDDEN' ? 'Forbidden' : known.has(message) ? message : 'Unable to adjust inventory'
+    return json({ error }, { status, headers: { 'Cache-Control': 'private, no-store' } })
   }
 }
