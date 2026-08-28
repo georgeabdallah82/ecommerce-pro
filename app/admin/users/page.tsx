@@ -1,5 +1,6 @@
 import { requirePermission, getCurrentUser } from '@/lib/auth'
 import { db } from '@/lib/prisma'
+import { Role } from '@prisma/client'
 import UsersAdminSafe from '@/components/users-admin-safe'
 
 export default async function Users() {
@@ -7,6 +8,7 @@ export default async function Users() {
   const [currentUser, users] = await Promise.all([
     getCurrentUser(),
     db.user.findMany({
+      where: { role: { not: Role.CUSTOMER } },
       orderBy: { createdAt: 'desc' },
       select: { id: true, name: true, email: true, role: true, isActive: true, lastLoginAt: true },
     }),
