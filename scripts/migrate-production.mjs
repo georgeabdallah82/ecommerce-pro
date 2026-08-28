@@ -15,7 +15,7 @@ function prisma(args) {
 }
 
 async function tableExists(name) {
-  const rows = await db.$queryRaw<Array<{ exists: boolean }>>`
+  const rows = await db.$queryRaw`
     SELECT EXISTS (
       SELECT 1
       FROM information_schema.tables
@@ -26,8 +26,8 @@ async function tableExists(name) {
 }
 
 async function migrationNames() {
-  if (!await tableExists('_prisma_migrations')) return new Set<string>()
-  const rows = await db.$queryRaw<Array<{ migration_name: string }>>`
+  if (!await tableExists('_prisma_migrations')) return new Set()
+  const rows = await db.$queryRaw`
     SELECT "migration_name" FROM "_prisma_migrations"
   `
   return new Set(rows.map(row => row.migration_name))
