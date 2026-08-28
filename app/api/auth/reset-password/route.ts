@@ -30,22 +30,25 @@ export async function POST(request: NextRequest) {
   }
 
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
-  const rows = await db.$queryRaw<{ id: string; userId: string; expiresAt: Date }[]>`
-    SELECT id, "userId", "expiresAt" FROM "PasswordResetToken"
-    WHERE "tokenHash" = ${tokenHash} AND "expiresAt" > NOW()
-    LIMIT 1
-  `
-  const resetToken = rows[0]
-  if (!resetToken) return NextResponse.json({ error: 'Invalid or expired reset request.' }, { status: 400 })
-
   const passwordHash = await hashPassword(password)
   const updated = await db.$transaction(async (tx) => {
-    const consumed = await tx.$executeRaw`
-      DELETE FROM "PasswordResetToken"
-      WHERE id = ${resetToken.id} AND "expiresAt" > NOW()
-    `
-    if (consumed !== 1) return false
-    const changed = await tx.user.updateMany({ where: { id: resetToken.userId, isActive: true }, data: { passwordHash } })
+    // Find only unexpired tokens. The row is then consumed atomically with the
+    // password update so a token can never be successfully reused.
+    const resetToken = await tx.passwordResetToken.findUnique({
+      where: { tokenHash },
+      select: { id: true, userId: true, expiresAt: true },
+    })
+    if (!resetToken || resetToken.expiresAt <= new Date()) return false
+
+    const consumed = await tx.passwordResetToken.deleteMany({
+      where: { id: resetToken.id, expiresAt: { gt: new Date() } },
+    })
+    if (consumed.count !== 1) return false
+
+    const changed = await tx.user.updateMany({
+      where: { id: resetToken.userId, isActive: true },
+      data: { passwordHash },
+    })
     return changed.count === 1
   })
 
