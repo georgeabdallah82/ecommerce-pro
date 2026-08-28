@@ -1,7 +1,12 @@
 import { db } from '@/lib/prisma'
 import { audit } from '@/lib/audit'
 import { releaseOrderReservations } from '@/lib/inventory'
+import { consumeRateLimit } from '@/lib/rate-limit'
 import { areebaMpgsPaymentProvider, areebaWebhookToken, safeTokenEqual } from '@/lib/payments'
+
+function clientIp(req: Request) {
+  return req.headers.get('x-real-ip')?.trim() || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+}
 
 async function reconcileRefunds(orderId: string, body: Record<string, any>) {
   const gatewayStatus = String(body.order?.status || '').toUpperCase()
@@ -48,8 +53,6 @@ async function processPaymentNotification(orderNumber: string, body: Record<stri
     let transitioned = false
     await db.$transaction(async tx => {
       const current = await tx.order.findUnique({ where: { id: order.id }, select: { paymentStatus: true, couponCode: true } })
-      // Failed payment reconciliation is idempotent. A repeated gateway notification
-      // must not release reservations or decrement coupon usage a second time.
       if (!current || ['PAID', 'FAILED', 'REFUNDED', 'PARTIALLY_REFUNDED'].includes(current.paymentStatus)) return
       await releaseOrderReservations(tx, order.id, 'Online payment failed')
       if (current.couponCode) await tx.coupon.updateMany({ where: { code: current.couponCode, usedCount: { gt: 0 } }, data: { usedCount: { decrement: 1 } } })
@@ -64,15 +67,18 @@ async function processPaymentNotification(orderNumber: string, body: Record<stri
 
 export async function POST(req: Request) {
   try {
+    const limit = consumeRateLimit(`areeba-webhook:${clientIp(req)}`, 60, 60 * 1000)
+    if (!limit.allowed) return Response.json({ error: 'Too many webhook requests' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds), 'Cache-Control': 'no-store' } })
+
     const url = new URL(req.url)
-    if (!safeTokenEqual(url.searchParams.get('token')?.trim() || '', areebaWebhookToken())) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!safeTokenEqual(url.searchParams.get('token')?.trim() || '', areebaWebhookToken())) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: { 'Cache-Control': 'no-store' } })
     const body = await req.json().catch(() => ({})) as Record<string, any>
     const orderNumber = typeof body.order?.id === 'string' ? body.order.id.trim() : typeof body.orderId === 'string' ? body.orderId.trim() : ''
-    if (!orderNumber) return Response.json({ error: 'order.id is required' }, { status: 400 })
+    if (!orderNumber || orderNumber.length > 100) return Response.json({ error: 'Invalid payment notification' }, { status: 400 })
     const processed = await processPaymentNotification(orderNumber, body)
     if (!processed) return Response.json({ error: 'Payment notification could not be reconciled' }, { status: 409 })
-    return Response.json({ ok: true })
+    return Response.json({ ok: true }, { headers: { 'Cache-Control': 'no-store' } })
   } catch {
-    return Response.json({ error: 'Webhook processing failed; retry required' }, { status: 500 })
+    return Response.json({ error: 'Webhook processing failed; retry required' }, { status: 500, headers: { 'Cache-Control': 'no-store' } })
   }
 }
