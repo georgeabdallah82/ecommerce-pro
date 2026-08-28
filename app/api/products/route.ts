@@ -1,4 +1,5 @@
 import { db } from '@/lib/prisma'
+import { consumeRateLimit } from '@/lib/rate-limit'
 import { json } from '@/lib/utils'
 
 const publicProductSelect = {
@@ -57,28 +58,39 @@ const publicProductSelect = {
   },
 } as const
 
+function clientIp(req: Request) {
+  return req.headers.get('x-real-ip')?.trim() || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+}
+
 async function findPublicProduct(where: Record<string, unknown>) {
   return db.product.findFirst({ where: { ...where, status: 'ACTIVE' }, select: publicProductSelect })
 }
 
 export async function GET(req: Request) {
   try {
+    const limit = consumeRateLimit(`products:${clientIp(req)}`, 120, 60 * 1000)
+    if (!limit.allowed) return json({ error: 'Too many product requests. Please try again later.' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } })
+
     const searchParams = new URL(req.url).searchParams
     const q = searchParams.get('q')?.trim() || ''
     const slug = searchParams.get('slug')?.trim() || ''
     const id = searchParams.get('id')?.trim() || ''
     const category = searchParams.get('category')?.trim() || ''
 
+    if (q.length > 100 || slug.length > 180 || id.length > 100 || category.length > 100) {
+      return json({ error: 'Invalid product query' }, { status: 400 })
+    }
+
     if (id) {
       const product = await findPublicProduct({ id })
       if (!product) return json({ error: 'Product not found' }, { status: 404 })
-      return json(product)
+      return json(product, { headers: { 'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=600' } })
     }
 
     if (slug) {
       const product = await findPublicProduct({ slug })
       if (!product) return json({ error: 'Product not found' }, { status: 404 })
-      return json(product)
+      return json(product, { headers: { 'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=600' } })
     }
 
     const where = {
@@ -103,8 +115,8 @@ export async function GET(req: Request) {
       take: 100,
     })
 
-    return json(products)
-  } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Unable to load products' }, { status: 500 })
+    return json(products, { headers: { 'Cache-Control': 'public, max-age=30, s-maxage=120, stale-while-revalidate=600' } })
+  } catch {
+    return json({ error: 'Unable to load products' }, { status: 500 })
   }
 }
