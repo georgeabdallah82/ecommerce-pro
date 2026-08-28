@@ -1,19 +1,12 @@
 # Payment provider administration
 
-Use **Admin → Settings → Payments** to control which payment methods are available at checkout.
+Use **Admin → Settings → Payments** to control payment methods.
 
-## Recommended workflow
+- COD: enable or disable.
+- Card: choose the configured online provider and keep credentials in provider configuration.
+- Bank transfer: configure bank name, account name, IBAN and customer instructions.
+- Wallet: configure provider, account name/number and customer instructions.
 
-1. Enable only the methods you currently accept.
-2. For online card payments, select the configured provider and enter its credentials.
-3. Keep gateway secrets in the provider configuration; never put credentials in storefront settings.
-4. For bank transfer and wallet, enter the customer-facing account details and instructions.
-5. Save settings and verify checkout shows exactly the enabled methods.
+Never expose gateway secrets through public storefront settings. When the store moves from the development Render URL to a custom domain, update the public URL environment setting rather than changing payment-provider code.
 
-## Going live with a custom domain
-
-Keep the public application URL configurable. When the store moves from the development Render URL to the purchased domain, update the public URL environment setting rather than changing payment-provider code.
-
-## Adding another gateway
-
-A new online gateway should implement the existing payment-provider contract and be registered by provider key. Checkout should select the provider by configuration; gateway-specific API credentials and callback behavior must remain inside that provider.
+A future gateway should implement the existing payment-provider contract and be registered by provider key. Checkout should select the provider by configuration; gateway-specific credentials and callback behavior stay inside the provider.
