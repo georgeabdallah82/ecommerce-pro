@@ -20,6 +20,7 @@ export async function POST(req: Request) {
         productId,
         order: { userId: user.id, status: { in: ['CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED'] } },
       },
+      select: { id: true },
     })
     if (!purchase) return json({ error: 'You can review products you purchased' }, { status: 403 })
 
@@ -34,6 +35,14 @@ export async function POST(req: Request) {
           rating,
           title: b.title ? String(b.title).slice(0, 140) : null,
           body: b.body ? String(b.body).slice(0, 2000) : null,
+        },
+        select: {
+          id: true,
+          productId: true,
+          rating: true,
+          title: true,
+          body: true,
+          createdAt: true,
         },
       })
     })
