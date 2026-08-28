@@ -47,7 +47,10 @@ export async function POST(request: NextRequest) {
       await tx.$executeRaw`INSERT INTO "PasswordResetToken" (id, "userId", "tokenHash", "expiresAt", "createdAt") VALUES (${id}, ${user.id}, ${tokenHash}, ${expiresAt}, NOW())`
     })
 
-    const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL
+    // Render config exposes NEXT_PUBLIC_SITE_URL, so use it as the canonical
+    // production fallback. APP_URL/NEXT_PUBLIC_APP_URL remain supported for
+    // deployments that use those names instead.
+    const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL
     const resetUrl = appUrl ? `${appUrl.replace(/\/$/, '')}/account/reset-password?token=${encodeURIComponent(token)}` : null
     const webhook = process.env.PASSWORD_RESET_EMAIL_WEBHOOK_URL
 
@@ -55,7 +58,13 @@ export async function POST(request: NextRequest) {
       try {
         const headers: Record<string, string> = { 'content-type': 'application/json' }
         if (process.env.PASSWORD_RESET_EMAIL_WEBHOOK_SECRET) headers.authorization = `Bearer ${process.env.PASSWORD_RESET_EMAIL_WEBHOOK_SECRET}`
-        await fetch(webhook, { method: 'POST', headers, body: JSON.stringify({ to: user.email, resetUrl, expiresInMinutes: 30 }), signal: AbortSignal.timeout(5000) })
+        const response = await fetch(webhook, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ to: user.email, resetUrl, expiresInMinutes: 30 }),
+          signal: AbortSignal.timeout(5000),
+        })
+        if (!response.ok) console.error('[password-recovery] email delivery rejected', response.status)
       } catch (error) {
         console.error('[password-recovery] email delivery failed', error)
       }
