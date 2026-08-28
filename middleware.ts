@@ -22,13 +22,9 @@ export function middleware(request: NextRequest) {
     })
   }
 
-  if (
-    request.nextUrl.pathname.startsWith('/api/') &&
-    ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method) &&
-    request.cookies.has('session') &&
-    !isSameOrigin(request)
-  ) {
-    return NextResponse.json({ error: 'Cross-site request blocked' }, { status: 403 })
+  const isApiMutation = request.nextUrl.pathname.startsWith('/api/') && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)
+  if (isApiMutation && request.cookies.has('session') && !isSameOrigin(request)) {
+    return NextResponse.json({ error: 'Cross-site request blocked' }, { status: 403, headers: { 'Cache-Control': 'no-store' } })
   }
 
   const response = NextResponse.next()
@@ -37,6 +33,12 @@ export function middleware(request: NextRequest) {
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
   response.headers.set('X-DNS-Prefetch-Control', 'on')
+
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    // API responses must not be stored by a shared cache by default. Public,
+    // explicitly-cacheable endpoints can override this header at the route level.
+    response.headers.set('Cache-Control', 'private, no-store')
+  }
 
   if (process.env.NODE_ENV === 'production') {
     response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
