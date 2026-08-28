@@ -23,6 +23,10 @@ services:
         generateValue: true
       - key: NEXT_PUBLIC_SITE_URL
         sync: false
+      - key: PASSWORD_RESET_EMAIL_WEBHOOK_URL
+        sync: false
+      - key: PASSWORD_RESET_EMAIL_WEBHOOK_SECRET
+        sync: false
       - key: NEXT_PUBLIC_BRAND_NAME
         value: Your Brand
       - key: NEXT_PUBLIC_CURRENCY
