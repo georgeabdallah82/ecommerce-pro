@@ -7,11 +7,13 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   try {
     const actor = await requirePermission('orders.manage')
     const { id } = await params
-    const edit = await db.orderEdit.findUnique({ where: { id }, include: { items: true } })
-    if (!edit) return json({ error: 'Order edit not found' }, { status: 404 })
-    if (edit.status !== 'OPEN') return json({ error: 'Order edit is no longer open' }, { status: 409 })
 
     const order = await db.$transaction(async tx => {
+      await tx.$executeRaw`SELECT "id" FROM "OrderEdit" WHERE "id" = ${id} FOR UPDATE`
+      const edit = await tx.orderEdit.findUnique({ where: { id }, include: { items: true } })
+      if (!edit) throw new Error('Order edit not found')
+      if (edit.status !== 'OPEN') throw new Error('Order edit is no longer open')
+
       await tx.$executeRaw`SELECT "id" FROM "Order" WHERE "id" = ${edit.orderId} FOR UPDATE`
       const current = await tx.order.findUnique({ where: { id: edit.orderId }, include: { items: true } })
       if (!current) throw new Error('Order not found')
@@ -25,6 +27,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
           await tx.orderItem.create({ data: { orderId: current.id, productId: item.productId, variantId: item.variantId, name: 'Edited item', sku: 'EDITED', quantity: item.quantity, unitPrice: item.unitPrice, totalPrice: item.totalPrice } })
         }
       }
+
       const subtotal = await tx.orderItem.aggregate({ _sum: { totalPrice: true }, where: { orderId: current.id } })
       const nextSubtotal = Math.max(0, subtotal._sum.totalPrice || 0)
       const delta = nextSubtotal - current.subtotal
@@ -35,20 +38,32 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       return updated
     })
 
-    await audit(actor.id, 'order_edit.committed', 'OrderEdit', id, { orderId: edit.orderId, newSubtotal: order.subtotal, newTotal: order.grandTotal })
+    await audit(actor.id, 'order_edit.committed', 'OrderEdit', id, { orderId: order.id, newSubtotal: order.subtotal, newTotal: order.grandTotal })
     return json({ order })
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to commit order edit' }, { status: 400 }) }
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'Unable to commit order edit'
+    const status = message === 'Order edit not found' || message === 'Order not found' ? 404 : message === 'Order edit is no longer open' ? 409 : message === 'UNAUTHORIZED' ? 401 : message === 'FORBIDDEN' ? 403 : message.includes('cannot be edited') ? 409 : 400
+    if (status >= 500) console.error('order edit commit failed', e)
+    return json({ error: message }, { status })
+  }
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const actor = await requirePermission('orders.manage')
     const { id } = await params
-    const edit = await db.orderEdit.findUnique({ where: { id } })
-    if (!edit) return json({ error: 'Order edit not found' }, { status: 404 })
-    if (edit.status !== 'OPEN') return json({ error: 'Order edit is no longer open' }, { status: 409 })
-    await db.orderEdit.update({ where: { id }, data: { status: 'DISCARDED' } })
-    await audit(actor.id, 'order_edit.discarded', 'OrderEdit', id, { orderId: edit.orderId })
+    const discarded = await db.$transaction(async tx => {
+      await tx.$executeRaw`SELECT "id" FROM "OrderEdit" WHERE "id" = ${id} FOR UPDATE`
+      const edit = await tx.orderEdit.findUnique({ where: { id } })
+      if (!edit) throw new Error('Order edit not found')
+      if (edit.status !== 'OPEN') throw new Error('Order edit is no longer open')
+      return tx.orderEdit.update({ where: { id }, data: { status: 'DISCARDED' } })
+    })
+    await audit(actor.id, 'order_edit.discarded', 'OrderEdit', id, { orderId: discarded.orderId })
     return json({ ok: true })
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to discard order edit' }, { status: 400 }) }
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'Unable to discard order edit'
+    const status = message === 'Order edit not found' ? 404 : message === 'Order edit is no longer open' ? 409 : message === 'UNAUTHORIZED' ? 401 : message === 'FORBIDDEN' ? 403 : 400
+    return json({ error: message }, { status })
+  }
 }
