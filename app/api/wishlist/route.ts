@@ -1,10 +1,18 @@
 import { db } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
+import { consumeRateLimit } from '@/lib/rate-limit'
 import { json } from '@/lib/utils'
 
-export async function GET() {
+function clientIp(req: Request) {
+  return req.headers.get('x-real-ip')?.trim() || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+}
+
+export async function GET(req: Request) {
   const user = await getCurrentUser()
-  if (!user) return json({ items: [] })
+  if (!user) return json({ items: [] }, { headers: { 'Cache-Control': 'private, no-store' } })
+
+  const limit = consumeRateLimit(`wishlist-read:${user.id}:${clientIp(req)}`, 60, 60 * 1000)
+  if (!limit.allowed) return json({ error: 'Too many requests. Please try again later.' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds), 'Cache-Control': 'private, no-store' } })
 
   const items = await db.wishlistItem.findMany({
     where: { userId: user.id, product: { status: 'ACTIVE' } },
@@ -31,16 +39,20 @@ export async function GET() {
     orderBy: { createdAt: 'desc' },
   })
 
-  return json({ items })
+  return json({ items }, { headers: { 'Cache-Control': 'private, no-store' } })
 }
 
 export async function POST(req: Request) {
   try {
     const user = await getCurrentUser()
     if (!user) return json({ error: 'Please sign in' }, { status: 401 })
+
+    const limit = consumeRateLimit(`wishlist-write:${user.id}:${clientIp(req)}`, 60, 60 * 1000)
+    if (!limit.allowed) return json({ error: 'Too many wishlist requests. Please try again later.' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } })
+
     const body = await req.json()
     const productId = String(body.productId || '').trim()
-    if (!productId) return json({ error: 'Product required' }, { status: 400 })
+    if (!productId || productId.length > 100) return json({ error: 'Product required' }, { status: 400 })
 
     const product = await db.product.findFirst({ where: { id: productId, status: 'ACTIVE' }, select: { id: true } })
     if (!product) return json({ error: 'Product not found' }, { status: 404 })
@@ -60,8 +72,8 @@ export async function POST(req: Request) {
       }
     })
 
-    return json(result)
-  } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Unable to update wishlist' }, { status: 400 })
+    return json(result, { headers: { 'Cache-Control': 'private, no-store' } })
+  } catch {
+    return json({ error: 'Unable to update wishlist' }, { status: 400 })
   }
 }
