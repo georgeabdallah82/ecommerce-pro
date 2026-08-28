@@ -17,24 +17,36 @@ export default async function CustomerDetail({ params }: { params: Promise<{ id:
   })
   if (!customer) return <div className="empty">Customer not found.</div>
 
-  const [tagMembers, segmentMembers, creditTransactions, availableTags, availableSegments] = await Promise.all([
+  const [tagMembers, segmentMembers, walletTransactions, coinTransactions, availableTags, availableSegments] = await Promise.all([
     db.customerTagMember.findMany({ where: { customerId: id }, include: { tag: true }, orderBy: { createdAt: 'desc' } }),
     db.customerSegmentMember.findMany({ where: { customerId: id }, include: { segment: true }, orderBy: { addedAt: 'desc' } }),
-    db.storeCreditTransaction.findMany({ where: { customerId: id }, orderBy: { createdAt: 'desc' }, take: 100 }),
+    db.$queryRaw<Array<{ id: string; amount: number; currency: string; type: string; reason: string | null; referenceId: string | null; createdAt: Date }>>`
+      SELECT "id", "amount", "currency", "type", "reason", "referenceId", "createdAt"
+      FROM "WalletTransaction" WHERE "userId" = ${id}
+      ORDER BY "createdAt" DESC LIMIT 100
+    `,
+    db.$queryRaw<Array<{ id: string; amount: number; type: string; reason: string | null; referenceId: string | null; createdAt: Date }>>`
+      SELECT "id", "amount", "type", "reason", "referenceId", "createdAt"
+      FROM "CoinTransaction" WHERE "userId" = ${id}
+      ORDER BY "createdAt" DESC LIMIT 100
+    `,
     db.customerTag.findMany({ orderBy: { value: 'asc' } }),
     db.customerSegment.findMany({ orderBy: { name: 'asc' } }),
   ])
 
   const orderTotal = customer.orders.reduce((sum, order) => sum + order.grandTotal, 0)
-  const creditBalance = creditTransactions.reduce((sum, tx) => sum + tx.amount, 0)
+  const walletBalance = walletTransactions.reduce((sum, tx) => sum + tx.amount, 0)
+  const coinBalance = Math.max(0, coinTransactions.reduce((sum, tx) => sum + tx.amount, 0))
   const serialized = JSON.parse(JSON.stringify({
     ...customer,
     passwordHash: undefined,
     orderTotal,
     tags: tagMembers.map(x => x.tag),
     segments: segmentMembers.map(x => x.segment),
-    creditTransactions,
-    creditBalance,
+    creditTransactions: walletTransactions,
+    creditBalance: walletBalance,
+    coinTransactions,
+    coinBalance,
     availableTags,
     availableSegments,
   }))
