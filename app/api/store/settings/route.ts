@@ -27,6 +27,6 @@ export async function GET(){
       },
       checkout:{guestCheckout:map['checkout.guestCheckout']!=='false',freeShippingThreshold:map['checkout.freeShippingThreshold']||'100',taxRatePercent:map['checkout.taxRatePercent']||'0'},
       store:{currency:map['store.currency']||'USD',country:map['store.country']||'Lebanon'},
-    }})
-  }catch(e){return json({error:e instanceof Error?e.message:'Unable to load store settings'},{status:500})}
+    }},{headers:{'Cache-Control':'public, max-age=30, s-maxage=120, stale-while-revalidate=600'}})
+  }catch{return json({error:'Unable to load store settings'},{status:500})}
 }
