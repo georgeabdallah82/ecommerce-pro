@@ -48,7 +48,9 @@ async function processPaymentNotification(orderNumber: string, body: Record<stri
     let transitioned = false
     await db.$transaction(async tx => {
       const current = await tx.order.findUnique({ where: { id: order.id }, select: { paymentStatus: true, couponCode: true } })
-      if (!current || current.paymentStatus === 'PAID' || ['REFUNDED', 'PARTIALLY_REFUNDED'].includes(current.paymentStatus)) return
+      // Failed payment reconciliation is idempotent. A repeated gateway notification
+      // must not release reservations or decrement coupon usage a second time.
+      if (!current || ['PAID', 'FAILED', 'REFUNDED', 'PARTIALLY_REFUNDED'].includes(current.paymentStatus)) return
       await releaseOrderReservations(tx, order.id, 'Online payment failed')
       if (current.couponCode) await tx.coupon.updateMany({ where: { code: current.couponCode, usedCount: { gt: 0 } }, data: { usedCount: { decrement: 1 } } })
       await tx.order.update({ where: { id: order.id }, data: { paymentStatus: 'FAILED', status: 'CANCELLED', events: { create: { status: 'CANCELLED', message: 'Online payment failed.' } } } })
