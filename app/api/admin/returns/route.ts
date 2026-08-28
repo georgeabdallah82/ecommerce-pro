@@ -4,6 +4,25 @@ import { getPaymentProvider } from '@/lib/payments'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 
+const RETURN_MESSAGES = new Set([
+  'Order not found',
+  'Only shipped or delivered orders can be returned',
+  'A return refund can only be issued for a paid order',
+])
+
+function returnFailure(error: unknown) {
+  if (error instanceof Error) {
+    if (RETURN_MESSAGES.has(error.message)) return { message: error.message, status: error.message === 'Order not found' ? 404 : 400 }
+    if (error.message === 'UNAUTHORIZED') return { message: 'Unauthorized', status: 401 }
+    if (error.message === 'FORBIDDEN') return { message: 'Forbidden', status: 403 }
+    if (error.message.startsWith('Invalid return quantity for ') || error.message.startsWith('Return quantity for ') || error.message.startsWith('No inventory row exists for ') || error.message.startsWith('Unable to restock ') || error.message.startsWith('Refund cannot exceed the remaining refundable amount of ')) {
+      return { message: error.message, status: 400 }
+    }
+  }
+  console.error('[admin/returns] unexpected failure', error)
+  return { message: 'Unable to process the return right now.', status: 500 }
+}
+
 export async function POST(req: Request) {
   try {
     const actor = await requirePermission('orders.manage')
@@ -146,7 +165,7 @@ export async function POST(req: Request) {
 
     return json(result, { status: result.refund && result.refundProvider !== 'manual' && result.refund.status === 'refund_pending' ? 202 : 201 })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to process return'
-    return json({ error: message }, { status: message === 'Order not found' ? 404 : message === 'UNAUTHORIZED' ? 401 : message === 'FORBIDDEN' ? 403 : 400 })
+    const failure = returnFailure(e)
+    return json({ error: failure.message }, { status: failure.status })
   }
 }
