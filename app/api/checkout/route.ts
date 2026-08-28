@@ -10,6 +10,7 @@ import { getPaymentProvider } from '@/lib/payments'
 import { sendNewOrderPush } from '@/lib/push'
 import { consumeRateLimit } from '@/lib/rate-limit'
 import { PaymentMethod } from '@prisma/client'
+import { ZodError } from 'zod'
 
 function stableSerialize(value: unknown): string { if (value === null || typeof value !== 'object') return JSON.stringify(value); if (Array.isArray(value)) return `[${value.map(stableSerialize).join(',')}]`; return `{${Object.keys(value as Record<string, unknown>).sort().map(key => `${JSON.stringify(key)}:${stableSerialize((value as Record<string, unknown>)[key])}`).join(',')}}` }
 function clientIp(req: Request) { return req.headers.get('x-real-ip')?.trim() || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown' }
@@ -25,6 +26,33 @@ async function applyCoupon(code: string, subtotal: number) {
 function providerCheckout(rawJson: string | null) {
   if (!rawJson) return null
   try { const parsed=JSON.parse(rawJson) as { clientCheckout?: unknown }; return parsed.clientCheckout || null } catch { return null }
+}
+
+const SAFE_CHECKOUT_MESSAGES = new Set([
+  'Invalid coupon code',
+  'This discount is not configured correctly',
+  'This coupon is not active yet',
+  'This coupon has expired',
+  'This coupon has reached its usage limit',
+  'Minimum order is required for this coupon',
+  'This coupon requires a customer account',
+  'This coupon is for first orders only',
+  'This coupon is no longer available',
+  'Your cart is empty.',
+  'One or more products are unavailable',
+  'Invalid product option selected.',
+  'Payment method is currently unavailable.',
+])
+
+function checkoutFailure(error: unknown) {
+  if (error instanceof ZodError) return { message: 'Please check your checkout details and try again.', status: 400 }
+  if (error instanceof SyntaxError) return { message: 'Invalid checkout request.', status: 400 }
+  const message = error instanceof Error ? error.message : ''
+  if (message === 'This idempotency key was already used for a different checkout') return { message, status: 409 }
+  if (message.startsWith('Maximum quantity per product is ')) return { message, status: 400 }
+  if (SAFE_CHECKOUT_MESSAGES.has(message)) return { message, status: 400 }
+  console.error('[checkout] unexpected failure', error)
+  return { message: 'Unable to place your order right now. Please try again.', status: 500 }
 }
 
 export async function POST(req: Request) {
@@ -48,7 +76,7 @@ export async function POST(req: Request) {
     const ids=[...new Set([...merged.values()].map(i=>i.productId))]; const products=await db.product.findMany({where:{id:{in:ids},status:'ACTIVE'},include:{variants:true,inventory:true,images:true}}); const byId=new Map(products.map(p=>[p.id,p])); if(products.length!==ids.length)return json({error:'One or more products are unavailable'},{status:400})
     const normalized:any[]=[]; let subtotal=0
     for(const raw of merged.values()){const p=byId.get(raw.productId)!;const variant=raw.variantId?p.variants.find(v=>v.id===raw.variantId):undefined;if(raw.variantId&&!variant)return json({error:'Invalid product option selected.'},{status:400});if(p.trackInventory&&!p.continueSellingWhenOutOfStock){const dedicated=raw.variantId?p.inventory.filter(x=>x.variantId===raw.variantId):[];const stockRows=dedicated.length?dedicated:p.inventory.filter(x=>!x.variantId);const available=stockRows.reduce((s,x)=>s+x.quantity-x.reserved,0);if(available<raw.quantity)return json({error:'One or more requested quantities are no longer available.'},{status:409})}const unitPrice=variant?.price??p.basePrice;subtotal+=unitPrice*raw.quantity;normalized.push({productId:p.id,variantId:variant?.id??null,name:p.name+(variant?` — ${variant.name}`:''),sku:variant?.sku??p.sku,quantity:raw.quantity,unitPrice,totalPrice:unitPrice*raw.quantity})}
-    const {discount,coupon}=await applyCoupon(input.couponCode||'',subtotal); if(coupon?.firstOrderOnly&&!user?.id)throw new Error('This coupon requires a customer account'); const discountedSubtotal=Math.max(0,subtotal-discount); const shipping=await calculateShipping(input.shippingAddress.country,discountedSubtotal); const taxRate=await getTaxRatePercent(); const taxTotal=Math.round(discountedSubtotal*taxRate/100); const shippingTotal=coupon?.type==='FREE_SHIPPING'?0:shipping.total; const grandTotal=Math.max(0,discountedSubtotal+shippingTotal+taxTotal); const orderNumber=`ORD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`; const fingerprint=checkoutFingerprint(user?.id??null,input,merged)
+    const {discount,coupon}=await applyCoupon(input.couponCode||'',subtotal); if(coupon?.firstOrderOnly&&!user?.id)throw new Error('This coupon requires a customer account'); const discountedSubtotal=Math.max(0,subtotal-discount); const shipping=await calculateShipping(input.shippingAddress.country,discountedSubtotal); const taxRate=await getTaxRatePercent(); const taxTotal=Math.round(discountedSubtotal*taxRate/100); const shippingTotal=coupon?.type==='FREE_SHIPPING'?0:shipping.total; const grandTotal=Math.max(0,discountedSubtotal+shippingTotal+taxTotal); const orderNumber=`ORD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(0,6).toUpperCase()}`; const fingerprint=checkoutFingerprint(user?.id??null,input,merged)
 
     const result=await db.$transaction(async tx=>{
       if(idempotencyKey){await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${idempotencyKey}))`;const existing=await tx.paymentTransaction.findFirst({where:{provider:'checkout',externalId:idempotencyKey},include:{order:true}});if(existing?.order){let existingFingerprint:string|null=null;if(existing.rawJson){try{const parsed=JSON.parse(existing.rawJson) as {fingerprint?:unknown};existingFingerprint=typeof parsed.fingerprint==='string'?parsed.fingerprint:null}catch{existingFingerprint=null}}if(existingFingerprint&&existingFingerprint!==fingerprint)throw new Error('This idempotency key was already used for a different checkout');return {existing:true as const,order:existing.order}}}
@@ -64,7 +92,7 @@ export async function POST(req: Request) {
     }
 
     const order=result.order; let clientCheckout:any=null
-    if(paymentMethod===PaymentMethod.CARD){try{const payment=await paymentProvider.createPayment({orderId:order.orderNumber,amount:order.grandTotal,currency:order.currency,email:order.email});if(payment.externalId){await db.paymentTransaction.create({data:{orderId:order.id,provider:payment.provider,externalId:payment.externalId,status:payment.status,amount:order.grandTotal,currency:order.currency,rawJson:JSON.stringify({clientCheckout:payment.clientCheckout?{type:payment.clientCheckout.type,merchantId:payment.clientCheckout.merchantId,sessionId:payment.clientCheckout.sessionId}:null,successIndicator:payment.clientCheckout?.successIndicator||null})}})}clientCheckout=payment.clientCheckout||null}catch(paymentError){await db.$transaction(async tx=>{await releaseOrderReservations(tx,order.id,'Online payment initialization failed');if(order.couponCode){await tx.coupon.updateMany({where:{code:order.couponCode,usedCount:{gt:0}},data:{usedCount:{decrement:1}}})}await tx.order.update({where:{id:order.id},data:{status:'CANCELLED',fulfillmentStatus:'UNFULFILLED',events:{create:{status:'CANCELLED',message:'Online payment initialization failed.'}}}})});throw paymentError}}
+    if(paymentMethod===PaymentMethod.CARD){try{const payment=await paymentProvider.createPayment({orderId:order.orderNumber,amount:order.grandTotal,currency:order.currency,email:order.email});if(payment.externalId){await db.paymentTransaction.create({data:{orderId:order.id,provider:payment.provider,externalId:payment.externalId,status:payment.status,amount:order.grandTotal,currency:order.currency,rawJson:JSON.stringify({clientCheckout:payment.clientCheckout?{type:payment.clientCheckout.type,merchantId:payment.clientCheckout.merchantId,sessionId:payment.clientCheckout.sessionId}:null,successIndicator:payment.clientCheckout?.successIndicator||null})}})}clientCheckout=payment.clientCheckout||null}catch(paymentError){await db.$transaction(async tx=>{await releaseOrderReservations(tx,order.id,'Online payment initialization failed');if(order.couponCode){await tx.coupon.updateMany({where:{code:order.couponCode,usedCount:{gt:0}},data:{usedCount:{decrement:1}})}await tx.order.update({where:{id:order.id},data:{status:'CANCELLED',fulfillmentStatus:'UNFULFILLED',events:{create:{status:'CANCELLED',message:'Online payment initialization failed.'}}}})});throw paymentError}}
     if(user?.id)await db.notification.create({data:{userId:user.id,title:'Order placed',body:`Order ${order.orderNumber} was placed successfully.`,type:'ORDER_CREATED'}}); void sendNewOrderPush({id:order.id,orderNumber:order.orderNumber,grandTotal:order.grandTotal,currency:order.currency}).catch(error=>console.error('[push] new-order notification failed',error)); await audit(user?.id,'order.created','Order',order.id,{orderNumber,total:grandTotal,paymentMethod,paymentProvider:paymentMethod===PaymentMethod.CARD?paymentProvider.name:'manual'}); return json({order:{id:order.id,orderNumber:order.orderNumber,total:order.grandTotal},payment:clientCheckout},{status:201,headers:{'Cache-Control':'no-store'}})
-  } catch(error){const message=error instanceof Error?error.message:'Unable to place order';const status=message==='This idempotency key was already used for a different checkout'?409:400;return json({error:message},{status,headers:{'Cache-Control':'no-store'}})}
+  } catch(error){const failure=checkoutFailure(error);return json({error:failure.message},{status:failure.status,headers:{'Cache-Control':'no-store'}})}
 }
