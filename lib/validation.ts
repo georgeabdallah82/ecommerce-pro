@@ -7,6 +7,7 @@ export const checkoutSchema = z.object({
   phone: z.string().trim().max(40).optional().or(z.literal('')),
   paymentMethod: z.enum(['COD','CARD','BANK_TRANSFER','WALLET']),
   couponCode: z.string().trim().max(60).optional().or(z.literal('')),
+  coinsToUse: z.number().int().min(0).max(1000000).default(0),
   shippingAddress: z.object({
     firstName: z.string().trim().min(1).max(80),
     lastName: z.string().trim().min(1).max(80),
