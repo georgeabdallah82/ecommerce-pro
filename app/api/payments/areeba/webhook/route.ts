@@ -90,7 +90,22 @@ async function processPaymentNotification(orderNumber: string, body: Record<stri
   } else if (status === 'failed') {
     let transitioned = false
     await db.$transaction(async tx => {
-      const current = await tx.order.findUnique({ where: { id: order.id }, select: { paymentStatus: true, couponCode: true, userId: true, orderNumber: true, grandTotal: true }, include: { paymentTransactions: { where: { provider: 'checkout' }, select: { rawJson: true }, orderBy: { createdAt: 'asc' }, take: 1 } } })
+      const current = await tx.order.findUnique({
+        where: { id: order.id },
+        select: {
+          paymentStatus: true,
+          couponCode: true,
+          userId: true,
+          orderNumber: true,
+          grandTotal: true,
+          paymentTransactions: {
+            where: { provider: 'checkout' },
+            select: { rawJson: true },
+            orderBy: { createdAt: 'asc' },
+            take: 1,
+          },
+        },
+      })
       if (!current || ['PAID', 'FAILED', 'REFUNDED', 'PARTIALLY_REFUNDED'].includes(current.paymentStatus)) return
       await releaseOrderReservations(tx, order.id, 'Online payment failed')
       if (current.couponCode) await tx.coupon.updateMany({ where: { code: current.couponCode, usedCount: { gt: 0 } }, data: { usedCount: { decrement: 1 } } })
