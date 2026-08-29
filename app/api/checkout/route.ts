@@ -95,6 +95,35 @@ function checkoutFailure(error: unknown) {
   return { message: 'Unable to place your order right now. Please try again.', status: 500 }
 }
 
+function parseCoinsUsed(rawJson: string | null) {
+  if (!rawJson) return 0
+  try {
+    const parsed = JSON.parse(rawJson) as { coinsUsed?: unknown }
+    return Number.isSafeInteger(parsed.coinsUsed) ? Math.max(0, Number(parsed.coinsUsed)) : 0
+  } catch { return 0 }
+}
+
+async function restoreCheckoutCoins(orderId: string, userId: string | null) {
+  if (!userId) return
+  await db.$transaction(async tx => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`coins:${userId}`}))`
+    const checkoutTx = await tx.paymentTransaction.findFirst({ where: { orderId, provider: 'checkout' }, select: { rawJson: true } })
+    const coinsUsed = parseCoinsUsed(checkoutTx?.rawJson || null)
+    if (!coinsUsed) return
+    const referenceId = `coin-reversal:${orderId}:payment-init-failed`
+    const existing = await tx.$queryRaw<Array<{ id: string }>>`
+      SELECT "id" FROM "CoinTransaction"
+      WHERE "userId" = ${userId} AND "referenceId" = ${referenceId} AND "type" = 'REVERSAL'
+      LIMIT 1
+    `
+    if (existing[0]) return
+    await tx.$executeRaw`
+      INSERT INTO "CoinTransaction" ("id", "userId", "amount", "type", "reason", "referenceId")
+      VALUES (${`coin_${randomUUID()}`}, ${userId}, ${coinsUsed}, 'REVERSAL', 'Payment initialization failure coin restoration', ${referenceId})
+    `
+  })
+}
+
 export async function POST(req: Request) {
   try {
     const currentIp = clientIp(req)
@@ -278,8 +307,9 @@ export async function POST(req: Request) {
         await db.$transaction(async tx => {
           await releaseOrderReservations(tx, order.id, 'Online payment initialization failed')
           if (order.couponCode) await tx.coupon.updateMany({ where: { code: order.couponCode, usedCount: { gt: 0 } }, data: { usedCount: { decrement: 1 } } })
-          tx.order.update({ where: { id: order.id }, data: { status: 'CANCELLED', fulfillmentStatus: 'UNFULFILLED', events: { create: { status: 'CANCELLED', message: 'Online payment initialization failed.' } } } })
+          await tx.order.update({ where: { id: order.id }, data: { status: 'CANCELLED', fulfillmentStatus: 'UNFULFILLED', events: { create: { status: 'CANCELLED', message: 'Online payment initialization failed.' } } } })
         })
+        await restoreCheckoutCoins(order.id, order.userId)
         throw paymentError
       }
     }
