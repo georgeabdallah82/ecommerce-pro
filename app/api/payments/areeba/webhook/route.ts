@@ -8,6 +8,43 @@ function clientIp(req: Request) {
   return req.headers.get('x-real-ip')?.trim() || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
 }
 
+function parseCoinsUsed(rawJson: string | null) {
+  if (!rawJson) return 0
+  try {
+    const parsed = JSON.parse(rawJson) as { coinsUsed?: unknown }
+    return Number.isSafeInteger(parsed.coinsUsed) ? Math.max(0, Number(parsed.coinsUsed)) : 0
+  } catch { return 0 }
+}
+
+async function restoreCoinsForOrder(
+  tx: any,
+  order: { id: string; orderNumber: string; grandTotal: number; userId: string | null },
+  successfulRefundedMinor: number,
+  referenceSuffix: string,
+) {
+  if (!order.userId || order.grandTotal <= 0) return 0
+  const checkoutTx = await tx.paymentTransaction.findFirst({ where: { orderId: order.id, provider: 'checkout' }, orderBy: { createdAt: 'asc' }, select: { rawJson: true } })
+  const coinsUsed = parseCoinsUsed(checkoutTx?.rawJson || null)
+  if (!coinsUsed) return 0
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`coins:${order.userId}`}))`
+  const alreadyRestoredRows = await tx.$queryRaw<Array<{ amount: number }>>`
+    SELECT COALESCE(SUM("amount"), 0)::int AS amount
+    FROM "CoinTransaction"
+    WHERE "userId" = ${order.userId}
+      AND "type" = 'REFUND'
+      AND "referenceId" LIKE ${`coin-refund:${order.id}:%`}
+  `
+  const alreadyRestored = Math.max(0, Number(alreadyRestoredRows[0]?.amount || 0))
+  const targetRestored = Math.min(coinsUsed, Math.floor(coinsUsed * Math.max(0, Math.min(successfulRefundedMinor, order.grandTotal)) / order.grandTotal))
+  const delta = targetRestored - alreadyRestored
+  if (delta <= 0) return 0
+  await tx.$executeRaw`
+    INSERT INTO "CoinTransaction" ("id", "userId", "amount", "type", "reason", "referenceId")
+    VALUES (${`coin_${crypto.randomUUID()}`}, ${order.userId}, ${delta}, 'REFUND', 'Order refund coin restoration', ${`coin-refund:${order.id}:${referenceSuffix}`})
+  `
+  return delta
+}
+
 async function reconcileRefunds(orderId: string, body: Record<string, any>) {
   const gatewayStatus = String(body.order?.status || '').toUpperCase()
   const gatewayRefunded = Number(body.order?.totalRefundedAmount)
@@ -26,6 +63,7 @@ async function reconcileRefunds(orderId: string, body: Record<string, any>) {
     for (const transaction of pending) await tx.paymentTransaction.update({ where: { id: transaction.id }, data: { status: 'refunded' } })
     const paymentStatus = gatewayRefundedMinor >= order.grandTotal ? 'REFUNDED' : 'PARTIALLY_REFUNDED'
     const status = paymentStatus === 'REFUNDED' ? 'REFUNDED' : order.status
+    await restoreCoinsForOrder(tx, order, gatewayRefundedMinor, `gateway-${Date.now()}`)
     await tx.order.update({ where: { id: order.id }, data: { paymentStatus, status, events: { create: { status, message: `Gateway refund confirmed (${gatewayRefundedMinor} ${order.currency}).` } } } })
     reconciled = true
   })
@@ -52,10 +90,23 @@ async function processPaymentNotification(orderNumber: string, body: Record<stri
   } else if (status === 'failed') {
     let transitioned = false
     await db.$transaction(async tx => {
-      const current = await tx.order.findUnique({ where: { id: order.id }, select: { paymentStatus: true, couponCode: true } })
+      const current = await tx.order.findUnique({ where: { id: order.id }, select: { paymentStatus: true, couponCode: true, userId: true, orderNumber: true, grandTotal: true }, include: { paymentTransactions: { where: { provider: 'checkout' }, select: { rawJson: true }, orderBy: { createdAt: 'asc' }, take: 1 } } })
       if (!current || ['PAID', 'FAILED', 'REFUNDED', 'PARTIALLY_REFUNDED'].includes(current.paymentStatus)) return
       await releaseOrderReservations(tx, order.id, 'Online payment failed')
       if (current.couponCode) await tx.coupon.updateMany({ where: { code: current.couponCode, usedCount: { gt: 0 } }, data: { usedCount: { decrement: 1 } } })
+      const coinsUsed = parseCoinsUsed(current.paymentTransactions[0]?.rawJson || null)
+      if (coinsUsed > 0 && current.userId) {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`coins:${current.userId}`}))`
+        const reversalReference = `coin-reversal:${current.orderNumber}:payment-failed`
+        const existing = await tx.$queryRaw<Array<{ id: string }>>`
+          SELECT "id" FROM "CoinTransaction"
+          WHERE "userId" = ${current.userId} AND "referenceId" = ${reversalReference} AND "type" = 'REVERSAL' LIMIT 1
+        `
+        if (!existing[0]) await tx.$executeRaw`
+          INSERT INTO "CoinTransaction" ("id", "userId", "amount", "type", "reason", "referenceId")
+          VALUES (${`coin_${crypto.randomUUID()}`}, ${current.userId}, ${coinsUsed}, 'REVERSAL', 'Failed payment coin restoration', ${reversalReference})
+        `
+      }
       await tx.order.update({ where: { id: order.id }, data: { paymentStatus: 'FAILED', status: 'CANCELLED', events: { create: { status: 'CANCELLED', message: 'Online payment failed.' } } } })
       await tx.paymentTransaction.update({ where: { id: transaction.id }, data: { status: 'failed' } })
       transitioned = true
