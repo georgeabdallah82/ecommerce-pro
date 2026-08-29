@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     region: frankfurt
-    buildCommand: npm install && npm run db:deploy && npm run db:ensure-admin && npm run build
+    buildCommand: npm install && npx prisma generate && npm run build
     startCommand: node -v && npm start
     initialDeployCommand: npm run db:seed
     healthCheckPath: /api/health
