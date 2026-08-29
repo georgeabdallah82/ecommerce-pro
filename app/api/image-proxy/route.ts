@@ -2,6 +2,8 @@ import dns from 'node:dns/promises'
 import { NextResponse } from 'next/server'
 import { consumeRateLimit } from '@/lib/rate-limit'
 
+const NO_STORE = { 'Cache-Control': 'no-store' }
+
 function blockedHost(hostname:string){
   const h=hostname.toLowerCase().replace(/^\[|\]$/g,'')
   if(h==='localhost'||h==='127.0.0.1'||h==='0.0.0.0'||h==='::1') return true
@@ -73,36 +75,39 @@ async function fetchSafeImage(initial:string){
 export async function GET(req:Request){
   try{
     const limit=consumeRateLimit(`image-proxy:${clientIp(req)}`,30,60*1000)
-    if(!limit.allowed) return new NextResponse('Too many image requests',{status:429,headers:{'Retry-After':String(limit.retryAfterSeconds),'Cache-Control':'no-store'}})
+    if(!limit.allowed) return new NextResponse('Too many image requests',{status:429,headers:{...NO_STORE,'Retry-After':String(limit.retryAfterSeconds)}})
 
     const raw=new URL(req.url).searchParams.get('url')||''
-    if(!raw) return new NextResponse('Missing url',{status:400})
+    if(!raw) return new NextResponse('Missing url',{status:400,headers:NO_STORE})
+    if(raw.length>4096) return new NextResponse('URL is too long',{status:400,headers:NO_STORE})
+
     const target=normalizeRemote(raw)
     let parsed:URL
-    try{ parsed=new URL(target) }catch{return new NextResponse('Invalid url',{status:400}) }
-    if(!['http:','https:'].includes(parsed.protocol)) return new NextResponse('Unsupported protocol',{status:400})
-    if(target.length>2048) return new NextResponse('URL is too long',{status:400})
+    try{ parsed=new URL(target) }catch{return new NextResponse('Invalid url',{status:400,headers:NO_STORE})}
+    if(!['http:','https:'].includes(parsed.protocol)) return new NextResponse('Unsupported protocol',{status:400,headers:NO_STORE})
+    if(target.length>2048) return new NextResponse('URL is too long',{status:400,headers:NO_STORE})
     await assertPublicHostname(parsed.hostname)
 
     const {upstream}=await fetchSafeImage(parsed.toString())
-    if(!upstream.ok) return new NextResponse('Upstream image request failed',{status:502})
+    if(!upstream.ok) return new NextResponse('Upstream image request failed',{status:502,headers:NO_STORE})
 
     const contentType=upstream.headers.get('content-type')||''
-    if(!contentType.toLowerCase().startsWith('image/')) return new NextResponse('URL did not return an image',{status:415})
+    if(!contentType.toLowerCase().startsWith('image/')) return new NextResponse('URL did not return an image',{status:415,headers:NO_STORE})
 
     const length=Number(upstream.headers.get('content-length')||0)
-    if(length>10*1024*1024) return new NextResponse('Image is too large',{status:413})
+    if(Number.isFinite(length)&&length>10*1024*1024) return new NextResponse('Image is too large',{status:413,headers:NO_STORE})
 
     const body=await upstream.arrayBuffer()
-    if(body.byteLength>10*1024*1024) return new NextResponse('Image is too large',{status:413})
+    if(body.byteLength>10*1024*1024) return new NextResponse('Image is too large',{status:413,headers:NO_STORE})
+
     const headers=new Headers()
-    headers.set('content-type',contentType)
+    headers.set('content-type',contentType.split(';',1)[0])
     headers.set('cache-control','public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800')
+    headers.set('x-content-type-options','nosniff')
     headers.set('content-length',String(body.byteLength))
     return new NextResponse(body,{status:200,headers})
   }catch(e){
-    const message=e instanceof Error?e.message:'Unable to load image'
-    const status=message==='Blocked host'?403:message==='Unsupported protocol'||message==='Invalid url'||message==='URL is too long'?400:message==='Image is too large'?413:502
-    return new NextResponse(message,{status})
+    console.error('[image-proxy] request failed',e)
+    return new NextResponse('Unable to load image',{status:502,headers:NO_STORE})
   }
 }
