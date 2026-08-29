@@ -3,13 +3,14 @@ name: Restore tooling lockfile
 on:
   push:
     branches: [main]
+    paths:
+      - package.json
 
 permissions:
   contents: write
 
 jobs:
   regenerate:
-    if: github.event.head_commit.message == 'chore: restore Prisma and tsx tooling'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
