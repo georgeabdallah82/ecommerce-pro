@@ -1,0 +1,39 @@
+name: Restore tooling lockfile
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    if: github.event.head_commit.message == 'chore: restore Prisma and tsx tooling'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.2
+          cache: npm
+
+      - name: Regenerate lockfile
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Verify only lockfile changed
+        run: |
+          changed=$(git diff --name-only)
+          test "$changed" = "package-lock.json"
+
+      - name: Commit generated lockfile and remove helper
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json .github/workflows/restore-tooling-lockfile.yml
+          git rm .github/workflows/restore-tooling-lockfile.yml
+          git commit -m "chore: refresh lockfile after restoring tooling"
+          git push
