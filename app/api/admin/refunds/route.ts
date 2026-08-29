@@ -22,6 +22,14 @@ function refundFailure(error: unknown) {
   return { message: 'Unable to process the refund right now.', status: 500 }
 }
 
+function parseCoinsUsed(rawJson: string | null) {
+  if (!rawJson) return 0
+  try {
+    const parsed = JSON.parse(rawJson) as { coinsUsed?: unknown }
+    return Number.isSafeInteger(parsed.coinsUsed) ? Math.max(0, Number(parsed.coinsUsed)) : 0
+  } catch { return 0 }
+}
+
 export async function POST(req: Request) {
   try {
     const actor = await requirePermission('orders.refund')
@@ -46,15 +54,15 @@ export async function POST(req: Request) {
       if (requestedAmount > remaining) throw new Error(`Refund cannot exceed the remaining refundable amount of ${remaining}`)
 
       const original = order.paymentTransactions.filter(t => t.provider !== 'manual' && ['paid', 'captured', 'authorized'].includes(t.status) && t.externalId).sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
-      const provider = original?.provider || 'manual'
-      if (provider !== 'manual' && !original?.externalId) throw new Error('Paid gateway transaction is missing its external reference')
+      const provider = order.paymentMethod === 'WALLET' ? 'wallet' : (original?.provider || 'manual')
+      if (provider !== 'manual' && provider !== 'wallet' && !original?.externalId) throw new Error('Paid gateway transaction is missing its external reference')
 
       const transaction = await tx.paymentTransaction.create({
         data: {
           orderId: order.id,
           provider,
           externalId: original?.externalId || null,
-          status: provider === 'manual' ? 'refunded' : 'refund_pending',
+          status: provider === 'manual' || provider === 'wallet' ? 'refunded' : 'refund_pending',
           amount: requestedAmount,
           currency: order.currency,
           rawJson: JSON.stringify({ reason: String(body.reason || '').slice(0, 1000) || null, actorId: actor.id }),
@@ -63,7 +71,7 @@ export async function POST(req: Request) {
       return { order, transaction, provider, externalId: original?.externalId || null }
     })
 
-    if (prepared.provider !== 'manual') {
+    if (prepared.provider !== 'manual' && prepared.provider !== 'wallet') {
       try {
         const provider = await getPaymentProvider(prepared.provider)
         if (provider.name !== prepared.provider || !provider.refundPayment || !prepared.externalId) throw new Error(`Payment provider ${prepared.provider} is not available for refunds`)
@@ -83,10 +91,51 @@ export async function POST(req: Request) {
       await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${prepared.order.id} FOR UPDATE`
       const order = await tx.order.findUnique({ where: { id: prepared.order.id }, include: { paymentTransactions: true } })
       if (!order) throw new Error('Order not found')
+
       await tx.paymentTransaction.update({ where: { id: prepared.transaction.id }, data: { status: 'refunded' } })
       const successfulRefunds = order.paymentTransactions.filter(t => ['refunded', 'partially_refunded'].includes(t.status) && t.id !== prepared.transaction.id).reduce((sum, t) => sum + t.amount, 0) + requestedAmount
       const paymentStatus = successfulRefunds >= order.grandTotal ? 'REFUNDED' : 'PARTIALLY_REFUNDED'
       const status = paymentStatus === 'REFUNDED' ? 'REFUNDED' : order.status
+
+      if (prepared.provider === 'wallet' && order.userId) {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`wallet:${order.userId}:${order.currency}`}))`
+        const duplicateWalletRefund = await tx.$queryRaw<Array<{ id: string }>>`
+          SELECT "id" FROM "WalletTransaction"
+          WHERE "userId" = ${order.userId}
+            AND "referenceId" = ${`wallet-refund:${prepared.transaction.id}`}
+            AND "type" = 'REFUND'
+          LIMIT 1
+        `
+        if (!duplicateWalletRefund[0]) {
+          await tx.$executeRaw`
+            INSERT INTO "WalletTransaction" ("id", "userId", "amount", "currency", "type", "reason", "referenceId")
+            VALUES (${`wal_${crypto.randomUUID()}`}, ${order.userId}, ${requestedAmount}, ${order.currency}, 'REFUND', 'Order refund credited to wallet', ${`wallet-refund:${prepared.transaction.id}`})
+          `
+        }
+      }
+
+      const checkoutTx = order.paymentTransactions.find(t => t.provider === 'checkout' && t.rawJson)
+      const coinsUsed = parseCoinsUsed(checkoutTx?.rawJson || null)
+      if (order.userId && coinsUsed > 0 && order.grandTotal > 0) {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`coins:${order.userId}`}))`
+        const restoredRows = await tx.$queryRaw<Array<{ amount: number }>>`
+          SELECT COALESCE(SUM("amount"),0)::int AS amount
+          FROM "CoinTransaction"
+          WHERE "userId" = ${order.userId}
+            AND "type" = 'REFUND'
+            AND "referenceId" LIKE ${`coin-refund:${order.id}:%`}
+        `
+        const restored = Math.max(0, Number(restoredRows[0]?.amount || 0))
+        const target = Math.min(coinsUsed, Math.floor(coinsUsed * successfulRefunds / order.grandTotal))
+        const delta = target - restored
+        if (delta > 0) {
+          await tx.$executeRaw`
+            INSERT INTO "CoinTransaction" ("id", "userId", "amount", "type", "reason", "referenceId")
+            VALUES (${`coin_${crypto.randomUUID()}`}, ${order.userId}, ${delta}, 'REFUND', 'Order refund coin restoration', ${`coin-refund:${order.id}:${prepared.transaction.id}`})
+          `
+        }
+      }
+
       const updated = await tx.order.update({ where: { id: order.id }, data: { paymentStatus, status, events: { create: { status, message: paymentStatus === 'REFUNDED' ? `Order fully refunded (${requestedAmount} ${order.currency}).` : `Order partially refunded (${requestedAmount} ${order.currency}).` } } } })
       await tx.auditLog.create({ data: { actorId: actor.id, action: 'order.refunded', entity: 'Order', entityId: order.id, metadataJson: JSON.stringify({ amount: requestedAmount, transactionId: prepared.transaction.id, provider: prepared.provider, refundedTotal: successfulRefunds }) } })
       return { order: updated, transaction: { ...prepared.transaction, status: 'refunded' }, refundedTotal: successfulRefunds }
