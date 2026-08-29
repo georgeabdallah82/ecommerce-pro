@@ -10,16 +10,35 @@ const orderStatuses = new Set(Object.values(OrderStatus))
 const paymentStatuses = new Set(Object.values(PaymentStatus))
 const fulfillmentStatuses = new Set(Object.values(FulfillmentStatus))
 
+function publicError(error: unknown, fallback: string) {
+  const message = error instanceof Error ? error.message : ''
+  if (message === 'FORBIDDEN') return { error: 'Forbidden', status: 403 }
+  if (message === 'UNAUTHORIZED') return { error: 'Unauthorized', status: 401 }
+  if (message === 'Order not found') return { error: message, status: 404 }
+  if (message.startsWith('Invalid order transition') || message.startsWith('Invalid payment transition')) return { error: message, status: 409 }
+  return { error: fallback, status: 500 }
+}
+
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requirePermission('orders.view')
     const { id } = await params
-    const order = await db.order.findUnique({ where: { id }, include: { items: true, events: { orderBy: { createdAt: 'desc' } }, paymentTransactions: { orderBy: { createdAt: 'desc' }, select: { id: true, orderId: true, provider: true, externalId: true, status: true, amount: true, currency: true, createdAt: true } } } })
+    const order = await db.order.findUnique({
+      where: { id },
+      include: {
+        items: true,
+        events: { orderBy: { createdAt: 'desc' } },
+        paymentTransactions: {
+          orderBy: { createdAt: 'desc' },
+          select: { id: true, orderId: true, provider: true, externalId: true, status: true, amount: true, currency: true, createdAt: true },
+        },
+      },
+    })
     if (!order) return json({ error: 'Order not found' }, { status: 404 })
     return json({ order })
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unable to load order'
-    return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 401 })
+    const { error: message, status } = publicError(error, 'Unable to load order')
+    return json({ error: message }, { status })
   }
 }
 
@@ -31,6 +50,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const requestedStatus = body.status as OrderStatus | undefined
     const requestedPayment = body.paymentStatus as PaymentStatus | undefined
     const requestedFulfillment = body.fulfillmentStatus as FulfillmentStatus | undefined
+
     if (requestedStatus && !orderStatuses.has(requestedStatus)) return json({ error: 'Invalid order status' }, { status: 400 })
     if (requestedPayment && !paymentStatuses.has(requestedPayment)) return json({ error: 'Invalid payment status' }, { status: 400 })
     if (requestedFulfillment && !fulfillmentStatuses.has(requestedFulfillment)) return json({ error: 'Invalid fulfillment status' }, { status: 400 })
@@ -68,11 +88,29 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return { order, updated, statusChanged, paymentChanged }
     })
 
-    if (result.order.userId && result.statusChanged) await db.notification.create({ data: { userId: result.order.userId, title: `Order ${result.order.orderNumber} updated`, body: `Your order is now ${result.updated.status.toLowerCase().replaceAll('_', ' ')}.`, type: 'ORDER_STATUS' } }).catch(() => undefined)
-    await audit(actor.id, 'order.updated', 'Order', result.order.id, { from: result.order.status, to: result.updated.status, paymentFrom: result.order.paymentStatus, paymentTo: result.updated.paymentStatus, statusChanged: result.statusChanged, paymentChanged: result.paymentChanged })
+    if (result.order.userId && result.statusChanged) {
+      await db.notification.create({
+        data: {
+          userId: result.order.userId,
+          title: `Order ${result.order.orderNumber} updated`,
+          body: `Your order is now ${result.updated.status.toLowerCase().replaceAll('_', ' ')}.`,
+          type: 'ORDER_STATUS',
+        },
+      }).catch(() => undefined)
+    }
+
+    await audit(actor.id, 'order.updated', 'Order', result.order.id, {
+      from: result.order.status,
+      to: result.updated.status,
+      paymentFrom: result.order.paymentStatus,
+      paymentTo: result.updated.paymentStatus,
+      statusChanged: result.statusChanged,
+      paymentChanged: result.paymentChanged,
+    })
+
     return json({ order: result.updated })
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unable to update order'
-    return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : message === 'UNAUTHORIZED' ? 401 : message === 'Order not found' ? 404 : 400 })
+    const { error: message, status } = publicError(error, 'Unable to update order')
+    return json({ error: message }, { status })
   }
 }
