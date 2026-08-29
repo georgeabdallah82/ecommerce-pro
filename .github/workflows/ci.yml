@@ -32,7 +32,36 @@ jobs:
       - name: Backend audit
         run: npm run backend:audit
 
+      - name: Dependency audit
+        id: dependency-audit
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          npm audit --json > npm-audit.json
+          audit_exit=$?
+          echo "npm audit exit code: ${audit_exit}"
+          echo ""
+          echo "===== npm audit report ====="
+          cat npm-audit.json
+          echo "===== end npm audit report ====="
+          exit ${audit_exit}
+
+      - name: Upload dependency audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-report
+          path: npm-audit.json
+          if-no-files-found: error
+
       - name: Build
         env:
           AUTH_SECRET: ci-build-only-secret-do-not-use-in-production
         run: npm run build
+
+      - name: Enforce dependency audit result
+        if: steps.dependency-audit.outcome == 'failure'
+        run: |
+          echo "Dependency audit found vulnerabilities. See the npm-audit-report artifact and the full JSON report above for exact package, advisory, severity, and dependency-path details."
+          exit 1
