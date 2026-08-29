@@ -1,7 +1,9 @@
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { getPaymentProvider } from '@/lib/payments'
+import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
+import { randomUUID } from 'crypto'
 
 const REFUND_MESSAGES = new Set([
   'Order not found',
@@ -78,11 +80,12 @@ export async function POST(req: Request) {
         const refundResult = await provider.refundPayment(prepared.externalId, requestedAmount, prepared.order.currency)
         if (refundResult === 'pending') {
           await db.paymentTransaction.update({ where: { id: prepared.transaction.id }, data: { status: 'refund_pending', rawJson: JSON.stringify({ reason: String(body.reason || '').slice(0, 1000) || null, actorId: actor.id, gatewayStatus: 'PENDING' }) } })
-          await db.auditLog.create({ data: { actorId: actor.id, action: 'order.refund_pending', entity: 'Order', entityId: prepared.order.id, metadataJson: JSON.stringify({ amount: requestedAmount, transactionId: prepared.transaction.id, provider: prepared.provider }) } })
+          await audit(actor.id, 'order.refund_pending', 'Order', prepared.order.id, { amount: requestedAmount, transactionId: prepared.transaction.id, provider: prepared.provider })
           return json({ order: prepared.order, refund: { ...prepared.transaction, status: 'refund_pending' }, refundedTotal: null, status: 'pending' }, { status: 202 })
         }
       } catch (error) {
         await db.paymentTransaction.update({ where: { id: prepared.transaction.id }, data: { status: 'refund_failed', rawJson: JSON.stringify({ reason: String(body.reason || '').slice(0, 1000) || null, actorId: actor.id, error: error instanceof Error ? error.message : 'Gateway refund failed' }).slice(0, 5000) } })
+        await audit(actor.id, 'order.refund_failed', 'Order', prepared.order.id, { amount: requestedAmount, transactionId: prepared.transaction.id, provider: prepared.provider })
         throw error
       }
     }
@@ -109,7 +112,7 @@ export async function POST(req: Request) {
         if (!duplicateWalletRefund[0]) {
           await tx.$executeRaw`
             INSERT INTO "WalletTransaction" ("id", "userId", "amount", "currency", "type", "reason", "referenceId")
-            VALUES (${`wal_${crypto.randomUUID()}`}, ${order.userId}, ${requestedAmount}, ${order.currency}, 'REFUND', 'Order refund credited to wallet', ${`wallet-refund:${prepared.transaction.id}`})
+            VALUES (${`wal_${randomUUID()}`}, ${order.userId}, ${requestedAmount}, ${order.currency}, 'REFUND', 'Order refund credited to wallet', ${`wallet-refund:${prepared.transaction.id}`})
           `
         }
       }
@@ -131,13 +134,13 @@ export async function POST(req: Request) {
         if (delta > 0) {
           await tx.$executeRaw`
             INSERT INTO "CoinTransaction" ("id", "userId", "amount", "type", "reason", "referenceId")
-            VALUES (${`coin_${crypto.randomUUID()}`}, ${order.userId}, ${delta}, 'REFUND', 'Order refund coin restoration', ${`coin-refund:${order.id}:${prepared.transaction.id}`})
+            VALUES (${`coin_${randomUUID()}`}, ${order.userId}, ${delta}, 'REFUND', 'Order refund coin restoration', ${`coin-refund:${order.id}:${prepared.transaction.id}`})
           `
         }
       }
 
       const updated = await tx.order.update({ where: { id: order.id }, data: { paymentStatus, status, events: { create: { status, message: paymentStatus === 'REFUNDED' ? `Order fully refunded (${requestedAmount} ${order.currency}).` : `Order partially refunded (${requestedAmount} ${order.currency}).` } } } })
-      await tx.auditLog.create({ data: { actorId: actor.id, action: 'order.refunded', entity: 'Order', entityId: order.id, metadataJson: JSON.stringify({ amount: requestedAmount, transactionId: prepared.transaction.id, provider: prepared.provider, refundedTotal: successfulRefunds }) } })
+      await audit(actor.id, 'order.refunded', 'Order', order.id, { amount: requestedAmount, transactionId: prepared.transaction.id, provider: prepared.provider, refundedTotal: successfulRefunds })
       return { order: updated, transaction: { ...prepared.transaction, status: 'refunded' }, refundedTotal: successfulRefunds }
     })
 
