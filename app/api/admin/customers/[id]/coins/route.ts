@@ -64,7 +64,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return { transaction: rows[0], balance: balance + amount }
     })
 
-    await audit(actor.id, 'customer_coins.adjusted', 'User', id, { amount, type: result.transaction.type, reason })
+    try {
+      await audit(actor.id, 'customer_coins.adjusted', 'User', id, { amount, type: result.transaction.type, reason, referenceId })
+    } catch (error) {
+      console.error('[admin/customer-coins] audit failed after successful adjustment', error)
+    }
     return json(result, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error) {
     const message = error instanceof Error ? error.message : ''
