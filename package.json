@@ -1,7 +1,7 @@
 {
   "name": "premium-ecommerce-platform",
   "version": "1.0.0",
-  "description": "Premium ecommerce platform",
+  "description": "Premium ecommerce platform.",
   "private": true,
   "scripts": {
     "dev": "next dev",
