@@ -58,12 +58,12 @@ jobs:
       - name: Import into disposable staging MongoDB
         env:
           TARGET_DATABASE_URL: ${{ inputs.target_database_url || secrets.MIGRATION_TARGET_DATABASE_URL }}
-        run: node scripts/migrate-postgres-to-mongodb.mjs import --replace-target
+        run: TARGET_DATABASE_URL="$NORMALIZED_TARGET_DATABASE_URL" node scripts/migrate-postgres-to-mongodb.mjs import --replace-target
 
       - name: Validate staging data
         env:
           TARGET_DATABASE_URL: ${{ inputs.target_database_url || secrets.MIGRATION_TARGET_DATABASE_URL }}
-        run: node scripts/validate-mongodb-migration.mjs
+        run: TARGET_DATABASE_URL="$NORMALIZED_TARGET_DATABASE_URL" node scripts/validate-mongodb-migration.mjs
 
       - name: Typecheck
         run: npm run typecheck
@@ -74,8 +74,7 @@ jobs:
       - name: Production build
         env:
           AUTH_SECRET: ci-migration-validation-only-secret
-          DATABASE_URL: ${{ inputs.target_database_url || secrets.MIGRATION_TARGET_DATABASE_URL }}
-        run: npm run build
+        run: DATABASE_URL="$NORMALIZED_TARGET_DATABASE_URL" npm run build
 
       - name: Upload migration manifest
         if: always()
