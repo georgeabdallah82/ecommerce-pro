@@ -25,25 +25,13 @@ type CoinTransaction = {
 async function loadWalletAndCoins(id: string) {
   try {
     const [walletTransactions, coinTransactions] = await Promise.all([
-      db.$queryRaw<WalletTransaction[]>`
-        SELECT "id", "amount", "currency", "type", "reason", "referenceId", "createdAt"
-        FROM "WalletTransaction" WHERE "userId" = ${id}
-        ORDER BY "createdAt" DESC LIMIT 100
-      `,
-      db.$queryRaw<CoinTransaction[]>`
-        SELECT "id", "amount", "type", "reason", "referenceId", "createdAt"
-        FROM "CoinTransaction" WHERE "userId" = ${id}
-        ORDER BY "createdAt" DESC LIMIT 100
-      `,
+      db.walletTransaction.findMany({ where: { userId: id }, orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, amount: true, currency: true, type: true, reason: true, referenceId: true, createdAt: true } }),
+      db.coinTransaction.findMany({ where: { userId: id }, orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, amount: true, type: true, reason: true, referenceId: true, createdAt: true } }),
     ])
     return { walletTransactions, coinTransactions, loyaltyTablesAvailable: true }
   } catch (error) {
     console.error('[admin/customer-detail] loyalty data unavailable', error)
-    return {
-      walletTransactions: [] as WalletTransaction[],
-      coinTransactions: [] as CoinTransaction[],
-      loyaltyTablesAvailable: false,
-    }
+    return { walletTransactions: [] as WalletTransaction[], coinTransactions: [] as CoinTransaction[], loyaltyTablesAvailable: false }
   }
 }
 
@@ -70,8 +58,8 @@ export default async function CustomerDetail({ params }: { params: Promise<{ id:
   ])
 
   const orderTotal = customer.orders.reduce((sum, order) => sum + order.grandTotal, 0)
-  const walletBalance = loyalty.walletTransactions.reduce((sum, tx) => sum + tx.amount, 0)
-  const coinBalance = Math.max(0, loyalty.coinTransactions.reduce((sum, tx) => sum + tx.amount, 0))
+  const walletBalance = loyalty.walletTransactions.reduce((sum: number, tx: WalletTransaction) => sum + tx.amount, 0)
+  const coinBalance = Math.max(0, loyalty.coinTransactions.reduce((sum: number, tx: CoinTransaction) => sum + tx.amount, 0))
   const serialized = JSON.parse(JSON.stringify({
     ...customer,
     passwordHash: undefined,
