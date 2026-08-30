@@ -70,15 +70,23 @@ const failures = []
 try {
   for (const model of models) {
     const expected = manifest.models[model.name]
-    if (!expected) {
-      failures.push(`${model.name}: missing source manifest entry`)
-      continue
-    }
     const delegate = db[delegateName(model.name)]
     if (!delegate?.findMany) {
       failures.push(`${model.name}: missing Prisma delegate`)
       continue
     }
+
+    // Some MongoDB-only operational models are intentionally added by
+    // prepare-mongodb-schema.mjs and do not exist in the PostgreSQL source.
+    // They must start empty in the staging migration rather than being
+    // treated as a missing source-data failure.
+    if (!expected) {
+      const count = await delegate.count()
+      if (count !== 0) failures.push(`${model.name}: target-only model contains ${count} rows`)
+      else console.log(`[migration-validate] ${model.name}: target-only model, 0 rows OK`)
+      continue
+    }
+
     const rows = await delegate.findMany({ orderBy: { id: 'asc' } })
     const actual = { count: rows.length, sha256: hashRows(rows) }
     if (actual.count !== expected.count) failures.push(`${model.name}: count ${actual.count} != ${expected.count}`)
