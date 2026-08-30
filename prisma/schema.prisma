@@ -385,7 +385,7 @@ model OrderNote {
   body      String
   createdAt DateTime @default(now())
   order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model PaymentTransaction {
@@ -623,4 +623,25 @@ model CoinTransaction {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId, createdAt])
   @@unique([userId, referenceId, type])
+}
+
+model LiveVisitorSession {
+  id         String   @id @default(cuid())
+  sessionId  String   @unique
+  userId     String?
+  path       String
+  country    String?
+  city       String?
+  region     String?
+  latitude   Float?
+  longitude  Float?
+  device     String?
+  browser    String?
+  os         String?
+  referrer   String?
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+
+  @@index([lastSeenAt])
+  @@index([userId])
 }
