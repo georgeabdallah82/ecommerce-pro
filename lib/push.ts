@@ -95,6 +95,14 @@ export async function sendTestPush(userId: string) {
 }
 
 export async function sendNewOrderPush(order: { id: string; orderNumber: string; grandTotal: number; currency: string }) {
+  const settings = await db.setting.findMany({
+    where: { key: { in: ['notifications.newOrder', 'notifications.orderEmail'] } },
+    select: { key: true, value: true },
+  })
+  const configured = Object.fromEntries(settings.map(setting => [setting.key, setting.value]))
+  const enabledValue = configured['notifications.newOrder'] ?? configured['notifications.orderEmail']
+  if (enabledValue === 'false') return { sent: 0, skipped: true, failed: 0 }
+
   return sendToSubscriptions({
     title: 'New order received',
     body: `Order #${order.orderNumber} · ${(order.grandTotal / 100).toFixed(2)} ${order.currency}`,
