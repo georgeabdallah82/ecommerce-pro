@@ -49,7 +49,7 @@ function canonical(row) {
 }
 function digestRows(rows) {
   const hash = createHash('sha256')
-  for (const row of rows) hash.update(canonical(row) + '\n')
+  for (const row of [...rows].sort((a, b) => String(a.id).localeCompare(String(b.id)))) hash.update(canonical(row) + '\n')
   return hash.digest('hex')
 }
 
