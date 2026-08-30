@@ -6,8 +6,25 @@ const root = process.cwd()
 const tmpRoot = resolve(root, '.migration-tmp')
 const manifestPath = resolve(tmpRoot, 'manifest.json')
 const targetSchemaPath = resolve(root, 'prisma/mongodb-schema/schema.prisma')
-const targetUrl = process.env.TARGET_DATABASE_URL
-if (!targetUrl) throw new Error('TARGET_DATABASE_URL is required')
+const rawTargetUrl = process.env.TARGET_DATABASE_URL
+if (!rawTargetUrl) throw new Error('TARGET_DATABASE_URL is required')
+
+const DEFAULT_STAGING_DATABASE = 'ecommerce_staging'
+
+function normalizeTargetUrl(url) {
+  try {
+    const parsed = new URL(url)
+    if (!parsed.pathname || parsed.pathname === '/') {
+      parsed.pathname = `/${DEFAULT_STAGING_DATABASE}`
+      console.log(`[migration-validate] target database missing; using ${DEFAULT_STAGING_DATABASE}`)
+    }
+    return parsed.toString()
+  } catch {
+    throw new Error('TARGET_DATABASE_URL is not a valid MongoDB connection string')
+  }
+}
+
+const targetUrl = normalizeTargetUrl(rawTargetUrl)
 
 function modelsFromSchema(schema) {
   return [...schema.matchAll(/model\s+(\w+)\s*\{([\s\S]*?)\n\}/g)].map(m => ({ name: m[1], body: m[2] }))
