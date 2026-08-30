@@ -4,7 +4,6 @@ import { json } from '@/lib/utils'
 import { randomUUID } from 'crypto'
 
 const SESSION_COOKIE = 'live_visitor_id'
-const ACTIVE_WINDOW_MS = 90_000
 const MAX_PATH = 500
 
 function clean(value: unknown, max: number) {
@@ -79,5 +78,3 @@ export async function DELETE(req: Request) {
   if (sessionId) await db.$executeRaw`DELETE FROM "LiveVisitorSession" WHERE "sessionId" = ${sessionId}`
   return json({ ok: true })
 }
-
-export { ACTIVE_WINDOW_MS }
