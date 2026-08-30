@@ -1,4 +1,3 @@
-import crypto from 'node:crypto'
 import { db } from '@/lib/prisma'
 import { requireUser } from '@/lib/auth'
 import { canCustomerCancel } from '@/lib/orders'
@@ -36,7 +35,6 @@ export async function POST(_req: Request, { params }: { params: Promise<{ orderN
       const existing = await tx.order.findFirst({ where: { orderNumber, userId: user.id }, select: { id: true } })
       if (!existing) throw new Error('Order not found')
 
-      await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${existing.id} FOR UPDATE`
       const order = await tx.order.findUnique({ where: { id: existing.id }, include: { paymentTransactions: { select: { provider: true, rawJson: true } } } })
       if (!order || order.userId !== user.id) throw new Error('Order not found')
       if (!canCustomerCancel(order.status)) throw new Error('This order can no longer be cancelled online')
@@ -46,19 +44,19 @@ export async function POST(_req: Request, { params }: { params: Promise<{ orderN
 
       const coinsUsed = redeemedCoins(order.paymentTransactions)
       if (coinsUsed > 0) {
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`coins:${user.id}`}))`
-        const reversalReference = `coin-reversal:${order.orderNumber}`
-        const alreadyReversed = await tx.$queryRaw<Array<{ id: string }>>`
-          SELECT "id" FROM "CoinTransaction"
-          WHERE "userId" = ${user.id} AND "referenceId" = ${reversalReference} AND "type" = 'REVERSAL'
-          LIMIT 1
-        `
-        if (!alreadyReversed[0]) {
-          await tx.$executeRaw`
-            INSERT INTO "CoinTransaction" ("id", "userId", "amount", "type", "reason", "referenceId")
-            VALUES (${`coin_${crypto.randomUUID()}`}, ${user.id}, ${coinsUsed}, 'REVERSAL', 'Cancelled order coin restoration', ${reversalReference})
-          `
-        }
+        const reversalId = `coin_${user.id}_${order.orderNumber}_reversal`
+        await tx.coinTransaction.upsert({
+          where: { id: reversalId },
+          create: {
+            id: reversalId,
+            userId: user.id,
+            amount: coinsUsed,
+            type: 'REVERSAL',
+            reason: 'Cancelled order coin restoration',
+            referenceId: `coin-reversal:${order.orderNumber}`,
+          },
+          update: {},
+        })
       }
 
       const updated = await tx.order.update({
