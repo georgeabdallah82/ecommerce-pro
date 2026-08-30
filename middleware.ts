@@ -30,8 +30,15 @@ export function middleware(request: NextRequest) {
     })
   }
 
+  const pathname = request.nextUrl.pathname
+  if (pathname === '/admin/login') {
+    const rewriteUrl = request.nextUrl.clone()
+    rewriteUrl.pathname = '/admin-login'
+    return NextResponse.rewrite(rewriteUrl)
+  }
+
   const hasSession = request.cookies.has('session')
-  const isApi = request.nextUrl.pathname.startsWith('/api/')
+  const isApi = pathname.startsWith('/api/')
   const isApiMutation = isApi && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)
   if (isApiMutation && hasSession && !isSameOrigin(request)) {
     return NextResponse.json({ error: 'Cross-site request blocked' }, { status: 403, headers: { 'Cache-Control': 'no-store' } })
