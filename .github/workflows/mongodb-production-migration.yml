@@ -1,0 +1,84 @@
+name: MongoDB production migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type MIGRATE-PRODUCTION to authorize a production-target migration rehearsal'
+        required: true
+        type: string
+      backup_confirmation:
+        description: 'Type BACKUP-CONFIRMED only after a fresh PostgreSQL backup and restore path are verified'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  production-migration:
+    if: ${{ inputs.confirmation == 'MIGRATE-PRODUCTION' && inputs.backup_confirmation == 'BACKUP-CONFIRMED' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SOURCE_DATABASE_URL: ${{ secrets.MIGRATION_SOURCE_DATABASE_URL }}
+      TARGET_DATABASE_URL: ${{ secrets.MIGRATION_PRODUCTION_TARGET_DATABASE_URL }}
+    steps:
+      - name: Checkout selected migration branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.2
+          cache: npm
+
+      - name: Verify migration secrets exist
+        run: |
+          test -n "$SOURCE_DATABASE_URL"
+          test -n "$TARGET_DATABASE_URL"
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Prepare MongoDB Prisma schema
+        run: node scripts/prepare-mongodb-schema.mjs
+
+      - name: Verify production target safety gates
+        run: node scripts/assert-mongodb-target-empty.mjs
+
+      - name: Push MongoDB schema to production target
+        run: DATABASE_URL="$TARGET_DATABASE_URL" npx prisma db push --schema=prisma/mongodb-schema
+
+      - name: Re-check production target is empty
+        run: node scripts/assert-mongodb-target-empty.mjs
+
+      - name: Export PostgreSQL snapshot
+        run: npm run db:migrate:export
+
+      - name: Import snapshot into production MongoDB target
+        run: TARGET_DATABASE_URL="$TARGET_DATABASE_URL" node scripts/migrate-postgres-to-mongodb.mjs import
+
+      - name: Validate production migration
+        run: TARGET_DATABASE_URL="$TARGET_DATABASE_URL" node scripts/validate-mongodb-migration.mjs
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Backend audit
+        run: npm run backend:audit
+
+      - name: Production build
+        env:
+          AUTH_SECRET: ci-migration-validation-only-secret
+        run: DATABASE_URL="$TARGET_DATABASE_URL" npm run build
+
+      - name: Upload migration manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mongodb-production-migration-manifest
+          path: .migration-tmp/manifest.json
+          if-no-files-found: warn
