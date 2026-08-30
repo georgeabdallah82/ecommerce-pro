@@ -11,6 +11,7 @@ const sourceSchema = resolve(tmpRoot, 'source-schema.prisma')
 const exportRoot = resolve(tmpRoot, 'export')
 const manifestPath = resolve(tmpRoot, 'manifest.json')
 const targetSchemaDir = resolve(root, 'prisma/mongodb-schema')
+const DEFAULT_STAGING_DATABASE = 'ecommerce_staging'
 
 function runPrisma(args, env) {
   const command = process.platform === 'win32' ? 'npx.cmd' : 'npx'
@@ -51,6 +52,18 @@ function digestRows(rows) {
   const hash = createHash('sha256')
   for (const row of [...rows].sort((a, b) => String(a.id).localeCompare(String(b.id)))) hash.update(canonical(row) + '\n')
   return hash.digest('hex')
+}
+function normalizeTargetUrl(url) {
+  try {
+    const parsed = new URL(url)
+    if (!parsed.pathname || parsed.pathname === '/') {
+      parsed.pathname = `/${DEFAULT_STAGING_DATABASE}`
+      console.log(`[migration-import] target database missing; using ${DEFAULT_STAGING_DATABASE}`)
+    }
+    return parsed.toString()
+  } catch {
+    throw new Error('TARGET_DATABASE_URL is not a valid MongoDB connection string')
+  }
 }
 
 async function prepareSourceSchema() {
@@ -100,8 +113,9 @@ async function exportData() {
 }
 
 async function importData() {
-  const targetUrl = process.env.TARGET_DATABASE_URL
-  if (!targetUrl) throw new Error('TARGET_DATABASE_URL is required')
+  const rawTargetUrl = process.env.TARGET_DATABASE_URL
+  if (!rawTargetUrl) throw new Error('TARGET_DATABASE_URL is required')
+  const targetUrl = normalizeTargetUrl(rawTargetUrl)
   const schema = await readFile(resolve(targetSchemaDir, 'schema.prisma'), 'utf8')
   runPrisma(['generate', '--schema', targetSchemaDir], { ...process.env, DATABASE_URL: targetUrl })
   const { PrismaClient } = await import('@prisma/client')
