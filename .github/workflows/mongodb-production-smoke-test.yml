@@ -1,0 +1,77 @@
+name: MongoDB production application smoke test
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type SMOKE-TEST-MONGODB to authorize a read-only application smoke test
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-test-mongodb:
+    if: ${{ inputs.confirmation == 'SMOKE-TEST-MONGODB' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TARGET_DATABASE_URL: ${{ secrets.MIGRATION_PRODUCTION_TARGET_DATABASE_URL }}
+      AUTH_SECRET: smoke-test-only-secret
+      PORT: 10000
+    steps:
+      - name: Checkout controlled cutover branch
+        uses: actions/checkout@v4
+        with:
+          ref: mongodb-production-cutover
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.2
+          cache: npm
+
+      - name: Verify target secret exists
+        run: test -n "$TARGET_DATABASE_URL"
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Prepare MongoDB Prisma schema
+        run: node scripts/prepare-mongodb-schema.mjs
+
+      - name: Generate MongoDB Prisma client
+        run: DATABASE_URL="$TARGET_DATABASE_URL" npx prisma generate --schema=prisma/mongodb-schema
+
+      - name: Build application against MongoDB
+        run: DATABASE_URL="$TARGET_DATABASE_URL" npm run build
+
+      - name: Start application against MongoDB
+        run: |
+          DATABASE_URL="$TARGET_DATABASE_URL" npm start > /tmp/ecommerce-pro-smoke.log 2>&1 &
+          echo $! > /tmp/ecommerce-pro-smoke.pid
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:10000/api/health > /tmp/health.json; then
+              cat /tmp/health.json
+              break
+            fi
+            sleep 2
+          done
+          test -f /tmp/health.json
+
+      - name: Read-only API smoke tests
+        run: |
+          set -e
+          for path in /api/health /api/products /api/reviews /api/navigation /api/store/settings; do
+            echo "--- $path ---"
+            curl -fsS "http://127.0.0.1:10000$path" > /tmp/response.json
+            head -c 1000 /tmp/response.json
+            echo
+          done
+
+      - name: Stop application
+        if: always()
+        run: |
+          if [ -f /tmp/ecommerce-pro-smoke.pid ]; then kill "$(cat /tmp/ecommerce-pro-smoke.pid)" || true; fi
+          if [ -f /tmp/ecommerce-pro-smoke.log ]; then tail -200 /tmp/ecommerce-pro-smoke.log || true; fi
