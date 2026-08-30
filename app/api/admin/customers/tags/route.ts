@@ -6,7 +6,9 @@ import { json } from '@/lib/utils'
 export async function GET() {
   try {
     await requirePermission('customers.view')
-    return json(await db.customerTag.findMany({ include: { _count: { select: { customers: true } } }, orderBy: { value: 'asc' } }))
+    const tags = await db.customerTag.findMany({ orderBy: { value: 'asc' } })
+    const rows = await Promise.all(tags.map(async tag => ({ ...tag, _count: { customers: await db.customerTagMember.count({ where: { tagId: tag.id } }) } })))
+    return json(rows)
   } catch (e) { return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 }) }
 }
 
@@ -20,8 +22,8 @@ export async function POST(req: Request) {
     const customerIds: string[] = Array.isArray(b.customerIds)
       ? Array.from(new Set<string>(b.customerIds.map((x: unknown) => String(x)).filter((x: string) => x.length > 0)))
       : []
-    if (customerIds.length) {
-      await db.customerTagMember.createMany({ data: customerIds.map((customerId: string) => ({ tagId: tag.id, customerId })), skipDuplicates: true })
+    for (const customerId of customerIds) {
+      await db.customerTagMember.upsert({ where: { tagId_customerId: { tagId: tag.id, customerId } }, update: {}, create: { tagId: tag.id, customerId } })
     }
     await audit(actor.id, 'customer_tag.updated', 'CustomerTag', tag.id, { customerCount: customerIds.length })
     return json({ tag, customers: await db.customerTagMember.findMany({ where: { tagId: tag.id } }) })
