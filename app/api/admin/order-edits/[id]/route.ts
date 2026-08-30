@@ -9,12 +9,10 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     const { id } = await params
 
     const order = await db.$transaction(async tx => {
-      await tx.$executeRaw`SELECT "id" FROM "OrderEdit" WHERE "id" = ${id} FOR UPDATE`
       const edit = await tx.orderEdit.findUnique({ where: { id }, include: { items: true } })
       if (!edit) throw new Error('Order edit not found')
       if (edit.status !== 'OPEN') throw new Error('Order edit is no longer open')
 
-      await tx.$executeRaw`SELECT "id" FROM "Order" WHERE "id" = ${edit.orderId} FOR UPDATE`
       const current = await tx.order.findUnique({ where: { id: edit.orderId }, include: { items: true } })
       if (!current) throw new Error('Order not found')
       if (['CANCELLED', 'REFUNDED'].includes(current.status)) throw new Error('Cancelled or refunded orders cannot be edited')
@@ -53,7 +51,6 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     const actor = await requirePermission('orders.manage')
     const { id } = await params
     const discarded = await db.$transaction(async tx => {
-      await tx.$executeRaw`SELECT "id" FROM "OrderEdit" WHERE "id" = ${id} FOR UPDATE`
       const edit = await tx.orderEdit.findUnique({ where: { id } })
       if (!edit) throw new Error('Order edit not found')
       if (edit.status !== 'OPEN') throw new Error('Order edit is no longer open')

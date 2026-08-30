@@ -1,0 +1,49 @@
+name: MongoDB staging validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+jobs:
+  mongodb-staging:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.23.2
+          cache: npm
+      - name: Start MongoDB replica set
+        run: |
+          docker run -d --name mongodb-staging -p 27017:27017 mongo:8 mongod --replSet rs0 --bind_ip_all
+          for i in {1..30}; do
+            if docker exec mongodb-staging mongosh --quiet --eval "db.adminCommand({ ping: 1 }).ok" | grep -q '^1$'; then break; fi
+            sleep 2
+          done
+          docker exec mongodb-staging mongosh --quiet --eval "rs.initiate({_id:'rs0',members:[{_id:0,host:'127.0.0.1:27017'}]})"
+          for i in {1..30}; do
+            if docker exec mongodb-staging mongosh --quiet --eval "rs.status().members[0].stateStr" | grep -q PRIMARY; then break; fi
+            sleep 2
+          done
+          docker exec mongodb-staging mongosh --quiet --eval "rs.status().members[0].stateStr" | grep -q PRIMARY
+      - run: npm ci --no-audit --no-fund
+      - name: Prepare MongoDB Prisma schema
+        run: node scripts/prepare-mongodb-schema.mjs
+      - name: Prisma generate
+        env:
+          DATABASE_URL: mongodb://127.0.0.1:27017/ecommerce_staging?replicaSet=rs0&directConnection=true
+        run: npx prisma generate --schema=prisma/mongodb-schema
+      - name: Prisma schema push
+        env:
+          DATABASE_URL: mongodb://127.0.0.1:27017/ecommerce_staging?replicaSet=rs0&directConnection=true
+        run: npx prisma db push --schema=prisma/mongodb-schema
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Backend audit
+        run: npm run backend:audit
+      - name: Build
+        env:
+          AUTH_SECRET: ci-build-only-secret-do-not-use-in-production
+          DATABASE_URL: mongodb://127.0.0.1:27017/ecommerce_staging?replicaSet=rs0&directConnection=true
+        run: npm run build

@@ -13,17 +13,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const { id } = await params
     const customer = await db.user.findFirst({ where: { id, role: 'CUSTOMER' }, select: { id: true } })
     if (!customer) return json({ error: 'Customer not found' }, { status: 404, headers: { 'Cache-Control': 'private, no-store' } })
-    const balanceRows = await db.$queryRaw<Array<{ amount: number }>>`
-      SELECT COALESCE(SUM("amount"), 0)::int AS amount FROM "CoinTransaction" WHERE "userId" = ${id}
-    `
-    const transactions = await db.$queryRaw<Array<{
-      id: string; amount: number; type: string; reason: string | null; referenceId: string | null; createdAt: Date
-    }>>`
-      SELECT "id", "amount", "type", "reason", "referenceId", "createdAt"
-      FROM "CoinTransaction" WHERE "userId" = ${id}
-      ORDER BY "createdAt" DESC LIMIT 100
-    `
-    return json({ balance: Math.max(0, Number(balanceRows[0]?.amount || 0)), transactions, redemptionRate: '1 coin = 0.01 store currency unit' }, {
+    const [aggregate, transactions] = await Promise.all([
+      db.coinTransaction.aggregate({ where: { userId: id }, _sum: { amount: true } }),
+      db.coinTransaction.findMany({ where: { userId: id }, orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, amount: true, type: true, reason: true, referenceId: true, createdAt: true } }),
+    ])
+    return json({ balance: Math.max(0, Number(aggregate._sum.amount || 0)), transactions, redemptionRate: '1 coin = 0.01 store currency unit' }, {
       headers: { 'Cache-Control': 'private, no-store' },
     })
   } catch (error) {
@@ -47,21 +41,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (Math.abs(amount) > 1_000_000_000) return json({ error: 'Coin adjustment is too large.' }, { status: 400 })
 
     const result = await db.$transaction(async tx => {
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`coins:${id}`}))`
-      const balanceRows = await tx.$queryRaw<Array<{ amount: number }>>`
-        SELECT COALESCE(SUM("amount"), 0)::int AS amount FROM "CoinTransaction" WHERE "userId" = ${id}
-      `
-      const balance = Math.max(0, Number(balanceRows[0]?.amount || 0))
+      const aggregate = await tx.coinTransaction.aggregate({ where: { userId: id }, _sum: { amount: true } })
+      const balance = Math.max(0, Number(aggregate._sum.amount || 0))
       if (balance + amount < 0) throw new Error('Coin balance cannot become negative')
-      const transactionId = makeId()
-      await tx.$executeRaw`
-        INSERT INTO "CoinTransaction" ("id", "userId", "amount", "type", "reason", "referenceId")
-        VALUES (${transactionId}, ${id}, ${amount}, ${amount > 0 ? 'CREDIT' : 'DEBIT'}, ${reason}, ${referenceId})
-      `
-      const rows = await tx.$queryRaw<Array<{ id: string; amount: number; type: string; reason: string | null; referenceId: string | null; createdAt: Date }>>`
-        SELECT "id", "amount", "type", "reason", "referenceId", "createdAt" FROM "CoinTransaction" WHERE "id" = ${transactionId}
-      `
-      return { transaction: rows[0], balance: balance + amount }
+      const transaction = await tx.coinTransaction.create({
+        data: {
+          id: makeId(),
+          userId: id,
+          amount,
+          type: amount > 0 ? 'CREDIT' : 'DEBIT',
+          reason,
+          referenceId,
+        },
+      })
+      return { transaction, balance: balance + amount }
     })
 
     try {

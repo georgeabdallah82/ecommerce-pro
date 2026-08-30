@@ -58,7 +58,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (requestedFulfillment) return json({ error: 'Fulfillment status is derived from the order workflow and cannot be changed directly' }, { status: 400 })
 
     const result = await db.$transaction(async tx => {
-      await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${id} FOR UPDATE`
       const order = await tx.order.findUnique({ where: { id } })
       if (!order) throw new Error('Order not found')
 

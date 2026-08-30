@@ -24,8 +24,11 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Prepare MongoDB Prisma schema
+        run: node scripts/prepare-mongodb-schema.mjs
+
       - name: Prisma generate
-        run: npx prisma generate --schema=prisma
+        run: npx prisma generate --schema=prisma/mongodb-schema
 
       - name: Typecheck
         run: npm run typecheck

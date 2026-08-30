@@ -7,6 +7,14 @@ on:
         description: Type MIGRATE-STAGING to authorize a disposable staging migration
         required: true
         type: string
+      source_database_url:
+        description: Optional override; normally leave empty to use MIGRATION_SOURCE_DATABASE_URL
+        required: false
+        type: string
+      target_database_url:
+        description: Optional override; normally leave empty to use MIGRATION_TARGET_DATABASE_URL
+        required: false
+        type: string
 
 jobs:
   migrate-and-validate:
@@ -27,23 +35,35 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Normalize staging MongoDB URL
+        env:
+          RAW_TARGET_DATABASE_URL: ${{ inputs.target_database_url || secrets.MIGRATION_TARGET_DATABASE_URL }}
+        run: |
+          node <<'NODE'
+          const raw = process.env.RAW_TARGET_DATABASE_URL
+          if (!raw) throw new Error('MIGRATION_TARGET_DATABASE_URL is required')
+          const url = new URL(raw)
+          if (!url.pathname || url.pathname === '/') url.pathname = '/ecommerce_staging'
+          require('node:fs').appendFileSync(process.env.GITHUB_ENV, `NORMALIZED_TARGET_DATABASE_URL=${url.toString()}\n`)
+          NODE
+
       - name: Prepare MongoDB Prisma schema
         run: node scripts/prepare-mongodb-schema.mjs
 
       - name: Export PostgreSQL snapshot
         env:
-          SOURCE_DATABASE_URL: ${{ secrets.MIGRATION_SOURCE_DATABASE_URL }}
+          SOURCE_DATABASE_URL: ${{ inputs.source_database_url || secrets.MIGRATION_SOURCE_DATABASE_URL }}
         run: npm run db:migrate:export
 
-      - name: Import into staging MongoDB
+      - name: Import into disposable staging MongoDB
         env:
-          TARGET_DATABASE_URL: ${{ secrets.MIGRATION_TARGET_DATABASE_URL }}
-        run: node scripts/migrate-postgres-to-mongodb.mjs import --replace-target
+          TARGET_DATABASE_URL: ${{ inputs.target_database_url || secrets.MIGRATION_TARGET_DATABASE_URL }}
+        run: TARGET_DATABASE_URL="$NORMALIZED_TARGET_DATABASE_URL" node scripts/migrate-postgres-to-mongodb.mjs import --replace-target
 
       - name: Validate staging data
         env:
-          TARGET_DATABASE_URL: ${{ secrets.MIGRATION_TARGET_DATABASE_URL }}
-        run: node scripts/validate-mongodb-migration.mjs
+          TARGET_DATABASE_URL: ${{ inputs.target_database_url || secrets.MIGRATION_TARGET_DATABASE_URL }}
+        run: TARGET_DATABASE_URL="$NORMALIZED_TARGET_DATABASE_URL" node scripts/validate-mongodb-migration.mjs
 
       - name: Typecheck
         run: npm run typecheck
@@ -54,8 +74,7 @@ jobs:
       - name: Production build
         env:
           AUTH_SECRET: ci-migration-validation-only-secret
-          DATABASE_URL: ${{ secrets.MIGRATION_TARGET_DATABASE_URL }}
-        run: npm run build
+        run: DATABASE_URL="$NORMALIZED_TARGET_DATABASE_URL" npm run build
 
       - name: Upload migration manifest
         if: always()

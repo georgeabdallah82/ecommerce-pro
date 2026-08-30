@@ -10,51 +10,15 @@ function severityFor(ok: boolean, critical = false): HealthSeverity {
 
 export async function runPlatformHealth(): Promise<{ status: HealthSeverity; checks: HealthCheck[]; generatedAt: string }> {
   const checks: HealthCheck[] = []
-
   try {
-    await db.$queryRaw`SELECT 1`
-    checks.push({ key: 'database', label: 'Database', severity: 'ok', message: 'PostgreSQL is reachable.' })
+    await db.$connect()
+    checks.push({ key: 'database', label: 'Database', severity: 'ok', message: 'MongoDB is reachable.' })
   } catch (error) {
     checks.push({ key: 'database', label: 'Database', severity: 'critical', message: error instanceof Error ? error.message : 'Database is unreachable.' })
   }
 
   const [staff, products, activeProducts, variants, inventory, orders, pendingOrders, customers, coupons, shippingZones, shippingRates, themes, navigationMenus, pages, blogPosts, media, audits, locations, activeLocations, transfers, draftOrders, openDraftOrders, fulfillments, purchaseOrders, openPurchaseOrders, giftCards, webhooks, activeWebhooks, apiCredentials, activeApiCredentials, salesChannels, activeSalesChannels, abandonedCheckouts, openAbandonedCheckouts, orderEdits, openOrderEdits] = await Promise.all([
-    db.user.count({ where: { role: { not: 'CUSTOMER' }, isActive: true } }),
-    db.product.count(),
-    db.product.count({ where: { status: 'ACTIVE' } }),
-    db.productVariant.count(),
-    db.inventoryItem.findMany({ select: { quantity: true, reserved: true, lowStockThreshold: true } }),
-    db.order.count(),
-    db.order.count({ where: { status: 'PENDING' } }),
-    db.user.count({ where: { role: 'CUSTOMER' } }),
-    db.coupon.count({ where: { isActive: true } }),
-    db.shippingZone.count({ where: { isActive: true } }),
-    db.shippingRate.count({ where: { isActive: true } }),
-    db.theme.count(),
-    db.navigationMenu.count(),
-    db.page.count(),
-    db.blogPost.count(),
-    db.mediaAsset.count(),
-    db.auditLog.count(),
-    db.storeLocation.count(),
-    db.storeLocation.count({ where: { status: 'ACTIVE' } }),
-    db.inventoryTransfer.count(),
-    db.draftOrder.count(),
-    db.draftOrder.count({ where: { status: { in: ['DRAFT', 'OPEN'] } } }),
-    db.fulfillment.count(),
-    db.purchaseOrder.count(),
-    db.purchaseOrder.count({ where: { status: { in: ['DRAFT', 'ORDERED', 'PARTIALLY_RECEIVED'] } } }),
-    db.giftCard.count({ where: { status: 'ACTIVE' } }),
-    db.webhookEndpoint.count(),
-    db.webhookEndpoint.count({ where: { status: 'ACTIVE' } }),
-    db.apiCredential.count(),
-    db.apiCredential.count({ where: { status: 'ACTIVE' } }),
-    db.salesChannel.count(),
-    db.salesChannel.count({ where: { status: 'ACTIVE' } }),
-    db.abandonedCheckout.count(),
-    db.abandonedCheckout.count({ where: { status: 'OPEN' } }),
-    db.orderEdit.count(),
-    db.orderEdit.count({ where: { status: 'OPEN' } }),
+    db.user.count({ where: { role: { not: 'CUSTOMER' }, isActive: true } }), db.product.count(), db.product.count({ where: { status: 'ACTIVE' } }), db.productVariant.count(), db.inventoryItem.findMany({ select: { quantity: true, reserved: true, lowStockThreshold: true } }), db.order.count(), db.order.count({ where: { status: 'PENDING' } }), db.user.count({ where: { role: 'CUSTOMER' } }), db.coupon.count({ where: { isActive: true } }), db.shippingZone.count({ where: { isActive: true } }), db.shippingRate.count({ where: { isActive: true } }), db.theme.count(), db.navigationMenu.count(), db.page.count(), db.blogPost.count(), db.mediaAsset.count(), db.auditLog.count(), db.storeLocation.count(), db.storeLocation.count({ where: { status: 'ACTIVE' } }), db.inventoryTransfer.count(), db.draftOrder.count(), db.draftOrder.count({ where: { status: { in: ['DRAFT', 'OPEN'] } } }), db.fulfillment.count(), db.purchaseOrder.count(), db.purchaseOrder.count({ where: { status: { in: ['DRAFT', 'ORDERED', 'PARTIALLY_RECEIVED'] } } }), db.giftCard.count({ where: { status: 'ACTIVE' } }), db.webhookEndpoint.count(), db.webhookEndpoint.count({ where: { status: 'ACTIVE' } }), db.apiCredential.count(), db.apiCredential.count({ where: { status: 'ACTIVE' } }), db.salesChannel.count(), db.salesChannel.count({ where: { status: 'ACTIVE' } }), db.abandonedCheckout.count(), db.abandonedCheckout.count({ where: { status: 'OPEN' } }), db.orderEdit.count(), db.orderEdit.count({ where: { status: 'OPEN' } }),
   ])
 
   const negativeInventory = inventory.filter(i => i.quantity < 0)
@@ -84,7 +48,7 @@ export async function runPlatformHealth(): Promise<{ status: HealthSeverity; che
   checks.push({ key: 'product-publishing', label: 'Publishing integrity', severity: activeWithoutPublishDate ? 'warning' : 'ok', message: activeWithoutPublishDate ? `${activeWithoutPublishDate} active product(s) have no publishedAt timestamp.` : 'Active products have publication timestamps.', count: activeWithoutPublishDate })
   checks.push({ key: 'sales-channels', label: 'Sales channels', severity: activeSalesChannels > 0 ? 'ok' : 'warning', message: `${activeSalesChannels} active sales channel(s) out of ${salesChannels} total.` })
   checks.push({ key: 'webhooks', label: 'Webhooks', severity: activeWebhooks > 0 ? 'ok' : 'warning', message: `${activeWebhooks} active webhook endpoint(s) out of ${webhooks} total.` })
-  checks.push({ key: 'api-credentials', label: 'API credentials', severity: activeApiCredentials > 0 ? 'ok' : 'ok', message: `${activeApiCredentials} active credential(s) out of ${apiCredentials} total.` })
+  checks.push({ key: 'api-credentials', label: 'API credentials', severity: 'ok', message: `${activeApiCredentials} active credential(s) out of ${apiCredentials} total.` })
   checks.push({ key: 'abandoned-checkouts', label: 'Abandoned checkouts', severity: openAbandonedCheckouts ? 'warning' : 'ok', message: `${openAbandonedCheckouts} open abandoned checkout(s) out of ${abandonedCheckouts} total.`, count: openAbandonedCheckouts })
   checks.push({ key: 'storefront-content', label: 'Storefront content', severity: pages + blogPosts + media > 0 ? 'ok' : 'warning', message: `${pages} page(s), ${blogPosts} blog post(s), ${media} media asset(s).`, meta: { pages, blogPosts, media } })
   checks.push({ key: 'theme', label: 'Theme system', severity: themes > 0 ? 'ok' : 'warning', message: themes > 0 ? `${themes} theme configuration(s) stored.` : 'No theme configuration exists.' })
