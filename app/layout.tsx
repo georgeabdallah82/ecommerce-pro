@@ -25,6 +25,7 @@ import './storefront-production-ux-v13.css'
 import { getThemeState } from '@/lib/theme'
 import StoreNavRuntime from '@/components/store-nav-runtime'
 import StoreNavScroll from '@/components/store-nav-scroll'
+import LiveVisitorTracker from '@/components/live-visitor-tracker'
 import { CartProvider } from '@/components/cart-provider'
 import type { Metadata, Viewport } from 'next'
 
@@ -71,5 +72,5 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     '--store-btn-hover': theme.buttons?.hover || 'lift',
     '--store-header-logo-width': `${theme.header?.logoWidth || 160}px`,
   } as React.CSSProperties
-  return <html lang="en"><head><link rel="stylesheet" href="/theme-fallback.css?v=13"/>{theme.faviconUrl && <link rel="icon" href={theme.faviconUrl}/>} {theme.customCss && <style dangerouslySetInnerHTML={{ __html: theme.customCss }}/>}</head><body style={vars} className={theme.animations?.enabled ? 'animations-enabled' : ''}><CartProvider><StoreNavRuntime theme={theme} navigation={navigation}/><StoreNavScroll/>{children}</CartProvider></body></html>
+  return <html lang="en"><head><link rel="stylesheet" href="/theme-fallback.css?v=13"/>{theme.faviconUrl && <link rel="icon" href={theme.faviconUrl}/>} {theme.customCss && <style dangerouslySetInnerHTML={{ __html: theme.customCss }}/>}</head><body style={vars} className={theme.animations?.enabled ? 'animations-enabled' : ''}><CartProvider><LiveVisitorTracker/><StoreNavRuntime theme={theme} navigation={navigation}/><StoreNavScroll/>{children}</CartProvider></body></html>
 }
