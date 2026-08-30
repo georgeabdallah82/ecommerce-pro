@@ -1,56 +1,23 @@
 'use client'
 
 import { Download, Upload, FileSpreadsheet } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
-const exports = [
-  ['products', 'Products'],
-  ['orders', 'Orders'],
-  ['customers', 'Customers'],
-] as const
+type Option={id:string;name:string;sku?:string;categoryId?:string}
+type Resource='products'|'categories'|'collections'
 
-export default function AdminDataTransfer({ canImport = false }: { canImport?: boolean }) {
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [busy, setBusy] = useState('')
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
-
-  async function download(type: string) {
-    setBusy(`export:${type}`); setMessage(''); setError('')
-    try {
-      const response = await fetch(`/api/admin/exports?type=${type}`, { cache: 'no-store' })
-      if (!response.ok) { const data = await response.json().catch(() => ({})); throw new Error(data.error || 'Export failed') }
-      const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
-      const anchor = document.createElement('a'); anchor.href = url; anchor.download = `ecommerce-pro-${type}.csv`; document.body.appendChild(anchor); anchor.click(); anchor.remove(); URL.revokeObjectURL(url)
-      setMessage(`${type[0].toUpperCase() + type.slice(1)} exported successfully.`)
-    } catch (e) { setError(e instanceof Error ? e.message : 'Export failed') } finally { setBusy('') }
-  }
-
-  async function importProducts(file: File) {
-    setBusy('import'); setMessage(''); setError('')
-    try {
-      const form = new FormData(); form.append('file', file)
-      const response = await fetch('/api/admin/imports?type=products', { method: 'POST', body: form })
-      const data = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(data.error || 'Import failed')
-      const detail = `${data.created || 0} created, ${data.updated || 0} updated${data.errors?.length ? `, ${data.errors.length} skipped` : ''}.`
-      setMessage(`Products imported: ${detail}`)
-      if (data.errors?.length) setError(data.errors.slice(0, 5).join(' • '))
-      window.location.reload()
-    } catch (e) { setError(e instanceof Error ? e.message : 'Import failed') } finally { setBusy('') }
-  }
-
-  return <section className="card" style={{ padding: 18, marginBottom: 18 }}>
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}><div className="metricIcon"><FileSpreadsheet size={18}/></div><div><strong style={{ display: 'block' }}>Data transfer</strong><span className="muted" style={{ fontSize: 12 }}>Export store data or import products from CSV.</span></div></div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {exports.map(([type, label]) => <button key={type} type="button" className="btn secondary" onClick={() => download(type)} disabled={Boolean(busy)}><Download size={15}/>{busy === `export:${type}` ? 'Exporting…' : `Export ${label}`}</button>)}
-        {canImport && <><input ref={inputRef} type="file" accept=".csv,text/csv" hidden onChange={event => { const file = event.target.files?.[0]; if (file) void importProducts(file); event.currentTarget.value = '' }}/><button type="button" className="btn" onClick={() => inputRef.current?.click()} disabled={Boolean(busy)}><Upload size={15}/>{busy === 'import' ? 'Importing…' : 'Import Products'}</button></>}
-      </div>
-    </div>
-    {message && <div className="alert" style={{ marginTop: 12, marginBottom: 0 }}>{message}</div>}
-    {error && <div className="alert danger" style={{ marginTop: 12, marginBottom: 0 }}>{error}</div>}
-    {canImport && <p className="muted" style={{ margin: '10px 0 0', fontSize: 11 }}>Product import accepts the exported product CSV format. Existing SKUs are updated; new SKUs are created. Maximum 500 rows / 2 MB.</p>}
-  </section>
+export default function AdminDataTransfer({canImport=false}:{canImport?:boolean}){
+ const inputRef=useRef<HTMLInputElement>(null); const [resource,setResource]=useState<Resource>('products'); const [products,setProducts]=useState<Option[]>([]); const [categories,setCategories]=useState<Option[]>([]); const [collections,setCollections]=useState<Option[]>([]); const [selected,setSelected]=useState<string[]>([]); const [categoryId,setCategoryId]=useState(''); const [collectionId,setCollectionId]=useState(''); const [busy,setBusy]=useState(''); const [message,setMessage]=useState(''); const [error,setError]=useState('')
+ useEffect(()=>{fetch('/api/admin/exports/options',{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject()).then(d=>{setProducts(d.products||[]);setCategories(d.categories||[]);setCollections(d.collections||[])}).catch(()=>setError('Unable to load transfer options.'))},[])
+ function toggle(id:string){setSelected(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id])}
+ function clear(){setSelected([]);setCategoryId('');setCollectionId('')}
+ async function download(){setBusy('export');setMessage('');setError('');try{const p=new URLSearchParams({type:resource});selected.forEach(id=>p.append('id',id));if(resource==='products'&&categoryId)p.set('categoryId',categoryId);if(resource==='products'&&collectionId)p.set('collectionId',collectionId);const r=await fetch(`/api/admin/exports?${p}`,{cache:'no-store'});if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||'Export failed');const blob=await r.blob(),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`ecommerce-pro-${resource}.csv`;a.click();URL.revokeObjectURL(url);setMessage(`${resource} exported successfully.`)}catch(e){setError(e instanceof Error?e.message:'Export failed')}finally{setBusy('')}}
+ async function importFile(file:File){setBusy('import');setMessage('');setError('');try{const form=new FormData();form.append('file',file);const r=await fetch(`/api/admin/imports?type=${resource}`,{method:'POST',body:form});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Import failed');setMessage(`${resource} imported: ${d.created||0} created, ${d.updated||0} updated${d.errors?.length?`, ${d.errors.length} skipped`:''}.`);if(d.errors?.length)setError(d.errors.slice(0,5).join(' • '));window.location.reload()}catch(e){setError(e instanceof Error?e.message:'Import failed')}finally{setBusy('')}}
+ const choices=resource==='products'?products:resource==='categories'?categories:collections
+ return <section className="card" style={{padding:18,marginBottom:18}}><div style={{display:'flex',alignItems:'center',gap:11,marginBottom:14}}><div className="metricIcon"><FileSpreadsheet size={18}/></div><div><strong style={{display:'block'}}>Data transfer</strong><span className="muted" style={{fontSize:12}}>Shopify-style scoped import/export for products, categories and collections.</span></div></div>
+  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:10}}><label><span className="muted">Data type</span><select className="input" value={resource} onChange={e=>{setResource(e.target.value as Resource);clear();setMessage('');setError('')}}><option value="products">Products</option><option value="categories">Categories</option><option value="collections">Collections</option></select></label>{resource==='products'&&<><label><span className="muted">Category filter</span><select className="input" value={categoryId} onChange={e=>setCategoryId(e.target.value)}><option value="">All categories</option>{categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label><span className="muted">Collection filter</span><select className="input" value={collectionId} onChange={e=>setCollectionId(e.target.value)}><option value="">All collections</option>{collections.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label></>}</div>
+  <div style={{marginTop:12,border:'1px solid var(--border)',borderRadius:10,padding:10,maxHeight:190,overflow:'auto'}}><div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}><span className="muted">Select specific {resource} ({selected.length} selected)</span><button type="button" className="btn secondary" onClick={()=>setSelected(selected.length===choices.length?[]:choices.map(x=>x.id))}>{selected.length===choices.length?'Clear all':'Select all'}</button></div>{choices.map(x=><label key={x.id} style={{display:'flex',gap:8,alignItems:'center',padding:'6px 2px'}}><input type="checkbox" checked={selected.includes(x.id)} onChange={()=>toggle(x.id)}/><span>{x.name}</span>{x.sku&&<span className="muted">{x.sku}</span>}</label>)}</div>
+  <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:12}}><button type="button" className="btn secondary" onClick={()=>void download()} disabled={!!busy}><Download size={15}/>{busy==='export'?'Exporting…':`Export ${selected.length?'Selected':'Filtered'} ${resource}`}</button>{canImport&&<><input ref={inputRef} type="file" accept=".csv,text/csv" hidden onChange={e=>{const f=e.target.files?.[0];if(f)void importFile(f);e.currentTarget.value=''}}/><button type="button" className="btn" onClick={()=>inputRef.current?.click()} disabled={!!busy}><Upload size={15}/>{busy==='import'?'Importing…':`Import ${resource}`}</button></>}</div>
+  {message&&<div className="alert" style={{marginTop:12,marginBottom:0}}>{message}</div>}{error&&<div className="alert danger" style={{marginTop:12,marginBottom:0}}>{error}</div>}
+  <p className="muted" style={{margin:'10px 0 0',fontSize:11}}>Select individual records, or leave them unselected to export by the category/collection filters. Imports remain permission-protected.</p></section>
 }
