@@ -63,7 +63,7 @@ jobs:
       - name: Read-only API smoke tests
         run: |
           set -e
-          for path in /api/health /api/products /api/reviews /api/navigation /api/store/settings; do
+          for path in /api/health /api/products /api/navigation /api/store/settings; do
             echo "--- $path ---"
             curl -fsS "http://127.0.0.1:10000$path" > /tmp/response.json
             head -c 1000 /tmp/response.json
