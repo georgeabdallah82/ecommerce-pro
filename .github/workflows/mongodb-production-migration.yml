@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       confirmation:
-        description: 'Type MIGRATE-PRODUCTION to authorize a production-target migration rehearsal'
+        description: Type MIGRATE-PRODUCTION to authorize the controlled production-target rehearsal
         required: true
         type: string
       backup_confirmation:
-        description: 'Type BACKUP-CONFIRMED only after a fresh PostgreSQL backup and restore path are verified'
+        description: Type BACKUP-CONFIRMED only after the fresh PostgreSQL backup/restore path has been verified
         required: true
         type: string
 
@@ -24,7 +24,7 @@ jobs:
       SOURCE_DATABASE_URL: ${{ secrets.MIGRATION_SOURCE_DATABASE_URL }}
       TARGET_DATABASE_URL: ${{ secrets.MIGRATION_PRODUCTION_TARGET_DATABASE_URL }}
     steps:
-      - name: Checkout production cutover branch
+      - name: Checkout controlled cutover branch
         uses: actions/checkout@v4
         with:
           ref: mongodb-production-cutover
