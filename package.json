@@ -5,16 +5,16 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/build-compat-fix.mjs && node scripts/finalization-fix.mjs && node scripts/focal-finalization-fix.mjs && node scripts/finalization-assert.mjs && node scripts/final-ts-fix.mjs && npm run backend:audit && prisma generate --schema=prisma && npm run typecheck && next build",
-    "start": "node scripts/migrate-production.mjs && next start -H 0.0.0.0 -p ${PORT:-10000}",
+    "build": "node scripts/build-compat-fix.mjs && node scripts/finalization-fix.mjs && node scripts/focal-finalization-fix.mjs && node scripts/finalization-assert.mjs && node scripts/final-ts-fix.mjs && npm run backend:audit && node scripts/prepare-mongodb-schema.mjs && prisma generate --schema=prisma/schema.mongodb.prisma && npm run typecheck && next build",
+    "start": "next start -H 0.0.0.0 -p ${PORT:-10000}",
     "typecheck": "tsc --noEmit",
     "backend:audit": "node scripts/backend-audit.mjs",
-    "db:push": "prisma db push --schema=prisma",
-    "db:deploy": "prisma migrate deploy --schema=prisma",
+    "db:push": "node scripts/prepare-mongodb-schema.mjs && prisma db push --schema=prisma/schema.mongodb.prisma",
+    "db:deploy": "node scripts/prepare-mongodb-schema.mjs && prisma db push --schema=prisma/schema.mongodb.prisma",
     "db:ensure-admin": "tsx scripts/ensure-admin.ts"
   },
   "dependencies": {
-    "@prisma/client": "^6.15.0",
+    "@prisma/client": "^6.19.0",
     "bcryptjs": "^3.0.0",
     "jose": "^6.0.0",
     "lucide-react": "^0.468.0",
@@ -29,7 +29,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/web-push": "^3.6.4",
-    "prisma": "^6.15.0",
+    "prisma": "^6.19.0",
     "tsx": "^4.19.4",
     "typescript": "^5.9.2"
   },
