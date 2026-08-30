@@ -61,6 +61,10 @@ function convert(schema, sourceName) {
     return `@relation(${normalized}, onDelete: NoAction, onUpdate: NoAction)`
   })
 
+  if (sourceName === 'schema.prisma') {
+    schema += `\n\nmodel LiveVisitorSession {\n  id          String   @id @default(cuid()) @map("_id")\n  sessionId   String   @unique\n  userId      String?\n  path        String\n  country     String?\n  city        String?\n  region      String?\n  latitude    Float?\n  longitude   Float?\n  device      String?\n  browser     String?\n  os          String?\n  referrer    String?\n  firstSeenAt DateTime @default(now())\n  lastSeenAt  DateTime @default(now())\n  @@index([lastSeenAt])\n  @@index([userId])\n}\n`
+  }
+
   console.log(`[mongodb-schema] converted ${sourceName}`)
   return schema
 }
