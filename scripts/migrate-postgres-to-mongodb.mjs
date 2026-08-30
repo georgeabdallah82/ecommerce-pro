@@ -66,7 +66,7 @@ function normalizeTargetUrl(url) {
   }
 }
 
-function deletionOrder(models) {
+function dependencyOrder(models) {
   const names = new Set(models.map(model => model.name))
   const dependencies = new Map(models.map(model => [model.name, new Set()]))
   for (const model of models) {
@@ -75,18 +75,25 @@ function deletionOrder(models) {
       if (relation && names.has(relation[1]) && relation[1] !== model.name) dependencies.get(model.name).add(relation[1])
     }
   }
+
   const remaining = new Map(dependencies)
   const parentFirst = []
   while (remaining.size) {
     const ready = models.filter(model => remaining.has(model.name) && remaining.get(model.name).size === 0)
-    if (!ready.length) return [...models].reverse()
+    if (!ready.length) {
+      // Cyclic relation graphs cannot be fully topologically sorted. MongoDB
+      // migration schemas use NoAction for these cycles, so preserve their
+      // original schema order after all acyclic parents have been emitted.
+      parentFirst.push(...models.filter(model => remaining.has(model.name)))
+      break
+    }
     for (const model of ready) {
       remaining.delete(model.name)
       parentFirst.push(model)
       for (const deps of remaining.values()) deps.delete(model.name)
     }
   }
-  return parentFirst.reverse()
+  return parentFirst
 }
 
 async function prepareSourceSchema() {
@@ -145,16 +152,25 @@ async function importData() {
   const db = new PrismaClient({ datasources: { db: { url: targetUrl } } })
   try {
     const models = modelsFromSchema(schema)
+    const orderedModels = dependencyOrder(models)
+
     if (replaceTarget) {
-      for (const model of deletionOrder(models)) {
-        const delegate = db[delegateName(model.name)]
-        if (delegate?.deleteMany) {
-          await delegate.deleteMany()
-          console.log(`[migration-import] cleared ${model.name}`)
-        }
+      // Do not use Prisma deleteMany() here. Prisma correctly enforces the
+      // relation graph and can reject a bulk cleanup when the graph contains
+      // cycles/multiple paths (P2014). A replacement migration needs an empty
+      // target, so delete the documents directly at the MongoDB command level.
+      // This preserves collections and indexes while bypassing ORM relation
+      // emulation for this controlled migration-only operation.
+      for (const model of models) {
+        await db.$runCommandRaw({
+          delete: model.name,
+          deletes: [{ q: {}, limit: 0 }],
+        })
+        console.log(`[migration-import] cleared ${model.name}`)
       }
     }
-    for (const model of models) {
+
+    for (const model of orderedModels) {
       const delegate = db[delegateName(model.name)]
       const input = resolve(exportRoot, `${model.name}.ndjson`)
       const text = await readFile(input, 'utf8').catch(() => '')
