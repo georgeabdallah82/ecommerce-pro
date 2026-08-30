@@ -40,5 +40,18 @@ schema = schema.replace(
   '  @@index([userId, referenceId, type])\n',
 )
 
+// Prisma emulates referential actions for MongoDB. The existing PostgreSQL
+// graph contains several cycles/multiple cascade paths, which MongoDB's
+// connector rejects. Start the migration with explicit NoAction semantics;
+// destructive cascade behavior will be reintroduced only where the application
+// audit proves it is safe and required.
+schema = schema.replace(/@relation\(([^\n]*)\)/g, (_match, body) => {
+  if (!body.includes('fields:') || !body.includes('references:')) return _match
+  const normalized = body
+    .replace(/,\s*onDelete:\s*\w+/g, '')
+    .replace(/,\s*onUpdate:\s*\w+/g, '')
+  return `@relation(${normalized}, onDelete: NoAction, onUpdate: NoAction)`
+})
+
 await writeFile(targetPath, schema)
 console.log('[mongodb-schema] generated prisma/schema.mongodb.prisma')
