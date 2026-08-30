@@ -26,17 +26,30 @@ jobs:
         run: |
           test -n "$SOURCE_DATABASE_URL"
           test -n "$TARGET_DATABASE_URL"
+      - name: Normalize target database URL
+        env:
+          RAW_TARGET_DATABASE_URL: ${{ secrets.MIGRATION_TARGET_DATABASE_URL }}
+        run: |
+          node <<'NODE'
+          const raw = process.env.RAW_TARGET_DATABASE_URL
+          if (!raw) throw new Error('MIGRATION_TARGET_DATABASE_URL is required')
+          const url = new URL(raw)
+          if (!url.pathname || url.pathname === '/') url.pathname = '/ecommerce_staging'
+          require('node:fs').appendFileSync(process.env.GITHUB_ENV, `NORMALIZED_TARGET_DATABASE_URL=${url.toString()}\n`)
+          NODE
       - run: npm ci --no-audit --no-fund
       - name: Prepare MongoDB schema
         run: node scripts/prepare-mongodb-schema.mjs
       - name: Push MongoDB schema
+        env:
+          DATABASE_URL: ${{ env.NORMALIZED_TARGET_DATABASE_URL }}
         run: npx prisma db push --schema=prisma/mongodb-schema
       - name: Export PostgreSQL snapshot
         run: npm run db:migrate:export
       - name: Import snapshot into staging MongoDB
-        run: npm run db:migrate:import -- --replace-target
+        run: TARGET_DATABASE_URL="$NORMALIZED_TARGET_DATABASE_URL" npm run db:migrate:import -- --replace-target
       - name: Validate counts, checksums and references
-        run: node scripts/validate-mongodb-migration.mjs
+        run: TARGET_DATABASE_URL="$NORMALIZED_TARGET_DATABASE_URL" node scripts/validate-mongodb-migration.mjs
       - name: Typecheck
         run: npm run typecheck
       - name: Backend audit
@@ -44,5 +57,5 @@ jobs:
       - name: Build
         env:
           AUTH_SECRET: ci-build-only-secret-do-not-use-in-production
-          DATABASE_URL: ${{ secrets.MIGRATION_TARGET_DATABASE_URL }}
+          DATABASE_URL: ${{ env.NORMALIZED_TARGET_DATABASE_URL }}
         run: npm run build

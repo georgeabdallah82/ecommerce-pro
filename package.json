@@ -5,12 +5,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/build-compat-fix.mjs && node scripts/finalization-fix.mjs && node scripts/focal-finalization-fix.mjs && node scripts/finalization-assert.mjs && node scripts/final-ts-fix.mjs && npm run backend:audit && prisma generate --schema=prisma && npm run typecheck && next build",
-    "start": "node scripts/migrate-production.mjs && next start -H 0.0.0.0 -p ${PORT:-10000}",
+    "build": "node scripts/build-compat-fix.mjs && node scripts/finalization-fix.mjs && node scripts/focal-finalization-fix.mjs && node scripts/finalization-assert.mjs && node scripts/final-ts-fix.mjs && npm run backend:audit && if [ \"${NETLIFY:-}\" = \"true\" ]; then export AUTH_SECRET=netlify-preview-build-only-secret; echo '[build] Netlify detected; generating PostgreSQL Prisma client for preview compatibility'; prisma generate --schema=prisma; else node scripts/prepare-mongodb-schema.mjs && prisma generate --schema=prisma/mongodb-schema; fi && npm run typecheck && next build",
+    "start": "node scripts/verify-production-database.mjs && next start -H 0.0.0.0 -p ${PORT:-10000}",
     "typecheck": "tsc --noEmit",
     "backend:audit": "node scripts/backend-audit.mjs",
-    "db:push": "prisma db push --schema=prisma",
-    "db:deploy": "prisma migrate deploy --schema=prisma",
+    "db:push": "node scripts/prepare-mongodb-schema.mjs && prisma db push --schema=prisma/mongodb-schema",
+    "db:deploy": "node scripts/prepare-mongodb-schema.mjs && prisma db push --schema=prisma/mongodb-schema",
+    "db:migrate:export": "node scripts/prepare-mongodb-schema.mjs && node scripts/migrate-postgres-to-mongodb.mjs export",
+    "db:migrate:import": "node scripts/prepare-mongodb-schema.mjs && node scripts/migrate-postgres-to-mongodb.mjs import",
+    "db:migrate:validate": "node scripts/prepare-mongodb-schema.mjs && node scripts/migrate-postgres-to-mongodb.mjs export && node scripts/validate-mongodb-migration.mjs",
     "db:ensure-admin": "tsx scripts/ensure-admin.ts"
   },
   "dependencies": {
