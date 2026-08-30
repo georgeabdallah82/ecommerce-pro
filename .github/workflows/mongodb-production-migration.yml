@@ -24,10 +24,10 @@ jobs:
       SOURCE_DATABASE_URL: ${{ secrets.MIGRATION_SOURCE_DATABASE_URL }}
       TARGET_DATABASE_URL: ${{ secrets.MIGRATION_PRODUCTION_TARGET_DATABASE_URL }}
     steps:
-      - name: Checkout selected migration branch
+      - name: Checkout production cutover branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref }}
+          ref: mongodb-production-cutover
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -46,8 +46,13 @@ jobs:
       - name: Prepare MongoDB Prisma schema
         run: node scripts/prepare-mongodb-schema.mjs
 
+      - name: Generate MongoDB Prisma client
+        env:
+          DATABASE_URL: ${{ env.TARGET_DATABASE_URL }}
+        run: npx prisma generate --schema=prisma/mongodb-schema
+
       - name: Verify production target safety gates
-        run: node scripts/assert-mongodb-target-empty.mjs
+        run: node scripts/verify-production-migration-target.mjs
 
       - name: Push MongoDB schema to production target
         run: DATABASE_URL="$TARGET_DATABASE_URL" npx prisma db push --schema=prisma/mongodb-schema
@@ -55,14 +60,17 @@ jobs:
       - name: Re-check production target is empty
         run: node scripts/assert-mongodb-target-empty.mjs
 
-      - name: Export PostgreSQL snapshot
+      - name: Export PostgreSQL production snapshot
         run: npm run db:migrate:export
 
       - name: Import snapshot into production MongoDB target
         run: TARGET_DATABASE_URL="$TARGET_DATABASE_URL" node scripts/migrate-postgres-to-mongodb.mjs import
 
-      - name: Validate production migration
+      - name: Validate counts, checksums and references
         run: TARGET_DATABASE_URL="$TARGET_DATABASE_URL" node scripts/validate-mongodb-migration.mjs
+
+      - name: Reconcile critical ecommerce totals
+        run: TARGET_DATABASE_URL="$TARGET_DATABASE_URL" node scripts/reconcile-mongodb-business-totals.mjs
 
       - name: Typecheck
         run: npm run typecheck
@@ -70,10 +78,11 @@ jobs:
       - name: Backend audit
         run: npm run backend:audit
 
-      - name: Production build
+      - name: Production build against MongoDB target
         env:
           AUTH_SECRET: ci-migration-validation-only-secret
-        run: DATABASE_URL="$TARGET_DATABASE_URL" npm run build
+          DATABASE_URL: ${{ env.TARGET_DATABASE_URL }}
+        run: npm run build
 
       - name: Upload migration manifest
         if: always()
