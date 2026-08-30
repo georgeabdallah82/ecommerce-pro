@@ -16,9 +16,7 @@ function returnFailure(error: unknown) {
     if (RETURN_MESSAGES.has(error.message)) return { message: error.message, status: error.message === 'Order not found' ? 404 : 400 }
     if (error.message === 'UNAUTHORIZED') return { message: 'Unauthorized', status: 401 }
     if (error.message === 'FORBIDDEN') return { message: 'Forbidden', status: 403 }
-    if (error.message.startsWith('Invalid return quantity for ') || error.message.startsWith('Return quantity for ') || error.message.startsWith('No inventory row exists for ') || error.message.startsWith('Unable to restock ') || error.message.startsWith('Refund cannot exceed the remaining refundable amount of ')) {
-      return { message: error.message, status: 400 }
-    }
+    if (error.message.startsWith('Invalid return quantity for ') || error.message.startsWith('Return quantity for ') || error.message.startsWith('No inventory row exists for ') || error.message.startsWith('Unable to restock ') || error.message.startsWith('Refund cannot exceed the remaining refundable amount of ')) return { message: error.message, status: 400 }
   }
   console.error('[admin/returns] unexpected failure', error)
   return { message: 'Unable to process the return right now.', status: 500 }
@@ -37,25 +35,16 @@ export async function POST(req: Request) {
     if (!Number.isInteger(requestedRefund) || requestedRefund < 0) return json({ error: 'refundAmount must be a non-negative integer' }, { status: 400 })
 
     const result = await db.$transaction(async tx => {
-      await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${orderId} FOR UPDATE`
       const order = await tx.order.findUnique({ where: { id: orderId }, include: { items: true, paymentTransactions: true } })
       if (!order) throw new Error('Order not found')
       if (!['SHIPPED', 'DELIVERED'].includes(order.status)) throw new Error('Only shipped or delivered orders can be returned')
       if (requestedRefund > 0 && !['PAID', 'PARTIALLY_REFUNDED'].includes(order.paymentStatus)) throw new Error('A return refund can only be issued for a paid order')
 
       const orderItemById = new Map(order.items.map(item => [item.id, item]))
-      const previousReturns = await tx.returnRequest.findMany({
-        where: { orderId, status: { notIn: ['REJECTED', 'CANCELLED'] } },
-        include: { items: true },
-      })
+      const previousReturns = await tx.returnRequest.findMany({ where: { orderId, status: { notIn: ['REJECTED', 'CANCELLED'] } }, include: { items: true } })
       const alreadyReturned = new Map<string, number>()
-      for (const previous of previousReturns) {
-        for (const item of previous.items) {
-          alreadyReturned.set(item.orderItemId, (alreadyReturned.get(item.orderItemId) || 0) + Math.max(0, item.quantity))
-        }
-      }
+      for (const previous of previousReturns) for (const item of previous.items) alreadyReturned.set(item.orderItemId, (alreadyReturned.get(item.orderItemId) || 0) + Math.max(0, item.quantity))
 
-      // Keep compatibility with historical returns that only wrote inventory movements.
       const movementRows = await tx.inventoryMovement.findMany({ where: { referenceId: order.orderNumber, type: 'RETURN' } })
       for (const movement of movementRows) {
         const match = movement.reason?.match(/^Customer return ([^:]+):/)
@@ -75,10 +64,7 @@ export async function POST(req: Request) {
       }
 
       const normalized: Array<{ orderItemId: string; quantity: number; item: typeof order.items[number] }> = []
-      for (const [orderItemId, quantity] of requestedQuantities) {
-        const item = orderItemById.get(orderItemId)!
-        normalized.push({ orderItemId, quantity, item })
-      }
+      for (const [orderItemId, quantity] of requestedQuantities) normalized.push({ orderItemId, quantity, item: orderItemById.get(orderItemId)! })
 
       const refunded = order.paymentTransactions.filter(t => ['refunded', 'partially_refunded'].includes(t.status)).reduce((sum, t) => sum + t.amount, 0)
       const remainingRefundable = Math.max(0, order.grandTotal - refunded)
@@ -102,9 +88,7 @@ export async function POST(req: Request) {
         }
       }
 
-      const original = order.paymentTransactions
-        .filter(t => t.provider !== 'manual' && ['paid', 'captured', 'authorized'].includes(t.status) && t.externalId)
-        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
+      const original = order.paymentTransactions.filter(t => t.provider !== 'manual' && ['paid', 'captured', 'authorized'].includes(t.status) && t.externalId).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
       const refundProvider = original?.provider || 'manual'
       const refundStatus = requestedRefund > 0 ? (refundProvider === 'manual' ? 'refunded' : 'refund_pending') : null
       const returnRequest = await tx.returnRequest.create({
@@ -116,59 +100,17 @@ export async function POST(req: Request) {
           refundAmount: requestedRefund,
           restock,
           receivedAt: new Date(),
-          items: {
-            create: normalized.map(x => ({
-              orderItemId: x.orderItemId,
-              productId: x.item.productId,
-              variantId: x.item.variantId,
-              quantity: x.quantity,
-            })),
-          },
+          items: { create: normalized.map(x => ({ orderItemId: x.orderItemId, productId: x.item.productId, variantId: x.item.variantId, quantity: x.quantity })) },
         },
         include: { items: true },
       })
 
-      const refund = requestedRefund > 0
-        ? await tx.paymentTransaction.create({
-            data: {
-              orderId: order.id,
-              provider: refundProvider,
-              externalId: original?.externalId || null,
-              status: refundStatus!,
-              amount: requestedRefund,
-              currency: order.currency,
-              rawJson: JSON.stringify({ returnId: returnRequest.id, reason: String(body.reason || '').slice(0, 1000) || null, actorId: actor.id }),
-            },
-          })
-        : null
-
+      const refund = requestedRefund > 0 ? await tx.paymentTransaction.create({ data: { orderId: order.id, provider: refundProvider, externalId: original?.externalId || null, status: refundStatus!, amount: requestedRefund, currency: order.currency, rawJson: JSON.stringify({ returnId: returnRequest.id, reason: String(body.reason || '').slice(0, 1000) || null, actorId: actor.id }) } }) : null
       const newRefundedTotal = refunded + (requestedRefund > 0 && refundStatus === 'refunded' ? requestedRefund : 0)
-      const paymentStatus = refundStatus === 'refunded'
-        ? (newRefundedTotal >= order.grandTotal ? 'REFUNDED' : 'PARTIALLY_REFUNDED')
-        : order.paymentStatus
-      const updated = await tx.order.update({
-        where: { id: order.id },
-        data: {
-          paymentStatus,
-          status: paymentStatus === 'REFUNDED' ? 'REFUNDED' : order.status,
-          events: {
-            create: {
-              status: paymentStatus,
-              message: `${returnRequest.id}: ${normalized.map(x => `${x.item.name} × ${x.quantity}`).join(', ')}${restock ? ' — restocked' : ' — not restocked'}${requestedRefund ? ` — ${refundStatus === 'refunded' ? `refunded ${requestedRefund} ${order.currency}` : `refund pending ${requestedRefund} ${order.currency}`}` : ''}`,
-            },
-          },
-        },
-      })
+      const paymentStatus = refundStatus === 'refunded' ? (newRefundedTotal >= order.grandTotal ? 'REFUNDED' : 'PARTIALLY_REFUNDED') : order.paymentStatus
+      const updated = await tx.order.update({ where: { id: order.id }, data: { paymentStatus, status: paymentStatus === 'REFUNDED' ? 'REFUNDED' : order.status, events: { create: { status: paymentStatus, message: `${returnRequest.id}: ${normalized.map(x => `${x.item.name} × ${x.quantity}`).join(', ')}${restock ? ' — restocked' : ' — not restocked'}${requestedRefund ? ` — ${refundStatus === 'refunded' ? `refunded ${requestedRefund} ${order.currency}` : `refund pending ${requestedRefund} ${order.currency}`}` : ''}` } } } })
 
-      await audit(actor.id, 'order.returned', 'Order', order.id, {
-        returnId: returnRequest.id,
-        items: normalized.map(x => ({ orderItemId: x.orderItemId, quantity: x.quantity })),
-        restocked: restock,
-        refundId: refund?.id || null,
-        refundAmount: requestedRefund,
-        refundProvider,
-      })
-
+      await audit(actor.id, 'order.returned', 'Order', order.id, { returnId: returnRequest.id, items: normalized.map(x => ({ orderItemId: x.orderItemId, quantity: x.quantity })), restocked: restock, refundId: refund?.id || null, refundAmount: requestedRefund, refundProvider })
       return { order: updated, returnRequest, returnId: returnRequest.id, refund, refundProvider, refundExternalId: original?.externalId || null, items: normalized.map(x => ({ orderItemId: x.orderItemId, quantity: x.quantity })), restocked: restock }
     })
 
@@ -182,7 +124,6 @@ export async function POST(req: Request) {
           await db.$transaction(async tx => {
             await tx.paymentTransaction.update({ where: { id: result.refund!.id }, data: { status: 'refunded' } })
             await tx.returnRequest.update({ where: { id: result.returnId }, data: { status: 'REFUNDED', refundedAt: new Date() } })
-            await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${result.order.id} FOR UPDATE`
             const order = await tx.order.findUnique({ where: { id: result.order.id }, include: { paymentTransactions: true } })
             if (!order) throw new Error('Order not found')
             const successfulRefunds = order.paymentTransactions.filter(t => ['refunded', 'partially_refunded'].includes(t.status)).reduce((sum, t) => sum + t.amount, 0)
