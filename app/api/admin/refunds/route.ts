@@ -3,7 +3,6 @@ import { requirePermission } from '@/lib/auth'
 import { getPaymentProvider } from '@/lib/payments'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
-import { randomUUID } from 'crypto'
 
 const REFUND_MESSAGES = new Set([
   'Order not found',
@@ -15,9 +14,7 @@ const REFUND_MESSAGES = new Set([
 ])
 
 function refundFailure(error: unknown) {
-  if (error instanceof Error && (REFUND_MESSAGES.has(error.message) || error.message.startsWith('Refund cannot exceed the remaining refundable amount of '))) {
-    return { message: error.message, status: error.message === 'Order not found' ? 404 : 400 }
-  }
+  if (error instanceof Error && (REFUND_MESSAGES.has(error.message) || error.message.startsWith('Refund cannot exceed the remaining refundable amount of '))) return { message: error.message, status: error.message === 'Order not found' ? 404 : 400 }
   if (error instanceof Error && error.message === 'UNAUTHORIZED') return { message: 'Unauthorized', status: 401 }
   if (error instanceof Error && error.message === 'FORBIDDEN') return { message: 'Forbidden', status: 403 }
   console.error('[admin/refunds] unexpected failure', error)
@@ -41,7 +38,6 @@ export async function POST(req: Request) {
     if (!orderId || !Number.isInteger(requestedAmount) || requestedAmount <= 0) return json({ error: 'A valid orderId and positive integer refund amount are required' }, { status: 400 })
 
     const prepared = await db.$transaction(async tx => {
-      await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${orderId} FOR UPDATE`
       const order = await tx.order.findUnique({ where: { id: orderId }, include: { paymentTransactions: true } })
       if (!order) throw new Error('Order not found')
       if (order.status === 'CANCELLED') throw new Error('Cancelled orders cannot be refunded')
@@ -91,7 +87,6 @@ export async function POST(req: Request) {
     }
 
     const result = await db.$transaction(async tx => {
-      await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${prepared.order.id} FOR UPDATE`
       const order = await tx.order.findUnique({ where: { id: prepared.order.id }, include: { paymentTransactions: true } })
       if (!order) throw new Error('Order not found')
 
@@ -101,41 +96,25 @@ export async function POST(req: Request) {
       const status = paymentStatus === 'REFUNDED' ? 'REFUNDED' : order.status
 
       if (prepared.provider === 'wallet' && order.userId) {
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`wallet:${order.userId}:${order.currency}`}))`
-        const duplicateWalletRefund = await tx.$queryRaw<Array<{ id: string }>>`
-          SELECT "id" FROM "WalletTransaction"
-          WHERE "userId" = ${order.userId}
-            AND "referenceId" = ${`wallet-refund:${prepared.transaction.id}`}
-            AND "type" = 'REFUND'
-          LIMIT 1
-        `
-        if (!duplicateWalletRefund[0]) {
-          await tx.$executeRaw`
-            INSERT INTO "WalletTransaction" ("id", "userId", "amount", "currency", "type", "reason", "referenceId")
-            VALUES (${`wal_${randomUUID()}`}, ${order.userId}, ${requestedAmount}, ${order.currency}, 'REFUND', 'Order refund credited to wallet', ${`wallet-refund:${prepared.transaction.id}`})
-          `
+        const referenceId = `wallet-refund:${prepared.transaction.id}`
+        const duplicate = await tx.walletTransaction.findFirst({ where: { userId: order.userId, referenceId, type: 'REFUND' }, select: { id: true } })
+        if (!duplicate) {
+          await tx.walletTransaction.create({
+            data: { id: `wal_refund_${prepared.transaction.id}`, userId: order.userId, amount: requestedAmount, currency: order.currency, type: 'REFUND', reason: 'Order refund credited to wallet', referenceId },
+          })
         }
       }
 
       const checkoutTx = order.paymentTransactions.find(t => t.provider === 'checkout' && t.rawJson)
       const coinsUsed = parseCoinsUsed(checkoutTx?.rawJson || null)
       if (order.userId && coinsUsed > 0 && order.grandTotal > 0) {
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`coins:${order.userId}`}))`
-        const restoredRows = await tx.$queryRaw<Array<{ amount: number }>>`
-          SELECT COALESCE(SUM("amount"),0)::int AS amount
-          FROM "CoinTransaction"
-          WHERE "userId" = ${order.userId}
-            AND "type" = 'REFUND'
-            AND "referenceId" LIKE ${`coin-refund:${order.id}:%`}
-        `
-        const restored = Math.max(0, Number(restoredRows[0]?.amount || 0))
+        const prefix = `coin-refund:${order.id}:`
+        const restoredAggregate = await tx.coinTransaction.aggregate({ where: { userId: order.userId, type: 'REFUND', referenceId: { startsWith: prefix } }, _sum: { amount: true } })
+        const restored = Math.max(0, Number(restoredAggregate._sum.amount || 0))
         const target = Math.min(coinsUsed, Math.floor(coinsUsed * successfulRefunds / order.grandTotal))
         const delta = target - restored
         if (delta > 0) {
-          await tx.$executeRaw`
-            INSERT INTO "CoinTransaction" ("id", "userId", "amount", "type", "reason", "referenceId")
-            VALUES (${`coin_${randomUUID()}`}, ${order.userId}, ${delta}, 'REFUND', 'Order refund coin restoration', ${`coin-refund:${order.id}:${prepared.transaction.id}`})
-          `
+          await tx.coinTransaction.create({ data: { id: `coin_refund_${prepared.transaction.id}`, userId: order.userId, amount: delta, type: 'REFUND', reason: 'Order refund coin restoration', referenceId: `${prefix}${prepared.transaction.id}` } })
         }
       }
 
@@ -146,14 +125,7 @@ export async function POST(req: Request) {
 
     if (result.order.userId) {
       try {
-        await db.notification.create({
-          data: {
-            userId: result.order.userId,
-            title: `Refund for ${result.order.orderNumber}`,
-            body: `A refund of ${requestedAmount} ${result.order.currency} was processed.`,
-            type: 'ORDER_REFUND',
-          },
-        })
+        await db.notification.create({ data: { userId: result.order.userId, title: `Refund for ${result.order.orderNumber}`, body: `A refund of ${requestedAmount} ${result.order.currency} was processed.`, type: 'ORDER_REFUND' } })
       } catch {
         // Notifications are best-effort and must not turn a committed refund into a failure.
       }
