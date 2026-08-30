@@ -1,6 +1,5 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 
-const root = new URL('../', import.meta.url)
 const sourceRoot = new URL('../prisma/', import.meta.url)
 const targetRoot = new URL('../prisma/mongodb-schema/', import.meta.url)
 
@@ -20,22 +19,21 @@ function convert(schema, sourceName) {
 
   // MongoDB does not support composite @@id. Convert each join model to a
   // normal CUID _id while retaining the old logical pair as @@unique.
-  const compositeIdModels = new Map([
-    ['CollectionProduct', ['collectionId', 'productId']],
-    ['CustomerTagMember', ['tagId', 'customerId']],
-    ['CustomerSegmentMember', ['segmentId', 'customerId']],
-  ])
+  const compositeIdModels = [
+    ['CollectionProduct', 'collectionId', 'productId'],
+    ['CustomerTagMember', 'tagId', 'customerId'],
+    ['CustomerSegmentMember', 'segmentId', 'customerId'],
+  ]
 
-  for (const [model, fields] of compositeIdModels) {
-    const fieldPattern = new RegExp(
-      `(model ${model} \\{\\n)([\\s\\S]*?)(\\n\\s*@@id\\(\\[${fields.join(', ')}\\]\\))`,
+  for (const [model, first, second] of compositeIdModels) {
+    schema = schema.replace(
+      new RegExp(`model ${model} \\{\\n`),
+      `model ${model} {\n  id String @id @default(cuid()) @map("_id")\n`,
     )
-    schema = schema.replace(fieldPattern, (_match, header, body, idLine) => {
-      if (!/\bid\s+String\s+@id/.test(body)) {
-        body = `\\n  id String @id @default(cuid()) @map("_id")${body}`
-      }
-      return `${header}${body}\\n  @@unique([${fields.join(', ')}])`
-    })
+    schema = schema.replace(
+      new RegExp(`\\n\\s*@@id\\(\\[${first}, ${second}\\]\\)`),
+      `\n  @@unique([${first}, ${second}])`,
+    )
   }
 
   // MongoDB/Prisma requires every field in a compound unique constraint to be
@@ -43,23 +41,23 @@ function convert(schema, sourceName) {
   // are replaced with indexes for the first migration phase. Application-level
   // uniqueness is audited separately before production cutover.
   schema = schema.replace(
-    '  @@unique([productId, variantId, location])\\n',
-    '  @@index([productId, variantId, location])\\n',
+    '  @@unique([productId, variantId, location])\n',
+    '  @@index([productId, variantId, location])\n',
   )
   schema = schema.replace(
-    '  @@unique([userId, referenceId, type])\\n',
-    '  @@index([userId, referenceId, type])\\n',
+    '  @@unique([userId, referenceId, type])\n',
+    '  @@index([userId, referenceId, type])\n',
   )
 
   // Prisma emulates referential actions for MongoDB. The PostgreSQL relation
   // graph contains multiple cycles/cascade paths. Start with explicit
   // NoAction semantics; safe cascades will be restored selectively after the
   // application delete/update paths have been audited.
-  schema = schema.replace(/@relation\\(([^\\n]*)\\)/g, (_match, body) => {
+  schema = schema.replace(/@relation\(([^\n]*)\)/g, (_match, body) => {
     if (!body.includes('fields:') || !body.includes('references:')) return _match
     const normalized = body
-      .replace(/,\\s*onDelete:\\s*\\w+/g, '')
-      .replace(/,\\s*onUpdate:\\s*\\w+/g, '')
+      .replace(/,\s*onDelete:\s*\w+/g, '')
+      .replace(/,\s*onUpdate:\s*\w+/g, '')
     return `@relation(${normalized}, onDelete: NoAction, onUpdate: NoAction)`
   })
 
@@ -72,5 +70,3 @@ const parity = await readFile(new URL('models/shopify-parity.prisma', sourceRoot
 
 await writeFile(new URL('schema.prisma', targetRoot), convert(schema, 'schema.prisma'))
 await writeFile(new URL('models/shopify-parity.prisma', targetRoot), convert(parity, 'models/shopify-parity.prisma'))
-
-void root
