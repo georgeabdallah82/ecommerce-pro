@@ -39,21 +39,23 @@ jobs:
         shell: bash
         run: |
           set +e
-          npm audit --json > npm-audit.json
+          audit_file="${GITHUB_WORKSPACE}/npm-audit.json"
+          : > "${audit_file}"
+          npm audit --json > "${audit_file}" 2>&1
           audit_exit=$?
           echo "npm audit exit code: ${audit_exit}"
           echo ""
           echo "===== npm audit report ====="
-          cat npm-audit.json
+          cat "${audit_file}"
           echo "===== end npm audit report ====="
           exit ${audit_exit}
 
       - name: Upload dependency audit report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: npm-audit-report
-          path: npm-audit.json
+          path: ${{ github.workspace }}/npm-audit.json
           if-no-files-found: error
 
       - name: Build
