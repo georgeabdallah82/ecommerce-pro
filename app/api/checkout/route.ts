@@ -106,21 +106,22 @@ function parseCoinsUsed(rawJson: string | null) {
 async function restoreCheckoutCoins(orderId: string, userId: string | null) {
   if (!userId) return
   await db.$transaction(async tx => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`coins:${userId}`}))`
     const checkoutTx = await tx.paymentTransaction.findFirst({ where: { orderId, provider: 'checkout' }, select: { rawJson: true } })
     const coinsUsed = parseCoinsUsed(checkoutTx?.rawJson || null)
     if (!coinsUsed) return
     const referenceId = `coin-reversal:${orderId}:payment-init-failed`
-    const existing = await tx.$queryRaw<Array<{ id: string }>>`
-      SELECT "id" FROM "CoinTransaction"
-      WHERE "userId" = ${userId} AND "referenceId" = ${referenceId} AND "type" = 'REVERSAL'
-      LIMIT 1
-    `
-    if (existing[0]) return
-    await tx.$executeRaw`
-      INSERT INTO "CoinTransaction" ("id", "userId", "amount", "type", "reason", "referenceId")
-      VALUES (${`coin_${randomUUID()}`}, ${userId}, ${coinsUsed}, 'REVERSAL', 'Payment initialization failure coin restoration', ${referenceId})
-    `
+    const existing = await tx.coinTransaction.findFirst({ where: { userId, referenceId, type: 'REVERSAL' }, select: { id: true } })
+    if (existing) return
+    await tx.coinTransaction.create({
+      data: {
+        id: `coin_${orderId}_payment_init_failed_reversal`,
+        userId,
+        amount: coinsUsed,
+        type: 'REVERSAL',
+        reason: 'Payment initialization failure coin restoration',
+        referenceId,
+      },
+    })
   })
 }
 
@@ -202,7 +203,6 @@ export async function POST(req: Request) {
 
     const result = await db.$transaction(async tx => {
       if (idempotencyKey) {
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${idempotencyKey}))`
         const existing = await tx.paymentTransaction.findFirst({ where: { provider: 'checkout', externalId: idempotencyKey }, include: { order: true } })
         if (existing?.order) {
           let existingFingerprint: string | null = null
@@ -218,38 +218,23 @@ export async function POST(req: Request) {
       }
 
       if (coupon?.firstOrderOnly && user?.id) {
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`first-order:${user.id}`}))`
         const existingOrder = await tx.order.findFirst({ where: { userId: user.id, status: { not: 'CANCELLED' } }, select: { id: true } })
         if (existingOrder) throw new Error('This coupon is for first orders only')
       }
 
       if (user?.id && requestedCoins > 0) {
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`coins:${user.id}`}))`
-        const coinRows = await tx.$queryRaw<Array<{ balance: number }>>`
-          SELECT COALESCE(SUM("amount"), 0)::int AS balance FROM "CoinTransaction" WHERE "userId" = ${user.id}
-        `
-        const coinBalance = Math.max(0, Number(coinRows[0]?.balance || 0))
+        const coinAggregate = await tx.coinTransaction.aggregate({ where: { userId: user.id }, _sum: { amount: true } })
+        const coinBalance = Math.max(0, Number(coinAggregate._sum.amount || 0))
         if (requestedCoins > coinBalance) throw new Error('Insufficient coin balance.')
-        await tx.$executeRaw`
-          INSERT INTO "CoinTransaction" ("id", "userId", "amount", "type", "reason", "referenceId")
-          VALUES (${`coin_${randomUUID()}`}, ${user.id}, ${-requestedCoins}, 'REDEMPTION', 'Checkout coin redemption', ${orderNumber})
-        `
+        await tx.coinTransaction.create({ data: { id: `coin_${user.id}_${orderNumber}_redemption`, userId: user.id, amount: -requestedCoins, type: 'REDEMPTION', reason: 'Checkout coin redemption', referenceId: orderNumber } })
       }
 
       if (paymentMethod === PaymentMethod.WALLET && grandTotal > 0) {
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`wallet:${user!.id}:${process.env.NEXT_PUBLIC_CURRENCY || 'USD'}`}))`
         const walletCurrency = process.env.NEXT_PUBLIC_CURRENCY || 'USD'
-        const walletRows = await tx.$queryRaw<Array<{ balance: number }>>`
-          SELECT COALESCE(SUM("amount"), 0)::int AS balance
-          FROM "WalletTransaction"
-          WHERE "userId" = ${user!.id} AND "currency" = ${walletCurrency}
-        `
-        const walletBalance = Number(walletRows[0]?.balance || 0)
+        const walletAggregate = await tx.walletTransaction.aggregate({ where: { userId: user!.id, currency: walletCurrency }, _sum: { amount: true } })
+        const walletBalance = Number(walletAggregate._sum.amount || 0)
         if (walletBalance < grandTotal) throw new Error('Insufficient wallet balance.')
-        await tx.$executeRaw`
-          INSERT INTO "WalletTransaction" ("id", "userId", "amount", "currency", "type", "reason", "referenceId")
-          VALUES (${`wal_${randomUUID()}`}, ${user!.id}, ${-grandTotal}, ${walletCurrency}, 'PAYMENT', 'Wallet checkout payment', ${orderNumber})
-        `
+        await tx.walletTransaction.create({ data: { id: `wal_${user!.id}_${orderNumber}_payment`, userId: user!.id, amount: -grandTotal, currency: walletCurrency, type: 'PAYMENT', reason: 'Wallet checkout payment', referenceId: orderNumber } })
       }
 
       for (const item of normalized) await reserveStock(tx, byId.get(item.productId)!, item.variantId, item.quantity, orderNumber)
