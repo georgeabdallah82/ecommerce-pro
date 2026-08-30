@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/build-compat-fix.mjs && node scripts/finalization-fix.mjs && node scripts/focal-finalization-fix.mjs && node scripts/finalization-assert.mjs && node scripts/final-ts-fix.mjs && npm run backend:audit && if [ \"${NETLIFY:-}\" = \"true\" ]; then echo '[build] Netlify detected; generating PostgreSQL Prisma client for preview compatibility'; prisma generate --schema=prisma; else node scripts/prepare-mongodb-schema.mjs && prisma generate --schema=prisma/mongodb-schema; fi && npm run typecheck && next build",
+    "build": "node scripts/build-compat-fix.mjs && node scripts/finalization-fix.mjs && node scripts/focal-finalization-fix.mjs && node scripts/finalization-assert.mjs && node scripts/final-ts-fix.mjs && npm run backend:audit && if [ \"${NETLIFY:-}\" = \"true\" ]; then export AUTH_SECRET=netlify-preview-build-only-secret; echo '[build] Netlify detected; generating PostgreSQL Prisma client for preview compatibility'; prisma generate --schema=prisma; else node scripts/prepare-mongodb-schema.mjs && prisma generate --schema=prisma/mongodb-schema; fi && npm run typecheck && next build",
     "start": "node scripts/verify-production-database.mjs && next start -H 0.0.0.0 -p ${PORT:-10000}",
     "typecheck": "tsc --noEmit",
     "backend:audit": "node scripts/backend-audit.mjs",
@@ -25,16 +25,16 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "web-push": "^3.6.7",
-    "zod": "^4.0.17"
+    "zod": "^4.0.17",
+    "tsx": "^4.19.4",
+    "typescript": "^5.9.2"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/web-push": "^3.6.4",
-    "prisma": "^6.15.0",
-    "tsx": "^4.19.4",
-    "typescript": "^5.9.2"
+    "prisma": "^6.15.0"
   },
   "overrides": {
     "postcss": "8.5.26",
