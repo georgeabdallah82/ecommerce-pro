@@ -8,6 +8,7 @@ const root = process.cwd()
 const tmpRoot = resolve(root, '.migration-tmp')
 const sourceSchema = resolve(tmpRoot, 'source-schema.prisma')
 const exportRoot = resolve(tmpRoot, 'export')
+const manifestPath = resolve(tmpRoot, 'manifest.json')
 const targetSchemaDir = resolve(root, 'prisma/mongodb-schema')
 
 function runPrisma(args, env) {
@@ -41,6 +42,19 @@ function deterministicId(model, row) {
   const value = keys.map(key => String(row[key] ?? '')).join('|')
   return `${model.toLowerCase()}_${createHash('sha256').update(value).digest('hex').slice(0, 32)}`
 }
+function canonical(row) {
+  const out = {}
+  for (const key of Object.keys(row).sort()) {
+    const value = row[key]
+    if (value !== undefined) out[key] = value instanceof Date ? value.toISOString() : value
+  }
+  return JSON.stringify(out)
+}
+function digestRows(rows) {
+  const hash = createHash('sha256')
+  for (const row of rows) hash.update(canonical(row) + '\n')
+  return hash.digest('hex')
+}
 
 async function prepareSourceSchema() {
   const base = await readFile(resolve(root, 'prisma/schema.prisma'), 'utf8')
@@ -59,6 +73,7 @@ async function exportData() {
   const { PrismaClient } = await import('@prisma/client')
   const db = new PrismaClient({ datasources: { db: { url: sourceUrl } } })
   const schema = await readFile(sourceSchema, 'utf8')
+  const manifest = { version: 1, generatedAt: new Date().toISOString(), models: {} }
   try {
     for (const model of modelsFromSchema(schema)) {
       const delegate = db[delegateName(model.name)]
@@ -66,6 +81,7 @@ async function exportData() {
       const fields = fieldsFromModel(model.body)
       const output = resolve(exportRoot, `${model.name}.ndjson`)
       const composite = composites.has(model.name)
+      const allRows = []
       let skip = 0
       let rows
       do {
@@ -73,15 +89,19 @@ async function exportData() {
         for (const sourceRow of rows) {
           const row = { ...sourceRow, id: deterministicId(model.name, sourceRow) }
           for (const [field, definition] of fields) if (definition.type === 'DateTime' && row[field] instanceof Date) row[field] = row[field].toISOString()
+          allRows.push(row)
           await appendFile(output, JSON.stringify(row) + '\n')
         }
         skip += rows.length
       } while (rows.length)
-      console.log(`[migration-export] ${model.name}: ${skip}`)
+      manifest.models[model.name] = { count: allRows.length, sha256: digestRows(allRows) }
+      console.log(`[migration-export] ${model.name}: ${allRows.length}`)
     }
   } finally {
     await db.$disconnect()
   }
+  await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + '\n')
+  console.log(`[migration-export] manifest: ${manifestPath}`)
 }
 
 async function importData() {
