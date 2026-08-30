@@ -5,30 +5,19 @@ import { json } from '@/lib/utils'
 export async function GET() {
   try {
     const user = await requireUser()
-    const rows = await db.$queryRaw<Array<{ amount: number; currency: string }>>`
-      SELECT COALESCE(SUM("amount"), 0)::int AS amount,
-             COALESCE(MAX("currency"), ${process.env.NEXT_PUBLIC_CURRENCY || 'USD'}) AS currency
-      FROM "WalletTransaction"
-      WHERE "userId" = ${user.id}
-    `
-    const transactions = await db.$queryRaw<Array<{
-      id: string
-      amount: number
-      currency: string
-      type: string
-      reason: string | null
-      referenceId: string | null
-      createdAt: Date
-    }>>`
-      SELECT "id", "amount", "currency", "type", "reason", "referenceId", "createdAt"
-      FROM "WalletTransaction"
-      WHERE "userId" = ${user.id}
-      ORDER BY "createdAt" DESC
-      LIMIT 50
-    `
+    const [aggregate, currencyRow, transactions] = await Promise.all([
+      db.walletTransaction.aggregate({where:{userId:user.id},_sum:{amount:true}}),
+      db.walletTransaction.findFirst({where:{userId:user.id},orderBy:{createdAt:'desc'},select:{currency:true}}),
+      db.walletTransaction.findMany({
+        where:{userId:user.id},
+        orderBy:{createdAt:'desc'},
+        take:50,
+        select:{id:true,amount:true,currency:true,type:true,reason:true,referenceId:true,createdAt:true},
+      }),
+    ])
     return json({
-      balance: Number(rows[0]?.amount || 0),
-      currency: rows[0]?.currency || process.env.NEXT_PUBLIC_CURRENCY || 'USD',
+      balance: Number(aggregate._sum.amount || 0),
+      currency: currencyRow?.currency || process.env.NEXT_PUBLIC_CURRENCY || 'USD',
       transactions,
     }, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error) {
