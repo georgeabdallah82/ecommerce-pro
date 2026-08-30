@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import {
-  Activity, BarChart3, Boxes, ChevronDown, FileText, FolderTree, Image as ImageIcon, Layers3,
+  Activity, BarChart3, Bell, Boxes, ChevronDown, FileText, FolderTree, Image as ImageIcon, Layers3,
   LayoutDashboard, Menu, MessageSquare, PackageCheck, Palette, Search, Settings2, ShoppingBag,
   Tag, Truck, UserCog, Users, Workflow, type LucideIcon,
 } from 'lucide-react'
@@ -17,7 +17,7 @@ const iconMap: Record<string, LucideIcon> = {
   dashboard: LayoutDashboard, orders: ShoppingBag, products: Boxes, inventory: PackageCheck, operations: Workflow,
   customers: Users, categories: FolderTree, collections: Layers3, discounts: Tag, reviews: MessageSquare,
   shipping: Truck, store: ShoppingBag, theme: Palette, navigation: Menu, content: FileText, files: ImageIcon,
-  analytics: BarChart3, system: Activity, users: UserCog, activity: Activity, settings: Settings2,
+  analytics: BarChart3, system: Activity, users: UserCog, activity: Activity, settings: Settings2, notifications: Bell,
 }
 
 const css = `
@@ -87,7 +87,10 @@ export default function AdminSidebar({ groups }: { groups: AdminSidebarGroup[] }
   }, [])
 
   const normalizedQuery = query.trim().toLowerCase()
-  const visibleGroups = useMemo(() => groups.map(group => ({
+  const visibleGroups = useMemo(() => groups.map(group => {
+    if (group.id !== 'marketing') return group
+    return { ...group, items: [...group.items, { href: '/admin/notifications', label: 'Customer notifications', permission: 'settings.view' as Permission, icon: 'notifications' }] }
+  }).map(group => ({
     ...group,
     items: group.items.filter(item => !normalizedQuery || `${group.label} ${item.label}`.toLowerCase().includes(normalizedQuery)),
   })).filter(group => group.items.length), [groups, normalizedQuery])
@@ -104,7 +107,7 @@ export default function AdminSidebar({ groups }: { groups: AdminSidebarGroup[] }
       </div>
       {normalizedQuery && <div className="adminNavSearchMeta">{visibleGroups.reduce((n, g) => n + g.items.length, 0)} matches</div>}
       {visibleGroups.map(group => {
-        const groupActive = activeGroups.has(group.id)
+        const groupActive = activeGroups.has(group.id) || group.items.some(item => isActivePath(pathname, item.href))
         const open = normalizedQuery ? true : (openGroups[group.id] ?? false)
         const panelId = `admin-nav-${group.id}-items`
         return <div className={`adminNavGroup${groupActive ? ' active' : ''}`} key={group.id}>
