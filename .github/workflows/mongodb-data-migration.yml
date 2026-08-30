@@ -35,6 +35,20 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Normalize staging MongoDB URL
+        env:
+          RAW_TARGET_DATABASE_URL: ${{ inputs.target_database_url || secrets.MIGRATION_TARGET_DATABASE_URL }}
+        run: |
+          node <<'NODE'
+          const raw = process.env.RAW_TARGET_DATABASE_URL
+          if (!raw) throw new Error('MIGRATION_TARGET_DATABASE_URL is required')
+          const url = new URL(raw)
+          if (!url.pathname || url.pathname === '/') url.pathname = '/ecommerce_staging'
+          const normalized = url.toString()
+          process.stdout.write(`NORMALIZED_TARGET_DATABASE_URL=${normalized}\n`)
+          require('node:fs').appendFileSync(process.env.GITHUB_ENV, `NORMALIZED_TARGET_DATABASE_URL=${normalized}\n`)
+          NODE
+
       - name: Prepare MongoDB Prisma schema
         run: node scripts/prepare-mongodb-schema.mjs
 
