@@ -25,16 +25,17 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "web-push": "^3.6.7",
-    "zod": "^4.0.17",
-    "tsx": "^4.19.4",
-    "typescript": "^5.9.2"
+    "zod": "^4.0.17"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/web-push": "^3.6.4",
-    "prisma": "^6.15.0"
+    "@types/web-push": "^3.6.4",
+    "prisma": "^6.15.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.9.2"
   },
   "overrides": {
     "postcss": "8.5.26",
