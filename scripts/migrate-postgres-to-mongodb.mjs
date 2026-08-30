@@ -66,6 +66,29 @@ function normalizeTargetUrl(url) {
   }
 }
 
+function deletionOrder(models) {
+  const names = new Set(models.map(model => model.name))
+  const dependencies = new Map(models.map(model => [model.name, new Set()]))
+  for (const model of models) {
+    for (const line of model.body.split('\n')) {
+      const relation = line.match(/^\s*\w+\s+(\w+)\??.*@relation\s*\(\s*fields\s*:/)
+      if (relation && names.has(relation[1]) && relation[1] !== model.name) dependencies.get(model.name).add(relation[1])
+    }
+  }
+  const remaining = new Map(dependencies)
+  const parentFirst = []
+  while (remaining.size) {
+    const ready = models.filter(model => remaining.has(model.name) && remaining.get(model.name).size === 0)
+    if (!ready.length) return [...models].reverse()
+    for (const model of ready) {
+      remaining.delete(model.name)
+      parentFirst.push(model)
+      for (const deps of remaining.values()) deps.delete(model.name)
+    }
+  }
+  return parentFirst.reverse()
+}
+
 async function prepareSourceSchema() {
   const base = await readFile(resolve(root, 'prisma/schema.prisma'), 'utf8')
   const parity = await readFile(resolve(root, 'prisma/models/shopify-parity.prisma'), 'utf8')
@@ -123,7 +146,7 @@ async function importData() {
   try {
     const models = modelsFromSchema(schema)
     if (replaceTarget) {
-      for (const model of [...models].reverse()) {
+      for (const model of deletionOrder(models)) {
         const delegate = db[delegateName(model.name)]
         if (delegate?.deleteMany) {
           await delegate.deleteMany()
