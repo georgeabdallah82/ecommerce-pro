@@ -10,8 +10,6 @@ type PushSubscriptionRecord = {
 }
 
 function configure() {
-  // Accept the public key under either name so Render configuration cannot
-  // silently break server-side push while the browser still has the key.
   const publicKey = process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
   const privateKey = process.env.VAPID_PRIVATE_KEY
   const subject = process.env.VAPID_SUBJECT
@@ -37,6 +35,11 @@ async function getStaffSubscriptions() {
       return []
     }
   })
+}
+
+export async function hasPushSubscription(userId: string, endpoint?: string) {
+  const subscriptions = await getStaffSubscriptions()
+  return subscriptions.some(subscription => subscription.userId === userId && (!endpoint || subscription.endpoint === endpoint))
 }
 
 async function sendToSubscriptions(payload: Record<string, unknown>, onlyUserId?: string) {
