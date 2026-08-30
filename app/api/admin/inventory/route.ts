@@ -35,7 +35,6 @@ export async function PATCH(req: Request) {
     const threshold = b.lowStockThreshold !== undefined ? clampInt(b.lowStockThreshold, 0, 100000, 5) : undefined
 
     const updated = await db.$transaction(async tx => {
-      await tx.$queryRaw`SELECT "id" FROM "InventoryItem" WHERE "id" = ${id} FOR UPDATE`
       const item = await tx.inventoryItem.findUnique({ where: { id } })
       if (!item) throw new Error('Inventory item not found')
       const next = item.quantity + delta
@@ -49,14 +48,13 @@ export async function PATCH(req: Request) {
         if (collision) throw new Error('That product/variant already has inventory at the selected location. Adjust the existing location record instead.')
       }
 
-      await tx.inventoryItem.update({
-        where: { id },
-        data: { quantity: next, lowStockThreshold: threshold, location: requestedLocation },
+      const write = await tx.inventoryItem.updateMany({
+        where: { id, quantity: item.quantity, reserved: { lte: next } },
+        data: { quantity: next, ...(threshold !== undefined ? { lowStockThreshold: threshold } : {}), ...(requestedLocation !== undefined ? { location: requestedLocation } : {}) },
       })
+      if (write.count !== 1) throw new Error('Inventory changed concurrently; please retry the adjustment.')
 
-      if (delta !== 0) {
-        await tx.inventoryMovement.create({ data: { inventoryId: id, type: movementType, quantity: delta, reason } })
-      }
+      if (delta !== 0) await tx.inventoryMovement.create({ data: { inventoryId: id, type: movementType, quantity: delta, reason } })
 
       return tx.inventoryItem.findUniqueOrThrow({
         where: { id },
@@ -72,6 +70,7 @@ export async function PATCH(req: Request) {
       'Inventory item not found',
       'Cannot reduce stock below reserved quantity',
       'That product/variant already has inventory at the selected location. Adjust the existing location record instead.',
+      'Inventory changed concurrently; please retry the adjustment.',
       'UNAUTHORIZED',
       'FORBIDDEN',
     ])
