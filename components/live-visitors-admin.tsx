@@ -1,0 +1,130 @@
+'use client'
+
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Globe2, Monitor, Smartphone, Tablet, RefreshCw, Users, MapPin, Clock3, ExternalLink } from 'lucide-react'
+
+type Visitor = {
+  sessionId: string
+  userId: string | null
+  name: string | null
+  path: string
+  country: string | null
+  city: string | null
+  region: string | null
+  latitude: number | null
+  longitude: number | null
+  device: string | null
+  browser: string | null
+  os: string | null
+  referrer: string | null
+  firstSeenAt: string
+  lastSeenAt: string
+}
+
+function relativeTime(iso: string) {
+  const seconds = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000))
+  if (seconds < 10) return 'just now'
+  if (seconds < 60) return `${seconds}s ago`
+  return `${Math.floor(seconds / 60)}m ago`
+}
+
+function DeviceIcon({ device }: { device: string | null }) {
+  if (device === 'mobile') return <Smartphone size={16} />
+  if (device === 'tablet') return <Tablet size={16} />
+  return <Monitor size={16} />
+}
+
+function MapPanel({ visitors }: { visitors: Visitor[] }) {
+  const located = visitors.filter(v => Number.isFinite(v.latitude) && Number.isFinite(v.longitude))
+  return (
+    <div className="relative min-h-[390px] overflow-hidden rounded-2xl border bg-[radial-gradient(circle_at_50%_40%,rgba(99,102,241,.10),transparent_42%),linear-gradient(180deg,#f8fafc,#eef2f7)] dark:bg-[radial-gradient(circle_at_50%_40%,rgba(99,102,241,.16),transparent_42%),linear-gradient(180deg,#111827,#0f172a)]">
+      <div className="absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(100,116,139,.18)_1px,transparent_1px),linear-gradient(90deg,rgba(100,116,139,.18)_1px,transparent_1px)] [background-size:48px_48px]" />
+      <div className="absolute inset-x-10 top-1/2 border-t border-dashed opacity-30" />
+      <div className="absolute left-1/2 top-8 bottom-8 border-l border-dashed opacity-30" />
+      {located.map((v) => {
+        const left = Math.max(3, Math.min(97, ((v.longitude! + 180) / 360) * 100))
+        const top = Math.max(8, Math.min(92, ((90 - v.latitude!) / 180) * 100))
+        return <div key={v.sessionId} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${left}%`, top: `${top}%` }} title={`${v.city || v.country || 'Visitor'} • ${v.path}`}>
+          <span className="absolute h-7 w-7 animate-ping rounded-full bg-emerald-500/25" />
+          <span className="relative block h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-500 shadow-lg" />
+        </div>
+      })}
+      <div className="absolute left-5 top-5 rounded-xl border bg-background/85 px-3 py-2 text-xs font-medium shadow-sm backdrop-blur">
+        <span className="mr-2 inline-block h-2 w-2 rounded-full bg-emerald-500" />Live visitor map
+      </div>
+      <div className="absolute bottom-5 left-5 right-5 flex items-end justify-between gap-4">
+        <div className="rounded-xl border bg-background/85 px-3 py-2 text-xs backdrop-blur">
+          {located.length ? `${located.length} visitor${located.length === 1 ? '' : 's'} with approximate coordinates` : 'Location coordinates are not available from the hosting proxy yet.'}
+        </div>
+        <div className="rounded-xl border bg-background/85 px-3 py-2 text-[11px] text-muted-foreground backdrop-blur">
+          Approximate location only
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function LiveVisitorsAdmin() {
+  const [visitors, setVisitors] = useState<Visitor[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+
+  const load = useCallback(async () => {
+    try {
+      setError('')
+      const response = await fetch('/api/admin/live-visitors', { cache: 'no-store' })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data?.error || 'Unable to load live visitors')
+      setVisitors(data.visitors || [])
+      setLastUpdated(new Date())
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unable to load live visitors')
+    } finally { setLoading(false) }
+  }, [])
+
+  useEffect(() => {
+    load()
+    const timer = window.setInterval(load, 15_000)
+    return () => window.clearInterval(timer)
+  }, [load])
+
+  const countries = useMemo(() => new Set(visitors.map(v => v.country).filter(Boolean)).size, [visitors])
+  const pages = useMemo(() => new Set(visitors.map(v => v.path)).size, [visitors])
+
+  return <section className="mt-8 space-y-5">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <div className="flex items-center gap-2 text-sm font-semibold text-emerald-600"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />LIVE</div>
+        <h2 className="mt-1 text-2xl font-semibold tracking-tight">Visitors right now</h2>
+        <p className="mt-1 text-sm text-muted-foreground">See active storefront sessions in real time. Sessions expire after 90 seconds of inactivity.</p>
+      </div>
+      <button onClick={load} disabled={loading} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border bg-background px-3 text-sm font-medium shadow-sm hover:bg-muted disabled:opacity-50">
+        <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> Refresh
+      </button>
+    </div>
+
+    {error && <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</div>}
+
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {[['Active visitors', visitors.length, Users], ['Locations', countries, Globe2], ['Active pages', pages, ExternalLink], ['Refresh', lastUpdated ? lastUpdated.toLocaleTimeString() : '—', Clock3]].map(([label, value, Icon]) => <div key={String(label)} className="rounded-2xl border bg-card p-5 shadow-sm">
+        <div className="flex items-center justify-between text-muted-foreground"><span className="text-sm">{label}</span><Icon size={18} /></div>
+        <div className="mt-3 text-2xl font-semibold">{value}</div>
+      </div>)}
+    </div>
+
+    <MapPanel visitors={visitors} />
+
+    <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+      <div className="border-b px-5 py-4"><h3 className="font-semibold">Active sessions</h3><p className="text-xs text-muted-foreground">Only approximate location is shown; no browser GPS is requested.</p></div>
+      {visitors.length === 0 ? <div className="p-10 text-center text-sm text-muted-foreground">No active storefront visitors right now.</div> : <div className="divide-y">
+        {visitors.map(v => <div key={v.sessionId} className="grid gap-3 px-5 py-4 md:grid-cols-[1.5fr_1.2fr_1.2fr_auto] md:items-center">
+          <div className="min-w-0"><div className="flex items-center gap-2 font-medium"><span className="h-2 w-2 rounded-full bg-emerald-500" />{v.name || 'Anonymous visitor'}</div><div className="mt-1 truncate text-xs text-muted-foreground">{v.path}</div></div>
+          <div className="flex items-center gap-2 text-sm"><MapPin size={15} className="text-muted-foreground" />{[v.city, v.region, v.country].filter(Boolean).join(', ') || 'Location unavailable'}</div>
+          <div className="flex items-center gap-2 text-sm"><DeviceIcon device={v.device} />{[v.browser, v.os].filter(Boolean).join(' · ') || 'Unknown device'}</div>
+          <div className="text-right text-xs text-muted-foreground">{relativeTime(v.lastSeenAt)}</div>
+        </div>)}
+      </div>}
+    </div>
+  </section>
+}
