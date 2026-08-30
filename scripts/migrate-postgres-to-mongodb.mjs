@@ -4,6 +4,7 @@ import { mkdir, readFile, rm, writeFile, appendFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 
 const mode = process.argv[2]
+const replaceTarget = process.argv.includes('--replace-target')
 const root = process.cwd()
 const tmpRoot = resolve(root, '.migration-tmp')
 const sourceSchema = resolve(tmpRoot, 'source-schema.prisma')
@@ -15,11 +16,9 @@ function runPrisma(args, env) {
   const command = process.platform === 'win32' ? 'npx.cmd' : 'npx'
   execFileSync(command, ['prisma', ...args], { stdio: 'inherit', env })
 }
-
 function modelsFromSchema(schema) {
   return [...schema.matchAll(/model\s+(\w+)\s*\{([\s\S]*?)\n\}/g)].map(m => ({ name: m[1], body: m[2] }))
 }
-
 function fieldsFromModel(body) {
   const fields = new Map()
   for (const line of body.split('\n')) {
@@ -28,13 +27,11 @@ function fieldsFromModel(body) {
   }
   return fields
 }
-
 const composites = new Map([
   ['CollectionProduct', ['collectionId', 'productId']],
   ['CustomerTagMember', ['tagId', 'customerId']],
   ['CustomerSegmentMember', ['segmentId', 'customerId']],
 ])
-
 function delegateName(name) { return name[0].toLowerCase() + name.slice(1) }
 function deterministicId(model, row) {
   const keys = composites.get(model)
@@ -97,9 +94,7 @@ async function exportData() {
       manifest.models[model.name] = { count: allRows.length, sha256: digestRows(allRows) }
       console.log(`[migration-export] ${model.name}: ${allRows.length}`)
     }
-  } finally {
-    await db.$disconnect()
-  }
+  } finally { await db.$disconnect() }
   await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + '\n')
   console.log(`[migration-export] manifest: ${manifestPath}`)
 }
@@ -112,11 +107,21 @@ async function importData() {
   const { PrismaClient } = await import('@prisma/client')
   const db = new PrismaClient({ datasources: { db: { url: targetUrl } } })
   try {
-    for (const model of modelsFromSchema(schema)) {
+    const models = modelsFromSchema(schema)
+    if (replaceTarget) {
+      for (const model of [...models].reverse()) {
+        const delegate = db[delegateName(model.name)]
+        if (delegate?.deleteMany) {
+          await delegate.deleteMany()
+          console.log(`[migration-import] cleared ${model.name}`)
+        }
+      }
+    }
+    for (const model of models) {
       const delegate = db[delegateName(model.name)]
       const input = resolve(exportRoot, `${model.name}.ndjson`)
       const text = await readFile(input, 'utf8').catch(() => '')
-      if (!text.trim()) continue
+      if (!text.trim()) { console.log(`[migration-import] ${model.name}: 0`); continue }
       const fields = fieldsFromModel(model.body)
       const rows = text.trimEnd().split('\n').map(line => {
         const row = JSON.parse(line)
@@ -126,11 +131,9 @@ async function importData() {
       for (let offset = 0; offset < rows.length; offset += 500) await delegate.createMany({ data: rows.slice(offset, offset + 500) })
       console.log(`[migration-import] ${model.name}: ${rows.length}`)
     }
-  } finally {
-    await db.$disconnect()
-  }
+  } finally { await db.$disconnect() }
 }
 
-if (!['export', 'import'].includes(mode)) throw new Error('Usage: node scripts/migrate-postgres-to-mongodb.mjs export|import')
+if (!['export', 'import'].includes(mode)) throw new Error('Usage: node scripts/migrate-postgres-to-mongodb.mjs export|import [--replace-target]')
 if (mode === 'export') await exportData()
 else await importData()
