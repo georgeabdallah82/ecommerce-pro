@@ -76,7 +76,6 @@ export async function PATCH(req: Request) {
 
     const hasOnlyDetails = Object.keys(detailsPatch).length > 0 && !requestedStatus && !requestedPayment
     const result = await db.$transaction(async tx => {
-      await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${orderId} FOR UPDATE`
       const order = await tx.order.findUnique({ where: { id: orderId } })
       if (!order) throw new Error('Order not found')
       if (requestedStatus && !canTransitionOrder(order.status, requestedStatus)) throw new Error(`Cannot change ${order.status} to ${requestedStatus}`)
