@@ -46,9 +46,21 @@ export default function OrderAlerts({ vapidPublicKey }: { vapidPublicKey?: strin
       if (permission !== 'granted') throw new Error('Notification permission was not granted.')
       const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
       await navigator.serviceWorker.ready
+
+      // A subscription is tied to the VAPID application key used when it was created.
+      // Re-create it so a subscription left over from a previous VAPID key cannot be reused.
       const existing = await registration.pushManager.getSubscription()
-      const subscription = existing || await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) })
-      const response = await fetch('/api/admin/notifications/push', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(subscription.toJSON()) })
+      if (existing) await existing.unsubscribe().catch(() => undefined)
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+      })
+
+      const response = await fetch('/api/admin/notifications/push', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(subscription.toJSON()),
+      })
       const data = await response.json().catch(() => ({}))
       if (!response.ok || data.subscribed !== true) throw new Error(data.error || 'Unable to verify order alerts on the server')
       setState('enabled')
@@ -70,12 +82,22 @@ export default function OrderAlerts({ vapidPublicKey }: { vapidPublicKey?: strin
         setState('disabled')
         throw new Error('This device is not subscribed to order alerts. Enable alerts first.')
       }
-      const response = await fetch('/api/admin/notifications/push', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ test: true }) })
+      const response = await fetch('/api/admin/notifications/push', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ test: true }),
+      })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data.error || 'Unable to send test notification')
-      if (!data.sent) throw new Error(data.skipped ? 'Push is not configured on the server' : 'The push subscription could not be reached. Enable alerts again on this device.')
+      if (!data.sent) {
+        setState('disabled')
+        throw new Error(data.skipped
+          ? 'Push is not configured on the server.'
+          : 'The push subscription could not be reached. Enable alerts again on this device.')
+      }
       setMessage('Test notification sent.')
     } catch (e) {
+      setState('disabled')
       setMessage(e instanceof Error ? e.message : 'Test failed')
     } finally { setBusy(false) }
   }
