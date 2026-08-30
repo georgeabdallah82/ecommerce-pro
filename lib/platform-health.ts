@@ -12,8 +12,8 @@ export async function runPlatformHealth(): Promise<{ status: HealthSeverity; che
   const checks: HealthCheck[] = []
 
   try {
-    await db.$queryRaw`SELECT 1`
-    checks.push({ key: 'database', label: 'Database', severity: 'ok', message: 'PostgreSQL is reachable.' })
+    await db.$connect()
+    checks.push({ key: 'database', label: 'Database', severity: 'ok', message: 'MongoDB is reachable.' })
   } catch (error) {
     checks.push({ key: 'database', label: 'Database', severity: 'critical', message: error instanceof Error ? error.message : 'Database is unreachable.' })
   }
@@ -66,7 +66,7 @@ export async function runPlatformHealth(): Promise<{ status: HealthSeverity; che
 
   checks.push({ key: 'auth', label: 'Authentication', severity: severityFor(Boolean(process.env.AUTH_SECRET), true), message: process.env.AUTH_SECRET ? 'AUTH_SECRET is configured.' : 'AUTH_SECRET is missing.' })
   checks.push({ key: 'site-url', label: 'Store URL', severity: severityFor(Boolean(process.env.NEXT_PUBLIC_SITE_URL), false), message: process.env.NEXT_PUBLIC_SITE_URL ? 'NEXT_PUBLIC_SITE_URL is configured.' : 'NEXT_PUBLIC_SITE_URL is not configured.' })
-  checks.push({ key: 'staff', label: 'Staff access', severity: severityFor(staff > 0, true), message: staff > 0 ? `${staff} active staff account(s) available.` : 'No active staff account exists.', count: staff })
+  checks.push({ key: 'staff', label: 'Staff access', severity: severityFor(staff > 0, true), message: staff > 0 ? `${staff} active staff account(s) available.` : 'No active staff account exists.`, count: staff })
   checks.push({ key: 'catalog', label: 'Catalog', severity: severityFor(products > 0, false), message: `${products} product(s), ${variants} variant(s), ${activeProducts} active.`, meta: { products, variants, activeProducts } })
   checks.push({ key: 'inventory-negative', label: 'Negative inventory', severity: severityFor(negativeInventory.length === 0, true), message: negativeInventory.length ? `${negativeInventory.length} inventory record(s) have negative stock.` : 'No negative inventory balances.', count: negativeInventory.length })
   checks.push({ key: 'inventory-reserved', label: 'Reservation integrity', severity: severityFor(overReserved.length === 0, true), message: overReserved.length ? `${overReserved.length} inventory record(s) reserve more than on-hand.` : 'Reserved quantities are within on-hand balances.', count: overReserved.length })
@@ -84,7 +84,7 @@ export async function runPlatformHealth(): Promise<{ status: HealthSeverity; che
   checks.push({ key: 'product-publishing', label: 'Publishing integrity', severity: activeWithoutPublishDate ? 'warning' : 'ok', message: activeWithoutPublishDate ? `${activeWithoutPublishDate} active product(s) have no publishedAt timestamp.` : 'Active products have publication timestamps.', count: activeWithoutPublishDate })
   checks.push({ key: 'sales-channels', label: 'Sales channels', severity: activeSalesChannels > 0 ? 'ok' : 'warning', message: `${activeSalesChannels} active sales channel(s) out of ${salesChannels} total.` })
   checks.push({ key: 'webhooks', label: 'Webhooks', severity: activeWebhooks > 0 ? 'ok' : 'warning', message: `${activeWebhooks} active webhook endpoint(s) out of ${webhooks} total.` })
-  checks.push({ key: 'api-credentials', label: 'API credentials', severity: activeApiCredentials > 0 ? 'ok' : 'ok', message: `${activeApiCredentials} active credential(s) out of ${apiCredentials} total.` })
+  checks.push({ key: 'api-credentials', label: 'API credentials', severity: 'ok', message: `${activeApiCredentials} active credential(s) out of ${apiCredentials} total.` })
   checks.push({ key: 'abandoned-checkouts', label: 'Abandoned checkouts', severity: openAbandonedCheckouts ? 'warning' : 'ok', message: `${openAbandonedCheckouts} open abandoned checkout(s) out of ${abandonedCheckouts} total.`, count: openAbandonedCheckouts })
   checks.push({ key: 'storefront-content', label: 'Storefront content', severity: pages + blogPosts + media > 0 ? 'ok' : 'warning', message: `${pages} page(s), ${blogPosts} blog post(s), ${media} media asset(s).`, meta: { pages, blogPosts, media } })
   checks.push({ key: 'theme', label: 'Theme system', severity: themes > 0 ? 'ok' : 'warning', message: themes > 0 ? `${themes} theme configuration(s) stored.` : 'No theme configuration exists.' })
