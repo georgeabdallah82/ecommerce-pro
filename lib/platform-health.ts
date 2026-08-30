@@ -10,7 +10,6 @@ function severityFor(ok: boolean, critical = false): HealthSeverity {
 
 export async function runPlatformHealth(): Promise<{ status: HealthSeverity; checks: HealthCheck[]; generatedAt: string }> {
   const checks: HealthCheck[] = []
-
   try {
     await db.$connect()
     checks.push({ key: 'database', label: 'Database', severity: 'ok', message: 'MongoDB is reachable.' })
@@ -19,42 +18,7 @@ export async function runPlatformHealth(): Promise<{ status: HealthSeverity; che
   }
 
   const [staff, products, activeProducts, variants, inventory, orders, pendingOrders, customers, coupons, shippingZones, shippingRates, themes, navigationMenus, pages, blogPosts, media, audits, locations, activeLocations, transfers, draftOrders, openDraftOrders, fulfillments, purchaseOrders, openPurchaseOrders, giftCards, webhooks, activeWebhooks, apiCredentials, activeApiCredentials, salesChannels, activeSalesChannels, abandonedCheckouts, openAbandonedCheckouts, orderEdits, openOrderEdits] = await Promise.all([
-    db.user.count({ where: { role: { not: 'CUSTOMER' }, isActive: true } }),
-    db.product.count(),
-    db.product.count({ where: { status: 'ACTIVE' } }),
-    db.productVariant.count(),
-    db.inventoryItem.findMany({ select: { quantity: true, reserved: true, lowStockThreshold: true } }),
-    db.order.count(),
-    db.order.count({ where: { status: 'PENDING' } }),
-    db.user.count({ where: { role: 'CUSTOMER' } }),
-    db.coupon.count({ where: { isActive: true } }),
-    db.shippingZone.count({ where: { isActive: true } }),
-    db.shippingRate.count({ where: { isActive: true } }),
-    db.theme.count(),
-    db.navigationMenu.count(),
-    db.page.count(),
-    db.blogPost.count(),
-    db.mediaAsset.count(),
-    db.auditLog.count(),
-    db.storeLocation.count(),
-    db.storeLocation.count({ where: { status: 'ACTIVE' } }),
-    db.inventoryTransfer.count(),
-    db.draftOrder.count(),
-    db.draftOrder.count({ where: { status: { in: ['DRAFT', 'OPEN'] } } }),
-    db.fulfillment.count(),
-    db.purchaseOrder.count(),
-    db.purchaseOrder.count({ where: { status: { in: ['DRAFT', 'ORDERED', 'PARTIALLY_RECEIVED'] } } }),
-    db.giftCard.count({ where: { status: 'ACTIVE' } }),
-    db.webhookEndpoint.count(),
-    db.webhookEndpoint.count({ where: { status: 'ACTIVE' } }),
-    db.apiCredential.count(),
-    db.apiCredential.count({ where: { status: 'ACTIVE' } }),
-    db.salesChannel.count(),
-    db.salesChannel.count({ where: { status: 'ACTIVE' } }),
-    db.abandonedCheckout.count(),
-    db.abandonedCheckout.count({ where: { status: 'OPEN' } }),
-    db.orderEdit.count(),
-    db.orderEdit.count({ where: { status: 'OPEN' } }),
+    db.user.count({ where: { role: { not: 'CUSTOMER' }, isActive: true } }), db.product.count(), db.product.count({ where: { status: 'ACTIVE' } }), db.productVariant.count(), db.inventoryItem.findMany({ select: { quantity: true, reserved: true, lowStockThreshold: true } }), db.order.count(), db.order.count({ where: { status: 'PENDING' } }), db.user.count({ where: { role: 'CUSTOMER' } }), db.coupon.count({ where: { isActive: true } }), db.shippingZone.count({ where: { isActive: true } }), db.shippingRate.count({ where: { isActive: true } }), db.theme.count(), db.navigationMenu.count(), db.page.count(), db.blogPost.count(), db.mediaAsset.count(), db.auditLog.count(), db.storeLocation.count(), db.storeLocation.count({ where: { status: 'ACTIVE' } }), db.inventoryTransfer.count(), db.draftOrder.count(), db.draftOrder.count({ where: { status: { in: ['DRAFT', 'OPEN'] } } }), db.fulfillment.count(), db.purchaseOrder.count(), db.purchaseOrder.count({ where: { status: { in: ['DRAFT', 'ORDERED', 'PARTIALLY_RECEIVED'] } } }), db.giftCard.count({ where: { status: 'ACTIVE' } }), db.webhookEndpoint.count(), db.webhookEndpoint.count({ where: { status: 'ACTIVE' } }), db.apiCredential.count(), db.apiCredential.count({ where: { status: 'ACTIVE' } }), db.salesChannel.count(), db.salesChannel.count({ where: { status: 'ACTIVE' } }), db.abandonedCheckout.count(), db.abandonedCheckout.count({ where: { status: 'OPEN' } }), db.orderEdit.count(), db.orderEdit.count({ where: { status: 'OPEN' } }),
   ])
 
   const negativeInventory = inventory.filter(i => i.quantity < 0)
@@ -66,7 +30,7 @@ export async function runPlatformHealth(): Promise<{ status: HealthSeverity; che
 
   checks.push({ key: 'auth', label: 'Authentication', severity: severityFor(Boolean(process.env.AUTH_SECRET), true), message: process.env.AUTH_SECRET ? 'AUTH_SECRET is configured.' : 'AUTH_SECRET is missing.' })
   checks.push({ key: 'site-url', label: 'Store URL', severity: severityFor(Boolean(process.env.NEXT_PUBLIC_SITE_URL), false), message: process.env.NEXT_PUBLIC_SITE_URL ? 'NEXT_PUBLIC_SITE_URL is configured.' : 'NEXT_PUBLIC_SITE_URL is not configured.' })
-  checks.push({ key: 'staff', label: 'Staff access', severity: severityFor(staff > 0, true), message: staff > 0 ? `${staff} active staff account(s) available.` : 'No active staff account exists.`, count: staff })
+  checks.push({ key: 'staff', label: 'Staff access', severity: severityFor(staff > 0, true), message: staff > 0 ? `${staff} active staff account(s) available.` : 'No active staff account exists.', count: staff })
   checks.push({ key: 'catalog', label: 'Catalog', severity: severityFor(products > 0, false), message: `${products} product(s), ${variants} variant(s), ${activeProducts} active.`, meta: { products, variants, activeProducts } })
   checks.push({ key: 'inventory-negative', label: 'Negative inventory', severity: severityFor(negativeInventory.length === 0, true), message: negativeInventory.length ? `${negativeInventory.length} inventory record(s) have negative stock.` : 'No negative inventory balances.', count: negativeInventory.length })
   checks.push({ key: 'inventory-reserved', label: 'Reservation integrity', severity: severityFor(overReserved.length === 0, true), message: overReserved.length ? `${overReserved.length} inventory record(s) reserve more than on-hand.` : 'Reserved quantities are within on-hand balances.', count: overReserved.length })
