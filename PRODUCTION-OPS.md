@@ -19,11 +19,15 @@ Checkout is server-authoritative: prices, coupons, shipping, tax, and inventory 
 
 ## Expired reservations
 
-Call `GET /api/internal/release-expired-reservations` periodically with:
+`netlify/functions/release-expired-reservations.mjs` is a Netlify Scheduled Function that runs every 10 minutes (UTC) and calls:
+
+`GET /api/internal/release-expired-reservations`
+
+with:
 
 `Authorization: Bearer $CRON_SECRET`
 
-Use a Netlify Scheduled Function or another scheduler to call it every 5–10 minutes.
+The scheduled function fails loudly on missing configuration, upstream non-2xx responses, or timeouts. Netlify Scheduled Functions are available on all plans and use UTC cron expressions. citeturn546953search0turn546953search4
 
 ## Payment integration
 
@@ -78,7 +82,7 @@ For the production site, sensitive server variables must be available to both th
 5. Verify `GET /api/products`, authentication/session, navigation, storefront settings, and the critical checkout read paths.
 6. Test COD checkout with stock, shared inventory, variants, coupons, cancellation, and fulfillment.
 7. Test payment webhooks with duplicate and out-of-order events.
-8. Configure the reservation cleanup scheduler.
+8. Verify the scheduled reservation cleanup function is deployed and enabled.
 9. Verify `/robots.txt` and `/sitemap.xml` on the production domain.
 10. Keep the PostgreSQL source backup/database intact until the Netlify + MongoDB production runtime has been verified and signed off.
 11. After sign-off, decommission the old Render service and PostgreSQL database.
