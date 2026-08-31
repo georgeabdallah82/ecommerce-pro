@@ -11,6 +11,14 @@ function convert(schema, sourceName) {
     'provider = "mongodb"',
   )
 
+  // MongoDB/Render production runs on Debian with OpenSSL 3. Generate the
+  // MongoDB Prisma client with both the local/native engine and the exact
+  // production runtime engine so the prebuilt image can execute on Render.
+  schema = schema.replace(
+    /generator client \{\n\s*provider = "prisma-client-js"\n\}/m,
+    'generator client {\n  provider = "prisma-client-js"\n  binaryTargets = ["native", "debian-openssl-3.0.x"]\n}',
+  )
+
   // MongoDB stores every Prisma model id in the mandatory _id field.
   schema = schema.replace(
     /^(\s*id\s+String\s+@id\s+@default\(cuid\(\)\))(\s*)$/gm,
