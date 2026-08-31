@@ -21,10 +21,10 @@ jobs:
       AUTH_SECRET: smoke-test-only-secret
       PORT: 10000
     steps:
-      - name: Checkout controlled cutover branch
+      - name: Checkout main production code
         uses: actions/checkout@v4
         with:
-          ref: mongodb-production-cutover
+          ref: main
 
       - name: Setup Node
         uses: actions/setup-node@v4
