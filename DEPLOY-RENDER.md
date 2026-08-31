@@ -1,19 +1,41 @@
 # Render deployment
 
-This build uses PostgreSQL instead of SQLite and includes a Render Blueprint.
+Production now targets MongoDB. The repository keeps the PostgreSQL source database and backup available until the migration is fully signed off.
 
-1. Push the project to GitHub.
-2. In Render, choose **New -> Blueprint** and select the repository.
-3. Render reads `render.yaml`, creates the web service and Postgres database, and wires `DATABASE_URL` automatically.
-4. Set `SEED_ADMIN_PASSWORD` in the Render dashboard when prompted.
-5. After the first deploy, open the service URL.
+## Standard deployment
 
-The Blueprint uses Free instances for testing. Render currently states that Free Postgres databases expire after 30 days and have a 1 GB limit; upgrade the database before using it as a real production store.
+The application can run from the repository or from the prebuilt Docker image published to GitHub Container Registry (GHCR). The image-backed path is useful when Render build-pipeline minutes are exhausted because Render pulls the already-built image instead of rebuilding the repository on Render.
 
-## Database initialization
+For the image-backed path, Render supports private GitHub Container Registry images with a workspace registry credential. The production image is built for `linux/amd64` and is tagged with both `main` and the Git commit SHA.
 
-The app uses `prisma db push` for the initial schema because this project is being prototyped. For a production launch, switch to reviewed Prisma migrations (`prisma migrate deploy`) before changing the schema in a live database.
+### Production environment
 
-## Important storage note
+Set these variables in the Render web service:
 
-The current media upload route writes files to the local filesystem. Render Free web services do not provide persistent local storage, so uploaded media should later be moved to object storage (S3/R2/etc.) before production.
+- `DATABASE_URL`: verified MongoDB production URI, including the `ecommerce_production` database name.
+- `AUTH_SECRET`: the existing strong production secret.
+- `CRON_SECRET`: the existing strong production secret.
+- `PAYMENT_WEBHOOK_SECRET`: the existing strong production secret.
+- `NEXT_PUBLIC_SITE_URL`: the canonical HTTPS production URL.
+- Other application secrets and public configuration required by the service.
+
+Do not place production secrets in GitHub source files, Docker build arguments, or the container image. The Docker build uses only a non-production placeholder for build-time static analysis; Render injects the real runtime secret.
+
+## Health verification
+
+After a production deploy, verify:
+
+1. `/api/health` returns HTTP 200 and reports the database as reachable.
+2. `/api/products` returns the expected migrated catalog.
+3. `/api/navigation` and `/api/store/settings` return successfully.
+4. Login/authentication works with the production secret.
+5. A read-only admin/system health check succeeds.
+6. The production logs show MongoDB startup verification and no PostgreSQL connection attempt.
+
+## Rollback
+
+Keep the PostgreSQL database and the fresh `pg_dump` backup until the MongoDB production deployment has passed the smoke test, business reconciliation, and an observation window. Do not delete the PostgreSQL source as part of the initial cutover.
+
+## Storage note
+
+The current media upload route writes files to the local filesystem. Render Free web services do not provide persistent local storage, so uploaded media should later be moved to object storage (S3/R2/etc.) before production use.
