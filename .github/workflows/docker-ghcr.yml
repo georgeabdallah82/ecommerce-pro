@@ -31,8 +31,11 @@ jobs:
         with:
           context: .
           push: true
+          platforms: linux/amd64
           tags: |
             ghcr.io/${{ github.repository_owner }}/ecommerce-pro:main
             ghcr.io/${{ github.repository_owner }}/ecommerce-pro:${{ github.sha }}
+          build-args: |
+            AUTH_SECRET=preview-build-only-not-for-runtime
           cache-from: type=gha
           cache-to: type=gha,mode=max
