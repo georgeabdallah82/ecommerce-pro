@@ -64,6 +64,8 @@ jobs:
         if: success()
         env:
           AUTH_SECRET: ci-build-only-secret-do-not-use-in-production
+          NETLIFY: true
+          DATABASE_URL: mongodb://127.0.0.1:27017/ci-build
         run: npm run build
 
       - name: Enforce dependency audit result
