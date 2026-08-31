@@ -1,5 +1,9 @@
 # Production operations
 
+## Runtime topology
+
+The production application is deployed as a single full-stack Next.js site on Netlify. Netlify serves the storefront and executes the Next.js Route Handlers/API routes. MongoDB Atlas is the production database. There is no runtime dependency on Render.
+
 ## Checkout
 
 Checkout is server-authoritative: prices, coupons, shipping, tax, and inventory are recalculated on the server. Duplicate cart lines are merged before stock validation. Clients should send a stable `X-Idempotency-Key` for retries; the checkout endpoint returns the existing order when the same key is reused.
@@ -19,7 +23,7 @@ Call `GET /api/internal/release-expired-reservations` periodically with:
 
 `Authorization: Bearer $CRON_SECRET`
 
-The endpoint checks pending orders older than 30 minutes and releases their checkout reservations. Configure a Render Cron Job or another scheduler to call it every 5–10 minutes if your Render plan supports scheduled jobs.
+Use a Netlify Scheduled Function or another scheduler to call it every 5–10 minutes.
 
 ## Payment integration
 
@@ -40,11 +44,11 @@ The endpoint rejects mismatched successful amounts, ignores stale status updates
 
 ## Health check
 
-`GET /api/health` is the Render web-service health endpoint. It performs a lightweight MongoDB reachability check and returns HTTP `200` with `{ ok: true }` when the app and database are healthy, or HTTP `503` when the database is unreachable.
+`GET /api/health` is the production health endpoint. It performs a lightweight MongoDB reachability check and returns HTTP `200` with `{ ok: true }` when the app and database are healthy, or HTTP `503` when the database is unreachable.
 
 ## MongoDB production runtime
 
-Production startup refuses non-MongoDB `DATABASE_URL` values. The production container also runs `scripts/verify-production-database.mjs` before starting Next.js, so an accidental PostgreSQL runtime configuration is rejected instead of silently serving from the old database.
+Production startup/build configuration rejects non-MongoDB `DATABASE_URL` values on the Netlify production deployment. The application therefore cannot silently fall back to the old PostgreSQL runtime.
 
 ## SEO and security
 
@@ -54,16 +58,27 @@ Production startup refuses non-MongoDB `DATABASE_URL` values. The production con
 - Set `NEXT_PUBLIC_SITE_URL` to the canonical HTTPS site URL.
 - Set strong generated values for `AUTH_SECRET`, `CRON_SECRET`, and `PAYMENT_WEBHOOK_SECRET`.
 
-## Before going live
+## Netlify environment variables
 
-1. Set `NEXT_PUBLIC_SITE_URL`.
-2. Set all production secrets in Render.
-3. Verify `DATABASE_URL` points to the production MongoDB database.
-4. Confirm Render health checks `/api/health` successfully after deployment.
-5. Run the CI build/typecheck successfully.
-6. Run the production MongoDB application smoke test against the same production target.
-7. Test COD checkout with stock, shared inventory, variants, coupons, cancellation, and fulfillment.
-8. Test payment webhooks with duplicate and out-of-order events.
-9. Configure the reservation cleanup scheduler.
-10. Verify `/robots.txt` and `/sitemap.xml` on the production domain.
-11. Keep the PostgreSQL source backup/database intact until the MongoDB production cutover has been verified and signed off.
+For the production site, sensitive server variables must be available to both the Netlify build and Functions/runtime scopes as appropriate. The critical production values are:
+
+- `DATABASE_URL` — MongoDB Atlas `ecommerce_production` connection string
+- `AUTH_SECRET`
+- `CRON_SECRET`
+- `PAYMENT_WEBHOOK_SECRET`
+- `NEXT_PUBLIC_SITE_URL`
+- Other configured payment, notification, branding, and admin variables used by the application
+
+## Before final production sign-off
+
+1. Set Netlify `DATABASE_URL` to the production MongoDB database.
+2. Verify server secrets are available to Netlify Functions/runtime and to the build where required.
+3. Confirm the Netlify deploy completes successfully.
+4. Verify `GET /api/health` returns healthy and MongoDB is reachable.
+5. Verify `GET /api/products`, authentication/session, navigation, storefront settings, and the critical checkout read paths.
+6. Test COD checkout with stock, shared inventory, variants, coupons, cancellation, and fulfillment.
+7. Test payment webhooks with duplicate and out-of-order events.
+8. Configure the reservation cleanup scheduler.
+9. Verify `/robots.txt` and `/sitemap.xml` on the production domain.
+10. Keep the PostgreSQL source backup/database intact until the Netlify + MongoDB production runtime has been verified and signed off.
+11. After sign-off, decommission the old Render service and PostgreSQL database.
