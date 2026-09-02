@@ -8,9 +8,8 @@ await mkdir(new URL('./models/', targetRoot), { recursive: true })
 function convert(schema, sourceName) {
   schema = schema.replace('provider = "postgresql"', 'provider = "mongodb"')
 
-  // MongoDB/Render production runs on Debian with OpenSSL 3. Generate the
-  // MongoDB Prisma client with both the local/native engine and the exact
-  // production runtime engine so the prebuilt image can execute on Render.
+  // Generate the MongoDB Prisma client with both the local/native engine and
+  // the exact production runtime engine so deployed builds can execute reliably.
   schema = schema.replace(
     /generator client \{\n\s*provider = "prisma-client-js"\n\}/m,
     'generator client {\n  provider = "prisma-client-js"\n  binaryTargets = ["native", "debian-openssl-3.0.x"]\n}',
