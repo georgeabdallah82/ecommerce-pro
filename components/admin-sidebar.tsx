@@ -9,6 +9,7 @@ import {
   Tag, Truck, UserCog, Users, Workflow, type LucideIcon,
 } from 'lucide-react'
 import type { Permission } from '@/lib/permissions'
+import AdminThemeToggle from '@/components/admin-theme-toggle'
 
 export type AdminSidebarItem = { href: string; label: string; permission: Permission; icon: string }
 export type AdminSidebarGroup = { id: string; label: string; items: AdminSidebarItem[] }
@@ -190,7 +191,7 @@ body:has(.adminShell) .lv-main{gap:16px!important}
   body:has(.adminShell) .editorBody{grid-template-columns:1fr!important}
   body:has(.adminShell) .editorRail{position:static!important}
 }
-@media(max-width:720px){
+@media(max-width:760px){
   body:has(.adminShell) .adminMain{padding:0 14px 32px!important}
   body:has(.adminShell) .adminTopbar{min-height:64px!important;margin-bottom:18px!important}
   body:has(.adminShell) .sectionHead .h2,
@@ -291,6 +292,7 @@ export default function AdminSidebar({ groups }: { groups: AdminSidebarGroup[] }
         </div>
       })}
       {!visibleGroups.length && <div className="adminNavEmpty">No admin pages match “{query}”.</div>}
+      <div className="adminNavTheme"><AdminThemeToggle /></div>
     </nav>
   </>
 }
