@@ -8,7 +8,7 @@ import AdminThemeToggle from '@/components/admin-theme-toggle'
 const labels: Array<[string, string]> = [
   ['/admin', 'Dashboard'], ['/admin/orders', 'Orders'], ['/admin/products', 'Products'], ['/admin/inventory', 'Inventory'], ['/admin/operations', 'Operations'],
   ['/admin/collections', 'Collections'], ['/admin/categories', 'Categories'], ['/admin/customers', 'Customers'], ['/admin/content', 'Content'], ['/admin/media', 'Files'],
-  ['/admin/reviews', 'Reviews'], ['/admin/online-store', 'Online Store'], ['/admin/coupons', 'Discounts'], ['/admin/reports', 'Analytics & reports'], ['/admin/analytics', 'Analytics'],
+  ['/admin/reviews', 'Reviews'], ['/admin/online-store', 'Online Store'], ['/admin/coupons', 'Discounts'], ['/admin/reports', 'Analytics & reports'],
   ['/admin/shipping', 'Shipping'], ['/admin/system', 'System health'], ['/admin/users', 'Users & roles'], ['/admin/activity', 'Activity log'], ['/admin/settings', 'Settings'],
 ]
 
