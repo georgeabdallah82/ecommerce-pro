@@ -22,6 +22,10 @@ function currentLabel(pathname: string) {
 export default function AdminTopbar({ name, email }: { name: string | null; email: string }) {
   const pathname = usePathname()
   const title = currentLabel(pathname)
+  const requestAdminSearch = () => {
+    if (window.innerWidth <= 760) window.dispatchEvent(new Event('admin-mobile-search'))
+    else document.getElementById('admin-nav-search')?.focus()
+  }
 
   return (
     <header className="adminWorkspaceTopbar">
@@ -30,7 +34,7 @@ export default function AdminTopbar({ name, email }: { name: string | null; emai
         <h1>{title}</h1>
       </div>
       <div className="adminWorkspaceActions">
-        <button type="button" className="adminTopSearch" onClick={() => document.getElementById('admin-nav-search')?.focus()} title="Search admin navigation"><Search size={15} /><span>Search</span><kbd>Ctrl K</kbd></button>
+        <button type="button" className="adminTopSearch" onClick={requestAdminSearch} title="Search admin navigation"><Search size={15} /><span>Search</span><kbd>Ctrl K</kbd></button>
         <Link href="/" className="adminTopIconLink" title="Open storefront" aria-label="Open storefront"><ExternalLink size={16} /></Link>
         <div className="adminTopTheme"><AdminThemeToggle /></div>
         <div className="adminTopAccount"><div className="adminTopAvatar">{(name || email || 'A').slice(0, 1).toUpperCase()}</div><div><strong>{name || 'Administrator'}</strong><span>{email}</span></div></div>
