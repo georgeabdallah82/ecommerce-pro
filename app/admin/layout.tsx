@@ -1,3 +1,4 @@
+import './admin-overhaul.css'
 import Link from 'next/link'
 import { getCurrentUser } from '@/lib/auth'
 import { hasPermission, type Permission } from '@/lib/permissions'
