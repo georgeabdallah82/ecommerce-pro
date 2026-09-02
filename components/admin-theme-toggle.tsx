@@ -20,6 +20,15 @@ export default function AdminThemeToggle() {
     const initial: Theme = saved === 'dark' ? 'dark' : 'light'
     setTheme(initial)
     applyTheme(initial)
+    const sync = () => {
+      const next: Theme = window.localStorage.getItem(STORAGE_KEY) === 'dark' ? 'dark' : 'light'
+      setTheme(next)
+      applyTheme(next)
+    }
+    const onStorage = (event: StorageEvent) => { if (event.key === STORAGE_KEY) sync() }
+    window.addEventListener('storage', onStorage)
+    window.addEventListener('admin-theme-change', sync)
+    return () => { window.removeEventListener('storage', onStorage); window.removeEventListener('admin-theme-change', sync) }
   }, [])
 
   function toggle() {
@@ -27,12 +36,13 @@ export default function AdminThemeToggle() {
     setTheme(next)
     window.localStorage.setItem(STORAGE_KEY, next)
     applyTheme(next)
+    window.dispatchEvent(new Event('admin-theme-change'))
   }
 
   return (
     <>
       <style jsx global>{`
-        /* Admin dark theme */
+        /* ---------- Dark theme ---------- */
         html[data-admin-theme='dark'] body:has(.adminShell){background:#101211!important;color:#f2f5f3!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .adminShell{background:#101211!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .adminSide{background:#161918!important;border-color:#292e2b!important;color:#f2f4f2!important}
@@ -41,7 +51,11 @@ export default function AdminThemeToggle() {
         html[data-admin-theme='dark'] body:has(.adminShell) .adminTopbar strong,
         html[data-admin-theme='dark'] body:has(.adminShell) .sectionHead .h2,
         html[data-admin-theme='dark'] body:has(.adminShell) .catalogHead .h2,
-        html[data-admin-theme='dark'] body:has(.adminShell) .shopifyTitle{color:#f5f7f5!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .shopifyTitle,
+        html[data-admin-theme='dark'] body:has(.adminShell) h1,
+        html[data-admin-theme='dark'] body:has(.adminShell) h2,
+        html[data-admin-theme='dark'] body:has(.adminShell) h3,
+        html[data-admin-theme='dark'] body:has(.adminShell) h4{color:#f5f7f5!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .muted,
         html[data-admin-theme='dark'] body:has(.adminShell) .tiny,
         html[data-admin-theme='dark'] body:has(.adminShell) .fieldHelp,
@@ -62,7 +76,7 @@ export default function AdminThemeToggle() {
         html[data-admin-theme='dark'] body:has(.adminShell) .adminSideBottom a:hover,
         html[data-admin-theme='dark'] body:has(.adminShell) .sideButton:hover{background:#202321!important;color:#fff!important}
 
-        /* Shared surfaces and workspace containers */
+        /* Shared surfaces */
         html[data-admin-theme='dark'] body:has(.adminShell) .card,
         html[data-admin-theme='dark'] body:has(.adminShell) .editorCard,
         html[data-admin-theme='dark'] body:has(.adminShell) .productTableCard,
@@ -88,8 +102,17 @@ export default function AdminThemeToggle() {
         html[data-admin-theme='dark'] body:has(.adminShell) .shopifyBulkBar,
         html[data-admin-theme='dark'] body:has(.adminShell) .shopifyTableCard,
         html[data-admin-theme='dark'] body:has(.adminShell) .shopifyMenu,
-        html[data-admin-theme='dark'] body:has(.adminShell) .shopifyActionMenu,
-        html[data-admin-theme='dark'] body:has(.adminShell) .shopifyChannel{background:#191c1a!important;border-color:#2b302c!important;color:#e9edea!important;box-shadow:0 10px 28px rgba(0,0,0,.22)!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryStat,
+        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryControlBar,
+        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryTableShell,
+        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryDrawer,
+        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryDrawerHeader,
+        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryDrawerStats div,
+        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryAmountBlock,
+        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryPreview,
+        html[data-admin-theme='dark'] body:has(.adminShell) .settingsProCard,
+        html[data-admin-theme='dark'] body:has(.adminShell) .settingsProPanel,
+        html[data-admin-theme='dark'] body:has(.adminShell) .settingsProHead{background:#191c1a!important;border-color:#2b302c!important;color:#e9edea!important;box-shadow:0 10px 28px rgba(0,0,0,.22)!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .table,
         html[data-admin-theme='dark'] body:has(.adminShell) .tableTopline,
         html[data-admin-theme='dark'] body:has(.adminShell) .catalogPagination,
@@ -97,61 +120,52 @@ export default function AdminThemeToggle() {
         html[data-admin-theme='dark'] body:has(.adminShell) .editorTabs,
         html[data-admin-theme='dark'] body:has(.adminShell) .editorCardHead,
         html[data-admin-theme='dark'] body:has(.adminShell) .editorCardBody{background:#191c1a!important;color:#e9edea!important;border-color:#2b302c!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .table th{background:#202421!important;color:#9ea8a1!important;border-color:#303631!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .table td{color:#e1e6e2!important;border-color:#2b302c!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .table tbody tr:hover{background:#202421!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .table th,
+        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryTablePro th{background:#202421!important;color:#9ea8a1!important;border-color:#303631!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .table td,
+        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryTablePro td{color:#e1e6e2!important;border-color:#2b302c!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .table tbody tr:hover,
+        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryRow:hover{background:#202421!important}
 
-        /* Forms and controls */
+        /* Forms */
         html[data-admin-theme='dark'] body:has(.adminShell) .input,
         html[data-admin-theme='dark'] body:has(.adminShell) .textarea,
         html[data-admin-theme='dark'] body:has(.adminShell) select,
         html[data-admin-theme='dark'] body:has(.adminShell) .productSearch,
         html[data-admin-theme='dark'] body:has(.adminShell) .shopifySearch,
+        html[data-admin-theme='dark'] body:has(.adminShell) .inventorySearchBox,
+        html[data-admin-theme='dark'] body:has(.adminShell) .inventorySelect,
+        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryAmountInput,
         html[data-admin-theme='dark'] body:has(.adminShell) .lv-search input{background:#151817!important;color:#eef2ef!important;border-color:#343a36!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .input::placeholder,
         html[data-admin-theme='dark'] body:has(.adminShell) .textarea::placeholder,
-        html[data-admin-theme='dark'] body:has(.adminShell) .shopifySearch input::placeholder{color:#707a73!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .shopifySearch input::placeholder,
+        html[data-admin-theme='dark'] body:has(.adminShell) .inventorySearchBox input::placeholder{color:#707a73!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .input:focus,
         html[data-admin-theme='dark'] body:has(.adminShell) .textarea:focus,
         html[data-admin-theme='dark'] body:has(.adminShell) select:focus,
-        html[data-admin-theme='dark'] body:has(.adminShell) .shopifySearch:focus-within{border-color:#6d8878!important;box-shadow:0 0 0 3px rgba(102,194,146,.12)!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .btn.secondary,
-        html[data-admin-theme='dark'] body:has(.adminShell) .btn.ghost,
-        html[data-admin-theme='dark'] body:has(.adminShell) .iconBtn,
-        html[data-admin-theme='dark'] body:has(.adminShell) .lv-btn,
-        html[data-admin-theme='dark'] body:has(.adminShell) .lv-primary{background:#232724!important;color:#eef2ef!important;border-color:#3b423d!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .iconBtn:hover,
-        html[data-admin-theme='dark'] body:has(.adminShell) .lv-btn:hover{background:#2a2f2b!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .shopifySearch:focus-within,
+        html[data-admin-theme='dark'] body:has(.adminShell) .inventorySearchBox:focus-within{border-color:#6d8878!important;box-shadow:0 0 0 3px rgba(102,194,146,.12)!important}
 
-        /* Product catalog */
-        html[data-admin-theme='dark'] body:has(.adminShell) .shopifyEyebrow,
-        html[data-admin-theme='dark'] body:has(.adminShell) .shopifyCountPill,
-        html[data-admin-theme='dark'] body:has(.adminShell) .shopifyView,
-        html[data-admin-theme='dark'] body:has(.adminShell) .shopifyProductCell span,
-        html[data-admin-theme='dark'] body:has(.adminShell) .shopifyStock span,
-        html[data-admin-theme='dark'] body:has(.adminShell) .shopifyTableMeta,
-        html[data-admin-theme='dark'] body:has(.adminShell) .shopifyEyebrow{color:#9ca59f!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .shopifyView.active{background:#f0f3f1!important;color:#171918!important}
+        /* Product / orders / inventory */
+        html[data-admin-theme='dark'] body:has(.adminShell) .shopifyView.active,
+        html[data-admin-theme='dark'] body:has(.adminShell) .opsTabs button.active{background:#f0f3f1!important;color:#171918!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .shopifyView.active small{color:#636c66!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .shopifyMenu button{color:#e7ece8!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .shopifyMenu button:hover{background:#262b28!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .shopifyMenu button,
+        html[data-admin-theme='dark'] body:has(.adminShell) .orderViews button{color:#e7ece8!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .shopifyMenu button:hover,
+        html[data-admin-theme='dark'] body:has(.adminShell) .orderViews button:hover{background:#262b28!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .shopifyProductCell strong{color:#f1f4f2!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .shopifyThumb{background:#242926!important;color:#9fa8a1!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .shopifyStatus.active{background:#173524!important;color:#a8e5bd!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .shopifyStatus.draft{background:#30312b!important;color:#d6d9d2!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .shopifyStatus.archived{background:#292c2a!important;color:#adb5af!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .shopifyProductTable th{background:#202421!important;color:#9ea8a1!important;border-color:#303631!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .shopifyProductTable td{border-color:#2b302c!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .shopifyProductTable tbody tr:hover{background:#202421!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .shopifyProductTable tbody tr.selectedRow{background:#292e2a!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .shopifyThumb,
+        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryThumb{background:#242926!important;color:#9fa8a1!important;border-color:#343a36!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryStatus.success{background:#173524!important;color:#a8e5bd!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryStatus.warning{background:#3a3118!important;color:#f1d88d!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryStatus.danger{background:#44211f!important;color:#f1aaa4!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryNotice{background:#173524!important;color:#a8e5bd!important;border-color:#28563a!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .confirmBox{background:#202421!important;border-color:#343a36!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .orderViews button.active{background:#f0f3f1!important;color:#171918!important}
 
-        /* Status and special states */
-        html[data-admin-theme='dark'] body:has(.adminShell) .statusPill.active{background:#173524!important;color:#a8e5bd!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .statusPill.draft{background:#3a3118!important;color:#f1d88d!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .statusPill.archived{background:#292c2a!important;color:#adb5af!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .opsTabs,
-        html[data-admin-theme='dark'] body:has(.adminShell) .opsTabs button{background:#191c1a!important;color:#adb5af!important;border-color:#2b302c!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .opsTabs button.active{background:#f1f4f2!important;color:#151715!important}
+        /* Empty/error states and live map */
         html[data-admin-theme='dark'] body:has(.adminShell) .empty,
         html[data-admin-theme='dark'] body:has(.adminShell) .opsLoading{background:#191c1a!important;border-color:#3a413c!important;color:#9fa8a1!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .empty strong{color:#eef2ef!important}
@@ -165,16 +179,6 @@ export default function AdminThemeToggle() {
         html[data-admin-theme='dark'] body:has(.adminShell) .lv-avatar,
         html[data-admin-theme='dark'] body:has(.adminShell) .lv-detail-avatar,
         html[data-admin-theme='dark'] body:has(.adminShell) .lv-detail-item{background:#232724!important;color:#eef2ef!important}
-
-        /* Common page-specific areas */
-        html[data-admin-theme='dark'] body:has(.adminShell) .filterBar,
-        html[data-admin-theme='dark'] body:has(.adminShell) .productToolbar,
-        html[data-admin-theme='dark'] body:has(.adminShell) .checkoutForm,
-        html[data-admin-theme='dark'] body:has(.adminShell) .reviewForm,
-        html[data-admin-theme='dark'] body:has(.adminShell) .purchaseBox{background:#191c1a!important;color:#e9edea!important;border-color:#2b302c!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .orderCard>div,
-        html[data-admin-theme='dark'] body:has(.adminShell) .timelineItem,
-        html[data-admin-theme='dark'] body:has(.adminShell) .summaryLine{color:#e2e7e3!important;border-color:#2b302c!important}
       `}</style>
       <button type="button" className="adminThemeToggle" onClick={toggle} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}>
         {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
