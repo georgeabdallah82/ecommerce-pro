@@ -2,9 +2,9 @@ import Link from 'next/link'
 import { getCurrentUser } from '@/lib/auth'
 import { hasPermission, type Permission } from '@/lib/permissions'
 import { redirect } from 'next/navigation'
-import OrderAlerts from '@/components/order-alerts'
 import AdminSidebar, { type AdminSidebarGroup } from '@/components/admin-sidebar'
 import AdminMobileNav from '@/components/admin-mobile-nav'
+import AdminTopbar from '@/components/admin-topbar'
 import { LogOut, Store, ShieldCheck } from 'lucide-react'
 
 const groups: AdminSidebarGroup[] = [
@@ -65,7 +65,6 @@ body:has(.adminShell) .adminSideBottom a, body:has(.adminShell) .sideButton { he
 .adminNavTree{margin-top:10px;display:grid;gap:3px}.adminNavGroup{display:grid;gap:2px}.adminNavGroupButton{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;height:38px;padding:0 11px;border:0;background:transparent;border-radius:9px;color:#3f3f3b;font:inherit;font-size:13px;font-weight:700;cursor:pointer;text-align:left}.adminNavGroupButton:hover{background:#f3f3ef;color:#171717}.adminNavGroupButton.active{color:#171717;background:#f0f0ec}.adminNavChevron{transition:transform .16s ease;opacity:.65}.adminNavChevron.open{transform:rotate(180deg)}.adminNavChildren{display:grid;grid-template-rows:0fr;overflow:hidden;transition:grid-template-rows .16s ease}.adminNavChildren.open{grid-template-rows:1fr}.adminNavChildren > *{min-height:0}.adminNavItem{height:38px !important;margin:1px 0 !important;padding:0 11px 0 27px !important;border-radius:9px !important;font-size:13px !important;font-weight:600 !important;color:#666661 !important}.adminNavItem:hover{background:#f5f5f1 !important;color:#171717 !important;transform:none !important}.adminNavItem.active{background:#e8e8e3 !important;color:#111 !important;box-shadow:inset 2px 0 0 #171717}.adminNavGroup.active > .adminNavGroupButton{color:#171717}.adminNavGroup + .adminNavGroup{margin-top:2px}
 body:has(.adminShell) .adminMain { min-width:0; padding:0 34px 48px; }
 body:has(.adminShell) .adminTopbar { position:sticky; top:0; z-index:40; min-height:76px; padding:0; margin:0 0 28px; background:rgba(246,246,244,.94); backdrop-filter:blur(14px); border-bottom:1px solid #e6e6e2; }
-body:has(.adminShell) .adminTopbar > div:first-child { padding:12px 0; }
 body:has(.adminShell) .adminBrand .logo { font-size:16px; letter-spacing:-.03em; }
 body:has(.adminShell) .adminBrandMark { width:36px; height:36px; border-radius:11px; }
 body:has(.adminShell) .pill { border:1px solid #e6e6e0; background:#fff; color:#4d4d48; }
@@ -132,7 +131,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <AdminSidebar groups={visibleGroups} />
         <div className="adminSideBottom"><Link href="/"><Store size={16}/> View storefront</Link><form action="/api/auth/logout" method="post"><button className="sideButton" type="submit"><LogOut size={16}/> Sign out</button></form></div>
       </aside>
-      <section className="adminMain"><header className="adminTopbar"><div style={{display:'flex',alignItems:'center',gap:12}}><AdminMobileNav groups={visibleGroups}/><div><div className="muted" style={{fontSize:12}}>SIGNED IN AS</div><strong>{user.name}</strong></div></div><div className="inline"><OrderAlerts vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}/><div className="pill">{user.email}</div></div></header>{children}</section>
+      <section className="adminMain"><AdminTopbar name={user.name} email={user.email}/>{children}</section>
     </div>
   </>
 }
