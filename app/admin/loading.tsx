@@ -1,3 +1,7 @@
 'use client'
 
-export default function AdminLoading(){return <div className="adminRouteState"><div className="adminRouteSpinner" aria-hidden="true"/><div><strong>Loading workspace</strong><p>Preparing this section…</p></div><style jsx global>{`.adminRouteState{min-height:280px;display:flex;align-items:center;justify-content:center;gap:12px;border:1px solid #e1e3dd;border-radius:18px;background:#fff;box-shadow:0 4px 18px rgba(23,23,23,.04);color:#262823;padding:32px}.adminRouteSpinner{width:28px;height:28px;border:3px solid #e1e3dd;border-top-color:#171817;border-radius:50%;animation:adminSpin .75s linear infinite}.adminRouteState strong{font-size:14px}.adminRouteState p{margin:4px 0 0;color:#868a82;font-size:11px}@keyframes adminSpin{to{transform:rotate(360deg)}}html[data-admin-theme='dark'] .adminRouteState{background:#191d1b;color:#eef2ef;border-color:#2c332e}html[data-admin-theme='dark'] .adminRouteSpinner{border-color:#343b36;border-top-color:#eef2ef}html[data-admin-theme='dark'] .adminRouteState p{color:#9da69f}`}</style></div>}
+import AdminRouteStateStyles from '@/components/admin-route-state-styles'
+
+export default function AdminLoading(){
+  return <div className="adminRouteState"><AdminRouteStateStyles/><div className="adminRouteSpinner" aria-hidden="true"/><div><strong>Loading workspace</strong><p>Preparing this section…</p></div></div>
+}
