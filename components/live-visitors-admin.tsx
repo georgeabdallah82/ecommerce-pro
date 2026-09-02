@@ -126,7 +126,8 @@ function MapPanel({ visitors, selectedId, onSelect }: { visitors: Visitor[]; sel
   const centerSelected = () => {
     if (!mapRef.current || !selectedId) return
     const selected = located.find(v => v.sessionId === selectedId)
-    if (selected?.latitude !== null && selected?.longitude !== null) mapRef.current.flyTo([selected.latitude as number, selected.longitude as number], 15, { duration: 0.65 })
+    if (selected?.latitude == null || selected?.longitude == null) return
+    mapRef.current.flyTo([selected.latitude as number, selected.longitude as number], 15, { duration: 0.65 })
   }
 
   return (
