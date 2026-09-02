@@ -27,6 +27,10 @@ jobs:
       - name: Verify admin provisioning secrets exist
         run: |
           test -n "$DATABASE_URL"
+          case "$DATABASE_URL" in
+            mongodb://*|mongodb+srv://*) ;;
+            *) echo "DATABASE_URL must be a MongoDB connection string"; exit 1 ;;
+          esac
           test -n "$ADMIN_EMAIL"
           test -n "$SEED_ADMIN_PASSWORD"
           test "${#SEED_ADMIN_PASSWORD}" -ge 8
@@ -34,8 +38,11 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Generate Prisma client
-        run: npx prisma generate
+      - name: Prepare MongoDB Prisma schema
+        run: node scripts/prepare-mongodb-schema.mjs
+
+      - name: Generate MongoDB Prisma client
+        run: npx prisma generate --schema=prisma/mongodb-schema/schema.prisma
 
       - name: Ensure production admin
         run: npm run db:ensure-admin
