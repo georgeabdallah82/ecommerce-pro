@@ -6,10 +6,7 @@ const targetRoot = new URL('../prisma/mongodb-schema/', import.meta.url)
 await mkdir(new URL('./models/', targetRoot), { recursive: true })
 
 function convert(schema, sourceName) {
-  schema = schema.replace(
-    'provider = "postgresql"',
-    'provider = "mongodb"',
-  )
+  schema = schema.replace('provider = "postgresql"', 'provider = "mongodb"')
 
   // MongoDB/Render production runs on Debian with OpenSSL 3. Generate the
   // MongoDB Prisma client with both the local/native engine and the exact
@@ -69,12 +66,15 @@ function convert(schema, sourceName) {
     return `@relation(${normalized}, onDelete: NoAction, onUpdate: NoAction)`
   })
 
-  // LiveVisitorSession may already exist in the canonical Prisma schema (for
-  // example when the live-visitor feature is present on main). Only synthesize
-  // it for MongoDB when it is absent so the generated schema never contains a
-  // duplicate model declaration.
   if (sourceName === 'schema.prisma' && !/\bmodel\s+LiveVisitorSession\s*\{/.test(schema)) {
     schema += `\n\nmodel LiveVisitorSession {\n  id          String   @id @default(cuid()) @map("_id")\n  sessionId   String   @unique\n  userId      String?\n  path        String\n  country     String?\n  city        String?\n  region      String?\n  latitude    Float?\n  longitude   Float?\n  device      String?\n  browser     String?\n  os          String?\n  referrer    String?\n  firstSeenAt DateTime @default(now())\n  lastSeenAt  DateTime @default(now())\n  @@index([lastSeenAt])\n  @@index([userId])\n}\n`
+  }
+
+  // DeliveryTracking is intentionally MongoDB-only operational state. It is
+  // not part of the PostgreSQL source schema, so the migration system does
+  // not copy or reconcile these runtime delivery-control records.
+  if (sourceName === 'schema.prisma' && !/\bmodel\s+DeliveryTracking\s*\{/.test(schema)) {
+    schema += `\n\nmodel DeliveryTracking {\n  id                    String   @id @default(cuid()) @map("_id")\n  orderId               String   @unique\n  trackingToken         String   @unique\n  latitude              Float?\n  longitude             Float?\n  etaMinutes            Int?\n  lastLocationUpdatedAt DateTime?\n  active                Boolean  @default(false)\n  createdAt             DateTime @default(now())\n  updatedAt             DateTime @updatedAt\n  @@index([active])\n  @@index([lastLocationUpdatedAt])\n}\n`
   }
 
   console.log(`[mongodb-schema] converted ${sourceName}`)
