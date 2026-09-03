@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { getCurrentUser } from '@/lib/auth'
 import { hasPermission, type Permission } from '@/lib/permissions'
 import { redirect } from 'next/navigation'
-import AdminSidebar, { type AdminSidebarGroup } from '@/components/admin-sidebar'
+import AdminSidebarDrawer, { type AdminSidebarGroup } from '@/components/admin-sidebar-drawer'
 import AdminMobileNav from '@/components/admin-mobile-nav'
 import AdminTopbar from '@/components/admin-topbar'
 import { LogOut, Store, ShieldCheck } from 'lucide-react'
@@ -118,10 +118,7 @@ body:has(.adminShell) .input:focus, body:has(.adminShell) .textarea:focus { outl
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser()
   if (!user) redirect('/login?next=/admin')
-  const visibleGroups = groups.map(group => ({
-    ...group,
-    items: group.items.filter(item => hasPermission(user.role, item.permission as Permission)),
-  })).filter(group => group.items.length)
+  const visibleGroups = groups.map(group => ({ ...group, items: group.items.filter(item => hasPermission(user.role, item.permission as Permission)) })).filter(group => group.items.length)
 
   return <>
     <style dangerouslySetInnerHTML={{__html:adminCss}} />
@@ -129,7 +126,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <aside className="adminSide">
         <div className="adminBrand"><div className="adminBrandMark"><ShieldCheck size={20}/></div><div><div className="logo">Control Center</div><div className="muted" style={{fontSize:12}}>Store operations</div></div></div>
         <div className="pill" style={{margin:'18px 0'}}>{user.role}</div>
-        <AdminSidebar groups={visibleGroups} />
+        <AdminSidebarDrawer groups={visibleGroups} />
         <div className="adminSideBottom"><Link href="/"><Store size={16}/> View storefront</Link><form action="/api/auth/logout" method="post"><button className="sideButton" type="submit"><LogOut size={16}/> Sign out</button></form></div>
       </aside>
       <section className="adminMain"><AdminTopbar name={user.name} email={user.email}/>{children}</section>
