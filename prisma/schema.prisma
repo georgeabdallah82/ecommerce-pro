@@ -645,3 +645,19 @@ model LiveVisitorSession {
   @@index([lastSeenAt])
   @@index([userId])
 }
+
+model DeliveryTracking {
+  id                    String   @id @default(cuid())
+  orderId               String   @unique
+  trackingToken         String   @unique
+  latitude              Float?
+  longitude             Float?
+  etaMinutes            Int?
+  lastLocationUpdatedAt DateTime?
+  active                Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([active])
+  @@index([lastLocationUpdatedAt])
+}

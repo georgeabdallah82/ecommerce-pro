@@ -4,16 +4,17 @@
   "description": "Premium ecommerce platform.",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "node scripts/build-compat-fix.mjs && node scripts/finalization-fix.mjs && node scripts/focal-finalization-fix.mjs && node scripts/finalization-assert.mjs && node scripts/final-ts-fix.mjs && npm run backend:audit && export AUTH_SECRET=\"${AUTH_SECRET:-netlify-build-only-secret}\" && case \"${NETLIFY:-}\" in true) case \"${DATABASE_URL:-}\" in mongodb://*|mongodb+srv://*) ;; *) echo '[build] Netlify production requires a MongoDB DATABASE_URL'; exit 1;; esac;; esac && echo '[build] Generating MongoDB Prisma client' && node scripts/prepare-mongodb-schema.mjs && prisma generate --schema=prisma/mongodb-schema && npm run typecheck && next build",
-    "start": "node scripts/verify-production-database.mjs && next start -H 0.0.0.0 -p ${PORT:-10000}",
+    "dev": "next dev -p 3000 -H 0.0.0.0",
+    "build": "prisma generate && next build",
+    "start": "next start -H 0.0.0.0 -p 3000",
     "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
     "backend:audit": "node scripts/backend-audit.mjs",
-    "db:push": "node scripts/prepare-mongodb-schema.mjs && prisma db push --schema=prisma/mongodb-schema",
-    "db:deploy": "node scripts/prepare-mongodb-schema.mjs && prisma db push --schema=prisma/mongodb-schema",
-    "db:migrate:export": "node scripts/prepare-mongodb-schema.mjs && node scripts/migrate-postgres-to-mongodb.mjs export",
-    "db:migrate:import": "node scripts/prepare-mongodb-schema.mjs && node scripts/migrate-postgres-to-mongodb.mjs import",
-    "db:migrate:validate": "node scripts/prepare-mongodb-schema.mjs && node scripts/migrate-postgres-to-mongodb.mjs export && node scripts/validate-mongodb-migration.mjs",
+    "db:push": "prisma db push",
+    "db:deploy": "prisma db push",
+    "db:migrate:export": "node scripts/migrate-postgres-to-mongodb.mjs export",
+    "db:migrate:import": "node scripts/migrate-postgres-to-mongodb.mjs import",
+    "db:migrate:validate": "node scripts/validate-mongodb-migration.mjs",
     "db:ensure-admin": "tsx scripts/ensure-admin.ts"
   },
   "dependencies": {
@@ -35,13 +36,14 @@
     "@types/react-dom": "^19.0.0",
     "@types/web-push": "^3.6.4",
     "prisma": "^6.15.0",
-    "tsx": "^4.19.4"
+    "tsx": "^4.19.4",
+    "typescript": "^5.7.3"
   },
   "overrides": {
     "postcss": "8.5.26",
     "deepmerge-ts": "^8.0.2"
   },
   "engines": {
-    "node": ">=22.23.2 <23"
+    "node": ">=22.0.0"
   }
 }

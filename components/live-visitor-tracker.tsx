@@ -47,6 +47,7 @@ function storeConsent(value: 'granted' | 'denied') {
 }
 
 export default function LiveVisitorTracker() {
+  const [mounted, setMounted] = useState(false)
   const [consent, setConsent] = useState<string | null>(null)
   const [coordinates, setCoordinates] = useState<Coordinates | null>(null)
   const [locationError, setLocationError] = useState('')
@@ -54,6 +55,7 @@ export default function LiveVisitorTracker() {
   const watchIdRef = useRef<number | null>(null)
 
   useEffect(() => {
+    setMounted(true)
     if (!window.location.pathname.startsWith('/admin')) {
       setConsent(readConsent())
     }
@@ -143,7 +145,7 @@ export default function LiveVisitorTracker() {
     }
   }, [])
 
-  if (typeof window === 'undefined' || window.location.pathname.startsWith('/admin') || consent !== null) {
+  if (!mounted || typeof window === 'undefined' || window.location.pathname.startsWith('/admin') || consent !== null) {
     return null
   }
 
@@ -177,58 +179,46 @@ export default function LiveVisitorTracker() {
   }
 
   return (
-    <div className="lv-consent-root" role="dialog" aria-modal="true" aria-labelledby="lv-consent-title">
+    <div className="lv-consent-root" role="region" aria-label="Location preference">
       <style jsx>{`
-        .lv-consent-root{position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-end;justify-content:center;padding:24px;background:rgba(17,17,15,.34);backdrop-filter:blur(4px);animation:lv-fade .18s ease-out}
-        .lv-consent-card{width:min(460px,100%);overflow:hidden;border:1px solid rgba(232,232,227,.98);border-radius:24px;background:#fff;color:var(--ink);box-shadow:0 28px 80px rgba(0,0,0,.22);animation:lv-rise .22s ease-out}
-        .lv-consent-top{display:flex;align-items:flex-start;gap:14px;padding:22px 22px 16px}
-        .lv-consent-icon{display:grid;width:48px;height:48px;flex:0 0 48px;place-items:center;border-radius:15px;background:#f0f6ef;color:#1c6b31}
+        .lv-consent-root{position:fixed;bottom:24px;left:24px;z-index:45;pointer-events:auto;animation:lv-rise .25s ease-out}
+        .lv-consent-card{width:min(380px,calc(100vw - 32px));overflow:hidden;border:1px solid rgba(232,232,227,.98);border-radius:18px;background:#fff;color:#191512;box-shadow:0 16px 48px rgba(0,0,0,.15)}
+        .lv-consent-top{display:flex;align-items:flex-start;gap:12px;padding:16px 16px 12px}
+        .lv-consent-icon{display:grid;width:38px;height:38px;flex:0 0 38px;place-items:center;border-radius:11px;background:#f0f6ef;color:#1c6b31}
         .lv-consent-copy{min-width:0;flex:1}
-        .lv-consent-eyebrow{font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#3f6e48}
-        .lv-consent-title{margin:4px 0 0;font-size:19px;line-height:1.25;letter-spacing:-.025em}
-        .lv-consent-description{margin:7px 0 0;color:#676762;font-size:13px;line-height:1.62}
-        .lv-consent-close{display:grid;width:32px;height:32px;flex:0 0 32px;place-items:center;border:1px solid #e8e8e3;border-radius:9px;background:#fff;color:#6d6d67;cursor:pointer}
+        .lv-consent-eyebrow{font-size:9.5px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#3f6e48}
+        .lv-consent-title{margin:2px 0 0;font-size:15px;line-height:1.25;font-weight:800;letter-spacing:-.02em}
+        .lv-consent-description{margin:4px 0 0;color:#676762;font-size:12px;line-height:1.5}
+        .lv-consent-close{display:grid;width:28px;height:28px;flex:0 0 28px;place-items:center;border:1px solid #e8e8e3;border-radius:8px;background:#fff;color:#6d6d67;cursor:pointer}
         .lv-consent-close:hover{background:#f7f7f3;color:#171717}
-        .lv-consent-benefits{display:grid;gap:8px;margin:0 22px;padding:13px 14px;border:1px solid #ecece7;border-radius:14px;background:#fafaf8}
-        .lv-consent-benefit{display:flex;align-items:flex-start;gap:9px;color:#42423e;font-size:11px;line-height:1.45}
-        .lv-consent-benefit svg{flex:0 0 14px;margin-top:1px;color:#23743a}
-        .lv-consent-footer{padding:16px 22px 20px}
-        .lv-consent-note{display:flex;align-items:center;gap:7px;margin-bottom:13px;color:#777770;font-size:10px;line-height:1.45}
-        .lv-consent-note svg{flex:0 0 14px}
-        .lv-consent-actions{display:grid;grid-template-columns:1fr 1.5fr;gap:9px}
-        .lv-consent-btn{min-height:44px;border-radius:11px;padding:0 15px;border:1px solid #deded8;background:#fff;color:#343430;font-size:12px;font-weight:800;cursor:pointer}
+        .lv-consent-footer{padding:8px 16px 16px}
+        .lv-consent-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+        .lv-consent-btn{min-height:36px;border-radius:9px;padding:0 10px;border:1px solid #deded8;background:#fff;color:#343430;font-size:11.5px;font-weight:800;cursor:pointer;transition:all .15s ease}
         .lv-consent-btn:hover{background:#f7f7f3}
         .lv-consent-btn.primary{border-color:#171717;background:#171717;color:#fff}
         .lv-consent-btn.primary:hover{background:#2b2b29}
-        .lv-consent-error{margin:0 22px 14px;padding:9px 11px;border:1px solid #ffd1cd;border-radius:10px;background:#fff5f4;color:#98261b;font-size:10px;line-height:1.45}
-        @keyframes lv-fade{from{opacity:0}to{opacity:1}}
-        @keyframes lv-rise{from{transform:translateY(18px);opacity:.88}to{transform:translateY(0);opacity:1}}
-        @media(max-width:600px){.lv-consent-root{align-items:flex-end;padding:12px}.lv-consent-card{border-radius:20px}.lv-consent-top{padding:19px 18px 14px}.lv-consent-benefits{margin:0 18px}.lv-consent-footer{padding:14px 18px 18px}.lv-consent-actions{grid-template-columns:1fr}.lv-consent-btn.primary{order:-1}}
+        .lv-consent-error{margin:0 16px 8px;padding:6px 10px;border:1px solid #ffd1cd;border-radius:8px;background:#fff5f4;color:#98261b;font-size:10px}
+        @keyframes lv-rise{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
+        @media(max-width:600px){.lv-consent-root{bottom:16px;left:16px;right:16px}.lv-consent-card{width:100%}}
       `}</style>
 
       <div className="lv-consent-card">
         <div className="lv-consent-top">
-          <div className="lv-consent-icon"><MapPin size={23} /></div>
+          <div className="lv-consent-icon"><MapPin size={19} /></div>
           <div className="lv-consent-copy">
-            <div className="lv-consent-eyebrow">Optional location sharing</div>
-            <h2 id="lv-consent-title" className="lv-consent-title">Share your precise location?</h2>
-            <p className="lv-consent-description">Allow this store to use your device location for its live visitor map. You can continue shopping normally without sharing it.</p>
+            <div className="lv-consent-eyebrow">Store Live Map</div>
+            <h2 id="lv-consent-title" className="lv-consent-title">Share city for live map?</h2>
+            <p className="lv-consent-description">Optional device location for our storefront live visitor activity map.</p>
           </div>
-          <button type="button" className="lv-consent-close" onClick={declineLocation} aria-label="Continue without sharing location"><X size={16} /></button>
-        </div>
-
-        <div className="lv-consent-benefits">
-          <div className="lv-consent-benefit"><Navigation size={14} /><span>Your location can appear as a precise point on the store's live visitor map.</span></div>
-          <div className="lv-consent-benefit"><ShieldCheck size={14} /><span>Location sharing is optional. Declining does not block the website or checkout.</span></div>
+          <button type="button" className="lv-consent-close" onClick={declineLocation} aria-label="Dismiss"><X size={14} /></button>
         </div>
 
         {locationError && <div className="lv-consent-error">{locationError}</div>}
 
         <div className="lv-consent-footer">
-          <div className="lv-consent-note"><ShieldCheck size={14} /><span>Your choice is remembered on this device. Precise location is requested only after you press Allow.</span></div>
           <div className="lv-consent-actions">
-            <button type="button" className="lv-consent-btn" onClick={declineLocation}>Continue without it</button>
-            <button type="button" className="lv-consent-btn primary" onClick={allowLocation}>Allow precise location</button>
+            <button type="button" className="lv-consent-btn" onClick={declineLocation}>Not now</button>
+            <button type="button" className="lv-consent-btn primary" onClick={allowLocation}>Allow</button>
           </div>
         </div>
       </div>
