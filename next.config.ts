@@ -10,6 +10,8 @@ const securityHeaders = [
 ]
 
 const nextConfig: NextConfig = {
+  // Required for the portable Node deployment used by the replacement host.
+  output: 'standalone',
   poweredByHeader: false,
   async headers() {
     return [{ source: '/(.*)', headers: securityHeaders }]
