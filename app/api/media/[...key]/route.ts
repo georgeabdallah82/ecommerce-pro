@@ -1,7 +1,5 @@
 import { getMedia } from '@/lib/r2-media'
 
-export const runtime = 'edge'
-
 export async function GET(_req: Request, { params }: { params: Promise<{ key: string[] }> }) {
   const { key } = await params
   const objectKey = key.join('/')
