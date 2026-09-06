@@ -1,6 +1,4 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
-import { mkdir, writeFile, readFile } from 'fs/promises'
-import path from 'path'
 
 type R2Object = {
   body: ReadableStream<Uint8Array>
@@ -19,7 +17,7 @@ function safeFilename(name: string) {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
 }
 
-function getBucket(): R2Like | null {
+export function getMediaBucket(): R2Like | null {
   try {
     const { env } = getCloudflareContext()
     const bucket = (env as unknown as Record<string, unknown>).MEDIA_BUCKET
@@ -31,56 +29,36 @@ function getBucket(): R2Like | null {
   }
 }
 
-export async function storeMedia(file: File) {
+export async function storeMediaToR2(file: File) {
+  const bucket = getMediaBucket()
+  if (!bucket) throw new Error('Media storage is not configured')
+
   const filename = safeFilename(file.name)
   const key = `uploads/${filename}`
   const body = await file.arrayBuffer()
-  const bucket = getBucket()
 
-  if (bucket) {
-    await bucket.put(key, body, {
-      httpMetadata: {
-        contentType: file.type,
-        contentLength: file.size,
-        cacheControl: 'public, max-age=31536000, immutable',
-      },
-    })
-    return { key, url: `/api/media/${key}` }
-  }
+  await bucket.put(key, body, {
+    httpMetadata: {
+      contentType: file.type,
+      contentLength: file.size,
+      cacheControl: 'public, max-age=31536000, immutable',
+    },
+  })
 
-  const dir = path.join(process.cwd(), 'public', 'uploads')
-  await mkdir(dir, { recursive: true })
-  await writeFile(path.join(dir, filename), Buffer.from(body))
-  return { key, url: `/uploads/${filename}` }
+  return { key, url: `/api/media/${key}` }
 }
 
 export async function getMedia(key: string) {
-  const bucket = getBucket()
+  const bucket = getMediaBucket()
+  if (!bucket) return null
 
-  if (bucket) {
-    const object = await bucket.get(key)
-    if (!object) return null
-    return {
-      body: object.body,
-      contentType: object.httpMetadata?.contentType || 'application/octet-stream',
-      contentLength: object.size,
-      etag: object.httpEtag,
-    }
-  }
+  const object = await bucket.get(key)
+  if (!object) return null
 
-  const filename = path.basename(key)
-  if (!filename || filename !== key.replace(/^uploads\//, '')) return null
-
-  try {
-    const filePath = path.join(process.cwd(), 'public', 'uploads', filename)
-    const body = await readFile(filePath)
-    return {
-      body: new Blob([body]).stream(),
-      contentType: 'application/octet-stream',
-      contentLength: body.byteLength,
-      etag: undefined,
-    }
-  } catch {
-    return null
+  return {
+    body: object.body,
+    contentType: object.httpMetadata?.contentType || 'application/octet-stream',
+    contentLength: object.size,
+    etag: object.httpEtag,
   }
 }
