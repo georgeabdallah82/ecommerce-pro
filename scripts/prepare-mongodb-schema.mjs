@@ -36,10 +36,6 @@ function convert(schema, sourceName) {
     )
   }
 
-  // MongoDB/Prisma requires every field in a compound unique constraint to be
-  // mandatory. These PostgreSQL constraints contain nullable fields, so they
-  // are replaced with indexes for the first migration phase. Application-level
-  // uniqueness is audited separately before production cutover.
   schema = schema.replace(
     '  @@unique([productId, variantId, location])\n',
     '  @@index([productId, variantId, location])\n',
@@ -49,10 +45,6 @@ function convert(schema, sourceName) {
     '  @@index([userId, referenceId, type])\n',
   )
 
-  // Prisma emulates referential actions for MongoDB. The PostgreSQL relation
-  // graph contains multiple cycles/cascade paths. Start with explicit
-  // NoAction semantics; safe cascades will be restored selectively after the
-  // application delete/update paths have been audited.
   schema = schema.replace(/@relation\(([^\n]*)\)/g, (_match, body) => {
     if (!body.includes('fields:') || !body.includes('references:')) return _match
     const normalized = body
@@ -61,10 +53,6 @@ function convert(schema, sourceName) {
     return `@relation(${normalized}, onDelete: NoAction, onUpdate: NoAction)`
   })
 
-  // LiveVisitorSession may already exist in the canonical Prisma schema (for
-  // example when the live-visitor feature is present on main). Only synthesize
-  // it for MongoDB when it is absent so the generated schema never contains a
-  // duplicate model declaration.
   if (sourceName === 'schema.prisma' && !/\bmodel\s+LiveVisitorSession\s*\{/.test(schema)) {
     schema += `\n\nmodel LiveVisitorSession {\n  id          String   @id @default(cuid()) @map("_id")\n  sessionId   String   @unique\n  userId      String?\n  path        String\n  country     String?\n  city        String?\n  region      String?\n  latitude    Float?\n  longitude   Float?\n  device      String?\n  browser     String?\n  os          String?\n  referrer    String?\n  firstSeenAt DateTime @default(now())\n  lastSeenAt  DateTime @default(now())\n  @@index([lastSeenAt])\n  @@index([userId])\n}\n`
   }
