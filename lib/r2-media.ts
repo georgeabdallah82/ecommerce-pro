@@ -2,19 +2,29 @@ import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { mkdir, writeFile, readFile } from 'fs/promises'
 import path from 'path'
 
-const R2_BINDING = 'MEDIA_BUCKET' as const
+type R2Object = {
+  body: ReadableStream<Uint8Array>
+  size: number
+  httpEtag: string
+  httpMetadata?: { contentType?: string }
+}
+
+type R2Like = {
+  put(key: string, value: ArrayBuffer, options?: { httpMetadata?: Record<string, string | number> }): Promise<unknown>
+  get(key: string): Promise<R2Object | null>
+}
 
 function safeFilename(name: string) {
   const ext = (name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
 }
 
-async function getBucket(): Promise<R2Bucket | null> {
+function getBucket(): R2Like | null {
   try {
     const { env } = getCloudflareContext()
-    const bucket = (env as unknown as Record<string, unknown>)[R2_BINDING]
-    return bucket && typeof bucket === 'object' && typeof (bucket as R2Bucket).put === 'function'
-      ? (bucket as R2Bucket)
+    const bucket = (env as unknown as Record<string, unknown>).MEDIA_BUCKET
+    return bucket && typeof bucket === 'object' && typeof (bucket as R2Like).put === 'function'
+      ? (bucket as R2Like)
       : null
   } catch {
     return null
@@ -25,7 +35,7 @@ export async function storeMedia(file: File) {
   const filename = safeFilename(file.name)
   const key = `uploads/${filename}`
   const body = await file.arrayBuffer()
-  const bucket = await getBucket()
+  const bucket = getBucket()
 
   if (bucket) {
     await bucket.put(key, body, {
@@ -45,7 +55,8 @@ export async function storeMedia(file: File) {
 }
 
 export async function getMedia(key: string) {
-  const bucket = await getBucket()
+  const bucket = getBucket()
+
   if (bucket) {
     const object = await bucket.get(key)
     if (!object) return null
@@ -59,10 +70,16 @@ export async function getMedia(key: string) {
 
   const filename = path.basename(key)
   if (!filename || filename !== key.replace(/^uploads\//, '')) return null
+
   try {
     const filePath = path.join(process.cwd(), 'public', 'uploads', filename)
     const body = await readFile(filePath)
-    return { body: new Blob([body]).stream(), contentType: 'application/octet-stream', contentLength: body.byteLength, etag: undefined }
+    return {
+      body: new Blob([body]).stream(),
+      contentType: 'application/octet-stream',
+      contentLength: body.byteLength,
+      etag: undefined,
+    }
   } catch {
     return null
   }
