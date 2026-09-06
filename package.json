@@ -20,7 +20,8 @@
     "db:ensure-admin": "tsx scripts/ensure-admin.ts"
   },
   "dependencies": {
-    "@prisma/client": "^6.15.0",
+    "@prisma/client": "6.19.3",
+    "@prisma/extension-accelerate": "3.0.1",
     "bcryptjs": "^3.0.0",
     "jose": "^6.0.0",
     "lucide-react": "^0.468.0",
@@ -36,7 +37,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/web-push": "^3.6.4",
-    "prisma": "^6.15.0",
+    "prisma": "6.19.3",
     "tsx": "^4.19.4",
     "typescript": "^5.9.2",
     "wrangler": "^4.36.0"
