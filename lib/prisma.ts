@@ -297,7 +297,10 @@ function getMockHandler(model: string) {
       }
       if (model === 'user' && args.where?.email) {
         const existing = mockUsers.find((u) => u.email === args.where.email)
-        if (existing) { Object.assign(existing, args.update || {}); return existing }
+        if (existing) {
+          Object.assign(existing, args.update || {})
+          return existing
+        }
         const created = { id: `usr-${Date.now()}`, ...args.create }
         mockUsers.push(created)
         return created
@@ -367,8 +370,9 @@ function createResilientPrismaClient(): any {
   })
 }
 
-const prisma = globalForPrisma.prisma || createResilientPrismaClient()
-globalForPrisma.prisma = prisma
+const db: PrismaClient = (globalForPrisma.prisma ?? createResilientPrismaClient()) as PrismaClient
+globalForPrisma.prisma = db
 
-export default prisma
-export { prisma }
+export const prisma = db
+export { db }
+export default db
