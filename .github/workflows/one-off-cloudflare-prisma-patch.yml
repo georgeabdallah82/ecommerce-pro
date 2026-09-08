@@ -9,7 +9,6 @@ permissions:
 
 jobs:
   patch:
-    if: contains(github.event.head_commit.message, 'one-off Cloudflare Prisma patcher')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -41,8 +40,7 @@ jobs:
           PY
 
       - name: Verify patch
-        run: |
-          grep -n "PrismaPg\|maxUses" lib/prisma.ts
+        run: grep -n "PrismaPg\|maxUses" lib/prisma.ts
 
       - name: Commit patch
         shell: bash
