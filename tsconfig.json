@@ -15,6 +15,7 @@
     "incremental": true,
     "baseUrl": ".",
     "paths": {
+      "@/lib/prisma": ["./lib/prisma-edge"],
       "@/*": ["./*"]
     },
     "plugins": [
