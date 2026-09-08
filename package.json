@@ -7,6 +7,10 @@
     "dev": "next dev -p 3000 -H 0.0.0.0",
     "build": "prisma generate && next build",
     "start": "next start -H 0.0.0.0 -p 3000",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
     "backend:audit": "node scripts/backend-audit.mjs",
@@ -18,12 +22,15 @@
     "db:ensure-admin": "tsx scripts/ensure-admin.ts"
   },
   "dependencies": {
+    "@opennextjs/cloudflare": "^1.20.6",
     "@prisma/client": "^6.15.0",
+    "@prisma/adapter-pg": "6.15.0",
     "bcryptjs": "^3.0.0",
     "jose": "^6.0.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.468.0",
     "next": "15.5.24",
+    "pg": "^8.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "web-push": "^3.6.7",
@@ -32,12 +39,14 @@
   "devDependencies": {
     "@types/leaflet": "^1.9.20",
     "@types/node": "^22.0.0",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/web-push": "^3.6.4",
     "prisma": "^6.15.0",
     "tsx": "^4.19.4",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "wrangler": "^4.129.1"
   },
   "overrides": {
     "postcss": "8.5.26",
