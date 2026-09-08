@@ -31,6 +31,8 @@ with:
 
 To deploy it: `cd workers/release-expired-reservations && npx wrangler secret put CRON_SECRET && npx wrangler secret put SITE_URL && npx wrangler deploy`. `SITE_URL` is the production site's canonical HTTPS URL; `CRON_SECRET` must match the main app's `CRON_SECRET`. It fails loudly (throws, visible in the Worker's logs) on missing configuration, upstream non-2xx responses, or timeouts.
 
+It calls the main app through a `MAIN_APP` service binding (declared in this worker's `wrangler.jsonc`, pointing at the main app worker's `name` from the root `wrangler.jsonc`), not a plain `fetch()` to its public URL — Cloudflare blocks Worker-to-Worker fetches over `*.workers.dev` subdomains by default (surfaces as `error code: 1042` / HTTP 404), and a service binding routes directly between the two workers without hitting that restriction. If the main app worker's `name` in `wrangler.jsonc` ever changes, update the `service` value in this worker's binding to match.
+
 ## Payment integration
 
 The app keeps payment processing provider-neutral. A trusted gateway can call `POST /api/internal/payment-status` with:
