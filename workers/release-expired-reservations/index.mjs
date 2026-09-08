@@ -1,7 +1,12 @@
 // Cloudflare Worker equivalent of the old netlify/functions/release-expired-reservations.mjs
 // Scheduled Function. Cloudflare has no built-in scheduled-task support inside the main
 // opennextjs-cloudflare app worker, so this is deployed as its own small Worker with a Cron
-// Trigger (see wrangler.jsonc) that calls the app's internal cleanup endpoint over HTTPS.
+// Trigger (see wrangler.jsonc) that calls the app's internal cleanup endpoint.
+//
+// This calls the main app through the MAIN_APP service binding rather than a plain fetch() to
+// its public *.workers.dev URL. Cloudflare blocks Worker-to-Worker fetches over workers.dev
+// subdomains by default (anti-loop protection, surfaces as "error code: 1042"/HTTP 404) --
+// a service binding routes directly between the two workers and isn't subject to that.
 export default {
   async scheduled(_event, env, ctx) {
     ctx.waitUntil(releaseExpiredReservations(env))
@@ -19,7 +24,7 @@ async function releaseExpiredReservations(env) {
   const timeout = setTimeout(() => controller.abort(), 25000)
 
   try {
-    const response = await fetch(new URL('/api/internal/release-expired-reservations', siteUrl), {
+    const response = await env.MAIN_APP.fetch(new URL('/api/internal/release-expired-reservations', siteUrl), {
       method: 'GET',
       headers: {
         authorization: `Bearer ${cronSecret}`,

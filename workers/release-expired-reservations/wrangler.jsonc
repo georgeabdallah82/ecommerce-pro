@@ -8,5 +8,8 @@
   },
   "observability": {
     "enabled": true
-  }
+  },
+  "services": [
+    { "binding": "MAIN_APP", "service": "ecommerce-pro" }
+  ]
 }
