@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Bell } from 'lucide-react'
 
 function urlBase64ToUint8Array(value: string) {
   const padding = '='.repeat((4 - (value.length % 4)) % 4)
@@ -104,18 +105,39 @@ export default function OrderAlerts({ vapidPublicKey }: { vapidPublicKey?: strin
 
   if (state === 'hidden') return null
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative', zIndex: 1000, pointerEvents: 'auto' }}>
+    <div className="orderAlertsWrap">
       <button
         type="button"
+        className="orderAlertsBtn"
         onClick={enable}
         disabled={busy || state === 'enabled'}
         title={state === 'enabled' ? 'Order alerts are enabled on this device' : 'Enable new-order notifications on this device'}
-        style={{ position: 'relative', zIndex: 1001, pointerEvents: 'auto', touchAction: 'manipulation', marginLeft: 10, border: '1px solid #eaded4', background: state === 'enabled' ? '#f2fdf7' : '#fff', borderRadius: 999, padding: '7px 11px', fontSize: 12, fontWeight: 700, cursor: state === 'enabled' ? 'default' : 'pointer' }}
+        data-enabled={state === 'enabled' ? 'true' : 'false'}
       >
-        {busy ? 'Working…' : state === 'enabled' ? '🔔 Order alerts on' : '🔔 Enable order alerts'}
+        <Bell size={14} />
+        <span>{busy ? 'Working…' : state === 'enabled' ? 'Order alerts on' : 'Enable order alerts'}</span>
       </button>
-      {state === 'enabled' && <button type="button" onClick={test} disabled={busy} style={{ position: 'relative', zIndex: 1001, pointerEvents: 'auto', touchAction: 'manipulation', border: '1px solid #eaded4', background: '#fff', borderRadius: 999, padding: '7px 11px', fontSize: 12, fontWeight: 700, cursor: busy ? 'default' : 'pointer' }}>Test alert</button>}
-      {message && <span className="muted" style={{ fontSize: 11, maxWidth: 220 }}>{message}</span>}
+      {state === 'enabled' && <button type="button" className="orderAlertsTest" onClick={test} disabled={busy}>Test alert</button>}
+      {message && <span className="orderAlertsMsg muted">{message}</span>}
+      <style jsx>{`
+        .orderAlertsWrap{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;position:relative;z-index:1000}
+        .orderAlertsBtn{display:flex;align-items:center;gap:6px;position:relative;z-index:1001;pointer-events:auto;touch-action:manipulation;border:1px solid #eaded4;background:#fff;border-radius:999px;padding:0 11px;height:38px;font-size:12px;font-weight:700;color:#5d5d57;cursor:pointer;white-space:nowrap}
+        .orderAlertsBtn[data-enabled='true']{background:#f2fdf7}
+        .orderAlertsBtn:disabled{cursor:default}
+        .orderAlertsTest{position:relative;z-index:1001;pointer-events:auto;touch-action:manipulation;border:1px solid #eaded4;background:#fff;border-radius:999px;padding:0 11px;height:38px;font-size:12px;font-weight:700;color:#5d5d57;cursor:pointer;white-space:nowrap}
+        .orderAlertsMsg{font-size:11px;max-width:220px;flex-basis:100%;text-align:right}
+        @media(max-width:1100px){
+          .orderAlertsTest{display:none}
+          .orderAlertsBtn{width:38px;height:38px;padding:0;justify-content:center;border-radius:10px}
+          .orderAlertsBtn span{display:none}
+        }
+        @media(max-width:560px){
+          .orderAlertsBtn{width:36px;height:36px}
+        }
+        html[data-admin-theme='dark'] .orderAlertsBtn,
+        html[data-admin-theme='dark'] .orderAlertsTest{background:#1f2320;border-color:#343b36;color:#e6ebe7}
+        html[data-admin-theme='dark'] .orderAlertsBtn[data-enabled='true']{background:#173524}
+      `}</style>
     </div>
   )
 }
