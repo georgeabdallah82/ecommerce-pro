@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'node:crypto'
 import { db } from '@/lib/prisma'
 import { consumeRateLimit } from '@/lib/rate-limit'
+import { clientIp } from '@/lib/request-ip'
 
 const WINDOW_MS = 60 * 60 * 1000
 const MAX_PER_IP = 5
 const MAX_PER_EMAIL = 3
 
 export async function POST(request: NextRequest) {
-  const ip = request.headers.get('x-real-ip')?.trim() || 'unknown'
+  const ip = clientIp(request.headers)
   const ipLimit = consumeRateLimit(`password-recovery:ip:${ip}`, MAX_PER_IP, WINDOW_MS)
   const headers = { 'Cache-Control': 'private, no-store' }
   if (!ipLimit.allowed) {

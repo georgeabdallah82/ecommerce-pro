@@ -1,6 +1,7 @@
 import dns from 'node:dns/promises'
 import { NextResponse } from 'next/server'
 import { consumeRateLimit } from '@/lib/rate-limit'
+import { clientIp } from '@/lib/request-ip'
 
 const NO_STORE = { 'Cache-Control': 'no-store' }
 
@@ -18,10 +19,6 @@ function blockedAddress(address:string){
   if(blockedHost(normalized)) return true
   if(normalized.startsWith('::ffff:')) return blockedAddress(normalized.slice(7))
   return false
-}
-
-function clientIp(req: Request) {
-  return req.headers.get('x-real-ip')?.trim() || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
 }
 
 async function assertPublicHostname(hostname:string){
@@ -74,7 +71,7 @@ async function fetchSafeImage(initial:string){
 
 export async function GET(req:Request){
   try{
-    const limit=consumeRateLimit(`image-proxy:${clientIp(req)}`,30,60*1000)
+    const limit=consumeRateLimit(`image-proxy:${clientIp(req.headers)}`,30,60*1000)
     if(!limit.allowed) return new NextResponse('Too many image requests',{status:429,headers:{...NO_STORE,'Retry-After':String(limit.retryAfterSeconds)}})
 
     const raw=new URL(req.url).searchParams.get('url')||''

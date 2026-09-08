@@ -2,11 +2,8 @@ import { db } from '@/lib/prisma'
 import { audit } from '@/lib/audit'
 import { releaseOrderReservations } from '@/lib/inventory'
 import { consumeRateLimit } from '@/lib/rate-limit'
+import { clientIp } from '@/lib/request-ip'
 import { areebaMpgsPaymentProvider, areebaWebhookToken, safeTokenEqual } from '@/lib/payments'
-
-function clientIp(req: Request) {
-  return req.headers.get('x-real-ip')?.trim() || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-}
 
 function parseCoinsUsed(rawJson: string | null) {
   if (!rawJson) return 0
@@ -105,7 +102,7 @@ async function processPaymentNotification(orderNumber: string, body: Record<stri
 
 export async function POST(req: Request) {
   try {
-    const limit = consumeRateLimit(`areeba-webhook:${clientIp(req)}`, 60, 60 * 1000)
+    const limit = consumeRateLimit(`areeba-webhook:${clientIp(req.headers)}`, 60, 60 * 1000)
     if (!limit.allowed) return Response.json({ error: 'Too many webhook requests' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds), 'Cache-Control': 'no-store' } })
     const url = new URL(req.url)
     if (!safeTokenEqual(url.searchParams.get('token')?.trim() || '', areebaWebhookToken())) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: { 'Cache-Control': 'no-store' } })

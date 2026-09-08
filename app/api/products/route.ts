@@ -1,5 +1,6 @@
 import { db } from '@/lib/prisma'
 import { consumeRateLimit } from '@/lib/rate-limit'
+import { clientIp } from '@/lib/request-ip'
 import { json } from '@/lib/utils'
 
 const publicProductSelect = {
@@ -58,17 +59,13 @@ const publicProductSelect = {
   },
 } as const
 
-function clientIp(req: Request) {
-  return req.headers.get('x-real-ip')?.trim() || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-}
-
 async function findPublicProduct(where: Record<string, unknown>) {
   return db.product.findFirst({ where: { ...where, status: 'ACTIVE' }, select: publicProductSelect })
 }
 
 export async function GET(req: Request) {
   try {
-    const limit = consumeRateLimit(`products:${clientIp(req)}`, 120, 60 * 1000)
+    const limit = consumeRateLimit(`products:${clientIp(req.headers)}`, 120, 60 * 1000)
     if (!limit.allowed) return json({ error: 'Too many product requests. Please try again later.' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } })
 
     const searchParams = new URL(req.url).searchParams

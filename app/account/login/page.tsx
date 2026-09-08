@@ -4,6 +4,7 @@ import { login } from './server'
 export default async function Login({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const params = await searchParams
   const invalid = params.error === 'invalid'
+  const rateLimited = params.error === 'rate-limited'
 
   return (
     <main className="section">
@@ -12,6 +13,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
         <h1 className="h2" style={{ fontSize: 46, marginTop: 10 }}>Sign in</h1>
         <p className="muted">Access your account and, for authorized staff, the Control Center.</p>
         {invalid && <div className="alert danger" style={{ marginTop: 18 }}>Invalid email or password. Please try again.</div>}
+        {rateLimited && <div className="alert danger" style={{ marginTop: 18 }}>Too many sign-in attempts. Please wait a few minutes and try again.</div>}
         <form action={login} className="card" style={{ padding: 24, marginTop: 20 }}>
           <label className="fieldLabel" htmlFor="email">Email</label>
           <input className="input" id="email" name="email" type="email" autoComplete="email" placeholder="you@example.com" required />
