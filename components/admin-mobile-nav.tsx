@@ -21,7 +21,7 @@ export default function AdminMobileNav({ groups }: { groups: AdminSidebarGroup[]
     const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false) }
     window.addEventListener('keydown', onKey)
     if (focusSearch) {
-      const timer = window.setTimeout(() => document.getElementById('admin-nav-search')?.focus(), 120)
+      const timer = window.setTimeout(() => document.getElementById('admin-nav-search-mobile')?.focus(), 120)
       setFocusSearch(false)
       return () => { window.clearTimeout(timer); document.body.style.overflow = previous; window.removeEventListener('keydown', onKey) }
     }

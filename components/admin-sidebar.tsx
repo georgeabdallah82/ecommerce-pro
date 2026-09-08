@@ -246,9 +246,9 @@ export default function AdminSidebar({ groups }: { groups: AdminSidebarGroup[] }
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault()
-        document.getElementById('admin-nav-search')?.focus()
+        document.getElementById('admin-nav-search-mobile')?.focus()
       }
-      if (event.key === 'Escape' && document.activeElement?.id === 'admin-nav-search') {
+      if (event.key === 'Escape' && document.activeElement?.id === 'admin-nav-search-mobile') {
         setQuery(''); (document.activeElement as HTMLElement).blur()
       }
     }
@@ -269,7 +269,7 @@ export default function AdminSidebar({ groups }: { groups: AdminSidebarGroup[] }
     <nav className="adminNavTree" aria-label="Admin navigation">
       <div className="adminNavSearchWrap">
         <Search size={15} aria-hidden="true" />
-        <input id="admin-nav-search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search admin…" aria-label="Search admin navigation" />
+        <input id="admin-nav-search-mobile" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search admin…" aria-label="Search admin navigation" />
         <kbd>⌘K</kbd>
       </div>
       {normalizedQuery && <div className="adminNavSearchMeta">{visibleGroups.reduce((n, g) => n + g.items.length, 0)} matches</div>}
