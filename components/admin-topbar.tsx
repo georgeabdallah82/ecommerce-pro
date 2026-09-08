@@ -4,6 +4,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ChevronRight, ExternalLink, Home, Search } from 'lucide-react'
 import AdminThemeToggle from '@/components/admin-theme-toggle'
+import OrderAlerts from '@/components/order-alerts'
+import AdminMobileNav from '@/components/admin-mobile-nav'
+import type { AdminSidebarGroup } from '@/components/admin-sidebar-drawer'
 
 const labels: Array<[string, string]> = [
   ['/admin', 'Dashboard'], ['/admin/orders', 'Orders'], ['/admin/products', 'Products'], ['/admin/inventory', 'Inventory'], ['/admin/operations', 'Operations'],
@@ -19,7 +22,7 @@ function currentLabel(pathname: string) {
   return parent?.[1] || 'Control Center'
 }
 
-export default function AdminTopbar({ name, email }: { name: string | null; email: string }) {
+export default function AdminTopbar({ name, email, vapidPublicKey, groups }: { name: string | null; email: string; vapidPublicKey?: string; groups: AdminSidebarGroup[] }) {
   const pathname = usePathname()
   const title = currentLabel(pathname)
   const requestAdminSearch = () => {
@@ -29,6 +32,7 @@ export default function AdminTopbar({ name, email }: { name: string | null; emai
 
   return (
     <header className="adminWorkspaceTopbar">
+      <AdminMobileNav groups={groups} />
       <div className="adminWorkspaceTitle">
         <div className="adminBreadcrumbs"><Link href="/admin" className="adminBreadcrumbHome" aria-label="Dashboard"><Home size={13} /></Link><ChevronRight size={13} aria-hidden="true" /><span>Control Center</span><ChevronRight size={13} aria-hidden="true" /><strong>{title}</strong></div>
         <h1>{title}</h1>
@@ -36,6 +40,7 @@ export default function AdminTopbar({ name, email }: { name: string | null; emai
       <div className="adminWorkspaceActions">
         <button type="button" className="adminTopSearch" onClick={requestAdminSearch} title="Search admin navigation"><Search size={15} /><span>Search</span><kbd>Ctrl K</kbd></button>
         <Link href="/" className="adminTopIconLink" title="Open storefront" aria-label="Open storefront"><ExternalLink size={16} /></Link>
+        <OrderAlerts vapidPublicKey={vapidPublicKey} />
         <div className="adminTopTheme"><AdminThemeToggle /></div>
         <div className="adminTopAccount"><div className="adminTopAvatar">{(name || email || 'A').slice(0, 1).toUpperCase()}</div><div className="adminTopAccountText"><strong>{name || 'Administrator'}</strong><span>{email}</span></div></div>
       </div>
