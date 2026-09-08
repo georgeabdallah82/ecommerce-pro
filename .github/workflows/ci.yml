@@ -23,12 +23,11 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      # The application uses the primary PostgreSQL Prisma schema. MongoDB
-      # migration validation has its own dedicated workflows and must not be
-      # mixed into the normal application build, because prepare-mongodb-schema
-      # creates duplicate Prisma models alongside prisma/schema.prisma.
-      - name: Prisma generate (application schema)
-        run: npx prisma generate
+      - name: Prepare MongoDB Prisma schema
+        run: node scripts/prepare-mongodb-schema.mjs
+
+      - name: Prisma generate (production MongoDB schema)
+        run: ./node_modules/.bin/prisma generate --schema=prisma/mongodb-schema
 
       - name: Typecheck
         run: npm run typecheck
@@ -65,7 +64,7 @@ jobs:
         env:
           AUTH_SECRET: ci-build-only-secret-do-not-use-in-production
           NETLIFY: true
-          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci-build
+          DATABASE_URL: mongodb://127.0.0.1:27017/ci-build
         run: npm run build
 
       - name: Enforce dependency audit result
