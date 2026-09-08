@@ -24,8 +24,8 @@
   },
   "dependencies": {
     "@opennextjs/cloudflare": "^1.20.6",
-    "@prisma/client": "^6.15.0",
-    "@prisma/adapter-pg": "6.15.0",
+    "@prisma/client": "^6.19.3",
+    "@prisma/adapter-pg": "^6.19.3",
     "bcryptjs": "^3.0.0",
     "jose": "^6.0.0",
     "leaflet": "^1.9.4",
@@ -44,7 +44,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/web-push": "^3.6.4",
-    "prisma": "^6.15.0",
+    "prisma": "^6.19.3",
     "tsx": "^4.19.4",
     "typescript": "^5.7.3",
     "wrangler": "^4.129.1"
