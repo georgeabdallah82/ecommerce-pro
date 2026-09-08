@@ -36,7 +36,7 @@ jobs:
           if (!url.pathname || url.pathname === '/') url.pathname = '/ecommerce_staging'
           require('node:fs').appendFileSync(process.env.GITHUB_ENV, `NORMALIZED_TARGET_DATABASE_URL=${url.toString()}\n`)
           NODE
-      - run: npm ci --no-audit --no-fund
+      - run: npm install --no-audit --no-fund
       - name: Prepare MongoDB schema
         run: node scripts/prepare-mongodb-schema.mjs
       - name: Push MongoDB schema

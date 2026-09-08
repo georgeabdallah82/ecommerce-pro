@@ -26,7 +26,7 @@ jobs:
             sleep 2
           done
           docker exec mongodb-staging mongosh --quiet --eval "rs.status().members[0].stateStr" | grep -q PRIMARY
-      - run: npm ci --no-audit --no-fund
+      - run: npm install --no-audit --no-fund
       - name: Prepare MongoDB Prisma schema
         run: node scripts/prepare-mongodb-schema.mjs
       - name: Prisma generate
