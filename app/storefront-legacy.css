@@ -1,0 +1,3344 @@
+/* ===== focal-store.css ===== */
+:root{--focal-primary:#ff5a1f;--focal-ink:#191512;--focal-muted:#746b64;--focal-line:#eaded4;--focal-bg:#fffaf6;--focal-surface:#fff;--focal-soft:#fff0e8}
+.focalStorefront{background:var(--focal-bg);color:var(--focal-ink)}
+.focalStorefront,.focalStorefront *{box-sizing:border-box}
+.focalContainer{width:min(1200px,calc(100% - 48px));margin:0 auto}.focalSection{position:relative;padding:72px 0;transition:box-shadow .18s ease,outline-color .18s ease}.focalSection.contained{padding-left:24px;padding-right:24px}.focalSection.isSelected{outline:2px solid color-mix(in srgb,var(--focal-primary) 45%,transparent);outline-offset:-2px}.focalSection h1,.focalSection h2,.focalSection h3,.focalSection p{margin-top:0}.focalSectionHead{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:28px}.focalSectionHead h2{font-size:clamp(30px,4vw,48px);line-height:1;letter-spacing:-.04em;margin:8px 0}.focalSectionHead p{margin:0;color:var(--focal-muted);max-width:650px;line-height:1.6}.focalEyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--focal-muted)}.focalTextLink{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:800}.focalButton{display:inline-flex;justify-content:center;align-items:center;gap:8px;min-height:48px;padding:0 18px;border-radius:12px;font-weight:800;border:1px solid var(--focal-primary);transition:transform .18s ease,box-shadow .18s ease,background .18s ease}.focalButton:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(25,21,18,.12)}.focalButton.primary{background:var(--focal-primary);color:#fff}.focalButton.secondary{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.45)}.focalButton.wide{width:100%}
+.focalAnnouncement{background:var(--focal-primary);color:#fff}.focalAnnouncementInner{min-height:40px;display:flex;align-items:center;justify-content:center;gap:14px;font-size:13px;font-weight:800}.focalAnnouncementInner a{text-decoration:underline;text-underline-offset:3px}
+.focalHero{position:relative;overflow:hidden;min-height:640px;background:#201914}.focalHeroImage{position:absolute;inset:0;width:100%;height:100%;display:block}.focalHeroOverlay{position:absolute;inset:0}.focalHeroContent{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:clamp(34px,7vw,92px);z-index:2;color:#fff;max-width:780px}.focalHeroContent.pos-center{align-items:center;text-align:center}.focalHeroContent.pos-top-left,.focalHeroContent.pos-top-center,.focalHeroContent.pos-top-right{justify-content:flex-start}.focalHeroContent.pos-bottom-left,.focalHeroContent.pos-bottom-center,.focalHeroContent.pos-bottom-right{justify-content:flex-end}.focalHeroContent.pos-top-center,.focalHeroContent.pos-bottom-center{align-items:center;text-align:center}.focalHeroContent.pos-top-right,.focalHeroContent.pos-center-right,.focalHeroContent.pos-bottom-right{align-items:flex-end;text-align:right;margin-left:auto}.focalHeroContent.boxed{padding:38px;max-width:650px}.focalHeroContent.boxed:before{content:'';position:absolute;inset:auto auto 50px 50px;width:min(600px,calc(100% - 100px));height:calc(100% - 100px);background:rgba(0,0,0,.22);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.12);border-radius:24px;z-index:-1}.focalPill{display:inline-flex;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.3);font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:800;margin-bottom:20px}.focalHeroContent h1{font-size:clamp(44px,7vw,92px);line-height:.92;letter-spacing:-.06em;max-width:900px;margin-bottom:22px}.focalHeroContent p{font-size:18px;line-height:1.6;max-width:660px;color:rgba(255,255,255,.83);margin-bottom:28px}.focalButtons{display:flex;gap:10px;flex-wrap:wrap}
+.focalSlideshow{overflow:hidden}.focalSlide{position:relative;min-height:560px;display:flex;align-items:flex-end;background:#241d18;overflow:hidden}.focalSlide>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.focalSlideShade{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.68),rgba(0,0,0,.05) 70%)}.focalSlideCopy{position:relative;z-index:2;color:#fff;padding:72px;max-width:760px}.focalSlideCopy h2{font-size:clamp(38px,6vw,76px);line-height:.95;letter-spacing:-.05em;margin:10px 0}.focalSlideCopy p{font-size:17px;line-height:1.6;color:rgba(255,255,255,.82);max-width:620px}.focalSlideDots{position:absolute;right:30px;bottom:28px;z-index:3;display:flex;gap:6px}.focalSlideDots span{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.35)}.focalSlideDots span.active{background:#fff}
+.focalProductGrid{display:grid;gap:18px}.focalProductCard{display:block}.focalProductMedia{position:relative;overflow:hidden;background:#f4efe9;border-radius:16px}.focalProductMedia img{display:block;width:100%;aspect-ratio:1/1.15;object-fit:cover;transition:transform .35s ease}.focalProductCard:hover .focalProductMedia img{transform:scale(1.035)}.focalBadge{position:absolute;top:12px;left:12px;background:#fff;border-radius:999px;padding:6px 9px;font-size:10px;font-weight:900;z-index:2}.focalQuick{position:absolute;left:12px;right:12px;bottom:12px;padding:10px 12px;border-radius:11px;background:rgba(255,255,255,.95);transform:translateY(14px);opacity:0;transition:.2s;font-size:11px;font-weight:900;text-align:center}.focalProductCard:hover .focalQuick{transform:none;opacity:1}.focalProductBody{padding:14px 2px}.focalProductBody h3{font-size:17px;letter-spacing:-.02em;margin:5px 0 7px}.focalPrice{display:flex;gap:8px;align-items:center;font-size:14px}.focalPrice del{color:var(--focal-muted)}
+.focalCollectionGrid{display:grid;gap:18px}.focalCollectionCard{display:block}.focalCollectionMedia{border-radius:16px;overflow:hidden;background:#f4efe9;aspect-ratio:1.2}.focalCollectionMedia img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s ease}.focalCollectionCard:hover img{transform:scale(1.035)}.focalCollectionCopy{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:13px 2px}.focalCollectionCopy h3{font-size:18px;letter-spacing:-.02em;margin:0}.focalCollectionCopy span{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:800}
+.focalImageText{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}.focalImageText.image-left .focalImageTextMedia{order:0}.focalImageText.image-left .focalImageTextCopy{order:1}.focalImageText.image-right .focalImageTextMedia{order:1}.focalImageText.image-right .focalImageTextCopy{order:0}.focalImageTextMedia{overflow:hidden;border-radius:22px;background:#f1ece7;min-height:520px}.focalImageTextMedia img{width:100%;height:100%;min-height:520px;object-fit:cover;display:block}.focalImageTextCopy h2{font-size:clamp(34px,4vw,58px);line-height:1;letter-spacing:-.05em;margin:10px 0 18px}.focalImageTextCopy p{font-size:17px;line-height:1.7;color:var(--focal-muted);max-width:560px}
+.focalVideo{display:grid;grid-template-columns:1.2fr .8fr;gap:38px;align-items:center}.focalVideoMedia{position:relative;min-height:480px;border-radius:22px;background:#2a221d center/cover no-repeat;display:grid;place-items:center;overflow:hidden}.focalPlay{width:72px;height:72px;border-radius:50%;background:#fff;color:var(--focal-ink);display:grid;place-items:center;box-shadow:0 16px 50px rgba(0,0,0,.25)}.focalVideoCopy h2{font-size:clamp(36px,4vw,58px);line-height:1;letter-spacing:-.05em;margin:10px 0}.focalVideoCopy p{font-size:17px;line-height:1.7;color:var(--focal-muted)}
+.focalColumns{display:grid;gap:18px}.focalColumns article{padding:28px;border:1px solid var(--focal-line);border-radius:18px;background:#fff}.focalColumnIcon{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:var(--focal-soft);color:var(--focal-primary);font-weight:900}.focalColumns article h3{font-size:18px;margin:16px 0 7px}.focalColumns article p,.focalQuote span{margin:0;color:var(--focal-muted);line-height:1.6}.focalQuote p{font-size:18px;line-height:1.6}.focalQuote{display:grid;gap:10px}.focalStars{display:flex;gap:2px;color:var(--focal-primary)}.focalLogoStrip{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}.focalLogo{min-height:80px;border:1px solid var(--focal-line);border-radius:14px;background:#fff;display:grid;place-items:center;color:var(--focal-muted);font-size:13px;font-weight:800}.focalLogo img{max-width:80%;max-height:36px;object-fit:contain}.focalFaq{display:grid;grid-template-columns:.7fr 1.3fr;gap:50px}.focalFaq h2{font-size:clamp(34px,4vw,58px);line-height:1;letter-spacing:-.05em;margin:10px 0}.focalFaqList details{border-top:1px solid var(--focal-line);padding:16px 0}.focalFaqList details:last-child{border-bottom:1px solid var(--focal-line)}.focalFaqList summary{list-style:none;display:flex;justify-content:space-between;gap:18px;font-weight:800;cursor:pointer}.focalFaqList summary::-webkit-details-marker{display:none}.focalFaqList p{color:var(--focal-muted);line-height:1.6;padding-top:10px}.focalRich{max-width:850px}.focalRich h2{font-size:clamp(38px,4vw,64px);line-height:1;letter-spacing:-.05em;margin:10px 0 18px}.focalRich p{font-size:18px;line-height:1.7;color:var(--focal-muted)}.focalNewsletter{padding:44px;border-radius:22px;display:grid;grid-template-columns:1fr .8fr;gap:36px;align-items:center}.focalNewsletter.primary{background:var(--focal-primary);color:#fff}.focalNewsletter.primary .focalEyebrow,.focalNewsletter.primary p{color:rgba(255,255,255,.75)}.focalNewsletter h2{font-size:clamp(34px,4vw,52px);line-height:1;letter-spacing:-.04em;margin:10px 0}.focalNewsletter p{line-height:1.6;color:var(--focal-muted)}.focalNewsletterForm{display:grid;grid-template-columns:1fr auto;gap:8px}.focalNewsletterForm input{height:50px;border:1px solid rgba(255,255,255,.28);background:#fff;border-radius:11px;padding:0 14px;outline:none}.focalProductDetail{display:grid;grid-template-columns:1.1fr .9fr;gap:60px;align-items:start}.focalProductGallery{display:grid;grid-template-columns:1fr 1fr;gap:10px}.focalProductGallery img{display:block;width:100%;aspect-ratio:1;object-fit:cover;border-radius:16px;background:#f3eee9}.focalProductInfo{position:sticky;top:110px}.focalProductInfo h1{font-size:clamp(38px,5vw,66px);line-height:.96;letter-spacing:-.05em;margin:8px 0 16px}.focalProductInfo>p{font-size:17px;line-height:1.7;color:var(--focal-muted)}.focalRating{color:var(--focal-primary);font-weight:900;display:flex;gap:8px;align-items:center}.focalRating span{font-size:12px;color:var(--focal-muted);font-weight:600}.focalPrice.big{font-size:28px;margin:20px 0}.focalPrice.big del{margin-left:10px;color:var(--focal-muted);font-size:18px}.focalPurchaseNote{font-size:11px;color:var(--focal-muted);margin-bottom:12px}.focalAccordions{margin-top:18px}.focalAccordions details{border-top:1px solid var(--focal-line);padding:14px 0}.focalAccordions summary{font-weight:800;cursor:pointer}.focalAccordions p{color:var(--focal-muted);line-height:1.6}
+@media(max-width:1000px){.focalProductGrid{grid-template-columns:repeat(3,minmax(0,1fr))}.focalCollectionGrid{grid-template-columns:repeat(3,minmax(0,1fr))}.focalImageText,.focalVideo,.focalProductDetail,.focalFaq,.focalNewsletter{grid-template-columns:1fr}.focalProductInfo{position:static}.focalLogoStrip{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:700px){.focalContainer{width:min(100% - 24px,1200px)}.focalSection{padding:48px 0}.focalHero{min-height:560px}.focalHeroContent{padding:28px}.focalHeroContent h1{font-size:50px}.focalSlideCopy{padding:34px}.focalProductGrid,.focalCollectionGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.focalImageTextMedia,.focalImageTextMedia img{min-height:360px}.focalNewsletter{padding:28px}.focalNewsletterForm{grid-template-columns:1fr}.focalLogoStrip{grid-template-columns:repeat(2,1fr)}.focalProductGallery{grid-template-columns:1fr}.focalProductInfo h1{font-size:46px}}
+
+/* ===== focal-store-v2.css ===== */
+:root{--focal-primary:#ff5a1f;--focal-ink:#191512;--focal-muted:#746b64;--focal-line:#eaded4;--focal-bg:#fffaf6;--focal-surface:#fff;--focal-soft:#fff0e8}.focalSection.announcementSection{padding:0!important}.focalSection.heroSection{padding:0!important}.focalHeroMedia{position:absolute;inset:0;display:block}.focalHeroPlaceholder{position:absolute;inset:0;background:linear-gradient(135deg,#efe6df,#cbb8a8)}.focalHero{isolation:isolate}.focalProductActions{position:absolute;left:12px;right:12px;bottom:12px;display:flex;justify-content:flex-end;gap:7px;opacity:0;transform:translateY(10px);transition:.2s;z-index:4}.focalProductCard:hover .focalProductActions{opacity:1;transform:none}.focalProductActions button,.focalQuickClose,.focalWishlist{width:38px;height:38px;border:1px solid var(--focal-line);border-radius:11px;background:rgba(255,255,255,.96);display:grid;place-items:center;cursor:pointer;color:var(--focal-ink)}.focalProductActions button:hover,.focalWishlist:hover{background:var(--focal-primary);border-color:var(--focal-primary);color:#fff}.focalCollectionHero{display:grid;grid-template-columns:1fr .8fr;gap:48px;align-items:center}.focalCollectionHeroCopy h2{font-size:clamp(42px,6vw,82px);line-height:.94;letter-spacing:-.06em;margin:10px 0 18px}.focalCollectionHeroCopy p{font-size:18px;line-height:1.7;color:var(--focal-muted);max-width:650px}.focalCollectionHeroImage{border-radius:22px;overflow:hidden;background:#f1ebe6;min-height:360px}.focalCollectionHeroImage img{display:block;width:100%;height:100%;min-height:360px;object-fit:cover}.focalCollectionToolbar{display:flex;justify-content:flex-end;gap:8px;margin:-6px 0 20px}.focalToolbarSearch{min-width:240px;display:flex;align-items:center;gap:7px;border:1px solid var(--focal-line);border-radius:10px;background:#fff;height:40px;padding:0 11px}.focalToolbarSearch input{border:0;outline:0;background:transparent;min-width:0;flex:1}.focalCollectionToolbar select{height:40px;border:1px solid var(--focal-line);border-radius:10px;background:#fff;padding:0 10px}.focalResultCount{font-size:12px;color:var(--focal-muted)}.focalQuickView{width:min(920px,calc(100% - 24px));max-height:88vh;overflow:auto;background:#fff;border-radius:22px;display:grid;grid-template-columns:1fr .9fr;position:relative;box-shadow:0 30px 100px rgba(0,0,0,.25)}.focalQuickClose{position:absolute;right:14px;top:14px;z-index:5}.focalQuickImage{background:#f3eee9;min-height:480px}.focalQuickImage img{display:block;width:100%;height:100%;min-height:480px;object-fit:cover}.focalQuickInfo{padding:40px;display:flex;flex-direction:column;justify-content:center;gap:14px}.focalQuickInfo h2{font-size:42px;line-height:1;letter-spacing:-.05em;margin:0}.focalQuickInfo p{color:var(--focal-muted);line-height:1.7}.focalQty{display:inline-flex;align-items:center;gap:10px;width:max-content;border:1px solid var(--focal-line);border-radius:10px;padding:4px}.focalQty button{width:32px;height:32px;border:0;background:#fff;border-radius:7px;display:grid;place-items:center;cursor:pointer}.focalQty span{min-width:22px;text-align:center;font-weight:800}.focalVariantList{display:flex;flex-wrap:wrap;gap:7px}.focalVariantList button{border:1px solid var(--focal-line);background:#fff;border-radius:9px;padding:9px 11px;cursor:pointer}.focalVariantList button.selected{border-color:var(--focal-primary);box-shadow:0 0 0 1px var(--focal-primary) inset;color:var(--focal-primary)}.focalQuickInfo .focalPrice.big{font-size:28px;margin:2px 0}.focalQuickInfo .focalButton{margin-top:2px}.focalOptionLabel{font-size:11px;font-weight:800;margin-bottom:6px}.focalProductOptions{margin:12px 0}.focalStock{display:flex;align-items:center;gap:7px;color:#176b35;font-size:12px;font-weight:800;margin:8px 0}.focalStockDot{width:8px;height:8px;border-radius:50%;background:#22a06b}.focalPurchaseRow{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center}.focalTrustGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:12px;border:1px solid var(--focal-line);border-radius:12px;background:#fffaf6;font-size:11px;font-weight:800;color:#5f554e}.focalAccordions summary{display:flex;align-items:center;justify-content:space-between;gap:8px}.focalPromoGrid{display:grid;gap:18px}.focalPromoCard{display:block}.focalPromoMedia{aspect-ratio:1.15;border-radius:18px;overflow:hidden;background:linear-gradient(135deg,#f0e9e3,#cfc0b4) center/cover;position:relative;display:flex;align-items:flex-end;padding:15px}.focalPromoMedia span{display:inline-flex;align-items:center;gap:5px;background:#fff;padding:8px 11px;border-radius:9px;font-size:11px;font-weight:800}.focalPromoCard h3{margin:12px 2px 5px;font-size:18px}.focalPromoCard p{margin:0 2px;color:var(--focal-muted);line-height:1.55;font-size:13px}.focalHero .focalHeroContent{z-index:3}.focalSection.isSelected{outline-color:rgba(255,90,31,.8)}.focalSectionHead .focalTextLink{white-space:nowrap}.focalModal{z-index:9990}.focalStorefront{overflow:clip}.focalAnnouncementInner{padding:0 16px}.focalSection a{position:relative}.focalSection .focalButton{position:relative}.focalFooter{background:#15120f!important;color:#fff;border-top:0}.focalFooter .muted{color:rgba(255,255,255,.62)}.focalFooter a:hover{color:#fff}.focalFooter .footerGrid{padding-top:16px}.focalFooter .logo{color:#fff}.focalFooter p{line-height:1.6}.focalType-hero .focalHeroOverlay{display:none!important}.focalType-hero .focalHeroContent{display:none!important}.focalType-hero .focalHeroImage{opacity:1!important;filter:none!important}@media(max-width:900px){.focalCollectionHero,.focalQuickView{grid-template-columns:1fr}.focalCollectionHeroImage{min-height:280px}.focalQuickImage,.focalQuickImage img{min-height:330px}.focalQuickInfo{padding:28px}.focalCollectionToolbar{justify-content:stretch;flex-wrap:wrap}.focalToolbarSearch{flex:1;min-width:180px}.focalPurchaseRow{grid-template-columns:auto 1fr}.focalWishlist{grid-column:2;justify-self:end}.focalTrustGrid{grid-template-columns:1fr}}@media(max-width:600px){.focalCollectionToolbar select{flex:1;min-width:0}.focalQuickView{width:calc(100% - 16px);border-radius:16px}.focalQuickInfo{padding:22px}.focalQuickInfo h2{font-size:34px}.focalProductActions{opacity:1;transform:none}.focalCollectionHeroCopy h2{font-size:52px}}
+/* ===== focal-animations.css ===== */
+:root{--focal-motion-duration:var(--store-animation-duration,420ms);--focal-motion-ease:var(--store-animation-easing,cubic-bezier(.22,.8,.26,1))}.animations-enabled .focalStorefront{--motion:var(--focal-motion-duration);--ease:var(--focal-motion-ease)}
+@keyframes focalRevealUp{from{opacity:0;transform:translate3d(0,24px,0)}to{opacity:1;transform:none}}@keyframes focalRevealLeft{from{opacity:0;transform:translate3d(-28px,0,0)}to{opacity:1;transform:none}}@keyframes focalRevealRight{from{opacity:0;transform:translate3d(28px,0,0)}to{opacity:1;transform:none}}@keyframes focalZoom{from{transform:scale(1.045)}to{transform:scale(1)}}@keyframes focalHeroIn{from{opacity:0;transform:scale(1.035)}to{opacity:1;transform:scale(1)}}@keyframes focalPop{0%{opacity:0;transform:scale(.88)}70%{transform:scale(1.04)}100%{opacity:1;transform:scale(1)}}
+.animations-enabled .focalType-hero .focalHeroImage{animation:focalHeroIn 1.05s var(--ease) both}.animations-enabled .focalType-hero .focalHeroContent>*{animation:focalRevealUp .7s var(--ease) both}.animations-enabled .focalType-hero .focalHeroContent>*:nth-child(1){animation-delay:80ms}.animations-enabled .focalType-hero .focalHeroContent>*:nth-child(2){animation-delay:160ms}.animations-enabled .focalType-hero .focalHeroContent>*:nth-child(3){animation-delay:240ms}.animations-enabled .focalType-hero .focalHeroContent>*:nth-child(4){animation-delay:320ms}
+.animations-enabled .focalSection:not(.focalType-hero):not(.isSelected){animation:focalRevealUp .65s var(--ease) both}.animations-enabled .focalProductCard,.animations-enabled .focalCollectionCard,.animations-enabled .focalPromoCard{animation:focalRevealUp .6s var(--ease) both}.animations-enabled .focalProductCard:nth-child(2),.animations-enabled .focalCollectionCard:nth-child(2),.animations-enabled .focalPromoCard:nth-child(2){animation-delay:70ms}.animations-enabled .focalProductCard:nth-child(3),.animations-enabled .focalCollectionCard:nth-child(3),.animations-enabled .focalPromoCard:nth-child(3){animation-delay:140ms}.animations-enabled .focalProductCard:nth-child(4),.animations-enabled .focalCollectionCard:nth-child(4),.animations-enabled .focalPromoCard:nth-child(4){animation-delay:210ms}.animations-enabled .focalProductCard:nth-child(n+5),.animations-enabled .focalCollectionCard:nth-child(n+5),.animations-enabled .focalPromoCard:nth-child(n+5){animation-delay:280ms}
+.animations-enabled .focalProductCard:hover .focalProductMedia img,.animations-enabled .focalCollectionCard:hover .focalCollectionMedia img{transform:scale(1.055)}.animations-enabled .focalProductActions button,.animations-enabled .focalWishlist,.animations-enabled .focalPlay{transition:transform .22s var(--ease),background .22s ease,color .22s ease,box-shadow .22s ease}.animations-enabled .focalProductActions button:hover,.animations-enabled .focalWishlist:hover{transform:translateY(-3px) scale(1.04);box-shadow:0 10px 24px rgba(0,0,0,.14)}.animations-enabled .focalPlay:hover{transform:scale(1.08)}
+.animations-enabled .focalButton{transition:transform .24s var(--ease),box-shadow .24s var(--ease),background .24s ease}.animations-enabled .focalButton:active{transform:translateY(1px) scale(.985)}.animations-enabled .focalSection a:not(.focalButton){transition:color .2s ease}.animations-enabled .focalCollectionCopy span svg,.animations-enabled .focalTextLink svg{transition:transform .22s var(--ease)}.animations-enabled .focalCollectionCard:hover .focalCollectionCopy span svg,.animations-enabled .focalTextLink:hover svg{transform:translateX(4px)}
+.animations-enabled .focalQuickView{animation:focalRevealUp .38s var(--ease) both}.animations-enabled .focalModal{animation:focalPop .3s var(--ease) both}.animations-enabled .focalQuickClose:hover{transform:rotate(90deg)}.animations-enabled .focalQuickClose{transition:transform .25s var(--ease)}
+.animations-enabled .focalAnnouncementInner{animation:focalRevealUp .5s var(--ease) both}.animations-enabled .focalNewsletter{overflow:hidden}.animations-enabled .focalNewsletterForm input:focus{transform:translateY(-1px);box-shadow:0 8px 20px rgba(0,0,0,.08)}.animations-enabled .focalNewsletterForm input{transition:transform .2s var(--ease),box-shadow .2s ease}
+/* Focal collection UX */
+.focalCollectionToolbar{display:grid;grid-template-columns:minmax(220px,1fr) 180px 180px;gap:10px;align-items:center;margin:0 auto 28px;max-width:var(--store-max,1280px);padding:12px 0;border-top:1px solid var(--store-border,#e8e4df);border-bottom:1px solid var(--store-border,#e8e4df)}.focalCollectionToolbar select,.focalToolbarSearch{height:44px;border:1px solid var(--store-border,#e8e4df);background:var(--store-surface,#fff);color:var(--store-text,#191512);border-radius:999px;padding:0 14px;font:inherit}.focalToolbarSearch{display:flex;align-items:center;gap:9px}.focalToolbarSearch input{width:100%;border:0;outline:0;background:transparent;color:inherit;font:inherit}.focalCollectionToolbar select{cursor:pointer;outline:0;padding-right:38px}.focalCollectionToolbar select:focus,.focalToolbarSearch:focus-within{border-color:var(--store-primary,#191512);box-shadow:0 0 0 3px color-mix(in srgb,var(--store-primary,#191512) 10%,transparent)}.focalCollectionToolbar select,.focalToolbarSearch{transition:border-color .2s ease,box-shadow .2s ease,transform .2s var(--ease)}.focalCollectionToolbar select:hover,.focalToolbarSearch:hover{transform:translateY(-1px)}.focalProductCard{display:block;min-width:0}.focalProductMedia{overflow:hidden;position:relative;background:var(--store-surface,#f7f5f2)}.focalProductMedia img{transition:transform .55s var(--ease)}.focalProductActions{opacity:0;transform:translateY(8px);transition:opacity .22s ease,transform .3s var(--ease)}.focalProductCard:hover .focalProductActions,.focalProductCard:focus-within .focalProductActions{opacity:1;transform:none}.focalBadge{backdrop-filter:blur(8px)}
+@media(max-width:749px){.focalCollectionToolbar{grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px}.focalToolbarSearch{grid-column:1/-1}.focalCollectionToolbar select{width:100%}.focalProductActions{opacity:1;transform:none}.focalProductMedia img{transition:transform .35s var(--ease)}}
+@media(prefers-reduced-motion:reduce){.animations-enabled .focalStorefront *,.animations-enabled .focalStorefront *::before,.animations-enabled .focalStorefront *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}.focalCollectionToolbar select,.focalToolbarSearch{transition:none!important}}
+
+/* ===== focal-nav-enhancements.css ===== */
+.focalNav{transition:background-color .22s ease,border-color .22s ease,box-shadow .22s ease,transform .22s ease}.focalNav.focalNavScrolled{box-shadow:0 10px 30px rgba(25,21,18,.09);border-bottom-color:color-mix(in srgb,var(--focal-line) 78%,transparent)}.focalNav.focalNavScrolled .focalNavInner{height:68px}.focalNavInner{transition:height .22s ease}.focalNav.focalNavScrolled .focalLogo img{max-height:46px}.focalNav.focalNavScrolled .focalNavIcon{transform:translateY(-1px)}.focalNavIcon{transition:transform .18s ease,background-color .18s ease,border-color .18s ease}.focalNavIcon:hover{transform:translateY(-2px)}.focalNavIcon:active{transform:translateY(0) scale(.96)}.focalNavLink{transition:color .18s ease}.focalNavItem:hover>.focalNavLink{color:var(--focal-primary)}.focalDropdown,.focalDropdownNested{animation:focalNavDrop .18s cubic-bezier(.22,.8,.26,1) both;transform-origin:top center}.focalDropdownNested{transform-origin:left center}@keyframes focalNavDrop{from{opacity:0;transform:translateX(-50%) translateY(-6px) scale(.98)}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}.focalDropdownNested{animation-name:focalNavNested}@keyframes focalNavNested{from{opacity:0;transform:translateX(-6px) scale(.98)}to{opacity:1;transform:translateX(0) scale(1)}}.focalSearchOverlay,.focalMobileOverlay,.focalCartOverlay{animation:focalOverlayIn .18s ease both}.focalSearchCard,.focalMobilePanel,.focalCartDrawer{animation:focalPanelIn .24s cubic-bezier(.22,.8,.26,1) both}@keyframes focalOverlayIn{from{opacity:0}to{opacity:1}}@keyframes focalPanelIn{from{opacity:0;transform:translateY(-10px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}.focalCartDrawer{animation-name:focalCartIn}@keyframes focalCartIn{from{opacity:0;transform:translateX(22px)}to{opacity:1;transform:translateX(0)}}@media(max-width:900px){.focalNav.focalNavScrolled .focalNavInner{height:62px}.focalNav.focalNavScrolled .focalLogo img{max-height:42px}}@media(prefers-reduced-motion:reduce){.focalNav,.focalNavInner,.focalNavIcon,.focalDropdown,.focalDropdownNested,.focalSearchOverlay,.focalMobileOverlay,.focalCartOverlay,.focalSearchCard,.focalMobilePanel,.focalCartDrawer{animation:none!important;transition:none!important}}
+/* ===== responsive-fixes.css ===== */
+/* Responsive fixes for storefront and the in-admin mobile preview. */
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+
+@media(max-width:700px){
+  .focalContainer{width:calc(100% - 24px);max-width:1200px}
+  .focalProductDetail{grid-template-columns:1fr!important;gap:28px!important}
+  .focalProductInfo{position:static!important}
+  .focalProductGallery{grid-template-columns:1fr!important}
+  .focalPurchaseRow{grid-template-columns:auto 1fr!important}
+  .focalTrustGrid{grid-template-columns:1fr!important}
+  .footerGrid{grid-template-columns:1fr!important;min-width:0!important;width:100%!important}
+  .focalFooter{overflow:hidden!important}
+  .focalFooter .footerGrid>div{min-width:0!important;overflow-wrap:anywhere;word-break:break-word}
+}
+
+/* The editor renders a mobile storefront inside a 390px container while the
+   browser itself remains desktop-sized. Container queries make that preview
+   responsive instead of relying on the browser viewport. */
+.focalFrame{container-type:inline-size;container-name:storepreview}
+@container storepreview (max-width:700px){
+  .focalFrame .focalContainer{width:calc(100% - 24px);max-width:1200px}
+  .focalFrame .focalProductDetail{grid-template-columns:1fr!important;gap:28px!important}
+  .focalFrame .focalProductInfo{position:static!important}
+  .focalFrame .focalProductGallery{grid-template-columns:1fr!important}
+  .focalFrame .focalPurchaseRow{grid-template-columns:auto 1fr!important}
+  .focalFrame .focalTrustGrid{grid-template-columns:1fr!important}
+  .focalFrame .footerGrid{grid-template-columns:1fr!important;min-width:0!important;width:100%!important}
+  .focalFrame .focalFooter{overflow:hidden!important}
+  .focalFrame .focalFooter .footerGrid>div{min-width:0!important;overflow-wrap:anywhere;word-break:break-word}
+}
+
+/* ===== shopify-polish.css ===== */
+/* High-end Shopify-inspired storefront + admin polish */
+:root{
+  --shop-ink:#202223;
+  --shop-muted:#6d7175;
+  --shop-border:#e1e3e5;
+  --shop-surface:#fff;
+  --shop-page:#f6f6f7;
+  --shop-green:#008060;
+  --shop-green-dark:#006e52;
+  --shop-shadow:0 1px 0 rgba(0,0,0,.04),0 2px 8px rgba(0,0,0,.04);
+}
+
+/* Store chrome */
+.focalNav{box-shadow:0 1px 0 rgba(0,0,0,.04);transition:background .18s ease,box-shadow .18s ease}.focalNav:hover{box-shadow:0 2px 12px rgba(0,0,0,.05)}
+.focalNavInner{max-width:1280px!important;padding:0 22px}.focalLogo{font-size:21px!important;color:var(--shop-ink)}
+.focalNavLinks{gap:28px!important}.focalNavLink{font-size:13px!important;font-weight:650!important;color:#3d4043!important}.focalNavLink:hover{color:var(--shop-ink)!important}
+.focalNavActions{gap:6px!important}.focalNavIcon{border-color:transparent!important;background:transparent!important;border-radius:10px!important}.focalNavIcon:hover{background:#f3f4f5!important}.focalCartCount{background:var(--shop-ink)!important}
+.focalAnnouncementGlobal{background:#1f1f1f!important}.focalAnnouncementGlobalInner{min-height:34px!important;font-size:11px!important;letter-spacing:.01em}
+
+/* Store layout */
+.focalStorefront{color:var(--shop-ink)}
+.focalContainer{width:min(1280px,calc(100% - 44px))!important}
+.focalSection{padding-left:0;padding-right:0}
+.focalSection .focalContainer{margin-left:auto;margin-right:auto}
+.focalType-rich_text h2,.focalType-hero h1,.focalType-main_product h1,.focalType-product_grid h2{letter-spacing:-.035em}
+.focalType-rich_text p{color:#5f6368;max-width:62ch}
+
+/* Product cards */
+.focalProductCard{background:#fff!important;border:0!important;border-radius:0!important;overflow:visible!important;transition:transform .18s ease}.focalProductCard:hover{transform:translateY(-2px)}
+.focalProductMedia{position:relative!important;border-radius:12px!important;overflow:hidden!important;background:#f4f5f5!important;box-shadow:inset 0 0 0 1px rgba(0,0,0,.04)}
+.focalProductMedia img{transition:transform .45s cubic-bezier(.2,.7,.2,1)!important}.focalProductCard:hover .focalProductMedia img{transform:scale(1.025)}
+.focalBadge{border-radius:6px!important;font-size:10px!important;font-weight:700!important;padding:5px 7px!important;background:#fff!important;color:#202223!important;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.focalProductActions{opacity:0!important;transform:translateY(4px);transition:.18s ease}.focalProductCard:hover .focalProductActions{opacity:1!important;transform:none}
+.focalProductActions button{background:#fff!important;border:1px solid #e1e3e5!important;color:#202223!important;border-radius:8px!important;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.focalProductBody{padding:12px 2px 4px!important}.focalProductBody h3{font-size:14px!important;line-height:1.35!important;font-weight:650!important;margin:4px 0!important}.focalEyebrow{font-size:10px!important;letter-spacing:.06em!important;font-weight:700!important;color:#6d7175!important}.focalPrice strong{font-size:14px!important;font-weight:700!important}.focalPrice del{font-size:12px!important;color:#8c9196!important}
+
+/* Toolbar / collections */
+.focalCollectionToolbar,.focalShopFilters{max-width:1280px!important;margin:0 auto!important;padding:12px 0!important;border:0!important;background:transparent!important}.focalCollectionToolbar{display:grid!important;grid-template-columns:minmax(220px,1fr) 180px 180px;gap:10px!important}.focalToolbarSearch{height:44px!important;border:1px solid var(--shop-border)!important;background:#fff!important;border-radius:9px!important;box-shadow:var(--shop-shadow)}
+.focalCollectionToolbar select,.focalShopFilters select,.focalShopFilters input{height:44px!important;border:1px solid var(--shop-border)!important;border-radius:9px!important;background:#fff!important;color:var(--shop-ink)!important;box-shadow:none!important}
+.focalShopFilters{display:grid!important;grid-template-columns:minmax(220px,1fr) 180px 180px auto!important;gap:10px!important;align-items:center}
+.focalShopFilters button,.focalButton.primary{background:var(--shop-ink)!important;border-color:var(--shop-ink)!important;border-radius:9px!important;min-height:44px!important}.focalButton.secondary{border-radius:9px!important}
+
+/* Product detail */
+.focalProductDetail{max-width:1280px!important;grid-template-columns:minmax(0,1.1fr) minmax(360px,.9fr)!important;gap:56px!important}.focalProductGallery{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}.focalProductGallery img{border-radius:12px!important;background:#f4f5f5!important}.focalProductInfo{padding-top:8px!important}.focalProductInfo h1{font-size:clamp(34px,4.5vw,56px)!important;line-height:1.02!important;font-weight:650!important}.focalRating{font-size:13px!important;color:#333!important}.focalRating span{color:#6d7175!important}.focalPrice.big{font-size:28px!important;font-weight:700!important}.focalOptionLabel{font-size:12px!important;font-weight:700!important;margin-bottom:8px}.focalVariantList{gap:8px!important}.focalVariantList button{border-radius:8px!important;border:1px solid var(--shop-border)!important;background:#fff!important}.focalVariantList button.selected{border-color:var(--shop-ink)!important;box-shadow:0 0 0 1px var(--shop-ink) inset!important}.focalPurchaseRow{gap:10px!important}.focalQty{border:1px solid var(--shop-border)!important;border-radius:9px!important;background:#fff!important}.focalQty button{border:0!important;background:transparent!important}.focalWishlist{width:44px!important;height:44px!important;border:1px solid var(--shop-border)!important;border-radius:9px!important;background:#fff!important}.focalTrustGrid{grid-template-columns:repeat(3,1fr)!important;gap:8px!important;color:#6d7175!important;font-size:11px!important}.focalAccordions details{border-top:1px solid var(--shop-border)!important}.focalAccordions summary{padding:16px 0!important;font-weight:650!important}
+
+/* Cart drawer and cart page */
+.focalCartDrawer{width:min(470px,100%)!important}.focalCartHead{padding:20px!important}.focalCartItem{padding:14px 0!important}.focalCartItem img{border-radius:8px!important}.focalCartFoot{padding:18px!important}.summaryCard{border:1px solid var(--shop-border)!important;border-radius:12px!important;background:#fff!important;box-shadow:var(--shop-shadow)!important}.cartRow{border:1px solid var(--shop-border)!important;border-radius:12px!important;background:#fff!important;box-shadow:none!important}.cartRow img{border-radius:8px!important}.btn{border-radius:9px!important;min-height:44px}.btn:not(.secondary):not(.ghost){background:var(--shop-ink);border-color:var(--shop-ink)}
+
+/* Admin shell */
+body:has(.adminShell){background:#f6f6f7!important;color:#202223!important}.adminMain{padding-bottom:60px!important}.adminTopbar{border-color:#e1e3e5!important;background:rgba(246,246,247,.94)!important}
+.adminSide{background:#fff!important;border-right-color:#e1e3e5!important}.adminSide a{color:#5d6165!important}.adminSide a:hover{background:#f1f2f3!important;color:#202223!important}.adminNavGroupButton.active,.adminNavItem.active{background:#e7f3ef!important;color:#005e46!important;box-shadow:inset 2px 0 0 #008060!important}
+.adminPanel,.card{border-color:#e1e3e5!important;border-radius:12px!important;box-shadow:0 1px 2px rgba(0,0,0,.03)!important}.adminPanel{background:#fff!important}.adminMain .sectionHead .h2{font-weight:650!important}
+.input,.textarea,.catalogToolbar,.productSearch,.opsTabs{border-color:#c9cccf!important;border-radius:9px!important}.input:focus,.textarea:focus,.productSearch:focus-within{border-color:#008060!important;box-shadow:0 0 0 1px #008060 inset,0 0 0 3px rgba(0,128,96,.08)!important}
+body:has(.adminShell) .btn:not(.secondary):not(.ghost){background:#008060!important;border-color:#008060!important}.statusPill.active{background:#e3f1ed!important;color:#006e52!important}
+
+/* Order detail */
+.orderDetailGrid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:20px;align-items:start}.orderDetailMain,.orderDetailRail{display:grid;gap:16px}.orderItemRow{display:grid;grid-template-columns:48px 1fr auto auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid #eef0f1}.orderItemImage{width:48px;height:48px;border-radius:8px;background:#f4f5f5;overflow:hidden;display:grid;place-items:center;color:#8c9196}.orderItemImage img{width:100%;height:100%;object-fit:cover}.summaryBox{margin-top:14px;padding-top:10px;border-top:1px solid #e1e3e5;display:grid;gap:6px}.summaryBox>div{display:flex;justify-content:space-between;gap:12px}.summaryBox .total{font-size:18px;font-weight:700;padding-top:10px;margin-top:6px;border-top:1px solid #e1e3e5}.orderDetailRail .adminPanel{position:relative}.orderDetailRail .adminPanel .input{margin-top:6px}.editAddressGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.editAddressGrid .full{grid-column:1/-1}.orderEditToolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;margin-bottom:14px;border:1px solid #d9dde1;background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+
+/* Hero polish */
+.focalType-hero{border-bottom:1px solid #eceff0}.focalType-hero .focalContainer{min-height:560px}.focalType-hero h1{font-weight:650!important}.focalType-hero .focalButton{border-radius:9px!important}
+
+@media(max-width:900px){.focalCollectionToolbar,.focalShopFilters{grid-template-columns:1fr!important}.focalProductDetail{grid-template-columns:1fr!important;gap:28px!important}.orderDetailGrid{grid-template-columns:1fr}.orderDetailRail{order:-1}.editAddressGrid{grid-template-columns:1fr}.editAddressGrid .full{grid-column:auto}.focalProductActions{opacity:1!important;transform:none!important}.focalType-hero .focalContainer{min-height:460px}}
+@media(max-width:600px){.focalContainer{width:min(100% - 24px,1280px)!important}.focalNavInner{padding:0 12px!important}.focalProductGallery{gap:8px!important}.focalProductInfo h1{font-size:32px!important}.focalTrustGrid{grid-template-columns:1fr!important}.orderItemRow{grid-template-columns:40px 1fr auto}.orderItemRow>strong:last-child{grid-column:2/-1}.orderItemImage{width:40px;height:40px}}
+
+/* ===== ui-polish.css ===== */
+:root{--ui-text:#1f2328;--ui-muted:#66707a;--ui-border:#e4e7eb;--ui-bg:#f6f7f8;--ui-card:#fff;--ui-shadow:0 1px 2px rgba(16,24,40,.04),0 8px 28px rgba(16,24,40,.05)}html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;color:var(--ui-text);font-size:15px;line-height:1.55;letter-spacing:0}.focalStorefront,.focalStorefront button,.focalStorefront input,.focalStorefront select,.focalStorefront textarea,.adminShell,.adminShell button,.adminShell input,.adminShell select,.adminShell textarea{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important}.focalStorefront h1,.focalStorefront h2,.focalStorefront h3,.focalStorefront h4,.adminShell h1,.adminShell h2,.adminShell h3,.adminShell h4{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;letter-spacing:-.025em;text-wrap:balance}.focalStorefront p,.focalStorefront li,.focalStorefront label,.focalStorefront input,.focalStorefront select,.focalStorefront textarea{font-size:15px;line-height:1.6}.focalStorefront h1{font-size:clamp(38px,5vw,64px);line-height:1.02;font-weight:750}.focalStorefront h2{font-size:clamp(28px,3.6vw,44px);line-height:1.08;font-weight:750}.focalStorefront h3{font-size:20px;line-height:1.2;font-weight:700}.focalEyebrow{font-size:11px!important;letter-spacing:.08em!important;font-weight:800!important}.focalButton{min-height:46px!important;border-radius:10px!important;font-size:14px!important;font-weight:700!important;letter-spacing:0!important}.focalNavLink,.focalDropdownLink,.focalNavIcon{font-family:inherit!important}.focalNavLink{font-size:14px!important;font-weight:650!important}.focalDropdownLink{font-size:14px!important;font-weight:600!important}.focalLogo{font-size:21px!important;font-weight:750!important}.focalProductBody h3{font-size:15px!important;line-height:1.35!important;font-weight:650!important;letter-spacing:-.01em!important}.focalPrice{font-size:15px!important}.focalPrice.big{font-size:30px!important;font-weight:750!important}.focalProductInfo p{font-size:15px!important;line-height:1.7!important;color:var(--focal-muted)}.focalCollectionToolbar,.focalStorefront .card,.focalStorefront .focalProductCard,.focalStorefront .focalCollectionCard{border-radius:14px}.focalProductCard{transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease!important}.focalProductCard:hover{transform:translateY(-3px)!important;box-shadow:0 10px 28px rgba(17,24,39,.08)!important}.focalProductMedia{background:#f5f6f7!important}.focalProductActions button,.focalWishlist{backdrop-filter:blur(8px);background:rgba(255,255,255,.94)!important}.focalSearchCard,.focalQuickView,.focalCartDrawer{border-radius:16px}.focalSearchCard{padding:24px!important}.focalSearchForm input{font-size:15px!important}.focalCartHead strong{font-size:18px}.focalCartInfo strong{font-size:14px}.focalCartInfo small{font-size:12px}.focalCartTotal{font-size:16px}.focalStock,.focalTrustGrid span{font-size:13px!important;line-height:1.5}.focalAccordions summary{font-size:14px!important;font-weight:650!important}.focalAccordions p{font-size:14px!important;line-height:1.65!important}.adminShell{background:#f7f8f9!important;color:#1f2328}.adminShell .adminMain{padding-left:34px!important;padding-right:34px!important}.adminShell .adminTopbar{background:rgba(247,248,249,.92)!important;border-bottom-color:#e5e7eb!important}.adminShell .adminSide{background:#fff!important;border-right-color:#e5e7eb!important}.adminShell .adminSide nav a,.adminShell .adminNavGroupButton{font-size:13.5px!important;font-weight:600!important;color:#4b5563!important}.adminShell .adminNavGroupButton{font-weight:700!important}.adminShell .adminNavItem{font-size:13px!important}.adminShell .h2{font-size:32px!important;line-height:1.15!important;font-weight:750!important}.adminShell .muted{color:#6b7280!important}.adminShell .card,.adminShell .editorCard,.adminShell .statCard,.adminShell .productTableCard,.adminShell .opsCard,.adminShell .miniAlert{border-color:#e5e7eb!important;border-radius:14px!important;box-shadow:var(--ui-shadow)!important}.adminShell .adminPanel{padding:22px!important}.adminShell .btn{min-height:42px!important;border-radius:10px!important;font-size:13px!important;font-weight:700!important}.adminShell .input,.adminShell .textarea,.adminShell select{min-height:44px!important;border-radius:10px!important;border-color:#d9dee5!important;background:#fff!important;font-size:14px!important;color:#20252b!important}.adminShell .fieldLabel{font-size:12px!important;font-weight:700!important;color:#4b5563!important}.adminShell .table th{font-size:11px!important;letter-spacing:.05em!important;color:#6b7280!important;background:#fafbfc!important}.adminShell .table td{font-size:13px!important;color:#30363d!important}.adminShell .statusPill{font-size:11px!important;font-weight:750!important}.adminShell .orderItemRow{font-size:13px!important}.adminShell .summaryBox,.adminShell .summaryLine{font-size:13px!important}.adminShell .timelineItem{font-size:13px!important}.adminShell .timelineItem p{line-height:1.55!important}.orderEditToolbar{position:sticky;top:76px;z-index:35;display:flex;justify-content:space-between;align-items:center;gap:18px;padding:14px 16px;margin:0 0 16px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 8px 24px rgba(16,24,40,.06)}.editAddressGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.editAddressGrid .full{grid-column:1/-1}@media(max-width:800px){body{font-size:14px}.focalStorefront p,.focalStorefront li,.focalStorefront label,.focalStorefront input,.focalStorefront select,.focalStorefront textarea{font-size:14px}.focalStorefront h1{font-size:38px}.focalStorefront h2{font-size:30px}.focalNavInner{gap:10px}.focalLogo{font-size:18px!important}.adminShell .adminMain{padding-left:16px!important;padding-right:16px!important}.orderEditToolbar{align-items:flex-start;flex-direction:column}.editAddressGrid{grid-template-columns:1fr}.editAddressGrid .full{grid-column:auto}}@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+/* ===== ui-polish-v2.css ===== */
+:root{--p2-green:#008060;--p2-ink:#202223;--p2-muted:#6d7175;--p2-border:#e1e3e5;--p2-soft:#f6f6f7;--p2-card:#fff;--p2-shadow:0 1px 2px rgba(0,0,0,.04),0 8px 28px rgba(0,0,0,.05)}html{scroll-behavior:smooth}body{color:var(--p2-ink);background:#fff}button,a,input,select,textarea{outline-offset:3px}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--p2-green);outline-offset:3px}.focalStorefront{min-height:60vh}.focalStorefront .focalSection{scroll-margin-top:90px}.focalStorefront .focalContainer{max-width:1320px!important}.focalStorefront .sectionHead{gap:24px}.focalStorefront .focalSectionHead{margin-bottom:30px}.focalStorefront .focalProductGrid{row-gap:42px}.focalStorefront .focalProductCard{min-width:0}.focalStorefront .focalProductBody{min-width:0}.focalStorefront .focalProductBody h3{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;min-height:2.7em}.focalStorefront .focalProductMedia{aspect-ratio:1/1;contain:paint}.focalStorefront .focalProductMedia img{width:100%;height:100%;object-fit:cover}.focalStorefront .focalPrice{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}.focalStorefront .focalPrice del{font-weight:500}.focalStorefront .focalBadge{z-index:2}.focalStorefront .focalCollectionCard,.focalStorefront .focalPromoCard,.focalStorefront .focalTestimonialCard{box-shadow:var(--p2-shadow)!important}.focalStorefront .focalCollectionCard:hover,.focalStorefront .focalPromoCard:hover{transform:translateY(-3px)}.focalStorefront .focalCollectionCard img,.focalStorefront .focalPromoCard img{transition:transform .45s cubic-bezier(.2,.7,.2,1)}.focalStorefront .focalCollectionCard:hover img,.focalStorefront .focalPromoCard:hover img{transform:scale(1.025)}.focalStorefront .focalType-newsletter{border-radius:20px;overflow:hidden}.focalStorefront .focalType-newsletter .focalContainer{padding-left:24px;padding-right:24px}.focalStorefront .focalType-footer{padding-top:72px;padding-bottom:72px}.focalStorefront .focalType-footer a{transition:color .16s ease}.focalStorefront .focalType-footer a:hover{color:var(--p2-green)}.focalStorefront .focalType-hero .focalContainer{min-height:620px}.focalStorefront .focalType-hero h1{max-width:760px;text-wrap:balance}.focalStorefront .focalType-hero p{max-width:62ch}.focalStorefront .focalType-hero .focalButton{min-width:140px}.focalStorefront .focalProductDetail{align-items:start}.focalStorefront .focalProductGallery{position:relative}.focalStorefront .focalProductGallery img{cursor:zoom-in}.focalStorefront .focalProductInfo{min-width:0}.focalStorefront .focalProductInfo p{max-width:62ch}.focalStorefront .focalPurchaseRow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center}.focalStorefront .focalPurchaseRow .wide{width:100%}.focalStorefront .focalAccordions details{background:transparent}.focalStorefront .focalAccordions summary{cursor:pointer;list-style:none}.focalStorefront .focalAccordions summary::-webkit-details-marker{display:none}.focalStorefront .focalAccordions summary:after{content:'+';float:right;color:var(--p2-muted);font-weight:600}.focalStorefront .focalAccordions details[open] summary:after{content:'–'}.focalStorefront .focalCollectionToolbar{position:sticky;top:0;z-index:15;background:rgba(255,255,255,.92)!important;backdrop-filter:blur(12px);border-bottom:1px solid var(--p2-border)!important}.focalStorefront .focalShopFilters{position:sticky;top:0;z-index:15;background:rgba(255,255,255,.92)!important;backdrop-filter:blur(12px)}.focalStorefront .focalSearchCard{max-width:820px}.focalStorefront .focalCartDrawer{box-shadow:-24px 0 80px rgba(0,0,0,.16)}.focalStorefront .focalCartFoot .focalButton{width:100%}.focalStorefront .focalCartEmpty{display:grid;place-items:center;min-height:260px}.adminShell{isolation:isolate}.adminShell .adminSide{z-index:50}.adminShell .adminMain{min-width:0}.adminShell .catalogToolbar,.adminShell .productTableCard,.adminShell .opsTabs,.adminShell .opsPanel{box-shadow:var(--p2-shadow)!important}.adminShell .catalogToolbar{background:#fff!important}.adminShell .productTableCard{background:#fff}.adminShell .productTable tbody tr{transition:background .12s ease}.adminShell .productTable tbody tr:hover{background:#fbfcfc}.adminShell .productTable td{vertical-align:middle}.adminShell .productListName strong{font-weight:650}.adminShell .adminNavGroupButton,.adminShell .adminNavItem{transition:background .12s ease,color .12s ease}.adminShell .adminNavGroupButton:hover{background:#f6f6f7}.adminShell .adminNavItem:hover{background:#fafbfb}.adminShell .statCard{min-height:96px}.adminShell .statCard strong{font-variant-numeric:tabular-nums}.adminShell .healthHero{box-shadow:var(--p2-shadow)!important}.adminShell .opsCard{min-height:84px}.adminShell .opsRow{transition:background .12s ease,transform .12s ease}.adminShell .opsRow:hover{background:#f6f8f8;transform:translateY(-1px)}.adminShell .orderDetailGrid{grid-template-columns:minmax(0,1fr) 380px}.adminShell .orderDetailRail{position:sticky;top:94px}.adminShell .orderEditToolbar{position:sticky;top:84px;z-index:35}.adminShell .summaryBox .total{font-size:19px}.adminShell .orderDetailMain .card{overflow:visible}.adminShell .editAddressGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.adminShell .editAddressGrid .full{grid-column:1/-1}.adminShell .editorTopbar{box-shadow:0 1px 0 #e5e7eb}.adminShell .editorTabs{box-shadow:0 1px 0 #e5e7eb}.adminShell .editorCard{transition:box-shadow .15s ease,border-color .15s ease}.adminShell .editorCard:focus-within{border-color:#c9d5d1;box-shadow:0 0 0 1px rgba(0,128,96,.08),var(--p2-shadow)!important}.adminShell .mediaEditItem{background:#fff}.adminShell .mediaEditItem:hover{border-color:#c9cccf;box-shadow:0 4px 16px rgba(0,0,0,.05)}.adminShell .btn{transition:transform .15s ease,box-shadow .15s ease,background .15s ease!important}.adminShell .btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,.08)}.adminShell .btn:active:not(:disabled){transform:translateY(0)}.adminShell .table th{position:sticky;top:0;z-index:4}.skeleton{background:linear-gradient(90deg,#f1f2f3 25%,#f7f8f8 37%,#f1f2f3 63%);background-size:400% 100%;animation:p2shimmer 1.35s ease infinite;border-radius:8px}@keyframes p2shimmer{0%{background-position:100% 0}100%{background-position:-100% 0}}@media(max-width:1050px){.adminShell .orderDetailGrid{grid-template-columns:1fr}.adminShell .orderDetailRail{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.adminShell .orderDetailRail>.card:first-child{grid-column:1/-1}}@media(max-width:800px){.focalStorefront .focalType-hero .focalContainer{min-height:500px}.focalStorefront .focalPurchaseRow{grid-template-columns:auto 1fr}.focalStorefront .focalPurchaseRow .focalWishlist{grid-column:1/-1;width:100%!important}.adminShell .orderDetailRail{grid-template-columns:1fr}.adminShell .editAddressGrid{grid-template-columns:1fr}.adminShell .editAddressGrid .full{grid-column:auto}.adminShell .table{min-width:760px}}@media(max-width:600px){.focalStorefront .focalContainer{width:min(100% - 24px,1320px)!important}.focalStorefront .focalType-hero .focalContainer{min-height:440px}.focalStorefront .focalProductDetail{gap:26px!important}.focalStorefront .focalProductGallery{grid-template-columns:1fr 1fr!important}.focalStorefront .focalProductInfo h1{font-size:31px!important}.focalStorefront .focalProductGrid{row-gap:28px}.focalStorefront .focalProductBody{padding-left:1px!important;padding-right:1px!important}.adminShell .adminMain{padding-left:14px!important;padding-right:14px!important}.adminShell .adminTopbar{min-height:68px!important}.adminShell .adminPanel{padding:18px!important}.adminShell .orderEditToolbar{top:68px}.adminShell .catalogToolbar{grid-template-columns:1fr!important}.adminShell .productTable{min-width:720px}}@media(prefers-reduced-motion:reduce){.skeleton{animation:none!important}.focalStorefront *,.adminShell *{transition-duration:.01ms!important;animation-duration:.01ms!important}}
+/* ===== production-polish.css ===== */
+:root{
+  --prod-ink:#202223;
+  --prod-muted:#6d7175;
+  --prod-border:#e1e3e5;
+  --prod-surface:#fff;
+  --prod-page:#f6f6f7;
+  --prod-accent:#008060;
+  --prod-shadow:0 1px 2px rgba(0,0,0,.04),0 8px 24px rgba(0,0,0,.05);
+}
+
+html{scroll-padding-top:90px}
+body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
+button,a,input,select,textarea{outline-offset:3px}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--prod-accent);outline-offset:3px}
+
+/* Storefront rhythm */
+.focalStorefront{isolation:isolate;background:var(--store-bg,#fff)}
+.focalStorefront .focalSection{content-visibility:auto;contain-intrinsic-size:720px}
+.focalStorefront .focalContainer{max-width:1280px}
+.focalStorefront .focalProductGrid{row-gap:34px!important}
+.focalStorefront .focalProductCard{min-width:0}
+.focalStorefront .focalProductMedia{aspect-ratio:1/1;overflow:hidden;border-radius:inherit;background:#f4f5f5}
+.focalStorefront .focalProductMedia img{width:100%;height:100%;object-fit:cover;transition:transform .25s ease}
+.focalStorefront .focalProductCard:hover .focalProductMedia img{transform:scale(1.025)}
+.focalStorefront .focalProductCard h3{overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+.focalStorefront .focalProductActions button,.focalStorefront .focalWishlist{min-width:40px;min-height:40px}
+.focalStorefront .focalButton{transition:transform .16s ease,box-shadow .16s ease,background .16s ease}
+.focalStorefront .focalButton:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,0,0,.08)}
+.focalStorefront .focalButton:active{transform:translateY(0)}
+
+/* Search / filters */
+.focalCollectionToolbar,.focalShopFilters{position:relative}
+.focalToolbarSearch,.focalShopFilters input{transition:border-color .16s ease,box-shadow .16s ease,background .16s ease}
+.focalToolbarSearch:focus-within{border-color:#a7acae!important;box-shadow:0 0 0 3px rgba(0,128,96,.08)!important}
+.focalCollectionToolbar select,.focalShopFilters select{cursor:pointer}
+
+/* Product detail */
+.focalProductDetail .focalProductGallery img{display:block;width:100%;object-fit:cover}
+.focalProductInfo{min-width:0}
+.focalProductInfo .focalAccordions details{padding:0}
+.focalProductInfo .focalAccordions summary{cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.focalProductInfo .focalPurchaseRow{align-items:stretch}
+.focalProductInfo .focalPurchaseRow .focalButton{flex:1;min-width:0}
+
+/* Cart / checkout */
+.checkoutForm,.successCard,.summaryCard{box-shadow:var(--prod-shadow)}
+.checkoutForm{scroll-margin-top:100px}
+.checkoutForm h3{margin:26px 0 12px}
+.checkoutForm .fieldLabel{display:grid;gap:7px;margin-bottom:12px;font-size:13px;font-weight:650}
+.checkoutForm .input,.checkoutForm select,.checkoutForm textarea{min-height:44px;border-radius:10px;transition:border-color .16s ease,box-shadow .16s ease,background .16s ease}
+.checkoutForm .input:focus,.checkoutForm select:focus,.checkoutForm textarea:focus{border-color:var(--prod-accent);box-shadow:0 0 0 3px rgba(0,128,96,.08);background:#fff}
+.checkoutForm .btn{min-height:48px;width:100%;font-weight:750}
+.checkoutForm .textLink{display:inline-flex;justify-content:center;width:100%;padding:12px 0}
+.checkoutForm .alert{border-radius:10px;padding:11px 13px;line-height:1.45}
+.summaryCard{backdrop-filter:blur(8px);position:sticky;top:96px;align-self:start}
+.summaryCard .summaryLine{gap:16px}
+.summaryCard .summaryLine strong{white-space:nowrap}
+.cartRow{display:grid;grid-template-columns:88px minmax(0,1fr) auto;gap:14px;align-items:center;transition:border-color .16s ease,box-shadow .16s ease,transform .16s ease}
+.cartRow:hover{border-color:#c7cbcd!important;box-shadow:0 4px 14px rgba(0,0,0,.04)}
+.cartRow img{width:88px;height:88px;object-fit:cover;border-radius:10px;background:#f3f4f4}
+.cartInfo{display:grid;gap:5px;min-width:0}
+.cartInfo strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cartControls{display:grid;justify-items:end;gap:7px}
+.cartControls .input{width:76px;min-height:40px;text-align:center}
+.textButton{min-height:36px;padding:7px 10px;border-radius:8px}
+.empty{padding:48px 24px;text-align:center}
+
+/* Admin shell */
+body:has(.adminShell){background:var(--prod-page)!important;color:var(--prod-ink)!important}
+.adminShell{min-height:100dvh}
+.adminShell .adminMain{min-width:0}
+.adminShell .adminSide{box-shadow:inset -1px 0 0 rgba(0,0,0,.02)}
+.adminShell .card,.adminShell .adminPanel,.adminShell .statCard,.adminShell .productTableCard{transition:border-color .16s ease,box-shadow .16s ease}
+.adminShell .card:hover,.adminShell .adminPanel:hover{box-shadow:0 4px 18px rgba(0,0,0,.045)!important}
+.adminShell .tableWrap,.adminShell .cardInnerTable{overflow:auto;overscroll-behavior-x:contain}
+.adminShell .table th{position:sticky;top:0;z-index:1}
+.adminShell .table tr:hover td{background:#fafbfb}
+.adminShell .btn:disabled,.adminShell button:disabled{cursor:not-allowed;opacity:.55;transform:none!important;box-shadow:none!important}
+.adminShell .input::placeholder,.adminShell .textarea::placeholder{color:#9aa0a6}
+
+/* Order workspace */
+.orderDetailGrid{align-items:start}
+.orderDetailRail{position:sticky;top:92px}
+.orderDetailRail .adminPanel{box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.orderItemRow{transition:background .14s ease}
+.orderItemRow:hover{background:#fafbfb}
+.orderEditToolbar{backdrop-filter:blur(10px);position:sticky;top:76px}
+
+/* Loading / empty / error */
+.loadingShell{min-height:52vh;padding:24px 0}
+.skeleton{background:linear-gradient(90deg,#f0f1f1 25%,#f7f8f8 37%,#f0f1f1 63%);background-size:400% 100%;animation:prodShimmer 1.35s ease-in-out infinite;border-radius:12px}
+.loadingHero{height:220px}.loadingTitle{width:38%;height:28px;margin:24px 0}.loadingGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}.loadingCard{display:grid;gap:10px}.loadingMedia{aspect-ratio:1/1}.loadingLine{height:13px}.loadingLine.short{width:55%}
+@keyframes prodShimmer{0%{background-position:100% 0}100%{background-position:-100% 0}}
+
+/* Mobile */
+@media(max-width:900px){
+  .adminShell .adminSide{display:block}
+  .orderDetailRail,.summaryCard{position:static}
+  .loadingGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:600px){
+  .focalStorefront .focalContainer{width:min(100% - 24px,1280px)!important}
+  .focalStorefront .focalPurchaseRow{flex-wrap:wrap}
+  .focalStorefront .focalPurchaseRow .focalButton{width:100%;flex-basis:100%}
+  .checkoutForm{padding:18px!important}
+  .checkoutForm h1{font-size:28px}
+  .cartRow{grid-template-columns:64px minmax(0,1fr);gap:10px}
+  .cartRow img{width:64px;height:64px}
+  .cartControls{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;width:100%}
+  .cartControls .input{width:88px}
+  .loadingHero{height:150px}
+  .loadingTitle{width:70%;height:22px}
+  .loadingGrid{grid-template-columns:1fr 1fr;gap:12px}
+}
+@media(prefers-reduced-motion:reduce){.skeleton{animation:none}.focalStorefront .focalButton,.focalStorefront .focalProductMedia img{transition:none}.focalStorefront .focalProductCard{transition:none}}
+
+/* ===== storefront-ux-v3.css ===== */
+/* Storefront UX v3: navigation, discovery, product and cart polish */
+:root{
+  --ux-radius:18px;
+  --ux-radius-sm:12px;
+  --ux-shadow:0 10px 30px rgba(25,21,18,.08);
+  --ux-shadow-hover:0 18px 44px rgba(25,21,18,.14);
+  --ux-focus:rgba(255,90,31,.18);
+}
+
+/* Global storefront rhythm */
+.focalStorefront,.focalStorefront *{min-width:0}
+.focalStorefront .focalContainer{width:min(var(--store-max,1280px),calc(100% - 40px));margin-inline:auto}
+.focalStorefront .focalSectionHead{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:24px}
+.focalStorefront .focalSectionHead h2{margin:5px 0 0;font-size:clamp(28px,3.4vw,44px);line-height:1.03;letter-spacing:-.045em}
+.focalStorefront .focalSectionHead p{margin:9px 0 0;color:var(--focal-muted);max-width:58ch;line-height:1.6}
+.focalStorefront .focalTextLink{display:inline-flex;align-items:center;gap:6px;font-weight:850;font-size:13px;padding:8px 2px;white-space:nowrap}
+.focalStorefront .focalTextLink:hover{text-decoration:underline;text-underline-offset:4px}
+
+/* Navigation */
+.focalNav{box-shadow:0 1px 0 rgba(25,21,18,.03)}
+.focalNavInner{width:min(var(--store-max,1280px),calc(100% - 40px))!important;margin-inline:auto}
+.focalNavLinks{align-items:center}
+.focalNavLinks a,.focalNavLinkButton{position:relative;transition:color .16s ease,opacity .16s ease}
+.focalNavLinks a::after,.focalNavLinkButton::after{content:"";position:absolute;left:0;right:0;bottom:14px;height:2px;border-radius:99px;background:var(--focal-primary);transform:scaleX(0);transform-origin:center;transition:transform .18s ease}
+.focalNavLinks a:hover,.focalNavLinkButton:hover{color:var(--focal-primary)}
+.focalNavLinks a:hover::after,.focalNavLinkButton:hover::after{transform:scaleX(.6)}
+.focalNavLinks a[aria-current="page"]{color:var(--focal-primary)}
+.focalNavLinks a[aria-current="page"]::after{transform:scaleX(1)}
+.focalNavItem{height:100%}
+.focalMega{padding:12px!important;width:min(720px,calc(100vw - 32px))!important;border-radius:16px!important;top:calc(100% + 8px)!important}
+.focalMegaGrid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important}
+.focalMegaGrid a{display:block;padding:14px!important;border:1px solid transparent}
+.focalMegaGrid a:hover{border-color:var(--focal-line);background:var(--focal-soft)}
+.focalNavIcon{transition:transform .16s ease,background .16s ease,border-color .16s ease,box-shadow .16s ease}
+.focalNavIcon:hover{transform:translateY(-1px);border-color:#d9c8bd;box-shadow:0 7px 18px rgba(25,21,18,.08)}
+.focalNavIcon:focus-visible,.focalNavMobile:focus-visible,.focalNavLinkButton:focus-visible{outline:3px solid var(--ux-focus);outline-offset:2px}
+.focalAnnouncementGlobalInner{max-width:var(--store-max,1280px);margin:auto;position:relative}
+
+/* Search overlay */
+.focalSearchOverlay{background:rgba(25,21,18,.42)!important}
+.focalSearchCard{margin-top:92px!important;border-radius:22px!important;padding:24px!important;box-shadow:0 28px 90px rgba(0,0,0,.24)!important}
+.focalSearchTop strong{font-size:18px;letter-spacing:-.02em}
+.focalSearchForm input{font-size:16px!important;background:#fbfaf8!important}
+
+/* Product cards */
+.focalStorefront .focalProductGrid{display:grid;gap:26px 18px!important}
+.focalStorefront .focalProductCard{display:block;position:relative;border-radius:18px;overflow:visible;transition:transform .18s ease}
+.focalStorefront .focalProductCard:hover{transform:translateY(-3px)}
+.focalStorefront .focalProductMedia{position:relative;border-radius:18px!important;box-shadow:0 1px 0 rgba(25,21,18,.04);overflow:hidden}
+.focalStorefront .focalProductMedia img{display:block;width:100%;height:100%;object-fit:cover;background:#f7f3ef;transition:transform .38s cubic-bezier(.2,.8,.2,1),opacity .24s ease}
+.focalStorefront .focalProductCard:hover .focalProductMedia img{transform:scale(1.04)}
+.focalStorefront .focalProductBody{padding:13px 3px 0!important}
+.focalStorefront .focalProductBody .focalEyebrow{display:block;margin-bottom:6px;font-size:10px;letter-spacing:.1em}
+.focalStorefront .focalProductBody h3{margin:0 0 8px;font-size:15px;line-height:1.32;letter-spacing:-.015em}
+.focalStorefront .focalPrice{display:flex;align-items:center;gap:9px}
+.focalStorefront .focalPrice strong{font-size:14px}
+.focalStorefront .focalPrice del{font-size:12px;color:var(--focal-muted)}
+.focalStorefront .focalBadge{top:12px!important;left:12px!important;right:auto!important;border-radius:999px!important;padding:7px 9px!important;font-size:10px!important;letter-spacing:.03em}
+.focalStorefront .focalProductActions{left:auto!important;right:12px!important;bottom:12px!important;flex-direction:column!important;opacity:0!important;transform:translateY(6px)!important}
+.focalStorefront .focalProductCard:hover .focalProductActions,.focalStorefront .focalProductCard:focus-within .focalProductActions{opacity:1!important;transform:none!important}
+.focalStorefront .focalProductActions button{box-shadow:0 8px 20px rgba(25,21,18,.12)}
+
+/* Collections */
+.focalStorefront .focalCollectionGrid{display:grid;gap:18px!important}
+.focalStorefront .focalCollectionCard{display:block;border-radius:18px;overflow:hidden;background:var(--focal-surface);border:1px solid var(--focal-line);box-shadow:0 2px 0 rgba(25,21,18,.02);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.focalStorefront .focalCollectionCard:hover{transform:translateY(-4px);box-shadow:var(--ux-shadow-hover);border-color:#dcc8bb}
+.focalStorefront .focalCollectionMedia{aspect-ratio:4/3;overflow:hidden;background:#f4eee9}
+.focalStorefront .focalCollectionMedia img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .4s ease; background:#f4eee9}
+.focalStorefront .focalCollectionCard:hover .focalCollectionMedia img{transform:scale(1.045)}
+.focalStorefront .focalCollectionCopy{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:15px 15px 16px}
+.focalStorefront .focalCollectionCopy h3{margin:5px 0 0;font-size:17px;line-height:1.15}
+.focalStorefront .focalCollectionCopy>span{display:inline-flex;align-items:center;gap:5px;font-weight:800;font-size:11px;white-space:nowrap}
+.focalStorefront .focalCollectionHero{grid-template-columns:minmax(0,1.05fr) minmax(320px,.95fr)!important;gap:44px!important;padding:18px 0!important}
+.focalStorefront .focalCollectionHeroCopy{padding:18px 0}
+.focalStorefront .focalCollectionHeroCopy h2{max-width:10ch}
+.focalStorefront .focalCollectionHeroImage{min-height:430px!important;border-radius:24px!important;box-shadow:var(--ux-shadow);border:1px solid var(--focal-line)}
+.focalStorefront .focalCollectionHeroImage img{min-height:430px!important}
+
+/* Collection/shop filters */
+.focalStorefront .focalCollectionToolbar,.focalStorefront .focalStorefrontFilterBar{background:rgba(255,255,255,.86);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--focal-line);border-radius:16px}
+.focalStorefront .focalCollectionToolbar{justify-content:space-between!important;padding:9px!important;margin:0 0 22px!important;position:sticky;top:84px;z-index:15;box-shadow:0 8px 24px rgba(25,21,18,.05)}
+.focalStorefront .focalToolbarSearch{min-width:min(360px,100%)!important;height:44px!important;background:#fff!important;border-color:var(--focal-line)!important;border-radius:12px!important}
+.focalStorefront .focalCollectionToolbar select{height:44px!important;border-radius:12px!important;background:#fff!important}
+.focalStorefront .focalStorefrontFilterBar{margin:14px auto 0;width:min(var(--store-max,1280px),calc(100% - 40px));padding:10px;position:sticky;top:84px;z-index:15;box-shadow:0 8px 24px rgba(25,21,18,.05)}
+.focalStorefront .focalShopFilters{display:grid;grid-template-columns:minmax(0,1fr) 190px 190px auto;gap:10px!important;align-items:center}
+.focalStorefront .focalShopFilters .focalInput,.focalStorefront .focalShopFilters .focalSelect{height:44px!important;border-radius:12px!important;background:#fff!important}
+.focalStorefront .focalShopFilters .focalButton{height:44px;min-width:100px}
+
+/* Product detail */
+.focalStorefront .focalProductDetail{grid-template-columns:minmax(0,1.04fr) minmax(360px,.8fr)!important;gap:56px!important;align-items:start}
+.focalStorefront .focalProductGallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px!important;position:sticky;top:102px;align-self:start}
+.focalStorefront .focalProductGallery img{width:100%;aspect-ratio:1/1;display:block;object-fit:cover;border-radius:16px!important;background:#f4eee9;box-shadow:0 1px 0 rgba(25,21,18,.03)}
+.focalStorefront .focalProductGallery img:first-child{grid-column:span 2;aspect-ratio:4/4.35}
+.focalStorefront .focalProductInfo{background:rgba(255,255,255,.72);border:1px solid var(--focal-line);border-radius:24px;padding:30px!important;box-shadow:0 12px 32px rgba(25,21,18,.05);position:sticky;top:102px}
+.focalStorefront .focalProductInfo h1{font-size:clamp(34px,4vw,56px)!important;line-height:.98!important;letter-spacing:-.055em!important;margin:8px 0 12px!important}
+.focalStorefront .focalProductInfo>p{font-size:15px!important;line-height:1.75!important;color:var(--focal-muted)!important;max-width:58ch}
+.focalStorefront .focalRating{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px;color:#a76818}
+.focalStorefront .focalRating span{color:var(--focal-muted);font-size:12px}
+.focalStorefront .focalPrice.big{font-size:31px!important;letter-spacing:-.025em}
+.focalStorefront .focalProductOptions{padding-top:5px}
+.focalStorefront .focalOptionLabel{font-size:12px!important;text-transform:uppercase;letter-spacing:.08em;color:var(--focal-muted)}
+.focalStorefront .focalVariantList{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px!important}
+.focalStorefront .focalVariantList button{min-height:46px;border-radius:12px!important;text-align:left;padding:11px 13px!important;font-size:13px;font-weight:750}
+.focalStorefront .focalVariantList button:hover{border-color:#d7c5b9}
+.focalStorefront .focalVariantList button.selected{background:var(--focal-soft)}
+.focalStorefront .focalQty{min-height:48px;border-radius:13px!important}
+.focalStorefront .focalPurchaseRow{grid-template-columns:auto minmax(0,1fr) auto!important;gap:10px!important;margin-top:8px}
+.focalStorefront .focalPurchaseRow .focalButton{min-height:48px}
+.focalStorefront .focalWishlist{width:48px!important;height:48px!important;border-radius:13px!important}
+.focalStorefront .focalTrustGrid{margin-top:16px!important;background:#fffaf6!important;padding:14px!important}
+.focalStorefront .focalAccordions{border-top:1px solid var(--focal-line);margin-top:22px;padding-top:3px}
+.focalStorefront .focalAccordions details{border-bottom:1px solid var(--focal-line);padding:0!important}
+.focalStorefront .focalAccordions summary{padding:16px 0!important;font-weight:850}
+.focalStorefront .focalAccordions p{color:var(--focal-muted);line-height:1.65;font-size:13px;padding:0 0 15px;margin:0}
+
+/* Quick view */
+.focalStorefront .focalModal{background:rgba(25,21,18,.5)!important;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.focalStorefront .focalQuickView{border-radius:24px!important;box-shadow:0 30px 110px rgba(0,0,0,.28)!important}
+.focalStorefront .focalQuickImage img{display:block;width:100%;height:100%;object-fit:cover}
+.focalStorefront .focalQuickInfo{padding:42px!important}
+
+/* Full cart page */
+.cartPage{padding:56px 0 80px}
+.cartPage .cartHeader{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:24px}
+.cartPage .cartHeader h1{margin:4px 0 0;font-size:clamp(34px,5vw,52px);line-height:.98;letter-spacing:-.055em}
+.cartPage .cartHeader p{margin:8px 0 0;color:var(--focal-muted);font-size:14px}
+.cartPage .cartLayout{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,.43fr);gap:24px;align-items:start}
+.cartPage .cartItemsCard{border:1px solid var(--focal-line);border-radius:22px;background:#fff;overflow:hidden}
+.cartPage .cartItemsHead{display:flex;align-items:center;justify-content:space-between;padding:17px 20px;border-bottom:1px solid var(--focal-line);font-size:12px;font-weight:850;letter-spacing:.08em;text-transform:uppercase}
+.cartPage .cartRowUX{display:grid;grid-template-columns:116px minmax(0,1fr) auto;gap:18px;padding:18px 20px;align-items:center;border-bottom:1px solid var(--focal-line);transition:background .15s ease}
+.cartPage .cartRowUX:last-child{border-bottom:0}
+.cartPage .cartRowUX:hover{background:#fffaf6}
+.cartPage .cartImageUX{width:116px;height:116px;object-fit:cover;border-radius:15px;background:#f4eee9;display:block}
+.cartPage .cartInfoUX{display:grid;gap:6px}
+.cartPage .cartInfoUX a{font-size:16px;font-weight:850;letter-spacing:-.015em}
+.cartPage .cartInfoUX .sku{font-size:11px;color:var(--focal-muted)}
+.cartPage .cartInfoUX .unitPrice{font-size:13px;color:var(--focal-muted)}
+.cartPage .cartLineTotal{font-size:15px;font-weight:900;margin-top:3px}
+.cartPage .cartControlsUX{display:flex;align-items:center;gap:10px;justify-content:flex-end}
+.cartPage .qtyUX{display:inline-flex;align-items:center;border:1px solid var(--focal-line);border-radius:12px;padding:4px;background:#fff}
+.cartPage .qtyUX button{width:34px;height:34px;border:0;background:transparent;border-radius:9px;display:grid;place-items:center;cursor:pointer}
+.cartPage .qtyUX button:hover{background:var(--focal-soft)}
+.cartPage .qtyUX input{width:42px;height:34px;border:0;text-align:center;outline:0;background:transparent;font-weight:800}
+.cartPage .removeUX{min-height:34px;padding:0 10px;border:1px solid var(--focal-line);background:#fff;border-radius:10px;cursor:pointer;font-weight:750;color:var(--focal-muted)}
+.cartPage .removeUX:hover{color:#9a2418;border-color:#f0c8c2;background:#fff7f6}
+.cartPage .summaryUX{position:sticky;top:102px;border:1px solid var(--focal-line);border-radius:22px;background:#fff;padding:22px;box-shadow:var(--ux-shadow)}
+.cartPage .summaryUX h2{font-size:17px;margin:0 0 14px;letter-spacing:-.02em}
+.cartPage .summaryLineUX{display:flex;justify-content:space-between;gap:14px;padding:11px 0;border-bottom:1px solid var(--focal-line);font-size:13px}
+.cartPage .summaryTotalUX{display:flex;justify-content:space-between;gap:14px;padding:16px 0 6px;font-size:20px;font-weight:900}
+.cartPage .summaryNoteUX{font-size:11px;color:var(--focal-muted);line-height:1.6;margin:0 0 14px}
+.cartPage .cartActionUX{display:grid;gap:9px}
+.cartPage .cartActionUX a{min-height:50px;border-radius:13px}
+.cartPage .emptyCartUX{border:1px dashed #d9c8bd;border-radius:22px;background:linear-gradient(180deg,#fff,#fffaf6);padding:64px 24px;text-align:center}
+.cartPage .emptyCartUX .icon{width:58px;height:58px;border-radius:18px;display:grid;place-items:center;background:var(--focal-soft);margin:0 auto 16px}
+.cartPage .emptyCartUX h2{font-size:26px;letter-spacing:-.03em;margin:0 0 6px}
+.cartPage .emptyCartUX p{color:var(--focal-muted);max-width:40ch;margin:0 auto 20px;line-height:1.6}
+
+/* Mobile */
+@media(max-width:1000px){
+  .focalStorefront .focalProductDetail{grid-template-columns:1fr!important;gap:26px!important}
+  .focalStorefront .focalProductGallery,.focalStorefront .focalProductInfo{position:static}
+  .focalStorefront .focalProductInfo{padding:24px!important}
+  .focalStorefront .focalCollectionHero{grid-template-columns:1fr!important}
+  .focalStorefront .focalCollectionHeroImage,.focalStorefront .focalCollectionHeroImage img{min-height:330px!important}
+  .focalStorefront .focalShopFilters{grid-template-columns:1fr 1fr!important}
+  .focalStorefront .focalShopFilters .focalInput{grid-column:1/-1}
+  .cartPage .cartLayout{grid-template-columns:1fr}
+  .cartPage .summaryUX{position:static}
+}
+@media(max-width:700px){
+  .focalNavInner{height:68px!important}
+  .focalNavActions{gap:5px!important}
+  .focalNavIcon{width:38px!important;height:38px!important}
+  .focalStorefront .focalContainer,.focalStorefront .focalNavInner{width:min(100% - 24px,1280px)!important}
+  .focalStorefront .focalSectionHead{align-items:flex-start;flex-direction:column;gap:9px}
+  .focalStorefront .focalSectionHead h2{font-size:31px}
+  .focalStorefront .focalProductGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:20px 11px!important}
+  .focalStorefront .focalProductMedia{border-radius:14px!important}
+  .focalStorefront .focalProductBody h3{font-size:13px}
+  .focalStorefront .focalCollectionGrid{grid-template-columns:1fr 1fr!important;gap:10px!important}
+  .focalStorefront .focalCollectionCopy{padding:11px}
+  .focalStorefront .focalCollectionCopy h3{font-size:14px}
+  .focalStorefront .focalCollectionToolbar,.focalStorefront .focalStorefrontFilterBar{position:static!important}
+  .focalStorefront .focalCollectionToolbar{display:grid!important;grid-template-columns:1fr 1fr;gap:7px!important}
+  .focalStorefront .focalToolbarSearch{grid-column:1/-1;min-width:0!important}
+  .focalStorefront .focalShopFilters{grid-template-columns:1fr!important}
+  .focalStorefront .focalShopFilters .focalInput{grid-column:auto}
+  .focalStorefront .focalShopFilters .focalButton{width:100%}
+  .focalStorefront .focalProductGallery{grid-template-columns:1fr 1fr!important}
+  .focalStorefront .focalProductGallery img:first-child{grid-column:span 2}
+  .focalStorefront .focalProductInfo{border-radius:18px!important;padding:20px!important}
+  .focalStorefront .focalVariantList{grid-template-columns:1fr 1fr!important}
+  .focalStorefront .focalPurchaseRow{grid-template-columns:auto 1fr!important}
+  .focalStorefront .focalWishlist{grid-column:2;justify-self:end}
+  .focalStorefront .focalQuickInfo{padding:24px!important}
+  .cartPage{padding:36px 0 60px}
+  .cartPage .cartHeader{align-items:flex-start;flex-direction:column}
+  .cartPage .cartRowUX{grid-template-columns:76px minmax(0,1fr);gap:11px;padding:14px}
+  .cartPage .cartImageUX{width:76px;height:76px;border-radius:12px}
+  .cartPage .cartControlsUX{grid-column:1/-1;justify-content:space-between}
+  .cartPage .summaryUX{border-radius:18px;padding:18px}
+}
+@media(prefers-reduced-motion:reduce){
+  .focalStorefront .focalProductCard,.focalStorefront .focalProductMedia img,.focalStorefront .focalCollectionCard,.focalStorefront .focalCollectionMedia img,.focalNavLinks a::after,.focalNavLinkButton::after,.focalNavIcon{transition:none!important}
+}
+
+/* ===== storefront-ux-v3b.css ===== */
+.cartTrustUX{display:grid;gap:0;margin-top:18px;padding-top:8px;border-top:1px solid var(--focal-line)}
+.cartTrustUX>div{display:flex;align-items:flex-start;gap:10px;padding:11px 0;color:var(--focal-primary)}
+.cartTrustUX>div+div{border-top:1px solid var(--focal-line)}
+.cartTrustUX span{display:grid;gap:2px;color:var(--focal-ink);font-size:12px}
+.cartTrustUX strong{font-size:12px}
+.cartTrustUX small{color:var(--focal-muted);font-size:10px;line-height:1.4}
+@media(max-width:700px){.cartTrustUX{grid-template-columns:1fr 1fr 1fr;gap:8px}.cartTrustUX>div{border:1px solid var(--focal-line)!important;border-radius:12px;padding:10px;display:grid}.cartTrustUX span{font-size:10px}.cartTrustUX strong{font-size:10px}.cartTrustUX small{font-size:9px}}
+
+/* ===== storefront-ux-v4.css ===== */
+/* Storefront/admin UX v4: visual cleanup and responsive polish */
+
+/* -------- Shared motion/focus -------- */
+.focalStorefront a,.focalStorefront button,.focalStorefront select,.focalStorefront input,.adminShell a,.adminShell button,.adminShell select,.adminShell input{transition:color .16s ease,background-color .16s ease,border-color .16s ease,box-shadow .16s ease,transform .16s ease}
+@media(prefers-reduced-motion:reduce){.focalStorefront a,.focalStorefront button,.focalStorefront select,.focalStorefront input,.adminShell a,.adminShell button,.adminShell select,.adminShell input{transition:none}}
+
+/* -------- Storefront navigation -------- */
+body:not(:has(.adminShell)) .focalNav{position:sticky!important;top:0!important;z-index:80!important;background:rgba(255,255,255,.94)!important;border-bottom:1px solid rgba(234,222,212,.9)!important;box-shadow:0 4px 18px rgba(25,21,18,.04)!important;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+body:not(:has(.adminShell)) .focalNavInner{min-height:72px!important;height:auto!important;display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;align-items:center!important;gap:24px!important}
+body:not(:has(.adminShell)) .focalLogo{white-space:nowrap!important;min-width:0}
+body:not(:has(.adminShell)) .focalLogo img{max-height:42px!important}
+body:not(:has(.adminShell)) .focalNavLinks{justify-content:center!important;gap:6px!important;min-width:0!important}
+body:not(:has(.adminShell)) .focalNavItem{height:72px!important}
+body:not(:has(.adminShell)) .focalNavLinks>a,body:not(:has(.adminShell)) .focalNavLinkButton{height:42px!important;padding:0 13px!important;border-radius:11px!important;font-size:13px!important;font-weight:800!important}
+body:not(:has(.adminShell)) .focalNavLinks>a::after,body:not(:has(.adminShell)) .focalNavLinkButton::after{display:none!important}
+body:not(:has(.adminShell)) .focalNavLinks>a:hover,body:not(:has(.adminShell)) .focalNavLinkButton:hover{background:var(--focal-soft)!important;color:var(--focal-ink)!important}
+body:not(:has(.adminShell)) .focalNavLinks>a[aria-current="page"]{background:var(--focal-soft)!important;color:var(--focal-primary)!important}
+body:not(:has(.adminShell)) .focalMega{top:64px!important;left:50%!important;width:min(760px,calc(100vw - 28px))!important;max-height:min(70vh,560px)!important;overflow:auto!important;padding:12px!important;border-radius:16px!important;border:1px solid var(--focal-line)!important;box-shadow:0 24px 60px rgba(25,21,18,.16)!important}
+body:not(:has(.adminShell)) .focalMegaGrid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important}
+body:not(:has(.adminShell)) .focalNavActions{justify-content:flex-end!important}
+body:not(:has(.adminShell)) .focalNavIcon{background:rgba(255,255,255,.9)!important}
+
+/* Any accidental full-width/search-looking input in the header should behave as a compact control. */
+body:not(:has(.adminShell)) .focalNav input{max-width:100%!important;min-width:0!important;height:42px!important;padding:0 13px!important;border:1px solid var(--focal-line)!important;border-radius:11px!important;background:#fff!important;color:var(--focal-ink)!important;box-shadow:none!important}
+body:not(:has(.adminShell)) .focalNav input:focus{border-color:#cdb8aa!important;box-shadow:0 0 0 4px rgba(255,90,31,.08)!important}
+
+/* Better mobile nav/drawers */
+@media(max-width:900px){
+  body:not(:has(.adminShell)) .focalNavInner{grid-template-columns:auto minmax(0,1fr) auto!important;gap:10px!important;min-height:64px!important}
+  body:not(:has(.adminShell)) .focalNavMobile{display:grid!important}
+  body:not(:has(.adminShell)) .focalNavActions{gap:6px!important}
+  body:not(:has(.adminShell)) .focalNavActions .focalNavIcon:nth-child(2){display:none!important}
+  body:not(:has(.adminShell)) .focalNavLinks{display:none!important}
+  body:not(:has(.adminShell)) .focalMobileOverlay{background:rgba(25,21,18,.35)!important;z-index:120!important}
+  body:not(:has(.adminShell)) .focalMobilePanel{width:min(420px,92vw)!important;border-left:1px solid var(--focal-line)!important;box-shadow:-20px 0 60px rgba(0,0,0,.16)!important}
+  body:not(:has(.adminShell)) .focalMobileGroup>a{padding:8px 0!important;border-radius:8px!important}
+  body:not(:has(.adminShell)) .focalMobileGroup>a:active{background:var(--focal-soft)}
+}
+
+/* -------- Hero/image loading presentation -------- */
+body:not(:has(.adminShell)) .focalType-hero .focalHeroOverlay{display:block!important;position:absolute!important;inset:0!important;z-index:2!important;pointer-events:none!important}
+body:not(:has(.adminShell)) .focalType-hero .focalHeroContent{display:flex!important;position:relative!important;z-index:3!important}
+body:not(:has(.adminShell)) .focalType-hero .focalHeroImage{display:block!important;opacity:1!important;filter:none!important;width:100%!important;height:100%!important}
+body:not(:has(.adminShell)) .focalType-hero .focalHeroMedia{overflow:hidden!important}
+body:not(:has(.adminShell)) .focalType-hero .focalHeroMedia img{transform:translateZ(0);will-change:transform}
+body:not(:has(.adminShell)) .focalStorefront img{background:#f6efe9}
+body:not(:has(.adminShell)) .focalStorefront img[loading="lazy"]{content-visibility:auto}
+
+/* Make primary image areas reserve space and avoid visual jumps. */
+body:not(:has(.adminShell)) .focalProductMedia,body:not(:has(.adminShell)) .focalCollectionMedia,body:not(:has(.adminShell)) .focalQuickImage,body:not(:has(.adminShell)) .focalCollectionHeroImage{contain:layout paint}
+body:not(:has(.adminShell)) .focalProductMedia img,body:not(:has(.adminShell)) .focalCollectionMedia img,body:not(:has(.adminShell)) .focalCollectionHeroImage img,body:not(:has(.adminShell)) .focalQuickImage img{aspect-ratio:auto;min-height:100%}
+
+/* -------- Shop / collection discovery -------- */
+body:not(:has(.adminShell)) .focalStorefrontFilterBar{margin-top:18px!important}
+body:not(:has(.adminShell)) .focalShopFilters{grid-template-columns:minmax(240px,1fr) minmax(150px,190px) minmax(150px,190px) auto!important}
+body:not(:has(.adminShell)) .focalShopFilters .focalButton{min-width:110px!important}
+body:not(:has(.adminShell)) .focalCollectionToolbar{display:grid!important;grid-template-columns:minmax(220px,1fr) auto auto!important;gap:10px!important;align-items:center!important}
+body:not(:has(.adminShell)) .focalCollectionToolbar select{min-width:150px}
+body:not(:has(.adminShell)) .focalResultCount{padding-top:2px}
+body:not(:has(.adminShell)) .focalCollectionHeroCopy h2{font-size:clamp(48px,6vw,88px)!important;max-width:9ch!important}
+body:not(:has(.adminShell)) .focalCollectionHeroCopy p{max-width:52ch!important}
+body:not(:has(.adminShell)) .focalCollectionHeroImage{min-height:460px!important}
+body:not(:has(.adminShell)) .focalCollectionHeroImage img{min-height:460px!important}
+
+/* -------- Product detail -------- */
+body:not(:has(.adminShell)) .focalProductDetail{padding-top:28px!important;padding-bottom:36px!important}
+body:not(:has(.adminShell)) .focalProductInfo{box-shadow:0 18px 50px rgba(25,21,18,.07)!important}
+body:not(:has(.adminShell)) .focalProductInfo .focalPurchaseRow .focalButton{font-weight:900!important;letter-spacing:.005em}
+body:not(:has(.adminShell)) .focalProductInfo .focalVariantList button{background:#fff!important}
+body:not(:has(.adminShell)) .focalProductInfo .focalVariantList button.selected{background:var(--focal-soft)!important}
+body:not(:has(.adminShell)) .focalProductInfo .focalAccordions details[open]{padding-bottom:1px!important}
+
+/* -------- Cart -------- */
+body:not(:has(.adminShell)) .cartPage{background:linear-gradient(180deg,#fffaf6 0,#fff 300px)!important}
+body:not(:has(.adminShell)) .cartPage .cartHeader{padding-top:12px}
+body:not(:has(.adminShell)) .cartPage .cartItemsCard{box-shadow:0 14px 36px rgba(25,21,18,.05)!important}
+body:not(:has(.adminShell)) .cartPage .cartRowUX{grid-template-columns:116px minmax(0,1fr) minmax(170px,auto)!important}
+body:not(:has(.adminShell)) .cartPage .cartProductName{font-size:17px;font-weight:850;line-height:1.25}
+body:not(:has(.adminShell)) .cartPage .cartLineTotal{font-size:16px;font-weight:900}
+body:not(:has(.adminShell)) .summaryUX{border:1px solid var(--focal-line)!important;border-radius:22px!important;background:rgba(255,255,255,.94)!important;box-shadow:0 14px 36px rgba(25,21,18,.07)!important}
+body:not(:has(.adminShell)) .summaryUX .focalButton{min-height:50px!important;font-weight:900!important}
+body:not(:has(.adminShell)) .cartTrustUX>div{border-top:1px solid var(--focal-line)}
+
+/* -------- Admin shell: cleaner Shopify-like navigation -------- */
+body:has(.adminShell){background:#f5f5f2!important}
+body:has(.adminShell) .adminShell{grid-template-columns:274px minmax(0,1fr)!important;background:#f5f5f2!important}
+body:has(.adminShell) .adminSide{padding:16px 12px 20px!important;background:#fff!important;border-right:1px solid #e3e3de!important;box-shadow:8px 0 30px rgba(23,23,20,.025)!important;overflow-y:auto!important;scrollbar-gutter:stable}
+body:has(.adminShell) .adminNavTree{gap:5px!important}
+body:has(.adminShell) .adminNavSearchWrap{height:44px!important;margin:2px 2px 10px!important;border-radius:12px!important;background:#f8f8f5!important}
+body:has(.adminShell) .adminNavSearchWrap:focus-within{background:#fff!important;border-color:#c9c9c1!important;box-shadow:0 0 0 4px rgba(23,23,20,.055)!important}
+body:has(.adminShell) .adminNavGroup{padding-bottom:4px!important}
+body:has(.adminShell) .adminNavGroupButton{height:40px!important;padding:0 11px!important;border-radius:10px!important;font-size:12px!important;text-transform:none!important;letter-spacing:.01em}
+body:has(.adminShell) .adminNavGroupButton:hover{background:#f4f4f0!important}
+body:has(.adminShell) .adminNavGroupButton.active{background:#f1f1ed!important}
+body:has(.adminShell) .adminNavChildren{padding-left:3px}
+body:has(.adminShell) .adminNavItem{height:42px!important;margin:2px 0!important;padding:0 12px 0 16px!important;border-radius:10px!important;color:#5f5f5a!important;font-size:13px!important}
+body:has(.adminShell) .adminNavItem:hover{background:#f6f6f3!important;color:#20201d!important;transform:none!important}
+body:has(.adminShell) .adminNavItem.active{background:#e8f5f1!important;color:#146b57!important;box-shadow:inset 3px 0 0 #008060!important;font-weight:750!important}
+body:has(.adminShell) .adminNavItem svg{width:17px!important;height:17px!important;color:currentColor!important;opacity:.78!important}
+body:has(.adminShell) .adminNavActiveDot{margin-left:auto!important;width:6px!important;height:6px!important;background:#008060!important}
+body:has(.adminShell) .adminNavGroup + .adminNavGroup{margin-top:4px!important}
+body:has(.adminShell) .adminNavEmpty{margin:4px 2px!important}
+
+/* Admin top bar/content breathing room */
+body:has(.adminShell) .adminMain{padding:0 38px 56px!important}
+body:has(.adminShell) .adminTopbar{min-height:74px!important;margin-bottom:28px!important;background:rgba(245,245,242,.9)!important}
+body:has(.adminShell) .adminBrandMark{background:#20201d!important}
+body:has(.adminShell) .adminMain .sectionHead .h2{letter-spacing:-.04em}
+
+/* Responsive admin */
+@media(max-width:1000px){
+  body:has(.adminShell) .adminShell{grid-template-columns:236px minmax(0,1fr)!important}
+  body:has(.adminShell) .adminMain{padding-inline:24px!important}
+}
+@media(max-width:760px){
+  body:has(.adminShell) .adminShell{grid-template-columns:1fr!important}
+  body:has(.adminShell) .adminSide{position:sticky!important;top:0!important;height:auto!important;max-height:55vh!important;border-right:0!important;border-bottom:1px solid #e3e3de!important;z-index:70!important}
+  body:has(.adminShell) .adminMain{padding:0 16px 40px!important}
+}
+
+/* Storefront responsive */
+@media(max-width:900px){
+  body:not(:has(.adminShell)) .focalStorefront .focalSection{padding-top:52px!important;padding-bottom:52px!important}
+  body:not(:has(.adminShell)) .focalStorefront .focalProductGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:22px 12px!important}
+  body:not(:has(.adminShell)) .focalStorefront .focalProductDetail{grid-template-columns:1fr!important;gap:24px!important}
+  body:not(:has(.adminShell)) .focalStorefront .focalProductGallery{position:static!important}
+  body:not(:has(.adminShell)) .focalStorefront .focalProductInfo{position:static!important;padding:24px!important}
+  body:not(:has(.adminShell)) .focalStorefront .focalCollectionHero{grid-template-columns:1fr!important;gap:22px!important}
+  body:not(:has(.adminShell)) .focalStorefront .focalCollectionHeroImage,body:not(:has(.adminShell)) .focalStorefront .focalCollectionHeroImage img{min-height:300px!important}
+  body:not(:has(.adminShell)) .focalStorefrontFilterBar{top:64px!important}
+  body:not(:has(.adminShell)) .focalShopFilters{grid-template-columns:1fr 1fr!important}
+  body:not(:has(.adminShell)) .focalShopFilters .focalInput{grid-column:1/-1}
+  body:not(:has(.adminShell)) .focalShopFilters .focalButton{width:100%}
+  body:not(:has(.adminShell)) .focalCollectionToolbar{grid-template-columns:1fr!important}
+  body:not(:has(.adminShell)) .focalToolbarSearch{min-width:0!important}
+  body:not(:has(.adminShell)) .cartPage .cartRowUX{grid-template-columns:80px minmax(0,1fr)!important}
+  body:not(:has(.adminShell)) .cartPage .cartImageUX{width:80px!important;height:80px!important}
+  body:not(:has(.adminShell)) .cartPage .cartControlsUX{grid-column:1/-1!important;justify-self:stretch!important;display:flex!important;align-items:center!important;justify-content:space-between!important}
+  body:not(:has(.adminShell)) .cartPage .cartLayout{grid-template-columns:1fr!important}
+}
+@media(max-width:600px){
+  body:not(:has(.adminShell)) .focalStorefront .focalContainer{width:calc(100% - 24px)!important}
+  body:not(:has(.adminShell)) .focalStorefront .focalSection{padding-top:42px!important;padding-bottom:42px!important}
+  body:not(:has(.adminShell)) .focalStorefront .focalProductGrid{gap:20px 10px!important}
+  body:not(:has(.adminShell)) .focalStorefront .focalProductBody{padding-top:10px!important}
+  body:not(:has(.adminShell)) .focalStorefront .focalProductBody h3{font-size:14px!important}
+  body:not(:has(.adminShell)) .focalStorefront .focalHero{border-radius:0!important}
+  body:not(:has(.adminShell)) .focalStorefront .focalHeroContent{padding:22px!important}
+  body:not(:has(.adminShell)) .focalStorefront .focalHeroContent h1{font-size:clamp(32px,10vw,48px)!important}
+  body:not(:has(.adminShell)) .focalStorefront .focalType-main_product .focalProductGallery{grid-template-columns:1fr 1fr!important;gap:8px!important}
+  body:not(:has(.adminShell)) .focalStorefront .focalType-main_product .focalProductGallery img:first-child{grid-column:span 2!important}
+  body:not(:has(.adminShell)) .focalStorefront .focalProductInfo{padding:20px!important;border-radius:18px!important}
+  body:not(:has(.adminShell)) .focalStorefront .focalVariantList{grid-template-columns:1fr 1fr!important}
+  body:not(:has(.adminShell)) .focalStorefront .focalTrustGrid{grid-template-columns:1fr!important}
+  body:not(:has(.adminShell)) .cartPage{padding-top:34px!important}
+  body:not(:has(.adminShell)) .cartPage .cartHeader{align-items:flex-start!important;flex-direction:column!important}
+  body:not(:has(.adminShell)) .cartPage .cartRowUX{padding:14px!important}
+  body:not(:has(.adminShell)) .summaryUX{border-radius:18px!important}
+}
+
+/* ===== storefront-ux-v4b.css ===== */
+/* Final targeted visual corrections based on production screenshots */
+
+/* Prevent a navigation item/search control from expanding into the center of the header. */
+body:not(:has(.adminShell)) .focalNavLinks{flex:0 1 auto!important;min-width:0!important;max-width:min(760px,58vw)!important}
+body:not(:has(.adminShell)) .focalNavLinks>a,body:not(:has(.adminShell)) .focalNavLinks>.focalNavItem{flex:0 0 auto!important;width:auto!important;max-width:max-content!important}
+body:not(:has(.adminShell)) .focalNavLinks .focalNavLinkButton{width:auto!important;min-width:0!important}
+body:not(:has(.adminShell)) .focalNavLinks a::before,body:not(:has(.adminShell)) .focalNavLinks button::before{display:none!important}
+body:not(:has(.adminShell)) .focalNav input{flex:0 1 320px!important;width:min(320px,100%)!important}
+
+/* Restore readable hero composition; never suppress content on the production storefront. */
+body:not(:has(.adminShell)) .focalType-hero .focalHeroContent{display:flex!important;visibility:visible!important;opacity:1!important}
+body:not(:has(.adminShell)) .focalType-hero .focalHeroContent h1,body:not(:has(.adminShell)) .focalType-hero .focalHeroContent p,body:not(:has(.adminShell)) .focalType-hero .focalHeroContent .focalButtons{visibility:visible!important;opacity:1!important}
+body:not(:has(.adminShell)) .focalType-hero .focalHeroOverlay{visibility:visible!important;opacity:1!important}
+body:not(:has(.adminShell)) .focalType-hero .focalHero{overflow:hidden!important}
+
+/* Improve visual hierarchy of the admin sidebar shown in the audit screenshot. */
+body:has(.adminShell) .adminNavGroupButton{color:#44443f!important}
+body:has(.adminShell) .adminNavGroupButton span{font-weight:800!important}
+body:has(.adminShell) .adminNavItem{position:relative!important}
+body:has(.adminShell) .adminNavItem.active svg{opacity:1!important}
+body:has(.adminShell) .adminNavItem.active .adminNavActiveDot{box-shadow:0 0 0 3px rgba(0,128,96,.08)!important}
+body:has(.adminShell) .adminNavChildren.open{padding-bottom:3px!important}
+body:has(.adminShell) .adminSide::-webkit-scrollbar{width:8px}
+body:has(.adminShell) .adminSide::-webkit-scrollbar-thumb{background:#d7d7d1;border-radius:999px;border:2px solid #fff}
+
+@media(max-width:900px){body:not(:has(.adminShell)) .focalNavLinks{max-width:0!important}.focalNavLinks>a,.focalNavItem{max-width:100%!important}}
+@media(max-width:600px){body:not(:has(.adminShell)) .focalNav input{flex:1 1 auto!important;width:100%!important}.focalType-hero .focalHeroContent{max-width:calc(100% - 28px)!important}}
+
+/* ===== storefront-nav-ux-v5.css ===== */
+/* Storefront navigation UX v5 — clean desktop header, stable dropdowns, stronger interaction states */
+
+.focalNav {
+  z-index: 80 !important;
+  isolation: isolate;
+  border-bottom: 1px solid color-mix(in srgb, var(--focal-line) 78%, transparent) !important;
+  backdrop-filter: blur(18px) saturate(1.08) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(1.08) !important;
+  box-shadow: 0 1px 0 rgba(23,23,23,.025);
+}
+
+.focalNavInner {
+  width: min(1280px, calc(100% - 48px)) !important;
+  min-height: 78px !important;
+  height: 78px !important;
+  grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 1fr) !important;
+  gap: 24px !important;
+}
+
+.focalLogo {
+  justify-self: start;
+  min-width: 0;
+  white-space: nowrap;
+  font-size: 23px !important;
+  line-height: 1;
+  letter-spacing: -.055em !important;
+}
+
+.focalLogo img {
+  max-width: var(--store-header-logo-width, 160px) !important;
+  max-height: 48px !important;
+}
+
+.focalNavLinks {
+  justify-self: center;
+  align-items: stretch;
+  justify-content: center;
+  gap: 6px !important;
+  height: 100%;
+}
+
+.focalNavItem,
+.focalNavLinks > .focalDropdownLink {
+  position: relative;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+}
+
+/* Root links without children currently reuse focalDropdownLink. Promote them to proper top-nav styling. */
+.focalNavLinks > .focalDropdownLink {
+  width: auto !important;
+  padding: 0 13px !important;
+  margin: 0 !important;
+  border-radius: 10px !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  color: var(--focal-ink) !important;
+  background: transparent !important;
+}
+
+.focalNavLinks > .focalDropdownLink::after,
+.focalNavItem > .focalNavLink::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 14px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--focal-primary);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 180ms ease, opacity 180ms ease;
+  opacity: .92;
+}
+
+.focalNavLinks > .focalDropdownLink:hover,
+.focalNavItem:hover > .focalNavLink,
+.focalNavLinks > .focalDropdownLink:focus-visible,
+.focalNavLink:focus-visible {
+  color: var(--focal-ink) !important;
+}
+
+.focalNavLinks > .focalDropdownLink:hover::after,
+.focalNavLinks > .focalDropdownLink:focus-visible::after,
+.focalNavItem:hover > .focalNavLink::after,
+.focalNavLink:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.focalNavLink {
+  position: relative;
+  height: 100% !important;
+  padding: 0 13px !important;
+  gap: 1px !important;
+  border-radius: 10px !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+}
+
+.focalNavLink a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  color: inherit !important;
+}
+
+.focalNavChevron {
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: 7px !important;
+  opacity: .68 !important;
+  transition: background 160ms ease, opacity 160ms ease, transform 160ms ease;
+}
+
+.focalNavLink:hover .focalNavChevron,
+.focalNavLink:focus-within .focalNavChevron {
+  opacity: 1 !important;
+  background: color-mix(in srgb, var(--focal-soft) 86%, transparent) !important;
+}
+
+/* Eliminate the hover gap that causes dropdown flicker and keep the panel visually attached to the header. */
+.focalDropdown {
+  top: calc(100% - 1px) !important;
+  min-width: 290px !important;
+  max-width: min(360px, calc(100vw - 28px));
+  padding: 8px !important;
+  border-radius: 0 0 16px 16px !important;
+  background: rgba(255,255,255,.985) !important;
+  border-color: color-mix(in srgb, var(--focal-line) 92%, transparent) !important;
+  box-shadow: 0 22px 50px rgba(25,21,18,.14), 0 2px 8px rgba(25,21,18,.045) !important;
+  animation: focalNavDropIn 160ms cubic-bezier(.22,.8,.26,1) both;
+}
+
+.focalDropdownItem {
+  position: relative;
+  border-radius: 10px;
+}
+
+.focalDropdownLink {
+  min-height: 42px;
+  padding: 10px 12px !important;
+  border-radius: 10px !important;
+  font-size: 13px !important;
+  font-weight: 750 !important;
+  letter-spacing: -.01em;
+  transition: background 140ms ease, color 140ms ease, transform 140ms ease;
+}
+
+.focalDropdownLink:hover,
+.focalDropdownLink:focus-visible {
+  background: color-mix(in srgb, var(--focal-soft) 88%, transparent) !important;
+  color: var(--focal-primary) !important;
+  transform: translateX(1px);
+  outline: none;
+}
+
+.focalDropdownLink[aria-current='page'] {
+  color: var(--focal-primary) !important;
+  background: color-mix(in srgb, var(--focal-soft) 90%, transparent) !important;
+}
+
+.focalDropdownLink[aria-current='page']::after {
+  content: '';
+  display: block;
+  height: 2px;
+  margin: 4px 0 0;
+  border-radius: 999px;
+  background: var(--focal-primary);
+}
+
+.focalDropdownNested {
+  left: calc(100% + 4px) !important;
+  top: -8px !important;
+  min-width: 240px !important;
+  padding: 8px !important;
+  border-radius: 12px !important;
+  box-shadow: 0 18px 46px rgba(25,21,18,.14) !important;
+}
+
+.focalNavActions {
+  justify-self: end;
+  gap: 4px !important;
+}
+
+.focalNavIcon {
+  width: 40px !important;
+  height: 40px !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  border-radius: 10px !important;
+  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease, color 140ms ease;
+}
+
+.focalNavIcon:hover,
+.focalNavIcon:focus-visible {
+  background: color-mix(in srgb, var(--focal-soft) 90%, transparent) !important;
+  border-color: var(--focal-line) !important;
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.focalNavIcon:focus-visible,
+.focalNavMobile:focus-visible,
+.focalNavLink:focus-visible,
+.focalDropdownLink:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focal-primary) 20%, transparent) !important;
+}
+
+.focalCartCount {
+  top: -1px !important;
+  right: -1px !important;
+  min-width: 17px !important;
+  height: 17px !important;
+  font-size: 8px !important;
+  box-shadow: 0 0 0 2px var(--focal-surface);
+}
+
+.focalAnnouncementGlobal {
+  min-height: 34px;
+}
+
+.focalAnnouncementGlobalInner {
+  min-height: 34px !important;
+  padding: 0 42px !important;
+  position: relative;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  letter-spacing: .01em;
+}
+
+.focalAnnouncementDismiss {
+  position: absolute;
+  right: 16px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  transition: background 140ms ease, opacity 140ms ease;
+}
+
+.focalAnnouncementDismiss:hover,
+.focalAnnouncementDismiss:focus-visible {
+  background: rgba(255,255,255,.12);
+  opacity: 1;
+  outline: none;
+}
+
+.focalSearchCard {
+  margin-top: 88px !important;
+  border: 1px solid var(--focal-line) !important;
+  box-shadow: 0 32px 90px rgba(0,0,0,.18) !important;
+}
+
+.focalMobilePanel {
+  width: min(400px, 92%) !important;
+  padding: 18px !important;
+}
+
+.focalNavMobile {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 10px !important;
+}
+
+@keyframes focalNavDropIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-5px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@media (max-width: 1100px) {
+  .focalNavInner {
+    width: min(100%, calc(100% - 32px)) !important;
+    grid-template-columns: minmax(150px, 1fr) auto minmax(150px, 1fr) !important;
+  }
+  .focalNavLinks > .focalDropdownLink,
+  .focalNavLink {
+    padding-inline: 10px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .focalNavInner {
+    width: min(100%, calc(100% - 24px)) !important;
+    grid-template-columns: 40px 1fr auto !important;
+    min-height: 68px !important;
+    height: 68px !important;
+  }
+  .focalLogo {
+    justify-self: center;
+    font-size: 20px !important;
+  }
+  .focalNavActions .focalNavIcon:nth-child(2) {
+    display: none !important;
+  }
+  .focalNavActions {
+    gap: 2px !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .focalAnnouncementGlobalInner {
+    min-height: 36px !important;
+    padding: 0 42px 0 12px !important;
+    font-size: 10px !important;
+  }
+  .focalNavInner {
+    min-height: 64px !important;
+    height: 64px !important;
+  }
+  .focalNavMobile,
+  .focalNavIcon {
+    width: 38px !important;
+    height: 38px !important;
+  }
+  .focalLogo {
+    font-size: 18px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .focalDropdown,
+  .focalNavLinks > .focalDropdownLink,
+  .focalNavItem > .focalNavLink::after,
+  .focalNavIcon,
+  .focalDropdownLink {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ===== storefront-nav-ux-v6.css ===== */
+/* Navigation UX v6: remove decorative underline/active-bar effects that read as hover artifacts. */
+.focalNavLinks,
+.focalNavItem,
+.focalNavLink,
+.focalNavLinks > .focalNavItem > .focalNavLink,
+.focalNavLinks > .focalNavItem > .focalNavLink > a,
+.focalNavLinks > .focalNavItem > a,
+.focalDropdown,
+.focalDropdownItem,
+.focalDropdownLink {
+  border-bottom: 0 !important;
+  box-shadow: none !important;
+  background-image: none !important;
+}
+
+.focalNavLinks a::before,
+.focalNavLinks a::after,
+.focalNavLink a::before,
+.focalNavLink a::after,
+.focalNavItem::before,
+.focalNavItem::after,
+.focalDropdownLink::before,
+.focalDropdownLink::after,
+.focalDropdownItem::before,
+.focalDropdownItem::after {
+  content: none !important;
+  display: none !important;
+}
+
+.focalNavLinks a,
+.focalNavLink,
+.focalNavLink a,
+.focalDropdownLink {
+  text-decoration: none !important;
+  transition: color 160ms ease, background-color 160ms ease, opacity 160ms ease !important;
+}
+
+.focalNavLinks a[aria-current="page"],
+.focalNavLink a[aria-current="page"] {
+  text-decoration: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.focalDropdownLink:hover,
+.focalDropdownLink:focus-visible {
+  border-bottom: 0 !important;
+  box-shadow: none !important;
+}
+
+.focalNavChevron:focus-visible,
+.focalNavIcon:focus-visible,
+.focalNavMobile:focus-visible,
+.focalDropdownLink:focus-visible,
+.focalNavLinks a:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
+/* ===== storefront-nav-ux-v7.css ===== */
+/* Storefront mobile navigation UX v7 */
+@media (max-width: 900px) {
+  .focalMobileOverlay {
+    display: block !important;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 100 !important;
+    background: rgba(20, 18, 16, .42) !important;
+    backdrop-filter: blur(6px) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
+    overflow: hidden !important;
+  }
+  .focalMobilePanel {
+    width: min(92vw, 420px) !important;
+    height: 100dvh !important;
+    min-height: 100vh !important;
+    margin-left: auto !important;
+    padding: 18px 18px 28px !important;
+    background: var(--focal-surface, #fff) !important;
+    color: var(--focal-ink, #171411) !important;
+    box-shadow: -24px 0 70px rgba(20, 18, 16, .20) !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .focalMobilePanel > .focalSearchTop {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 3 !important;
+    margin: -18px -18px 10px !important;
+    padding: 18px !important;
+    background: color-mix(in srgb, var(--focal-surface, #fff) 94%, transparent) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+    border-bottom: 1px solid var(--focal-line, #e8e3dc) !important;
+  }
+  .focalMobilePanel > .focalSearchTop strong { font-size: 18px !important; font-weight: 900 !important; letter-spacing: -.03em !important; }
+  .focalMobilePanel > .focalSearchTop .focalNavIcon { width: 36px !important; height: 36px !important; min-width: 36px !important; border-radius: 10px !important; background: transparent !important; }
+  .focalMobileRow { min-height: 56px !important; padding: 8px 0 !important; margin: 0 !important; border-top: 1px solid var(--focal-line, #e8e3dc) !important; }
+  .focalMobileRow > a { min-width: 0 !important; padding: 10px 4px !important; font-size: 15px !important; line-height: 1.2 !important; font-weight: 800 !important; color: var(--focal-ink, #171411) !important; }
+  .focalMobileRow > a:active { opacity: .7; }
+  .focalMobileToggle { width: 38px !important; height: 38px !important; min-width: 38px !important; border-radius: 11px !important; border: 1px solid var(--focal-line, #e8e3dc) !important; background: var(--focal-soft, #f7f3ee) !important; color: var(--focal-ink, #171411) !important; box-shadow: none !important; }
+  .focalMobileRow:first-of-type { border-top: 0 !important; }
+  .focalMobileChildren { margin: 0 0 8px 4px !important; padding: 4px 0 8px 14px !important; border-left: 2px solid var(--focal-line, #e8e3dc) !important; gap: 0 !important; }
+  .focalMobileChild, .focalMobileChild.level2 { display: flex !important; align-items: center !important; min-height: 40px !important; padding: 8px 8px !important; font-size: 13px !important; line-height: 1.25 !important; color: var(--focal-muted, #766f67) !important; text-decoration: none !important; border-radius: 8px !important; }
+  .focalMobileChild:hover, .focalMobileChild:focus-visible { background: var(--focal-soft, #f7f3ee) !important; color: var(--focal-ink, #171411) !important; outline: none !important; }
+  .focalMobileChildren .focalMobileChildren { margin-left: 2px !important; padding-left: 12px !important; }
+}
+@media (max-width: 520px) { .focalMobilePanel { width: 100vw !important; } }
+
+/* ===== storefront-home-ux-v8.css ===== */
+/* Homepage production UX v8 */
+.focalStorefront{overflow-x:clip}
+.focalStorefront .focalContainer{width:min(var(--store-max,1360px),calc(100% - 56px));margin-inline:auto}
+
+/* Featured / product grids: prevent a single product from becoming a giant portrait */
+.focalType-product_grid{padding-block:clamp(48px,6vw,88px);background:var(--store-bg,#fffaf6)}
+.focalType-product_grid .focalContainer{max-width:1360px}
+.focalType-product_grid .focalProductGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(14px,2vw,24px);align-items:start}
+.focalType-product_grid .focalProductCard{min-width:0;max-width:100%;background:var(--store-surface,#fff);border:1px solid color-mix(in srgb,var(--store-border,#eaded4) 72%,transparent);border-radius:20px;overflow:hidden;box-shadow:0 8px 28px rgba(25,21,18,.055);transition:transform .25s ease,box-shadow .25s ease}
+.focalType-product_grid .focalProductCard:hover{transform:translateY(-3px);box-shadow:0 18px 42px rgba(25,21,18,.10)}
+.focalType-product_grid .focalProductMedia{position:relative;aspect-ratio:1/1;overflow:hidden;background:var(--store-surface,#fff)}
+.focalType-product_grid .focalProductMedia img{display:block;width:100%;height:100%;object-fit:cover}
+.focalType-product_grid .focalProductBody{padding:15px 16px 18px}
+.focalType-product_grid .focalProductBody h3{font-size:15px;line-height:1.3;margin:5px 0 8px}
+
+/* When there is only one product, keep it editorial rather than oversized */
+.focalType-product_grid .focalProductGrid:has(> :only-child){grid-template-columns:minmax(0,520px);justify-content:center}
+.focalType-product_grid .focalProductGrid:has(> :only-child) .focalProductMedia{aspect-ratio:4/3;max-height:520px}
+.focalType-product_grid .focalProductGrid:has(> :only-child) .focalProductCard{width:100%}
+
+/* Editorial section headers */
+.focalType-product_grid .focalSectionHead,
+.focalType-collection_grid .focalSectionHead,
+.focalType-promo_grid .focalSectionHead,
+.focalType-testimonials .focalSectionHead,
+.focalType-newsletter .focalSectionHead{margin-bottom:24px}
+
+/* Collections */
+.focalType-collection_grid{padding-block:clamp(52px,6vw,92px)}
+.focalType-collection_grid .focalCollectionGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px}
+.focalType-collection_grid .focalCollectionCard{display:block;border-radius:18px;overflow:hidden;background:var(--store-surface,#fff);border:1px solid color-mix(in srgb,var(--store-border,#eaded4) 72%,transparent);box-shadow:0 8px 28px rgba(25,21,18,.05);transition:transform .25s ease,box-shadow .25s ease}
+.focalType-collection_grid .focalCollectionCard:hover{transform:translateY(-3px);box-shadow:0 16px 38px rgba(25,21,18,.09)}
+.focalType-collection_grid .focalCollectionMedia{aspect-ratio:4/3;background:var(--store-secondary,#fff0e8);overflow:hidden}
+.focalType-collection_grid .focalCollectionMedia img{width:100%;height:100%;display:block;object-fit:cover;transition:transform .45s ease}
+.focalType-collection_grid .focalCollectionCard:hover .focalCollectionMedia img{transform:scale(1.035)}
+.focalType-collection_grid .focalCollectionCopy{padding:15px 16px 17px;display:flex;justify-content:space-between;gap:14px;align-items:flex-end}
+
+/* Hero */
+.focalType-hero{min-height:min(760px,calc(100vh - 116px));}
+.focalType-hero > .focalContainer{min-height:inherit}
+.focalType-hero .focalHeroContent{max-width:min(700px,92vw)}
+
+/* Image/text */
+.focalType-image_with_text{padding-block:clamp(56px,7vw,96px)}
+.focalType-image_with_text .focalContainer{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:clamp(28px,5vw,72px);align-items:center}
+.focalType-image_with_text img{width:100%;max-height:620px;object-fit:cover;border-radius:22px;display:block}
+
+/* Promo cards */
+.focalType-promo_grid{padding-block:clamp(52px,6vw,88px)}
+.focalType-promo_grid .focalPromoGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+
+/* Testimonials */
+.focalType-testimonials{padding-block:clamp(52px,6vw,88px)}
+.focalType-testimonials .focalTestimonialGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+
+/* Newsletter */
+.focalType-newsletter{padding-block:clamp(52px,7vw,96px)}
+.focalType-newsletter .focalContainer{max-width:900px;text-align:center}
+.focalType-newsletter form{width:min(680px,100%);margin:24px auto 0}
+
+/* Homepage polish */
+.focalStorefront .focalEyebrow{letter-spacing:.10em;font-size:10px;font-weight:850}
+.focalStorefront .focalButton{transition:transform .22s ease,box-shadow .22s ease,background .22s ease}
+.focalStorefront .focalButton:hover{transform:translateY(-2px)}
+.focalStorefront a:focus-visible,.focalStorefront button:focus-visible{outline:3px solid color-mix(in srgb,var(--store-primary,#ff5a1f) 28%,white);outline-offset:3px}
+
+@media(max-width:1050px){
+  .focalType-product_grid .focalProductGrid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .focalType-collection_grid .focalCollectionGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .focalType-image_with_text .focalContainer{grid-template-columns:1fr 1fr}
+  .focalType-testimonials .focalTestimonialGrid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:760px){
+  .focalStorefront .focalContainer{width:min(100% - 28px,1360px)}
+  .focalType-product_grid,.focalType-collection_grid,.focalType-image_with_text,.focalType-promo_grid,.focalType-testimonials,.focalType-newsletter{padding-block:48px}
+  .focalType-product_grid .focalProductGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .focalType-product_grid .focalProductGrid:has(> :only-child){grid-template-columns:minmax(0,1fr)}
+  .focalType-product_grid .focalProductGrid:has(> :only-child) .focalProductMedia{aspect-ratio:4/3;max-height:none}
+  .focalType-collection_grid .focalCollectionGrid,.focalType-promo_grid .focalPromoGrid,.focalType-testimonials .focalTestimonialGrid{grid-template-columns:1fr 1fr;gap:12px}
+  .focalType-image_with_text .focalContainer{grid-template-columns:1fr;gap:28px}
+  .focalType-image_with_text img{max-height:420px}
+}
+@media(max-width:500px){
+  .focalType-collection_grid .focalCollectionGrid,.focalType-promo_grid .focalPromoGrid,.focalType-testimonials .focalTestimonialGrid{grid-template-columns:1fr}
+  .focalType-product_grid .focalProductBody{padding:12px 13px 15px}
+}
+@media(prefers-reduced-motion:reduce){
+  .focalStorefront *{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}
+}
+
+/* ===== storefront-mobile-drawer-ux-v8.css ===== */
+/* Production mobile navigation drawer UX v8 */
+@media (max-width: 900px) {
+  body:has(.focalMobileOverlay) { overflow: hidden !important; }
+
+  .focalMobileOverlay {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 1000 !important;
+    display: flex !important;
+    align-items: stretch !important;
+    justify-content: flex-end !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: rgba(18,16,14,.44) !important;
+    backdrop-filter: blur(8px) saturate(1.05) !important;
+    -webkit-backdrop-filter: blur(8px) saturate(1.05) !important;
+    isolation: isolate !important;
+  }
+
+  .focalMobilePanel {
+    position: relative !important;
+    z-index: 1 !important;
+    width: min(100%,430px) !important;
+    height: 100dvh !important;
+    min-height: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden auto !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    background: var(--focal-surface,#fffdfb) !important;
+    color: var(--focal-ink,#191512) !important;
+    border-left: 1px solid color-mix(in srgb,var(--focal-line,#eaded4) 78%,transparent) !important;
+    border-radius: 20px 0 0 20px !important;
+    box-shadow: -24px 0 80px rgba(20,18,16,.22) !important;
+    animation: mobileDrawerIn 220ms cubic-bezier(.22,.8,.26,1) both !important;
+  }
+
+  .focalMobilePanel > .focalSearchTop {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 10 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 16px !important;
+    min-height: 72px !important;
+    margin: 0 !important;
+    padding: 14px 18px !important;
+    background: color-mix(in srgb,var(--focal-surface,#fffdfb) 94%,transparent) !important;
+    border-bottom: 1px solid var(--focal-line,#eaded4) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+  }
+
+  .focalMobilePanel > .focalSearchTop strong {
+    font-size: 20px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    letter-spacing: -.04em !important;
+    color: var(--focal-ink,#191512) !important;
+  }
+
+  .focalMobilePanel > .focalSearchTop .focalNavIcon {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    border: 1px solid var(--focal-line,#eaded4) !important;
+    border-radius: 11px !important;
+    background: var(--focal-surface,#fffdfb) !important;
+  }
+
+  .focalMobileRow {
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    min-height: 58px !important;
+    padding: 7px 18px !important;
+    margin: 0 !important;
+    border-top: 1px solid var(--focal-line,#eaded4) !important;
+  }
+
+  .focalMobileRow > a {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    padding: 11px 4px !important;
+    color: var(--focal-ink,#191512) !important;
+    font-size: 16px !important;
+    line-height: 1.2 !important;
+    font-weight: 850 !important;
+    text-decoration: none !important;
+  }
+
+  .focalMobileToggle {
+    flex: 0 0 auto !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    border: 1px solid var(--focal-line,#eaded4) !important;
+    border-radius: 11px !important;
+    background: var(--focal-surface,#fffdfb) !important;
+    color: var(--focal-ink,#191512) !important;
+    display: grid !important;
+    place-items: center !important;
+    cursor: pointer !important;
+    box-shadow: none !important;
+    transition: transform 150ms ease,background 150ms ease,border-color 150ms ease !important;
+  }
+
+  .focalMobileToggle:active { transform: scale(.96) !important; }
+
+  .focalMobileChildren {
+    display: grid !important;
+    margin: 0 !important;
+    padding: 4px 18px 12px 34px !important;
+    gap: 2px !important;
+    border-top: 0 !important;
+    border-left: 2px solid var(--focal-line,#eaded4) !important;
+  }
+
+  .focalMobileChild,.focalMobileChild.level2 {
+    display: flex !important;
+    align-items: center !important;
+    min-height: 42px !important;
+    padding: 9px 10px !important;
+    border-radius: 9px !important;
+    color: var(--focal-muted,#746b64) !important;
+    font-size: 14px !important;
+    line-height: 1.25 !important;
+    text-decoration: none !important;
+    transition: color 150ms ease,background 150ms ease !important;
+  }
+
+  .focalMobileChild:hover,.focalMobileChild:focus-visible {
+    background: var(--focal-soft,#fff0e8) !important;
+    color: var(--focal-ink,#191512) !important;
+    outline: none !important;
+  }
+
+  .focalMobileRow > a:focus-visible {
+    outline: 2px solid color-mix(in srgb,var(--focal-primary,#ff5a1f) 70%,transparent) !important;
+    outline-offset: 3px !important;
+    border-radius: 8px !important;
+  }
+
+  .focalMobileChildren .focalMobileChildren {
+    margin-top: 2px !important;
+    margin-left: 6px !important;
+    padding-left: 14px !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .focalMobilePanel {
+    width: 100vw !important;
+    border-radius: 0 !important;
+    border-left: 0 !important;
+  }
+  .focalMobilePanel > .focalSearchTop {
+    min-height: 66px !important;
+    padding-inline: 16px !important;
+  }
+  .focalMobileRow { padding-inline: 16px !important; }
+  .focalMobileChildren {
+    padding-left: 30px !important;
+    padding-right: 16px !important;
+  }
+}
+
+@keyframes mobileDrawerIn {
+  from { opacity: .5; transform: translateX(22px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .focalMobilePanel { animation: none !important; }
+  .focalMobileToggle { transition: none !important; }
+}
+
+/* ===== storefront-production-ux-v9.css ===== */
+/* Storefront production UX v9: cohesive ecommerce visual system */
+:root {
+  --ux-bg: #fbfaf8;
+  --ux-surface: #ffffff;
+  --ux-ink: #171411;
+  --ux-muted: #766f68;
+  --ux-line: #e9e2da;
+  --ux-soft: #f5f1ec;
+  --ux-primary: #0f8b72;
+  --ux-primary-dark: #0b6d59;
+  --ux-primary-soft: #e9f6f2;
+  --ux-shadow-sm: 0 1px 2px rgba(18, 15, 12, .05), 0 8px 20px rgba(18, 15, 12, .04);
+  --ux-shadow-md: 0 12px 32px rgba(18, 15, 12, .08);
+  --ux-shadow-lg: 0 22px 60px rgba(18, 15, 12, .13);
+  --ux-radius-sm: 10px;
+  --ux-radius-md: 16px;
+  --ux-radius-lg: 24px;
+}
+
+/* Shared storefront foundation */
+.focalStorefront {
+  color: var(--ux-ink);
+  background: var(--ux-bg);
+  overflow: clip;
+}
+.focalStorefront .focalContainer,
+.focalStorefront .container {
+  width: min(1240px, calc(100% - 48px));
+  margin-inline: auto;
+}
+.focalStorefront .focalSection {
+  scroll-margin-top: 100px;
+}
+.focalStorefront .focalEyebrow,
+.focalStorefront .muted {
+  color: var(--ux-muted);
+}
+.focalStorefront h1,
+.focalStorefront h2,
+.focalStorefront h3,
+.focalStorefront h4 {
+  letter-spacing: -.035em;
+}
+.focalStorefront p {
+  color: color-mix(in srgb, var(--ux-ink) 72%, var(--ux-muted));
+}
+.focalStorefront a:focus-visible,
+.focalStorefront button:focus-visible,
+.focalStorefront input:focus-visible,
+.focalStorefront select:focus-visible,
+.focalStorefront textarea:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--ux-primary) 78%, white);
+  outline-offset: 3px;
+}
+
+/* Buttons / controls */
+.focalStorefront .focalButton,
+.focalStorefront .btn {
+  min-height: 46px;
+  border-radius: 12px;
+  padding: 0 18px;
+  font-size: 13px;
+  font-weight: 850;
+  letter-spacing: -.01em;
+  transition: transform .16s ease, box-shadow .16s ease, background .16s ease, border-color .16s ease;
+}
+.focalStorefront .focalButton.primary,
+.focalStorefront .btn:not(.secondary):not(.ghost) {
+  background: var(--ux-primary);
+  border-color: var(--ux-primary);
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(15, 139, 114, .16);
+}
+.focalStorefront .focalButton.primary:hover,
+.focalStorefront .btn:not(.secondary):not(.ghost):hover {
+  transform: translateY(-1px);
+  background: var(--ux-primary-dark);
+  border-color: var(--ux-primary-dark);
+  box-shadow: 0 12px 26px rgba(15, 139, 114, .2);
+}
+.focalStorefront .focalButton.secondary,
+.focalStorefront .btn.secondary,
+.focalStorefront .btn.ghost {
+  background: var(--ux-surface);
+  border-color: var(--ux-line);
+  color: var(--ux-ink);
+}
+.focalStorefront .focalButton.secondary:hover,
+.focalStorefront .btn.secondary:hover,
+.focalStorefront .btn.ghost:hover {
+  border-color: color-mix(in srgb, var(--ux-primary) 35%, var(--ux-line));
+  background: var(--ux-soft);
+}
+
+/* Homepage */
+.focalType-hero {
+  min-height: clamp(520px, 72vh, 760px);
+  display: grid;
+  align-items: stretch;
+}
+.focalType-hero .focalHeroInner,
+.focalType-hero > .focalContainer {
+  min-height: inherit;
+}
+.focalType-hero img {
+  width: 100%;
+  max-height: min(72vh, 760px);
+  object-fit: cover;
+  object-position: center;
+}
+.focalType-rich_text,
+.focalType-section_heading,
+.focalType-product_grid,
+.focalType-collection_grid,
+.focalType-promo_grid,
+.focalType-testimonials,
+.focalType-newsletter {
+  padding-block: clamp(48px, 7vw, 92px);
+}
+.focalType-product_grid .focalContainer > h2,
+.focalType-collection_grid .focalContainer > h2,
+.focalType-promo_grid .focalContainer > h2,
+.focalType-testimonials .focalContainer > h2,
+.focalType-newsletter .focalContainer > h2 {
+  margin-bottom: 26px;
+}
+
+/* Product grids / cards */
+.focalStorefront .focalProductGrid,
+.focalStorefront .productGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 22px;
+}
+.focalStorefront .focalProductCard,
+.focalStorefront .card {
+  border: 1px solid var(--ux-line);
+  border-radius: var(--ux-radius-md);
+  background: var(--ux-surface);
+  box-shadow: var(--ux-shadow-sm);
+}
+.focalStorefront .focalProductCard {
+  overflow: hidden;
+  display: block;
+  min-width: 0;
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.focalStorefront .focalProductCard:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--ux-primary) 18%, var(--ux-line));
+  box-shadow: var(--ux-shadow-md);
+}
+.focalStorefront .focalProductMedia {
+  position: relative;
+  overflow: hidden;
+  background: #f3eee9;
+  aspect-ratio: 1 / 1;
+}
+.focalStorefront .focalProductMedia img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  transition: transform .35s ease;
+}
+.focalStorefront .focalProductCard:hover .focalProductMedia img {
+  transform: scale(1.025);
+}
+.focalStorefront .focalProductBody {
+  padding: 15px 16px 17px;
+}
+.focalStorefront .focalProductBody h3 {
+  margin: 5px 0 9px;
+  font-size: 15px;
+  line-height: 1.25;
+}
+.focalStorefront .focalPrice {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 14px;
+}
+.focalStorefront .focalPrice strong,
+.focalStorefront .price {
+  font-weight: 900;
+}
+.focalStorefront .focalPrice del,
+.focalStorefront .comparePrice {
+  color: #a0968c;
+  font-size: 12px;
+}
+.focalStorefront .focalBadge {
+  left: 12px;
+  top: 12px;
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.95);
+  color: var(--ux-ink);
+  box-shadow: 0 6px 18px rgba(18,15,12,.08);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.focalStorefront .focalProductActions {
+  right: 12px;
+  bottom: 12px;
+  gap: 7px;
+}
+.focalStorefront .focalProductActions button {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  border: 1px solid rgba(255,255,255,.7);
+  background: rgba(255,255,255,.94);
+  color: var(--ux-ink);
+  box-shadow: 0 8px 20px rgba(18,15,12,.10);
+}
+.focalStorefront .focalProductActions button:hover {
+  background: var(--ux-primary);
+  color: #fff;
+}
+
+/* Collection cards / landing */
+.focalStorefront .focalCollectionGrid,
+.focalStorefront .collectionGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+}
+.focalStorefront .focalCollectionCard {
+  overflow: hidden;
+  border: 1px solid var(--ux-line);
+  background: var(--ux-surface);
+  border-radius: var(--ux-radius-lg);
+  box-shadow: var(--ux-shadow-sm);
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.focalStorefront .focalCollectionCard:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--ux-shadow-md);
+  border-color: color-mix(in srgb, var(--ux-primary) 16%, var(--ux-line));
+}
+.focalStorefront .focalCollectionMedia {
+  aspect-ratio: 16/10;
+  overflow: hidden;
+  background: var(--ux-soft);
+}
+.focalStorefront .focalCollectionMedia img {
+  width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .35s ease;
+}
+.focalStorefront .focalCollectionCard:hover .focalCollectionMedia img { transform: scale(1.025); }
+.focalStorefront .focalCollectionCopy {
+  padding: 16px 18px 18px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+}
+.focalStorefront .focalCollectionCopy h3 { margin: 3px 0 0; font-size: 19px; }
+.focalStorefront .focalCollectionCopy > span { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:850; color:var(--ux-primary-dark); white-space:nowrap; }
+
+/* Homepage featured / editorial blocks */
+.focalStorefront .focalType-featured_product .focalContainer {
+  width: min(1160px, calc(100% - 48px));
+}
+.focalStorefront .focalType-featured_product .focalProductCard {
+  max-width: 100%;
+  margin-inline: auto;
+}
+.focalStorefront .focalType-featured_product .focalProductMedia {
+  aspect-ratio: 4 / 3;
+  max-height: min(68vw, 620px);
+}
+.focalStorefront .focalType-featured_product .focalProductMedia img {
+  object-fit: cover;
+}
+.focalStorefront .focalType-promo_grid .focalPromoCard,
+.focalStorefront .focalType-testimonials .focalTestimonialCard {
+  border: 1px solid var(--ux-line);
+  background: var(--ux-surface);
+  border-radius: var(--ux-radius-md);
+  box-shadow: var(--ux-shadow-sm);
+}
+
+/* Shop toolbar */
+.focalStorefront .focalStorefrontFilterBar {
+  background: var(--ux-bg);
+  padding: 18px 0 6px;
+  border-bottom: 1px solid var(--ux-line);
+}
+.focalStorefront .focalShopFilters,
+.focalStorefront .focalCollectionToolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 190px 190px auto;
+  gap: 10px;
+  align-items: center;
+}
+.focalStorefront .focalInput,
+.focalStorefront .focalSelect,
+.focalStorefront .focalToolbarSearch {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--ux-line);
+  border-radius: 12px;
+  background: var(--ux-surface);
+  color: var(--ux-ink);
+  padding-inline: 13px;
+  box-shadow: 0 1px 1px rgba(18,15,12,.02);
+}
+.focalStorefront .focalToolbarSearch {
+  display:flex;
+  align-items:center;
+  gap:9px;
+}
+.focalStorefront .focalToolbarSearch input {
+  flex:1;
+  min-width:0;
+  border:0;
+  outline:0;
+  background:transparent;
+}
+.focalStorefront .focalSelect { cursor:pointer; }
+
+/* Collection detail */
+.focalStorefront .focalType-main_collection_banner {
+  padding-block: clamp(46px, 7vw, 82px);
+  background: linear-gradient(180deg, #f6f0ea 0%, #fbfaf8 100%);
+}
+.focalStorefront .focalType-main_collection_banner h1 {
+  font-size: clamp(38px, 5vw, 66px);
+  line-height: .98;
+  max-width: 12ch;
+}
+.focalStorefront .focalType-main_collection_grid {
+  padding-block: 44px 84px;
+}
+
+/* Product / buy page */
+.focalStorefront .focalType-main_product {
+  background: var(--ux-bg) !important;
+}
+.focalStorefront .focalProductDetail {
+  width: min(1180px, calc(100% - 48px));
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(380px, .95fr);
+  gap: clamp(32px, 6vw, 76px);
+  align-items: start;
+}
+.focalStorefront .focalProductGallery {
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap:12px;
+  position: sticky;
+  top: 92px;
+}
+.focalStorefront .focalProductGallery img {
+  width:100%;
+  aspect-ratio: 1/1;
+  display:block;
+  object-fit:cover;
+  border-radius: 18px;
+  background: var(--ux-soft);
+  border: 1px solid var(--ux-line);
+}
+.focalStorefront .focalProductGallery img:first-child { grid-column: 1 / -1; aspect-ratio: 4/3; }
+.focalStorefront .focalProductInfo {
+  max-width: 560px;
+  padding-block: 8px;
+}
+.focalStorefront .focalProductInfo h1 {
+  font-size: clamp(36px, 4.4vw, 60px);
+  line-height: .98;
+  margin: 8px 0 14px;
+}
+.focalStorefront .focalProductInfo > p {
+  max-width: 58ch;
+  line-height: 1.7;
+  font-size: 15px;
+}
+.focalStorefront .focalRating {
+  display:flex;
+  align-items:center;
+  gap:9px;
+  color:#b0741d;
+  font-size:13px;
+  letter-spacing:.08em;
+}
+.focalStorefront .focalRating span { color:var(--ux-muted); letter-spacing:0; }
+.focalStorefront .focalPrice.big {
+  font-size: clamp(24px, 3vw, 34px);
+  font-weight: 950;
+  margin: 18px 0;
+}
+.focalStorefront .focalProductOptions {
+  margin-top:24px;
+  padding-top:20px;
+  border-top:1px solid var(--ux-line);
+}
+.focalStorefront .focalOptionLabel { font-size:12px; font-weight:900; margin-bottom:10px; }
+.focalStorefront .focalVariantList {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:9px;
+}
+.focalStorefront .focalVariantList button,
+.focalStorefront .variantChoice {
+  min-height:48px;
+  border:1px solid var(--ux-line);
+  border-radius:12px;
+  background:var(--ux-surface);
+  padding:0 13px;
+  text-align:left;
+  font-size:13px;
+  font-weight:750;
+  cursor:pointer;
+  transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+.focalStorefront .focalVariantList button:hover,
+.focalStorefront .focalVariantList button.selected,
+.focalStorefront .variantChoice.selected {
+  border-color:var(--ux-primary);
+  background:var(--ux-primary-soft);
+  box-shadow:0 0 0 1px var(--ux-primary) inset;
+}
+.focalStorefront .focalStock {
+  margin:18px 0;
+  font-size:12px;
+  color:var(--ux-muted);
+}
+.focalStorefront .focalStockDot {
+  display:inline-block;
+  width:8px;
+  height:8px;
+  margin-right:7px;
+  border-radius:50%;
+  background:#2aa66f;
+  box-shadow:0 0 0 4px rgba(42,166,111,.10);
+}
+.focalStorefront .focalPurchaseRow {
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  gap:10px;
+  align-items:center;
+}
+.focalStorefront .focalQty {
+  min-height:46px;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:0 8px;
+  border:1px solid var(--ux-line);
+  border-radius:12px;
+  background:var(--ux-surface);
+}
+.focalStorefront .focalQty button {
+  border:0;
+  background:transparent;
+  width:32px;
+  height:32px;
+  display:grid;
+  place-items:center;
+  cursor:pointer;
+}
+.focalStorefront .focalQty span { min-width:16px; text-align:center; font-size:13px; font-weight:850; }
+.focalStorefront .focalWishlist {
+  width:46px;
+  height:46px;
+  border:1px solid var(--ux-line);
+  border-radius:12px;
+  background:var(--ux-surface);
+  display:grid;
+  place-items:center;
+  cursor:pointer;
+}
+.focalStorefront .focalWishlist:hover { border-color:var(--ux-primary); color:var(--ux-primary); }
+.focalStorefront .focalTrustGrid {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+  margin:18px 0;
+}
+.focalStorefront .focalTrustGrid span {
+  min-height:42px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding:8px;
+  border:1px solid var(--ux-line);
+  border-radius:10px;
+  background:var(--ux-soft);
+  color:var(--ux-muted);
+  font-size:11px;
+  font-weight:750;
+}
+.focalStorefront .focalAccordions {
+  margin-top:24px;
+  border-top:1px solid var(--ux-line);
+}
+.focalStorefront .focalAccordions details { border-bottom:1px solid var(--ux-line); }
+.focalStorefront .focalAccordions summary {
+  list-style:none;
+  min-height:58px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  cursor:pointer;
+  font-size:13px;
+  font-weight:850;
+}
+.focalStorefront .focalAccordions summary::-webkit-details-marker { display:none; }
+.focalStorefront .focalAccordions p { margin:0 0 16px; line-height:1.65; font-size:13px; }
+
+/* Search / quick view modal */
+.focalStorefront .focalModal {
+  position:fixed;
+  inset:0;
+  z-index:1001;
+  display:grid;
+  place-items:center;
+  padding:18px;
+  background:rgba(18,15,12,.42);
+  backdrop-filter:blur(8px);
+}
+.focalStorefront .focalQuickView {
+  width:min(920px,100%);
+  max-height:min(760px,calc(100dvh - 36px));
+  overflow:auto;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  border:1px solid var(--ux-line);
+  border-radius:22px;
+  background:var(--ux-surface);
+  box-shadow:var(--ux-shadow-lg);
+}
+.focalStorefront .focalQuickImage img { width:100%; height:100%; min-height:520px; object-fit:cover; display:block; background:var(--ux-soft); }
+.focalStorefront .focalQuickInfo { padding:clamp(24px,4vw,44px); align-self:center; }
+.focalStorefront .focalQuickInfo h2 { font-size:clamp(26px,4vw,44px); line-height:1; margin:7px 0 12px; }
+.focalStorefront .focalQuickClose { position:absolute; top:14px; right:14px; z-index:3; width:40px; height:40px; border:1px solid var(--ux-line); border-radius:11px; background:rgba(255,255,255,.95); display:grid; place-items:center; cursor:pointer; }
+
+/* Cart / mini-cart */
+.focalStorefront .focalCartDrawer {
+  width:min(460px,100%);
+  box-shadow:-24px 0 70px rgba(18,15,12,.15);
+}
+.focalStorefront .focalCartHead { padding:20px 20px 16px; }
+.focalStorefront .focalCartItems { padding:12px 20px; }
+.focalStorefront .focalCartItem { padding:14px 0; grid-template-columns:76px minmax(0,1fr) auto; }
+.focalStorefront .focalCartItem img { width:76px; height:86px; border-radius:12px; object-fit:cover; border:1px solid var(--ux-line); }
+.focalStorefront .focalCartInfo strong { font-size:13px; line-height:1.25; }
+.focalStorefront .focalCartInfo small { color:var(--ux-muted); }
+.focalStorefront .focalCartQty button { background:var(--ux-soft); }
+.focalStorefront .focalCartFoot { padding:18px 20px 22px; background:var(--ux-surface); }
+.focalStorefront .focalCartTotal { font-size:16px; margin-bottom:14px; }
+
+/* Checkout */
+body:has(.checkoutForm) {
+  background:var(--ux-bg);
+}
+body:has(.checkoutForm) .section {
+  padding-block:34px 72px;
+}
+body:has(.checkoutForm) .checkoutForm,
+body:has(.checkoutForm) .summaryCard {
+  border:1px solid var(--ux-line);
+  border-radius:20px;
+  background:var(--ux-surface);
+  box-shadow:var(--ux-shadow-sm);
+}
+body:has(.checkoutForm) .checkoutForm {
+  padding:clamp(22px,3vw,34px);
+  gap:14px;
+}
+body:has(.checkoutForm) .checkoutForm .h2 {
+  font-size:clamp(30px,3.6vw,46px);
+  line-height:1;
+  margin:0 0 4px;
+}
+body:has(.checkoutForm) .checkoutForm h3 {
+  font-size:14px;
+  margin:18px 0 2px;
+  padding-top:16px;
+  border-top:1px solid var(--ux-line);
+}
+body:has(.checkoutForm) .fieldLabel { font-size:12px; color:var(--ux-muted); }
+body:has(.checkoutForm) .input,
+body:has(.checkoutForm) select.input {
+  min-height:48px;
+  border-color:var(--ux-line);
+  border-radius:11px;
+  color:var(--ux-ink);
+  background:#fff;
+}
+body:has(.checkoutForm) .input:focus { border-color:var(--ux-primary); box-shadow:0 0 0 3px rgba(15,139,114,.10); }
+body:has(.checkoutForm) .summaryCard {
+  padding:24px;
+  top:92px;
+}
+body:has(.checkoutForm) .summaryCard:before {
+  content:'Your order';
+  display:block;
+  font-size:18px;
+  font-weight:900;
+  letter-spacing:-.03em;
+  margin-bottom:10px;
+}
+body:has(.checkoutForm) .summaryLine {
+  padding:12px 0;
+  border-bottom:1px solid var(--ux-line);
+}
+body:has(.checkoutForm) .summaryLine.total {
+  font-size:19px;
+  padding-top:18px;
+  color:var(--ux-ink);
+}
+body:has(.checkoutForm) .checkoutForm > .btn,
+body:has(.checkoutForm) .checkoutForm > button.btn {
+  width:100%;
+  min-height:52px;
+  margin-top:6px;
+  font-size:14px;
+  border-radius:13px;
+}
+body:has(.checkoutForm) .checkoutForm .alert {
+  border-radius:12px;
+  line-height:1.5;
+}
+
+/* Generic content pages / account */
+body:not(:has(.adminShell)) main.section {
+  background:var(--ux-bg);
+}
+body:not(:has(.adminShell)) main.section > .container {
+  width:min(1180px, calc(100% - 48px));
+}
+body:not(:has(.adminShell)) main.section .card {
+  border-color:var(--ux-line);
+  box-shadow:var(--ux-shadow-sm);
+}
+body:not(:has(.adminShell)) main.section .h1 {
+  font-size:clamp(38px,5vw,64px);
+}
+body:not(:has(.adminShell)) main.section .h2 {
+  font-size:clamp(28px,3.4vw,44px);
+}
+body:not(:has(.adminShell)) main.section .sectionHead {
+  padding-bottom:16px;
+  border-bottom:1px solid var(--ux-line);
+}
+body:not(:has(.adminShell)) main.section .orderCard,
+body:not(:has(.adminShell)) main.section .review,
+body:not(:has(.adminShell)) main.section .timelineItem {
+  background:var(--ux-surface);
+}
+
+/* Footer */
+.focalStorefront + .themeEditorFooter,
+body > .footer {
+  background:#171411;
+  color:#fff;
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .focalStorefront .focalProductGrid,
+  .focalStorefront .productGrid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .focalStorefront .focalCollectionGrid,
+  .focalStorefront .collectionGrid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .focalStorefront .focalShopFilters,
+  .focalStorefront .focalCollectionToolbar { grid-template-columns:minmax(220px,1fr) 170px 170px auto; }
+  .focalStorefront .focalProductDetail { grid-template-columns:minmax(0,1fr) minmax(320px,.9fr); gap:34px; }
+}
+@media (max-width: 860px) {
+  .focalStorefront .focalContainer,
+  .focalStorefront .container,
+  .focalStorefront .focalProductDetail,
+  body:not(:has(.adminShell)) main.section > .container { width:min(100% - 32px,1180px); }
+  .focalStorefront .focalProductGrid,
+  .focalStorefront .productGrid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+  .focalStorefront .focalProductDetail { grid-template-columns:1fr; }
+  .focalStorefront .focalProductGallery { position:static; grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .focalStorefront .focalProductGallery img:first-child { grid-column:1/-1; }
+  .focalStorefront .focalProductInfo { max-width:none; padding-bottom:0; }
+  .focalStorefront .focalQuickView { grid-template-columns:1fr; }
+  .focalStorefront .focalQuickImage img { min-height:300px; max-height:46vh; }
+  .focalStorefront .focalQuickInfo { padding:24px; }
+  body:has(.checkoutForm) .split { grid-template-columns:1fr; }
+  body:has(.checkoutForm) .summaryCard { position:static; order:-1; }
+  .focalStorefront .focalShopFilters,
+  .focalStorefront .focalCollectionToolbar { grid-template-columns:1fr 1fr; }
+}
+@media (max-width: 560px) {
+  .focalStorefront .focalContainer,
+  .focalStorefront .container,
+  .focalStorefront .focalProductDetail,
+  body:not(:has(.adminShell)) main.section > .container { width:calc(100% - 24px); }
+  .focalType-rich_text,
+  .focalType-section_heading,
+  .focalType-product_grid,
+  .focalType-collection_grid,
+  .focalType-promo_grid,
+  .focalType-testimonials,
+  .focalType-newsletter { padding-block:42px; }
+  .focalStorefront .focalProductGrid,
+  .focalStorefront .productGrid { gap:10px; }
+  .focalStorefront .focalProductBody { padding:12px 12px 14px; }
+  .focalStorefront .focalProductBody h3 { font-size:13px; }
+  .focalStorefront .focalCollectionGrid,
+  .focalStorefront .collectionGrid { grid-template-columns:1fr; gap:14px; }
+  .focalStorefront .focalShopFilters,
+  .focalStorefront .focalCollectionToolbar { grid-template-columns:1fr; }
+  .focalStorefront .focalProductGallery { gap:8px; }
+  .focalStorefront .focalProductGallery img { border-radius:12px; }
+  .focalStorefront .focalProductInfo h1 { font-size:34px; }
+  .focalStorefront .focalPurchaseRow { grid-template-columns:auto 1fr auto; }
+  .focalStorefront .focalTrustGrid { grid-template-columns:1fr; }
+  .focalStorefront .focalVariantList { grid-template-columns:1fr; }
+  .focalStorefront .focalCartItem { grid-template-columns:64px minmax(0,1fr) auto; gap:9px; }
+  .focalStorefront .focalCartItem img { width:64px; height:74px; }
+  body:has(.checkoutForm) .checkoutForm { padding:20px 16px; }
+  body:has(.checkoutForm) .checkoutForm .grid.two { grid-template-columns:1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .focalStorefront *,
+  body:has(.checkoutForm) * { scroll-behavior:auto !important; transition:none !important; animation:none !important; }
+}
+
+/* ===== storefront-mobile-ux-v10.css ===== */
+/* Production storefront mobile UX v10: phone-first responsive system */
+@media (max-width: 900px) {
+  html { overflow-x: hidden; }
+  body { overflow-x: hidden; }
+
+  .focalStorefront,
+  .focalStorefront * { max-width: 100%; }
+
+  .focalStorefront .focalContainer,
+  .focalStorefront .container,
+  body:not(:has(.adminShell)) main.section > .container,
+  .focalStorefront .focalProductDetail {
+    width: min(100% - 32px, 760px) !important;
+  }
+
+  /* Homepage / section rhythm */
+  .focalStorefront .focalType-hero {
+    min-height: 0 !important;
+    padding-block: 18px 28px !important;
+  }
+  .focalStorefront .focalType-hero .focalHeroInner,
+  .focalStorefront .focalType-hero > .focalContainer {
+    min-height: 0 !important;
+  }
+  .focalStorefront .focalType-hero img {
+    max-height: 68svh !important;
+    min-height: 250px;
+    object-fit: cover !important;
+  }
+  .focalStorefront .focalType-rich_text,
+  .focalStorefront .focalType-section_heading,
+  .focalStorefront .focalType-product_grid,
+  .focalStorefront .focalType-featured_product,
+  .focalStorefront .focalType-collection_grid,
+  .focalStorefront .focalType-promo_grid,
+  .focalStorefront .focalType-testimonials,
+  .focalStorefront .focalType-newsletter {
+    padding-block: 42px !important;
+  }
+  .focalStorefront .focalType-featured_product .focalContainer {
+    width: min(100% - 32px, 760px) !important;
+  }
+  .focalStorefront .focalType-featured_product .focalProductMedia {
+    max-height: 62svh !important;
+    aspect-ratio: 4 / 3 !important;
+  }
+
+  /* Product grids */
+  .focalStorefront .focalProductGrid,
+  .focalStorefront .productGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+  }
+  .focalStorefront .focalProductCard,
+  .focalStorefront .focalCollectionCard {
+    min-width: 0 !important;
+  }
+  .focalStorefront .focalProductActions { opacity: 1 !important; }
+  .focalStorefront .focalProductMedia { aspect-ratio: 1 / 1 !important; }
+
+  /* Collection landing/detail */
+  .focalStorefront .focalCollectionGrid,
+  .focalStorefront .collectionGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+  }
+  .focalStorefront .focalType-main_collection_banner {
+    padding-block: 46px !important;
+  }
+  .focalStorefront .focalType-main_collection_banner h1 {
+    max-width: none !important;
+  }
+
+  /* Product / buy experience */
+  .focalStorefront .focalProductDetail {
+    grid-template-columns: 1fr !important;
+    gap: 26px !important;
+  }
+  .focalStorefront .focalProductGallery {
+    position: static !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+  .focalStorefront .focalProductGallery img:first-child {
+    grid-column: 1 / -1 !important;
+    aspect-ratio: 4 / 3 !important;
+  }
+  .focalStorefront .focalProductGallery img {
+    border-radius: 12px !important;
+  }
+  .focalStorefront .focalProductInfo {
+    max-width: none !important;
+    padding: 0 0 8px !important;
+  }
+  .focalStorefront .focalProductInfo h1 {
+    font-size: clamp(30px, 8.5vw, 42px) !important;
+    line-height: 1.02 !important;
+  }
+  .focalStorefront .focalProductInfo > p {
+    font-size: 14px !important;
+    line-height: 1.65 !important;
+  }
+  .focalStorefront .focalPurchaseRow {
+    grid-template-columns: auto minmax(0, 1fr) auto !important;
+    position: sticky !important;
+    bottom: max(8px, env(safe-area-inset-bottom)) !important;
+    z-index: 20 !important;
+    margin: 14px -4px 0 !important;
+    padding: 8px !important;
+    border: 1px solid var(--ux-line) !important;
+    border-radius: 16px !important;
+    background: color-mix(in srgb, var(--ux-surface) 94%, transparent) !important;
+    backdrop-filter: blur(16px) !important;
+    box-shadow: 0 14px 36px rgba(18,15,12,.14) !important;
+  }
+  .focalStorefront .focalPurchaseRow .focalButton { min-width: 0 !important; width: 100% !important; }
+  .focalStorefront .focalQty { gap: 8px !important; min-height: 44px !important; }
+  .focalStorefront .focalWishlist { width: 44px !important; height: 44px !important; }
+  .focalStorefront .focalTrustGrid { grid-template-columns: 1fr !important; }
+
+  /* Shop / filter controls */
+  .focalStorefront .focalStorefrontFilterBar {
+    padding: 12px 0 4px !important;
+    position: sticky !important;
+    top: 66px !important;
+    z-index: 25 !important;
+    background: color-mix(in srgb, var(--ux-bg) 94%, transparent) !important;
+    backdrop-filter: blur(12px) !important;
+  }
+  .focalStorefront .focalShopFilters,
+  .focalStorefront .focalCollectionToolbar {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  .focalStorefront .focalShopFilters input,
+  .focalStorefront .focalToolbarSearch { grid-column: 1 / -1 !important; }
+  .focalStorefront .focalShopFilters .focalButton { width: 100% !important; }
+
+  /* Quick view / modal */
+  .focalStorefront .focalModal {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  .focalStorefront .focalQuickView {
+    width: 100% !important;
+    max-height: min(90svh, 760px) !important;
+    border-radius: 22px 22px 0 0 !important;
+    grid-template-columns: 1fr !important;
+    overflow: auto !important;
+  }
+  .focalStorefront .focalQuickImage img {
+    min-height: 0 !important;
+    height: min(44svh, 360px) !important;
+    object-fit: cover !important;
+  }
+  .focalStorefront .focalQuickInfo { padding: 22px 18px max(22px, env(safe-area-inset-bottom)) !important; }
+
+  /* Mini cart */
+  .focalStorefront .focalCartDrawer {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .focalStorefront .focalCartItem {
+    grid-template-columns: 68px minmax(0,1fr) auto !important;
+  }
+
+  /* Checkout */
+  body:has(.checkoutForm) .section {
+    padding: 18px 0 max(48px, env(safe-area-inset-bottom)) !important;
+  }
+  body:has(.checkoutForm) .split {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  body:has(.checkoutForm) .summaryCard {
+    position: static !important;
+    order: -1 !important;
+    padding: 18px !important;
+  }
+  body:has(.checkoutForm) .checkoutForm {
+    padding: 18px !important;
+    border-radius: 16px !important;
+  }
+  body:has(.checkoutForm) .checkoutForm .grid.two {
+    grid-template-columns: 1fr !important;
+  }
+  body:has(.checkoutForm) .checkoutForm .btn,
+  body:has(.checkoutForm) .checkoutForm > button.btn {
+    min-height: 54px !important;
+    position: sticky !important;
+    bottom: max(8px, env(safe-area-inset-bottom)) !important;
+    z-index: 10 !important;
+  }
+
+  /* Generic account/content pages */
+  body:not(:has(.adminShell)) main.section {
+    padding-block: 36px !important;
+  }
+  body:not(:has(.adminShell)) main.section .sectionHead {
+    align-items: flex-start !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+  body:not(:has(.adminShell)) main.section .orderCard {
+    align-items: flex-start !important;
+    flex-direction: column !important;
+  }
+  body:not(:has(.adminShell)) main.section .accountStats {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Tables / dense desktop layouts */
+  .focalStorefront table,
+  body:not(:has(.adminShell)) table {
+    display: block !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 560px) {
+  .focalStorefront .focalContainer,
+  .focalStorefront .container,
+  body:not(:has(.adminShell)) main.section > .container,
+  .focalStorefront .focalProductDetail {
+    width: calc(100% - 24px) !important;
+  }
+
+  .focalStorefront .focalProductGrid,
+  .focalStorefront .productGrid {
+    grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+    gap: 9px !important;
+  }
+  .focalStorefront .focalProductBody { padding: 10px !important; }
+  .focalStorefront .focalProductBody h3 { font-size: 12px !important; }
+  .focalStorefront .focalPrice { font-size: 13px !important; }
+  .focalStorefront .focalBadge { left: 8px !important; top: 8px !important; padding: 5px 7px !important; }
+  .focalStorefront .focalProductActions { right: 8px !important; bottom: 8px !important; }
+  .focalStorefront .focalProductActions button { width: 34px !important; height: 34px !important; }
+  .focalStorefront .focalCollectionGrid,
+  .focalStorefront .collectionGrid { grid-template-columns: 1fr !important; }
+  .focalStorefront .focalShopFilters,
+  .focalStorefront .focalCollectionToolbar { grid-template-columns: 1fr !important; }
+  .focalStorefront .focalShopFilters input,
+  .focalStorefront .focalToolbarSearch { grid-column: auto !important; }
+  .focalStorefront .focalPurchaseRow {
+    grid-template-columns: auto minmax(0,1fr) auto !important;
+  }
+  .focalStorefront .focalPurchaseRow .focalButton { font-size: 12px !important; padding-inline: 10px !important; }
+  .focalStorefront .focalType-hero img { max-height: 56svh !important; }
+}
+
+@media (max-width: 380px) {
+  .focalStorefront .focalPurchaseRow { grid-template-columns: 1fr !important; }
+  .focalStorefront .focalPurchaseRow .focalQty { justify-self: stretch !important; justify-content: space-between !important; }
+  .focalStorefront .focalPurchaseRow .focalWishlist { display: none !important; }
+}
+
+/* ===== storefront-mobile-production-v11.css ===== */
+/* Production mobile storefront v11: explicit mobile shell + editorial homepage */
+
+@media (max-width: 900px) {
+  /* Never let desktop navigation survive into the mobile header. */
+  .focalNav {
+    width: 100% !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 900 !important;
+    background: var(--focal-surface, #fffdfb) !important;
+    border-bottom: 1px solid var(--focal-line, #eaded4) !important;
+    box-shadow: 0 4px 18px rgba(20,18,16,.05) !important;
+  }
+  .focalNavInner {
+    width: 100% !important;
+    max-width: none !important;
+    height: 64px !important;
+    min-height: 64px !important;
+    padding: 0 14px !important;
+    margin: 0 !important;
+    display: grid !important;
+    grid-template-columns: 44px minmax(0,1fr) 44px !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+  .focalNavMobile {
+    display: grid !important;
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 1px solid var(--focal-line,#eaded4) !important;
+    border-radius: 12px !important;
+    background: var(--focal-surface,#fffdfb) !important;
+    color: var(--focal-ink,#191512) !important;
+  }
+  .focalLogo {
+    justify-self: center !important;
+    min-width: 0 !important;
+    max-width: min(55vw, 210px) !important;
+    overflow: hidden !important;
+    white-space: nowrap !important;
+    text-overflow: ellipsis !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+    color: var(--focal-ink,#191512) !important;
+  }
+  .focalLogo img {
+    max-width: min(55vw, 180px) !important;
+    max-height: 34px !important;
+  }
+  .focalNavLinks { display: none !important; }
+  .focalNavActions {
+    justify-self: end !important;
+    width: 40px !important;
+    height: 40px !important;
+    display: block !important;
+  }
+  .focalNavActions > .focalNavIcon { display: none !important; }
+  .focalNavActions > .focalNavIcon:last-child {
+    display: grid !important;
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    border-radius: 12px !important;
+  }
+  .focalNavActions > a.focalNavIcon { display: none !important; }
+
+  /* True mobile drawer: right-side sheet, not a desktop dropdown. */
+  body:has(.focalMobileOverlay) { overflow: hidden !important; }
+  .focalMobileOverlay {
+    display: block !important;
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    z-index: 5000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: rgba(15,13,12,.48) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    overflow: hidden !important;
+  }
+  .focalMobilePanel {
+    position: absolute !important;
+    top: 0 !important;
+    right: 0 !important;
+    width: min(100vw, 420px) !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior: contain !important;
+    background: #fffdfb !important;
+    color: #191512 !important;
+    border-radius: 22px 0 0 22px !important;
+    border: 0 !important;
+    box-shadow: -24px 0 80px rgba(0,0,0,.24) !important;
+    transform: translateX(0) !important;
+    animation: mobileProductionDrawerIn .24s cubic-bezier(.22,.8,.26,1) both !important;
+  }
+  .focalMobilePanel > .focalSearchTop {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 20 !important;
+    width: 100% !important;
+    min-height: 72px !important;
+    margin: 0 !important;
+    padding: max(14px, env(safe-area-inset-top)) 18px 14px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 14px !important;
+    background: rgba(255,253,251,.96) !important;
+    border-bottom: 1px solid #eaded4 !important;
+    box-shadow: 0 4px 18px rgba(20,18,16,.04) !important;
+    backdrop-filter: blur(18px) !important;
+  }
+  .focalMobilePanel > .focalSearchTop strong {
+    margin: 0 !important;
+    font-size: 20px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    letter-spacing: -.045em !important;
+  }
+  .focalMobilePanel > .focalSearchTop .focalNavIcon {
+    display: grid !important;
+    width: 42px !important;
+    height: 42px !important;
+    min-width: 42px !important;
+    border-radius: 12px !important;
+    border: 1px solid #eaded4 !important;
+    background: #fff !important;
+  }
+  .focalMobilePanel > div:not(.focalSearchTop) { margin: 0 !important; }
+  .focalMobileRow {
+    min-height: 62px !important;
+    padding: 8px 18px !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    border-top: 1px solid #f0e9e2 !important;
+  }
+  .focalMobileRow > a {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    padding: 12px 2px !important;
+    font-size: 17px !important;
+    line-height: 1.2 !important;
+    font-weight: 850 !important;
+    color: #191512 !important;
+  }
+  .focalMobileToggle {
+    flex: 0 0 40px !important;
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    border-radius: 12px !important;
+    border: 1px solid #e3d8cf !important;
+    background: #f9f4ef !important;
+  }
+  .focalMobileChildren {
+    margin: 0 18px 10px 34px !important;
+    padding: 4px 0 8px 14px !important;
+    border-left: 2px solid #eaded4 !important;
+    display: grid !important;
+    gap: 2px !important;
+  }
+  .focalMobileChild,
+  .focalMobileChild.level2 {
+    min-height: 42px !important;
+    display: flex !important;
+    align-items: center !important;
+    padding: 9px 10px !important;
+    border-radius: 9px !important;
+    color: #6f675f !important;
+    font-size: 14px !important;
+    line-height: 1.25 !important;
+  }
+  .focalMobileChild:active,
+  .focalMobileChild:hover { background: #fff0e8 !important; color: #191512 !important; }
+
+  /* Mobile homepage becomes editorial, not a scaled desktop. */
+  .focalStorefront {
+    width: 100% !important;
+    max-width: none !important;
+    overflow-x: clip !important;
+  }
+  .focalStorefront .focalContainer,
+  .focalStorefront .container,
+  .focalStorefront .focalProductDetail {
+    width: calc(100% - 28px) !important;
+    max-width: none !important;
+    margin-inline: auto !important;
+  }
+  .focalType-hero {
+    min-height: 0 !important;
+    padding: 10px 0 0 !important;
+  }
+  .focalType-hero .focalContainer,
+  .focalType-hero .focalHeroInner {
+    width: 100% !important;
+  }
+  .focalType-hero img {
+    width: 100% !important;
+    min-height: 0 !important;
+    height: min(72svh, 560px) !important;
+    max-height: 560px !important;
+    object-fit: cover !important;
+    object-position: center !important;
+  }
+  .focalType-rich_text,
+  .focalType-section_heading,
+  .focalType-product_grid,
+  .focalType-featured_product,
+  .focalType-collection_grid,
+  .focalType-promo_grid,
+  .focalType-testimonials,
+  .focalType-newsletter {
+    padding-block: 38px !important;
+  }
+  .focalType-product_grid .focalContainer > h2,
+  .focalType-collection_grid .focalContainer > h2,
+  .focalType-promo_grid .focalContainer > h2,
+  .focalType-testimonials .focalContainer > h2,
+  .focalType-newsletter .focalContainer > h2 {
+    margin-bottom: 18px !important;
+    font-size: 24px !important;
+  }
+  .focalType-featured_product .focalContainer {
+    width: calc(100% - 28px) !important;
+  }
+  .focalType-featured_product .focalProductCard {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .focalType-featured_product .focalProductMedia {
+    aspect-ratio: 4 / 3 !important;
+    height: auto !important;
+    max-height: 70svh !important;
+  }
+  .focalStorefront .focalProductGrid,
+  .focalStorefront .productGrid {
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+    gap: 10px !important;
+  }
+  .focalStorefront .focalProductBody { padding: 11px !important; }
+  .focalStorefront .focalProductBody h3 {
+    font-size: 13px !important;
+    line-height: 1.25 !important;
+    margin: 4px 0 7px !important;
+  }
+  .focalStorefront .focalCollectionGrid,
+  .focalStorefront .collectionGrid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  .focalStorefront .focalCollectionMedia { aspect-ratio: 16/10 !important; }
+  .focalStorefront .focalCollectionCopy { padding: 14px 15px 16px !important; }
+
+  /* Product and buy pages */
+  .focalStorefront .focalProductDetail {
+    grid-template-columns: 1fr !important;
+    gap: 22px !important;
+  }
+  .focalStorefront .focalProductGallery {
+    display: grid !important;
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+    gap: 8px !important;
+    position: static !important;
+  }
+  .focalStorefront .focalProductGallery img:first-child {
+    grid-column: 1 / -1 !important;
+    aspect-ratio: 4 / 3 !important;
+  }
+  .focalStorefront .focalProductInfo h1 {
+    font-size: clamp(30px,9vw,40px) !important;
+  }
+  .focalStorefront .focalPurchaseRow {
+    position: sticky !important;
+    bottom: max(8px,env(safe-area-inset-bottom)) !important;
+    z-index: 40 !important;
+    grid-template-columns: 1fr auto !important;
+    padding: 8px !important;
+    border: 1px solid #e7ddd5 !important;
+    border-radius: 16px !important;
+    background: rgba(255,253,251,.96) !important;
+    box-shadow: 0 14px 36px rgba(18,15,12,.14) !important;
+    backdrop-filter: blur(16px) !important;
+  }
+  .focalStorefront .focalPurchaseRow .focalQty { grid-column: 1/-1 !important; width: 100% !important; justify-content: space-between !important; }
+  .focalStorefront .focalPurchaseRow .focalButton { width: 100% !important; }
+
+  /* Cart and checkout */
+  .focalStorefront .focalCartDrawer { width: 100vw !important; max-width: 100vw !important; }
+  body:has(.checkoutForm) .section { padding-top: 16px !important; }
+  body:has(.checkoutForm) .summaryCard { order: -1 !important; position: static !important; }
+}
+
+@media (max-width: 560px) {
+  .focalMobilePanel { width: 100vw !important; border-radius: 0 !important; }
+  .focalMobilePanel > .focalSearchTop { min-height: 66px !important; padding-inline: 16px !important; }
+  .focalMobileRow { padding-inline: 16px !important; }
+  .focalMobileChildren { margin-left: 30px !important; margin-right: 16px !important; }
+  .focalType-hero img { height: min(66svh,500px) !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .focalMobilePanel { animation: none !important; }
+}
+
+@keyframes mobileProductionDrawerIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+/* ===== storefront-production-ux-v12.css ===== */
+/* Storefront production UX v12: decisive desktop/mobile composition and interaction polish */
+
+/* Navigation */
+.focalNav {
+  transition: background .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.focalNavInner {
+  width: min(1240px, calc(100% - 48px));
+  margin-inline: auto;
+}
+.focalNavIcon,
+.focalNavMobile {
+  transition: transform .16s ease, border-color .16s ease, background .16s ease, box-shadow .16s ease;
+}
+.focalNavIcon:hover,
+.focalNavMobile:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--focal-primary) 30%, var(--focal-line));
+  background: color-mix(in srgb, var(--focal-primary) 6%, var(--focal-surface));
+}
+.focalNavMobile:active,
+.focalNavIcon:active { transform: translateY(0); }
+.focalDropdown {
+  animation: focalDropdownIn .16s ease both;
+}
+@keyframes focalDropdownIn {
+  from { opacity: 0; transform: translate(-50%, -4px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* Homepage composition */
+.focalType-hero {
+  position: relative;
+}
+.focalType-hero .focalHeroInner,
+.focalType-hero > .focalContainer {
+  width: 100%;
+}
+.focalType-hero img {
+  display: block;
+}
+.focalType-featured_product .focalContainer {
+  width: min(1120px, calc(100% - 48px));
+}
+.focalType-featured_product .focalProductCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, .9fr);
+  align-items: stretch;
+  overflow: hidden;
+}
+.focalType-featured_product .focalProductMedia {
+  min-width: 0;
+  aspect-ratio: 4 / 3;
+  max-height: none;
+}
+.focalType-featured_product .focalProductBody {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(26px, 4vw, 52px);
+}
+.focalType-featured_product .focalProductBody h3 {
+  font-size: clamp(22px, 2.5vw, 34px);
+  line-height: 1.05;
+}
+.focalType-featured_product .focalPrice { font-size: 17px; }
+
+/* Product grids */
+.focalStorefront .focalProductGrid,
+.focalStorefront .productGrid {
+  align-items: stretch;
+}
+.focalStorefront .focalProductCard {
+  height: 100%;
+}
+.focalStorefront .focalProductActions {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity .18s ease, transform .18s ease;
+}
+.focalStorefront .focalProductCard:hover .focalProductActions,
+.focalStorefront .focalProductCard:focus-within .focalProductActions {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Collection landing */
+.focalType-main_collection_banner .focalContainer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, .7fr);
+  gap: 40px;
+  align-items: end;
+}
+.focalType-main_collection_banner h1 { margin: 0; }
+
+/* Product page */
+.focalStorefront .focalProductDetail {
+  width: min(1180px, calc(100% - 48px));
+}
+.focalStorefront .focalProductGallery img {
+  cursor: zoom-in;
+}
+.focalStorefront .focalProductInfo {
+  position: relative;
+}
+.focalStorefront .focalPurchaseRow {
+  z-index: 5;
+}
+
+/* Forms and checkout-like controls */
+.focalStorefront input,
+.focalStorefront select,
+.focalStorefront textarea {
+  min-height: 46px;
+}
+.focalStorefront button:disabled,
+.focalStorefront .focalButton:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Image stability / perceived loading */
+.focalStorefront img {
+  background: var(--ux-soft, #f5f1ec);
+}
+.focalStorefront img[loading="lazy"] {
+  content-visibility: auto;
+}
+
+/* Mobile: deliberate mobile composition */
+@media (max-width: 900px) {
+  .focalNavInner {
+    width: 100% !important;
+    padding-inline: 14px !important;
+  }
+  .focalType-hero {
+    padding-top: 0 !important;
+  }
+  .focalType-hero img {
+    height: min(68svh, 540px) !important;
+    max-height: 540px !important;
+    object-fit: cover !important;
+  }
+  .focalType-featured_product .focalContainer {
+    width: calc(100% - 28px) !important;
+  }
+  .focalType-featured_product .focalProductCard {
+    grid-template-columns: 1fr !important;
+    border-radius: 18px !important;
+  }
+  .focalType-featured_product .focalProductMedia {
+    aspect-ratio: 4 / 3 !important;
+  }
+  .focalType-featured_product .focalProductBody {
+    padding: 18px !important;
+  }
+  .focalType-featured_product .focalProductBody h3 {
+    font-size: 21px !important;
+  }
+  .focalType-main_collection_banner .focalContainer {
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+  }
+  .focalType-main_collection_banner h1 {
+    max-width: none !important;
+    font-size: clamp(32px, 10vw, 46px) !important;
+  }
+  .focalStorefront .focalProductGrid,
+  .focalStorefront .productGrid {
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+    gap: 10px !important;
+  }
+  .focalStorefront .focalProductMedia {
+    aspect-ratio: 1 / 1 !important;
+  }
+  .focalStorefront .focalProductActions {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .focalStorefront .focalProductActions button {
+    width: 36px !important;
+    height: 36px !important;
+  }
+  .focalStorefront .focalProductDetail {
+    width: calc(100% - 24px) !important;
+  }
+  .focalStorefront .focalProductGallery {
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+    gap: 7px !important;
+  }
+  .focalStorefront .focalProductGallery img {
+    border-radius: 12px !important;
+  }
+  .focalStorefront .focalProductInfo h1 {
+    font-size: clamp(30px, 9.2vw, 42px) !important;
+  }
+  .focalStorefront .focalVariantList {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .focalStorefront .focalTrustGrid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .focalNavInner {
+    height: 62px !important;
+    min-height: 62px !important;
+    padding-inline: 12px !important;
+    grid-template-columns: 40px minmax(0,1fr) 40px !important;
+  }
+  .focalNavMobile,
+  .focalNavActions > .focalNavIcon:last-child {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    border-radius: 11px !important;
+  }
+  .focalLogo {
+    max-width: 58vw !important;
+    font-size: 17px !important;
+  }
+  .focalLogo img { max-width: 52vw !important; max-height: 30px !important; }
+  .focalType-hero img { height: min(62svh, 470px) !important; }
+  .focalType-rich_text,
+  .focalType-section_heading,
+  .focalType-product_grid,
+  .focalType-featured_product,
+  .focalType-collection_grid,
+  .focalType-promo_grid,
+  .focalType-testimonials,
+  .focalType-newsletter {
+    padding-block: 32px !important;
+  }
+  .focalStorefront .focalProductGrid,
+  .focalStorefront .productGrid {
+    gap: 8px !important;
+  }
+  .focalStorefront .focalProductBody {
+    padding: 10px !important;
+  }
+  .focalStorefront .focalProductBody h3 {
+    font-size: 12.5px !important;
+    line-height: 1.22 !important;
+  }
+  .focalStorefront .focalPrice { font-size: 13px !important; gap: 5px !important; }
+  .focalStorefront .focalCollectionGrid,
+  .focalStorefront .collectionGrid { gap: 9px !important; }
+  .focalStorefront .focalCollectionCopy { padding: 12px 13px !important; }
+  .focalStorefront .focalCollectionCopy h3 { font-size: 17px !important; }
+  .focalStorefront .focalPurchaseRow {
+    bottom: max(6px, env(safe-area-inset-bottom)) !important;
+    border-radius: 14px !important;
+  }
+  .focalStorefront .focalPurchaseRow .focalButton { min-height: 48px !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .focalNav,
+  .focalNavIcon,
+  .focalNavMobile,
+  .focalProductCard,
+  .focalProductMedia img,
+  .focalDropdown { transition: none !important; animation: none !important; }
+}
+
+/* ===== storefront-production-ux-v13.css ===== */
+/* Storefront production UX v13: mobile drawer, touch targets, stable media, and restrained motion */
+
+.focalMobileOverlay,
+.focalSearchOverlay,
+.focalCartOverlay {
+  overscroll-behavior: contain;
+  touch-action: none;
+}
+
+.focalMobilePanel,
+.focalCartDrawer,
+.focalSearchCard {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+.focalMobilePanel {
+  width: min(400px, 92vw) !important;
+  max-width: 400px;
+  padding: max(18px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom)) !important;
+  box-sizing: border-box;
+  border-left: 1px solid var(--focal-line);
+  box-shadow: -24px 0 70px rgba(25, 21, 18, .16);
+  animation: focalMobileDrawerIn .22s cubic-bezier(.22,.8,.26,1) both;
+}
+
+@keyframes focalMobileDrawerIn {
+  from { opacity: 0; transform: translateX(18px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.focalSearchTop {
+  gap: 16px;
+}
+
+.focalMobilePanel .focalSearchTop {
+  min-height: 44px;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--focal-line);
+}
+
+.focalMobilePanel .focalSearchTop strong {
+  font-size: 20px;
+  letter-spacing: -.02em;
+}
+
+.focalMobileGroup {
+  gap: 5px;
+  padding: 16px 0;
+}
+
+.focalMobileGroup > a {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  border-radius: 10px;
+  padding: 0 12px;
+  text-decoration: none;
+}
+
+.focalMobileGroup > a[aria-current="page"] {
+  background: var(--focal-soft);
+  color: var(--focal-primary);
+}
+
+.focalMobileGroup > a.sub {
+  min-height: 40px;
+  margin-left: 8px;
+  padding-left: 14px;
+  font-size: 13px;
+}
+
+.focalMobileGroup > a:hover,
+.focalMobileGroup > a:focus-visible {
+  background: var(--focal-soft);
+  outline: none;
+}
+
+.focalMobilePanel .focalNavIcon,
+.focalSearchCard .focalNavIcon,
+.focalCartDrawer .focalNavIcon {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.focalNavMobile {
+  min-width: 44px !important;
+  min-height: 44px !important;
+}
+
+.focalCartDrawer {
+  width: min(440px, 100vw);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.focalCartHead {
+  padding: 16px 18px;
+  min-height: 72px;
+}
+
+.focalCartItems {
+  padding: 10px 16px;
+}
+
+.focalCartItem img {
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+}
+
+.focalCartQty button {
+  width: 32px;
+  height: 32px;
+}
+
+.focalCartFoot {
+  padding: 14px 16px max(16px, env(safe-area-inset-bottom));
+}
+
+.focalStorefront .focalProductMedia,
+.focalStorefront .focalCollectionMedia {
+  overflow: hidden;
+  background: var(--ux-soft, #f5f1ec);
+}
+
+.focalStorefront .focalProductMedia img,
+.focalStorefront .focalCollectionMedia img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.focalStorefront button:focus-visible,
+.focalStorefront a:focus-visible,
+.focalStorefront input:focus-visible,
+.focalStorefront select:focus-visible,
+.focalStorefront textarea:focus-visible {
+  outline: 2px solid var(--focal-primary);
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .focalMobileOverlay,
+  .focalCartOverlay {
+    background: rgba(25, 21, 18, .38);
+  }
+
+  .focalMobilePanel {
+    width: min(400px, 92vw) !important;
+    max-width: calc(100vw - 18px);
+    padding-inline: 16px !important;
+  }
+
+  .focalCartDrawer {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .focalSearchCard {
+    width: calc(100% - 24px);
+    margin-top: max(64px, env(safe-area-inset-top));
+    padding: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .focalMobilePanel { animation: none !important; }
+}
+
+/* --- PRODUCT CARD HOVER IMAGE FLIP --- */
+.focalProductMedia {
+  position: relative !important;
+  overflow: hidden !important;
+  border-radius: 16px !important;
+  background: var(--focal-soft, #f4efe9) !important;
+}
+
+.focalProductMedia .focalProductImagePrimary {
+  transition: opacity 0.35s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.focalProductMedia.hasHoverImage .focalProductImageSecondary {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 0.35s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .focalProductCard:hover .focalProductMedia.hasHoverImage .focalProductImagePrimary {
+    opacity: 0 !important;
+    transform: scale(1.05) !important;
+  }
+  .focalProductCard:hover .focalProductMedia.hasHoverImage .focalProductImageSecondary {
+    opacity: 1 !important;
+    transform: scale(1.05) !important;
+  }
+  .focalProductCard:hover .focalProductMedia:not(.hasHoverImage) img {
+    transform: scale(1.05) !important;
+  }
+}
+
+/* Quick Add Feedback Micro-state */
+.focalQuickAddDone {
+  background: #176b35 !important;
+  border-color: #176b35 !important;
+  color: #fff !important;
+  transform: scale(1.08) !important;
+}
+
+.focalButton.addedSuccess {
+  background: #176b35 !important;
+  border-color: #176b35 !important;
+  color: #fff !important;
+  transition: all 0.2s ease !important;
+}
+
+/* --- PDP INTERACTIVE GALLERY --- */
+.focalProductGalleryWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.focalProductMainImage {
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--focal-soft, #f4efe9);
+  aspect-ratio: 1 / 1;
+  max-height: 520px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+
+.focalProductMainImage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.focalProductThumbStrip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px;
+  scrollbar-width: none;
+}
+
+.focalProductThumbStrip::-webkit-scrollbar {
+  display: none;
+}
+
+.focalProductThumbBtn {
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  background: var(--focal-soft, #f4efe9);
+  flex-shrink: 0;
+  transition: border-color 0.2s ease, opacity 0.2s ease, transform 0.15s ease;
+  opacity: 0.75;
+}
+
+.focalProductThumbBtn:hover {
+  opacity: 1;
+}
+
+.focalProductThumbBtn.active {
+  opacity: 1;
+  border-color: var(--focal-primary, #ff5a1f);
+  box-shadow: 0 0 0 1px var(--focal-primary, #ff5a1f);
+  transform: scale(1.02);
+}
+
+.focalProductThumbBtn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* --- STICKY MOBILE BUY BAR --- */
+.focalStickyBuyBar {
+  display: none;
+}
+
+@media (max-width: 800px) {
+  .focalStickyBuyBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 45;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-top: 1px solid var(--focal-line, #eaded4);
+    padding: 10px 16px max(14px, env(safe-area-inset-bottom));
+    box-shadow: 0 -8px 24px rgba(25, 21, 18, 0.08);
+    animation: focalStickyBarIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @keyframes focalStickyBarIn {
+    from {
+      opacity: 0;
+      transform: translateY(100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .focalStickyBuyBar-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .focalStickyBuyBar-thumb {
+    width: 44px;
+    height: 44px;
+    border-radius: 9px;
+    object-fit: cover;
+    background: var(--focal-soft, #f4efe9);
+    flex-shrink: 0;
+    border: 1px solid var(--focal-line, #eaded4);
+  }
+
+  .focalStickyBuyBar-meta {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .focalStickyBuyBar-title {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--focal-ink, #191512);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+  }
+
+  .focalStickyBuyBar-price {
+    font-size: 13px;
+    font-weight: 850;
+    color: var(--focal-primary, #ff5a1f);
+    line-height: 1.2;
+  }
+
+  .focalStickyBuyBar-btn {
+    flex-shrink: 0;
+    padding: 10px 18px !important;
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    border-radius: 10px !important;
+    white-space: nowrap;
+    min-height: 42px;
+    cursor: pointer;
+  }
+}
+
+
