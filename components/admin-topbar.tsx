@@ -22,7 +22,7 @@ function currentLabel(pathname: string) {
   return parent?.[1] || 'Control Center'
 }
 
-export default function AdminTopbar({ name, email, vapidPublicKey, groups }: { name: string | null; email: string; vapidPublicKey?: string; groups: AdminSidebarGroup[] }) {
+export default function AdminTopbar({ name, email, vapidPublicKey, groups, role }: { name: string | null; email: string; vapidPublicKey?: string; groups: AdminSidebarGroup[]; role?: string }) {
   const pathname = usePathname()
   const title = currentLabel(pathname)
   const requestAdminSearch = () => {
@@ -32,7 +32,7 @@ export default function AdminTopbar({ name, email, vapidPublicKey, groups }: { n
 
   return (
     <header className="adminWorkspaceTopbar">
-      <AdminMobileNav groups={groups} />
+      <AdminMobileNav groups={groups} role={role} />
       <div className="adminWorkspaceTitle">
         <div className="adminBreadcrumbs"><Link href="/admin" className="adminBreadcrumbHome" aria-label="Dashboard"><Home size={13} /></Link><ChevronRight size={13} aria-hidden="true" /><span>Control Center</span><ChevronRight size={13} aria-hidden="true" /><strong>{title}</strong></div>
         <h1>{title}</h1>
