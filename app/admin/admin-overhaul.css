@@ -1,143 +1,192 @@
-/* Control Center — unified admin UI/UX system */
-body:has(.adminShell){background:#f4f5f2!important;color:#20211e}
-body:has(.adminShell),body:has(.adminShell) button,body:has(.adminShell) input,body:has(.adminShell) select,body:has(.adminShell) textarea{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-body:has(.adminShell) .adminShell{min-height:100vh!important;display:grid!important;grid-template-columns:252px minmax(0,1fr)!important;background:#f4f5f2!important}
-body:has(.adminShell) .adminSide{position:sticky!important;top:0!important;height:100vh!important;padding:16px 12px!important;overflow:auto!important;background:#fff!important;border-right:1px solid #e1e3de!important;box-shadow:1px 0 0 rgba(0,0,0,.015)!important;z-index:70}
-body:has(.adminShell) .adminMain{min-width:0!important;padding:0 36px 56px!important;background:#f4f5f2!important}
+/* Control Center — unified admin design system (tokens + rules) */
+body:has(.adminShell){
+  --admin-bg:#f6f5f0;
+  --admin-surface:#ffffff;
+  --admin-border:#e4e1d6;
+  --admin-border-soft:#edeae0;
+  --admin-ink:#1b1a16;
+  --admin-ink-soft:#48463c;
+  --admin-muted:#83806e;
+  --admin-muted-soft:#a8a493;
+  --admin-accent:#1f7a52;
+  --admin-accent-ink:#ffffff;
+  --admin-accent-soft:#e7f4ec;
+  --admin-accent-strong:#155c3d;
+  --admin-danger:#c1372a;
+  --admin-danger-soft:#fdecea;
+  --admin-danger-border:#f1c9c4;
+  --admin-warning:#9a6a00;
+  --admin-warning-soft:#fdf3df;
+  --admin-focus:rgba(31,122,82,.16);
+  --admin-radius-sm:9px;
+  --admin-radius-md:13px;
+  --admin-radius-lg:20px;
+  --admin-radius-pill:999px;
+  --admin-shadow-sm:0 1px 2px rgba(27,26,22,.045);
+  --admin-shadow-md:0 8px 24px rgba(27,26,22,.07);
+  --admin-shadow-lg:0 26px 80px rgba(27,26,22,.18);
+  --admin-font-sans:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --admin-topbar-bg:rgba(246,245,240,.88);
+  background:var(--admin-bg)!important;color:var(--admin-ink)
+}
+html[data-admin-theme='dark'] body:has(.adminShell){
+  --admin-bg:#0f1210;
+  --admin-surface:#181c19;
+  --admin-border:#2c322d;
+  --admin-border-soft:#232823;
+  --admin-ink:#f1f3ee;
+  --admin-ink-soft:#c9cdc3;
+  --admin-muted:#95988d;
+  --admin-muted-soft:#6d7066;
+  --admin-accent:#4fd18b;
+  --admin-accent-ink:#0c1f16;
+  --admin-accent-soft:#173626;
+  --admin-accent-strong:#7ee4ac;
+  --admin-danger:#f0776a;
+  --admin-danger-soft:#33201c;
+  --admin-danger-border:#5a3128;
+  --admin-warning:#e8b95a;
+  --admin-warning-soft:#332a17;
+  --admin-focus:rgba(79,209,139,.22);
+  --admin-shadow-lg:0 26px 80px rgba(0,0,0,.5);
+  --admin-topbar-bg:rgba(15,18,16,.9);
+  background:var(--admin-bg)!important;color:var(--admin-ink)!important
+}
+body:has(.adminShell),body:has(.adminShell) button,body:has(.adminShell) input,body:has(.adminShell) select,body:has(.adminShell) textarea{font-family:var(--admin-font-sans)}
+body:has(.adminShell) .adminShell{min-height:100vh!important;display:grid!important;grid-template-columns:252px minmax(0,1fr)!important;background:var(--admin-bg)!important}
+body:has(.adminShell) .adminSide{position:sticky!important;top:0!important;height:100vh!important;padding:16px 12px!important;overflow:auto!important;background:var(--admin-surface)!important;border-right:1px solid var(--admin-border)!important;box-shadow:var(--admin-shadow-sm)!important;z-index:70}
+body:has(.adminShell) .adminMain{min-width:0!important;padding:0 36px 56px!important;background:var(--admin-bg)!important}
 body:has(.adminShell) .adminBrand{display:flex!important;align-items:center!important;gap:10px!important;padding:3px 4px 2px!important}
-body:has(.adminShell) .adminBrandMark{display:grid!important;place-items:center!important;width:38px!important;height:38px!important;border-radius:12px!important;background:#171817!important;color:#fff!important;box-shadow:0 5px 14px rgba(23,24,23,.12)!important}
-body:has(.adminShell) .adminBrand .logo{font-size:15px!important;font-weight:900!important;letter-spacing:-.03em!important;color:#191a18!important}
-body:has(.adminShell) .adminSide>.pill{display:inline-flex!important;margin:15px 4px 12px!important;padding:5px 8px!important;border:1px solid #e1e3de!important;border-radius:999px!important;background:#f7f8f5!important;color:#666860!important;font-size:9px!important;font-weight:900!important;letter-spacing:.06em!important;text-transform:uppercase!important}
+body:has(.adminShell) .adminBrandMark{display:grid!important;place-items:center!important;width:38px!important;height:38px!important;border-radius:var(--admin-radius-md)!important;background:var(--admin-accent)!important;color:var(--admin-accent-ink)!important;box-shadow:0 5px 14px rgba(31,122,82,.25)!important}
+body:has(.adminShell) .adminBrand .logo{font-size:15px!important;font-weight:900!important;letter-spacing:-.03em!important;color:var(--admin-ink)!important}
+body:has(.adminShell) .adminSide>.pill{display:inline-flex!important;margin:15px 4px 12px!important;padding:5px 8px!important;border:1px solid var(--admin-border)!important;border-radius:var(--admin-radius-pill)!important;background:var(--admin-border-soft)!important;color:var(--admin-muted)!important;font-size:9px!important;font-weight:900!important;letter-spacing:.06em!important;text-transform:uppercase!important}
 
 /* Sidebar navigation */
 body:has(.adminShell) .adminNavTree{display:grid!important;gap:5px!important;margin-top:3px!important}
-body:has(.adminShell) .adminNavSearchWrap{height:40px!important;margin:0 2px 8px!important;padding:0 10px!important;border:1px solid #e0e2dc!important;border-radius:11px!important;background:#f8f9f6!important}
-body:has(.adminShell) .adminNavSearchWrap input{font-size:12px!important;font-weight:650!important}
-body:has(.adminShell) .adminNavGroupButton{height:34px!important;border-radius:9px!important;padding:0 10px!important;color:#7a7d75!important;font-size:10px!important;letter-spacing:.085em!important;text-transform:uppercase!important;font-weight:900!important}
-body:has(.adminShell) .adminNavGroupButton:hover{background:#f4f5f1!important;color:#282a26!important}
-body:has(.adminShell) .adminNavGroupButton.active{background:#f0f2ed!important;color:#262824!important}
+body:has(.adminShell) .adminNavSearchWrap{height:40px!important;margin:0 2px 8px!important;padding:0 10px!important;border:1px solid var(--admin-border)!important;border-radius:var(--admin-radius-md)!important;background:var(--admin-border-soft)!important}
+body:has(.adminShell) .adminNavSearchWrap input{font-size:12px!important;font-weight:650!important;color:var(--admin-ink)!important}
+body:has(.adminShell) .adminNavGroupButton{height:34px!important;border-radius:var(--admin-radius-sm)!important;padding:0 10px!important;color:var(--admin-muted)!important;font-size:10px!important;letter-spacing:.085em!important;text-transform:uppercase!important;font-weight:900!important}
+body:has(.adminShell) .adminNavGroupButton:hover{background:var(--admin-border-soft)!important;color:var(--admin-ink-soft)!important}
+body:has(.adminShell) .adminNavGroupButton.active{background:var(--admin-accent-soft)!important;color:var(--admin-accent-strong)!important}
 body:has(.adminShell) .adminNavChildren{padding:2px 0 4px!important}
-body:has(.adminShell) .adminNavItem{height:40px!important;margin:2px 0!important;padding:0 10px 0 24px!important;border-radius:10px!important;color:#686c64!important;font-size:12px!important;font-weight:700!important}
+body:has(.adminShell) .adminNavItem{height:40px!important;margin:2px 0!important;padding:0 10px 0 24px!important;border-radius:var(--admin-radius-sm)!important;color:var(--admin-ink-soft)!important;font-size:12px!important;font-weight:700!important}
 body:has(.adminShell) .adminNavItem svg{width:15px!important;height:15px!important;opacity:.74!important}
-body:has(.adminShell) .adminNavItem:hover{background:#f5f6f2!important;color:#1f211e!important}
-body:has(.adminShell) .adminNavItem.active{background:#e9ece7!important;color:#151713!important;box-shadow:inset 3px 0 #171817!important}
-body:has(.adminShell) .adminSideBottom{margin-top:12px!important;padding-top:12px!important;border-top:1px solid #e6e7e2!important}
-body:has(.adminShell) .adminSideBottom a,body:has(.adminShell) .sideButton{height:40px!important;margin:1px 0!important;padding:0 11px!important;border-radius:10px!important;color:#666a62!important;font-size:12px!important;font-weight:700!important}
-body:has(.adminShell) .adminSideBottom a:hover,body:has(.adminShell) .sideButton:hover{background:#f4f5f1!important;color:#1d1f1b!important}
+body:has(.adminShell) .adminNavItem:hover{background:var(--admin-border-soft)!important;color:var(--admin-ink)!important}
+body:has(.adminShell) .adminNavItem.active{background:var(--admin-accent)!important;color:var(--admin-accent-ink)!important;box-shadow:0 5px 16px rgba(31,122,82,.25)!important}
+body:has(.adminShell) .adminSideBottom{margin-top:12px!important;padding-top:12px!important;border-top:1px solid var(--admin-border-soft)!important}
+body:has(.adminShell) .adminSideBottom a,body:has(.adminShell) .sideButton{height:40px!important;margin:1px 0!important;padding:0 11px!important;border-radius:var(--admin-radius-sm)!important;color:var(--admin-ink-soft)!important;font-size:12px!important;font-weight:700!important}
+body:has(.adminShell) .adminSideBottom a:hover,body:has(.adminShell) .sideButton:hover{background:var(--admin-border-soft)!important;color:var(--admin-ink)!important}
 body:has(.adminShell) .adminNavTheme{margin-top:8px!important}
 
 /* Workspace top bar */
-body:has(.adminShell) .adminWorkspaceTopbar{min-height:78px!important;margin:0 0 30px!important;padding:12px 0!important;background:rgba(244,245,242,.88)!important;border-bottom:1px solid #e2e4df!important;backdrop-filter:blur(18px)!important}
-body:has(.adminShell) .adminWorkspaceTitle h1{font-size:28px!important;font-weight:900!important;letter-spacing:-.045em!important}
-body:has(.adminShell) .adminBreadcrumbs{font-size:10px!important;color:#858980!important}
-body:has(.adminShell) .adminBreadcrumbs strong{color:#444740!important}
+body:has(.adminShell) .adminWorkspaceTopbar{min-height:78px!important;margin:0 0 30px!important;padding:12px 0!important;background:var(--admin-topbar-bg)!important;border-bottom:1px solid var(--admin-border)!important;backdrop-filter:blur(18px)!important}
+body:has(.adminShell) .adminWorkspaceTitle h1{font-size:28px!important;font-weight:900!important;letter-spacing:-.045em!important;color:var(--admin-ink)!important}
+body:has(.adminShell) .adminBreadcrumbs{font-size:10px!important;color:var(--admin-muted)!important}
+body:has(.adminShell) .adminBreadcrumbs strong{color:var(--admin-ink-soft)!important}
 body:has(.adminShell) .adminWorkspaceActions{gap:7px!important}
-body:has(.adminShell) .adminTopSearch,body:has(.adminShell) .adminTopIconLink{border-color:#dddfd9!important;background:#fff!important;border-radius:10px!important;box-shadow:0 1px 3px rgba(0,0,0,.03)!important}
+body:has(.adminShell) .adminTopSearch,body:has(.adminShell) .adminTopIconLink{border-color:var(--admin-border)!important;background:var(--admin-surface)!important;color:var(--admin-ink-soft)!important;border-radius:var(--admin-radius-md)!important;box-shadow:var(--admin-shadow-sm)!important}
 body:has(.adminShell) .adminTopSearch{height:38px!important}
 body:has(.adminShell) .adminTopAccount{padding-left:4px!important}
-body:has(.adminShell) .adminTopAvatar{width:34px!important;height:34px!important;border-radius:10px!important}
+body:has(.adminShell) .adminTopAvatar{width:34px!important;height:34px!important;border-radius:var(--admin-radius-md)!important;background:var(--admin-accent)!important;color:var(--admin-accent-ink)!important}
 
 /* Shared page rhythm */
 body:has(.adminShell) .sectionHead{margin-bottom:22px!important}
-body:has(.adminShell) .sectionHead .h2,body:has(.adminShell) .catalogHead .h2{font-size:36px!important;line-height:1.04!important;letter-spacing:-.045em!important;color:#1a1b18!important}
-body:has(.adminShell) .sectionHead .muted{font-size:13px!important;line-height:1.55!important}
+body:has(.adminShell) .sectionHead .h2,body:has(.adminShell) .catalogHead .h2{font-size:36px!important;line-height:1.04!important;letter-spacing:-.045em!important;color:var(--admin-ink)!important}
+body:has(.adminShell) .sectionHead .muted{font-size:13px!important;line-height:1.55!important;color:var(--admin-muted)!important}
 body:has(.adminShell) .catalogPage,body:has(.adminShell) .operationsPage,body:has(.adminShell) .analyticsPage,body:has(.adminShell) .customersPage,body:has(.adminShell) .collectionCatalog,body:has(.adminShell) .shopifyCatalogPage,body:has(.adminShell) .settingsPro,body:has(.adminShell) .navProPage,body:has(.adminShell) .inventoryPage{max-width:1480px!important;margin:0 auto!important;padding-bottom:32px!important}
 
 /* Surfaces */
-body:has(.adminShell) .card,body:has(.adminShell) .dashboardPanel,body:has(.adminShell) .recentPanel,body:has(.adminShell) .editorCard,body:has(.adminShell) .productTableCard,body:has(.adminShell) .shopifyTableCard,body:has(.adminShell) .lv-side,body:has(.adminShell) .lv-detail,body:has(.adminShell) .lv-stat,body:has(.adminShell) .opsCard,body:has(.adminShell) .healthCheck,body:has(.adminShell) .healthHero,body:has(.adminShell) .metricCard,body:has(.adminShell) .analyticsCard,body:has(.adminShell) .settingsCard,body:has(.adminShell) .settingsGroupCard{border-color:#e1e3dd!important;box-shadow:0 2px 9px rgba(28,30,27,.035)!important}
-body:has(.adminShell) .card:hover,body:has(.adminShell) .dashboardPanel:hover,body:has(.adminShell) .metricCard:hover,body:has(.adminShell) .opsCard:hover{box-shadow:0 10px 28px rgba(28,30,27,.06)!important}
-body:has(.adminShell) .statCard,body:has(.adminShell) .inventoryStat{border-color:#e1e3dd!important;box-shadow:0 2px 9px rgba(28,30,27,.035)!important}
-body:has(.adminShell) .statCard:hover,body:has(.adminShell) .inventoryStat.clickable:hover{box-shadow:0 9px 24px rgba(28,30,27,.06)!important}
+body:has(.adminShell) .card,body:has(.adminShell) .dashboardPanel,body:has(.adminShell) .recentPanel,body:has(.adminShell) .editorCard,body:has(.adminShell) .productTableCard,body:has(.adminShell) .shopifyTableCard,body:has(.adminShell) .lv-side,body:has(.adminShell) .lv-detail,body:has(.adminShell) .lv-stat,body:has(.adminShell) .opsCard,body:has(.adminShell) .healthCheck,body:has(.adminShell) .healthHero,body:has(.adminShell) .metricCard,body:has(.adminShell) .analyticsCard,body:has(.adminShell) .settingsCard,body:has(.adminShell) .settingsGroupCard{background:var(--admin-surface)!important;border-color:var(--admin-border)!important;border-radius:var(--admin-radius-lg)!important;box-shadow:var(--admin-shadow-sm)!important;color:var(--admin-ink)!important;transition:box-shadow .18s ease,transform .18s ease!important}
+body:has(.adminShell) .card:hover,body:has(.adminShell) .dashboardPanel:hover,body:has(.adminShell) .metricCard:hover,body:has(.adminShell) .opsCard:hover{box-shadow:var(--admin-shadow-md)!important}
+body:has(.adminShell) .statCard,body:has(.adminShell) .inventoryStat{background:var(--admin-surface)!important;border-color:var(--admin-border)!important;border-radius:var(--admin-radius-lg)!important;box-shadow:var(--admin-shadow-sm)!important;color:var(--admin-ink)!important}
+body:has(.adminShell) .statCard:hover,body:has(.adminShell) .inventoryStat.clickable:hover{box-shadow:var(--admin-shadow-md)!important}
+body:has(.adminShell) .statCard span,body:has(.adminShell) .stat .muted{color:var(--admin-muted)!important}
+body:has(.adminShell) .statCard strong,body:has(.adminShell) .stat strong{color:var(--admin-ink)!important}
 
 /* Controls */
-body:has(.adminShell) .btn{min-height:40px!important;border-radius:10px!important;padding:0 14px!important;font-size:12px!important;font-weight:850!important;box-shadow:0 1px 2px rgba(0,0,0,.03)!important;transition:transform .15s ease,box-shadow .15s ease,background .15s ease,border-color .15s ease!important}
-body:has(.adminShell) .btn:hover:not(:disabled){transform:translateY(-1px)!important;box-shadow:0 6px 18px rgba(0,0,0,.08)!important}
-body:has(.adminShell) .btn.secondary{border-color:#dcded8!important;background:#fff!important;color:#292b27!important}
-body:has(.adminShell) .btn.ghost{border-color:#dcded8!important;background:transparent!important;color:#4f524c!important}
-body:has(.adminShell) .iconBtn{border-color:#dddeda!important;background:#fff!important;border-radius:9px!important;box-shadow:0 1px 2px rgba(0,0,0,.025)!important}
-body:has(.adminShell) .input,body:has(.adminShell) .textarea,body:has(.adminShell) select{border-color:#daddd6!important;background:#fff!important;border-radius:10px!important;color:#262823!important;min-height:42px!important;font-size:13px!important}
+body:has(.adminShell) .btn{min-height:40px!important;border-radius:var(--admin-radius-md)!important;padding:0 16px!important;font-size:12px!important;font-weight:850!important;background:var(--admin-accent)!important;border-color:var(--admin-accent)!important;color:var(--admin-accent-ink)!important;box-shadow:var(--admin-shadow-sm)!important;transition:transform .15s ease,box-shadow .15s ease,background .15s ease,border-color .15s ease!important}
+body:has(.adminShell) .btn:hover:not(:disabled){transform:translateY(-1px)!important;box-shadow:var(--admin-shadow-md)!important;background:var(--admin-accent-strong)!important;border-color:var(--admin-accent-strong)!important}
+body:has(.adminShell) .btn.secondary{border-color:var(--admin-border)!important;background:var(--admin-surface)!important;color:var(--admin-ink-soft)!important}
+body:has(.adminShell) .btn.secondary:hover:not(:disabled){background:var(--admin-border-soft)!important;border-color:var(--admin-border)!important}
+body:has(.adminShell) .btn.ghost{border-color:var(--admin-border)!important;background:transparent!important;color:var(--admin-ink-soft)!important}
+body:has(.adminShell) .btn.ghost:hover:not(:disabled){background:var(--admin-border-soft)!important}
+body:has(.adminShell) .btn:disabled{background:var(--admin-border-soft)!important;border-color:var(--admin-border)!important;color:var(--admin-muted-soft)!important}
+body:has(.adminShell) .iconBtn{border-color:var(--admin-border)!important;background:var(--admin-surface)!important;color:var(--admin-ink-soft)!important;border-radius:var(--admin-radius-sm)!important;box-shadow:var(--admin-shadow-sm)!important}
+body:has(.adminShell) .input,body:has(.adminShell) .textarea,body:has(.adminShell) select{border-color:var(--admin-border)!important;background:var(--admin-surface)!important;border-radius:var(--admin-radius-md)!important;color:var(--admin-ink)!important;min-height:42px!important;font-size:13px!important}
 body:has(.adminShell) .textarea{min-height:110px!important;padding-top:11px!important}
-body:has(.adminShell) .input:focus,body:has(.adminShell) .textarea:focus,body:has(.adminShell) select:focus{border-color:#7e847b!important;box-shadow:0 0 0 3px rgba(38,50,41,.07)!important;outline:none!important}
-body:has(.adminShell) .fieldLabel{font-size:11px!important;font-weight:850!important;color:#3e423b!important}
-body:has(.adminShell) .fieldHelp{font-size:11px!important;color:#838780!important;line-height:1.5!important}
-body:has(.adminShell) .pill{border:1px solid #e0e2dc!important;background:#f7f8f5!important;color:#555950!important;font-size:10px!important;font-weight:850!important;border-radius:999px!important}
+body:has(.adminShell) .input::placeholder,body:has(.adminShell) .textarea::placeholder{color:var(--admin-muted-soft)!important}
+body:has(.adminShell) .input:focus,body:has(.adminShell) .textarea:focus,body:has(.adminShell) select:focus{border-color:var(--admin-accent)!important;box-shadow:0 0 0 3px var(--admin-focus)!important;outline:none!important}
+body:has(.adminShell) .fieldLabel{font-size:11px!important;font-weight:850!important;color:var(--admin-ink-soft)!important}
+body:has(.adminShell) .fieldHelp{font-size:11px!important;color:var(--admin-muted)!important;line-height:1.5!important}
+body:has(.adminShell) .pill{border:1px solid var(--admin-border)!important;background:var(--admin-border-soft)!important;color:var(--admin-ink-soft)!important;font-size:10px!important;font-weight:850!important;border-radius:var(--admin-radius-pill)!important}
 body:has(.adminShell) .statusPill{font-size:10px!important;font-weight:850!important}
+body:has(.adminShell) .statusPill.active{background:var(--admin-accent-soft)!important;color:var(--admin-accent-strong)!important}
+body:has(.adminShell) button:focus-visible,body:has(.adminShell) a:focus-visible,body:has(.adminShell) input:focus-visible,body:has(.adminShell) select:focus-visible,body:has(.adminShell) textarea:focus-visible{outline:3px solid var(--admin-focus)!important;outline-offset:2px!important}
 
 /* Search/filter/tool bars */
-body:has(.adminShell) .catalogToolbar,body:has(.adminShell) .shopifyFilterBar,body:has(.adminShell) .inventoryControlBar,body:has(.adminShell) .collectionToolbar,body:has(.adminShell) .navToolbar{border:1px solid #e1e3dd!important;background:#fff!important;border-radius:15px!important;box-shadow:0 2px 9px rgba(28,30,27,.03)!important}
-body:has(.adminShell) .productSearch,body:has(.adminShell) .shopifySearch,body:has(.adminShell) .inventorySearchBox,body:has(.adminShell) .collectionSearch{background:#fafbf9!important;border-color:#dcded8!important;border-radius:10px!important}
-body:has(.adminShell) .productSearch:focus-within,body:has(.adminShell) .shopifySearch:focus-within,body:has(.adminShell) .inventorySearchBox:focus-within,body:has(.adminShell) .collectionSearch:focus-within{border-color:#a1a69e!important;box-shadow:0 0 0 3px rgba(41,48,42,.06)!important}
+body:has(.adminShell) .catalogToolbar,body:has(.adminShell) .shopifyFilterBar,body:has(.adminShell) .inventoryControlBar,body:has(.adminShell) .collectionToolbar,body:has(.adminShell) .navToolbar{border:1px solid var(--admin-border)!important;background:var(--admin-surface)!important;border-radius:var(--admin-radius-lg)!important;box-shadow:var(--admin-shadow-sm)!important}
+body:has(.adminShell) .productSearch,body:has(.adminShell) .shopifySearch,body:has(.adminShell) .inventorySearchBox,body:has(.adminShell) .collectionSearch{background:var(--admin-border-soft)!important;border-color:var(--admin-border)!important;border-radius:var(--admin-radius-md)!important}
+body:has(.adminShell) .productSearch:focus-within,body:has(.adminShell) .shopifySearch:focus-within,body:has(.adminShell) .inventorySearchBox:focus-within,body:has(.adminShell) .collectionSearch:focus-within{border-color:var(--admin-accent)!important;box-shadow:0 0 0 3px var(--admin-focus)!important;background:var(--admin-surface)!important}
 
 /* Tables */
-body:has(.adminShell) .table{background:#fff!important}
-body:has(.adminShell) .table th,body:has(.adminShell) .shopifyProductTable th,body:has(.adminShell) .inventoryTablePro th{background:#fafbf8!important;color:#7d8178!important;border-bottom:1px solid #e5e7e1!important;font-size:10px!important;font-weight:900!important;letter-spacing:.07em!important;text-transform:uppercase!important;padding:12px 14px!important}
-body:has(.adminShell) .table td,body:has(.adminShell) .shopifyProductTable td,body:has(.adminShell) .inventoryTablePro td{border-bottom:1px solid #eff0ec!important;font-size:12px!important;color:#31332f!important;padding:12px 14px!important}
-body:has(.adminShell) .table tbody tr:hover,body:has(.adminShell) .shopifyProductTable tbody tr:hover,body:has(.adminShell) .inventoryRow:hover{background:#fbfcf9!important}
+body:has(.adminShell) .table{background:var(--admin-surface)!important}
+body:has(.adminShell) .table th,body:has(.adminShell) .shopifyProductTable th,body:has(.adminShell) .inventoryTablePro th{background:var(--admin-border-soft)!important;color:var(--admin-muted)!important;border-bottom:1px solid var(--admin-border)!important;font-size:10px!important;font-weight:900!important;letter-spacing:.07em!important;text-transform:uppercase!important;padding:12px 14px!important}
+body:has(.adminShell) .table td,body:has(.adminShell) .shopifyProductTable td,body:has(.adminShell) .inventoryTablePro td{border-bottom:1px solid var(--admin-border-soft)!important;font-size:12px!important;color:var(--admin-ink)!important;padding:12px 14px!important}
+body:has(.adminShell) .table tbody tr:hover,body:has(.adminShell) .shopifyProductTable tbody tr:hover,body:has(.adminShell) .inventoryRow:hover{background:var(--admin-border-soft)!important}
 body:has(.adminShell) .tableWrap{overflow:auto!important}
-body:has(.adminShell) .catalogPagination{background:#fff!important;border-top:1px solid #eceee8!important}
-body:has(.adminShell) input[type=checkbox]{accent-color:#171817}
+body:has(.adminShell) .catalogPagination{background:var(--admin-surface)!important;border-top:1px solid var(--admin-border-soft)!important}
+body:has(.adminShell) input[type=checkbox]{accent-color:var(--admin-accent)}
 
 /* Tabs / views */
-body:has(.adminShell) .shopifyViewBar,body:has(.adminShell) .collectionViews,body:has(.adminShell) .orderViews,body:has(.adminShell) .opsTabs,body:has(.adminShell) .rangeBar{border:1px solid #e1e3dd!important;background:#fff!important;border-radius:13px!important;padding:4px!important;box-shadow:0 2px 8px rgba(28,30,27,.03)!important}
-body:has(.adminShell) .shopifyView,body:has(.adminShell) .collectionView,body:has(.adminShell) .orderViews button,body:has(.adminShell) .opsTabs button,body:has(.adminShell) .rangeBar button{border-radius:9px!important;font-size:11px!important;font-weight:800!important}
-body:has(.adminShell) .shopifyView.active,body:has(.adminShell) .collectionView.active,body:has(.adminShell) .orderViews button.active,body:has(.adminShell) .opsTabs button.active,body:has(.adminShell) .rangeBar button.active{background:#171817!important;color:#fff!important}
+body:has(.adminShell) .shopifyViewBar,body:has(.adminShell) .collectionViews,body:has(.adminShell) .orderViews,body:has(.adminShell) .opsTabs,body:has(.adminShell) .rangeBar{border:1px solid var(--admin-border)!important;background:var(--admin-surface)!important;border-radius:var(--admin-radius-md)!important;padding:4px!important;box-shadow:var(--admin-shadow-sm)!important}
+body:has(.adminShell) .shopifyView,body:has(.adminShell) .collectionView,body:has(.adminShell) .orderViews button,body:has(.adminShell) .opsTabs button,body:has(.adminShell) .rangeBar button{border-radius:var(--admin-radius-sm)!important;font-size:11px!important;font-weight:800!important;color:var(--admin-muted)!important}
+body:has(.adminShell) .shopifyView.active,body:has(.adminShell) .collectionView.active,body:has(.adminShell) .orderViews button.active,body:has(.adminShell) .opsTabs button.active,body:has(.adminShell) .rangeBar button.active{background:var(--admin-accent)!important;color:var(--admin-accent-ink)!important}
 
 /* Modals — fixes previously unstyled overlay bug */
-body:has(.adminShell) .modalOverlay,body:has(.adminShell) .navModalOverlay{position:fixed!important;inset:0!important;z-index:1200!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:22px!important;background:rgba(17,21,18,.44)!important;backdrop-filter:blur(5px)!important;animation:adminFadeIn .16s ease-out}
-body:has(.adminShell) .modalOverlay>.card,body:has(.adminShell) .navModalOverlay .navEditPanel{position:relative!important;max-height:calc(100vh - 44px)!important;overflow:auto!important;border:1px solid #dddeda!important;border-radius:18px!important;background:#fff!important;box-shadow:0 28px 90px rgba(0,0,0,.2)!important;animation:adminModalIn .2s ease-out}
+body:has(.adminShell) .modalOverlay,body:has(.adminShell) .navModalOverlay{position:fixed!important;inset:0!important;z-index:1200!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:22px!important;background:rgba(15,18,16,.46)!important;backdrop-filter:blur(5px)!important;animation:adminFadeIn .16s ease-out}
+body:has(.adminShell) .modalOverlay>.card,body:has(.adminShell) .navModalOverlay .navEditPanel{position:relative!important;max-height:calc(100vh - 44px)!important;overflow:auto!important;border:1px solid var(--admin-border)!important;border-radius:var(--admin-radius-lg)!important;background:var(--admin-surface)!important;box-shadow:var(--admin-shadow-lg)!important;animation:adminModalIn .2s ease-out}
 body:has(.adminShell) .modalOverlay .sectionHead.small{align-items:flex-start!important}
 body:has(.adminShell) .modalOverlay .fieldLabel{display:grid!important;gap:7px!important;margin:0!important}
 body:has(.adminShell) .modalOverlay .twoColFields{gap:14px!important}
-body:has(.adminShell) .mediaModal{z-index:1200!important}.mediaBackdrop{background:rgba(17,21,18,.48)!important;backdrop-filter:blur(5px)!important}.mediaDialog{background:#fff!important;border:1px solid #dedfd9!important;border-radius:18px!important;box-shadow:0 30px 100px rgba(0,0,0,.2)!important}
-@keyframes adminFadeIn{from{opacity:0}to{opacity:1}}@keyframes adminModalIn{from{opacity:0;transform:translateY(8px) scale(.99)}to{opacity:1;transform:none}}
+body:has(.adminShell) .mediaModal{z-index:1200!important}
+body:has(.adminShell) .mediaBackdrop{background:rgba(15,18,16,.5)!important;backdrop-filter:blur(5px)!important}
+body:has(.adminShell) .mediaDialog{background:var(--admin-surface)!important;border:1px solid var(--admin-border)!important;border-radius:var(--admin-radius-lg)!important;box-shadow:var(--admin-shadow-lg)!important}
+@keyframes adminFadeIn{from{opacity:0}to{opacity:1}}
+@keyframes adminModalIn{from{opacity:0;transform:translateY(8px) scale(.99)}to{opacity:1;transform:none}}
 
 /* Drawers */
-body:has(.adminShell) .inventoryDrawerOverlay{z-index:1200!important;background:rgba(17,21,18,.42)!important;backdrop-filter:blur(4px)!important}
-body:has(.adminShell) .inventoryDrawer{box-shadow:-24px 0 70px rgba(0,0,0,.22)!important;border-left:1px solid #dddeda!important}
+body:has(.adminShell) .inventoryDrawerOverlay{z-index:1200!important;background:rgba(15,18,16,.44)!important;backdrop-filter:blur(4px)!important}
+body:has(.adminShell) .inventoryDrawer{background:var(--admin-surface)!important;box-shadow:-24px 0 70px rgba(0,0,0,.22)!important;border-left:1px solid var(--admin-border)!important}
 
 /* Loading / empty / alerts */
-body:has(.adminShell) .empty,body:has(.adminShell) .emptyInline,body:has(.adminShell) .navEmpty,body:has(.adminShell) .inventoryEmpty,body:has(.adminShell) .opsLoading{border-color:#dfe1db!important;background:#fff!important;border-radius:14px!important;color:#80847c!important}
-body:has(.adminShell) .alert.danger{border-color:#f1c9c4!important;background:#fff4f2!important;color:#9b3025!important}
-body:has(.adminShell) .alert:not(.danger){border-color:#dfe4dc!important;background:#f7faf6!important;color:#4d5c50!important}
+body:has(.adminShell) .empty,body:has(.adminShell) .emptyInline,body:has(.adminShell) .navEmpty,body:has(.adminShell) .inventoryEmpty,body:has(.adminShell) .opsLoading{border-color:var(--admin-border)!important;background:var(--admin-surface)!important;border-radius:var(--admin-radius-md)!important;color:var(--admin-muted)!important}
+body:has(.adminShell) .empty strong{color:var(--admin-ink)!important}
+body:has(.adminShell) .alert.danger{border-color:var(--admin-danger-border)!important;background:var(--admin-danger-soft)!important;color:var(--admin-danger)!important}
+body:has(.adminShell) .alert:not(.danger){border-color:var(--admin-border)!important;background:var(--admin-accent-soft)!important;color:var(--admin-accent-strong)!important}
 
 /* Editor / theme studio */
-body:has(.adminShell) .productEditor{background:#f4f5f2!important}
-body:has(.adminShell) .editorTopbar,body:has(.adminShell) .editorTabs{background:#fff!important;border-color:#e0e2dc!important}
-body:has(.adminShell) .editorTabs button{color:#777b74!important}.editorTabs button.active{color:#171817!important}
-body:has(.adminShell) .editorBody{max-width:1300px!important}.editorRail{top:105px!important}
-body:has(.adminShell) .themeStudio,.themeStudioPro{background:#eff1ee!important}
+body:has(.adminShell) .productEditor{background:var(--admin-bg)!important}
+body:has(.adminShell) .editorTopbar,body:has(.adminShell) .editorTabs{background:var(--admin-surface)!important;border-color:var(--admin-border)!important}
+body:has(.adminShell) .editorTabs button{color:var(--admin-muted)!important}
+body:has(.adminShell) .editorTabs button.active{color:var(--admin-accent)!important}
+body:has(.adminShell) .editorBody{max-width:1300px!important}
+body:has(.adminShell) .editorRail{top:105px!important}
+body:has(.adminShell) .themeStudio,body:has(.adminShell) .themeStudioPro{background:var(--admin-bg)!important}
 
 /* Live visitors */
-body:has(.adminShell) .liveVisitors{margin-top:42px!important}.lv-title{font-size:36px!important;letter-spacing:-.05em!important}.lv-stat{border-radius:17px!important}.lv-main{gap:16px!important}
+body:has(.adminShell) .liveVisitors{margin-top:42px!important}
+body:has(.adminShell) .lv-title{font-size:36px!important;letter-spacing:-.05em!important}
+body:has(.adminShell) .lv-stat{border-radius:var(--admin-radius-lg)!important}
+body:has(.adminShell) .lv-main{gap:16px!important}
 
 /* Responsive workspace */
 @media(max-width:1050px){body:has(.adminShell) .adminMain{padding:0 22px 42px!important}.lv-main{grid-template-columns:1fr!important}.lv-list{max-height:380px!important}.adminTopAccount div:last-child{display:none!important}}
 @media(max-width:760px){body:has(.adminShell) .adminShell{display:block!important}.adminSide{display:none!important}.adminMain{padding:0 14px 34px!important}.adminMobileNavButton{display:inline-flex!important}.adminWorkspaceTopbar{min-height:66px!important;margin-bottom:18px!important}.adminWorkspaceTopbar{padding:10px 0!important}.adminWorkspaceTitle h1{font-size:21px!important}.adminBreadcrumbs{display:none!important}.adminTopSearch{width:38px!important;justify-content:center!important;padding:0!important}.adminTopSearch span,.adminTopSearch kbd{display:none!important}.adminWorkspaceActions{gap:5px!important}.sectionHead{align-items:flex-start!important;flex-direction:column!important}.sectionHead .inline{width:100%!important}.sectionHead .inline>*{flex:1}.sectionHead .h2,.catalogHead .h2{font-size:29px!important}.dashboardKpis{grid-template-columns:1fr 1fr!important}.twoColFields,.threeColFields{grid-template-columns:1fr!important}.mediaEditorGrid{grid-template-columns:1fr 1fr!important}.marketCards{grid-template-columns:1fr!important}.settingsCenter,.navEditorLayout{grid-template-columns:1fr!important}.adminTileGrid{grid-template-columns:1fr 1fr!important}}
 @media(max-width:480px){body:has(.adminShell) .dashboardKpis{grid-template-columns:1fr!important}.catalogStats{grid-template-columns:1fr!important}.adminMobileNavButton{width:36px!important;height:36px!important}.adminTopTheme{width:36px!important}.mediaEditorGrid,.adminTileGrid{grid-template-columns:1fr!important}.modalOverlay{padding:10px!important}.modalOverlay>.card{width:min(100%,520px)!important;border-radius:15px!important}}
 
-/* Dark mode */
-html[data-admin-theme='dark'] body:has(.adminShell){background:#101311!important;color:#edf1ee!important}
-html[data-admin-theme='dark'] body:has(.adminShell) .adminShell,html[data-admin-theme='dark'] body:has(.adminShell) .adminMain{background:#101311!important}
-html[data-admin-theme='dark'] body:has(.adminShell) .adminSide{background:#161a18!important;border-color:#2a302c!important}
-html[data-admin-theme='dark'] body:has(.adminShell) .adminBrand .logo,html[data-admin-theme='dark'] body:has(.adminShell) h1,html[data-admin-theme='dark'] body:has(.adminShell) h2,html[data-admin-theme='dark'] body:has(.adminShell) h3,html[data-admin-theme='dark'] body:has(.adminShell) h4{color:#f2f5f3!important}
-html[data-admin-theme='dark'] body:has(.adminShell) .adminSide>.pill,html[data-admin-theme='dark'] body:has(.adminShell) .adminNavGroupButton.active,html[data-admin-theme='dark'] body:has(.adminShell) .adminNavItem.active{background:#242a27!important;color:#eef2ef!important;border-color:#343b36!important}
-html[data-admin-theme='dark'] body:has(.adminShell) .adminNavGroupButton,html[data-admin-theme='dark'] body:has(.adminShell) .adminNavItem,html[data-admin-theme='dark'] body:has(.adminShell) .adminSideBottom a,html[data-admin-theme='dark'] body:has(.adminShell) .sideButton{color:#aeb7b1!important}
-html[data-admin-theme='dark'] body:has(.adminShell) .adminNavItem:hover,html[data-admin-theme='dark'] body:has(.adminShell) .adminNavGroupButton:hover,html[data-admin-theme='dark'] body:has(.adminShell) .adminSideBottom a:hover,html[data-admin-theme='dark'] body:has(.adminShell) .sideButton:hover{background:#202521!important;color:#f2f5f3!important}
-html[data-admin-theme='dark'] body:has(.adminShell) .adminNavSearchWrap,html[data-admin-theme='dark'] body:has(.adminShell) .adminTopSearch,html[data-admin-theme='dark'] body:has(.adminShell) .adminTopIconLink{background:#1c211e!important;border-color:#333a35!important;color:#d9dfdb!important}
-html[data-admin-theme='dark'] body:has(.adminShell) .adminNavSearchWrap input{color:#eef2ef!important}.adminNavSearchWrap kbd{background:#252b27!important;color:#a7b0aa!important;border-color:#343b36!important}
-html[data-admin-theme='dark'] body:has(.adminShell) .adminWorkspaceTopbar{background:rgba(16,19,17,.9)!important;border-color:#292f2b!important}
-html[data-admin-theme='dark'] body:has(.adminShell) .adminBreadcrumbs,html[data-admin-theme='dark'] body:has(.adminShell) .adminBreadcrumbs strong,html[data-admin-theme='dark'] body:has(.adminShell) .sectionHead .muted{color:#9da69f!important}
-html[data-admin-theme='dark'] body:has(.adminShell) .card,html[data-admin-theme='dark'] body:has(.adminShell) .dashboardPanel,html[data-admin-theme='dark'] body:has(.adminShell) .recentPanel,html[data-admin-theme='dark'] body:has(.adminShell) .editorCard,html[data-admin-theme='dark'] body:has(.adminShell) .productTableCard,html[data-admin-theme='dark'] body:has(.adminShell) .shopifyTableCard,html[data-admin-theme='dark'] body:has(.adminShell) .lv-side,html[data-admin-theme='dark'] body:has(.adminShell) .lv-detail,html[data-admin-theme='dark'] body:has(.adminShell) .lv-stat,html[data-admin-theme='dark'] body:has(.adminShell) .opsCard,html[data-admin-theme='dark'] body:has(.adminShell) .healthCheck,html[data-admin-theme='dark'] body:has(.adminShell) .healthHero,html[data-admin-theme='dark'] body:has(.adminShell) .metricCard,html[data-admin-theme='dark'] body:has(.adminShell) .analyticsCard,html[data-admin-theme='dark'] body:has(.adminShell) .settingsCard,html[data-admin-theme='dark'] body:has(.adminShell) .settingsGroupCard,html[data-admin-theme='dark'] body:has(.adminShell) .statCard,html[data-admin-theme='dark'] body:has(.adminShell) .inventoryStat,html[data-admin-theme='dark'] body:has(.adminShell) .inventoryControlBar,html[data-admin-theme='dark'] body:has(.adminShell) .inventoryTableShell,html[data-admin-theme='dark'] body:has(.adminShell) .collectionToolbar,html[data-admin-theme='dark'] body:has(.adminShell) .collectionViews,html[data-admin-theme='dark'] body:has(.adminShell) .shopifyViewBar,html[data-admin-theme='dark'] body:has(.adminShell) .shopifyFilterBar,html[data-admin-theme='dark'] body:has(.adminShell) .shopifyBulkBar,html[data-admin-theme='dark'] body:has(.adminShell) .rangeBar{background:#191d1b!important;border-color:#2c332e!important;color:#e9eeeb!important}
-html[data-admin-theme='dark'] body:has(.adminShell) .table,html[data-admin-theme='dark'] body:has(.adminShell) .tableTopline,html[data-admin-theme='dark'] body:has(.adminShell) .catalogPagination,html[data-admin-theme='dark'] body:has(.adminShell) .editorTopbar,html[data-admin-theme='dark'] body:has(.adminShell) .editorTabs,html[data-admin-theme='dark'] body:has(.adminShell) .editorCardHead,html[data-admin-theme='dark'] body:has(.adminShell) .editorCardBody{background:#191d1b!important;color:#e9eeeb!important;border-color:#2c332e!important}
-html[data-admin-theme='dark'] body:has(.adminShell) .input,html[data-admin-theme='dark'] body:has(.adminShell) .textarea,html[data-admin-theme='dark'] body:has(.adminShell) select,html[data-admin-theme='dark'] body:has(.adminShell) .productSearch,html[data-admin-theme='dark'] body:has(.adminShell) .shopifySearch,html[data-admin-theme='dark'] body:has(.adminShell) .inventorySearchBox,html[data-admin-theme='dark'] body:has(.adminShell) .inventorySelect,html[data-admin-theme='dark'] body:has(.adminShell) .inventoryAmountInput{background:#141816!important;color:#eef2ef!important;border-color:#343b36!important}
-html[data-admin-theme='dark'] body:has(.adminShell) .btn.secondary,html[data-admin-theme='dark'] body:has(.adminShell) .btn.ghost,html[data-admin-theme='dark'] body:has(.adminShell) .iconBtn{background:#232824!important;color:#eef2ef!important;border-color:#3b433e!important}
-html[data-admin-theme='dark'] body:has(.adminShell) .table th,html[data-admin-theme='dark'] body:has(.adminShell) .shopifyProductTable th,html[data-admin-theme='dark'] body:has(.adminShell) .inventoryTablePro th{background:#202522!important;color:#9da69f!important;border-color:#303731!important}
-html[data-admin-theme='dark'] body:has(.adminShell) .table td,html[data-admin-theme='dark'] body:has(.adminShell) .shopifyProductTable td,html[data-admin-theme='dark'] body:has(.adminShell) .inventoryTablePro td{color:#e2e7e3!important;border-color:#2b312d!important}
-html[data-admin-theme='dark'] body:has(.adminShell) .table tbody tr:hover,html[data-admin-theme='dark'] body:has(.adminShell) .shopifyProductTable tbody tr:hover,html[data-admin-theme='dark'] body:has(.adminShell) .inventoryRow:hover{background:#202521!important}
-html[data-admin-theme='dark'] body:has(.adminShell) .modalOverlay>.card,html[data-admin-theme='dark'] body:has(.adminShell) .navModalOverlay .navEditPanel,html[data-admin-theme='dark'] body:has(.adminShell) .mediaDialog,html[data-admin-theme='dark'] body:has(.adminShell) .inventoryDrawer{background:#191d1b!important;border-color:#343b36!important;color:#edf1ee!important}
-html[data-admin-theme='dark'] body:has(.adminShell) .empty,html[data-admin-theme='dark'] body:has(.adminShell) .emptyInline,html[data-admin-theme='dark'] body:has(.adminShell) .navEmpty,html[data-admin-theme='dark'] body:has(.adminShell) .inventoryEmpty,html[data-admin-theme='dark'] body:has(.adminShell) .opsLoading{background:#191d1b!important;border-color:#343b36!important;color:#9ea7a0!important}
-html[data-admin-theme='dark'] body:has(.adminShell) .alert:not(.danger){background:#18241c!important;border-color:#2d4e38!important;color:#b5d9c0!important}
-html[data-admin-theme='dark'] body:has(.adminShell) .alert.danger{background:#321d1b!important;border-color:#5a302b!important;color:#f0aaa3!important}
+/* Headings/text pick up ink tokens automatically via inheritance */
+body:has(.adminShell) h1,body:has(.adminShell) h2,body:has(.adminShell) h3,body:has(.adminShell) h4{color:var(--admin-ink)!important}
+body:has(.adminShell) .muted{color:var(--admin-muted)!important}
 
 /* Admin mobile drawer */
-html[data-admin-theme='dark'] .adminMobileNavDrawer{background:#161a18!important;color:#eef2ef!important;border-color:#2a302c!important}
+body:has(.adminShell) .adminMobileNavDrawer{background:var(--admin-surface)!important;color:var(--admin-ink)!important;border-color:var(--admin-border)!important}

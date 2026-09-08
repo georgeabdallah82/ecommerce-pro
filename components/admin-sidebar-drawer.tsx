@@ -38,13 +38,13 @@ const iconMap: Record<string, LucideIcon> = {
 }
 
 const css = `
-body:has(.adminShell){background:#f5f5f2!important}
+body:has(.adminShell){background:var(--admin-bg)!important}
 body:has(.adminShell .adminSidebarDrawer.isCollapsed) .adminShell{grid-template-columns:78px minmax(0,1fr)!important}
-body:has(.adminShell) .adminSide{position:sticky!important;top:0!important;height:100vh!important;min-height:100vh!important;flex-direction:column!important;overflow:hidden!important;padding:14px 10px!important;background:linear-gradient(180deg,#fff 0%,#fbfbf9 100%)!important;border-right:1px solid #e4e4df!important;box-shadow:8px 0 30px rgba(20,20,17,.025)!important;z-index:60!important;transition:padding .22s ease,background .22s ease}
+body:has(.adminShell) .adminSide{position:sticky!important;top:0!important;height:100vh!important;min-height:100vh!important;flex-direction:column!important;overflow:hidden!important;padding:14px 10px!important;background:var(--admin-surface)!important;border-right:1px solid var(--admin-border)!important;box-shadow:var(--admin-shadow-sm)!important;z-index:60!important;transition:padding .22s ease,background .22s ease}
 @media(min-width:761px){body:has(.adminShell) .adminSide{display:flex!important}}
 body:has(.adminShell .adminSidebarDrawer.isCollapsed) .adminSide{padding-left:9px!important;padding-right:9px!important}
 body:has(.adminShell) .adminSide>.adminBrand{flex:0 0 auto!important;margin:0!important;padding:0 3px!important;min-height:44px!important;display:flex!important;align-items:center!important;gap:10px!important;overflow:hidden!important;white-space:nowrap!important}
-body:has(.adminShell) .adminBrandMark{flex:0 0 40px!important;width:40px!important;height:40px!important;border-radius:12px!important;display:grid!important;place-items:center!important;background:#151614!important;color:#fff!important;box-shadow:0 6px 18px rgba(21,22,20,.12)!important}
+body:has(.adminShell) .adminBrandMark{flex:0 0 40px!important;width:40px!important;height:40px!important;border-radius:12px!important;display:grid!important;place-items:center!important;background:var(--admin-accent)!important;color:var(--admin-accent-ink)!important;box-shadow:0 6px 18px rgba(31,122,82,.25)!important}
 body:has(.adminShell) .adminBrand .logo{font-size:15px!important;font-weight:900!important;letter-spacing:-.025em!important}
 body:has(.adminShell .adminSidebarDrawer.isCollapsed) .adminBrand{justify-content:center!important;padding:0!important}
 body:has(.adminShell .adminSidebarDrawer.isCollapsed) .adminBrand>div:last-child{display:none!important}
@@ -83,10 +83,10 @@ body:has(.adminShell) .adminSide>.adminSidebarDrawer .adminSidebarNav{padding-to
 .adminNavChildren{display:grid;grid-template-rows:0fr;overflow:hidden;transition:grid-template-rows .18s cubic-bezier(.2,.7,.3,1)}
 .adminNavChildren.open{grid-template-rows:1fr}
 .adminNavChildren>*{min-height:0}
-.adminNavItem{min-width:0;height:40px!important;margin:2px 1px!important;padding:0 10px!important;display:flex!important;align-items:center!important;gap:11px!important;border-radius:10px!important;color:#676962!important;font-size:13px!important;font-weight:650!important;text-decoration:none!important;transition:background .14s ease,color .14s ease,box-shadow .14s ease!important}
+.adminNavItem{min-width:0;height:40px!important;margin:2px 1px!important;padding:0 10px!important;display:flex!important;align-items:center!important;gap:11px!important;border-radius:10px!important;color:var(--admin-ink-soft)!important;font-size:13px!important;font-weight:650!important;text-decoration:none!important;transition:background .14s ease,color .14s ease,box-shadow .14s ease!important}
 .adminNavItem svg{flex:0 0 17px;opacity:.72}.adminNavItem span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.adminNavItem:hover{background:#f3f3f0!important;color:#1d1e1b!important;transform:none!important}
-.adminNavItem.active{background:#181a18!important;color:#fff!important;box-shadow:0 5px 14px rgba(20,21,19,.12)!important}
+.adminNavItem:hover{background:var(--admin-border-soft)!important;color:var(--admin-ink)!important;transform:none!important}
+.adminNavItem.active{background:var(--admin-accent)!important;color:var(--admin-accent-ink)!important;box-shadow:0 5px 14px rgba(31,122,82,.28)!important}
 .adminNavItem.active svg{opacity:1}
 .adminNavItem:focus-visible{outline:3px solid rgba(0,128,96,.14);outline-offset:2px}
 .adminSidebarDrawer.isCollapsed .adminNavGroupButton{height:10px;padding:0;margin:4px 11px;background:transparent;border-top:1px solid #ecece7;border-radius:0;pointer-events:none}
@@ -99,19 +99,15 @@ body:has(.adminShell) .adminSide>.adminSidebarDrawer .adminSidebarNav{padding-to
 .adminNavTheme{margin-top:8px;padding:8px 1px 0;border-top:1px solid #ededeb}
 .adminSidebarDrawer.isCollapsed .adminNavTheme{display:none!important}
 body:has(.adminShell .adminSidebarDrawer.isCollapsed) .adminSideBottom{display:none!important}
-body:has(.adminShell) .adminSideBottom{flex:0 0 auto!important;margin:0!important;padding:9px 0 0!important;border-top:1px solid #ededeb!important}
+body:has(.adminShell) .adminSideBottom{flex:0 0 auto!important;margin:0!important;padding:9px 0 0!important;border-top:1px solid var(--admin-border-soft)!important}
 body:has(.adminShell) .adminSideBottom a,body:has(.adminShell) .adminSideBottom .sideButton{width:100%!important;height:40px!important;border-radius:10px!important;padding:0 10px!important;justify-content:flex-start!important}
 body:has(.adminShell .adminSidebarDrawer.isCollapsed) .adminMain{padding-left:32px!important}
 
-html[data-admin-theme='dark'] body:has(.adminShell) .adminSide{background:linear-gradient(180deg,#151816 0%,#111412 100%)!important;border-color:#2a312d!important;color:#eef2ef!important}
 html[data-admin-theme='dark'] .adminNavSearchWrap{background:#1b201d;border-color:#303732;color:#aab3ad}
 html[data-admin-theme='dark'] .adminNavSearchWrap input{color:#eef2ef}
 html[data-admin-theme='dark'] .adminNavSearchWrap kbd{background:#232a26;border-color:#343b36;color:#a7b0aa}
 html[data-admin-theme='dark'] .adminNavGroupButton{color:#929b95}
 html[data-admin-theme='dark'] .adminNavGroupButton:hover{background:#202622;color:#eef2ef}
-html[data-admin-theme='dark'] .adminNavItem{color:#aeb6b0!important}
-html[data-admin-theme='dark'] .adminNavItem:hover{background:#202622!important;color:#fff!important}
-html[data-admin-theme='dark'] .adminNavItem.active{background:#f0f3ef!important;color:#131614!important}
 html[data-admin-theme='dark'] .adminSidebarToggle{background:#1c211e;border-color:#343a35;color:#b5beb8}
 html[data-admin-theme='dark'] .adminSidebarToggle:hover{background:#252b27;color:#fff;border-color:#424a44}
 html[data-admin-theme='dark'] .adminNavTheme,html[data-admin-theme='dark'] body:has(.adminShell) .adminSideBottom{border-color:#2b322e!important}

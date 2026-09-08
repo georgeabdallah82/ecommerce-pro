@@ -121,10 +121,10 @@ export default function OrderAlerts({ vapidPublicKey }: { vapidPublicKey?: strin
       {message && <span className="orderAlertsMsg muted">{message}</span>}
       <style jsx>{`
         .orderAlertsWrap{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;position:relative;z-index:1000}
-        .orderAlertsBtn{display:flex;align-items:center;gap:6px;position:relative;z-index:1001;pointer-events:auto;touch-action:manipulation;border:1px solid #eaded4;background:#fff;border-radius:999px;padding:0 11px;height:38px;font-size:12px;font-weight:700;color:#5d5d57;cursor:pointer;white-space:nowrap}
-        .orderAlertsBtn[data-enabled='true']{background:#f2fdf7}
+        .orderAlertsBtn{display:flex;align-items:center;gap:6px;position:relative;z-index:1001;pointer-events:auto;touch-action:manipulation;border:1px solid var(--admin-border);background:var(--admin-surface);border-radius:999px;padding:0 11px;height:38px;font-size:12px;font-weight:700;color:var(--admin-ink-soft);cursor:pointer;white-space:nowrap}
+        .orderAlertsBtn[data-enabled='true']{background:var(--admin-accent-soft);border-color:var(--admin-accent);color:var(--admin-accent-strong)}
         .orderAlertsBtn:disabled{cursor:default}
-        .orderAlertsTest{position:relative;z-index:1001;pointer-events:auto;touch-action:manipulation;border:1px solid #eaded4;background:#fff;border-radius:999px;padding:0 11px;height:38px;font-size:12px;font-weight:700;color:#5d5d57;cursor:pointer;white-space:nowrap}
+        .orderAlertsTest{position:relative;z-index:1001;pointer-events:auto;touch-action:manipulation;border:1px solid var(--admin-border);background:var(--admin-surface);border-radius:999px;padding:0 11px;height:38px;font-size:12px;font-weight:700;color:var(--admin-ink-soft);cursor:pointer;white-space:nowrap}
         .orderAlertsMsg{font-size:11px;max-width:220px;flex-basis:100%;text-align:right}
         @media(max-width:1100px){
           .orderAlertsTest{display:none}
@@ -134,9 +134,6 @@ export default function OrderAlerts({ vapidPublicKey }: { vapidPublicKey?: strin
         @media(max-width:560px){
           .orderAlertsBtn{width:36px;height:36px}
         }
-        html[data-admin-theme='dark'] .orderAlertsBtn,
-        html[data-admin-theme='dark'] .orderAlertsTest{background:#1f2320;border-color:#343b36;color:#e6ebe7}
-        html[data-admin-theme='dark'] .orderAlertsBtn[data-enabled='true']{background:#173524}
       `}</style>
     </div>
   )
