@@ -1,5 +1,4 @@
 import { PrismaClient } from '@prisma/client'
-import { PrismaPg } from '@prisma/adapter-pg'
 import { defaultTheme, defaultSections, defaultNavigation } from './theme-defaults'
 
 const globalForPrisma = globalThis as unknown as { prisma?: any }
@@ -248,9 +247,7 @@ function getMockHandler(model: string) {
       if (model === 'coupon') return [...mockCoupons]
       if (model === 'shippingZone') return [...mockShippingZones]
       if (model === 'user') return [...mockUsers]
-      if (model === 'setting') {
-        return Array.from(mockSettings.entries()).map(([key, value]) => ({ key, value }))
-      }
+      if (model === 'setting') return Array.from(mockSettings.entries()).map(([key, value]) => ({ key, value }))
       return []
     },
     findUnique: async (args: any) => {
@@ -275,9 +272,7 @@ function getMockHandler(model: string) {
         if (where.slug) return mockCollections.find((c) => c.slug === where.slug) || null
         if (where.id) return mockCollections.find((c) => c.id === where.id) || null
       }
-      if (model === 'coupon' && where.code) {
-        return mockCoupons.find((c) => c.code.toUpperCase() === String(where.code).toUpperCase()) || null
-      }
+      if (model === 'coupon' && where.code) return mockCoupons.find((c) => c.code.toUpperCase() === String(where.code).toUpperCase()) || null
       return null
     },
     findFirst: async (args?: any) => {
@@ -302,10 +297,7 @@ function getMockHandler(model: string) {
       }
       if (model === 'user' && args.where?.email) {
         const existing = mockUsers.find((u) => u.email === args.where.email)
-        if (existing) {
-          Object.assign(existing, args.update || {})
-          return existing
-        }
+        if (existing) { Object.assign(existing, args.update || {}); return existing }
         const created = { id: `usr-${Date.now()}`, ...args.create }
         mockUsers.push(created)
         return created
@@ -341,16 +333,7 @@ function getMockHandler(model: string) {
 // Create real PrismaClient instance
 let realPrisma: any = null
 try {
-  const databaseUrl = process.env.DATABASE_URL || ''
-  if (/^postgres(?:ql)?:\/\//i.test(databaseUrl)) {
-    const adapter = new PrismaPg({
-      connectionString: databaseUrl,
-      maxUses: 1,
-    })
-    realPrisma = new PrismaClient({ adapter })
-  } else {
-    realPrisma = new PrismaClient()
-  }
+  realPrisma = new PrismaClient()
 } catch {
   console.warn('[AI Studio] Database client initialization warning — using resilient proxy')
 }
@@ -368,9 +351,7 @@ function createResilientPrismaClient(): any {
     get(target, prop: string | symbol) {
       if (typeof prop !== 'string') return Reflect.get(target, prop)
 
-      if (prop === '$connect' || prop === '$disconnect') {
-        return async () => {}
-      }
+      if (prop === '$connect' || prop === '$disconnect') return async () => {}
       if (prop === '$transaction') {
         return async (arg: any) => {
           if (typeof arg === 'function') return arg(createResilientPrismaClient())
@@ -379,39 +360,15 @@ function createResilientPrismaClient(): any {
         }
       }
 
-      // Model accessor (e.g. db.product, db.setting, db.order, etc.)
-      const mockHandler = getMockHandler(prop)
-      const realModel = target ? target[prop] : null
-
-      return new Proxy(mockHandler, {
-        get(mTarget, op: string | symbol) {
-          if (typeof op !== 'string') return Reflect.get(mTarget, op)
-
-          const mockFn = (mTarget as any)[op] || (async () => null)
-
-          return async (...args: any[]) => {
-            // If DATABASE_URL is not configured or is a template placeholder, return mock immediately
-            if (isPlaceholderDb() || !realModel || typeof realModel[op] !== 'function') {
-              return mockFn(...args)
-            }
-
-            try {
-              return await realModel[op](...args)
-            } catch (err: any) {
-              // Gracefully fall back to mock data if connection fails or table missing
-              console.warn(`[AI Studio] Database query ${prop}.${op} offline — fallback active`)
-              return mockFn(...args)
-            }
-          }
-        },
-      })
+      if (prop in target) return Reflect.get(target, prop)
+      if (['product','category','collection','user','setting','order','coupon','shippingZone'].includes(prop)) return getMockHandler(prop)
+      return Reflect.get(target, prop)
     },
   })
 }
 
-export const db: PrismaClient = (globalForPrisma.prisma ?? createResilientPrismaClient()) as PrismaClient
-export const prisma = db
+const prisma = globalForPrisma.prisma || createResilientPrismaClient()
+globalForPrisma.prisma = prisma
 
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = db
-}
+export default prisma
+export { prisma }
