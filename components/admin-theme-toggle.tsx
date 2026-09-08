@@ -12,7 +12,7 @@ function applyTheme(theme: Theme) {
   document.documentElement.style.colorScheme = theme
 }
 
-export default function AdminThemeToggle() {
+export default function AdminThemeToggle({ compact }: { compact?: boolean }) {
   const [theme, setTheme] = useState<Theme>('light')
 
   useEffect(() => {
@@ -153,13 +153,16 @@ export default function AdminThemeToggle() {
         html[data-admin-theme='dark'] body:has(.adminShell) .lv-detail-avatar,
         html[data-admin-theme='dark'] body:has(.adminShell) .lv-detail-item{background:#232724!important;color:#eef2ef!important}
       `}</style>
-      <button type="button" className="adminThemeToggle" onClick={toggle} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}>
+      <button type="button" className="adminThemeToggle" data-compact={compact ? 'true' : undefined} onClick={toggle} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}>
         {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
       </button>
       <style jsx>{`
-        .adminThemeToggle{width:100%;display:flex;align-items:center;gap:9px;height:40px;padding:0 11px;border:1px solid var(--admin-border);border-radius:10px;background:var(--admin-surface);color:var(--admin-ink-soft);font-size:12px;font-weight:800;cursor:pointer;transition:.16s ease}
+        .adminThemeToggle{width:100%;display:flex;align-items:center;gap:9px;height:40px;padding:0 11px;border:1px solid var(--admin-border);border-radius:10px;background:var(--admin-surface);color:var(--admin-ink-soft);font-size:12px;font-weight:800;cursor:pointer;transition:.16s ease;box-sizing:border-box}
         .adminThemeToggle:hover{background:var(--admin-border-soft);color:var(--admin-ink)}
+        .adminThemeToggle[data-compact='true']{width:38px;min-width:38px;height:38px;padding:0;justify-content:center;gap:0}
+        .adminThemeToggle[data-compact='true'] span{display:none}
+        @media(max-width:560px){.adminThemeToggle[data-compact='true']{width:36px;min-width:36px;height:36px}}
       `}</style>
     </>
   )

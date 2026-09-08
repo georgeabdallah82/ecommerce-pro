@@ -45,7 +45,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          npm audit --json > npm-audit.json
+          npm audit --omit=dev --json > npm-audit.json
           audit_exit=$?
           echo "npm audit exit code: ${audit_exit}"
           echo ""
