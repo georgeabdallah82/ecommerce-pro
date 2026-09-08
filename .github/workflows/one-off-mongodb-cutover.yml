@@ -23,9 +23,6 @@ jobs:
           import json
           from pathlib import Path
 
-          # package.json: MongoDB is the production datasource. Keep the
-          # PostgreSQL migration utilities in the repo, but remove the runtime
-          # pg adapter from the application bundle.
           p = Path('package.json')
           data = json.loads(p.read_text())
           data['scripts']['build'] = 'node scripts/prepare-mongodb-schema.mjs && prisma generate --schema=prisma/mongodb-schema && next build'
@@ -36,7 +33,6 @@ jobs:
           data['devDependencies'].pop('@types/pg', None)
           p.write_text(json.dumps(data, indent=2) + '\n')
 
-          # CI should generate the same Prisma client that production runs.
           p = Path('.github/workflows/ci.yml')
           text = p.read_text()
           text = text.replace(
@@ -46,8 +42,6 @@ jobs:
           text = text.replace('DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci-build', 'DATABASE_URL: mongodb://127.0.0.1:27017/ci-build')
           p.write_text(text)
 
-          # Runtime client: remove PostgreSQL adapter construction. The client
-          # generated above is now the MongoDB Prisma client.
           p = Path('lib/prisma.ts')
           text = p.read_text()
           text = text.replace("import { PrismaPg } from '@prisma/adapter-pg'\n", '')
@@ -63,6 +57,8 @@ jobs:
         run: npm install --no-audit --no-fund
 
       - name: Verify production schema can generate
+        env:
+          DATABASE_URL: mongodb://127.0.0.1:27017/ci-build
         run: |
           set -euo pipefail
           node scripts/prepare-mongodb-schema.mjs
