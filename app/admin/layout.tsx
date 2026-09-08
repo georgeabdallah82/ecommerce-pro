@@ -129,7 +129,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <AdminSidebarDrawer groups={visibleGroups} />
         <div className="adminSideBottom"><Link href="/"><Store size={16}/> View storefront</Link><form action="/api/auth/logout" method="post"><button className="sideButton" type="submit"><LogOut size={16}/> Sign out</button></form></div>
       </aside>
-      <section className="adminMain"><AdminTopbar name={user.name} email={user.email}/>{children}</section>
+      <section className="adminMain"><AdminTopbar name={user.name} email={user.email} vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}/>{children}</section>
     </div>
   </>
 }

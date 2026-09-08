@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ChevronRight, ExternalLink, Home, Search } from 'lucide-react'
 import AdminThemeToggle from '@/components/admin-theme-toggle'
+import OrderAlerts from '@/components/order-alerts'
 
 const labels: Array<[string, string]> = [
   ['/admin', 'Dashboard'], ['/admin/orders', 'Orders'], ['/admin/products', 'Products'], ['/admin/inventory', 'Inventory'], ['/admin/operations', 'Operations'],
@@ -19,7 +20,7 @@ function currentLabel(pathname: string) {
   return parent?.[1] || 'Control Center'
 }
 
-export default function AdminTopbar({ name, email }: { name: string | null; email: string }) {
+export default function AdminTopbar({ name, email, vapidPublicKey }: { name: string | null; email: string; vapidPublicKey?: string }) {
   const pathname = usePathname()
   const title = currentLabel(pathname)
   const requestAdminSearch = () => {
@@ -36,6 +37,7 @@ export default function AdminTopbar({ name, email }: { name: string | null; emai
       <div className="adminWorkspaceActions">
         <button type="button" className="adminTopSearch" onClick={requestAdminSearch} title="Search admin navigation"><Search size={15} /><span>Search</span><kbd>Ctrl K</kbd></button>
         <Link href="/" className="adminTopIconLink" title="Open storefront" aria-label="Open storefront"><ExternalLink size={16} /></Link>
+        <OrderAlerts vapidPublicKey={vapidPublicKey} />
         <div className="adminTopTheme"><AdminThemeToggle /></div>
         <div className="adminTopAccount"><div className="adminTopAvatar">{(name || email || 'A').slice(0, 1).toUpperCase()}</div><div className="adminTopAccountText"><strong>{name || 'Administrator'}</strong><span>{email}</span></div></div>
       </div>

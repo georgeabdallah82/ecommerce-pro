@@ -1,3 +1,0 @@
-'use client'
-import {useState} from 'react'
-export default function ProductGallery({images,name}:{images:any[];name:string}){const list=images.length?images:[{url:'/placeholder-product.svg',alt:name}];const [active,setActive]=useState(0);return <div className="productGallery"><div className="productMainImage"><img src={list[active]?.url||'/placeholder-product.svg'} alt={list[active]?.alt||name}/></div>{list.length>1&&<div className="productThumbs">{list.map((x:any,i:number)=><button key={i} className={i===active?'active':''} onClick={()=>setActive(i)}><img src={x.url||'/placeholder-product.svg'} alt={x.alt||''}/></button>)}</div>}</div>}
