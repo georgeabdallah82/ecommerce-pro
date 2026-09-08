@@ -646,6 +646,16 @@ model LiveVisitorSession {
   @@index([userId])
 }
 
+model AdminLoginLockout {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  failedCount Int       @default(0)
+  lockedUntil DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  @@index([lockedUntil])
+}
+
 model DeliveryTracking {
   id                    String   @id @default(cuid())
   orderId               String   @unique
