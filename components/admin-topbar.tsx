@@ -5,6 +5,8 @@ import { usePathname } from 'next/navigation'
 import { ChevronRight, ExternalLink, Home, Search } from 'lucide-react'
 import AdminThemeToggle from '@/components/admin-theme-toggle'
 import OrderAlerts from '@/components/order-alerts'
+import AdminMobileNav from '@/components/admin-mobile-nav'
+import type { AdminSidebarGroup } from '@/components/admin-sidebar-drawer'
 
 const labels: Array<[string, string]> = [
   ['/admin', 'Dashboard'], ['/admin/orders', 'Orders'], ['/admin/products', 'Products'], ['/admin/inventory', 'Inventory'], ['/admin/operations', 'Operations'],
@@ -20,7 +22,7 @@ function currentLabel(pathname: string) {
   return parent?.[1] || 'Control Center'
 }
 
-export default function AdminTopbar({ name, email, vapidPublicKey }: { name: string | null; email: string; vapidPublicKey?: string }) {
+export default function AdminTopbar({ name, email, vapidPublicKey, groups }: { name: string | null; email: string; vapidPublicKey?: string; groups: AdminSidebarGroup[] }) {
   const pathname = usePathname()
   const title = currentLabel(pathname)
   const requestAdminSearch = () => {
@@ -30,6 +32,7 @@ export default function AdminTopbar({ name, email, vapidPublicKey }: { name: str
 
   return (
     <header className="adminWorkspaceTopbar">
+      <AdminMobileNav groups={groups} />
       <div className="adminWorkspaceTitle">
         <div className="adminBreadcrumbs"><Link href="/admin" className="adminBreadcrumbHome" aria-label="Dashboard"><Home size={13} /></Link><ChevronRight size={13} aria-hidden="true" /><span>Control Center</span><ChevronRight size={13} aria-hidden="true" /><strong>{title}</strong></div>
         <h1>{title}</h1>
