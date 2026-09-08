@@ -44,7 +44,7 @@ body:has(.adminShell) .adminSide{position:sticky!important;top:0!important;heigh
 @media(min-width:761px){body:has(.adminShell) .adminSide{display:flex!important}}
 body:has(.adminShell .adminSidebarDrawer.isCollapsed) .adminSide{padding-left:9px!important;padding-right:9px!important}
 body:has(.adminShell) .adminSide>.adminBrand{flex:0 0 auto!important;margin:0!important;padding:0 3px!important;min-height:44px!important;display:flex!important;align-items:center!important;gap:10px!important;overflow:hidden!important;white-space:nowrap!important}
-body:has(.adminShell) .adminBrandMark{flex:0 0 40px!important;width:40px!important;height:40px!important;border-radius:12px!important;display:grid!important;place-items:center!important;background:var(--admin-accent)!important;color:var(--admin-accent-ink)!important;box-shadow:0 6px 18px rgba(31,122,82,.25)!important}
+body:has(.adminShell) .adminBrandMark{flex:0 0 40px!important;width:40px!important;height:40px!important;border-radius:12px!important;display:grid!important;place-items:center!important;background:var(--admin-accent)!important;color:var(--admin-accent-ink)!important;box-shadow:0 6px 18px rgba(0,128,96,.25)!important}
 body:has(.adminShell) .adminBrand .logo{font-size:15px!important;font-weight:900!important;letter-spacing:-.025em!important}
 body:has(.adminShell .adminSidebarDrawer.isCollapsed) .adminBrand{justify-content:center!important;padding:0!important}
 body:has(.adminShell .adminSidebarDrawer.isCollapsed) .adminBrand>div:last-child{display:none!important}
@@ -86,7 +86,7 @@ body:has(.adminShell) .adminSide>.adminSidebarDrawer .adminSidebarNav{padding-to
 .adminNavItem{min-width:0;height:40px!important;margin:2px 1px!important;padding:0 10px!important;display:flex!important;align-items:center!important;gap:11px!important;border-radius:10px!important;color:var(--admin-ink-soft)!important;font-size:13px!important;font-weight:650!important;text-decoration:none!important;transition:background .14s ease,color .14s ease,box-shadow .14s ease!important}
 .adminNavItem svg{flex:0 0 17px;opacity:.72}.adminNavItem span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .adminNavItem:hover{background:var(--admin-border-soft)!important;color:var(--admin-ink)!important;transform:none!important}
-.adminNavItem.active{background:var(--admin-accent)!important;color:var(--admin-accent-ink)!important;box-shadow:0 5px 14px rgba(31,122,82,.28)!important}
+.adminNavItem.active{background:var(--admin-accent)!important;color:var(--admin-accent-ink)!important;box-shadow:0 5px 14px rgba(0,128,96,.28)!important}
 .adminNavItem.active svg{opacity:1}
 .adminNavItem:focus-visible{outline:3px solid rgba(0,128,96,.14);outline-offset:2px}
 .adminSidebarDrawer.isCollapsed .adminNavGroupButton{height:10px;padding:0;margin:4px 11px;background:transparent;border-top:1px solid #ecece7;border-radius:0;pointer-events:none}

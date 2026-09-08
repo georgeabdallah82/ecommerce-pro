@@ -8,16 +8,16 @@ body:has(.adminShell){
   --admin-ink-soft:#48463c;
   --admin-muted:#83806e;
   --admin-muted-soft:#a8a493;
-  --admin-accent:#1f7a52;
+  --admin-accent:#008060;
   --admin-accent-ink:#ffffff;
-  --admin-accent-soft:#e7f4ec;
-  --admin-accent-strong:#155c3d;
+  --admin-accent-soft:#e3f1ec;
+  --admin-accent-strong:#005e46;
   --admin-danger:#c1372a;
   --admin-danger-soft:#fdecea;
   --admin-danger-border:#f1c9c4;
   --admin-warning:#9a6a00;
   --admin-warning-soft:#fdf3df;
-  --admin-focus:rgba(31,122,82,.16);
+  --admin-focus:rgba(0,128,96,.16);
   --admin-radius-sm:9px;
   --admin-radius-md:13px;
   --admin-radius-lg:20px;
@@ -57,7 +57,7 @@ body:has(.adminShell) .adminShell{min-height:100vh!important;display:grid!import
 body:has(.adminShell) .adminSide{position:sticky!important;top:0!important;height:100vh!important;padding:16px 12px!important;overflow:auto!important;background:var(--admin-surface)!important;border-right:1px solid var(--admin-border)!important;box-shadow:var(--admin-shadow-sm)!important;z-index:70}
 body:has(.adminShell) .adminMain{min-width:0!important;padding:0 36px 56px!important;background:var(--admin-bg)!important}
 body:has(.adminShell) .adminBrand{display:flex!important;align-items:center!important;gap:10px!important;padding:3px 4px 2px!important}
-body:has(.adminShell) .adminBrandMark{display:grid!important;place-items:center!important;width:38px!important;height:38px!important;border-radius:var(--admin-radius-md)!important;background:var(--admin-accent)!important;color:var(--admin-accent-ink)!important;box-shadow:0 5px 14px rgba(31,122,82,.25)!important}
+body:has(.adminShell) .adminBrandMark{display:grid!important;place-items:center!important;width:38px!important;height:38px!important;border-radius:var(--admin-radius-md)!important;background:var(--admin-accent)!important;color:var(--admin-accent-ink)!important;box-shadow:0 5px 14px rgba(0,128,96,.25)!important}
 body:has(.adminShell) .adminBrand .logo{font-size:15px!important;font-weight:900!important;letter-spacing:-.03em!important;color:var(--admin-ink)!important}
 body:has(.adminShell) .adminSide>.pill{display:inline-flex!important;margin:15px 4px 12px!important;padding:5px 8px!important;border:1px solid var(--admin-border)!important;border-radius:var(--admin-radius-pill)!important;background:var(--admin-border-soft)!important;color:var(--admin-muted)!important;font-size:9px!important;font-weight:900!important;letter-spacing:.06em!important;text-transform:uppercase!important}
 
@@ -72,7 +72,7 @@ body:has(.adminShell) .adminNavChildren{padding:2px 0 4px!important}
 body:has(.adminShell) .adminNavItem{height:40px!important;margin:2px 0!important;padding:0 10px 0 24px!important;border-radius:var(--admin-radius-sm)!important;color:var(--admin-ink-soft)!important;font-size:12px!important;font-weight:700!important}
 body:has(.adminShell) .adminNavItem svg{width:15px!important;height:15px!important;opacity:.74!important}
 body:has(.adminShell) .adminNavItem:hover{background:var(--admin-border-soft)!important;color:var(--admin-ink)!important}
-body:has(.adminShell) .adminNavItem.active{background:var(--admin-accent)!important;color:var(--admin-accent-ink)!important;box-shadow:0 5px 16px rgba(31,122,82,.25)!important}
+body:has(.adminShell) .adminNavItem.active{background:var(--admin-accent)!important;color:var(--admin-accent-ink)!important;box-shadow:0 5px 16px rgba(0,128,96,.25)!important}
 body:has(.adminShell) .adminSideBottom{margin-top:12px!important;padding-top:12px!important;border-top:1px solid var(--admin-border-soft)!important}
 body:has(.adminShell) .adminSideBottom a,body:has(.adminShell) .sideButton{height:40px!important;margin:1px 0!important;padding:0 11px!important;border-radius:var(--admin-radius-sm)!important;color:var(--admin-ink-soft)!important;font-size:12px!important;font-weight:700!important}
 body:has(.adminShell) .adminSideBottom a:hover,body:has(.adminShell) .sideButton:hover{background:var(--admin-border-soft)!important;color:var(--admin-ink)!important}

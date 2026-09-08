@@ -47,7 +47,7 @@ body:has(.adminShell) .adminTopbar{min-height:72px!important;margin:0 0 28px!imp
 body:has(.adminShell) .adminTopbar > div:first-child{padding:10px 0!important}
 body:has(.adminShell) .adminTopbar a{transition:all .15s ease}
 body:has(.adminShell) .adminTopbar .btn{border-radius:11px!important}
-body:has(.adminShell) .adminBrandMark{width:38px!important;height:38px!important;border-radius:12px!important;box-shadow:0 4px 12px rgba(31,122,82,.2)}
+body:has(.adminShell) .adminBrandMark{width:38px!important;height:38px!important;border-radius:12px!important;box-shadow:0 4px 12px rgba(0,128,96,.2)}
 body:has(.adminShell) .adminBrand .logo{font-size:15px!important;font-weight:900!important}
 body:has(.adminShell) .adminSide{scrollbar-width:thin;scrollbar-color:var(--admin-border) transparent}
 body:has(.adminShell) .adminSide::-webkit-scrollbar{width:7px}
@@ -62,7 +62,7 @@ body:has(.adminShell) .adminNavChildren{padding:1px 0 3px}
 body:has(.adminShell) .adminNavItem{height:40px!important;margin:2px 0!important;padding:0 11px 0 27px!important;border-radius:10px!important;color:var(--admin-ink-soft)!important;font-size:13px!important;font-weight:650!important}
 body:has(.adminShell) .adminNavItem svg{opacity:.76}
 body:has(.adminShell) .adminNavItem:hover{background:var(--admin-border-soft)!important;color:var(--admin-ink)!important}
-body:has(.adminShell) .adminNavItem.active{background:var(--admin-accent)!important;color:var(--admin-accent-ink)!important;box-shadow:0 5px 14px rgba(31,122,82,.28)!important}
+body:has(.adminShell) .adminNavItem.active{background:var(--admin-accent)!important;color:var(--admin-accent-ink)!important;box-shadow:0 5px 14px rgba(0,128,96,.28)!important}
 
 /* Shared surfaces */
 body:has(.adminShell) .card,
