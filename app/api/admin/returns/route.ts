@@ -11,6 +11,11 @@ const RETURN_MESSAGES = new Set([
   'A return refund can only be issued for a paid order',
 ])
 
+// Extended (Accelerate) client payload inference doesn't always widen nested `include`
+// relations correctly, so query results below are asserted to the shape actually queried.
+type ReturnOrderItem = { id: string; name: string; productId: string; variantId: string | null; quantity: number }
+type ReturnOrderPaymentTransaction = { id: string; status: string; amount: number; provider: string; externalId: string | null; createdAt: Date }
+
 function returnFailure(error: unknown) {
   if (error instanceof Error) {
     if (RETURN_MESSAGES.has(error.message)) return { message: error.message, status: error.message === 'Order not found' ? 404 : 400 }
@@ -35,13 +40,14 @@ export async function POST(req: Request) {
     if (!Number.isInteger(requestedRefund) || requestedRefund < 0) return json({ error: 'refundAmount must be a non-negative integer' }, { status: 400 })
 
     const result = await db.$transaction(async tx => {
-      const order = await tx.order.findUnique({ where: { id: orderId }, include: { items: true, paymentTransactions: true } })
-      if (!order) throw new Error('Order not found')
-      if (!['SHIPPED', 'DELIVERED'].includes(order.status)) throw new Error('Only shipped or delivered orders can be returned')
-      if (requestedRefund > 0 && !['PAID', 'PARTIALLY_REFUNDED'].includes(order.paymentStatus)) throw new Error('A return refund can only be issued for a paid order')
+      const orderRow = await tx.order.findUnique({ where: { id: orderId }, include: { items: true, paymentTransactions: true } })
+      if (!orderRow) throw new Error('Order not found')
+      if (!['SHIPPED', 'DELIVERED'].includes(orderRow.status)) throw new Error('Only shipped or delivered orders can be returned')
+      if (requestedRefund > 0 && !['PAID', 'PARTIALLY_REFUNDED'].includes(orderRow.paymentStatus)) throw new Error('A return refund can only be issued for a paid order')
 
+      const order = orderRow as typeof orderRow & { items: ReturnOrderItem[]; paymentTransactions: ReturnOrderPaymentTransaction[] }
       const orderItemById = new Map(order.items.map(item => [item.id, item]))
-      const previousReturns = await tx.returnRequest.findMany({ where: { orderId, status: { notIn: ['REJECTED', 'CANCELLED'] } }, include: { items: true } })
+      const previousReturns = await tx.returnRequest.findMany({ where: { orderId, status: { notIn: ['REJECTED', 'CANCELLED'] } }, include: { items: true } }) as unknown as { items: { orderItemId: string; quantity: number }[] }[]
       const alreadyReturned = new Map<string, number>()
       for (const previous of previousReturns) for (const item of previous.items) alreadyReturned.set(item.orderItemId, (alreadyReturned.get(item.orderItemId) || 0) + Math.max(0, item.quantity))
 
@@ -124,8 +130,9 @@ export async function POST(req: Request) {
           await db.$transaction(async tx => {
             await tx.paymentTransaction.update({ where: { id: result.refund!.id }, data: { status: 'refunded' } })
             await tx.returnRequest.update({ where: { id: result.returnId }, data: { status: 'REFUNDED', refundedAt: new Date() } })
-            const order = await tx.order.findUnique({ where: { id: result.order.id }, include: { paymentTransactions: true } })
-            if (!order) throw new Error('Order not found')
+            const orderRow2 = await tx.order.findUnique({ where: { id: result.order.id }, include: { paymentTransactions: true } })
+            if (!orderRow2) throw new Error('Order not found')
+            const order = orderRow2 as typeof orderRow2 & { paymentTransactions: ReturnOrderPaymentTransaction[] }
             const successfulRefunds = order.paymentTransactions.filter(t => ['refunded', 'partially_refunded'].includes(t.status)).reduce((sum, t) => sum + t.amount, 0)
             const paymentStatus = successfulRefunds >= order.grandTotal ? 'REFUNDED' : 'PARTIALLY_REFUNDED'
             await tx.order.update({ where: { id: order.id }, data: { paymentStatus, status: paymentStatus === 'REFUNDED' ? 'REFUNDED' : order.status } })

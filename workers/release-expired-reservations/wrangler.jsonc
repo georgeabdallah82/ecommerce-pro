@@ -1,0 +1,12 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "ecommerce-pro-release-expired-reservations",
+  "main": "index.mjs",
+  "compatibility_date": "2026-09-08",
+  "triggers": {
+    "crons": ["*/10 * * * *"]
+  },
+  "observability": {
+    "enabled": true
+  }
+}

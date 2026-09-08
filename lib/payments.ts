@@ -47,7 +47,9 @@ export const areebaMpgsPaymentProvider: PaymentProvider = {
     const status=String(body.order?.status||'').toUpperCase(); if(['CAPTURED','AUTHORIZED','PARTIALLY_CAPTURED'].includes(status))return 'paid'; if(['FAILED','CANCELLED','REFUNDED','EXCESSIVELY_REFUNDED'].includes(status))return 'failed'; return 'pending'
   },
   async refundPayment(externalId, amount, currency) {
-    const localTransaction = await db.paymentTransaction.findFirst({ where: { externalId, provider: 'areeba_mpgs', status: { in: ['paid', 'captured', 'authorized'] } }, include: { order: { select: { orderNumber: true, grandTotal: true, currency: true } } } })
+    // Extended (Accelerate) client payload inference doesn't always widen nested `include`
+    // relations correctly, so the result is asserted to the shape actually queried.
+    const localTransaction = await db.paymentTransaction.findFirst({ where: { externalId, provider: 'areeba_mpgs', status: { in: ['paid', 'captured', 'authorized'] } }, include: { order: { select: { orderNumber: true, grandTotal: true, currency: true } } } }) as { currency: string; amount: number; order: { orderNumber: string; grandTotal: number; currency: string } } | null
     if (!localTransaction) throw new Error('Areeba payment transaction not found')
     if (localTransaction.currency !== currency || amount <= 0 || amount > localTransaction.amount) throw new Error('Invalid refund amount or currency')
     const config=await getAreebaConfig()

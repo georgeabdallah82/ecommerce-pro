@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '@prisma/client/edge'
+import { withAccelerate } from '@prisma/extension-accelerate'
 import { defaultTheme, defaultSections, defaultNavigation } from './theme-defaults'
 
 const globalForPrisma = globalThis as unknown as { prisma?: any }
@@ -344,14 +345,25 @@ function getMockHandler(model: string) {
   }
 }
 
-// Create real PrismaClient instance
+// Create the real PrismaClient instance. This runs on Cloudflare Workers, which cannot open
+// raw TCP connections to MongoDB, so it must go through Prisma Accelerate (an HTTPS proxy) —
+// DATABASE_URL is expected to be an Accelerate connection string (prisma://...), not a direct
+// mongodb:// URL. The edge client works identically in Node.js (local dev), so this is the one
+// client used everywhere.
+function createExtendedClient() {
+  return new PrismaClient().$extends(withAccelerate())
+}
+// Extended clients lose their generated type unless captured explicitly like this — without it,
+// db falls back to `any` and every query loses select/include payload inference project-wide.
+type ExtendedPrismaClient = ReturnType<typeof createExtendedClient>
+
 const isProduction = process.env.NODE_ENV === 'production'
-let realPrisma: any = null
+let realPrisma: ExtendedPrismaClient | null = null
 try {
-  realPrisma = new PrismaClient()
+  realPrisma = createExtendedClient()
 } catch (error) {
   if (isProduction) {
-    throw new Error('Failed to initialize the database client. DATABASE_URL must be configured correctly in production.', { cause: error })
+    throw new Error('Failed to initialize the database client. DATABASE_URL must be configured as a valid Prisma Accelerate connection string in production.', { cause: error })
   }
   console.warn('[AI Studio] Database client initialization warning — using resilient proxy for local development')
 }
@@ -382,7 +394,7 @@ function createResilientPrismaClient(): any {
   })
 }
 
-const db: PrismaClient = (globalForPrisma.prisma ?? createResilientPrismaClient()) as PrismaClient
+const db: ExtendedPrismaClient = (globalForPrisma.prisma ?? createResilientPrismaClient()) as ExtendedPrismaClient
 globalForPrisma.prisma = db
 
 export const prisma = db
