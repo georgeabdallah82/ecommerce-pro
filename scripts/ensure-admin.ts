@@ -1,7 +1,6 @@
-import { PrismaClient, Role } from '@prisma/client'
+import { Role } from '@prisma/client'
 import bcrypt from 'bcryptjs'
-
-const db = new PrismaClient()
+import { db } from '../lib/prisma'
 
 async function main() {
   const email = (process.env.ADMIN_EMAIL || 'admin@example.com').trim().toLowerCase()
