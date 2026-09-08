@@ -42,39 +42,12 @@ export default function AdminThemeToggle() {
   return (
     <>
       <style jsx global>{`
-        /* ---------- Dark theme ---------- */
-        html[data-admin-theme='dark'] body:has(.adminShell){background:#101211!important;color:#f2f5f3!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .adminShell{background:#101211!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .adminSide{background:#161918!important;border-color:#292e2b!important;color:#f2f4f2!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .adminMain{color:#f2f4f2!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .adminTopbar{background:rgba(16,18,17,.9)!important;border-color:#2a2f2c!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .adminTopbar strong,
-        html[data-admin-theme='dark'] body:has(.adminShell) .sectionHead .h2,
-        html[data-admin-theme='dark'] body:has(.adminShell) .catalogHead .h2,
-        html[data-admin-theme='dark'] body:has(.adminShell) .shopifyTitle,
-        html[data-admin-theme='dark'] body:has(.adminShell) h1,
-        html[data-admin-theme='dark'] body:has(.adminShell) h2,
-        html[data-admin-theme='dark'] body:has(.adminShell) h3,
-        html[data-admin-theme='dark'] body:has(.adminShell) h4{color:#f5f7f5!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .muted,
-        html[data-admin-theme='dark'] body:has(.adminShell) .tiny,
-        html[data-admin-theme='dark'] body:has(.adminShell) .fieldHelp,
+        /* ---------- Dark theme ----------
+           Core chrome (.adminShell/.adminSide/.adminTopbar/headings/.muted/.pill/
+           .adminNav*/.adminSideBottom) is handled by the admin design tokens in
+           admin-overhaul.css, which flip automatically under this same
+           [data-admin-theme='dark'] selector - no need to duplicate it here. */
         html[data-admin-theme='dark'] body:has(.adminShell) .healthTimestamp{color:#9ba49e!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .pill{background:#202421!important;border-color:#343a36!important;color:#dfe5e1!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .adminNavGroupButton{color:#9fa8a1!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .adminNavGroupButton:hover{background:#202321!important;color:#f4f6f4!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .adminNavGroupButton.active{background:#252a27!important;color:#f4f6f4!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .adminNavItem{color:#aeb6b0!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .adminNavItem:hover{background:#202321!important;color:#f5f7f5!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .adminNavItem.active{background:#2b302d!important;color:#fff!important;box-shadow:inset 3px 0 0 #8fe0b2!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .adminNavSearchWrap{background:#1c201e!important;border-color:#303631!important;color:#9ea8a1!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .adminNavSearchWrap input{color:#eef2ef!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .adminNavSearchWrap input::placeholder{color:#78817a!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .adminNavSearchWrap kbd{background:#232825!important;border-color:#343a36!important;color:#99a29b!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .adminSideBottom a,
-        html[data-admin-theme='dark'] body:has(.adminShell) .sideButton{color:#afb7b1!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .adminSideBottom a:hover,
-        html[data-admin-theme='dark'] body:has(.adminShell) .sideButton:hover{background:#202321!important;color:#fff!important}
 
         /* Shared surfaces */
         html[data-admin-theme='dark'] body:has(.adminShell) .card,
@@ -185,10 +158,8 @@ export default function AdminThemeToggle() {
         <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
       </button>
       <style jsx>{`
-        .adminThemeToggle{width:100%;display:flex;align-items:center;gap:9px;height:40px;padding:0 11px;border:1px solid #e3e3dd;border-radius:10px;background:#fff;color:#4d4d48;font-size:12px;font-weight:800;cursor:pointer;transition:.16s ease}
-        .adminThemeToggle:hover{background:#f4f4f0;color:#171717}
-        html[data-admin-theme='dark'] .adminThemeToggle{background:#1f2320;border-color:#343b36;color:#e6ebe7}
-        html[data-admin-theme='dark'] .adminThemeToggle:hover{background:#292f2b;color:#fff}
+        .adminThemeToggle{width:100%;display:flex;align-items:center;gap:9px;height:40px;padding:0 11px;border:1px solid var(--admin-border);border-radius:10px;background:var(--admin-surface);color:var(--admin-ink-soft);font-size:12px;font-weight:800;cursor:pointer;transition:.16s ease}
+        .adminThemeToggle:hover{background:var(--admin-border-soft);color:var(--admin-ink)}
       `}</style>
     </>
   )
