@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
 import { defaultTheme, defaultSections, defaultNavigation } from './theme-defaults'
 
 const globalForPrisma = globalThis as unknown as { prisma?: any }
@@ -340,7 +341,16 @@ function getMockHandler(model: string) {
 // Create real PrismaClient instance
 let realPrisma: any = null
 try {
-  realPrisma = new PrismaClient()
+  const databaseUrl = process.env.DATABASE_URL || ''
+  if (/^postgres(?:ql)?:\/\//i.test(databaseUrl)) {
+    const adapter = new PrismaPg({
+      connectionString: databaseUrl,
+      maxUses: 1,
+    })
+    realPrisma = new PrismaClient({ adapter })
+  } else {
+    realPrisma = new PrismaClient()
+  }
 } catch {
   console.warn('[AI Studio] Database client initialization warning — using resilient proxy')
 }
