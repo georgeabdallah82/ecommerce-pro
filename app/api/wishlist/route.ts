@@ -1,17 +1,14 @@
 import { db } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { consumeRateLimit } from '@/lib/rate-limit'
+import { clientIp } from '@/lib/request-ip'
 import { json } from '@/lib/utils'
-
-function clientIp(req: Request) {
-  return req.headers.get('x-real-ip')?.trim() || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-}
 
 export async function GET(req: Request) {
   const user = await getCurrentUser()
   if (!user) return json({ items: [] }, { headers: { 'Cache-Control': 'private, no-store' } })
 
-  const limit = consumeRateLimit(`wishlist-read:${user.id}:${clientIp(req)}`, 60, 60 * 1000)
+  const limit = consumeRateLimit(`wishlist-read:${user.id}:${clientIp(req.headers)}`, 60, 60 * 1000)
   if (!limit.allowed) return json({ error: 'Too many requests. Please try again later.' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds), 'Cache-Control': 'private, no-store' } })
 
   const items = await db.wishlistItem.findMany({
@@ -47,7 +44,7 @@ export async function POST(req: Request) {
     const user = await getCurrentUser()
     if (!user) return json({ error: 'Please sign in' }, { status: 401 })
 
-    const limit = consumeRateLimit(`wishlist-write:${user.id}:${clientIp(req)}`, 60, 60 * 1000)
+    const limit = consumeRateLimit(`wishlist-write:${user.id}:${clientIp(req.headers)}`, 60, 60 * 1000)
     if (!limit.allowed) return json({ error: 'Too many wishlist requests. Please try again later.' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } })
 
     const body = await req.json()

@@ -9,6 +9,7 @@ import { releaseOrderReservations, reserveStock } from '@/lib/inventory'
 import { getPaymentProvider } from '@/lib/payments'
 import { sendNewOrderPush } from '@/lib/push'
 import { consumeRateLimit } from '@/lib/rate-limit'
+import { clientIp } from '@/lib/request-ip'
 import { PaymentMethod } from '@prisma/client'
 import { ZodError } from 'zod'
 
@@ -16,10 +17,6 @@ function stableSerialize(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value)
   if (Array.isArray(value)) return `[${value.map(stableSerialize).join(',')}]`
   return `{${Object.keys(value as Record<string, unknown>).sort().map(key => `${JSON.stringify(key)}:${stableSerialize((value as Record<string, unknown>)[key])}`).join(',')}}`
-}
-
-function clientIp(req: Request) {
-  return req.headers.get('x-real-ip')?.trim() || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
 }
 
 function checkoutFingerprint(userId: string | null, input: any, merged: Map<string, { productId: string; variantId: string | null; quantity: number }>) {
@@ -127,7 +124,7 @@ async function restoreCheckoutCoins(orderId: string, userId: string | null) {
 
 export async function POST(req: Request) {
   try {
-    const currentIp = clientIp(req)
+    const currentIp = clientIp(req.headers)
     const user = await getCurrentUser()
     const limitKey = user?.id ? `checkout:user:${user.id}` : `checkout:ip:${currentIp}`
     const limit = consumeRateLimit(limitKey, 20, 10 * 60 * 1000)

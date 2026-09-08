@@ -3,12 +3,13 @@ import crypto from 'node:crypto'
 import { db } from '@/lib/prisma'
 import { hashPassword } from '@/lib/auth'
 import { consumeRateLimit } from '@/lib/rate-limit'
+import { clientIp } from '@/lib/request-ip'
 
 const WINDOW_MS = 60 * 60 * 1000
 const MAX_PER_IP = 10
 
 export async function POST(request: NextRequest) {
-  const ip = request.headers.get('x-real-ip')?.trim() || 'unknown'
+  const ip = clientIp(request.headers)
   const limit = consumeRateLimit(`password-reset:ip:${ip}`, MAX_PER_IP, WINDOW_MS)
   const headers = { 'Cache-Control': 'private, no-store' }
   if (!limit.allowed) return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429, headers: { ...headers, 'Retry-After': String(limit.retryAfterSeconds) } })

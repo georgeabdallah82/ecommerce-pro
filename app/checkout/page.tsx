@@ -79,7 +79,8 @@ export default function Checkout() {
       const output=await response.json(); if(!response.ok)throw new Error(output.error||'Unable to place order')
       clear()
       if(output.payment?.type==='mpgs'){setClientCheckout(output.payment as ClientCheckout);setLoading(false);return}
-      router.push(`/order/success?order=${encodeURIComponent(output.order.orderNumber)}`)
+      const successUrl = authenticated ? `/order/success?order=${encodeURIComponent(output.order.orderNumber)}` : `/order/success?order=${encodeURIComponent(output.order.orderNumber)}&email=${encodeURIComponent(data.email)}`
+      router.push(successUrl)
     } catch(e){setError(e instanceof Error?e.message:'Unable to place order');setLoading(false)}
   }
 

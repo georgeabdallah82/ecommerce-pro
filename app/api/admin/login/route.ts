@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/prisma'
 import { verifyPassword, setSession } from '@/lib/auth'
 import { consumeRateLimit, clearRateLimit } from '@/lib/rate-limit'
+import { clientIp } from '@/lib/request-ip'
 
 const STAFF_ROLES = ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'SUPPORT', 'EDITOR'] as const
 const WINDOW_MS = 15 * 60 * 1000
@@ -15,10 +16,6 @@ const MAX_PER_EMAIL = 8
 const MAX_FAILED_ATTEMPTS = 8
 const LOCKOUT_MS = 15 * 60 * 1000
 
-function clientIp(request: Request) {
-  return request.headers.get('x-real-ip')?.trim() || 'unknown'
-}
-
 export async function POST(request: Request) {
   const form = await request.formData()
   const email = String(form.get('email') || '').toLowerCase().trim().slice(0, 254)
@@ -29,7 +26,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid admin credentials' }, { status: 401, headers })
   }
 
-  const ipKey = `admin-login:ip:${clientIp(request)}`
+  const ipKey = `admin-login:ip:${clientIp(request.headers)}`
   const emailKey = `admin-login:email:${email}`
   const ipLimit = consumeRateLimit(ipKey, MAX_PER_IP, WINDOW_MS)
   const emailLimit = consumeRateLimit(emailKey, MAX_PER_EMAIL, WINDOW_MS)

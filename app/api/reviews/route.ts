@@ -1,19 +1,16 @@
 import { db } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { consumeRateLimit } from '@/lib/rate-limit'
+import { clientIp } from '@/lib/request-ip'
 import { json } from '@/lib/utils'
 
 const NO_STORE = { 'Cache-Control': 'private, no-store' }
-
-function clientIp(req: Request) {
-  return req.headers.get('x-real-ip')?.trim() || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-}
 
 export async function POST(req: Request) {
   try {
     const user = await getCurrentUser()
     if (!user) return json({ error: 'Please sign in' }, { status: 401, headers: NO_STORE })
-    const limit = consumeRateLimit(`review:${user.id}:${clientIp(req)}`, 10, 60 * 60 * 1000)
+    const limit = consumeRateLimit(`review:${user.id}:${clientIp(req.headers)}`, 10, 60 * 60 * 1000)
     if (!limit.allowed) return json({ error: 'Too many review submissions. Please try again later.' }, { status: 429, headers: { ...NO_STORE, 'Retry-After': String(limit.retryAfterSeconds) } })
     const contentLength = Number(req.headers.get('content-length') || 0)
     if (contentLength > 16 * 1024) return json({ error: 'Review payload is too large' }, { status: 413, headers: NO_STORE })
