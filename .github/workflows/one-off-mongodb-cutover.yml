@@ -59,17 +59,22 @@ jobs:
           p.write_text(text)
           PY
 
+      - name: Install dependencies for the cutover validation
+        run: npm install --no-audit --no-fund
+
       - name: Verify production schema can generate
         run: |
+          set -euo pipefail
           node scripts/prepare-mongodb-schema.mjs
-          npx prisma validate --schema=prisma/mongodb-schema
-          npx prisma generate --schema=prisma/mongodb-schema
+          ./node_modules/.bin/prisma --version
+          ./node_modules/.bin/prisma validate --schema=prisma/mongodb-schema
+          ./node_modules/.bin/prisma generate --schema=prisma/mongodb-schema
 
       - name: Commit MongoDB architecture
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package.json .github/workflows/ci.yml lib/prisma.ts
-          git commit -m "feat: make MongoDB the production datasource"
+          git add package.json .github/workflows/ci.yml lib/prisma.ts package-lock.json
+          git diff --cached --quiet || git commit -m "feat: make MongoDB the production datasource"
           git push
