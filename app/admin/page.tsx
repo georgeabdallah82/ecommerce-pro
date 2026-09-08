@@ -18,9 +18,13 @@ export default async function Admin() {
     db.review.count({ where: { approved: false } }), db.order.count({ where: { status: OrderStatus.PENDING } }), db.orderItem.groupBy({ by: ['productId'], where: { order: { status: { notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED] }, createdAt: { gte: month } } }, _sum: { quantity: true }, orderBy: { _sum: { quantity: 'desc' } }, take: 5 }),
   ])
 
-  const revenue = revenueOrders.reduce((sum, order) => { const refunded = order.paymentTransactions.filter(t => ['refunded', 'partially_refunded'].includes(t.status)).reduce((s, t) => s + t.amount, 0); return sum + Math.max(0, order.grandTotal - refunded) }, 0)
+  // Extended (Accelerate) client payload inference doesn't always widen nested `select`
+  // relations correctly, so these results are asserted to the shape actually queried.
+  const revenueOrdersTyped = revenueOrders as unknown as { grandTotal: number; paymentTransactions: { status: string; amount: number }[] }[]
+  const topTyped = top as { productId: string; _sum: { quantity: number | null } }[]
+  const revenue = revenueOrdersTyped.reduce((sum, order) => { const refunded = order.paymentTransactions.filter(t => ['refunded', 'partially_refunded'].includes(t.status)).reduce((s, t) => s + t.amount, 0); return sum + Math.max(0, order.grandTotal - refunded) }, 0)
   const lowStock = inventoryRows.filter(row => row.quantity - row.reserved <= row.lowStockThreshold).length
-  const names = await db.product.findMany({ where: { id: { in: top.map(x => x.productId) } }, select: { id: true, name: true } })
+  const names = await db.product.findMany({ where: { id: { in: topTyped.map(x => x.productId) } }, select: { id: true, name: true } })
   const nm = new Map(names.map(x => [x.id, x.name]))
 
   return <div className="adminDashboard">
@@ -34,7 +38,7 @@ export default async function Admin() {
     </div>
     <div className="dashboardGridPro">
       <section className="dashboardPanel"><div className="dashboardPanelHead"><div><h3>Needs attention</h3><p>Operational items worth checking now.</p></div><span className="pill">Live</span></div><div className="attentionGrid"><Link href="/admin/orders?status=PENDING" className="attentionCard pending"><strong>{newOrders}</strong><span>Pending orders</span></Link><Link href="/admin/inventory" className="attentionCard low"><strong>{lowStock}</strong><span>Low-stock items</span></Link><Link href="/admin/reviews" className="attentionCard reviews"><strong>{pendingReviews}</strong><span>Reviews to approve</span></Link></div></section>
-      <section className="dashboardPanel"><div className="dashboardPanelHead"><div><h3>Top products</h3><p>Units sold this month.</p></div><Link className="dashboardLink" href="/admin/reports">Analytics</Link></div>{top.length ? top.map(x => <div className="topProduct" key={x.productId}><div style={{minWidth:0}}><div className="topProductName">{nm.get(x.productId) || 'Unknown product'}</div><div className="mutedSmall">Best sellers by quantity</div></div><span className="topProductQty">{x._sum.quantity || 0}</span></div>) : <div className="empty">No product sales this month.</div>}</section>
+      <section className="dashboardPanel"><div className="dashboardPanelHead"><div><h3>Top products</h3><p>Units sold this month.</p></div><Link className="dashboardLink" href="/admin/reports">Analytics</Link></div>{topTyped.length ? topTyped.map(x => <div className="topProduct" key={x.productId}><div style={{minWidth:0}}><div className="topProductName">{nm.get(x.productId) || 'Unknown product'}</div><div className="mutedSmall">Best sellers by quantity</div></div><span className="topProductQty">{x._sum.quantity || 0}</span></div>) : <div className="empty">No product sales this month.</div>}</section>
     </div>
     <section className="recentPanel"><div className="dashboardPanelHead"><div><h3>Recent orders</h3><p>Latest activity across your store.</p></div><Link className="dashboardLink" href="/admin/orders">View all</Link></div><div className="recentTableWrap"><table className="table recentTable"><thead><tr><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th></tr></thead><tbody>{orders.map(o => <tr key={o.id}><td><Link className="textButton" href={`/admin/orders/${o.id}`}>#{o.orderNumber}</Link></td><td>{o.user?.name || o.email}</td><td>{o.items.reduce((a, x) => a + x.quantity, 0)}</td><td>{money(o.grandTotal, o.currency)}</td><td><span className="pill">{o.status as OrderStatus}</span></td></tr>)}</tbody></table></div></section>
     <div className="dashboardFoot"><span className="dashboardFootDot"/> Business data is server-calculated and admin mutations remain permission-checked and auditable.</div>

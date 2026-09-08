@@ -33,7 +33,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22.23.2
-          cache: npm
 
       - name: Verify migration secrets exist
         run: |
@@ -41,7 +40,7 @@ jobs:
           test -n "$TARGET_DATABASE_URL"
 
       - name: Install dependencies
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
 
       - name: Prepare MongoDB Prisma schema
         run: node scripts/prepare-mongodb-schema.mjs

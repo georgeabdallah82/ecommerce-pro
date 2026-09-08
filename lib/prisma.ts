@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '@prisma/client/edge'
+import { withAccelerate } from '@prisma/extension-accelerate'
 import { defaultTheme, defaultSections, defaultNavigation } from './theme-defaults'
 
 const globalForPrisma = globalThis as unknown as { prisma?: any }
@@ -226,6 +227,8 @@ const mockShippingZones = [
   },
 ]
 
+const mockAdminLoginLockouts = new Map<string, { id: string; email: string; failedCount: number; lockedUntil: Date | null; updatedAt: Date }>()
+
 function getMockHandler(model: string) {
   return {
     findMany: async (args?: any) => {
@@ -273,6 +276,7 @@ function getMockHandler(model: string) {
         if (where.id) return mockCollections.find((c) => c.id === where.id) || null
       }
       if (model === 'coupon' && where.code) return mockCoupons.find((c) => c.code.toUpperCase() === String(where.code).toUpperCase()) || null
+      if (model === 'adminLoginLockout' && where.email) return mockAdminLoginLockouts.get(where.email) || null
       return null
     },
     findFirst: async (args?: any) => {
@@ -305,6 +309,14 @@ function getMockHandler(model: string) {
         mockUsers.push(created)
         return created
       }
+      if (model === 'adminLoginLockout' && args.where?.email) {
+        const existing = mockAdminLoginLockouts.get(args.where.email)
+        const record = existing
+          ? { ...existing, ...(args.update || {}), updatedAt: new Date() }
+          : { id: `lockout-${Date.now()}`, email: args.where.email, failedCount: 0, lockedUntil: null, ...(args.create || {}), updatedAt: new Date() }
+        mockAdminLoginLockouts.set(args.where.email, record)
+        return record
+      }
       return args?.create || args?.update || {}
     },
     create: async (args: any) => {
@@ -333,22 +345,34 @@ function getMockHandler(model: string) {
   }
 }
 
-// Create real PrismaClient instance
-let realPrisma: any = null
-try {
-  realPrisma = new PrismaClient()
-} catch {
-  console.warn('[AI Studio] Database client initialization warning — using resilient proxy')
+// Create the real PrismaClient instance. This runs on Cloudflare Workers, which cannot open
+// raw TCP connections to MongoDB, so it must go through Prisma Accelerate (an HTTPS proxy) —
+// DATABASE_URL is expected to be an Accelerate connection string (prisma://...), not a direct
+// mongodb:// URL. The edge client works identically in Node.js (local dev), so this is the one
+// client used everywhere.
+function createExtendedClient() {
+  return new PrismaClient().$extends(withAccelerate())
 }
+// Extended clients lose their generated type unless captured explicitly like this — without it,
+// db falls back to `any` and every query loses select/include payload inference project-wide.
+type ExtendedPrismaClient = ReturnType<typeof createExtendedClient>
 
-// Check if database URL is a mock or placeholder
-function isPlaceholderDb() {
-  const url = process.env.DATABASE_URL || ''
-  return !url || url.includes('USER:PASSWORD@HOST') || url.includes('localhost')
+const isProduction = process.env.NODE_ENV === 'production'
+let realPrisma: ExtendedPrismaClient | null = null
+try {
+  realPrisma = createExtendedClient()
+} catch (error) {
+  if (isProduction) {
+    throw new Error('Failed to initialize the database client. DATABASE_URL must be configured as a valid Prisma Accelerate connection string in production.', { cause: error })
+  }
+  console.warn('[AI Studio] Database client initialization warning — using resilient proxy for local development')
 }
 
 // Create a safe proxy that executes real queries when a real DB is connected,
 // and falls back immediately and gracefully to in-memory mock data if offline or unreachable.
+// This fallback (including the seeded mock admin account) must never be reachable in
+// production — a misconfigured DATABASE_URL there fails the deployment loudly instead of
+// silently serving fake data behind a known default login.
 function createResilientPrismaClient(): any {
   return new Proxy(realPrisma || {}, {
     get(target, prop: string | symbol) {
@@ -364,13 +388,13 @@ function createResilientPrismaClient(): any {
       }
 
       if (prop in target) return Reflect.get(target, prop)
-      if (['product','category','collection','user','setting','order','coupon','shippingZone'].includes(prop)) return getMockHandler(prop)
+      if (!isProduction && ['product','category','collection','user','setting','order','coupon','shippingZone'].includes(prop)) return getMockHandler(prop)
       return Reflect.get(target, prop)
     },
   })
 }
 
-const db: PrismaClient = (globalForPrisma.prisma ?? createResilientPrismaClient()) as PrismaClient
+const db: ExtendedPrismaClient = (globalForPrisma.prisma ?? createResilientPrismaClient()) as ExtendedPrismaClient
 globalForPrisma.prisma = db
 
 export const prisma = db

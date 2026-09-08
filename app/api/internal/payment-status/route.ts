@@ -23,7 +23,9 @@ export async function POST(req: Request) {
       if (order.paymentStatus === status) return { orderId, paymentStatus: order.paymentStatus, ignored: true }
       if (!canTransitionPayment(order.paymentStatus, status)) throw new Error(`Invalid payment transition: ${order.paymentStatus} → ${status}`)
 
-      const priorRefunded = await tx.paymentTransaction.aggregate({ _sum: { amount: true }, where: { orderId: order.id, status: { in: ['refunded', 'partially_refunded'] } } })
+      // Extended (Accelerate) client payload inference doesn't always widen aggregate results
+      // correctly, so the result is asserted to the shape actually queried.
+      const priorRefunded = await tx.paymentTransaction.aggregate({ _sum: { amount: true }, where: { orderId: order.id, status: { in: ['refunded', 'partially_refunded'] } } }) as { _sum: { amount: number | null } }
       const refundedSoFar = Math.max(0, priorRefunded._sum.amount || 0)
       const remainingRefundable = Math.max(0, order.grandTotal - refundedSoFar)
       const amount = Number.isInteger(body.amount) ? Number(body.amount) : order.grandTotal

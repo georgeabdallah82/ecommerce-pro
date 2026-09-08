@@ -34,9 +34,9 @@ export async function GET(req: Request) {
     ])
 
     const ids = rows.map(row => row.id)
-    const spendRows = ids.length
+    const spendRows = (ids.length
       ? await db.order.groupBy({ by: ['userId'], where: { userId: { in: ids }, status: { not: OrderStatus.CANCELLED } }, _sum: { grandTotal: true } })
-      : []
+      : []) as { userId: string | null; _sum: { grandTotal: number | null } }[]
     const spendByCustomer = new Map(spendRows.map(row => [row.userId, row._sum.grandTotal || 0]))
     const hydratedRows = rows.map(row => ({ ...row, totalSpent: spendByCustomer.get(row.id) || 0 }))
 

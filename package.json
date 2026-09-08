@@ -4,8 +4,9 @@
   "description": "Premium ecommerce platform.",
   "private": true,
   "scripts": {
+    "postinstall": "node scripts/prepare-mongodb-schema.mjs && prisma generate --no-engine --schema=prisma/mongodb-schema",
     "dev": "next dev -p 3000 -H 0.0.0.0",
-    "build": "node scripts/prepare-mongodb-schema.mjs && prisma generate --schema=prisma/mongodb-schema && next build",
+    "build": "node scripts/prepare-mongodb-schema.mjs && prisma generate --no-engine --schema=prisma/mongodb-schema && next build",
     "build:cloudflare": "node scripts/prepare-mongodb-schema.mjs && prisma generate --no-engine --schema=prisma/mongodb-schema && opennextjs-cloudflare build",
     "start": "next start -H 0.0.0.0 -p 3000",
     "preview": "npm run build:cloudflare && opennextjs-cloudflare preview",
@@ -14,6 +15,7 @@
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
+    "test": "tsx --test \"tests/**/*.test.ts\" \"app/**/__tests__/*.test.ts\"",
     "backend:audit": "node scripts/backend-audit.mjs",
     "db:push": "node scripts/prepare-mongodb-schema.mjs && prisma db push --schema=prisma/mongodb-schema",
     "db:deploy": "node scripts/prepare-mongodb-schema.mjs && prisma db push --schema=prisma/mongodb-schema",

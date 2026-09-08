@@ -57,7 +57,9 @@ export default async function CustomerDetail({ params }: { params: Promise<{ id:
     db.customerSegment.findMany({ orderBy: { name: 'asc' } }),
   ])
 
-  const orderTotal = customer.orders.reduce((sum, order) => sum + order.grandTotal, 0)
+  // Extended (Accelerate) client payload inference doesn't always widen nested `include`
+  // relations correctly, so this access is asserted to the shape actually queried.
+  const orderTotal = (customer as unknown as { orders: { grandTotal: number }[] }).orders.reduce((sum, order) => sum + order.grandTotal, 0)
   const walletBalance = loyalty.walletTransactions.reduce((sum: number, tx: WalletTransaction) => sum + tx.amount, 0)
   const coinBalance = Math.max(0, loyalty.coinTransactions.reduce((sum: number, tx: CoinTransaction) => sum + tx.amount, 0))
   const serialized = JSON.parse(JSON.stringify({

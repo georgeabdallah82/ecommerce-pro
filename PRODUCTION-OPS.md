@@ -2,7 +2,9 @@
 
 ## Runtime topology
 
-The production application is deployed as a single full-stack Next.js site on Netlify. Netlify serves the storefront and executes the Next.js Route Handlers/API routes. MongoDB Atlas is the production database. There is no runtime dependency on Render.
+The production application is deployed as a Cloudflare Worker (via `@opennextjs/cloudflare` / `npm run deploy`). Cloudflare Workers cannot open raw TCP connections to MongoDB, so the app connects through [Prisma Accelerate](https://www.prisma.io/data-platform/accelerate), an HTTPS-based connection proxy in front of MongoDB Atlas. `DATABASE_URL` in production must be an Accelerate connection string (`prisma://...`), not a direct `mongodb://` URL.
+
+There is no runtime dependency on Netlify, Render, or PostgreSQL. Both were used earlier in this project's history; PostgreSQL was fully replaced by MongoDB, and Netlify was replaced by Cloudflare Workers.
 
 ## Checkout
 
@@ -19,7 +21,7 @@ Checkout is server-authoritative: prices, coupons, shipping, tax, and inventory 
 
 ## Expired reservations
 
-`netlify/functions/release-expired-reservations.mjs` is a Netlify Scheduled Function that runs every 10 minutes (UTC) and calls:
+Cloudflare Workers don't support scheduled tasks inside the main app worker, so cleanup runs as its own small Worker with a Cron Trigger: `workers/release-expired-reservations/`. It runs every 10 minutes (UTC) and calls:
 
 `GET /api/internal/release-expired-reservations`
 
@@ -27,7 +29,7 @@ with:
 
 `Authorization: Bearer $CRON_SECRET`
 
-The scheduled function fails loudly on missing configuration, upstream non-2xx responses, or timeouts. Netlify Scheduled Functions are available on all plans and use UTC cron expressions. citeturn546953search0turn546953search4
+To deploy it: `cd workers/release-expired-reservations && npx wrangler secret put CRON_SECRET && npx wrangler secret put SITE_URL && npx wrangler deploy`. `SITE_URL` is the production site's canonical HTTPS URL; `CRON_SECRET` must match the main app's `CRON_SECRET`. It fails loudly (throws, visible in the Worker's logs) on missing configuration, upstream non-2xx responses, or timeouts.
 
 ## Payment integration
 
@@ -48,11 +50,11 @@ The endpoint rejects mismatched successful amounts, ignores stale status updates
 
 ## Health check
 
-`GET /api/health` is the production health endpoint. It performs a lightweight MongoDB reachability check and returns HTTP `200` with `{ ok: true }` when the app and database are healthy, or HTTP `503` when the database is unreachable.
+`GET /api/health` is the production health endpoint. It performs a lightweight MongoDB reachability check (through Accelerate) and returns HTTP `200` with `{ ok: true }` when the app and database are healthy, or HTTP `503` when the database is unreachable.
 
 ## MongoDB production runtime
 
-Production startup/build configuration rejects non-MongoDB `DATABASE_URL` values on the Netlify production deployment. The application therefore cannot silently fall back to the old PostgreSQL runtime.
+Production startup/build configuration rejects a missing or unconfigured `DATABASE_URL` in production — `lib/prisma.ts` throws instead of silently falling back to in-memory mock data (that fallback, including its seeded demo admin account, is only ever reachable outside production). The application therefore cannot silently serve fake data if the database client fails to initialize.
 
 ## SEO and security
 
@@ -62,27 +64,27 @@ Production startup/build configuration rejects non-MongoDB `DATABASE_URL` values
 - Set `NEXT_PUBLIC_SITE_URL` to the canonical HTTPS site URL.
 - Set strong generated values for `AUTH_SECRET`, `CRON_SECRET`, and `PAYMENT_WEBHOOK_SECRET`.
 
-## Netlify environment variables
+## Cloudflare Worker secrets
 
-For the production site, sensitive server variables must be available to both the Netlify build and Functions/runtime scopes as appropriate. The critical production values are:
+Cloudflare Workers don't share environment variables with any other platform — nothing carries over automatically from a previous Netlify or Render deployment. Set each of these with `npx wrangler secret put <NAME>` (run from the repo root, so it targets the main app worker configured in `wrangler.jsonc`):
 
-- `DATABASE_URL` — MongoDB Atlas `ecommerce_production` connection string
+- `DATABASE_URL` — a Prisma Accelerate connection string (`prisma://...`) in front of the MongoDB Atlas production database. Create this via the [Prisma Data Platform](https://console.prisma.io): add the project, connect its origin to the MongoDB Atlas connection string, enable Accelerate, and copy the resulting `prisma://` URL.
 - `AUTH_SECRET`
-- `CRON_SECRET`
+- `CRON_SECRET` (must match what's set on the `release-expired-reservations` worker above)
 - `PAYMENT_WEBHOOK_SECRET`
 - `NEXT_PUBLIC_SITE_URL`
-- Other configured payment, notification, branding, and admin variables used by the application
+- Other configured payment, notification, branding, and admin variables used by the application (see `.env.example`)
+
+Non-secret `NEXT_PUBLIC_*` build-time values can instead go in `wrangler.jsonc`'s `vars` if preferred, since they aren't sensitive.
 
 ## Before final production sign-off
 
-1. Set Netlify `DATABASE_URL` to the production MongoDB database.
-2. Verify server secrets are available to Netlify Functions/runtime and to the build where required.
-3. Confirm the Netlify deploy completes successfully.
-4. Verify `GET /api/health` returns healthy and MongoDB is reachable.
+1. Set the Cloudflare Worker's `DATABASE_URL` secret to the production Accelerate connection string.
+2. Set the remaining secrets listed above via `wrangler secret put`.
+3. Deploy with `npm run deploy` and confirm it completes successfully.
+4. Verify `GET /api/health` returns healthy and MongoDB (through Accelerate) is reachable.
 5. Verify `GET /api/products`, authentication/session, navigation, storefront settings, and the critical checkout read paths.
 6. Test COD checkout with stock, shared inventory, variants, coupons, cancellation, and fulfillment.
 7. Test payment webhooks with duplicate and out-of-order events.
-8. Verify the scheduled reservation cleanup function is deployed and enabled.
+8. Deploy `workers/release-expired-reservations/` and verify its Cron Trigger is enabled in the Cloudflare dashboard.
 9. Verify `/robots.txt` and `/sitemap.xml` on the production domain.
-10. Keep the PostgreSQL source backup/database intact until the Netlify + MongoDB production runtime has been verified and signed off.
-11. After sign-off, decommission the old Render service and PostgreSQL database.
