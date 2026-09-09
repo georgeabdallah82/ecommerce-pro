@@ -2,6 +2,7 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
+import { Prisma } from '@prisma/client'
 
 const JSON_HEADERS = { 'Cache-Control': 'private, no-store' }
 const INT32_MIN = -2147483648
@@ -17,7 +18,7 @@ async function getCustomer(id: string) {
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requirePermission('customers.view')
+    await requirePermission('storeCredit.view')
     const { id } = await params
     const customer = await getCustomer(id)
     if (!customer) return json({ error: 'Customer not found' }, { status: 404, headers: JSON_HEADERS })
@@ -40,7 +41,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const actor = await requirePermission('customers.manage')
+    const actor = await requirePermission('storeCredit.manage')
     const { id } = await params
     const body = await req.json().catch(() => ({}))
     const customer = await getCustomer(id)
@@ -101,6 +102,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const message = error instanceof Error ? error.message : ''
     if (message === 'Wallet balance cannot become negative' || message === 'Wallet balance exceeds the supported limit') return json({ error: message }, { status: 409, headers: JSON_HEADERS })
     if (message.includes('Unique constraint')) return json({ error: 'A wallet adjustment with this reference already exists.' }, { status: 409, headers: JSON_HEADERS })
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') {
+      return json({ error: 'This adjustment could not be completed due to a concurrent update. Please retry.' }, { status: 409, headers: JSON_HEADERS })
+    }
     console.error('[admin/customer-credit] POST failed', error)
     return json({ error: 'Unable to adjust customer wallet' }, { status: 500, headers: JSON_HEADERS })
   }

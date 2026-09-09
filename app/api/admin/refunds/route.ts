@@ -3,6 +3,7 @@ import { requirePermission } from '@/lib/auth'
 import { getPaymentProvider } from '@/lib/payments'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
+import { Prisma } from '@prisma/client'
 
 const REFUND_MESSAGES = new Set([
   'Order not found',
@@ -13,10 +14,14 @@ const REFUND_MESSAGES = new Set([
   'Paid gateway transaction is missing its external reference',
 ])
 
+const REFUND_CONFLICT_MESSAGE = 'This order was just modified — please retry.'
+
 function refundFailure(error: unknown) {
   if (error instanceof Error && (REFUND_MESSAGES.has(error.message) || error.message.startsWith('Refund cannot exceed the remaining refundable amount of '))) return { message: error.message, status: error.message === 'Order not found' ? 404 : 400 }
   if (error instanceof Error && error.message === 'UNAUTHORIZED') return { message: 'Unauthorized', status: 401 }
   if (error instanceof Error && error.message === 'FORBIDDEN') return { message: 'Forbidden', status: 403 }
+  if (error instanceof Error && error.message === REFUND_CONFLICT_MESSAGE) return { message: REFUND_CONFLICT_MESSAGE, status: 409 }
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') return { message: REFUND_CONFLICT_MESSAGE, status: 409 }
   console.error('[admin/refunds] unexpected failure', error)
   return { message: 'Unable to process the refund right now.', status: 500 }
 }
@@ -50,6 +55,13 @@ export async function POST(req: Request) {
       const remaining = Math.max(0, order.grandTotal - refunded)
       if (remaining <= 0) throw new Error('Order is already fully refunded')
       if (requestedAmount > remaining) throw new Error(`Refund cannot exceed the remaining refundable amount of ${remaining}`)
+
+      // The remaining-refundable check above is only a snapshot of paymentTransaction rows.
+      // Tie it to an atomic conditional write on the order itself (bounded on the updatedAt we
+      // just read) so a concurrent refund/return request that read the same snapshot loses the
+      // race here instead of both requests succeeding and together exceeding grandTotal.
+      const guarded = await tx.order.updateMany({ where: { id: order.id, updatedAt: order.updatedAt }, data: { updatedAt: new Date() } })
+      if (guarded.count !== 1) throw new Error(REFUND_CONFLICT_MESSAGE)
 
       const original = order.paymentTransactions.filter(t => t.provider !== 'manual' && ['paid', 'captured', 'authorized'].includes(t.status) && t.externalId).sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
       const provider = order.paymentMethod === 'WALLET' ? 'wallet' : (original?.provider || 'manual')

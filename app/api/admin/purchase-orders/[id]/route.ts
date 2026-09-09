@@ -16,7 +16,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (po.status === 'RECEIVED' || po.status === 'CANCELLED') return json({ error: `Purchase order is already ${po.status.toLowerCase()}` }, { status: 409 })
     if (nextStatus === 'RECEIVED' && !po.location) return json({ error: 'A receiving location is required before receiving a purchase order' }, { status: 400 })
 
-    const receivedItems = Array.isArray(b.items) ? b.items.map((x: any) => ({ id: String(x.id), received: Math.max(0, Math.trunc(Number(x.received) || 0)) })) : []
+    const suppliedReceived = new Map<string, number>()
+    if (Array.isArray(b.items)) for (const x of b.items) suppliedReceived.set(String(x.id), Math.max(0, Math.trunc(Number(x.received) || 0)))
+    // Marking a PO RECEIVED means every item is fully received, even if the client only sent
+    // partial/no per-item counts - otherwise the PO would be closed out without crediting the
+    // stock for the items it forgot to list.
+    const receivedItems = nextStatus === 'RECEIVED'
+      ? po.items.map(item => ({ id: item.id, received: suppliedReceived.get(item.id) ?? item.quantityOrdered }))
+      : po.items.filter(item => suppliedReceived.has(item.id)).map(item => ({ id: item.id, received: suppliedReceived.get(item.id)! }))
     const updated = await db.$transaction(async tx => {
       if (receivedItems.length) {
         for (const received of receivedItems) {

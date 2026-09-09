@@ -25,7 +25,7 @@ export default function AdminOperationsHub() {
     setLoading(true); setError('')
     const endpoints: Record<string, string> = {
       locations: '/api/admin/locations',
-      transfers: '/api/admin/inventory-transfers',
+      transfers: '/api/admin/inventory/transfers',
       drafts: '/api/admin/draft-orders',
       purchaseOrders: '/api/admin/purchase-orders',
       giftCards: '/api/admin/gift-cards',

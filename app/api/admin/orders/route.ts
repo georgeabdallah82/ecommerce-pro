@@ -52,6 +52,7 @@ export async function PATCH(req: Request) {
     if (requestedStatus && !ORDER_STATUSES.has(requestedStatus)) return json({ error: 'Invalid order status' }, { status: 400 })
     if (requestedPayment && !PAYMENT_STATUSES.has(requestedPayment)) return json({ error: 'Invalid payment status' }, { status: 400 })
     if (requestedPayment === PaymentStatus.REFUNDED || requestedPayment === PaymentStatus.PARTIALLY_REFUNDED) return json({ error: 'Use the refund/return workflow to create a refund transaction' }, { status: 400 })
+    if (requestedStatus === OrderStatus.REFUNDED) return json({ error: 'Use the refund/return workflow to create a refund transaction' }, { status: 400 })
 
     const detailsPatch: Record<string, unknown> = {}
     if (body.email !== undefined) {

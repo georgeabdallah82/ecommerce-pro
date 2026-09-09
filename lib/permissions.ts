@@ -77,7 +77,10 @@ const all: Permission[] = [
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   SUPER_ADMIN: all,
-  ADMIN: all.filter(p => !['settings.manage', 'users.view', 'users.manage'].includes(p)),
+  // ADMIN can see who has access (users.view) but can't create/promote/deactivate
+  // accounts (users.manage) or touch settings.manage - those stay SUPER_ADMIN-only
+  // so a compromised or careless ADMIN account can't escalate its own privileges.
+  ADMIN: all.filter(p => !['settings.manage', 'users.manage'].includes(p)),
   MANAGER: all.filter(p => ![
     'settings.manage', 'users.view', 'users.manage', 'activity.view',
     'media.manage', 'content.manage', 'themes.manage', 'navigation.manage',

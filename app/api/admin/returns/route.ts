@@ -4,12 +4,15 @@ import { getPaymentProvider } from '@/lib/payments'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { randomUUID } from 'crypto'
+import { Prisma } from '@prisma/client'
 
 const RETURN_MESSAGES = new Set([
   'Order not found',
   'Only shipped or delivered orders can be returned',
   'A return refund can only be issued for a paid order',
 ])
+
+const RETURN_CONFLICT_MESSAGE = 'This order was just modified — please retry.'
 
 // Extended (Accelerate) client payload inference doesn't always widen nested `include`
 // relations correctly, so query results below are asserted to the shape actually queried.
@@ -21,8 +24,10 @@ function returnFailure(error: unknown) {
     if (RETURN_MESSAGES.has(error.message)) return { message: error.message, status: error.message === 'Order not found' ? 404 : 400 }
     if (error.message === 'UNAUTHORIZED') return { message: 'Unauthorized', status: 401 }
     if (error.message === 'FORBIDDEN') return { message: 'Forbidden', status: 403 }
+    if (error.message === RETURN_CONFLICT_MESSAGE) return { message: RETURN_CONFLICT_MESSAGE, status: 409 }
     if (error.message.startsWith('Invalid return quantity for ') || error.message.startsWith('Return quantity for ') || error.message.startsWith('No inventory row exists for ') || error.message.startsWith('Unable to restock ') || error.message.startsWith('Refund cannot exceed the remaining refundable amount of ')) return { message: error.message, status: 400 }
   }
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') return { message: RETURN_CONFLICT_MESSAGE, status: 409 }
   console.error('[admin/returns] unexpected failure', error)
   return { message: 'Unable to process the return right now.', status: 500 }
 }
@@ -75,6 +80,12 @@ export async function POST(req: Request) {
       const refunded = order.paymentTransactions.filter(t => ['refunded', 'partially_refunded'].includes(t.status)).reduce((sum, t) => sum + t.amount, 0)
       const remainingRefundable = Math.max(0, order.grandTotal - refunded)
       if (requestedRefund > remainingRefundable) throw new Error(`Refund cannot exceed the remaining refundable amount of ${remainingRefundable}`)
+
+      // Tie the remaining-refundable snapshot above to an atomic conditional write on the
+      // order (bounded on the updatedAt we just read) so a concurrent refund/return request
+      // reading the same snapshot loses the race here instead of both succeeding together.
+      const guarded = await tx.order.updateMany({ where: { id: order.id, updatedAt: order.updatedAt }, data: { updatedAt: new Date() } })
+      if (guarded.count !== 1) throw new Error(RETURN_CONFLICT_MESSAGE)
 
       if (restock) {
         for (const entry of normalized) {
