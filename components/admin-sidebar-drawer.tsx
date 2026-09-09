@@ -9,37 +9,36 @@ export type { AdminSidebarGroup, AdminSidebarItem } from '@/components/admin-nav
 /*
  * This component owns only the desktop collapse/expand mechanic (the floating
  * toggle, the icon-only rail, the expand/collapse height animation). Design
- * tokens, the shell grid, .adminSide's own box (position/size/background), the
- * brand mark and the shared .adminNav* look all live in ../app/admin/admin-overhaul.css.
- * The tree itself - search, groups, items - lives in ./admin-nav-tree.tsx and is
- * shared byte-for-byte with the mobile drawer, so the two surfaces can no longer
- * drift to different pixel values for the same classes.
+ * tokens, the shell grid, .adminSide's own box (position/size/background - a
+ * 4-row grid: brand / role pill / this component's root / sign-out footer)
+ * and the shared .adminNav* look all live in ../app/admin/admin-overhaul.css.
+ * The tree itself - search, groups, items - lives in ./admin-nav-tree.tsx and
+ * is shared byte-for-byte with the mobile drawer, so the two surfaces can no
+ * longer drift to different pixel values for the same classes.
  */
 const css = `
 body:has(.adminShell .adminSidebarDrawer.isCollapsed) .adminShell{grid-template-columns:78px minmax(0,1fr)!important}
-/* .adminSide's own base rule (admin-overhaul.css) never sets display, so this is the only
-   place that turns it into a flex container - and flex-direction defaults to row. Without
-   column here, the brand mark/role pill/nav tree/sign-out footer laid out side by side
-   instead of stacked, each stretched to the full 100vh height by the flexbox default
-   align-items:stretch - the giant blank role pill and the vanished nav list. */
-@media(min-width:761px){body:has(.adminShell) .adminSide{display:flex!important;flex-direction:column!important}}
 body:has(.adminShell .adminSidebarDrawer.isCollapsed) .adminSide{padding-left:9px!important;padding-right:9px!important}
 body:has(.adminShell .adminSidebarDrawer.isCollapsed) .adminBrand{justify-content:center!important;padding:0!important}
 body:has(.adminShell .adminSidebarDrawer.isCollapsed) .adminBrand>div:last-child{display:none!important}
 body:has(.adminShell .adminSidebarDrawer.isCollapsed) .adminSide>.pill{display:none!important}
 
-.adminSidebarDrawer{position:relative;display:flex;min-height:0;flex:1 1 auto}
+/* This is the single scroll container for the whole nav tree, and it's also the grid
+   item sitting in .adminSide's third row (minmax(0,1fr) in admin-overhaul.css). Setting
+   overflow-y directly on it is what gives it an effective min-height of 0 for grid sizing
+   - it no longer needs min-height:0 chained through extra wrapper divs (.adminSidebarNav,
+   .adminSidebarScroll) the way the old nested-flexbox version did, which is exactly the
+   kind of chain a wrapper can go missing from and silently break scrolling. */
+.adminSidebarDrawer{position:relative;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;padding:50px 0 6px}
+.adminSidebarDrawer::-webkit-scrollbar{width:0;height:0}
+@media(max-width:760px){.adminSidebarDrawer{display:none!important}}
+
 .adminSidebarToggle{appearance:none;width:34px;height:34px;display:grid;place-items:center;padding:0;border:1px solid #e2e2dc;border-radius:10px;background:rgba(255,255,255,.94);color:#5f615b;cursor:pointer;box-shadow:0 2px 8px rgba(20,20,18,.05);transition:all .16s ease}
 .adminSidebarToggle:hover{background:#f2f2ef;color:#171817;border-color:#cecec7;transform:translateY(-1px)}
 .adminSidebarToggle:focus-visible{outline:3px solid rgba(0,128,96,.14);outline-offset:2px}
-.adminSidebarToggleFloating{position:absolute;top:-1px;right:0;z-index:10}
+.adminSidebarToggleFloating{position:absolute;top:0;right:0;z-index:10}
 .adminSidebarDrawer.isCollapsed .adminSidebarToggleFloating{right:50%;transform:translateX(50%)}
 .adminSidebarDrawer.isCollapsed .adminSidebarToggleFloating:hover{transform:translateX(50%) translateY(-1px)}
-
-.adminSidebarNav{width:100%;height:100%;display:flex;flex-direction:column;min-height:0}
-body:has(.adminShell) .adminSide>.adminSidebarDrawer .adminSidebarNav{padding-top:50px}
-.adminSidebarScroll{min-height:0;flex:1 1 auto;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;padding:0 0 6px}
-.adminSidebarScroll::-webkit-scrollbar{width:0;height:0}
 
 .adminSidebarDrawer.isCollapsed .adminNavSearchWrap{width:46px;height:42px;margin-left:auto;margin-right:auto;justify-content:center;padding:0;cursor:pointer}
 .adminSidebarDrawer.isCollapsed .adminNavSearchWrap input,.adminSidebarDrawer.isCollapsed .adminNavSearchWrap kbd{display:none!important}
@@ -65,7 +64,6 @@ body:has(.adminShell .adminSidebarDrawer.isCollapsed) .adminMain{padding-left:32
 
 html[data-admin-theme='dark'] .adminSidebarToggle{background:#1c211e;border-color:#343a35;color:#b5beb8}
 html[data-admin-theme='dark'] .adminSidebarToggle:hover{background:#252b27;color:#fff;border-color:#424a44}
-@media(max-width:760px){.adminSidebarDrawer{display:none!important}}
 `
 
 export default function AdminSidebarDrawer({ groups }: { groups: AdminSidebarGroup[] }) {
@@ -105,11 +103,7 @@ export default function AdminSidebarDrawer({ groups }: { groups: AdminSidebarGro
       >
         {collapsed ? <PanelLeftOpen size={16} aria-hidden="true" /> : <PanelLeftClose size={16} aria-hidden="true" />}
       </button>
-      <div className="adminSidebarNav">
-        <div className="adminSidebarScroll">
-          <AdminNavTree groups={groups} collapsed={collapsed} onRequestExpand={() => setCollapsed(false)} searchInputRef={searchRef} />
-        </div>
-      </div>
+      <AdminNavTree groups={groups} collapsed={collapsed} onRequestExpand={() => setCollapsed(false)} searchInputRef={searchRef} />
     </div>
   )
 }
