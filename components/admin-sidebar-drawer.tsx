@@ -79,16 +79,26 @@ export default function AdminSidebarDrawer({ groups }: { groups: AdminSidebarGro
   }, [collapsed])
 
   useEffect(() => {
+    const focusSearch = () => { setCollapsed(false); window.setTimeout(() => searchRef.current?.focus(), 0) }
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'b') {
         event.preventDefault(); setCollapsed(value => !value)
       }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-        event.preventDefault(); setCollapsed(false); window.setTimeout(() => searchRef.current?.focus(), 0)
+        event.preventDefault(); focusSearch()
       }
     }
+    // Fired by the topbar's "Search" button (admin-topbar.tsx) - it can't reach the
+    // search input by DOM id any more (useId() in admin-nav-tree.tsx makes that
+    // collision-safe between this always-mounted aside and the mobile drawer, which
+    // only mounts while open), so it asks for focus the same way it already does for
+    // the mobile drawer's own 'admin-mobile-search' event.
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('admin-desktop-search', focusSearch)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('admin-desktop-search', focusSearch)
+    }
   }, [])
 
   return (

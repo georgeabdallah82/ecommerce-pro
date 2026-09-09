@@ -44,6 +44,7 @@ export default function AdminNavTree({
   onRequestExpand,
   onNavigate,
   searchInputRef,
+  showThemeToggle = false,
 }: {
   groups: AdminSidebarGroup[]
   /** Desktop-only icon rail mode: forces every group open and turns the search box into an "expand me" button. */
@@ -53,6 +54,13 @@ export default function AdminNavTree({
   onNavigate?: () => void
   /** Lets a wrapper focus the search box imperatively (Ctrl/Cmd+K, a "search" tap) without a global DOM id. */
   searchInputRef?: RefObject<HTMLInputElement | null>
+  /**
+   * The desktop topbar always has its own compact theme toggle, so the desktop sidebar
+   * leaves this off (a second "toggle dark mode" button doing the same thing, always
+   * visible at once, was real clutter). The mobile drawer covers the topbar while open,
+   * so it's the only reachable toggle there and opts back in.
+   */
+  showThemeToggle?: boolean
 }) {
   const pathname = usePathname()
   const searchId = useId()
@@ -154,7 +162,7 @@ export default function AdminNavTree({
         )
       })}
       {!visibleGroups.length && <div className="adminNavEmpty">No admin pages match “{query}”.</div>}
-      <div className="adminNavTheme"><AdminThemeToggle /></div>
+      {showThemeToggle && <div className="adminNavTheme"><AdminThemeToggle /></div>}
     </nav>
   )
 }
