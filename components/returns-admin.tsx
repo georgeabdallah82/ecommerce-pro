@@ -184,7 +184,7 @@ export default function ReturnsAdmin({ initial, canManage }: { initial: ReturnRe
             </div>
 
             <label className="fieldLabel">Refund amount<input className="input" type="number" min="0" step="0.01" value={refundAmount} onChange={e => setRefundAmount(e.target.value)} placeholder="0.00" /></label>
-            <p className="muted" style={{ fontSize: 11 }}>Maximum refundable: {money(selectedOrder.grandTotal, selectedOrder.currency)}. Leave blank for no refund.</p>
+            <p className="muted" style={{ fontSize: 11 }}>Order total: {money(selectedOrder.grandTotal, selectedOrder.currency)}. The refund can't exceed what's still refundable on this order (already-refunded amounts are excluded). Leave blank for no refund.</p>
 
             <label className={styles.restockRow}><input type="checkbox" checked={restock} onChange={e => setRestock(e.target.checked)} /> Restock returned items into inventory</label>
 

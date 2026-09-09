@@ -6,6 +6,6 @@ const css = `.reviewsAdminPage{max-width:1400px;margin:0 auto}.ratingStars{lette
 
 export default async function Reviews() {
   await requirePermission('reviews.view')
-  const rows = await db.review.findMany({ include: { product: true, user: true }, orderBy: { createdAt: 'desc' } })
+  const rows = await db.review.findMany({ include: { product: true, user: true }, orderBy: { createdAt: 'desc' }, take: 500 })
   return <><style dangerouslySetInnerHTML={{ __html: css }} /><ReviewsAdminShopify initial={JSON.parse(JSON.stringify(rows))} /></>
 }

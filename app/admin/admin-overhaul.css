@@ -89,9 +89,15 @@ body:has(.adminShell) .input::placeholder,body:has(.adminShell) .textarea::place
 body:has(.adminShell) .input:focus,body:has(.adminShell) .textarea:focus,body:has(.adminShell) select:focus{border-color:var(--admin-accent)!important;box-shadow:0 0 0 3px var(--admin-focus)!important;outline:none!important}
 body:has(.adminShell) .fieldLabel{font-size:11px!important;font-weight:850!important;color:var(--admin-ink-soft)!important}
 body:has(.adminShell) .fieldHelp{font-size:11px!important;color:var(--admin-muted)!important;line-height:1.5!important}
+/* .textButton/.textLink (globals.css) hardcode color:var(--ink), a storefront
+   token that's never redefined for dark mode - so these read as near-black
+   text on a dark admin background. Re-point them at the admin ink token. */
+body:has(.adminShell) .textButton,body:has(.adminShell) .textLink{color:var(--admin-ink)!important}
 body:has(.adminShell) .pill{border:1px solid var(--admin-border)!important;background:var(--admin-border-soft)!important;color:var(--admin-ink-soft)!important;font-size:10px!important;font-weight:850!important;border-radius:var(--admin-radius-pill)!important}
-body:has(.adminShell) .statusPill{font-size:10px!important;font-weight:850!important}
-body:has(.adminShell) .statusPill.active{background:var(--admin-accent-soft)!important;color:var(--admin-accent-strong)!important}
+body:has(.adminShell) .statusPill{font-size:10px!important;font-weight:850!important;border:1px solid var(--admin-border)!important;background:var(--admin-border-soft)!important;color:var(--admin-ink-soft)!important}
+body:has(.adminShell) .statusPill.active,body:has(.adminShell) .statusPill.success{background:var(--admin-accent-soft)!important;color:var(--admin-accent-strong)!important;border-color:transparent!important}
+body:has(.adminShell) .statusPill.warning{background:var(--admin-warning-soft)!important;color:var(--admin-warning)!important;border-color:transparent!important}
+body:has(.adminShell) .statusPill.danger{background:var(--admin-danger-soft)!important;color:var(--admin-danger)!important;border-color:transparent!important}
 body:has(.adminShell) button:focus-visible,body:has(.adminShell) a:focus-visible,body:has(.adminShell) input:focus-visible,body:has(.adminShell) select:focus-visible,body:has(.adminShell) textarea:focus-visible{outline:3px solid var(--admin-focus)!important;outline-offset:2px!important}
 
 /* Search/filter/tool bars */
@@ -119,8 +125,28 @@ body:has(.adminShell) .modalOverlay>.card{position:relative!important;max-height
 body:has(.adminShell) .modalOverlay .sectionHead.small{align-items:flex-start!important}
 body:has(.adminShell) .modalOverlay .fieldLabel{display:grid!important;gap:7px!important;margin:0!important}
 body:has(.adminShell) .modalOverlay .twoColFields{gap:14px!important}
+/* `.inventoryModalHead` (the title + close-button row at the top of most admin
+   modals - returns, discounts, shipping zones, content blocks) had no layout
+   rule anywhere, so it rendered as an unstyled stacked block instead of a
+   spaced-out header row. */
+body:has(.adminShell) .inventoryModalHead{display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:16px!important;padding:20px 22px 0!important}
+body:has(.adminShell) .inventoryModalHead h2{margin:4px 0 0!important;font-size:19px!important}
+body:has(.adminShell) .inventoryModalHead p{margin:4px 0 0!important}
 @keyframes adminFadeIn{from{opacity:0}to{opacity:1}}
 @keyframes adminModalIn{from{opacity:0;transform:translateY(8px) scale(.99)}to{opacity:1;transform:none}}
+
+/* Shared modal-form helpers (e.g. shipping zones' add/edit rate forms).
+   Previously lived only in app/admin/coupons/coupons.css with hardcoded
+   light-mode hex colors; moved here (tokenized) so every consumer gets
+   dark mode for free, not just whichever page happened to import that file. */
+body:has(.adminShell) .discountsModal{width:min(700px,94vw);padding:0;max-height:92vh;overflow:auto}
+body:has(.adminShell) .discountForm{padding:22px 24px}
+body:has(.adminShell) .discountFormGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+body:has(.adminShell) .toggleRow{display:flex;gap:10px;align-items:flex-start;padding:14px;margin-top:14px;border:1px solid var(--admin-border);border-radius:var(--admin-radius-md);background:var(--admin-border-soft);cursor:pointer;color:var(--admin-ink)}
+body:has(.adminShell) .toggleRow input{margin-top:3px}
+body:has(.adminShell) .toggleRow span{display:grid;gap:3px}
+body:has(.adminShell) .toggleRow small{font-size:11px;color:var(--admin-muted);line-height:1.4}
+@media(max-width:650px){body:has(.adminShell) .discountFormGrid{grid-template-columns:1fr}body:has(.adminShell) .discountForm{padding:18px}body:has(.adminShell) .discountsModal .inventoryModalHead{padding:18px}}
 
 /* Drawers */
 body:has(.adminShell) .inventoryDrawerOverlay{z-index:1200!important;background:rgba(15,18,16,.44)!important;backdrop-filter:blur(4px)!important}
