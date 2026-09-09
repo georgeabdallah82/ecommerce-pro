@@ -14,7 +14,7 @@ The Cloudflare Worker entrypoint is generated at `.open-next/worker.js` and stat
 
 ## Production variables and secrets
 
-Configure the same application variables currently documented in `.env.example` in the Cloudflare Workers deployment environment. At minimum:
+Configure the same application variables documented in `.env.example` as Cloudflare Worker secrets. At minimum:
 
 - `AUTH_SECRET`
 - `DATABASE_URL`
@@ -30,14 +30,14 @@ Do not commit real secret values to GitHub. Store sensitive values as Cloudflare
 
 ## Database
 
-The application currently uses PostgreSQL through Prisma. Cloudflare Workers requires an edge-compatible Prisma database driver; the repository includes the PostgreSQL driver adapter dependencies needed for that integration.
+The application uses MongoDB through Prisma. Cloudflare Workers cannot open MongoDB's raw TCP connection, so production requests run through Prisma Accelerate. Set the Worker's `DATABASE_URL` secret to the Prisma Accelerate `prisma://` connection string, while direct `mongodb://` or `mongodb+srv://` URLs are reserved for Prisma schema pushes and migration tooling.
 
-Before production traffic is switched over, verify the production `DATABASE_URL` points to the existing PostgreSQL database and validate login, registration, admin login, checkout, orders, and admin CRUD operations against that database.
+Before switching production traffic, follow the backup, migration, secret, scheduled-worker, and smoke-test procedures in [PRODUCTION-OPS.md](PRODUCTION-OPS.md). In particular, validate login, registration, admin login, checkout, order creation, and administrative CRUD against the deployed Worker and its production MongoDB data.
 
 ## Local Workers-runtime preview
 
 ```bash
-npm install
+npm ci
 npm run preview
 ```
 

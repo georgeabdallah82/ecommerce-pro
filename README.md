@@ -48,14 +48,15 @@ A full-stack Next.js + Prisma ecommerce platform with a clean storefront and an 
 
 ## Local setup
 
-Requires Node.js 20.11+.
+Requires Node.js 22+ and a MongoDB deployment configured for Prisma.
 
 ```powershell
-npm install
+npm ci
 Copy-Item .env.example .env
-npx prisma generate
-npx prisma db push
-npm run db:seed
+node scripts/prepare-mongodb-schema.mjs
+npx prisma generate --schema=prisma/mongodb-schema
+npx prisma db push --schema=prisma/mongodb-schema
+npx tsx prisma/seed.ts
 npm run dev
 ```
 
@@ -79,7 +80,7 @@ Demo customer:
 Set these in `.env` before deployment:
 
 ```env
-DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?schema=public"
+DATABASE_URL="mongodb+srv://USER:PASSWORD@HOST/DATABASE"
 AUTH_SECRET="replace-with-a-long-random-secret-at-least-32-characters"
 NEXT_PUBLIC_BRAND_NAME="Your Brand"
 NEXT_PUBLIC_CURRENCY="USD"
@@ -92,24 +93,25 @@ PAYMENT_PROVIDER="manual"
 
 ## Production notes
 
-The application includes a payment-provider adapter and manual payment methods, but a live card gateway still needs the merchant credentials and webhook configuration for the provider you choose. Local image upload is included for traditional Node deployments; serverless production should switch the media adapter to an object-storage provider.
+The application includes a payment-provider adapter and manual payment methods, but a live card gateway still needs the merchant credentials and webhook configuration for the provider you choose. Production media uploads use the Cloudflare R2 binding configured in `wrangler.jsonc`; local development falls back to `public/uploads`.
 
-Before a real production launch, configure a managed database/storage provider, HTTPS, backups, error monitoring, transactional email, payment webhooks, and deployment secrets.
+The production runtime is Cloudflare Workers. It uses Prisma Accelerate in front of MongoDB Atlas, so the deployed `DATABASE_URL` must be a Prisma Accelerate `prisma://` connection string rather than a direct MongoDB URI. See [PRODUCTION-OPS.md](PRODUCTION-OPS.md) for the complete required secrets, scheduled worker, rollout, and smoke-test procedure.
 
 ## Verification
 
-The production CI pipeline runs dependency installation, Prisma generation, TypeScript typechecking, the backend audit, and the Next.js production build. Render must complete its build and start the resulting service before live functional verification is considered complete.
+The production CI pipeline installs dependencies, generates the MongoDB Prisma client, runs TypeScript checks, unit tests and the backend audit, then builds and deploys the Cloudflare Worker after a successful merge to `main`.
 
 Recommended verification after install:
 
 ```powershell
-npm install
+npm ci
 Copy-Item .env.example .env
-npx prisma generate
-npx prisma db push
-npm run db:seed
+npm run db:push
+npm run db:ensure-admin
 npm run typecheck
-npm run build
+npm test
+npm run backend:audit
+npm run build:cloudflare
 npm run dev
 ```
 
