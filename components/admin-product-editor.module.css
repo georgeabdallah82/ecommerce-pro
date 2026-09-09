@@ -1,0 +1,145 @@
+/*
+ * Product editor - CSS Modules on the shared --admin-* tokens, same pattern as every
+ * other admin page rebuilt this cycle. Replaces product-editor-ui-shell.tsx's standalone
+ * hardcoded-hex <style> block (light-mode-only colors, and visually out of step with the
+ * rest of the rebuilt admin) - dark mode is automatic here since every color comes from
+ * var(--admin-*).
+ */
+
+.page { max-width: 1480px; margin: 0 auto; padding-bottom: 32px; }
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 0 16px;
+  margin: 0 0 14px;
+  background: var(--admin-bg);
+  border-bottom: 1px solid var(--admin-border);
+}
+.topLeft, .topActions { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.topLeft > div:last-child { min-width: 0; }
+.title { margin: 2px 0 0; font-size: 28px; line-height: 1.15; letter-spacing: -.04em; color: var(--admin-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: min(52vw, 720px); }
+.topActions { justify-content: flex-end; flex-wrap: wrap; }
+.topActions :global(.btn) { min-height: 40px; }
+
+.tabs {
+  position: sticky;
+  top: 78px;
+  z-index: 40;
+  display: flex;
+  gap: 3px;
+  overflow: auto;
+  padding: 5px;
+  margin-bottom: 14px;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+  border-radius: var(--admin-radius-md);
+  scrollbar-width: thin;
+}
+.tabs button { flex: 0 0 auto; border: 0; background: transparent; color: var(--admin-muted); font: inherit; font-size: 13px; font-weight: 650; padding: 9px 13px; border-radius: var(--admin-radius-sm); white-space: nowrap; cursor: pointer; }
+.tabs button:hover { background: var(--admin-border-soft); color: var(--admin-ink); }
+.tabs button.active { background: var(--admin-accent); color: var(--admin-accent-ink); }
+
+.body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.main { min-width: 0; display: grid; gap: 14px; }
+.main > div { min-width: 0; }
+
+.card { border: 1px solid var(--admin-border); border-radius: var(--admin-radius-lg); box-shadow: var(--admin-shadow-sm); background: var(--admin-surface); }
+.cardHead { padding: 16px 18px 0; }
+.cardHead h3 { margin: 0; font-size: 15px; color: var(--admin-ink); }
+.cardHead p { margin: 3px 0 0; font-size: 12px; color: var(--admin-muted); }
+.cardBody { padding: 16px 18px 18px; display: grid; gap: 14px; }
+
+.field { display: grid; gap: 7px; font-size: 12px; font-weight: 650; color: var(--admin-ink-soft); }
+
+.twoCol, .threeCol { display: grid; gap: 12px; }
+.twoCol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.threeCol { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.checkGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+
+.tagRow { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+.tagRow :global(.input) { flex: 1 1 190px; }
+.tagChip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 10px; border-radius: var(--admin-radius-pill); background: var(--admin-border-soft); color: var(--admin-ink); font-size: 12px; }
+.tagChip button { border: 0; background: none; color: var(--admin-muted); cursor: pointer; font-size: 14px; line-height: 1; padding: 2px; }
+
+.mediaGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.mediaItem { min-width: 0; display: grid; grid-template-columns: 18px minmax(120px, 180px) minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); background: var(--admin-bg); }
+.mediaItem img, .mediaPlaceholder { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: var(--admin-radius-sm); background: var(--admin-border-soft); }
+.mediaPlaceholder { display: grid; place-items: center; color: var(--admin-muted); font-size: 12px; }
+.dragHandle { color: var(--admin-muted-soft); padding-top: 6px; cursor: grab; }
+.mediaControls { display: grid; gap: 8px; min-width: 0; }
+.mediaAdd { min-height: 110px; border: 1.5px dashed var(--admin-border); border-radius: var(--admin-radius-md); background: var(--admin-bg); color: var(--admin-muted); font: inherit; font-weight: 650; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.mediaAdd:hover { background: var(--admin-border-soft); border-color: var(--admin-accent); color: var(--admin-ink); }
+
+.optionList { display: grid; gap: 8px; margin-bottom: 10px; }
+.optionRow { display: grid; grid-template-columns: minmax(150px, .8fr) minmax(0, 1.5fr) auto; gap: 8px; align-items: center; }
+
+.variantHead, .variantRow { display: grid; grid-template-columns: minmax(170px, 1.5fr) minmax(130px, 1fr) minmax(100px, .7fr) minmax(90px, .6fr) 40px; gap: 8px; align-items: center; }
+.variantHead { padding: 0 2px 7px; color: var(--admin-muted); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.variantRow { padding: 8px 0; border-top: 1px solid var(--admin-border-soft); }
+.variantRow :global(.input) { min-width: 0; }
+
+.notice, .pricingPreview { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 13px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm); background: var(--admin-bg); }
+.notice span { font-size: 12px; color: var(--admin-muted); }
+.pricingPreview { margin-top: 0; }
+.pricingPreview strong { font-size: 20px; color: var(--admin-ink); }
+
+.moneyInput { display: flex; align-items: center; gap: 6px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm); background: var(--admin-surface); padding: 0 11px; min-height: 40px; }
+.moneyInput span { color: var(--admin-muted); }
+.moneyInput input { border: 0; outline: 0; background: transparent; font: inherit; color: var(--admin-ink); width: 100%; }
+
+.rail { display: grid; gap: 14px; align-self: start; }
+.pill { display: inline-flex; padding: 5px 10px; border-radius: var(--admin-radius-pill); background: var(--admin-accent-soft); color: var(--admin-accent-strong); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+.summaryLine { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; font-size: 13px; color: var(--admin-muted); border-bottom: 1px solid var(--admin-border-soft); }
+.summaryLine:last-child { border-bottom: 0; }
+.summaryLine strong { color: var(--admin-ink); }
+
+.emptyInline { padding: 18px; text-align: center; color: var(--admin-muted); font-size: 13px; }
+
+.checkCard { display: flex; align-items: flex-start; gap: 12px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); padding: 13px; cursor: pointer; }
+.checkCard input { margin-top: 3px; }
+.checkCard span { display: grid; gap: 4px; }
+.checkCard strong { color: var(--admin-ink); }
+.checkCard small { font-size: 12px; color: var(--admin-muted); }
+
+@media (min-width: 951px) {
+  .body { grid-template-columns: minmax(0, 1fr) 300px; }
+}
+
+@media (max-width: 950px) {
+  .topbar { align-items: flex-start; }
+  .title { max-width: 46vw; font-size: 24px; }
+  .tabs { top: 76px; }
+  .mediaGrid { grid-template-columns: 1fr; }
+  .checkGrid { grid-template-columns: 1fr; }
+  .twoCol, .threeCol { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 700px) {
+  .topbar { position: relative; top: auto; flex-direction: column; gap: 12px; padding: 10px 0 12px; }
+  .topLeft, .topActions { width: 100%; }
+  .topActions { justify-content: stretch; }
+  .topActions :global(.btn) { flex: 1; }
+  .title { font-size: 22px; max-width: 72vw; }
+  .tabs { position: sticky; top: 0; z-index: 35; }
+  .tabs button { padding: 9px 12px; }
+  .mediaItem { grid-template-columns: 1fr; }
+  .mediaItem .dragHandle { display: none; }
+  .mediaItem img, .mediaPlaceholder { max-width: 220px; }
+  .optionRow { grid-template-columns: 1fr; }
+  .variantHead { display: none; }
+  .variantRow { grid-template-columns: 1fr 1fr; align-items: stretch; }
+  .variantRow :global(.iconBtn) { grid-column: 2; justify-self: end; }
+}
+
+@media (max-width: 480px) {
+  .topActions { display: grid; grid-template-columns: 1fr 1fr; }
+  .topActions :global(.btn):last-child { grid-column: 1 / -1; }
+  .card { border-radius: var(--admin-radius-md); }
+  .tabs { margin-bottom: 10px; }
+}

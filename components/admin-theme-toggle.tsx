@@ -75,7 +75,6 @@ export default function AdminThemeToggle({ compact }: { compact?: boolean }) {
         html[data-admin-theme='dark'] body:has(.adminShell) .tableTopline,
         html[data-admin-theme='dark'] body:has(.adminShell) .catalogPagination,
         html[data-admin-theme='dark'] body:has(.adminShell) .editorTopbar,
-        html[data-admin-theme='dark'] body:has(.adminShell) .editorTabs,
         html[data-admin-theme='dark'] body:has(.adminShell) .editorCardHead,
         html[data-admin-theme='dark'] body:has(.adminShell) .editorCardBody{background:#191c1a!important;color:#e9edea!important;border-color:#2b302c!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .table th,

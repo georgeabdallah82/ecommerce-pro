@@ -1,7 +1,6 @@
 import { requirePermission } from '@/lib/auth'
 import { db } from '@/lib/prisma'
 import ProductEditorV2 from '@/components/product-editor-v2'
-import ProductEditorUiShell from '@/components/product-editor-ui-shell'
 
 type ProductEditPageProps = { params: Promise<{ id: string }> }
 
@@ -31,5 +30,5 @@ export default async function ProductEdit({ params }: ProductEditPageProps) {
   const serializedCategories = JSON.parse(JSON.stringify(categories))
   const serializedDefinitions = JSON.parse(JSON.stringify(definitions))
 
-  return <ProductEditorUiShell><ProductEditorV2 initial={serializedProduct} creating={false} categories={serializedCategories} definitions={serializedDefinitions} /></ProductEditorUiShell>
+  return <ProductEditorV2 initial={serializedProduct} creating={false} categories={serializedCategories} definitions={serializedDefinitions} />
 }
