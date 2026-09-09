@@ -1,0 +1,92 @@
+/*
+ * Collections list - CSS Modules, same pattern as
+ * components/admin-products-list.module.css: every class gets a build-time
+ * unique name, so nothing here can collide with or be out-ranked by another
+ * page's rules. Colors/spacing come from the --admin-* tokens in
+ * ../app/admin/admin-overhaul.css via var(), so dark mode is free - no
+ * separate dark-mode override block needed for this page.
+ *
+ * Several rules below intentionally match values that used to live as
+ * shared `body:has(.adminShell) .collectionXyz{...}` overrides in
+ * admin-overhaul.css (page max-width, the views tab bar, the search field,
+ * the active tab state) - those overrides only ever matched this
+ * component's classnames, so this module now owns that styling directly
+ * and the matching lines in admin-overhaul.css are dead weight.
+ */
+
+.page { max-width: 1480px; margin: 0 auto; padding-bottom: 32px; }
+
+.header { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
+.title { margin: 0; font-size: 38px; letter-spacing: -.045em; color: var(--admin-ink); }
+
+.views {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 12px;
+  padding: 4px;
+  overflow: auto;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-surface);
+  box-shadow: var(--admin-shadow-sm);
+}
+.view {
+  border: 0;
+  background: transparent;
+  border-radius: var(--admin-radius-sm);
+  padding: 9px 12px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--admin-muted);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.viewActive { background: var(--admin-accent); color: var(--admin-accent-ink); }
+
+.toolbar { display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin-bottom: 12px; }
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  height: 42px;
+  padding: 0 11px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-border-soft);
+  color: var(--admin-muted);
+}
+.search input { min-width: 0; flex: 1 1 auto; border: 0; outline: 0; background: transparent; font: inherit; color: var(--admin-ink); }
+.search:focus-within { border-color: var(--admin-accent); box-shadow: 0 0 0 3px var(--admin-focus); background: var(--admin-surface); }
+
+.tableCard { overflow: hidden; }
+.resultsTable { min-width: 850px; }
+.resultsTable th { background: var(--admin-border-soft); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; color: var(--admin-muted); }
+.resultsTable tbody tr:hover { background: var(--admin-border-soft); }
+
+.cell { display: flex; align-items: center; gap: 11px; min-width: 280px; }
+.cell strong { display: block; font-size: 13px; color: var(--admin-ink); }
+.cell span { display: block; margin-top: 3px; font-size: 11px; }
+.thumb {
+  width: 46px;
+  height: 46px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-border-soft);
+  color: var(--admin-muted);
+}
+.thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+.channel { display: inline-flex; padding: 5px 8px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm); font-size: 10px; color: var(--admin-ink-soft); background: var(--admin-surface); }
+
+@media (max-width: 700px) {
+  .header { flex-direction: column; align-items: stretch; }
+  .header :global(.btn) { width: 100%; justify-content: center; }
+  .title { font-size: 32px; }
+  .views { width: 100%; }
+}

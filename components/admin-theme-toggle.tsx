@@ -53,20 +53,13 @@ export default function AdminThemeToggle({ compact }: { compact?: boolean }) {
         html[data-admin-theme='dark'] body:has(.adminShell) .card,
         html[data-admin-theme='dark'] body:has(.adminShell) .editorCard,
         html[data-admin-theme='dark'] body:has(.adminShell) .productTableCard,
-        html[data-admin-theme='dark'] body:has(.adminShell) .lv-side,
-        html[data-admin-theme='dark'] body:has(.adminShell) .lv-detail,
-        html[data-admin-theme='dark'] body:has(.adminShell) .lv-stat,
         html[data-admin-theme='dark'] body:has(.adminShell) .opsCard,
         html[data-admin-theme='dark'] body:has(.adminShell) .healthCheck,
         html[data-admin-theme='dark'] body:has(.adminShell) .miniAlert,
-        html[data-admin-theme='dark'] body:has(.adminShell) .analyticsCard,
         html[data-admin-theme='dark'] body:has(.adminShell) .settingsCard,
         html[data-admin-theme='dark'] body:has(.adminShell) .statCard,
         html[data-admin-theme='dark'] body:has(.adminShell) .orderCard,
         html[data-admin-theme='dark'] body:has(.adminShell) .summaryCard,
-        html[data-admin-theme='dark'] body:has(.adminShell) .metricCard,
-        html[data-admin-theme='dark'] body:has(.adminShell) .rangeBar,
-        html[data-admin-theme='dark'] body:has(.adminShell) .chart,
         html[data-admin-theme='dark'] body:has(.adminShell) .healthHero,
         html[data-admin-theme='dark'] body:has(.adminShell) .successCard,
         html[data-admin-theme='dark'] body:has(.adminShell) .adminPanel,
@@ -77,10 +70,7 @@ export default function AdminThemeToggle({ compact }: { compact?: boolean }) {
         html[data-admin-theme='dark'] body:has(.adminShell) .inventoryDrawerHeader,
         html[data-admin-theme='dark'] body:has(.adminShell) .inventoryDrawerStats div,
         html[data-admin-theme='dark'] body:has(.adminShell) .inventoryAmountBlock,
-        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryPreview,
-        html[data-admin-theme='dark'] body:has(.adminShell) .settingsProCard,
-        html[data-admin-theme='dark'] body:has(.adminShell) .settingsProPanel,
-        html[data-admin-theme='dark'] body:has(.adminShell) .settingsProHead{background:#191c1a!important;border-color:#2b302c!important;color:#e9edea!important;box-shadow:0 10px 28px rgba(0,0,0,.22)!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryPreview{background:#191c1a!important;border-color:#2b302c!important;color:#e9edea!important;box-shadow:0 10px 28px rgba(0,0,0,.22)!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .table,
         html[data-admin-theme='dark'] body:has(.adminShell) .tableTopline,
         html[data-admin-theme='dark'] body:has(.adminShell) .catalogPagination,
@@ -102,8 +92,7 @@ export default function AdminThemeToggle({ compact }: { compact?: boolean }) {
         html[data-admin-theme='dark'] body:has(.adminShell) .productSearch,
         html[data-admin-theme='dark'] body:has(.adminShell) .inventorySearchBox,
         html[data-admin-theme='dark'] body:has(.adminShell) .inventorySelect,
-        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryAmountInput,
-        html[data-admin-theme='dark'] body:has(.adminShell) .lv-search input{background:#151817!important;color:#eef2ef!important;border-color:#343a36!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryAmountInput{background:#151817!important;color:#eef2ef!important;border-color:#343a36!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .input::placeholder,
         html[data-admin-theme='dark'] body:has(.adminShell) .textarea::placeholder,
         html[data-admin-theme='dark'] body:has(.adminShell) .inventorySearchBox input::placeholder{color:#707a73!important}
@@ -129,15 +118,6 @@ export default function AdminThemeToggle({ compact }: { compact?: boolean }) {
         html[data-admin-theme='dark'] body:has(.adminShell) .opsLoading{background:#191c1a!important;border-color:#3a413c!important;color:#9fa8a1!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .empty strong{color:#eef2ef!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .leaflet-control-attribution{background:rgba(25,28,26,.9)!important;color:#c7cec9!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .lv-map-overlay,
-        html[data-admin-theme='dark'] body:has(.adminShell) .lv-map-btn,
-        html[data-admin-theme='dark'] body:has(.adminShell) .lv-tooltip{background:rgba(25,28,26,.96)!important;color:#eef2ef!important;border-color:#363d38!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .lv-row{background:#191c1a!important;border-color:#2b302c!important;color:#e7ebe8!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .lv-row:hover{background:#202421!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .lv-row.selected{background:#292e2a!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .lv-avatar,
-        html[data-admin-theme='dark'] body:has(.adminShell) .lv-detail-avatar,
-        html[data-admin-theme='dark'] body:has(.adminShell) .lv-detail-item{background:#232724!important;color:#eef2ef!important}
       `}</style>
       <button type="button" className="adminThemeToggle" data-compact={compact ? 'true' : undefined} onClick={toggle} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}>
         {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}

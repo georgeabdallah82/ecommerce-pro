@@ -1,12 +1,30 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDown, ArrowLeft, ArrowUp, Check, Copy, GripVertical, Monitor, Palette, Plus, Redo2, Save, Smartphone, Tablet, Trash2, Undo2, X } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowUp,
+  Check,
+  Copy,
+  GripVertical,
+  Monitor,
+  Palette,
+  Plus,
+  Redo2,
+  Save,
+  Smartphone,
+  Tablet,
+  Trash2,
+  Undo2,
+  X,
+} from 'lucide-react'
 import { CartProvider } from '@/components/cart-provider'
 import StoreNavFixed from '@/components/store-nav-fixed'
 import StorefrontSections from '@/components/storefront-sections'
 import ShopifyThemeInspector from '@/components/shopify-theme-inspector'
 import ThemeInspectorStyles from '@/components/theme-inspector-styles'
+import styles from './admin-theme-editor.module.css'
 
 type AnyMap = Record<string, any>
 type Section = { id: string; type: string; enabled?: boolean; settings?: AnyMap; blocks?: AnyMap[] }
@@ -15,14 +33,32 @@ type Props = { initial: { theme: AnyMap; sections: Section[]; navigation: any[] 
 
 const PAGES = ['Home page', 'Products', 'Product', 'Collections', 'Collection', 'Cart', 'Pages', 'Blog']
 const META: Record<string, string> = {
-  announcement: 'Announcement bar', header: 'Header', hero: 'Image banner', slideshow: 'Slideshow', video: 'Video', image_with_text: 'Image with text',
-  product_grid: 'Featured collection', product_carousel: 'Product carousel', featured_product: 'Featured product', product_recommendations: 'Product recommendations',
-  main_product: 'Main product', collection_grid: 'Collection list', collection_carousel: 'Collection carousel', main_collection_banner: 'Collection banner',
-  main_collection_grid: 'Collection products', multicolumn: 'Multicolumn', rich_text: 'Rich text', testimonials: 'Testimonials', logo_list: 'Logo list', faq: 'Collapsible content', newsletter: 'Email signup', footer: 'Footer',
+  announcement: 'Announcement bar',
+  header: 'Header',
+  hero: 'Image banner',
+  slideshow: 'Slideshow',
+  video: 'Video',
+  image_with_text: 'Image with text',
+  product_grid: 'Featured collection',
+  product_carousel: 'Product carousel',
+  featured_product: 'Featured product',
+  product_recommendations: 'Product recommendations',
+  main_product: 'Main product',
+  collection_grid: 'Collection list',
+  collection_carousel: 'Collection carousel',
+  main_collection_banner: 'Collection banner',
+  main_collection_grid: 'Collection products',
+  multicolumn: 'Multicolumn',
+  rich_text: 'Rich text',
+  testimonials: 'Testimonials',
+  logo_list: 'Logo list',
+  faq: 'Collapsible content',
+  newsletter: 'Email signup',
+  footer: 'Footer',
 }
 const clone = <T,>(value: T): T => structuredClone(value)
 const makeId = (type: string) => `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-const rows = (value: any) => Array.isArray(value) ? value : Array.isArray(value?.rows) ? value.rows : []
+const rows = (value: any) => (Array.isArray(value) ? value : Array.isArray(value?.rows) ? value.rows : [])
 
 function sectionDefaults(type: string): Section {
   const base = { spacing: 72, contentWidth: 1180, animation: 'fade-up' }
@@ -42,7 +78,9 @@ function sectionDefaults(type: string): Section {
 }
 
 function defaultTemplates(source: Section[]) {
-  const home = source?.length ? clone(source) : [sectionDefaults('announcement'), sectionDefaults('header'), sectionDefaults('hero'), sectionDefaults('product_grid'), sectionDefaults('collection_grid'), sectionDefaults('newsletter'), sectionDefaults('footer')]
+  const home = source?.length
+    ? clone(source)
+    : [sectionDefaults('announcement'), sectionDefaults('header'), sectionDefaults('hero'), sectionDefaults('product_grid'), sectionDefaults('collection_grid'), sectionDefaults('newsletter'), sectionDefaults('footer')]
   return {
     'Home page': home,
     Products: [sectionDefaults('announcement'), sectionDefaults('header'), sectionDefaults('product_grid'), sectionDefaults('newsletter'), sectionDefaults('footer')],
@@ -55,27 +93,38 @@ function defaultTemplates(source: Section[]) {
   } as Record<string, Section[]>
 }
 
-const styles = `
-.focal-editor{position:fixed;inset:0;z-index:9999;display:grid;grid-template-rows:64px 1fr;background:#f6f7f7;color:#202223;font-family:Inter,ui-sans-serif,system-ui,sans-serif}
-.focal-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 14px;background:#fff;border-bottom:1px solid #e3e6e8}.focal-top-left,.focal-top-right{display:flex;align-items:center;gap:8px;min-width:0}.focal-title{font-size:13px;font-weight:800}.focal-sub{font-size:9px;letter-spacing:.12em;color:#8a9096}.focal-select,.focal-btn,.focal-icon{height:36px;border:1px solid #dfe3e6;border-radius:8px;background:#fff;font-size:11px;font-weight:800}.focal-select{padding:0 11px}.focal-btn{display:inline-flex;align-items:center;gap:7px;padding:0 12px;cursor:pointer}.focal-btn.primary{background:#ff5a1f;color:#fff;border-color:#ff5a1f}.focal-icon{width:36px;display:inline-grid;place-items:center;cursor:pointer}.focal-btn:disabled,.focal-icon:disabled{opacity:.4;cursor:not-allowed}
-.focal-body{display:grid;grid-template-columns:310px minmax(0,1fr);min-height:0}.focal-side{background:#fff;border-right:1px solid #e3e6e8;overflow:auto}.focal-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px}.focal-tabs button{height:34px;border:0;border-radius:7px;background:transparent;font-size:10px;font-weight:800;cursor:pointer}.focal-tabs button.active{background:#fff0eb;color:#ff5a1f}.focal-rows{padding:8px}.focal-row{display:flex;margin:3px 0;border:1px solid transparent;border-radius:8px}.focal-row.active{background:#fff0eb;border-color:#ffd8ca}.focal-row-main{flex:1;border:0;background:transparent;padding:11px;text-align:left;cursor:pointer;display:flex;gap:8px;align-items:center;font-size:11px}.focal-row-main span{flex:1}.focal-row-main small{font-size:8px;color:#8a9096}.focal-row-toggle{width:34px;border:0;background:transparent;cursor:pointer}.focal-add{margin:8px 12px 14px;width:calc(100% - 24px);height:38px;border:1px dashed #c9ced2;background:#fff;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer}
-.focal-canvas{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden}.focal-canvas-bar{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid #e3e6e8;background:#fff;font-size:11px}.focal-preview{flex:1;overflow:auto;padding:20px;background:#f3f4f4;scroll-behavior:smooth;overscroll-behavior:contain}.focal-frame{width:100%;margin:0 auto;min-height:100%;background:#fff;border:1px solid #dde1e3;overflow:hidden}.focal-frame.mobile{max-width:390px}.focal-frame.tablet{max-width:820px}.focal-frame.desktop{max-width:1320px}
-.focal-drawer{position:absolute;top:64px;right:0;bottom:0;width:390px;background:#fff;border-left:1px solid #e3e6e8;z-index:30;overflow:auto}.focal-drawer-head{position:sticky;top:0;z-index:4;padding:14px;background:#fff;border-bottom:1px solid #e8eaec;display:flex;justify-content:space-between;gap:10px}.focal-drawer-tabs{position:sticky;top:65px;z-index:3;display:grid;grid-template-columns:repeat(3,1fr);background:#fff;border-bottom:1px solid #e8eaec}.focal-drawer-tabs button{height:40px;border:0;background:#fff;border-bottom:2px solid transparent;font-size:10px;font-weight:800;text-transform:capitalize;cursor:pointer}.focal-drawer-tabs button.active{border-bottom-color:#ff5a1f}.focal-panel{margin:12px;border:1px solid #e1e5e7;border-radius:10px;overflow:hidden}.focal-panel-title{padding:11px 13px;border-bottom:1px solid #e8eaec;font-size:11px;font-weight:800}.focal-panel-body{padding:13px;display:grid;gap:10px}.focal-field{display:grid;gap:5px}.focal-field span{font-size:10px;font-weight:800}.focal-input,.focal-select2,.focal-textarea{width:100%;box-sizing:border-box;border:1px solid #dfe3e6;border-radius:8px;background:#fff;padding:8px 10px;min-height:36px;font-size:11px}.focal-textarea{min-height:80px;resize:vertical}.focal-notice{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);padding:10px 14px;border-radius:8px;background:#202223;color:#fff;font-size:11px;font-weight:800;z-index:80}
-@media(max-width:1050px){.focal-body{grid-template-columns:270px minmax(0,1fr)}.focal-drawer{width:min(390px,92vw)}}@media(max-width:760px){.focal-editor{grid-template-rows:auto 1fr}.focal-top{padding:10px;align-items:flex-start;flex-direction:column}.focal-top-right{width:100%;flex-wrap:wrap;justify-content:flex-start}.focal-body{grid-template-columns:1fr}.focal-side{max-height:220px;border-right:0;border-bottom:1px solid #e3e6e8}.focal-preview{padding:8px}.focal-drawer{top:0;width:100%;border-left:0}.focal-drawer-tabs{top:0}}
-`
+function Field({ label, value, onChange, type = 'text' }: { label: string; value: any; onChange: (value: any) => void; type?: string }) {
+  return (
+    <label className={styles.field}>
+      <span>{label}</span>
+      <input className={styles.input} type={type} value={value ?? ''} onChange={event => onChange(type === 'number' ? Number(event.target.value) : event.target.value)} />
+    </label>
+  )
+}
 
-function Field({ label, value, onChange, type='text' }: { label:string; value:any; onChange:(value:any)=>void; type?:string }) { return <label className="focal-field"><span>{label}</span><input className="focal-input" type={type} value={value ?? ''} onChange={event => onChange(type==='number' ? Number(event.target.value) : event.target.value)} /></label> }
-function Panel({ title, children }: { title:string; children:React.ReactNode }) { return <section className="focal-panel"><div className="focal-panel-title">{title}</div><div className="focal-panel-body">{children}</div></section> }
+function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className={styles.panel}>
+      <div className={styles.panelTitle}>{title}</div>
+      <div className={styles.panelBody}>{children}</div>
+    </section>
+  )
+}
 
 export default function FocalThemeEditor({ initial }: Props) {
   const fallback = useMemo(() => defaultTemplates(initial.sections), [initial.sections])
   const [theme, setTheme] = useState<AnyMap>(() => clone(initial.theme || {}))
-  const [templates, setTemplates] = useState<Record<string, Section[]>>(() => { const stored = initial.theme?.editorTemplates || {}; const base = clone(fallback); for (const key of PAGES) if (Array.isArray(stored[key]) && stored[key].length) base[key] = clone(stored[key]); return base })
+  const [templates, setTemplates] = useState<Record<string, Section[]>>(() => {
+    const stored = initial.theme?.editorTemplates || {}
+    const base = clone(fallback)
+    for (const key of PAGES) if (Array.isArray(stored[key]) && stored[key].length) base[key] = clone(stored[key])
+    return base
+  })
   const [page, setPage] = useState('Home page')
   const [selectedId, setSelectedId] = useState('')
-  const [device, setDevice] = useState<'desktop'|'tablet'|'mobile'>('desktop')
-  const [sideTab, setSideTab] = useState<'sections'|'theme'>('sections')
-  const [drawerTab, setDrawerTab] = useState<'content'|'design'|'advanced'>('content')
+  const [device, setDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
+  const [sideTab, setSideTab] = useState<'sections' | 'theme'>('sections')
+  const [drawerTab, setDrawerTab] = useState<'content' | 'design' | 'advanced'>('content')
   const [drawer, setDrawer] = useState(false)
   const [picker, setPicker] = useState(false)
   const [history, setHistory] = useState<Snapshot[]>([])
@@ -90,36 +139,331 @@ export default function FocalThemeEditor({ initial }: Props) {
   const current = templates[page] || []
   const selectedIndex = current.findIndex(section => section.id === selectedId)
   const selected = current[selectedIndex] || null
-  
-  useEffect(() => { if (!current.some(section => section.id === selectedId)) { setSelectedId(current[0]?.id || ''); setDrawer(false) } }, [current, selectedId])
-  useEffect(() => { if (!selectedId || typeof document === 'undefined') return; const visibleIndex = current.filter(section => section.enabled !== false && section.settings?.enabled !== false && section.type !== 'header' && section.type !== 'announcement' && section.type !== 'footer').findIndex(section => section.id === selectedId); if (visibleIndex < 0) return; const nodes = document.querySelectorAll<HTMLElement>('.themeEditorPreview .focalSection'); nodes[visibleIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }, [selectedId, page])
-  useEffect(() => { Promise.all([fetch('/api/products', { cache:'no-store' }).then(r => r.ok ? r.json() : []).catch(() => []), fetch('/api/admin/collections', { cache:'no-store' }).then(r => r.ok ? r.json() : []).catch(() => [])]).then(([productData, collectionData]) => { setProducts(rows(productData)); setCollections(rows(collectionData)) }) }, [])
 
-  const commit = (nextTemplates: Record<string, Section[]>, nextTheme = theme) => { setHistory(history => [...history, { theme:clone(theme), templates:clone(templates), page, selectedId }].slice(-50)); setFuture([]); setTemplates(nextTemplates); setTheme(nextTheme); setDirty(true) }
-  const patch = (patches: AnyMap) => { if (!selected) return; commit({ ...templates, [page]: current.map(section => section.id === selected.id ? { ...section, settings: { ...(section.settings || {}), ...patches } } : section) }) }
-  const patchBlocks = (blocks:any[]) => { if (!selected) return; commit({ ...templates, [page]: current.map(section => section.id === selected.id ? { ...section, blocks: clone(blocks) } : section) }) }
-  const toggle = (value:boolean) => { if (!selected) return; commit({ ...templates, [page]: current.map(section => section.id === selected.id ? { ...section, enabled:value } : section) }) }
-  const addSection = (type:string) => { const next = sectionDefaults(type); const list = [...current]; list.splice(selectedIndex < 0 ? list.length : selectedIndex + 1, 0, next); commit({ ...templates, [page]: list }); setSelectedId(next.id); setDrawer(true); setPicker(false) }
-  const removeSection = () => { if (!selected) return; const list = current.filter(section => section.id !== selected.id); const nextId = list[Math.max(0, selectedIndex - 1)]?.id || list[0]?.id || ''; commit({ ...templates, [page]: list }); setSelectedId(nextId); setDrawer(false) }
-  const duplicateSection = () => { if (!selected) return; const copy = clone(selected); copy.id = makeId(selected.type); const list = [...current]; list.splice(selectedIndex + 1, 0, copy); commit({ ...templates, [page]: list }); setSelectedId(copy.id) }
-  const moveSection = (delta:number) => { if (selectedIndex < 0) return; const nextIndex = selectedIndex + delta; if (nextIndex < 0 || nextIndex >= current.length) return; const list = [...current]; [list[selectedIndex], list[nextIndex]] = [list[nextIndex], list[selectedIndex]]; commit({ ...templates, [page]: list }) }
-  const dropSection = (targetId:string) => { if (!dragId || dragId === targetId) return; const from = current.findIndex(section => section.id === dragId); const to = current.findIndex(section => section.id === targetId); if (from < 0 || to < 0) return; const list = [...current]; const item = list.splice(from, 1)[0]; list.splice(to, 0, item); commit({ ...templates, [page]: list }); setDragId(null) }
-  const undo = () => { const snapshot = history.at(-1); if (!snapshot) return; setFuture(f => [...f, { theme:clone(theme), templates:clone(templates), page, selectedId }]); setHistory(h => h.slice(0, -1)); setTheme(snapshot.theme); setTemplates(snapshot.templates); setPage(snapshot.page); setSelectedId(snapshot.selectedId); setDirty(true) }
-  const redo = () => { const snapshot = future.at(-1); if (!snapshot) return; setHistory(h => [...h, { theme:clone(theme), templates:clone(templates), page, selectedId }]); setFuture(f => f.slice(0, -1)); setTheme(snapshot.theme); setTemplates(snapshot.templates); setPage(snapshot.page); setSelectedId(snapshot.selectedId); setDirty(true) }
-  const changePage = (nextPage:string) => { if (nextPage === page) return; if (dirty && typeof window !== 'undefined' && !window.confirm('You have unsaved changes. Switch templates anyway?')) return; setPage(nextPage); setSelectedId(''); setDrawer(false) }
-  const save = async () => { setSaving(true); setMessage(''); try { const editorTemplates = { ...(theme.editorTemplates || {}), ...clone(templates) }; const nextTheme = { ...theme, editorTemplates, editorTemplateKey:page }; const response = await fetch('/api/admin/theme', { method:'PATCH', headers:{'content-type':'application/json'}, body:JSON.stringify({ theme:nextTheme, sections:templates['Home page'] || [], editorTemplates, templateKey:page, navigation:initial.navigation }) }); const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(data.error || 'Unable to save theme'); setTheme(data.theme || nextTheme); setDirty(false); setMessage('Theme saved') } catch (error) { setMessage(error instanceof Error ? error.message : 'Unable to save theme') } finally { setSaving(false) } }
+  useEffect(() => {
+    if (!current.some(section => section.id === selectedId)) {
+      setSelectedId(current[0]?.id || '')
+      setDrawer(false)
+    }
+  }, [current, selectedId])
+
+  useEffect(() => {
+    if (!selectedId || typeof document === 'undefined') return
+    const visibleIndex = current
+      .filter(section => section.enabled !== false && section.settings?.enabled !== false && section.type !== 'header' && section.type !== 'announcement' && section.type !== 'footer')
+      .findIndex(section => section.id === selectedId)
+    if (visibleIndex < 0) return
+    const nodes = document.querySelectorAll<HTMLElement>('.themeEditorPreview .focalSection')
+    nodes[visibleIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [selectedId, page])
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/products', { cache: 'no-store' }).then(r => (r.ok ? r.json() : [])).catch(() => []),
+      fetch('/api/admin/collections', { cache: 'no-store' }).then(r => (r.ok ? r.json() : [])).catch(() => []),
+    ]).then(([productData, collectionData]) => {
+      setProducts(rows(productData))
+      setCollections(rows(collectionData))
+    })
+  }, [])
+
+  const commit = (nextTemplates: Record<string, Section[]>, nextTheme = theme) => {
+    setHistory(history => [...history, { theme: clone(theme), templates: clone(templates), page, selectedId }].slice(-50))
+    setFuture([])
+    setTemplates(nextTemplates)
+    setTheme(nextTheme)
+    setDirty(true)
+  }
+  const patch = (patches: AnyMap) => {
+    if (!selected) return
+    commit({ ...templates, [page]: current.map(section => (section.id === selected.id ? { ...section, settings: { ...(section.settings || {}), ...patches } } : section)) })
+  }
+  const patchBlocks = (blocks: any[]) => {
+    if (!selected) return
+    commit({ ...templates, [page]: current.map(section => (section.id === selected.id ? { ...section, blocks: clone(blocks) } : section)) })
+  }
+  const toggle = (value: boolean) => {
+    if (!selected) return
+    commit({ ...templates, [page]: current.map(section => (section.id === selected.id ? { ...section, enabled: value } : section)) })
+  }
+  const addSection = (type: string) => {
+    const next = sectionDefaults(type)
+    const list = [...current]
+    list.splice(selectedIndex < 0 ? list.length : selectedIndex + 1, 0, next)
+    commit({ ...templates, [page]: list })
+    setSelectedId(next.id)
+    setDrawer(true)
+    setPicker(false)
+  }
+  const removeSection = () => {
+    if (!selected) return
+    const list = current.filter(section => section.id !== selected.id)
+    const nextId = list[Math.max(0, selectedIndex - 1)]?.id || list[0]?.id || ''
+    commit({ ...templates, [page]: list })
+    setSelectedId(nextId)
+    setDrawer(false)
+  }
+  const duplicateSection = () => {
+    if (!selected) return
+    const copy = clone(selected)
+    copy.id = makeId(selected.type)
+    const list = [...current]
+    list.splice(selectedIndex + 1, 0, copy)
+    commit({ ...templates, [page]: list })
+    setSelectedId(copy.id)
+  }
+  const moveSection = (delta: number) => {
+    if (selectedIndex < 0) return
+    const nextIndex = selectedIndex + delta
+    if (nextIndex < 0 || nextIndex >= current.length) return
+    const list = [...current]
+    ;[list[selectedIndex], list[nextIndex]] = [list[nextIndex], list[selectedIndex]]
+    commit({ ...templates, [page]: list })
+  }
+  const dropSection = (targetId: string) => {
+    if (!dragId || dragId === targetId) return
+    const from = current.findIndex(section => section.id === dragId)
+    const to = current.findIndex(section => section.id === targetId)
+    if (from < 0 || to < 0) return
+    const list = [...current]
+    const item = list.splice(from, 1)[0]
+    list.splice(to, 0, item)
+    commit({ ...templates, [page]: list })
+    setDragId(null)
+  }
+  const undo = () => {
+    const snapshot = history.at(-1)
+    if (!snapshot) return
+    setFuture(f => [...f, { theme: clone(theme), templates: clone(templates), page, selectedId }])
+    setHistory(h => h.slice(0, -1))
+    setTheme(snapshot.theme)
+    setTemplates(snapshot.templates)
+    setPage(snapshot.page)
+    setSelectedId(snapshot.selectedId)
+    setDirty(true)
+  }
+  const redo = () => {
+    const snapshot = future.at(-1)
+    if (!snapshot) return
+    setHistory(h => [...h, { theme: clone(theme), templates: clone(templates), page, selectedId }])
+    setFuture(f => f.slice(0, -1))
+    setTheme(snapshot.theme)
+    setTemplates(snapshot.templates)
+    setPage(snapshot.page)
+    setSelectedId(snapshot.selectedId)
+    setDirty(true)
+  }
+  const changePage = (nextPage: string) => {
+    if (nextPage === page) return
+    if (dirty && typeof window !== 'undefined' && !window.confirm('You have unsaved changes. Switch templates anyway?')) return
+    setPage(nextPage)
+    setSelectedId('')
+    setDrawer(false)
+  }
+  const save = async () => {
+    setSaving(true)
+    setMessage('')
+    try {
+      const editorTemplates = { ...(theme.editorTemplates || {}), ...clone(templates) }
+      const nextTheme = { ...theme, editorTemplates, editorTemplateKey: page }
+      const response = await fetch('/api/admin/theme', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ theme: nextTheme, sections: templates['Home page'] || [], editorTemplates, templateKey: page, navigation: initial.navigation }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || 'Unable to save theme')
+      setTheme(data.theme || nextTheme)
+      setDirty(false)
+      setMessage('Theme saved')
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Unable to save theme')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const maxWidth = device === 'mobile' ? 390 : device === 'tablet' ? 820 : 1320
-  return <div className="focal-editor"><style>{styles}</style><ThemeInspectorStyles />
-    <header className="focal-top"><div className="focal-top-left"><a className="focal-icon" href="/admin/online-store"><ArrowLeft size={16}/></a><div><div className="focal-title">Theme editor</div><div className="focal-sub">FOCAL</div></div><select className="focal-select" value={page} onChange={event => changePage(event.target.value)}>{PAGES.map(item => <option value={item} key={item}>{item}</option>)}</select></div><div className="focal-top-right"><button className="focal-icon" onClick={undo} disabled={!history.length}><Undo2 size={15}/></button><button className="focal-icon" onClick={redo} disabled={!future.length}><Redo2 size={15}/></button>{(['desktop','tablet','mobile'] as const).map(item => <button className="focal-icon" key={item} onClick={() => setDevice(item)}>{item === 'desktop' ? <Monitor size={14}/> : item === 'tablet' ? <Tablet size={14}/> : <Smartphone size={14}/>}</button>)}<button className="focal-btn primary" disabled={!dirty || saving} onClick={save}><Save size={14}/>{saving ? 'Saving…' : dirty ? 'Save •' : 'Save'}</button></div></header>
-    <div className="focal-body">
-      <aside className="focal-side"><div className="focal-tabs"><button className={sideTab === 'sections' ? 'active' : ''} onClick={() => setSideTab('sections')}><GripVertical size={13}/>Sections</button><button className={sideTab === 'theme' ? 'active' : ''} onClick={() => setSideTab('theme')}><Palette size={13}/>Theme</button></div>
-        {sideTab === 'sections' ? <><div style={{padding:'12px 14px',display:'flex',justifyContent:'space-between',alignItems:'center'}}><div><strong>{page}</strong><div style={{fontSize:9,color:'#8a9096',marginTop:3}}>{current.filter(section => section.enabled !== false).length} visible sections</div></div><button className="focal-icon" onClick={() => setPicker(true)}><Plus size={15}/></button></div><div className="focal-rows">{current.map((section,index) => <div key={section.id} draggable onDragStart={() => setDragId(section.id)} onDragOver={event => event.preventDefault()} onDrop={() => dropSection(section.id)} className={`focal-row ${selectedId === section.id ? 'active' : ''}`}><button className="focal-row-main" onClick={() => {setSelectedId(section.id);setDrawer(true);setDrawerTab('content')}}><GripVertical size={13}/><span>{META[section.type] || section.type.replaceAll('_',' ')}</span>{index === 0 && <small>MAIN</small>}</button><button className="focal-row-toggle" onClick={() => {setSelectedId(section.id);setDrawer(true);toggle(section.enabled === false)}}>{section.enabled === false ? <X size={14}/> : <Check size={14}/>}</button></div>)}</div><button className="focal-add" onClick={() => setPicker(true)}><Plus size={14}/>Add section</button></> : <div style={{padding:12}}><Panel title="Brand"><Field label="Brand name" value={theme.brandName || ''} onChange={value => commit(templates,{...theme,brandName:value})}/><Field label="Logo URL" value={theme.logoUrl || ''} onChange={value => commit(templates,{...theme,logoUrl:value})}/></Panel><Panel title="Palette"><Field label="Primary" value={theme.colors?.primary || '#ff5a1f'} onChange={value => commit(templates,{...theme,colors:{...(theme.colors||{}),primary:value}})}/><Field label="Background" value={theme.colors?.background || '#ffffff'} onChange={value => commit(templates,{...theme,colors:{...(theme.colors||{}),background:value}})}/><Field label="Text" value={theme.colors?.text || '#202223'} onChange={value => commit(templates,{...theme,colors:{...(theme.colors||{}),text:value}})}/></Panel></div>}
-      </aside>
-      <main className="focal-canvas"><div className="focal-canvas-bar"><strong>{page}</strong><span style={{fontSize:10,color:'#6e7479'}}>{dirty ? 'Live preview · unsaved changes' : 'Live preview'}</span></div><div className="focal-preview"><div className={`focal-frame ${device}`} style={{maxWidth}}><CartProvider><StoreNavFixed theme={{...theme,editorTemplates:{...(theme.editorTemplates || {}),Pages:current}}} navigation={initial.navigation}/><StorefrontSections theme={theme} sections={current} products={products} collections={collections} preview selectedId={selectedId} onSelect={sectionId => {setSelectedId(sectionId);setDrawer(true)}}/></CartProvider></div></div></main>
-      {drawer && selected && <aside className="focal-drawer"><div className="focal-drawer-head"><div><div style={{fontSize:9,letterSpacing:'.12em',textTransform:'uppercase',color:'#8a9096',fontWeight:800}}>Section</div><strong>{META[selected.type] || selected.type}</strong></div><div style={{display:'flex',gap:4}}><button className="focal-icon" onClick={() => moveSection(-1)} disabled={selectedIndex <= 0}><ArrowUp size={13}/></button><button className="focal-icon" onClick={() => moveSection(1)} disabled={selectedIndex < 0 || selectedIndex >= current.length - 1}><ArrowDown size={13}/></button><button className="focal-icon" onClick={duplicateSection}><Copy size={13}/></button><button className="focal-icon" onClick={removeSection}><Trash2 size={13}/></button><button className="focal-icon" onClick={() => setDrawer(false)}><X size={15}/></button></div></div><div className="focal-drawer-tabs">{(['content','design','advanced'] as const).map(item => <button key={item} className={drawerTab === item ? 'active' : ''} onClick={() => setDrawerTab(item)}>{item}</button>)}</div>{drawerTab === 'content' ? <ShopifyThemeInspector section={selected} products={products} collections={collections} onUpdate={patch} onUpdateBlocks={patchBlocks}/> : drawerTab === 'design' ? <Panel title="Design"><Field label="Section spacing" value={selected.settings?.spacing ?? 72} type="number" onChange={value => patch({spacing:value})}/><Field label="Content width" value={selected.settings?.contentWidth ?? 1180} type="number" onChange={value => patch({contentWidth:value})}/></Panel> : <Panel title="Advanced"><label className="focal-field"><span>Show section</span><input type="checkbox" checked={selected.enabled !== false} onChange={event => toggle(event.target.checked)}/></label><label className="focal-field"><span>Animation</span><select className="focal-select2" value={selected.settings?.animation || 'fade-up'} onChange={event => patch({animation:event.target.value})}><option value="none">None</option><option value="fade-up">Fade up</option><option value="fade">Fade</option><option value="zoom">Zoom</option></select></label></Panel>}</aside>}
+  const frameClass = device === 'mobile' ? styles.frameMobile : device === 'tablet' ? styles.frameTablet : styles.frameDesktop
+
+  return (
+    <div className={styles.editor}>
+      <ThemeInspectorStyles />
+
+      <header className={styles.top}>
+        <div className={styles.topLeft}>
+          <a className={styles.iconBtn} href="/admin/online-store">
+            <ArrowLeft size={16} />
+          </a>
+          <div>
+            <div className={styles.title}>Theme editor</div>
+            <div className={styles.sub}>FOCAL</div>
+          </div>
+          <select className={styles.select} value={page} onChange={event => changePage(event.target.value)}>
+            {PAGES.map(item => (
+              <option value={item} key={item}>{item}</option>
+            ))}
+          </select>
+        </div>
+        <div className={styles.topRight}>
+          <button className={styles.iconBtn} onClick={undo} disabled={!history.length}><Undo2 size={15} /></button>
+          <button className={styles.iconBtn} onClick={redo} disabled={!future.length}><Redo2 size={15} /></button>
+          {(['desktop', 'tablet', 'mobile'] as const).map(item => (
+            <button className={styles.iconBtn} key={item} onClick={() => setDevice(item)}>
+              {item === 'desktop' ? <Monitor size={14} /> : item === 'tablet' ? <Tablet size={14} /> : <Smartphone size={14} />}
+            </button>
+          ))}
+          <button className={`${styles.btn} ${styles.btnPrimary}`} disabled={!dirty || saving} onClick={save}>
+            <Save size={14} />
+            {saving ? 'Saving…' : dirty ? 'Save •' : 'Save'}
+          </button>
+        </div>
+      </header>
+
+      <div className={styles.body}>
+        <aside className={styles.side}>
+          <div className={styles.tabs}>
+            <button className={sideTab === 'sections' ? styles.active : ''} onClick={() => setSideTab('sections')}><GripVertical size={13} />Sections</button>
+            <button className={sideTab === 'theme' ? styles.active : ''} onClick={() => setSideTab('theme')}><Palette size={13} />Theme</button>
+          </div>
+
+          {sideTab === 'sections' ? (
+            <>
+              <div className={styles.sideSectionsHead}>
+                <div>
+                  <strong>{page}</strong>
+                  <div className={styles.sideSectionsCount}>{current.filter(section => section.enabled !== false).length} visible sections</div>
+                </div>
+                <button className={styles.iconBtn} onClick={() => setPicker(true)}><Plus size={15} /></button>
+              </div>
+              <div className={styles.rows}>
+                {current.map((section, index) => (
+                  <div
+                    key={section.id}
+                    draggable
+                    onDragStart={() => setDragId(section.id)}
+                    onDragOver={event => event.preventDefault()}
+                    onDrop={() => dropSection(section.id)}
+                    className={`${styles.row} ${selectedId === section.id ? styles.active : ''}`}
+                  >
+                    <button className={styles.rowMain} onClick={() => { setSelectedId(section.id); setDrawer(true); setDrawerTab('content') }}>
+                      <GripVertical size={13} />
+                      <span>{META[section.type] || section.type.replaceAll('_', ' ')}</span>
+                      {index === 0 && <small>MAIN</small>}
+                    </button>
+                    <button className={styles.rowToggle} onClick={() => { setSelectedId(section.id); setDrawer(true); toggle(section.enabled === false) }}>
+                      {section.enabled === false ? <X size={14} /> : <Check size={14} />}
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button className={styles.add} onClick={() => setPicker(true)}><Plus size={14} />Add section</button>
+            </>
+          ) : (
+            <div className={styles.sideThemeTab}>
+              <Panel title="Brand">
+                <Field label="Brand name" value={theme.brandName || ''} onChange={value => commit(templates, { ...theme, brandName: value })} />
+                <Field label="Logo URL" value={theme.logoUrl || ''} onChange={value => commit(templates, { ...theme, logoUrl: value })} />
+              </Panel>
+              <Panel title="Palette">
+                <Field label="Primary" value={theme.colors?.primary || '#ff5a1f'} onChange={value => commit(templates, { ...theme, colors: { ...(theme.colors || {}), primary: value } })} />
+                <Field label="Background" value={theme.colors?.background || '#ffffff'} onChange={value => commit(templates, { ...theme, colors: { ...(theme.colors || {}), background: value } })} />
+                <Field label="Text" value={theme.colors?.text || '#202223'} onChange={value => commit(templates, { ...theme, colors: { ...(theme.colors || {}), text: value } })} />
+              </Panel>
+            </div>
+          )}
+        </aside>
+
+        <main className={styles.canvas}>
+          <div className={styles.canvasBar}>
+            <strong>{page}</strong>
+            <span className={styles.canvasBarStatus}>{dirty ? 'Live preview · unsaved changes' : 'Live preview'}</span>
+          </div>
+          <div className={styles.preview}>
+            <div className={`${styles.frame} ${frameClass}`} style={{ maxWidth }}>
+              <CartProvider>
+                <StoreNavFixed theme={{ ...theme, editorTemplates: { ...(theme.editorTemplates || {}), Pages: current } }} navigation={initial.navigation} />
+                <StorefrontSections
+                  theme={theme}
+                  sections={current}
+                  products={products}
+                  collections={collections}
+                  preview
+                  selectedId={selectedId}
+                  onSelect={sectionId => { setSelectedId(sectionId); setDrawer(true) }}
+                />
+              </CartProvider>
+            </div>
+          </div>
+        </main>
+
+        {drawer && selected && (
+          <aside className={styles.drawer}>
+            <div className={styles.drawerHead}>
+              <div>
+                <div className={styles.drawerHeadLabel}>Section</div>
+                <strong>{META[selected.type] || selected.type}</strong>
+              </div>
+              <div className={styles.drawerHeadActions}>
+                <button className={styles.iconBtn} onClick={() => moveSection(-1)} disabled={selectedIndex <= 0}><ArrowUp size={13} /></button>
+                <button className={styles.iconBtn} onClick={() => moveSection(1)} disabled={selectedIndex < 0 || selectedIndex >= current.length - 1}><ArrowDown size={13} /></button>
+                <button className={styles.iconBtn} onClick={duplicateSection}><Copy size={13} /></button>
+                <button className={styles.iconBtn} onClick={removeSection}><Trash2 size={13} /></button>
+                <button className={styles.iconBtn} onClick={() => setDrawer(false)}><X size={15} /></button>
+              </div>
+            </div>
+            <div className={styles.drawerTabs}>
+              {(['content', 'design', 'advanced'] as const).map(item => (
+                <button key={item} className={drawerTab === item ? styles.active : ''} onClick={() => setDrawerTab(item)}>{item}</button>
+              ))}
+            </div>
+            {drawerTab === 'content' ? (
+              <ShopifyThemeInspector section={selected} products={products} collections={collections} onUpdate={patch} onUpdateBlocks={patchBlocks} />
+            ) : drawerTab === 'design' ? (
+              <Panel title="Design">
+                <Field label="Section spacing" value={selected.settings?.spacing ?? 72} type="number" onChange={value => patch({ spacing: value })} />
+                <Field label="Content width" value={selected.settings?.contentWidth ?? 1180} type="number" onChange={value => patch({ contentWidth: value })} />
+              </Panel>
+            ) : (
+              <Panel title="Advanced">
+                <label className={styles.field}>
+                  <span>Show section</span>
+                  <input type="checkbox" checked={selected.enabled !== false} onChange={event => toggle(event.target.checked)} />
+                </label>
+                <label className={styles.field}>
+                  <span>Animation</span>
+                  <select className={styles.fieldSelect} value={selected.settings?.animation || 'fade-up'} onChange={event => patch({ animation: event.target.value })}>
+                    <option value="none">None</option>
+                    <option value="fade-up">Fade up</option>
+                    <option value="fade">Fade</option>
+                    <option value="zoom">Zoom</option>
+                  </select>
+                </label>
+              </Panel>
+            )}
+          </aside>
+        )}
+      </div>
+
+      {picker && (
+        <div className={styles.pickerOverlay} onMouseDown={() => setPicker(false)}>
+          <div className={styles.pickerDialog} onMouseDown={event => event.stopPropagation()}>
+            <strong className={styles.pickerTitle}>Add section</strong>
+            <div className={styles.pickerList}>
+              {Object.entries(META)
+                .filter(([key]) => !['announcement', 'header'].includes(key))
+                .map(([key, label]) => (
+                  <button key={key} className={`${styles.btn} ${styles.pickerItem}`} onClick={() => addSection(key)}>
+                    <span>{label}</span>
+                    <Plus size={14} />
+                  </button>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {message && <div className={styles.notice}>{message}</div>}
     </div>
-    {picker && <div style={{position:'absolute',inset:0,zIndex:70,background:'rgba(0,0,0,.3)',display:'grid',placeItems:'center'}} onMouseDown={() => setPicker(false)}><div style={{width:'min(560px,92vw)',maxHeight:'80vh',overflow:'auto',background:'#fff',borderRadius:12,padding:16}} onMouseDown={event => event.stopPropagation()}><strong style={{fontSize:14}}>Add section</strong><div style={{marginTop:12,display:'grid',gap:7}}>{Object.entries(META).filter(([key]) => !['announcement','header'].includes(key)).map(([key,label]) => <button key={key} className="focal-btn" style={{justifyContent:'space-between'}} onClick={() => addSection(key)}><span>{label}</span><Plus size={14}/></button>)}</div></div></div>}
-    {message && <div className="focal-notice">{message}</div>}
-  </div>
+  )
 }

@@ -1,0 +1,189 @@
+/*
+ * Navigation editor - CSS Modules, same approach as
+ * ../components/admin-products-list.module.css: every class below gets a
+ * build-time-unique name, so it can't collide with (or be out-ranked by)
+ * another page's rules. Colors/radius/shadow all come from the --admin-*
+ * tokens in ../app/admin/admin-overhaul.css via var(), so dark mode is free -
+ * no hand-maintained dark override needed for this page.
+ *
+ * A few of this component's classes (.navToolbar, .navEmpty) used to be
+ * picked up by shared comma-grouped rules in admin-overhaul.css that added
+ * border/background/radius/shadow on top of this file's old bare styles.
+ * Those values are folded directly into .toolbar / .emptyState below, so
+ * nothing here depends on that global sheet any more (see this task's report
+ * for the now-dead selectors left behind in admin-overhaul.css).
+ */
+
+.page { max-width: 1180px; margin: 0 auto; padding: 4px 0 40px; }
+
+.header { display: flex; justify-content: space-between; gap: 20px; align-items: flex-end; margin-bottom: 20px; }
+.eyebrow { font-size: 11px; letter-spacing: .08em; font-weight: 800; color: var(--admin-muted); }
+.header h1 { margin: 4px 0; font-size: 30px; letter-spacing: -.035em; color: var(--admin-ink); }
+.header p { margin: 0; max-width: 680px; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; }
+
+.panel {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  overflow: hidden;
+}
+.previewPanel { padding: 0; min-height: 360px; }
+
+.panelHead { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 18px; border-bottom: 1px solid var(--admin-border-soft); }
+.panelHead strong { font-size: 15px; color: var(--admin-ink); }
+.panelHead span { display: block; font-size: 12px; color: var(--admin-muted); margin-top: 3px; }
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--admin-border-soft);
+  background: var(--admin-border-soft);
+  border-radius: var(--admin-radius-lg);
+  box-shadow: var(--admin-shadow-sm);
+}
+.toolbarHint { font-size: 12px; color: var(--admin-muted); }
+
+.tree { padding: 12px; }
+.treeItem { margin-bottom: 8px; }
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: 11px;
+  background: var(--admin-surface);
+  transition: .14s;
+}
+.row:hover { border-color: var(--admin-muted-soft); box-shadow: var(--admin-shadow-sm); }
+.dragOver { border-color: var(--admin-accent); background: var(--admin-accent-soft); }
+
+.grip { color: var(--admin-muted); cursor: grab; flex: 0 0 auto; }
+
+.itemMain { min-width: 0; flex: 1; cursor: pointer; }
+.itemMain strong { display: block; font-size: 14px; color: var(--admin-ink); }
+.itemMain small { display: block; color: var(--admin-muted); font-size: 12px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.actions { display: flex; gap: 6px; align-items: center; }
+.action {
+  height: 34px;
+  min-width: 34px;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--admin-ink-soft);
+}
+.action:hover { background: var(--admin-border-soft); }
+.actionPrimary { padding: 0 10px; gap: 6px; font-size: 11px; font-weight: 800; }
+.actionDanger { color: var(--admin-danger); }
+
+.childList { margin: 6px 0 0 34px; padding-left: 14px; border-left: 2px solid var(--admin-border); }
+.childRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid var(--admin-border-soft);
+  border-radius: 10px;
+  background: var(--admin-border-soft);
+  margin-bottom: 6px;
+}
+.childLabel { flex: 1; min-width: 0; }
+.childLabel strong { font-size: 13px; color: var(--admin-ink); }
+.childLabel small { display: block; color: var(--admin-muted); font-size: 11px; margin-top: 2px; }
+
+.addSubBtn { margin: 2px 0 8px 12px; border: 0; background: transparent; color: var(--admin-accent); font-size: 11px; font-weight: 800; cursor: pointer; }
+
+.emptyState {
+  padding: 48px 20px;
+  text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-surface);
+  color: var(--admin-muted);
+}
+
+.browser { margin: 18px; border: 1px solid var(--admin-border); border-radius: 10px; overflow: hidden; background: var(--admin-surface); }
+.browserTop { height: 26px; background: var(--admin-border-soft); border-bottom: 1px solid var(--admin-border-soft); display: flex; align-items: center; gap: 5px; padding: 0 10px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--admin-muted-soft); }
+.storeHeader { padding: 16px; border-bottom: 1px solid var(--admin-border-soft); display: flex; align-items: center; gap: 20px; }
+.brand { font-weight: 900; font-size: 13px; color: var(--admin-ink); }
+.previewLinks { display: flex; align-items: center; gap: 14px; flex: 1; justify-content: center; }
+.previewLinks span { font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 3px; color: var(--admin-ink-soft); }
+.previewCartHint { font-size: 11px; }
+
+/*
+ * This decorative mock hero is a fixed always-dark preview of a storefront
+ * banner - it represents the *storefront's* look, not the admin's, so it
+ * intentionally does not follow the admin light/dark tokens.
+ */
+.mockHero { margin: 16px; border-radius: 10px; padding: 28px; background: linear-gradient(135deg, #171717, #444); color: #fff; display: grid; gap: 8px; }
+.mockHero small { opacity: .7; }
+.mockHero strong { font-size: 24px; }
+.mockHero span { opacity: .75; font-size: 11px; }
+
+.overlay { position: fixed; inset: 0; background: rgba(17, 24, 39, .28); z-index: 1000; display: flex; justify-content: flex-end; }
+.drawer {
+  height: 100%;
+  width: min(460px, 100%);
+  background: var(--admin-surface);
+  box-shadow: var(--admin-shadow-lg);
+  display: flex;
+  flex-direction: column;
+}
+.drawerHead { padding: 18px; border-bottom: 1px solid var(--admin-border-soft); display: flex; justify-content: space-between; gap: 10px; }
+.drawerTitle { margin: 4px 0 0; }
+.drawerBody { padding: 18px; display: grid; gap: 16px; overflow: auto; }
+
+.field { display: grid; gap: 7px; }
+.field label { font-size: 12px; font-weight: 800; color: var(--admin-ink); }
+.field input,
+.field select {
+  width: 100%;
+  height: 42px;
+  border: 1px solid var(--admin-border);
+  border-radius: 9px;
+  padding: 0 12px;
+  background: var(--admin-surface);
+  color: var(--admin-ink);
+}
+
+.destination { padding: 13px; border: 1px solid var(--admin-border); border-radius: 10px; background: var(--admin-border-soft); }
+.destination strong { font-size: 12px; color: var(--admin-ink); }
+.destinationNote { font-size: 11px; margin-top: 4px; }
+
+.hint { padding: 12px; border-radius: 9px; background: var(--admin-border-soft); color: var(--admin-ink-soft); font-size: 11px; line-height: 1.5; }
+
+.drawerFoot { margin-top: auto; padding: 14px 18px; border-top: 1px solid var(--admin-border-soft); display: flex; justify-content: space-between; gap: 10px; }
+.removeBtn { background: var(--admin-danger-soft) !important; border-color: var(--admin-danger-border) !important; color: var(--admin-danger) !important; }
+
+.parentBadge { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: var(--admin-radius-pill); background: var(--admin-accent-soft); color: var(--admin-accent-strong); font-size: 10px; font-weight: 800; }
+.saveDot { font-size: 11px; color: var(--admin-muted); }
+.alertSpacing { margin-bottom: 14px; }
+
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr; }
+  .previewPanel { display: none; }
+}
+
+@media (max-width: 640px) {
+  .header { align-items: stretch; flex-direction: column; }
+  .header :global(.inline) { display: grid; grid-template-columns: 1fr 1fr; }
+  .toolbar { align-items: flex-start; flex-direction: column; }
+  .childList { margin-left: 18px; }
+  .row { padding: 10px; }
+  .itemMain small { max-width: 160px; }
+}
