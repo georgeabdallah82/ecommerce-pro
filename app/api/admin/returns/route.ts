@@ -19,6 +19,31 @@ const RETURN_CONFLICT_MESSAGE = 'This order was just modified — please retry.'
 type ReturnOrderItem = { id: string; name: string; productId: string; variantId: string | null; quantity: number }
 type ReturnOrderPaymentTransaction = { id: string; status: string; amount: number; provider: string; externalId: string | null; createdAt: Date }
 
+// ReturnRequest only carries a scalar orderId (no navigable `order` relation on this
+// model), so the order summary each row needs for display is looked up separately here
+// and stitched back onto each return by id rather than requested via `include`.
+export async function GET(req: Request) {
+  try {
+    await requirePermission('returns.view')
+    const params = new URL(req.url).searchParams
+    const status = params.get('status') || undefined
+    const rows = await db.returnRequest.findMany({
+      where: status ? { status: status as any } : undefined,
+      include: { items: true },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    })
+    const orderIds = Array.from(new Set(rows.map(r => r.orderId)))
+    const orders = orderIds.length
+      ? await db.order.findMany({ where: { id: { in: orderIds } }, select: { id: true, orderNumber: true, email: true, grandTotal: true, currency: true, status: true, items: { select: { id: true, name: true } } } })
+      : []
+    const orderById = new Map(orders.map(o => [o.id, o]))
+    return json(rows.map(r => ({ ...r, order: orderById.get(r.orderId) || null })))
+  } catch (e) {
+    return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 })
+  }
+}
+
 function returnFailure(error: unknown) {
   if (error instanceof Error) {
     if (RETURN_MESSAGES.has(error.message)) return { message: error.message, status: error.message === 'Order not found' ? 404 : 400 }

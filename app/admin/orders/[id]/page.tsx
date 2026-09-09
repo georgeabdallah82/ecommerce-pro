@@ -1,10 +1,11 @@
 import { requirePermission } from '@/lib/auth'
+import { hasPermission } from '@/lib/permissions'
 import { db } from '@/lib/prisma'
 import OrderDetailAdmin from '@/components/order-detail-admin'
 import DeliveryTrackingAdmin from '@/components/delivery-tracking-admin'
 
 export default async function OrderDetail({params}:{params:Promise<{id:string}>}){
-  await requirePermission('orders.view')
+  const user = await requirePermission('orders.view')
   const {id}=await params
   const order=await db.order.findUnique({
     where:{id},
@@ -17,5 +18,6 @@ export default async function OrderDetail({params}:{params:Promise<{id:string}>}
     }
   })
   if(!order)return <div className="empty">Order not found.</div>
-  return <><OrderDetailAdmin initial={JSON.parse(JSON.stringify(order))}/><div className="container" style={{maxWidth:1100,margin:'0 auto',padding:'0 20px 32px'}}><DeliveryTrackingAdmin orderId={order.id} orderStatus={order.status}/></div></>
+  const canStartOrderEdit = hasPermission(user.role, 'orderEdits.manage') && !['CANCELLED','REFUNDED'].includes(order.status)
+  return <><OrderDetailAdmin initial={JSON.parse(JSON.stringify(order))} canStartOrderEdit={canStartOrderEdit}/><div className="container" style={{maxWidth:1100,margin:'0 auto',padding:'0 20px 32px'}}><DeliveryTrackingAdmin orderId={order.id} orderStatus={order.status}/></div></>
 }

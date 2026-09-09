@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, PackageCheck, Mail, Phone, MapPin, Save, Plus, Copy, Check, Pencil, X } from 'lucide-react'
+import { ArrowLeft, PackageCheck, Mail, Phone, MapPin, Save, Plus, Copy, Check, Pencil, X, FileEdit } from 'lucide-react'
 import { money } from '@/lib/config'
 
 async function api(path: string, init?: RequestInit) {
@@ -22,7 +22,7 @@ function addressText(raw: string | null | undefined) {
   return [`${a.firstName} ${a.lastName}`.trim(),a.line1,a.line2,[a.city,a.region,a.postalCode].filter(Boolean).join(', '),a.country,a.phone].filter(Boolean).join('\n') || '—'
 }
 
-export default function OrderDetailAdmin({ initial }: { initial: any }) {
+export default function OrderDetailAdmin({ initial, canStartOrderEdit }: { initial: any; canStartOrderEdit?: boolean }) {
   const [o, setO] = useState(initial)
   const [status, setStatus] = useState(o.status)
   const [paymentStatus, setPaymentStatus] = useState(o.paymentStatus)
@@ -63,7 +63,7 @@ export default function OrderDetailAdmin({ initial }: { initial: any }) {
         <div className="inline" style={{gap:8}}><h1 className="h2">#{o.orderNumber}</h1><button className="btn ghost smallBtn" onClick={copyOrderNumber}>{copied?<Check size={14}/>:<Copy size={14}/>}</button></div>
         <p className="muted">Placed {new Date(o.createdAt).toLocaleString()}</p>
       </div>
-      <div className="inline"><Link className="btn secondary" href={`/admin/orders/${o.id}/invoice`}>Invoice / Print</Link><span className="pill">{o.paymentStatus}</span><span className="pill">{o.fulfillmentStatus}</span><button className="btn" onClick={beginEdit}><Pencil size={15}/> Edit order</button></div>
+      <div className="inline"><Link className="btn secondary" href={`/admin/orders/${o.id}/invoice`}>Invoice / Print</Link>{canStartOrderEdit&&<Link className="btn secondary" href={`/admin/order-edits/new?orderId=${o.id}`}><FileEdit size={15}/> Start order edit</Link>}<span className="pill">{o.paymentStatus}</span><span className="pill">{o.fulfillmentStatus}</span><button className="btn" onClick={beginEdit}><Pencil size={15}/> Edit order</button></div>
     </div>
 
     {msg&&<div className="alert">{msg}</div>}

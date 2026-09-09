@@ -10,10 +10,15 @@ const groups: AdminSidebarGroup[] = [
   ]},
   { id: 'orders', label: 'Orders', items: [
     { href: '/admin/orders', label: 'Orders', permission: 'orders.view', icon: 'orders' },
+    { href: '/admin/draft-orders', label: 'Draft orders', permission: 'draftOrders.view', icon: 'draftOrders' },
+    { href: '/admin/returns', label: 'Returns', permission: 'returns.view', icon: 'returns' },
+    { href: '/admin/order-edits', label: 'Order edits', permission: 'orderEdits.view', icon: 'orderEdits' },
   ]},
   { id: 'products', label: 'Products', items: [
     { href: '/admin/products', label: 'Products', permission: 'products.view', icon: 'products' },
     { href: '/admin/inventory', label: 'Inventory', permission: 'inventory.view', icon: 'inventory' },
+    { href: '/admin/purchase-orders', label: 'Purchase orders', permission: 'purchaseOrders.view', icon: 'purchaseOrders' },
+    { href: '/admin/inventory/transfers', label: 'Transfers', permission: 'transfers.view', icon: 'transfers' },
     { href: '/admin/operations', label: 'Operations', permission: 'inventory.view', icon: 'operations' },
   ]},
   { id: 'collections', label: 'Collections', items: [
