@@ -5,7 +5,7 @@ import { json } from '@/lib/utils'
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const actor = await requirePermission('orders.manage')
+    const actor = await requirePermission('orderEdits.manage')
     const { id } = await params
 
     const order = await db.$transaction(async tx => {
@@ -48,7 +48,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const actor = await requirePermission('orders.manage')
+    const actor = await requirePermission('orderEdits.manage')
     const { id } = await params
     const discarded = await db.$transaction(async tx => {
       const edit = await tx.orderEdit.findUnique({ where: { id } })

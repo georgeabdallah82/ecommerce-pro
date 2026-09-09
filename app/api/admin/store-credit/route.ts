@@ -5,7 +5,7 @@ import { json } from '@/lib/utils'
 
 export async function GET(req: Request) {
   try {
-    await requirePermission('customers.view')
+    await requirePermission('storeCredit.view')
     const customerId = new URL(req.url).searchParams.get('customerId')
     if (!customerId) return json({ error: 'customerId is required' }, { status: 400 })
     const rows = await db.storeCreditTransaction.findMany({ where: { customerId }, orderBy: { createdAt: 'desc' }, take: 200 })
@@ -16,7 +16,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const actor = await requirePermission('customers.manage')
+    const actor = await requirePermission('storeCredit.manage')
     const b = await req.json()
     const customerId = String(b.customerId || '')
     const amount = Math.max(0, Math.trunc(Number(b.amount) || 0))

@@ -5,14 +5,14 @@ import { json, slugify } from '@/lib/utils'
 
 export async function GET() {
   try {
-    await requirePermission('settings.view')
+    await requirePermission('salesChannels.view')
     return json(await db.salesChannel.findMany({ include: { _count: { select: { publications: true } } }, orderBy: { createdAt: 'asc' } }))
   } catch (e) { return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 }) }
 }
 
 export async function POST(req: Request) {
   try {
-    const actor = await requirePermission('settings.manage')
+    const actor = await requirePermission('salesChannels.manage')
     const b = await req.json()
     const name = String(b.name || '').trim()
     if (!name) return json({ error: 'Channel name is required' }, { status: 400 })
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const actor = await requirePermission('settings.manage')
+    const actor = await requirePermission('salesChannels.manage')
     const b = await req.json()
     const id = String(b.id || '')
     const channel = await db.salesChannel.update({ where: { id }, data: { ...(b.name !== undefined ? { name: String(b.name).trim() } : {}), ...(b.status ? { status: b.status } : {}), ...(b.configJson !== undefined ? { configJson: b.configJson ? String(b.configJson) : null } : {}) }, include: { _count: { select: { publications: true } } } })

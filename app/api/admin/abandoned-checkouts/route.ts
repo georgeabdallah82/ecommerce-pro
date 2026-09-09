@@ -5,7 +5,7 @@ import { json } from '@/lib/utils'
 
 export async function GET(req: Request) {
   try {
-    await requirePermission('orders.view')
+    await requirePermission('abandonedCheckouts.view')
     const params = new URL(req.url).searchParams
     const status = params.get('status') || undefined
     const rows = await db.abandonedCheckout.findMany({ where: status ? { status: status as any } : undefined, orderBy: { lastActivity: 'desc' }, take: 200 })
@@ -15,7 +15,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const actor = await requirePermission('orders.manage')
+    const actor = await requirePermission('abandonedCheckouts.manage')
     const b = await req.json()
     const token = String(b.token || '').trim()
     if (!token) return json({ error: 'Checkout token is required' }, { status: 400 })

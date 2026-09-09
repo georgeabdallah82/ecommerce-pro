@@ -11,7 +11,7 @@ async function getCustomer(id: string) {
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const actor = await requirePermission('customers.manage')
+    const actor = await requirePermission('customerTags.manage')
     const { id } = await params
     const body = await req.json().catch(() => ({}))
     const value = String(body?.value ?? '').trim().replace(/\s+/g, ' ').slice(0, 100)
@@ -40,7 +40,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const actor = await requirePermission('customers.manage')
+    const actor = await requirePermission('customerTags.manage')
     const { id } = await params
     const body = await req.json().catch(() => ({}))
     const tagId = String(body?.tagId ?? '').trim()
