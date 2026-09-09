@@ -133,18 +133,13 @@ body:has(.adminShell) .alert.danger{border-color:var(--admin-danger-border)!impo
 body:has(.adminShell) .alert:not(.danger){border-color:var(--admin-border)!important;background:var(--admin-accent-soft)!important;color:var(--admin-accent-strong)!important}
 
 /* Editor / theme studio */
-body:has(.adminShell) .productEditor{background:var(--admin-bg)!important}
-body:has(.adminShell) .editorTopbar,body:has(.adminShell) .editorTabs{background:var(--admin-surface)!important;border-color:var(--admin-border)!important}
-body:has(.adminShell) .editorTabs button{color:var(--admin-muted)!important}
-body:has(.adminShell) .editorTabs button.active{color:var(--admin-accent)!important}
-body:has(.adminShell) .editorBody{max-width:1300px!important}
-body:has(.adminShell) .editorRail{top:105px!important}
+body:has(.adminShell) .editorTopbar{background:var(--admin-surface)!important;border-color:var(--admin-border)!important}
 body:has(.adminShell) .themeStudio,body:has(.adminShell) .themeStudioPro{background:var(--admin-bg)!important}
 
 /* Responsive workspace */
 @media(max-width:1050px){body:has(.adminShell) .adminMain{padding:0 22px 42px!important}}
-@media(max-width:760px){body:has(.adminShell) .adminMain{padding:0 14px 34px!important}.sectionHead{align-items:flex-start!important;flex-direction:column!important}.sectionHead .inline{width:100%!important}.sectionHead .inline>*{flex:1}.sectionHead .h2,.catalogHead .h2{font-size:29px!important}.dashboardKpis{grid-template-columns:1fr 1fr!important}.twoColFields,.threeColFields{grid-template-columns:1fr!important}.mediaEditorGrid{grid-template-columns:1fr 1fr!important}.marketCards{grid-template-columns:1fr!important}.settingsCenter,.navEditorLayout{grid-template-columns:1fr!important}.adminTileGrid{grid-template-columns:1fr 1fr!important}}
-@media(max-width:480px){body:has(.adminShell) .dashboardKpis{grid-template-columns:1fr!important}.catalogStats{grid-template-columns:1fr!important}.mediaEditorGrid,.adminTileGrid{grid-template-columns:1fr!important}.modalOverlay{padding:10px!important}.modalOverlay>.card{width:min(100%,520px)!important;border-radius:15px!important}}
+@media(max-width:760px){body:has(.adminShell) .adminMain{padding:0 14px 34px!important}.sectionHead{align-items:flex-start!important;flex-direction:column!important}.sectionHead .inline{width:100%!important}.sectionHead .inline>*{flex:1}.sectionHead .h2,.catalogHead .h2{font-size:29px!important}.dashboardKpis{grid-template-columns:1fr 1fr!important}.twoColFields{grid-template-columns:1fr!important}.marketCards{grid-template-columns:1fr!important}.settingsCenter,.navEditorLayout{grid-template-columns:1fr!important}.adminTileGrid{grid-template-columns:1fr 1fr!important}}
+@media(max-width:480px){body:has(.adminShell) .dashboardKpis{grid-template-columns:1fr!important}.catalogStats{grid-template-columns:1fr!important}.adminTileGrid{grid-template-columns:1fr!important}.modalOverlay{padding:10px!important}.modalOverlay>.card{width:min(100%,520px)!important;border-radius:15px!important}}
 
 /* Headings/text pick up ink tokens automatically via inheritance */
 body:has(.adminShell) h1,body:has(.adminShell) h2,body:has(.adminShell) h3,body:has(.adminShell) h4{color:var(--admin-ink)!important}

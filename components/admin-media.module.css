@@ -70,6 +70,41 @@
 .mediaPreviewRow { display: flex; align-items: center; gap: 12px; }
 .mediaPreviewRow img { width: 64px; height: 64px; border-radius: var(--admin-radius-sm); object-fit: cover; background: var(--admin-border-soft); }
 
+.pickerModal { width: min(760px, 94vw); max-height: 84vh; padding: 24px; display: grid; grid-template-rows: auto auto 1fr auto; gap: 14px; }
+.pickerBody { overflow: auto; min-height: 0; }
+
+.libraryGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.libraryItem {
+  position: relative;
+  aspect-ratio: 1;
+  border: 1.5px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  overflow: hidden;
+  background: var(--admin-border-soft);
+  cursor: pointer;
+  padding: 0;
+}
+.libraryItem img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.libraryItem.selected { border-color: var(--admin-accent); box-shadow: 0 0 0 2px var(--admin-accent); }
+.libraryCheck {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--admin-surface);
+  border: 1.5px solid var(--admin-border);
+  display: grid;
+  place-items: center;
+  color: transparent;
+}
+.libraryItem.selected .libraryCheck { background: var(--admin-accent); border-color: var(--admin-accent); color: var(--admin-accent-ink); }
+
+@media (max-width: 650px) {
+  .libraryGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
 @media (max-width: 1200px) { .mediaGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 900px) { .mediaGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 650px) {
