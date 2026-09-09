@@ -8,7 +8,7 @@ function generateCode() { return randomBytes(10).toString('hex').toUpperCase().m
 
 export async function GET(req: Request) {
   try {
-    await requirePermission('orders.view')
+    await requirePermission('giftCards.view')
     const q = new URL(req.url).searchParams.get('q')?.trim() || ''
     return json(await db.giftCard.findMany({ where: q ? { OR: [{ code: { contains: q.toUpperCase() } }, { last4: { contains: q.slice(-4) } }] } : undefined, orderBy: { createdAt: 'desc' }, take: 200 }))
   } catch (e) { return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 }) }
@@ -16,7 +16,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const actor = await requirePermission('orders.manage')
+    const actor = await requirePermission('giftCards.manage')
     const b = await req.json()
     const amount = Math.max(0, Math.trunc(Number(b.amount) || 0))
     if (!amount) return json({ error: 'Gift card amount must be greater than zero' }, { status: 400 })
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const actor = await requirePermission('orders.manage')
+    const actor = await requirePermission('giftCards.manage')
     const b = await req.json()
     const id = String(b.id || '')
     if (!id) return json({ error: 'Gift card id is required' }, { status: 400 })

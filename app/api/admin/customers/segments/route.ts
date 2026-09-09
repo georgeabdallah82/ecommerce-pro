@@ -5,7 +5,7 @@ import { json } from '@/lib/utils'
 
 export async function GET() {
   try {
-    await requirePermission('customers.view')
+    await requirePermission('customerSegments.view')
     const segments = await db.customerSegment.findMany({ orderBy: { updatedAt: 'desc' } })
     const rows = await Promise.all(segments.map(async segment => ({ ...segment, _count: { members: await db.customerSegmentMember.count({ where: { segmentId: segment.id } }) } })))
     return json(rows)
@@ -14,7 +14,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const actor = await requirePermission('customers.manage')
+    const actor = await requirePermission('customerSegments.manage')
     const b = await req.json()
     const name = String(b.name || '').trim()
     if (!name) return json({ error: 'Segment name is required' }, { status: 400 })

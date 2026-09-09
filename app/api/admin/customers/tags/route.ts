@@ -5,7 +5,7 @@ import { json } from '@/lib/utils'
 
 export async function GET() {
   try {
-    await requirePermission('customers.view')
+    await requirePermission('customerTags.view')
     const tags = await db.customerTag.findMany({ orderBy: { value: 'asc' } })
     const rows = await Promise.all(tags.map(async tag => ({ ...tag, _count: { customers: await db.customerTagMember.count({ where: { tagId: tag.id } }) } })))
     return json(rows)
@@ -14,7 +14,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const actor = await requirePermission('customers.manage')
+    const actor = await requirePermission('customerTags.manage')
     const b = await req.json()
     const value = String(b.value || '').trim().slice(0, 100)
     if (!value) return json({ error: 'Tag value is required' }, { status: 400 })

@@ -17,7 +17,12 @@ export type { AdminSidebarGroup, AdminSidebarItem } from '@/components/admin-nav
  */
 const css = `
 body:has(.adminShell .adminSidebarDrawer.isCollapsed) .adminShell{grid-template-columns:78px minmax(0,1fr)!important}
-@media(min-width:761px){body:has(.adminShell) .adminSide{display:flex!important}}
+/* .adminSide's own base rule (admin-overhaul.css) never sets display, so this is the only
+   place that turns it into a flex container - and flex-direction defaults to row. Without
+   column here, the brand mark/role pill/nav tree/sign-out footer laid out side by side
+   instead of stacked, each stretched to the full 100vh height by the flexbox default
+   align-items:stretch - the giant blank role pill and the vanished nav list. */
+@media(min-width:761px){body:has(.adminShell) .adminSide{display:flex!important;flex-direction:column!important}}
 body:has(.adminShell .adminSidebarDrawer.isCollapsed) .adminSide{padding-left:9px!important;padding-right:9px!important}
 body:has(.adminShell .adminSidebarDrawer.isCollapsed) .adminBrand{justify-content:center!important;padding:0!important}
 body:has(.adminShell .adminSidebarDrawer.isCollapsed) .adminBrand>div:last-child{display:none!important}

@@ -5,7 +5,7 @@ import { json } from '@/lib/utils'
 
 export async function GET(req: Request) {
   try {
-    await requirePermission('orders.view')
+    await requirePermission('orderEdits.view')
     const orderId = new URL(req.url).searchParams.get('orderId')
     return json(await db.orderEdit.findMany({ where: orderId ? { orderId } : undefined, include: { items: true }, orderBy: { createdAt: 'desc' }, take: 200 }))
   } catch (e) { return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 }) }
@@ -13,7 +13,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const actor = await requirePermission('orders.manage')
+    const actor = await requirePermission('orderEdits.manage')
     const b = await req.json()
     const orderId = String(b.orderId || '')
     if (!orderId) return json({ error: 'orderId is required' }, { status: 400 })

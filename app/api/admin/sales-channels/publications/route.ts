@@ -5,7 +5,7 @@ import { json } from '@/lib/utils'
 
 export async function GET(req: Request) {
   try {
-    await requirePermission('products.view')
+    await requirePermission('salesChannels.view')
     const params = new URL(req.url).searchParams
     const productId = params.get('productId')
     const channelId = params.get('channelId')
@@ -15,7 +15,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const actor = await requirePermission('products.manage')
+    const actor = await requirePermission('salesChannels.manage')
     const b = await req.json()
     const productId = String(b.productId || '')
     const channelId = String(b.channelId || '')
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const actor = await requirePermission('products.manage')
+    const actor = await requirePermission('salesChannels.manage')
     const params = new URL(req.url).searchParams
     const productId = String(params.get('productId') || '')
     const channelId = String(params.get('channelId') || '')
