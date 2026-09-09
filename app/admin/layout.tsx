@@ -51,28 +51,15 @@ const groups: AdminSidebarGroup[] = [
   ]},
 ]
 
+/*
+ * Design tokens, shell layout (.adminShell/.adminSide/.adminMain), the brand mark,
+ * nav tree (.adminNavTree/.adminNavItem/...) and topbar all live in ./admin-overhaul.css
+ * and the sidebar components themselves - keep page-specific rules only here to avoid
+ * the multiple competing !important declarations that used to fight over the same
+ * classes with different pixel values depending on load order.
+ */
 const adminCss = `
-body:has(.adminShell) { background:#f6f6f4; }
 body:has(.adminShell) > .nav, body:has(.adminShell) .nav { display:none !important; }
-body:has(.adminShell) .adminShell { min-height:100vh; grid-template-columns:250px minmax(0,1fr); background:#f6f6f4; }
-body:has(.adminShell) .adminSide { position:sticky; top:0; height:100vh; padding:18px 14px; background:#fff; border-right:1px solid #e5e5e0; overflow:auto; }
-body:has(.adminShell) .adminSide nav { margin-top:12px; }
-body:has(.adminShell) .adminSide nav a { display:flex; align-items:center; gap:10px; height:42px; padding:0 12px; margin:3px 0; border-radius:10px; color:#5d5d59; font-size:14px; font-weight:600; transition:background .15s ease,color .15s ease,transform .15s ease; }
-body:has(.adminShell) .adminSide nav a:hover { background:#f1f1ed; color:#171717; transform:translateX(1px); }
-body:has(.adminShell) .adminSide nav a svg { flex:none; opacity:.85; }
-body:has(.adminShell) .adminSideBottom { margin-top:14px; padding-top:14px; }
-body:has(.adminShell) .adminSideBottom a, body:has(.adminShell) .sideButton { height:40px; font-size:13px; }
-.adminNavTree{margin-top:10px;display:grid;gap:3px}.adminNavGroup{display:grid;gap:2px}.adminNavGroupButton{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;height:38px;padding:0 11px;border:0;background:transparent;border-radius:9px;color:#3f3f3b;font:inherit;font-size:13px;font-weight:700;cursor:pointer;text-align:left}.adminNavGroupButton:hover{background:#f3f3ef;color:#171717}.adminNavGroupButton.active{color:#171717;background:#f0f0ec}.adminNavChevron{transition:transform .16s ease;opacity:.65}.adminNavChevron.open{transform:rotate(180deg)}.adminNavChildren{display:grid;grid-template-rows:0fr;overflow:hidden;transition:grid-template-rows .16s ease}.adminNavChildren.open{grid-template-rows:1fr}.adminNavChildren > *{min-height:0}.adminNavGroup.active > .adminNavGroupButton{color:#171717}.adminNavGroup + .adminNavGroup{margin-top:2px}
-body:has(.adminShell) .adminMain { min-width:0; padding:0 34px 48px; }
-body:has(.adminShell) .adminTopbar { position:sticky; top:0; z-index:40; min-height:76px; padding:0; margin:0 0 28px; background:rgba(246,246,244,.94); backdrop-filter:blur(14px); border-bottom:1px solid #e6e6e2; }
-body:has(.adminShell) .adminBrand .logo { font-size:16px; letter-spacing:-.03em; }
-body:has(.adminShell) .adminBrandMark { width:36px; height:36px; border-radius:11px; }
-body:has(.adminShell) .pill { border:1px solid #e6e6e0; background:#fff; color:#4d4d48; }
-body:has(.adminShell) .sectionHead { margin-bottom:22px; }
-body:has(.adminShell) .catalogPage, body:has(.adminShell) .operationsPage { max-width:1480px; margin:0 auto; }
-body:has(.adminShell) .catalogHead { align-items:center; }
-body:has(.adminShell) .catalogHead .h2 { font-size:38px; letter-spacing:-.045em; }
-body:has(.adminShell) .catalogHead .muted { font-size:14px; }
 body:has(.adminShell) .catalogStats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:0 0 16px; }
 body:has(.adminShell) .statCard { appearance:none; width:100%; padding:16px 18px; border:1px solid #e4e4df; border-radius:14px; background:#fff; text-align:left; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,.03); transition:border .15s ease,box-shadow .15s ease,transform .15s ease; }
 body:has(.adminShell) .statCard:hover { border-color:#cfcfc8; box-shadow:0 5px 18px rgba(0,0,0,.05); transform:translateY(-1px); }
@@ -111,7 +98,7 @@ body:has(.adminShell) .btn:disabled { opacity:.55; cursor:not-allowed; }
 body:has(.adminShell) .input:focus, body:has(.adminShell) .textarea:focus { outline:none; border-color:#8e8e87; box-shadow:0 0 0 3px rgba(23,23,23,.06); }
 .operationsPage{padding-bottom:24px}.opsTabs{display:flex;gap:4px;overflow:auto;padding:4px;margin-bottom:16px;border:1px solid #e4e4df;background:#fff;border-radius:12px}.opsTabs button{border:0;background:transparent;padding:10px 14px;border-radius:8px;font:inherit;font-weight:600;color:#6a6a64;white-space:nowrap;cursor:pointer}.opsTabs button.active{background:#171717;color:#fff}.opsGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.opsGrid.wide{grid-template-columns:repeat(2,minmax(0,1fr))}.opsCard{display:flex;align-items:center;gap:12px;padding:18px;background:#fff;border:1px solid #e4e4df;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.03)}.opsCard.attention{border-color:#ead9a4}.opsCardIcon{display:grid;place-items:center;width:40px;height:40px;border-radius:11px;background:#f2f2ed;color:#3d3d38}.opsCount{display:block;margin-top:5px;font-size:26px;letter-spacing:-.03em}.opsLabel{font-size:12px}.opsPanel{padding:20px}.opsPanel h3{margin:0 0 5px;font-size:17px}.opsActions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}.opsList{display:grid;gap:8px;margin-top:16px}.opsRow{display:grid;grid-template-columns:minmax(0,1.5fr) auto minmax(100px,.8fr);align-items:center;gap:12px;padding:11px 12px;background:#fafaf8;border:1px solid #ecece7;border-radius:10px;font-size:13px}.opsLoading{padding:24px;text-align:center}.operationsPage .empty{padding:24px;text-align:center;color:#777}.healthGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.healthHero{display:flex;justify-content:space-between;gap:24px;align-items:center;padding:22px 24px;margin:8px 0 18px}.healthTimestamp{font-size:12px;color:#73736e;margin-top:10px}.healthTotals{display:flex;gap:24px}.healthTotals div{display:grid;gap:4px;min-width:74px}.healthTotals strong{font-size:28px;line-height:1}.healthTotals span{font-size:11px;color:#777}.healthCheck{padding:18px}.healthCheckHead{display:flex;align-items:center;gap:8px}.healthCheckHead strong{font-size:14px}.healthCheckDetail{margin-top:8px;font-size:12px;color:#777}.healthCheckOk{color:#1c7c54}.healthCheckWarn{color:#9a6a00}.healthCheckBad{color:#b33838}
 @media(max-width:1100px){body:has(.adminShell) .catalogToolbar{grid-template-columns:1fr}.healthGrid{grid-template-columns:1fr 1fr}.opsGrid{grid-template-columns:1fr 1fr}}
-@media(max-width:760px){body:has(.adminShell) .adminShell{display:block}.adminSide{display:none}.adminMain{padding:0 16px 40px !important}.adminTopbar{min-height:72px !important;margin-bottom:18px !important}.adminTopbar > div{gap:8px}.adminTopbar .inline{gap:6px;flex-wrap:wrap;justify-content:flex-end}.adminTopbar .pill{max-width:170px;overflow:hidden;text-overflow:ellipsis}.healthGrid{grid-template-columns:1fr}.opsGrid,.opsGrid.wide{grid-template-columns:1fr}.catalogStats{grid-template-columns:repeat(2,1fr) !important}.catalogToolbar{grid-template-columns:1fr !important}.catalogFilters{grid-template-columns:1fr !important}.mobileFilterBtn{display:inline-flex !important}.productTableCard{overflow:auto}.productTable{min-width:860px}.catalogHead .h2{font-size:30px !important}}
+@media(max-width:760px){.healthGrid{grid-template-columns:1fr}.opsGrid,.opsGrid.wide{grid-template-columns:1fr}.catalogStats{grid-template-columns:repeat(2,1fr) !important}.catalogToolbar{grid-template-columns:1fr !important}.catalogFilters{grid-template-columns:1fr !important}.mobileFilterBtn{display:inline-flex !important}.productTableCard{overflow:auto}.productTable{min-width:860px}}
 `
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
