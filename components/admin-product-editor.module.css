@@ -68,11 +68,10 @@
 .tagChip button { border: 0; background: none; color: var(--admin-muted); cursor: pointer; font-size: 14px; line-height: 1; padding: 2px; }
 
 .mediaGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.mediaItem { min-width: 0; display: grid; grid-template-columns: 18px minmax(120px, 180px) minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); background: var(--admin-bg); }
+.mediaItem { min-width: 0; display: grid; grid-template-columns: minmax(120px, 180px) minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); background: var(--admin-bg); }
 .mediaItem img, .mediaPlaceholder { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: var(--admin-radius-sm); background: var(--admin-border-soft); }
 .mediaPlaceholder { display: grid; place-items: center; color: var(--admin-muted); font-size: 12px; }
-.dragHandle { color: var(--admin-muted-soft); padding-top: 6px; cursor: grab; }
-.mediaControls { display: grid; gap: 8px; min-width: 0; }
+.mediaControls { display: grid; gap: 8px; min-width: 0; align-content: start; }
 .mediaAdd { min-height: 110px; border: 1.5px dashed var(--admin-border); border-radius: var(--admin-radius-md); background: var(--admin-bg); color: var(--admin-muted); font: inherit; font-weight: 650; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .mediaAdd:hover { background: var(--admin-border-soft); border-color: var(--admin-accent); color: var(--admin-ink); }
 
@@ -100,6 +99,28 @@
 .summaryLine strong { color: var(--admin-ink); }
 
 .emptyInline { padding: 18px; text-align: center; color: var(--admin-muted); font-size: 13px; }
+
+/* Self-contained rather than layered on the shared .btn.secondary -- that selector's two
+   classes outrank this module's single hashed class, so any color/background/border set here
+   on top of it would silently lose the cascade instead of actually looking like a danger action. */
+.dangerButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: var(--admin-radius-sm);
+  border: 1px solid var(--admin-danger-border);
+  background: var(--admin-danger-soft);
+  color: var(--admin-danger);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  width: 100%;
+}
+.dangerButton:hover:not(:disabled) { background: var(--admin-danger-border); }
+.dangerButton:disabled { opacity: .6; cursor: not-allowed; }
 
 .checkCard { display: flex; align-items: flex-start; gap: 12px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); padding: 13px; cursor: pointer; }
 .checkCard input { margin-top: 3px; }
@@ -129,7 +150,6 @@
   .tabs { position: sticky; top: 0; z-index: 35; }
   .tabs button { padding: 9px 12px; }
   .mediaItem { grid-template-columns: 1fr; }
-  .mediaItem .dragHandle { display: none; }
   .mediaItem img, .mediaPlaceholder { max-width: 220px; }
   .optionRow { grid-template-columns: 1fr; }
   .variantHead { display: none; }

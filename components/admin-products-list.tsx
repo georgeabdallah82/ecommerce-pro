@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Archive, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Plus, Search, Star, Tag, X } from 'lucide-react'
+import { Archive, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Plus, Search, Star, StarOff, Tag, X } from 'lucide-react'
 import { money } from '@/lib/config'
 import styles from './admin-products-list.module.css'
 
@@ -181,6 +181,7 @@ export default function AdminProductsList({ initial }: { initial: any }) {
               {bulkOpen && (
                 <div className={styles.menu}>
                   <button onClick={() => bulk('FEATURED_ON')}><Star size={14} /> Feature products</button>
+                  <button onClick={() => bulk('FEATURED_OFF')}><StarOff size={14} /> Unfeature products</button>
                   <button onClick={() => setSelected([])}><X size={14} /> Clear selection</button>
                 </div>
               )}
