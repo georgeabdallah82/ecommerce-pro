@@ -21,6 +21,8 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
   const [page, setPage] = useState(Number(initial?.page || 1))
   const [pages, setPages] = useState(Number(initial?.pages || 1))
   const [total, setTotal] = useState(Number(initial?.total || 0))
+  const [activeCount, setActiveCount] = useState(Number(initial?.active || 0))
+  const [disabledCount, setDisabledCount] = useState(Number(initial?.disabled || 0))
   const [pageSize, setPageSize] = useState(Number(initial?.pageSize || 25))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -33,17 +35,20 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
       const params = new URLSearchParams({ q, status, page: String(nextPage), pageSize: String(pageSize) })
       const data = await api('/api/admin/customers?' + params.toString())
       setRows(data.rows || []); setPage(data.page || nextPage); setPages(data.pages || 1); setTotal(data.total || 0)
+      setActiveCount(data.active || 0); setDisabledCount(data.disabled || 0)
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to load customers') }
     finally { setLoading(false) }
   }
 
   useEffect(() => { void load(1) }, [status, pageSize])
 
+  // Active/disabled come straight from the server so the tiles always reflect the true
+  // totals for the current search, not just whichever page of rows happens to be loaded.
   const stats = useMemo(() => ({
-    active: rows.filter(x => x.isActive).length,
-    disabled: rows.filter(x => !x.isActive).length,
+    active: activeCount,
+    disabled: disabledCount,
     repeat: rows.filter(x => x._count?.orders > 1).length,
-  }), [rows])
+  }), [rows, activeCount, disabledCount])
 
   async function createCustomer() {
     setLoading(true); setError('')

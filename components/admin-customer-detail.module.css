@@ -1,0 +1,144 @@
+/*
+ * Customer detail — CSS Modules on the shared --admin-* tokens, same pattern as the
+ * product editor rebuild (see admin-product-editor.module.css). Replaces reliance on
+ * app/globals.css classes (editorCard, editorTopbar, twoColFields, ...) that were either
+ * light-mode-only hardcoded hex, or in the case of the customer-specific layout classes
+ * (customerHero, customerWorkspace, tagCloud, segmentRow, creditBalance, addressItem, ...)
+ * had NO styling defined anywhere in the codebase at all — this page was rendering as
+ * unstyled stacked divs. Dark mode is automatic here since every color comes from var(--admin-*).
+ */
+
+.page { max-width: 1480px; margin: 0 auto; padding-bottom: 32px; }
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 45;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 0 16px;
+  margin: 0 0 14px;
+  background: var(--admin-bg);
+  border-bottom: 1px solid var(--admin-border);
+}
+.topLeft { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.topLeft > div:last-child { min-width: 0; }
+.topActions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.topActions :global(.btn) { min-height: 40px; }
+.title { margin: 2px 0 0; font-size: 26px; line-height: 1.15; letter-spacing: -.04em; color: var(--admin-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: min(52vw, 640px); }
+
+.alert { margin: 0 0 14px; }
+
+/* Hero */
+.hero { display: flex; align-items: center; gap: 18px; padding: 20px 22px; margin-bottom: 16px; flex-wrap: wrap; }
+.heroAvatar { flex: 0 0 auto; width: 60px; height: 60px; border-radius: var(--admin-radius-pill); background: var(--admin-accent-soft); color: var(--admin-accent-strong); display: grid; place-items: center; font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
+.heroInfo { flex: 1 1 240px; min-width: 0; display: grid; gap: 5px; }
+.heroInfo h2 { margin: 0; font-size: 19px; color: var(--admin-ink); }
+.heroContacts { display: flex; flex-wrap: wrap; gap: 14px; }
+.heroContacts span { display: inline-flex; align-items: center; gap: 6px; }
+.heroActions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* Account stat tiles */
+.stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+.statCard { padding: 16px 18px; display: grid; gap: 6px; }
+.statCard strong { font-size: 21px; color: var(--admin-ink); letter-spacing: -.02em; }
+
+/* Workspace */
+.workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.main { min-width: 0; display: grid; gap: 14px; align-content: start; }
+.rail { min-width: 0; display: grid; gap: 14px; align-content: start; }
+@media (min-width: 951px) {
+  .workspace { grid-template-columns: minmax(0, 1fr) 340px; }
+}
+
+.card { border: 1px solid var(--admin-border); border-radius: var(--admin-radius-lg); box-shadow: var(--admin-shadow-sm); background: var(--admin-surface); }
+.cardHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 18px 0; }
+.cardHead h3 { margin: 0; font-size: 15px; color: var(--admin-ink); }
+.cardHead p { margin: 3px 0 0; font-size: 12px; color: var(--admin-muted); }
+.cardHeadIcon { color: var(--admin-muted); flex: 0 0 auto; margin-top: 2px; }
+.cardBody { padding: 16px 18px 18px; display: grid; gap: 14px; }
+
+.field { display: grid; gap: 7px; font-size: 12px; font-weight: 650; color: var(--admin-ink-soft); }
+.twoCol { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+
+/* Tags & segments */
+.tagCloud { display: flex; flex-wrap: wrap; gap: 7px; }
+.tagChip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 10px; border-radius: var(--admin-radius-pill); background: var(--admin-border-soft); color: var(--admin-ink); font-size: 12px; }
+.tagChip button { display: grid; place-items: center; border: 0; background: none; color: var(--admin-muted); cursor: pointer; padding: 2px; }
+.tagChip button:hover { color: var(--admin-danger); }
+
+.addRow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.addRow :global(.input) { flex: 1 1 190px; min-width: 0; }
+.chipButton { border: 1px dashed var(--admin-border); background: transparent; color: var(--admin-muted); border-radius: var(--admin-radius-pill); padding: 6px 11px; font-size: 12px; font-weight: 650; cursor: pointer; }
+.chipButton:hover { border-color: var(--admin-accent); color: var(--admin-ink); background: var(--admin-border-soft); }
+
+.segmentRows { display: grid; gap: 8px; }
+.segmentRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 13px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); background: var(--admin-bg); }
+.segmentRow strong { color: var(--admin-ink); font-size: 13px; }
+.segmentRow div > div { font-size: 12px; color: var(--admin-muted); margin-top: 2px; }
+
+/* Order history / reviews */
+.tableWrap { overflow-x: auto; }
+.emptyInline { padding: 20px; text-align: center; color: var(--admin-muted); font-size: 13px; border: 1px dashed var(--admin-border); border-radius: var(--admin-radius-md); }
+
+.reviewRow { padding: 13px 0; border-top: 1px solid var(--admin-border-soft); }
+.reviewRow:first-child { border-top: 0; padding-top: 0; }
+.reviewRowHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.reviewRowHead strong { color: var(--admin-ink); }
+.stars { color: var(--admin-warning); letter-spacing: 1px; font-size: 13px; }
+.reviewTitle { display: block; margin: 5px 0 3px; color: var(--admin-ink); font-size: 13px; font-weight: 700; }
+.reviewBody { color: var(--admin-muted); font-size: 13px; line-height: 1.5; }
+
+/* Wallet / coins */
+.balance { padding: 14px 15px; border-radius: var(--admin-radius-md); background: var(--admin-bg); border: 1px solid var(--admin-border); display: flex; align-items: baseline; gap: 8px; font-size: 24px; font-weight: 800; color: var(--admin-ink); letter-spacing: -.02em; }
+.balance span { font-size: 11px; font-weight: 650; color: var(--admin-muted); letter-spacing: 0; }
+
+.history { display: grid; gap: 2px; }
+.historyRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--admin-border-soft); font-size: 12.5px; }
+.historyRow:last-child { border-bottom: 0; }
+.historyRow > span { display: grid; gap: 2px; min-width: 0; color: var(--admin-ink-soft); }
+.historyRow > span small { color: var(--admin-muted); font-size: 11px; }
+.amountPositive { color: var(--admin-accent-strong); font-weight: 750; white-space: nowrap; }
+.amountNegative { color: var(--admin-danger); font-weight: 750; white-space: nowrap; }
+
+/* Addresses */
+.addressList { display: grid; gap: 10px; }
+.addressItem { padding: 13px 14px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); background: var(--admin-bg); display: grid; gap: 3px; font-size: 13px; color: var(--admin-ink-soft); }
+.addressHead { display: flex; align-items: center; gap: 8px; color: var(--admin-ink); font-weight: 700; margin-bottom: 2px; }
+
+/* Summary lines (account panel) */
+.summaryLine { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; font-size: 13px; color: var(--admin-muted); border-bottom: 1px solid var(--admin-border-soft); }
+.summaryLine:last-child { border-bottom: 0; }
+.summaryLine strong { color: var(--admin-ink); }
+
+/* Local link style instead of the shared global .textLink -- that class's color is
+   hardcoded to the light-mode-only --ink root variable with no dark-mode override
+   anywhere in the codebase, so it renders near-invisible (dark text on a dark
+   surface) under the admin dark theme. */
+.link { color: var(--admin-accent-strong); font-weight: 700; text-decoration: underline; }
+.link:hover { color: var(--admin-accent); }
+
+.pillApproved { display: inline-flex; padding: 3px 9px; border-radius: var(--admin-radius-pill); background: var(--admin-accent-soft); color: var(--admin-accent-strong); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+.pillPending { display: inline-flex; padding: 3px 9px; border-radius: var(--admin-radius-pill); background: var(--admin-warning-soft); color: var(--admin-warning); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+
+@media (max-width: 950px) {
+  .title { max-width: 46vw; font-size: 22px; }
+  .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .twoCol { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 700px) {
+  .topbar { position: relative; top: auto; flex-direction: column; gap: 12px; padding: 10px 0 12px; }
+  .topActions { width: 100%; justify-content: stretch; }
+  .topActions :global(.btn) { flex: 1; }
+  .title { font-size: 21px; max-width: 72vw; }
+  .hero { padding: 16px; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 480px) {
+  .stats { grid-template-columns: 1fr 1fr; }
+  .card { border-radius: var(--admin-radius-md); }
+}

@@ -20,7 +20,7 @@ export async function GET(req: Request) {
     const page = Number.isFinite(requestedPage) ? Math.max(1, Math.floor(requestedPage)) : 1
     const limit = Number.isFinite(requestedLimit) ? Math.min(200, Math.max(1, Math.floor(requestedLimit))) : 50
     if (status && !ORDER_STATUSES.has(status as OrderStatus)) return json({ error: 'Invalid order status' }, { status: 400 })
-    const where = { ...(status ? { status: status as OrderStatus } : {}), ...(q ? { OR: [{ orderNumber: { contains: q, mode: 'insensitive' as const } }, { email: { contains: q, mode: 'insensitive' as const } }, { phone: { contains: q, mode: 'insensitive' as const } }] } : {}) }
+    const where = { ...(status ? { status: status as OrderStatus } : {}), ...(q ? { OR: [{ orderNumber: { contains: q, mode: 'insensitive' as const } }, { email: { contains: q, mode: 'insensitive' as const } }, { phone: { contains: q, mode: 'insensitive' as const } }, { user: { is: { name: { contains: q, mode: 'insensitive' as const } } } }] } : {}) }
     const [rows,total] = await Promise.all([
       db.order.findMany({ where, include: { user: true, items: true }, orderBy: { createdAt: 'desc' }, skip: (page-1)*limit, take: limit }),
       db.order.count({ where }),

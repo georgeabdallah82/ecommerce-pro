@@ -1,0 +1,76 @@
+/*
+ * Order detail / manual-order layout - CSS Modules driven entirely by the
+ * --admin-* tokens, replacing classes (orderDetailGrid, orderItemRow,
+ * orderItemImage, summaryBox, editAddressGrid, orderEditToolbar, twoCol,
+ * timeline/timelineItem/dot) that were previously coming from
+ * app/storefront-legacy.css - a pre-redesign, hardcoded-hex stylesheet meant
+ * for the customer storefront that happened to leak into the admin panel
+ * (imported globally in app/layout.tsx) and, for orderEditToolbar and
+ * editAddressGrid, defined the SAME class twice at different points in that
+ * file. Both had zero dark-mode support (literal #fff / #e1e3e5 / #171717).
+ */
+
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }
+.main, .rail { display: grid; gap: 16px; align-content: start; }
+
+.twoCol { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.addressGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.addressGrid .full { grid-column: 1 / -1; }
+
+.itemRow { display: grid; grid-template-columns: 48px 1fr auto auto; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--admin-border-soft); }
+.itemRow:last-of-type { border-bottom: 0; }
+.itemImage { width: 48px; height: 48px; border-radius: var(--admin-radius-sm); background: var(--admin-border-soft); color: var(--admin-muted); overflow: hidden; display: grid; place-items: center; }
+.itemImage img { width: 100%; height: 100%; object-fit: cover; }
+
+.summaryBox { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--admin-border-soft); display: grid; gap: 7px; }
+.summaryBox > div { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--admin-ink-soft); }
+.summaryBox .total { font-size: 17px; font-weight: 800; color: var(--admin-ink); padding-top: 10px; margin-top: 4px; border-top: 1px solid var(--admin-border-soft); }
+.summaryBox .total strong { font-size: 17px; }
+
+.editToolbar {
+  position: sticky;
+  top: 76px;
+  z-index: 35;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  margin: 0 0 16px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-surface);
+  box-shadow: var(--admin-shadow-md);
+}
+
+.timeline { display: grid; gap: 2px; }
+.timelineItem { display: grid; grid-template-columns: 12px 1fr; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--admin-border-soft); }
+.timelineItem:last-child { border-bottom: 0; }
+.timelineItem strong { color: var(--admin-ink); }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--admin-accent); margin-top: 5px; }
+
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-border-soft);
+  color: var(--admin-ink-soft);
+  padding: 4px 10px;
+  border-radius: var(--admin-radius-pill);
+  font-size: 10.5px;
+  font-weight: 800;
+}
+.pillSuccess { background: var(--admin-accent-soft); color: var(--admin-accent-strong); border-color: transparent; }
+.pillWarning { background: var(--admin-warning-soft); color: var(--admin-warning); border-color: transparent; }
+.pillDanger { background: var(--admin-danger-soft); color: var(--admin-danger); border-color: transparent; }
+.pillNeutral { background: var(--admin-border-soft); color: var(--admin-muted); border-color: transparent; }
+
+.lockedNote { font-size: 11.5px; color: var(--admin-muted); margin-top: 6px; }
+
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr; }
+  .rail { order: -1; }
+  .twoCol, .addressGrid { grid-template-columns: 1fr; }
+  .addressGrid .full { grid-column: auto; }
+  .editToolbar { position: relative; top: auto; }
+}

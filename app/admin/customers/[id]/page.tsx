@@ -3,7 +3,6 @@ import { db } from '@/lib/prisma'
 import CustomerDetailAdmin from '@/components/customer-detail-admin'
 import { sumCustomerSpend } from '@/lib/orders'
 import type { OrderStatus } from '@prisma/client'
-import '../customer-detail.css'
 
 type WalletTransaction = {
   id: string
