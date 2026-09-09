@@ -91,10 +91,22 @@ Cloudflare Workers don't share environment variables with any other platform —
 
 Non-secret `NEXT_PUBLIC_*` build-time values can instead go in `wrangler.jsonc`'s `vars` if preferred, since they aren't sensitive.
 
+## Automatic deploy on merge to main
+
+`.github/workflows/ci.yml`'s `deploy` job runs `npm run deploy` (which builds and runs `wrangler deploy`) after the `quality` job passes, on every push to `main`. There is no other deploy trigger — merging a PR does not deploy anything on its own; it only reaches the live site once this job runs on `main`.
+
+This job needs its own GitHub Actions repo secrets (Settings → Secrets and variables → Actions), separate from the Cloudflare Worker secrets above:
+
+- `CLOUDFLARE_API_TOKEN` — a Cloudflare API token with Workers Scripts (Edit) and Workers R2 Storage (Edit) permissions for this account. Create one at the Cloudflare dashboard under My Profile → API Tokens.
+- `CLOUDFLARE_ACCOUNT_ID` — the Cloudflare account ID that owns the `ecommerce-pro` Worker (shown on the Cloudflare dashboard's Workers & Pages overview). Only strictly required if the API token has access to more than one account, but harmless to always set.
+
+Without `CLOUDFLARE_API_TOKEN` set, the `deploy` job fails fast with a clear error instead of silently no-opping.
+
 ## Before final production sign-off
 
 1. Set the Cloudflare Worker's `DATABASE_URL` secret to the production Accelerate connection string.
 2. Set the remaining secrets listed above via `wrangler secret put`.
+2b. Set the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` GitHub Actions repo secrets so merges to `main` deploy automatically (see "Automatic deploy on merge to main" above).
 3. Deploy with `npm run deploy` and confirm it completes successfully.
 4. Verify `GET /api/health` returns healthy and MongoDB (through Accelerate) is reachable.
 5. Verify `GET /api/products`, authentication/session, navigation, storefront settings, and the critical checkout read paths.
