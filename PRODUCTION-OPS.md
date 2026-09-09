@@ -58,6 +58,18 @@ The endpoint rejects mismatched successful amounts, ignores stale status updates
 
 Production startup/build configuration rejects a missing or unconfigured `DATABASE_URL` in production — `lib/prisma.ts` throws instead of silently falling back to in-memory mock data (that fallback, including its seeded demo admin account, is only ever reachable outside production). The application therefore cannot silently serve fake data if the database client fails to initialize.
 
+## Media uploads (R2)
+
+Cloudflare Workers has no writable/persistent local filesystem, so the admin "Add file" upload flow (`POST /api/admin/media/upload`) stores images in an R2 bucket bound as `MEDIA_BUCKET` in `wrangler.jsonc`, and serves them back through `GET /api/media/[key]` (R2 objects have no public URL of their own without a custom domain on the bucket). Outside Workers — plain `next dev` with no R2 binding available — it falls back to writing into `public/uploads`, since a real filesystem exists there; that fallback throws instead in production if the binding is missing, the same fail-loud pattern used for a missing `DATABASE_URL`.
+
+The R2 bucket itself must be created once before the first deploy (a `wrangler.jsonc` binding referencing a bucket that doesn't exist yet fails `wrangler deploy`):
+
+```
+npx wrangler r2 bucket create ecommerce-pro-media
+```
+
+No separate secret is needed — R2 bindings are declared in `wrangler.jsonc`, not set via `wrangler secret put`.
+
 ## SEO and security
 
 - `/robots.txt` excludes admin, API, and account paths.
@@ -90,3 +102,4 @@ Non-secret `NEXT_PUBLIC_*` build-time values can instead go in `wrangler.jsonc`'
 7. Test payment webhooks with duplicate and out-of-order events.
 8. Deploy `workers/release-expired-reservations/` and verify its Cron Trigger is enabled in the Cloudflare dashboard.
 9. Verify `/robots.txt` and `/sitemap.xml` on the production domain.
+10. Create the `ecommerce-pro-media` R2 bucket (`npx wrangler r2 bucket create ecommerce-pro-media`) before the first deploy, and verify an admin file upload from `/admin/media` round-trips (uploads, then loads back via its `/api/media/[key]` URL).

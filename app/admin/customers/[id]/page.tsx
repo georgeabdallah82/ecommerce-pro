@@ -1,6 +1,8 @@
 import { requirePermission } from '@/lib/auth'
 import { db } from '@/lib/prisma'
 import CustomerDetailAdmin from '@/components/customer-detail-admin'
+import { sumCustomerSpend } from '@/lib/orders'
+import type { OrderStatus } from '@prisma/client'
 import '../customer-detail.css'
 
 type WalletTransaction = {
@@ -59,7 +61,7 @@ export default async function CustomerDetail({ params }: { params: Promise<{ id:
 
   // Extended (Accelerate) client payload inference doesn't always widen nested `include`
   // relations correctly, so this access is asserted to the shape actually queried.
-  const orderTotal = (customer as unknown as { orders: { grandTotal: number }[] }).orders.reduce((sum, order) => sum + order.grandTotal, 0)
+  const orderTotal = sumCustomerSpend((customer as unknown as { orders: { status: OrderStatus; grandTotal: number }[] }).orders)
   const walletBalance = loyalty.walletTransactions.reduce((sum: number, tx: WalletTransaction) => sum + tx.amount, 0)
   const coinBalance = Math.max(0, loyalty.coinTransactions.reduce((sum: number, tx: CoinTransaction) => sum + tx.amount, 0))
   const serialized = JSON.parse(JSON.stringify({

@@ -2,7 +2,8 @@ import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { db } from '@/lib/prisma'
 import { json } from '@/lib/utils'
-import { Role } from '@prisma/client'
+import { Role, OrderStatus } from '@prisma/client'
+import { sumCustomerSpend } from '@/lib/orders'
 
 function sanitizeFailure(error: unknown) {
   const message = error instanceof Error ? error.message : ''
@@ -69,7 +70,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     if (!customer) return json({ error: 'Customer not found' }, { status: 404, headers: { 'Cache-Control': 'private, no-store' } })
     // Extended (Accelerate) client payload inference doesn't always widen nested `select`
     // relations correctly, so this access is asserted to the shape actually queried.
-    const orderTotal = (customer as unknown as { orders: { grandTotal: number }[] }).orders.reduce((sum, order) => sum + order.grandTotal, 0)
+    const orderTotal = sumCustomerSpend((customer as unknown as { orders: { status: OrderStatus; grandTotal: number }[] }).orders)
     return json({ customer: { ...customer, orderTotal } }, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (e) {
     const failure = sanitizeFailure(e)

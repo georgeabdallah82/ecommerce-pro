@@ -2,6 +2,7 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
+import { Prisma } from '@prisma/client'
 
 function makeId() {
   return `coin_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`
@@ -39,14 +40,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const referenceId = body.referenceId ? String(body.referenceId).trim().slice(0, 190) : null
     if (!Number.isInteger(amount) || amount === 0) return json({ error: 'Coin adjustment must be a non-zero integer.' }, { status: 400 })
     if (Math.abs(amount) > 1_000_000_000) return json({ error: 'Coin adjustment is too large.' }, { status: 400 })
+    if (referenceId === '') return json({ error: 'Reference id must not be empty.' }, { status: 400 })
 
     const result = await db.$transaction(async tx => {
       const aggregate = await tx.coinTransaction.aggregate({ where: { userId: id }, _sum: { amount: true } })
       const balance = Math.max(0, Number(aggregate._sum.amount || 0))
       if (balance + amount < 0) throw new Error('Coin balance cannot become negative')
+
+      if (referenceId) {
+        const existing = await tx.coinTransaction.findFirst({
+          where: { userId: id, referenceId, type: amount > 0 ? 'CREDIT' : 'DEBIT' },
+          orderBy: { createdAt: 'asc' },
+        })
+        if (existing) return { transaction: existing, balance, idempotent: true }
+      }
+
       const transaction = await tx.coinTransaction.create({
         data: {
-          id: makeId(),
+          id: referenceId ? `coin_ref_${id}_${amount > 0 ? 'CREDIT' : 'DEBIT'}_${referenceId}`.slice(0, 190) : makeId(),
           userId: id,
           amount,
           type: amount > 0 ? 'CREDIT' : 'DEBIT',
@@ -54,18 +65,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           referenceId,
         },
       })
-      return { transaction, balance: balance + amount }
+      return { transaction, balance: balance + amount, idempotent: false }
     })
 
-    try {
-      await audit(actor.id, 'customer_coins.adjusted', 'User', id, { amount, type: result.transaction.type, reason, referenceId })
-    } catch (error) {
-      console.error('[admin/customer-coins] audit failed after successful adjustment', error)
+    if (!result.idempotent) {
+      try {
+        await audit(actor.id, 'customer_coins.adjusted', 'User', id, { amount, type: result.transaction.type, reason, referenceId })
+      } catch (error) {
+        console.error('[admin/customer-coins] audit failed after successful adjustment', error)
+      }
     }
     return json(result, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error) {
     const message = error instanceof Error ? error.message : ''
     if (message === 'Coin balance cannot become negative') return json({ error: message }, { status: 409 })
+    if (message.includes('Unique constraint')) return json({ error: 'A coin adjustment with this reference already exists.' }, { status: 409 })
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') {
+      return json({ error: 'This adjustment could not be completed due to a concurrent update. Please retry.' }, { status: 409 })
+    }
     console.error('[admin/customer-coins] POST failed', error)
     return json({ error: 'Unable to adjust customer coins' }, { status: 500 })
   }
