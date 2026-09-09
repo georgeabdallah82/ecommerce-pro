@@ -27,7 +27,13 @@ export default function AdminTopbar({ name, email, vapidPublicKey, groups, role 
   const title = currentLabel(pathname)
   const requestAdminSearch = () => {
     if (window.innerWidth <= 760) window.dispatchEvent(new Event('admin-mobile-search'))
-    else document.getElementById('admin-nav-search')?.focus()
+    // The sidebar's search input no longer has a fixed DOM id - it's shared by
+    // admin-nav-tree.tsx and needs to stay collision-safe between the desktop
+    // aside (always mounted) and the mobile drawer (mounted only while open),
+    // so it uses useId() instead. AdminSidebarDrawer listens for this event and
+    // focuses its own ref, the same way the mobile drawer already listens for
+    // 'admin-mobile-search'.
+    else window.dispatchEvent(new Event('admin-desktop-search'))
   }
 
   return (

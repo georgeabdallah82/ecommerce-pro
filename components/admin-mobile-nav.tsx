@@ -76,7 +76,7 @@ export default function AdminMobileNav({ groups, role }: { groups: AdminSidebarG
         </div>
         {role && <div className="pill adminMobileNavRole">{role}</div>}
         <div className="adminMobileNavScroll">
-          <AdminNavTree groups={groups} onNavigate={() => setOpen(false)} searchInputRef={searchRef} />
+          <AdminNavTree groups={groups} onNavigate={() => setOpen(false)} searchInputRef={searchRef} showThemeToggle />
         </div>
         <div className="adminSideBottom adminMobileNavFoot">
           <Link href="/" onClick={() => setOpen(false)}><Store size={16} /> View storefront</Link>
