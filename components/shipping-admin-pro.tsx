@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Check, ChevronDown, Globe2, Plus, RefreshCw, Trash2, Truck, X } from 'lucide-react'
+import { Check, Globe2, Pencil, Plus, RefreshCw, Trash2, Truck, X } from 'lucide-react'
 import { money } from '@/lib/config'
 
 type Rate = { id: string; name: string; price: number; freeAbove: number | null; estimatedDays: number | null; isActive: boolean }
@@ -15,6 +15,11 @@ async function api(path: string, init?: RequestInit) {
 }
 
 const initialForm = { name: '', countries: 'Lebanon', regions: '', rateName: 'Standard', price: '0', freeAbove: '', estimatedDays: '2', isActive: true }
+const initialRateForm = { name: '', price: '0', freeAbove: '', estimatedDays: '2' }
+
+function dollars(cents: number | null) {
+  return cents === null ? '' : String(cents / 100)
+}
 
 export default function ShippingAdminPro({ initial }: { initial: Zone[] }) {
   const [rows, setRows] = useState<Zone[]>(initial || [])
@@ -26,6 +31,15 @@ export default function ShippingAdminPro({ initial }: { initial: Zone[] }) {
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
+
+  const [editZone, setEditZone] = useState<Zone | null>(null)
+  const [editZoneForm, setEditZoneForm] = useState({ name: '', countries: '', regions: '' })
+
+  const [addRateFor, setAddRateFor] = useState<string | null>(null)
+  const [rateForm, setRateForm] = useState(initialRateForm)
+
+  const [editingRate, setEditingRate] = useState<string | null>(null)
+  const [editRateForm, setEditRateForm] = useState(initialRateForm)
 
   const filtered = useMemo(() => rows.filter(z => {
     const q = query.trim().toLowerCase()
@@ -75,6 +89,70 @@ export default function ShippingAdminPro({ initial }: { initial: Zone[] }) {
     finally { setBusy(null) }
   }
 
+  function openEditZone(zone: Zone) {
+    setEditZone(zone)
+    setEditZoneForm({ name: zone.name, countries: zone.countries, regions: zone.regions || '' })
+    setError('')
+  }
+
+  async function saveEditZone(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editZone) return
+    setSaving(true); setError('')
+    try {
+      await api('/api/admin/shipping', { method: 'PATCH', body: JSON.stringify({
+        id: editZone.id, name: editZoneForm.name, countries: editZoneForm.countries, regions: editZoneForm.regions || null,
+      }) })
+      await refresh(); setEditZone(null)
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to update zone details') }
+    finally { setSaving(false) }
+  }
+
+  function openAddRate(zoneId: string) {
+    setAddRateFor(zoneId)
+    setRateForm(initialRateForm)
+    setError('')
+  }
+
+  async function submitAddRate(e: React.FormEvent, zone: Zone) {
+    e.preventDefault(); setSaving(true); setError('')
+    try {
+      await api('/api/admin/shipping', { method: 'PATCH', body: JSON.stringify({
+        id: zone.id, addRates: [{
+          name: rateForm.name || 'Standard',
+          price: Number(rateForm.price) * 100,
+          freeAbove: rateForm.freeAbove === '' ? null : Number(rateForm.freeAbove) * 100,
+          estimatedDays: rateForm.estimatedDays === '' ? null : Number(rateForm.estimatedDays),
+        }],
+      }) })
+      await refresh(); setAddRateFor(null)
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to add rate') }
+    finally { setSaving(false) }
+  }
+
+  function startEditRate(rate: Rate) {
+    setEditingRate(rate.id)
+    setEditRateForm({ name: rate.name, price: dollars(rate.price), freeAbove: dollars(rate.freeAbove), estimatedDays: rate.estimatedDays === null ? '' : String(rate.estimatedDays) })
+    setError('')
+  }
+
+  async function saveEditRate(e: React.FormEvent, zone: Zone, rateId: string) {
+    e.preventDefault(); setBusy(rateId); setError('')
+    try {
+      await api('/api/admin/shipping', { method: 'PATCH', body: JSON.stringify({
+        id: zone.id, rate: {
+          id: rateId,
+          name: editRateForm.name || 'Standard',
+          price: Number(editRateForm.price) * 100,
+          freeAbove: editRateForm.freeAbove === '' ? null : Number(editRateForm.freeAbove) * 100,
+          estimatedDays: editRateForm.estimatedDays === '' ? null : Number(editRateForm.estimatedDays),
+        },
+      }) })
+      await refresh(); setEditingRate(null)
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to update rate') }
+    finally { setBusy(null) }
+  }
+
   return <div className="catalogPage">
     <div className="sectionHead catalogHead"><div><span className="muted">SETTINGS</span><h1 className="h2">Shipping</h1><p className="muted">Control where you ship, which rates customers see, and free-shipping thresholds.</p></div><div className="inline"><button className="btn secondary" onClick={refresh}><RefreshCw size={15}/> Refresh</button><button className="btn" onClick={() => setFormOpen(true)}><Plus size={16}/> Add zone</button></div></div>
     {error && <div className="alert danger">{error}</div>}
@@ -98,19 +176,49 @@ export default function ShippingAdminPro({ initial }: { initial: Zone[] }) {
         <td><div><strong>{zone.countries || 'All countries'}</strong>{zone.regions && <div className="muted">{zone.regions}</div>}</div></td>
         <td><strong>{zone.rates.length}</strong><div className="muted">{zone.rates.filter(r => r.isActive).length} active</div></td>
         <td><span className={`statusPill ${zone.isActive ? 'success' : 'warning'}`}>{zone.isActive ? <><Check size={13}/> Active</> : 'Inactive'}</span></td>
-        <td><div className="inline"><button className="textButton" disabled={busy === zone.id} onClick={() => toggleZone(zone)}>{zone.isActive ? 'Disable' : 'Enable'}</button><button className="iconBtn" title="Delete zone" disabled={busy === zone.id} onClick={() => deleteZone(zone)}><Trash2 size={15}/></button></div></td>
+        <td><div className="inline"><button className="textButton" disabled={busy === zone.id} onClick={() => toggleZone(zone)}>{zone.isActive ? 'Disable' : 'Enable'}</button><button className="iconBtn" title="Edit zone" onClick={() => openEditZone(zone)}><Pencil size={15}/></button><button className="iconBtn" title="Delete zone" disabled={busy === zone.id} onClick={() => deleteZone(zone)}><Trash2 size={15}/></button></div></td>
       </tr>)}
     </tbody></table></div>
     {!filtered.length && <div className="empty"><Truck size={28}/><h3>No shipping zones</h3><p className="muted">Create a zone to define where and how you ship.</p></div>}
     </div>
 
     {filtered.filter(z => z.id === open).map(zone => <div className="card opsPanel" key={zone.id} style={{ marginTop: 14 }}>
-      <div className="sectionHead" style={{ marginBottom: 14 }}><div><span className="muted">ZONE DETAILS</span><h2 className="h3">{zone.name}</h2><p className="muted">{zone.countries}{zone.regions ? ` · ${zone.regions}` : ''}</p></div><span className="pill">{zone.rates.length} rates</span></div>
-      <div className="opsList">{zone.rates.map(rate => <div className="opsRow" key={rate.id}><div><strong>{rate.name}</strong><div className="muted">{rate.estimatedDays ? `${rate.estimatedDays} day estimate` : 'No delivery estimate'}{rate.freeAbove ? ` · Free over ${money(rate.freeAbove)}` : ''}</div></div><div className="inline"><strong>{money(rate.price)}</strong><span className={`statusPill ${rate.isActive ? 'success' : 'warning'}`}>{rate.isActive ? 'Active' : 'Inactive'}</span><button className="textButton" disabled={busy === rate.id} onClick={() => toggleRate(zone, rate)}>{rate.isActive ? 'Disable' : 'Enable'}</button></div></div>)}{!zone.rates.length && <div className="empty">No rates configured.</div>}</div>
+      <div className="sectionHead" style={{ marginBottom: 14 }}><div><span className="muted">ZONE DETAILS</span><h2 className="h3">{zone.name}</h2><p className="muted">{zone.countries}{zone.regions ? ` · ${zone.regions}` : ''}</p></div><div className="inline"><span className="pill">{zone.rates.length} rates</span><button className="btn secondary" type="button" onClick={() => openAddRate(zone.id)}><Plus size={14}/> Add rate</button></div></div>
+      <div className="opsList">{zone.rates.map(rate => editingRate === rate.id ? (
+        <form className="opsRow" key={rate.id} onSubmit={e => saveEditRate(e, zone, rate.id)} style={{ gridTemplateColumns: '1fr', gap: 10 }}>
+          <div className="discountFormGrid">
+            <label className="fieldLabel">Rate name<input className="input" required value={editRateForm.name} onChange={e => setEditRateForm({ ...editRateForm, name: e.target.value })}/></label>
+            <label className="fieldLabel">Price<input className="input" type="number" min="0" step="0.01" value={editRateForm.price} onChange={e => setEditRateForm({ ...editRateForm, price: e.target.value })}/></label>
+            <label className="fieldLabel">Free over<input className="input" type="number" min="0" step="0.01" value={editRateForm.freeAbove} onChange={e => setEditRateForm({ ...editRateForm, freeAbove: e.target.value })} placeholder="None"/></label>
+            <label className="fieldLabel">Est. days<input className="input" type="number" min="0" step="1" value={editRateForm.estimatedDays} onChange={e => setEditRateForm({ ...editRateForm, estimatedDays: e.target.value })}/></label>
+          </div>
+          <div className="inline" style={{ justifyContent: 'flex-end' }}><button type="button" className="textButton" onClick={() => setEditingRate(null)} disabled={busy === rate.id}>Cancel</button><button className="btn" disabled={busy === rate.id}>{busy === rate.id ? 'Saving…' : 'Save rate'}</button></div>
+        </form>
+      ) : (
+        <div className="opsRow" key={rate.id}><div><strong>{rate.name}</strong><div className="muted">{rate.estimatedDays ? `${rate.estimatedDays} day estimate` : 'No delivery estimate'}{rate.freeAbove ? ` · Free over ${money(rate.freeAbove)}` : ''}</div></div><div className="inline"><strong>{money(rate.price)}</strong><span className={`statusPill ${rate.isActive ? 'success' : 'warning'}`}>{rate.isActive ? 'Active' : 'Inactive'}</span><button className="iconBtn" title="Edit rate" disabled={busy === rate.id} onClick={() => startEditRate(rate)}><Pencil size={14}/></button><button className="textButton" disabled={busy === rate.id} onClick={() => toggleRate(zone, rate)}>{rate.isActive ? 'Disable' : 'Enable'}</button></div></div>
+      ))}{!zone.rates.length && <div className="empty">No rates configured.</div>}</div>
+      {addRateFor === zone.id && <form className="card discountForm" style={{ marginTop: 14, padding: 16 }} onSubmit={e => submitAddRate(e, zone)}>
+        <div className="discountFormGrid">
+          <label className="fieldLabel">Rate name<input className="input" required value={rateForm.name} onChange={e => setRateForm({ ...rateForm, name: e.target.value })} placeholder="Express"/></label>
+          <label className="fieldLabel">Price<input className="input" type="number" min="0" step="0.01" value={rateForm.price} onChange={e => setRateForm({ ...rateForm, price: e.target.value })}/></label>
+          <label className="fieldLabel">Free over<input className="input" type="number" min="0" step="0.01" value={rateForm.freeAbove} onChange={e => setRateForm({ ...rateForm, freeAbove: e.target.value })} placeholder="None"/></label>
+          <label className="fieldLabel">Est. days<input className="input" type="number" min="0" step="1" value={rateForm.estimatedDays} onChange={e => setRateForm({ ...rateForm, estimatedDays: e.target.value })}/></label>
+        </div>
+        <div className="inline" style={{ justifyContent: 'flex-end', marginTop: 8 }}><button type="button" className="btn secondary" onClick={() => setAddRateFor(null)} disabled={saving}>Cancel</button><button className="btn" disabled={saving}>{saving ? 'Adding…' : 'Add rate'}</button></div>
+      </form>}
     </div>)}
 
     {formOpen && <div className="modalOverlay" onClick={() => !saving && setFormOpen(false)}><div className="card discountsModal" onClick={e => e.stopPropagation()}><div className="inventoryModalHead"><div><span className="muted tiny">CREATE SHIPPING ZONE</span><h2>New zone</h2><p className="muted">Define coverage and your first customer-facing rate.</p></div><button className="iconBtn" onClick={() => setFormOpen(false)} disabled={saving}><X size={17}/></button></div>
       <form className="discountForm" onSubmit={createZone}><label className="fieldLabel">Zone name<input className="input" required value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Lebanon"/></label><label className="fieldLabel">Countries<input className="input" required value={form.countries} onChange={e => setForm({...form, countries: e.target.value})} placeholder="Lebanon"/><small className="muted">Use a comma-separated list for multiple countries.</small></label><label className="fieldLabel">Regions (optional)<input className="input" value={form.regions} onChange={e => setForm({...form, regions: e.target.value})} placeholder="Beirut, Metn"/></label><div className="discountFormGrid"><label className="fieldLabel">Rate name<input className="input" required value={form.rateName} onChange={e => setForm({...form, rateName: e.target.value})}/></label><label className="fieldLabel">Price<input className="input" type="number" min="0" step="0.01" value={form.price} onChange={e => setForm({...form, price: e.target.value})}/></label><label className="fieldLabel">Free over<input className="input" type="number" min="0" step="0.01" value={form.freeAbove} onChange={e => setForm({...form, freeAbove: e.target.value})} placeholder="None"/></label><label className="fieldLabel">Est. days<input className="input" type="number" min="0" step="1" value={form.estimatedDays} onChange={e => setForm({...form, estimatedDays: e.target.value})}/></label></div><label className="toggleRow"><input type="checkbox" checked={form.isActive} onChange={e => setForm({...form, isActive: e.target.checked})}/><span><strong>Zone is active</strong><small>Customers can use this zone immediately.</small></span></label><div className="inline" style={{ justifyContent: 'flex-end', marginTop: 8 }}><button type="button" className="btn secondary" onClick={() => setFormOpen(false)} disabled={saving}>Cancel</button><button className="btn" disabled={saving}>{saving ? 'Creating…' : 'Create zone'}</button></div></form>
+    </div></div>}
+
+    {editZone && <div className="modalOverlay" onClick={() => !saving && setEditZone(null)}><div className="card discountsModal" onClick={e => e.stopPropagation()}><div className="inventoryModalHead"><div><span className="muted tiny">EDIT SHIPPING ZONE</span><h2>{editZone.name}</h2><p className="muted">Update coverage details for this zone.</p></div><button className="iconBtn" onClick={() => setEditZone(null)} disabled={saving}><X size={17}/></button></div>
+      <form className="discountForm" onSubmit={saveEditZone}>
+        <label className="fieldLabel">Zone name<input className="input" required value={editZoneForm.name} onChange={e => setEditZoneForm({ ...editZoneForm, name: e.target.value })}/></label>
+        <label className="fieldLabel">Countries<input className="input" required value={editZoneForm.countries} onChange={e => setEditZoneForm({ ...editZoneForm, countries: e.target.value })}/><small className="muted">Use a comma-separated list for multiple countries.</small></label>
+        <label className="fieldLabel">Regions (optional)<input className="input" value={editZoneForm.regions} onChange={e => setEditZoneForm({ ...editZoneForm, regions: e.target.value })}/></label>
+        <div className="inline" style={{ justifyContent: 'flex-end', marginTop: 8 }}><button type="button" className="btn secondary" onClick={() => setEditZone(null)} disabled={saving}>Cancel</button><button className="btn" disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button></div>
+      </form>
     </div></div>}
   </div>
 }

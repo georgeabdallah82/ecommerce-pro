@@ -89,20 +89,17 @@ export async function PATCH(req: Request) {
       await db.shippingRate.update({ where: { id: rateId }, data: rateData })
     }
 
-    if (Array.isArray(b.addRates)) {
-      for (const rate of b.addRates) {
-        const name = cleanName(rate?.name) || 'Standard'
-        await db.shippingRate.create({
-          data: {
-            zoneId: zone.id,
-            name,
-            price: cents(rate?.price),
-            freeAbove: rate?.freeAbove === null || rate?.freeAbove === '' || rate?.freeAbove === undefined ? null : cents(rate?.freeAbove),
-            estimatedDays: rate?.estimatedDays === null || rate?.estimatedDays === '' || rate?.estimatedDays === undefined ? null : Math.max(0, Math.trunc(Number(rate?.estimatedDays) || 0)),
-            isActive: rate?.isActive !== false,
-          },
-        })
-      }
+    if (Array.isArray(b.addRates) && b.addRates.length) {
+      await db.shippingRate.createMany({
+        data: b.addRates.map((rate: Record<string, unknown>) => ({
+          zoneId: zone.id,
+          name: cleanName(rate?.name) || 'Standard',
+          price: cents(rate?.price),
+          freeAbove: rate?.freeAbove === null || rate?.freeAbove === '' || rate?.freeAbove === undefined ? null : cents(rate?.freeAbove),
+          estimatedDays: rate?.estimatedDays === null || rate?.estimatedDays === '' || rate?.estimatedDays === undefined ? null : Math.max(0, Math.trunc(Number(rate?.estimatedDays) || 0)),
+          isActive: rate?.isActive !== false,
+        })),
+      })
     }
 
     const updated = await db.shippingZone.findUnique({ where: { id }, include: { rates: true } })

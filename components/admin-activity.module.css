@@ -1,0 +1,50 @@
+/*
+ * Activity log - CSS Modules, same pattern as admin-order-edits.module.css:
+ * build-time unique class names, colors/spacing from the --admin-* tokens in
+ * ../app/admin/admin-overhaul.css via var(), so dark mode is free.
+ */
+
+.page { max-width: 1480px; margin: 0 auto; padding-bottom: 32px; }
+
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px; margin-bottom: 14px; border: 1px solid var(--admin-border); background: var(--admin-surface); border-radius: var(--admin-radius-lg); box-shadow: var(--admin-shadow-sm); }
+.search { flex: 1 1 260px; max-width: 480px; display: flex; align-items: center; gap: 9px; height: 42px; padding: 0 13px; border: 1px solid var(--admin-border); background: var(--admin-border-soft); border-radius: var(--admin-radius-md); color: var(--admin-muted); }
+.search input { border: 0; outline: 0; flex: 1; background: transparent; color: var(--admin-ink); font-size: 13px; }
+.search:focus-within { border-color: var(--admin-accent); box-shadow: 0 0 0 3px var(--admin-focus); background: var(--admin-surface); }
+.clearBtn { display: grid; place-items: center; border: 0; background: transparent; color: var(--admin-muted); cursor: pointer; }
+.select { min-width: 170px; }
+.count { margin-left: auto; font-size: 12px; color: var(--admin-muted); white-space: nowrap; }
+
+.tableCard { overflow: hidden; }
+.table { min-width: 900px; }
+.table th { background: var(--admin-border-soft); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; color: var(--admin-muted); }
+
+.timeCell { white-space: nowrap; color: var(--admin-ink-soft); font-size: 12px; }
+.actorName { color: var(--admin-ink); font-weight: 700; }
+.actorEmail { color: var(--admin-muted); font-size: 11.5px; }
+
+.actionPill { display: inline-flex; align-items: center; border-radius: var(--admin-radius-pill); padding: 4px 10px; font-size: 10.5px; font-weight: 800; border: 1px solid transparent; white-space: nowrap; }
+.actionCreate { background: var(--admin-accent-soft); color: var(--admin-accent-strong); }
+.actionRemove { background: var(--admin-danger-soft); color: var(--admin-danger); }
+.actionCaution { background: var(--admin-warning-soft); color: var(--admin-warning); }
+.actionNeutral { background: var(--admin-border-soft); color: var(--admin-ink-soft); }
+
+.entityId { color: var(--admin-muted); font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+.metaToggle { border: 0; background: transparent; color: var(--admin-accent); font-size: 11.5px; font-weight: 700; cursor: pointer; padding: 0; }
+.metaToggle:disabled { color: var(--admin-muted-soft); cursor: default; }
+.metaBlock { margin-top: 6px; max-width: 360px; max-height: 160px; overflow: auto; padding: 8px 10px; background: var(--admin-border-soft); border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm); font-size: 11px; color: var(--admin-ink-soft); white-space: pre-wrap; word-break: break-word; }
+
+.loadMoreBar { display: flex; justify-content: center; padding: 16px; border-top: 1px solid var(--admin-border-soft); background: var(--admin-surface); }
+
+@media (max-width: 760px) {
+  .toolbar { flex-direction: column; align-items: stretch; }
+  /* flex-direction switches to column here, which makes the main axis
+     vertical - the flex-basis meant for width (260px, set on .search above
+     for the row layout) would otherwise be read as a height basis and,
+     combined with flex-grow, stretch the search box to fill the column.
+     Reset grow/basis so align-items: stretch (100% width) and the search
+     box's own height:42px are what apply - same trap already hit once in
+     admin-orders-list.module.css. */
+  .search { flex: 0 0 auto; max-width: none; }
+  .count { margin-left: 0; }
+}
