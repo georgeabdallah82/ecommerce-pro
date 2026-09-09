@@ -27,6 +27,8 @@ const groups: AdminSidebarGroup[] = [
   ]},
   { id: 'customers', label: 'Customers', items: [
     { href: '/admin/customers', label: 'Customers', permission: 'customers.view', icon: 'customers' },
+    { href: '/admin/customer-segments', label: 'Segments', permission: 'customerSegments.view', icon: 'segments' },
+    { href: '/admin/gift-cards', label: 'Gift cards', permission: 'giftCards.view', icon: 'giftCards' },
   ]},
   { id: 'content', label: 'Content', items: [
     { href: '/admin/content', label: 'Content', permission: 'content.view', icon: 'content' },

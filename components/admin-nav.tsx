@@ -15,9 +15,9 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  Activity, ArrowLeftRight, BarChart3, Boxes, ChevronDown, ClipboardList, FileEdit, FileText, FolderTree, Image as ImageIcon, Layers3,
+  Activity, ArrowLeftRight, BarChart3, Boxes, ChevronDown, ClipboardList, CreditCard, FileEdit, FileText, FolderTree, Image as ImageIcon, Layers3,
   LayoutDashboard, LogOut, Menu, MessageSquare, PackageCheck, Palette, RotateCcw, Search, Settings2,
-  ShieldCheck, ShoppingBag, Store, Tag, Truck, UserCog, Users, Workflow, X, type LucideIcon,
+  ShieldCheck, ShoppingBag, Store, Tag, Truck, UserCog, Users, UsersRound, Workflow, X, type LucideIcon,
 } from 'lucide-react'
 import AdminThemeToggle from '@/components/admin-theme-toggle'
 import OrderAlerts from '@/components/order-alerts'
@@ -34,6 +34,7 @@ const iconMap: Record<string, LucideIcon> = {
   analytics: BarChart3, system: Activity, users: UserCog, activity: Activity, settings: Settings2,
   orderEdits: FileEdit, purchaseOrders: ClipboardList, transfers: ArrowLeftRight,
   draftOrders: ClipboardList, returns: RotateCcw,
+  segments: UsersRound, giftCards: CreditCard,
 }
 
 function normalizePath(pathname: string) { return pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname }
