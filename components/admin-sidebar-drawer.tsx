@@ -1,49 +1,19 @@
 'use client'
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
-import {
-  Activity, BarChart3, Boxes, ChevronDown, FileText, FolderTree, Image as ImageIcon, Layers3,
-  LayoutDashboard, Menu, MessageSquare, PackageCheck, Palette, PanelLeftClose, PanelLeftOpen,
-  Search, Settings2, ShoppingBag, Tag, Truck, UserCog, Users, Workflow, type LucideIcon,
-} from 'lucide-react'
-import AdminThemeToggle from '@/components/admin-theme-toggle'
+import { useEffect, useRef, useState } from 'react'
+import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import AdminNavTree, { type AdminSidebarGroup } from '@/components/admin-nav-tree'
 
-export type AdminSidebarItem = { href: string; label: string; permission: any; icon: string }
-export type AdminSidebarGroup = { id: string; label: string; items: AdminSidebarItem[] }
-
-const iconMap: Record<string, LucideIcon> = {
-  dashboard: LayoutDashboard,
-  orders: ShoppingBag,
-  products: Boxes,
-  inventory: PackageCheck,
-  operations: Workflow,
-  customers: Users,
-  categories: FolderTree,
-  collections: Layers3,
-  discounts: Tag,
-  reviews: MessageSquare,
-  shipping: Truck,
-  store: ShoppingBag,
-  theme: Palette,
-  navigation: Menu,
-  content: FileText,
-  files: ImageIcon,
-  analytics: BarChart3,
-  system: Activity,
-  users: UserCog,
-  activity: Activity,
-  settings: Settings2,
-}
+export type { AdminSidebarGroup, AdminSidebarItem } from '@/components/admin-nav-tree'
 
 /*
- * This component owns only the collapse/expand mechanic (the floating toggle, the
- * icon-only rail, the expand/collapse height animation). Design tokens, the shell
- * grid, .adminSide's own box (position/size/background), the brand mark and the
- * shared .adminNav* look all live in ../app/admin/admin-overhaul.css - keep them
- * there so this file and admin-sidebar.tsx (the mobile drawer's nav) can't drift
- * out of sync with different pixel values for the same classes.
+ * This component owns only the desktop collapse/expand mechanic (the floating
+ * toggle, the icon-only rail, the expand/collapse height animation). Design
+ * tokens, the shell grid, .adminSide's own box (position/size/background), the
+ * brand mark and the shared .adminNav* look all live in ../app/admin/admin-overhaul.css.
+ * The tree itself - search, groups, items - lives in ./admin-nav-tree.tsx and is
+ * shared byte-for-byte with the mobile drawer, so the two surfaces can no longer
+ * drift to different pixel values for the same classes.
  */
 const css = `
 body:has(.adminShell .adminSidebarDrawer.isCollapsed) .adminShell{grid-template-columns:78px minmax(0,1fr)!important}
@@ -93,39 +63,17 @@ html[data-admin-theme='dark'] .adminSidebarToggle:hover{background:#252b27;color
 @media(max-width:760px){.adminSidebarDrawer{display:none!important}}
 `
 
-function normalizePath(pathname: string) { return pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname }
-function isActivePath(pathname: string, href: string) { const current = normalizePath(pathname); const target = normalizePath(href); return target === '/admin' ? current === '/admin' : current === target || current.startsWith(`${target}/`) }
-
 export default function AdminSidebarDrawer({ groups }: { groups: AdminSidebarGroup[] }) {
-  const pathname = usePathname()
-  const [query, setQuery] = useState('')
   const [collapsed, setCollapsed] = useState(false)
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => Object.fromEntries(groups.map(group => [group.id, true])))
-  const activeGroups = useMemo(() => new Set(groups.filter(group => group.items.some(item => isActivePath(pathname, item.href))).map(group => group.id)), [groups, pathname])
+  const searchRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    try {
-      setCollapsed(window.localStorage.getItem('admin.sidebar.collapsed') === '1')
-      const stored = window.localStorage.getItem('admin.sidebar.open-groups')
-      if (stored) setOpenGroups(current => ({ ...current, ...(JSON.parse(stored) as Record<string, boolean>) }))
-    } catch {}
+    try { setCollapsed(window.localStorage.getItem('admin.sidebar.collapsed') === '1') } catch {}
   }, [])
-
-  useEffect(() => {
-    setOpenGroups(current => {
-      const next = { ...current }
-      activeGroups.forEach(id => { next[id] = true })
-      return next
-    })
-  }, [activeGroups])
 
   useEffect(() => {
     try { window.localStorage.setItem('admin.sidebar.collapsed', collapsed ? '1' : '0') } catch {}
   }, [collapsed])
-
-  useEffect(() => {
-    try { window.localStorage.setItem('admin.sidebar.open-groups', JSON.stringify(openGroups)) } catch {}
-  }, [openGroups])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -133,56 +81,30 @@ export default function AdminSidebarDrawer({ groups }: { groups: AdminSidebarGro
         event.preventDefault(); setCollapsed(value => !value)
       }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-        event.preventDefault(); setCollapsed(false); window.setTimeout(() => document.getElementById('admin-nav-search')?.focus(), 0)
-      }
-      if (event.key === 'Escape' && document.activeElement?.id === 'admin-nav-search') {
-        setQuery(''); (document.activeElement as HTMLElement).blur()
+        event.preventDefault(); setCollapsed(false); window.setTimeout(() => searchRef.current?.focus(), 0)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const normalizedQuery = query.trim().toLowerCase()
-  const visibleGroups = useMemo(() => groups.map(group => ({ ...group, items: group.items.filter(item => !normalizedQuery || `${group.label} ${item.label}`.toLowerCase().includes(normalizedQuery)) })).filter(group => group.items.length), [groups, normalizedQuery])
-
   return (
     <div className={`adminSidebarDrawer${collapsed ? ' isCollapsed' : ''}`}>
       <style dangerouslySetInnerHTML={{ __html: css }} />
-      <button type="button" className="adminSidebarToggle adminSidebarToggleFloating" onClick={() => setCollapsed(value => !value)} aria-label={collapsed ? 'Open admin sidebar' : 'Collapse admin sidebar'} title={collapsed ? 'Open sidebar (Ctrl/Cmd+B)' : 'Collapse sidebar (Ctrl/Cmd+B)'}>
+      <button
+        type="button"
+        className="adminSidebarToggle adminSidebarToggleFloating"
+        onClick={() => setCollapsed(value => !value)}
+        aria-label={collapsed ? 'Open admin sidebar' : 'Collapse admin sidebar'}
+        title={collapsed ? 'Open sidebar (Ctrl/Cmd+B)' : 'Collapse sidebar (Ctrl/Cmd+B)'}
+      >
         {collapsed ? <PanelLeftOpen size={16} aria-hidden="true" /> : <PanelLeftClose size={16} aria-hidden="true" />}
       </button>
-      <nav className="adminSidebarNav" aria-label="Admin navigation">
+      <div className="adminSidebarNav">
         <div className="adminSidebarScroll">
-          <div className="adminNavSearchWrap" role={collapsed ? 'button' : undefined} tabIndex={collapsed ? 0 : undefined} onClick={collapsed ? () => setCollapsed(false) : undefined} onKeyDown={collapsed ? event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setCollapsed(false) } } : undefined} title={collapsed ? 'Open sidebar search' : undefined}>
-            <Search size={16} aria-hidden="true" />
-            <input id="admin-nav-search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search admin…" aria-label="Search admin navigation" />
-            <kbd>⌘K</kbd>
-          </div>
-          {normalizedQuery && !collapsed && <div className="adminNavSearchMeta">{visibleGroups.reduce((count, group) => count + group.items.length, 0)} matches</div>}
-          {visibleGroups.map(group => {
-            const groupActive = activeGroups.has(group.id)
-            const open = collapsed ? true : (normalizedQuery ? true : (openGroups[group.id] ?? true))
-            const panelId = `admin-nav-${group.id}-items`
-            return (
-              <div className={`adminNavGroup${groupActive ? ' active' : ''}`} key={group.id}>
-                <button type="button" className={`adminNavGroupButton${groupActive ? ' active' : ''}`} aria-expanded={open} aria-controls={panelId} onClick={() => { if (!collapsed) setOpenGroups(current => ({ ...current, [group.id]: !current[group.id] })) }} title={collapsed ? group.label : undefined}>
-                  <span>{group.label}</span><ChevronDown className={`adminNavChevron${open ? ' open' : ''}`} size={14} aria-hidden="true" />
-                </button>
-                <div id={panelId} className={`adminNavChildren${open ? ' open' : ''}`} aria-hidden={!open}>
-                  {group.items.map(item => {
-                    const active = isActivePath(pathname, item.href)
-                    const Icon = iconMap[item.icon] ?? Boxes
-                    return <Link key={item.href} href={item.href} className={`adminNavItem${active ? ' active' : ''}`} aria-current={active ? 'page' : undefined} title={collapsed ? item.label : undefined}><Icon size={17} aria-hidden="true" /><span>{item.label}</span></Link>
-                  })}
-                </div>
-              </div>
-            )
-          })}
-          {!visibleGroups.length && <div className="adminNavEmpty">No admin pages match “{query}”.</div>}
-          <div className="adminNavTheme"><AdminThemeToggle /></div>
+          <AdminNavTree groups={groups} collapsed={collapsed} onRequestExpand={() => setCollapsed(false)} searchInputRef={searchRef} />
         </div>
-      </nav>
+      </div>
     </div>
   )
 }
