@@ -1,0 +1,135 @@
+/*
+ * Analytics report — CSS Modules, same pattern as admin-products-list.module.css:
+ * every class gets a build-time-unique name, and every color/radius/spacing
+ * value comes from the --admin-* tokens in ../app/admin/admin-overhaul.css via
+ * var(), so dark mode is automatic. The previous version read the generic
+ * --line/--muted/--soft/--ink tokens from app/globals.css (a light-only,
+ * storefront-wide palette) via a global `style jsx` block, so it never
+ * adapted to the admin dark theme.
+ */
+
+.page { padding-bottom: 24px; }
+
+.rangeBar {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-surface);
+}
+.rangeBtn {
+  border: 0;
+  border-radius: var(--admin-radius-sm);
+  padding: 8px 10px;
+  background: transparent;
+  color: var(--admin-muted);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.rangeBtnActive { background: var(--admin-border-soft); color: var(--admin-ink); }
+
+.kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin: 18px 0; }
+
+.metricCard { padding: 18px; display: grid; gap: 6px; }
+.metricIcon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-border-soft);
+}
+.metricCard strong { font-size: 25px; letter-spacing: -.03em; color: var(--admin-ink); }
+.metricUp, .metricDown { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 800; }
+.metricUp { color: var(--admin-accent-strong); }
+.metricDown { color: var(--admin-danger); }
+
+.grid { display: grid; grid-template-columns: 1.45fr .85fr; gap: 16px; }
+.gridBottom { margin-top: 16px; }
+
+.analyticsCard { padding: 0; min-height: 300px; }
+.cardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--admin-border);
+}
+.cardHead h3 { margin: 0; font-size: 15px; color: var(--admin-ink); }
+.cardHead p { margin: 4px 0 0; font-size: 12px; }
+
+.chart { height: 270px; padding: 20px; display: flex; align-items: end; }
+.chartBars {
+  width: 100%;
+  height: 220px;
+  display: flex;
+  align-items: end;
+  gap: 4px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--admin-border);
+}
+.barCol { height: 100%; flex: 1; min-width: 3px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 5px; }
+.bar { width: 100%; max-width: 20px; min-height: 3px; border-radius: 5px 5px 0 0; background: var(--admin-ink); opacity: .86; }
+.barCol span { font-size: 9px; color: var(--admin-muted); white-space: nowrap; }
+
+.rankList { padding: 8px 20px; }
+.rankRow {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--admin-border);
+}
+.rankRow:last-child { border-bottom: 0; }
+.rank {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-border-soft);
+  font-size: 10px;
+  font-weight: 900;
+  color: var(--admin-ink);
+}
+.rankInfo { display: grid; gap: 3px; min-width: 0; }
+.rankInfo strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--admin-ink); }
+.rankInfo span { font-size: 11px; }
+
+.insightList { padding: 8px 20px; }
+.insightList > div { padding: 14px 0; border-bottom: 1px solid var(--admin-border); display: grid; gap: 4px; }
+.insightList > div:last-child { border-bottom: 0; }
+.insightList strong { font-size: 14px; color: var(--admin-ink); }
+
+.loading { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.skeleton {
+  height: 180px;
+  background: linear-gradient(90deg, var(--admin-surface), var(--admin-border-soft), var(--admin-surface));
+  background-size: 200% 100%;
+  animation: analyticsPulse 1.3s ease-in-out infinite;
+}
+@keyframes analyticsPulse {
+  from { background-position: 0 0; }
+  to { background-position: -200% 0; }
+}
+
+@media (max-width: 1100px) {
+  .kpis { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 800px) {
+  .page :global(.catalogHead) { align-items: flex-start; flex-direction: column; }
+  .rangeBar { width: 100%; overflow: auto; }
+  .rangeBtn { white-space: nowrap; }
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+  .grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 520px) {
+  .kpis { grid-template-columns: 1fr; }
+  .metricCard strong { font-size: 22px; }
+  .chart { padding: 14px; }
+  .chartBars { gap: 2px; }
+}

@@ -1,0 +1,107 @@
+/*
+ * Settings center - CSS Modules, same pattern as
+ * components/admin-products-list.module.css: every class gets a build-time-
+ * unique name, so nothing here can collide with or be out-ranked by another
+ * page's rules. Colors/radii/shadows come from the --admin-* tokens in
+ * ../app/admin/admin-overhaul.css via var(), so dark mode is free - no
+ * separate dark-mode override block needed for this page.
+ */
+
+.page { max-width: 1180px; margin: 0 auto; }
+
+.head { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; margin-bottom: 22px; }
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 260px;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-surface);
+  color: var(--admin-muted);
+}
+.search input { flex: 1 1 auto; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; color: var(--admin-ink); }
+
+.layout { display: grid; grid-template-columns: 270px minmax(0, 1fr); align-items: start; gap: 20px; }
+
+.nav { display: grid; gap: 4px; position: sticky; top: 24px; }
+.navButton {
+  display: grid;
+  grid-template-columns: 22px 1fr 16px;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--admin-radius-sm);
+  background: transparent;
+  color: var(--admin-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.navButton:hover { background: var(--admin-surface); border-color: var(--admin-border); }
+.navButtonActive {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-ink);
+  box-shadow: var(--admin-shadow-sm);
+}
+.navText { display: grid; gap: 2px; }
+.navText strong { font-size: 13px; }
+.navText small { font-size: 11px; color: var(--admin-muted); line-height: 1.25; }
+
+.main { display: grid; gap: 18px; }
+
+.card { overflow: hidden; }
+.cardHead { padding: 20px; border-bottom: 1px solid var(--admin-border); }
+.cardHead h2 { margin: 0; font-size: 18px; color: var(--admin-ink); }
+.cardHead p { margin: 5px 0 0; font-size: 13px; }
+.cardBody { display: grid; gap: 18px; padding: 20px; }
+
+.toggle { display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 14px 0; border-bottom: 1px solid var(--admin-border); }
+.toggle:last-child { border-bottom: 0; }
+.toggleInfo { display: grid; gap: 3px; }
+.toggleInfo strong { font-size: 14px; color: var(--admin-ink); }
+.toggleInfo small { font-size: 11px; color: var(--admin-muted); }
+.toggleSwitch {
+  width: 44px;
+  height: 24px;
+  padding: 3px;
+  border: 0;
+  border-radius: var(--admin-radius-pill);
+  background: var(--admin-muted-soft);
+  cursor: pointer;
+  transition: background .18s ease;
+}
+.toggleSwitch i { display: block; width: 18px; height: 18px; border-radius: 50%; background: var(--admin-surface); transition: transform .18s ease; }
+.toggleSwitchOn { background: var(--admin-accent); }
+.toggleSwitchOn i { transform: translateX(20px); }
+
+.marketSummary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.marketItem { display: grid; gap: 4px; padding: 16px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); }
+.marketItem span { font-size: 12px; color: var(--admin-muted); }
+
+.securityCallout {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-accent-soft);
+}
+.securityCallout p { margin: 4px 0 0; }
+
+@media (max-width: 800px) {
+  .head { align-items: stretch; flex-direction: column; }
+  .layout { grid-template-columns: 1fr; }
+  .nav { position: static; display: flex; overflow: auto; padding-bottom: 4px; }
+  .navButton { min-width: 220px; }
+  .search { width: 100%; }
+  .marketSummary { grid-template-columns: 1fr; }
+  .head :global(.inline) { align-items: stretch; }
+  .head :global(.btn) { width: 100%; }
+}

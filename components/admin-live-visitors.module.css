@@ -1,0 +1,273 @@
+/*
+ * Live visitors report — CSS Modules, same pattern as admin-products-list.module.css:
+ * every class gets a build-time-unique name, and every color/radius/shadow
+ * value comes from the --admin-* tokens in ../app/admin/admin-overhaul.css via
+ * var(), so dark mode is automatic. The previous version read the generic
+ * --line/--muted/--soft/--ink tokens from app/globals.css (a light-only,
+ * storefront-wide palette) via two global `style jsx` blocks, so none of it
+ * adapted to the admin dark theme.
+ *
+ * Hardcoded pixel radii/shadows from the original that didn't land exactly on
+ * an --admin-radius-* or --admin-shadow-* step were normalized to the nearest
+ * token. Two colors had no direct semantic token:
+ *  - the live/"precise" indicator green (#16a34a) maps to --admin-accent,
+ *    which is itself a green in this theme.
+ *  - the "approximate" map-pin blue (#2563eb) had no blue token available, so
+ *    it was remapped to --admin-warning (amber) to keep a distinct,
+ *    theme-aware "less precise" signal instead of inventing a new token.
+ * The "Live updates" active toggle (.lv-btn.active) previously used a plain
+ * `background:var(--ink); color:#fff` inversion - literal white text would
+ * turn unreadable once --admin-ink flips to a near-white value in dark mode,
+ * so it now uses the --admin-accent/--admin-accent-ink pair instead, the same
+ * token pairing the shared "active" tab/view styles in admin-overhaul.css use
+ * for this exact purpose.
+ *
+ * Leaflet renders its own DOM outside React (tile <img> elements and the
+ * attribution control), so the two rules that target its native
+ * .leaflet-tile / .leaflet-control-attribution classes are wrapped in
+ * :global() - CSS Modules must not hash classnames Leaflet itself applies.
+ * The .lv-marker and .lv-tooltip classes are also applied outside JSX (built
+ * into a raw HTML string for L.divIcon, and passed as Leaflet's marker
+ * tooltip `className` option) - those stay local/hashed like any other
+ * module class, and the component below references the same `styles.*`
+ * values at both the CSS-definition site and the string-building call sites
+ * so they keep matching.
+ */
+
+.liveVisitors { margin-top: 52px; display: grid; gap: 18px; }
+
+.lvHeader { display: flex; align-items: flex-end; justify-content: space-between; gap: 22px; }
+.lvKicker { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; letter-spacing: .11em; text-transform: uppercase; font-weight: 900; color: var(--admin-accent-strong); }
+.lvLiveDot { width: 7px; height: 7px; border-radius: var(--admin-radius-pill); background: var(--admin-accent); box-shadow: 0 0 0 5px var(--admin-focus); }
+.lvTitle { margin: 9px 0 4px; font-size: 34px; line-height: 1.05; letter-spacing: -.04em; }
+.lvSubtitle { margin: 0; max-width: 760px; color: var(--admin-muted); font-size: 14px; line-height: 1.65; }
+.lvActions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+
+.lvBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 13px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-surface);
+  color: var(--admin-ink);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: var(--admin-shadow-sm);
+}
+.lvBtn:hover { background: var(--admin-border-soft); }
+.lvBtn:disabled { opacity: .5; cursor: not-allowed; }
+.lvBtnActive { background: var(--admin-accent); border-color: var(--admin-accent); color: var(--admin-accent-ink); }
+
+.lvError { padding: 12px 14px; border: 1px solid var(--admin-danger-border); border-radius: var(--admin-radius-md); background: var(--admin-danger-soft); color: var(--admin-danger); font-size: 13px; }
+
+.lvStats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.lvStat {
+  min-height: 112px;
+  padding: 18px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-lg);
+  background: var(--admin-surface);
+  box-shadow: var(--admin-shadow-sm);
+}
+.lvStatTop { display: flex; align-items: center; justify-content: space-between; color: var(--admin-muted); font-size: 12px; font-weight: 800; }
+.lvStatIcon { display: grid; width: 34px; height: 34px; place-items: center; border-radius: var(--admin-radius-sm); background: var(--admin-border-soft); color: var(--admin-ink); }
+.lvStatValue { margin-top: 11px; font-size: 28px; line-height: 1; letter-spacing: -.04em; font-weight: 900; }
+.lvStatHint { margin-top: 8px; font-size: 11px; color: var(--admin-muted); }
+
+.lvMain { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(320px, .75fr); gap: 14px; align-items: start; }
+
+.lvSide { border: 1px solid var(--admin-border); border-radius: var(--admin-radius-lg); background: var(--admin-surface); box-shadow: var(--admin-shadow-md); overflow: hidden; }
+.lvSideHead { padding: 17px 17px 14px; border-bottom: 1px solid var(--admin-border); }
+.lvSideTitle { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.lvSideTitle h3 { margin: 0; font-size: 15px; letter-spacing: -.01em; }
+.lvSideCount { padding: 4px 8px; border-radius: var(--admin-radius-pill); background: var(--admin-border-soft); font-size: 11px; font-weight: 800; }
+
+.lvSearch { position: relative; margin-top: 12px; }
+.lvSearch svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--admin-muted); }
+.lvSearch input {
+  width: 100%;
+  height: 39px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-border-soft);
+  padding: 0 12px 0 34px;
+  outline: 0;
+  font-size: 12px;
+  color: var(--admin-ink);
+}
+.lvSearch input:focus { border-color: var(--admin-accent); box-shadow: 0 0 0 3px var(--admin-focus); background: var(--admin-surface); }
+
+.lvList { max-height: 505px; overflow: auto; }
+.lvRow {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: 10px;
+  width: 100%;
+  padding: 13px 15px;
+  border: 0;
+  border-bottom: 1px solid var(--admin-border-soft);
+  background: var(--admin-surface);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.lvRow:hover { background: var(--admin-border-soft); }
+.lvRowSelected { background: var(--admin-accent-soft); box-shadow: inset 3px 0 0 var(--admin-accent); }
+.lvAvatar { display: grid; width: 36px; height: 36px; place-items: center; border-radius: var(--admin-radius-md); background: var(--admin-border-soft); font-size: 11px; font-weight: 900; color: var(--admin-ink); }
+.lvRowMain { min-width: 0; }
+.lvRowTop { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.lvRowName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 900; }
+.lvRowStatus { width: 6px; height: 6px; flex: 0 0 6px; border-radius: var(--admin-radius-pill); background: var(--admin-accent); }
+.lvRowPage { display: block; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--admin-muted); font-size: 11px; }
+.lvRowLocation { display: flex; align-items: center; gap: 5px; margin-top: 5px; overflow: hidden; color: var(--admin-ink); font-size: 11px; }
+.lvRowLocation span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lvRowMeta { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; color: var(--admin-muted); font-size: 10px; }
+.lvRowMeta .inline { display: inline-flex; align-items: center; gap: 5px; }
+.lvBadge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 7px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-pill); background: var(--admin-surface); font-size: 9px; font-weight: 900; white-space: nowrap; }
+.lvEmpty { padding: 40px 20px; text-align: center; color: var(--admin-muted); font-size: 12px; }
+
+.lvDetail { border: 1px solid var(--admin-border); border-radius: var(--admin-radius-lg); background: var(--admin-surface); padding: 18px; box-shadow: var(--admin-shadow-md); }
+.lvDetailHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.lvDetailPerson { display: flex; align-items: center; gap: 12px; }
+.lvDetailAvatar { display: grid; width: 44px; height: 44px; place-items: center; border-radius: var(--admin-radius-md); background: var(--admin-border-soft); font-size: 13px; font-weight: 900; color: var(--admin-ink); }
+.lvDetailLabel { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; color: var(--admin-muted); }
+.lvDetailName { margin: 3px 0 0; font-size: 18px; font-weight: 900; letter-spacing: -.02em; }
+.lvDetailClose { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm); background: var(--admin-surface); color: var(--admin-ink); cursor: pointer; }
+.lvDetailGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+.lvDetailItem { padding: 12px; border-radius: var(--admin-radius-md); background: var(--admin-border-soft); }
+.lvDetailValue { margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 800; }
+.lvDetailActions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; align-items: center; }
+.lvPrimary { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 0 12px; border-radius: var(--admin-radius-sm); border: 1px solid var(--admin-accent); background: var(--admin-accent); color: var(--admin-accent-ink); font-size: 11px; font-weight: 800; }
+.lvNote { margin: 12px 0 0; color: var(--admin-muted); font-size: 10px; line-height: 1.6; }
+
+@media (max-width: 1100px) {
+  .lvMain { grid-template-columns: 1fr; }
+  .lvList { max-height: 380px; }
+  .lvStats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  .lvHeader { align-items: flex-start; flex-direction: column; }
+  .lvActions { justify-content: flex-start; }
+  .lvTitle { font-size: 29px; }
+  .lvStats { grid-template-columns: 1fr 1fr; }
+  .lvDetailGrid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 480px) {
+  .lvStats { grid-template-columns: 1fr; }
+  .lvDetailGrid { grid-template-columns: 1fr; }
+  .lvRow { grid-template-columns: 34px minmax(0, 1fr); }
+  .lvRowMeta { display: none; }
+}
+
+/* ---------- Map panel ---------- */
+
+.lvMapShell {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-lg);
+  background: var(--admin-border-soft);
+  box-shadow: var(--admin-shadow-md);
+}
+.lvMapCanvas { height: 560px; width: 100%; background: var(--admin-border-soft); }
+.lvMapCanvas :global(.leaflet-tile) { filter: saturate(.82) contrast(.98); }
+
+.lvMarkerHost { background: transparent !important; border: 0 !important; }
+.lvMarker { position: relative; display: flex; width: 42px; height: 42px; align-items: center; justify-content: center; }
+.lvMarkerRing { position: absolute; width: 38px; height: 38px; border-radius: var(--admin-radius-pill); background: var(--admin-focus); animation: lvPulse 2.2s ease-out infinite; }
+.lvMarkerCore { position: relative; z-index: 2; width: 16px; height: 16px; border: 3px solid var(--admin-surface); border-radius: var(--admin-radius-pill); background: var(--admin-accent); box-shadow: var(--admin-shadow-sm); }
+.lvMarker.lvMarkerSelected .lvMarkerCore { width: 21px; height: 21px; background: var(--admin-ink); box-shadow: var(--admin-shadow-md); }
+.lvMarker.lvMarkerSelected .lvMarkerRing { background: var(--admin-border-soft); animation-duration: 1.5s; }
+
+.lvTooltip {
+  border: 1px solid var(--admin-border) !important;
+  border-radius: var(--admin-radius-md) !important;
+  background: color-mix(in srgb, var(--admin-surface) 98%, transparent) !important;
+  color: var(--admin-ink) !important;
+  box-shadow: var(--admin-shadow-lg) !important;
+  padding: 8px 10px !important;
+  font-size: 12px !important;
+}
+.lvTooltip:before { display: none !important; }
+
+.lvMapCanvas :global(.leaflet-control-attribution) { border-radius: var(--admin-radius-md) 0 0 0; font-size: 10px; }
+.lvMapCanvas :global(.leaflet-control-attribution) a { color: inherit; text-decoration: underline; }
+
+.lvMapOverlay {
+  position: absolute;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--admin-border);
+  background: color-mix(in srgb, var(--admin-surface) 95%, transparent);
+  box-shadow: var(--admin-shadow-md);
+  backdrop-filter: blur(16px);
+}
+.lvMapStatus { top: 16px; left: 16px; padding: 10px 13px; border-radius: var(--admin-radius-md); font-size: 12px; font-weight: 800; }
+.lvMapStatusDot { width: 8px; height: 8px; border-radius: var(--admin-radius-pill); background: var(--admin-accent); box-shadow: 0 0 0 5px var(--admin-focus); }
+.lvMapControls { top: 16px; right: 16px; display: grid; gap: 7px; }
+.lvMapBtn {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  background: color-mix(in srgb, var(--admin-surface) 97%, transparent);
+  color: var(--admin-ink);
+  cursor: pointer;
+  box-shadow: var(--admin-shadow-md);
+}
+.lvMapBtn:hover { background: var(--admin-border-soft); }
+.lvMapBtn:disabled { opacity: .35; cursor: not-allowed; }
+.lvMapLegend { bottom: 16px; left: 16px; padding: 9px 11px; border-radius: var(--admin-radius-md); font-size: 11px; color: var(--admin-muted); }
+.lvLegendItem { display: inline-flex; align-items: center; gap: 7px; margin-right: 12px; font-weight: 700; color: var(--admin-ink); }
+.lvLegendDot { width: 8px; height: 8px; border-radius: var(--admin-radius-pill); background: var(--admin-accent); }
+.lvLegendDot.lvLegendDotApprox { background: var(--admin-warning); }
+.lvMapEmpty { position: absolute; z-index: 510; inset: 78px 24px 70px; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.lvMapEmptyCard {
+  max-width: 390px;
+  padding: 24px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-lg);
+  background: color-mix(in srgb, var(--admin-surface) 94%, transparent);
+  box-shadow: var(--admin-shadow-lg);
+  text-align: center;
+  backdrop-filter: blur(18px);
+  pointer-events: auto;
+}
+.lvMapError {
+  position: absolute;
+  z-index: 520;
+  right: 16px;
+  bottom: 16px;
+  max-width: 280px;
+  padding: 10px 12px;
+  border: 1px solid var(--admin-danger-border);
+  border-radius: var(--admin-radius-md);
+  background: color-mix(in srgb, var(--admin-danger-soft) 97%, transparent);
+  color: var(--admin-danger);
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: var(--admin-shadow-md);
+}
+
+@keyframes lvPulse {
+  0% { transform: scale(.62); opacity: .82; }
+  72% { transform: scale(1.34); opacity: .06; }
+  100% { transform: scale(.62); opacity: .82; }
+}
+
+@media (max-width: 700px) {
+  .lvMapCanvas { height: 430px; }
+  .lvMapStatus { top: 11px; left: 11px; }
+  .lvMapControls { top: 11px; right: 11px; }
+  .lvMapLegend { left: 11px; bottom: 11px; }
+  .lvMapError { right: 11px; bottom: 11px; }
+}
