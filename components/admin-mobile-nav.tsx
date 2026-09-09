@@ -55,7 +55,10 @@ export default function AdminMobileNav({ groups, role }: { groups: AdminSidebarG
       )}
       <style jsx global>{`
         .adminMobileNavButton{display:none;align-items:center;justify-content:center;width:38px;height:38px;border:1px solid #deded8;border-radius:10px;background:#fff;color:#222;cursor:pointer}
-        .adminMobileNavOverlay{position:fixed;inset:0;z-index:1000;display:none}
+        /* Higher than anything else the sticky topbar renders (order alerts, theme toggle, etc.)
+           so the drawer can never be punched through by a topbar child that creates its own
+           stacking context - it needs to fully cover the page while it's open, topbar included. */
+        .adminMobileNavOverlay{position:fixed;inset:0;z-index:2000;display:none}
         .adminMobileNavBackdrop{position:absolute;inset:0;border:0;background:rgba(8,10,9,.42);backdrop-filter:blur(2px)}
         .adminMobileNavDrawer{position:absolute;left:0;top:0;bottom:0;width:min(88vw,360px);padding:14px calc(14px + env(safe-area-inset-left)) calc(14px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left));background:#fff;overflow:auto;overscroll-behavior:contain;display:flex;flex-direction:column;box-shadow:20px 0 60px rgba(0,0,0,.2)}
         .adminMobileNavDrawer .adminNavTree{flex:1 1 auto}
