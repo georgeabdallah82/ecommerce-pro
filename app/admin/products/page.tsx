@@ -1,6 +1,6 @@
 import { requirePermission } from '@/lib/auth'
 import { db } from '@/lib/prisma'
-import ProductListAdminShopify from '@/components/product-list-admin-shopify'
+import AdminProductsList from '@/components/admin-products-list'
 
 export default async function Products() {
   await requirePermission('products.view')
@@ -13,5 +13,5 @@ export default async function Products() {
       take: pageSize,
     }),
   ])
-  return <ProductListAdminShopify initial={JSON.parse(JSON.stringify({ rows, total, page: 1, pageSize, pages: Math.max(1, Math.ceil(total / pageSize)) }))} />
+  return <AdminProductsList initial={JSON.parse(JSON.stringify({ rows, total, page: 1, pageSize, pages: Math.max(1, Math.ceil(total / pageSize)) }))} />
 }

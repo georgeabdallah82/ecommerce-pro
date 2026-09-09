@@ -1,0 +1,227 @@
+/*
+ * Products list - CSS Modules, same as components/admin-nav.module.css: every
+ * class gets a build-time-unique name, so nothing here can collide with or be
+ * out-ranked by another page's rules. Colors/spacing come from the --admin-*
+ * tokens in ../app/admin/admin-overhaul.css via var(), so dark mode is free -
+ * no separate dark-mode override block needed for this page (the old version
+ * needed five hand-maintained dark overrides in admin-theme-toggle.tsx for
+ * exactly this reason).
+ */
+
+.page { max-width: 1480px; margin: 0 auto; padding-bottom: 24px; }
+
+.header { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 20px; }
+.eyebrow { font-size: 11px; letter-spacing: .09em; font-weight: 800; color: var(--admin-muted); margin-bottom: 4px; text-transform: uppercase; }
+.titleRow { display: flex; align-items: center; gap: 10px; }
+.title { margin: 0; font-size: 36px; letter-spacing: -.04em; color: var(--admin-ink); }
+.countPill {
+  display: inline-flex;
+  align-items: center;
+  height: 27px;
+  padding: 0 10px;
+  border-radius: var(--admin-radius-pill);
+  background: var(--admin-border-soft);
+  color: var(--admin-ink-soft);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.viewBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px;
+  margin-bottom: 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-surface);
+  box-shadow: var(--admin-shadow-sm);
+}
+.views { display: flex; align-items: center; gap: 2px; overflow-x: auto; }
+.view {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  padding: 9px 12px;
+  border-radius: var(--admin-radius-sm);
+  color: var(--admin-muted);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.view small { font-size: 11px; color: var(--admin-muted-soft); }
+.view:hover { background: var(--admin-border-soft); color: var(--admin-ink); }
+.viewActive { background: var(--admin-accent); color: var(--admin-accent-ink); }
+.viewActive small { color: inherit; opacity: .78; }
+.chevron { transition: transform .15s ease; }
+.chevronOpen { transform: rotate(180deg); }
+
+.filterBar { padding: 10px 12px; margin-bottom: 12px; }
+.search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-border-soft);
+  color: var(--admin-muted);
+}
+.search:focus-within { border-color: var(--admin-accent); box-shadow: 0 0 0 3px var(--admin-focus); background: var(--admin-surface); }
+.search input { min-width: 0; flex: 1 1 auto; border: 0; outline: 0; background: transparent; font: inherit; color: var(--admin-ink); }
+.search button { border: 0; background: transparent; color: var(--admin-muted); display: grid; place-items: center; cursor: pointer; }
+.filterGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--admin-border-soft);
+}
+.filterGrid label { display: grid; gap: 6px; font-size: 11px; color: var(--admin-muted); font-weight: 700; }
+
+.bulkBar {
+  position: sticky;
+  top: 74px;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-surface);
+  box-shadow: var(--admin-shadow-md);
+}
+.bulkCount { font-size: 13px; color: var(--admin-ink); }
+.bulkCount span { color: var(--admin-muted); font-weight: 500; }
+.bulkActions { display: flex; align-items: center; gap: 7px; }
+.actionMenu { position: relative; }
+.menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 190px;
+  padding: 6px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-surface);
+  box-shadow: var(--admin-shadow-lg);
+  z-index: 30;
+}
+.menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: var(--admin-radius-sm);
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--admin-ink-soft);
+  cursor: pointer;
+}
+.menu button:hover { background: var(--admin-border-soft); color: var(--admin-ink); }
+
+.tableCard { overflow: hidden; }
+.tableMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--admin-border-soft);
+  font-size: 13px;
+  color: var(--admin-muted);
+}
+.tableMeta label { display: flex; align-items: center; gap: 7px; font-size: 12px; }
+.productTable { min-width: 1050px; }
+.productTable th {
+  background: var(--admin-border-soft);
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--admin-border);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--admin-muted);
+}
+.productTable td { padding: 11px 14px; height: 70px; vertical-align: middle; border-bottom: 1px solid var(--admin-border-soft); font-size: 12.5px; color: var(--admin-ink); }
+.productTable tbody tr:hover { background: var(--admin-border-soft); }
+.selectedRow { background: var(--admin-accent-soft) !important; }
+
+.productCell { display: flex; align-items: center; gap: 11px; min-width: 280px; text-decoration: none; color: inherit; }
+.productCell strong { display: block; font-size: 13px; color: var(--admin-ink); }
+.productCell span { display: block; margin-top: 3px; font-size: 11px; color: var(--admin-muted); }
+.thumb {
+  width: 46px;
+  height: 46px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-border-soft);
+  color: var(--admin-muted);
+  font-size: 19px;
+}
+.thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 25px;
+  padding: 0 9px;
+  border-radius: var(--admin-radius-pill);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  text-transform: capitalize;
+}
+.statusActive { background: var(--admin-accent-soft); color: var(--admin-accent-strong); }
+.statusDraft { background: var(--admin-border-soft); color: var(--admin-muted); }
+.statusArchived { background: var(--admin-border-soft); color: var(--admin-muted-soft); }
+
+.stock { display: grid; gap: 2px; }
+.stock strong { font-size: 13px; color: var(--admin-ink); }
+.stock span { font-size: 10px; color: var(--admin-muted); }
+.stockLow strong { color: var(--admin-danger); }
+.channel { display: inline-flex; padding: 5px 8px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm); font-size: 10px; color: var(--admin-ink-soft); background: var(--admin-surface); }
+
+.pagination { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-top: 1px solid var(--admin-border-soft); }
+
+@media (max-width: 900px) {
+  .header { align-items: flex-start; }
+  .filterGrid { grid-template-columns: 1fr; }
+  .bulkBar { position: relative; top: auto; align-items: flex-start; flex-direction: column; }
+  .bulkActions { flex-wrap: wrap; }
+  /*
+   * flex-wrap above lets the "More" button land anywhere in its wrapped row,
+   * not just flush against the bar's right edge - so right:0 (correct on
+   * desktop, where the button sits near the viewport's right edge with room
+   * to its left) can push this 190px-wide panel off the left edge of a
+   * narrow viewport instead. Anchoring from the button's own left edge keeps
+   * it growing into free space regardless of where flex-wrap put the button.
+   */
+  .menu { left: 0; right: auto; }
+}
+@media (max-width: 600px) {
+  .header { flex-direction: column; }
+  .header > a { width: 100%; justify-content: center; }
+  .title { font-size: 29px; }
+  .viewBar { align-items: stretch; flex-direction: column; }
+  .views { width: 100%; }
+  .view { flex: 1; justify-content: center; }
+  .productTable { min-width: 980px; }
+}
