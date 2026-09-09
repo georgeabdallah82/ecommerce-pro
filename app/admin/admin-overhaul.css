@@ -53,51 +53,12 @@ html[data-admin-theme='dark'] body:has(.adminShell){
   background:var(--admin-bg)!important;color:var(--admin-ink)!important
 }
 body:has(.adminShell),body:has(.adminShell) button,body:has(.adminShell) input,body:has(.adminShell) select,body:has(.adminShell) textarea{font-family:var(--admin-font-sans)}
-body:has(.adminShell) .adminShell{min-height:100vh!important;display:grid!important;grid-template-columns:252px minmax(0,1fr)!important;background:var(--admin-bg)!important}
-/* Grid, not flex: a 4-row template (brand/role pill/scrollable nav/sign-out) can't
-   silently default to the wrong axis the way an unlabeled flex-direction can, and the
-   scrollable nav row only needs overflow set on itself - not min-height:0 chained through
-   every wrapper div - to size correctly inside its minmax(0,1fr) track. Direct children of
-   .adminSide (app/admin/layout.tsx) must stay exactly .adminBrand, .pill, the
-   AdminSidebarDrawer root and .adminSideBottom, in that order, to land in these 4 rows. */
-body:has(.adminShell) .adminSide{position:sticky!important;top:0!important;height:100vh!important;display:grid!important;grid-template-rows:auto auto minmax(0,1fr) auto!important;padding:16px 12px!important;overflow:hidden!important;background:var(--admin-surface)!important;border-right:1px solid var(--admin-border)!important;box-shadow:var(--admin-shadow-sm)!important;z-index:70}
-body:has(.adminShell) .adminMain{min-width:0!important;padding:0 36px 56px!important;background:var(--admin-bg)!important}
-body:has(.adminShell) .adminBrand{display:flex!important;align-items:center!important;gap:10px!important;padding:3px 4px 2px!important}
-body:has(.adminShell) .adminBrandMark{display:grid!important;place-items:center!important;width:38px!important;height:38px!important;border-radius:var(--admin-radius-md)!important;background:var(--admin-accent)!important;color:var(--admin-accent-ink)!important;box-shadow:0 5px 14px rgba(0,128,96,.25)!important}
-body:has(.adminShell) .adminBrand .logo{font-size:15px!important;font-weight:900!important;letter-spacing:-.03em!important;color:var(--admin-ink)!important}
-body:has(.adminShell) .adminSide>.pill{display:inline-flex!important;margin:15px 4px 12px!important;padding:5px 8px!important;border:1px solid var(--admin-border)!important;border-radius:var(--admin-radius-pill)!important;background:var(--admin-border-soft)!important;color:var(--admin-muted)!important;font-size:9px!important;font-weight:900!important;letter-spacing:.06em!important;text-transform:uppercase!important}
-
-/* Sidebar navigation */
-body:has(.adminShell) .adminNavTree{display:grid!important;gap:5px!important;margin-top:3px!important}
-body:has(.adminShell) .adminNavSearchWrap{position:sticky!important;top:0!important;z-index:3!important;display:flex!important;align-items:center!important;gap:8px!important;height:40px!important;margin:0 2px 8px!important;padding:0 10px!important;border:1px solid var(--admin-border)!important;border-radius:var(--admin-radius-md)!important;background:var(--admin-border-soft)!important;transition:background .16s ease,border-color .16s ease,box-shadow .16s ease!important}
-body:has(.adminShell) .adminNavSearchWrap:focus-within{background:var(--admin-surface)!important;border-color:var(--admin-accent)!important;box-shadow:0 0 0 3px var(--admin-focus)!important}
-body:has(.adminShell) .adminNavSearchWrap input{width:100%!important;min-width:0!important;flex:1 1 auto!important;border:0!important;outline:0!important;background:transparent!important;font-size:12px!important;font-weight:650!important;color:var(--admin-ink)!important}
-body:has(.adminShell) .adminNavSearchWrap kbd{flex:0 0 auto!important}
-body:has(.adminShell) .adminNavGroupButton{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important;width:100%!important;height:34px!important;border:0!important;background:transparent!important;border-radius:var(--admin-radius-sm)!important;padding:0 10px!important;color:var(--admin-muted)!important;font-size:10px!important;letter-spacing:.085em!important;text-transform:uppercase!important;font-weight:900!important;text-align:left!important;cursor:pointer!important}
-body:has(.adminShell) .adminNavGroupButton:hover{background:var(--admin-border-soft)!important;color:var(--admin-ink-soft)!important}
-body:has(.adminShell) .adminNavGroupButton.active{background:var(--admin-accent-soft)!important;color:var(--admin-accent-strong)!important}
-body:has(.adminShell) .adminNavChildren{padding:2px 0 4px!important}
-body:has(.adminShell) .adminNavItem{display:flex!important;align-items:center!important;gap:11px!important;min-width:0!important;height:40px!important;margin:2px 0!important;padding:0 10px 0 24px!important;border-radius:var(--admin-radius-sm)!important;color:var(--admin-ink-soft)!important;font-size:12px!important;font-weight:700!important;text-decoration:none!important}
-body:has(.adminShell) .adminNavItem svg{width:15px!important;height:15px!important;opacity:.74!important}
-body:has(.adminShell) .adminNavItem:hover{background:var(--admin-border-soft)!important;color:var(--admin-ink)!important}
-body:has(.adminShell) .adminNavItem.active{background:var(--admin-accent)!important;color:var(--admin-accent-ink)!important;box-shadow:0 5px 16px rgba(0,128,96,.25)!important}
-body:has(.adminShell) .adminSideBottom{margin-top:12px!important;padding-top:12px!important;border-top:1px solid var(--admin-border-soft)!important}
-body:has(.adminShell) .adminSideBottom a,body:has(.adminShell) .sideButton{display:flex!important;align-items:center!important;gap:9px!important;width:100%!important;height:40px!important;margin:1px 0!important;padding:0 11px!important;border:0!important;background:transparent!important;border-radius:var(--admin-radius-sm)!important;color:var(--admin-ink-soft)!important;font-size:12px!important;font-weight:700!important;text-align:left!important;cursor:pointer!important;text-decoration:none!important}
-body:has(.adminShell) .adminSideBottom a:hover,body:has(.adminShell) .sideButton:hover{background:var(--admin-border-soft)!important;color:var(--admin-ink)!important}
-body:has(.adminShell) .adminNavSearchMeta{padding:0 10px 7px!important;font-size:10px!important;color:var(--admin-muted-soft)!important;text-transform:uppercase!important;letter-spacing:.07em!important;font-weight:800!important}
-body:has(.adminShell) .adminNavEmpty{padding:14px 10px!important;border:1px dashed var(--admin-border)!important;border-radius:var(--admin-radius-md)!important;color:var(--admin-muted)!important;font-size:12px!important;line-height:1.5!important;text-align:center!important;background:var(--admin-border-soft)!important}
-body:has(.adminShell) .adminNavTheme{margin-top:8px!important}
-
-/* Workspace top bar */
-body:has(.adminShell) .adminWorkspaceTopbar{min-height:78px!important;margin:0 0 30px!important;padding:12px 0!important;background:var(--admin-topbar-bg)!important;border-bottom:1px solid var(--admin-border)!important;backdrop-filter:blur(18px)!important}
-body:has(.adminShell) .adminWorkspaceTitle h1{font-size:28px!important;font-weight:900!important;letter-spacing:-.045em!important;color:var(--admin-ink)!important}
-body:has(.adminShell) .adminBreadcrumbs{font-size:10px!important;color:var(--admin-muted)!important}
-body:has(.adminShell) .adminBreadcrumbs strong{color:var(--admin-ink-soft)!important}
-body:has(.adminShell) .adminWorkspaceActions{gap:7px!important}
-body:has(.adminShell) .adminTopSearch,body:has(.adminShell) .adminTopIconLink{border-color:var(--admin-border)!important;background:var(--admin-surface)!important;color:var(--admin-ink-soft)!important;border-radius:var(--admin-radius-md)!important;box-shadow:var(--admin-shadow-sm)!important}
-body:has(.adminShell) .adminTopSearch{height:38px!important}
-body:has(.adminShell) .adminTopAccount{padding-left:4px!important}
-body:has(.adminShell) .adminTopAvatar{width:34px!important;height:34px!important;border-radius:var(--admin-radius-md)!important;background:var(--admin-accent)!important;color:var(--admin-accent-ink)!important}
+/* Shell + nav chrome (top bar, dropdowns, mobile drawer, search) lives in
+   components/admin-nav.module.css as CSS Modules - scoped by build-time class
+   names instead of !important/body:has() specificity races. This block is
+   only the page body underneath that bar. */
+body:has(.adminShell) .adminShell{min-height:100vh!important;display:flex!important;flex-direction:column!important;background:var(--admin-bg)!important}
+body:has(.adminShell) .adminMain{min-width:0!important;padding:28px 36px 56px!important;background:var(--admin-bg)!important}
 
 /* Shared page rhythm */
 body:has(.adminShell) .sectionHead{margin-bottom:22px!important}
@@ -190,13 +151,10 @@ body:has(.adminShell) .lv-stat{border-radius:var(--admin-radius-lg)!important}
 body:has(.adminShell) .lv-main{gap:16px!important}
 
 /* Responsive workspace */
-@media(max-width:1050px){body:has(.adminShell) .adminMain{padding:0 22px 42px!important}.lv-main{grid-template-columns:1fr!important}.lv-list{max-height:380px!important}.adminTopAccount div:last-child{display:none!important}}
-@media(max-width:760px){body:has(.adminShell) .adminShell{display:block!important}body:has(.adminShell) .adminSide{display:none!important}.adminMain{padding:0 14px 34px!important}.adminMobileNavButton{display:inline-flex!important}.adminWorkspaceTopbar{min-height:66px!important;margin-bottom:18px!important}.adminWorkspaceTopbar{padding:10px 0!important}.adminWorkspaceTitle h1{font-size:21px!important}.adminBreadcrumbs{display:none!important}.adminTopSearch{width:38px!important;justify-content:center!important;padding:0!important}.adminTopSearch span,.adminTopSearch kbd{display:none!important}.adminWorkspaceActions{gap:5px!important}.sectionHead{align-items:flex-start!important;flex-direction:column!important}.sectionHead .inline{width:100%!important}.sectionHead .inline>*{flex:1}.sectionHead .h2,.catalogHead .h2{font-size:29px!important}.dashboardKpis{grid-template-columns:1fr 1fr!important}.twoColFields,.threeColFields{grid-template-columns:1fr!important}.mediaEditorGrid{grid-template-columns:1fr 1fr!important}.marketCards{grid-template-columns:1fr!important}.settingsCenter,.navEditorLayout{grid-template-columns:1fr!important}.adminTileGrid{grid-template-columns:1fr 1fr!important}}
-@media(max-width:480px){body:has(.adminShell) .dashboardKpis{grid-template-columns:1fr!important}.catalogStats{grid-template-columns:1fr!important}.adminMobileNavButton{width:36px!important;height:36px!important}.adminTopTheme{width:36px!important}.mediaEditorGrid,.adminTileGrid{grid-template-columns:1fr!important}.modalOverlay{padding:10px!important}.modalOverlay>.card{width:min(100%,520px)!important;border-radius:15px!important}}
+@media(max-width:1050px){body:has(.adminShell) .adminMain{padding:0 22px 42px!important}.lv-main{grid-template-columns:1fr!important}.lv-list{max-height:380px!important}}
+@media(max-width:760px){body:has(.adminShell) .adminMain{padding:0 14px 34px!important}.sectionHead{align-items:flex-start!important;flex-direction:column!important}.sectionHead .inline{width:100%!important}.sectionHead .inline>*{flex:1}.sectionHead .h2,.catalogHead .h2{font-size:29px!important}.dashboardKpis{grid-template-columns:1fr 1fr!important}.twoColFields,.threeColFields{grid-template-columns:1fr!important}.mediaEditorGrid{grid-template-columns:1fr 1fr!important}.marketCards{grid-template-columns:1fr!important}.settingsCenter,.navEditorLayout{grid-template-columns:1fr!important}.adminTileGrid{grid-template-columns:1fr 1fr!important}}
+@media(max-width:480px){body:has(.adminShell) .dashboardKpis{grid-template-columns:1fr!important}.catalogStats{grid-template-columns:1fr!important}.mediaEditorGrid,.adminTileGrid{grid-template-columns:1fr!important}.modalOverlay{padding:10px!important}.modalOverlay>.card{width:min(100%,520px)!important;border-radius:15px!important}}
 
 /* Headings/text pick up ink tokens automatically via inheritance */
 body:has(.adminShell) h1,body:has(.adminShell) h2,body:has(.adminShell) h3,body:has(.adminShell) h4{color:var(--admin-ink)!important}
 body:has(.adminShell) .muted{color:var(--admin-muted)!important}
-
-/* Admin mobile drawer */
-body:has(.adminShell) .adminMobileNavDrawer{background:var(--admin-surface)!important;color:var(--admin-ink)!important;border-color:var(--admin-border)!important}

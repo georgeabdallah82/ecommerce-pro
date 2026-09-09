@@ -43,9 +43,9 @@ export default function AdminThemeToggle({ compact }: { compact?: boolean }) {
     <>
       <style jsx global>{`
         /* ---------- Dark theme ----------
-           Core chrome (.adminShell/.adminSide/.adminTopbar/headings/.muted/.pill/
-           .adminNav*/.adminSideBottom) is handled by the admin design tokens in
-           admin-overhaul.css, which flip automatically under this same
+           Core chrome (the shell box, headings, .muted, .pill) and the nav bar
+           itself (components/admin-nav.module.css, driven entirely by the same
+           --admin-* custom properties) both flip automatically under this same
            [data-admin-theme='dark'] selector - no need to duplicate it here. */
         html[data-admin-theme='dark'] body:has(.adminShell) .healthTimestamp{color:#9ba49e!important}
 

@@ -1,0 +1,291 @@
+/*
+ * The admin top navigation - CSS Modules, not global !important rules. Every
+ * class here gets a build-time-unique name, so there is no specificity race to
+ * lose: nothing else on the page can accidentally out-rank or be out-ranked by
+ * these selectors regardless of source order. That was the root cause of two
+ * separate production bugs in the previous sidebar (a flex-direction default
+ * and a display:grid/display:none tie) - both were "two !important rules,
+ * whichever has higher specificity wins, source order is irrelevant" traps.
+ * Scoped modules remove the trap instead of dodging it.
+ *
+ * Design tokens (--admin-*) are defined once in ../app/admin/admin-overhaul.css
+ * and used here via var() - custom properties inherit normally regardless of
+ * module scoping, so there is exactly one source of truth for color/radius/
+ * shadow values across the whole admin.
+ */
+
+.wrap { position: sticky; top: 0; z-index: 80; }
+
+.bar {
+  min-height: 62px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 24px;
+  background: var(--admin-topbar-bg);
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid var(--admin-border);
+  box-sizing: border-box;
+}
+
+.left { display: flex; align-items: center; gap: 14px; flex: 0 0 auto; }
+
+.hamburger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-surface);
+  color: var(--admin-ink-soft);
+  cursor: pointer;
+}
+
+.brand { display: flex; align-items: center; gap: 9px; text-decoration: none; flex: 0 0 auto; }
+.brandMark {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-accent);
+  color: var(--admin-accent-ink);
+  box-shadow: 0 5px 14px rgba(0, 128, 96, .25);
+  flex: 0 0 auto;
+}
+.brandText { font-size: 14px; font-weight: 900; letter-spacing: -.03em; color: var(--admin-ink); white-space: nowrap; }
+
+/*
+ * flex-wrap, not overflow-x:auto - setting overflow-x alone forces overflow-y
+ * to compute to 'auto' too (a browser default that's easy to miss reading the
+ * CSS alone), which would turn this into a clipping container and silently
+ * swallow every dropdownPanel below it that's supposed to overflow past this
+ * row. Wrapping to a second line at narrow-but-still-desktop widths costs
+ * nothing and never clips a descendant.
+ */
+.primary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.navLink {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: var(--admin-radius-sm);
+  background: transparent;
+  color: var(--admin-ink-soft);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 750;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.navLink:hover { background: var(--admin-border-soft); color: var(--admin-ink); }
+.navLinkActive { background: var(--admin-accent-soft); color: var(--admin-accent-strong); }
+
+.chevron { opacity: .6; transition: transform .15s ease; }
+.chevronOpen { transform: rotate(180deg); }
+
+.dropdown { position: relative; flex: 0 0 auto; }
+.dropdownPanel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 200px;
+  display: grid;
+  gap: 1px;
+  padding: 6px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-surface);
+  box-shadow: var(--admin-shadow-lg);
+  z-index: 90;
+}
+.dropdownItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: var(--admin-radius-sm);
+  color: var(--admin-ink-soft);
+  font-size: 12.5px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.dropdownItem:hover { background: var(--admin-border-soft); color: var(--admin-ink); }
+.dropdownItem svg { opacity: .72; flex: 0 0 auto; }
+.dropdownItemActive { background: var(--admin-accent); color: var(--admin-accent-ink); }
+.dropdownItemActive svg { opacity: 1; }
+
+.right { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+
+.iconBtn {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-surface);
+  color: var(--admin-ink-soft);
+  cursor: pointer;
+}
+.iconBtn:hover { background: var(--admin-border-soft); color: var(--admin-ink); }
+
+.account { position: relative; }
+.accountBtn { border: 0; background: transparent; padding: 0; cursor: pointer; border-radius: var(--admin-radius-sm); }
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-accent);
+  color: var(--admin-accent-ink);
+  font-size: 12px;
+  font-weight: 900;
+}
+.accountPanel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 240px;
+  display: grid;
+  gap: 3px;
+  padding: 8px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-surface);
+  box-shadow: var(--admin-shadow-lg);
+  z-index: 90;
+}
+.accountHead { display: grid; gap: 4px; padding: 8px 9px 10px; border-bottom: 1px solid var(--admin-border-soft); margin-bottom: 3px; }
+.accountHead strong { font-size: 13px; color: var(--admin-ink); }
+.accountHead span { font-size: 11px; color: var(--admin-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rolePill {
+  justify-self: start;
+  margin-top: 3px;
+  padding: 3px 8px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-pill);
+  background: var(--admin-border-soft);
+  color: var(--admin-muted);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.accountThemeRow :global(.adminThemeToggle) { border: 0; height: 36px; padding: 0 9px; }
+.accountItem {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  height: 36px;
+  padding: 0 9px;
+  border: 0;
+  background: transparent;
+  border-radius: var(--admin-radius-sm);
+  color: var(--admin-ink-soft);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.accountItem:hover { background: var(--admin-border-soft); color: var(--admin-ink); }
+
+/* Search - portaled to <body>, so it escapes the top bar's own backdrop-filter
+   containing block (backdrop-filter, like filter/transform, traps fixed-position
+   descendants inside its own box - the exact bug the old mobile drawer had). */
+.searchOverlay { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: flex-start; justify-content: center; padding: 12vh 16px 16px; }
+.searchBackdrop { position: absolute; inset: 0; border: 0; background: rgba(8, 10, 9, .46); backdrop-filter: blur(2px); }
+.searchPanel {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-lg);
+  background: var(--admin-surface);
+  box-shadow: var(--admin-shadow-lg);
+  overflow: hidden;
+}
+.searchInputWrap { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--admin-border-soft); color: var(--admin-muted); flex: 0 0 auto; }
+.searchInputWrap input { flex: 1 1 auto; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 14px; font-weight: 600; color: var(--admin-ink); }
+.searchInputWrap kbd { flex: 0 0 auto; padding: 3px 6px; border: 1px solid var(--admin-border); border-radius: 6px; background: var(--admin-border-soft); color: var(--admin-muted); font: 700 10px/1 ui-monospace, monospace; }
+.searchResults { overflow-y: auto; padding: 6px; }
+.searchResult { display: flex; align-items: center; gap: 10px; height: 42px; padding: 0 10px; border-radius: var(--admin-radius-sm); color: var(--admin-ink-soft); text-decoration: none; }
+.searchResult:hover { background: var(--admin-border-soft); color: var(--admin-ink); }
+.searchResult svg { opacity: .72; flex: 0 0 auto; }
+.searchResult small { margin-left: auto; color: var(--admin-muted-soft); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
+.searchEmpty { padding: 24px 16px; text-align: center; color: var(--admin-muted); font-size: 13px; }
+
+/* Mobile drawer - also portaled for the same containing-block reason. */
+.mobileOverlay { position: fixed; inset: 0; z-index: 2000; }
+.mobileBackdrop { position: absolute; inset: 0; border: 0; background: rgba(8, 10, 9, .42); backdrop-filter: blur(2px); }
+.mobilePanel {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: min(86vw, 340px);
+  display: flex;
+  flex-direction: column;
+  padding: 14px calc(14px + env(safe-area-inset-left)) calc(14px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left));
+  background: var(--admin-surface);
+  box-shadow: 20px 0 60px rgba(0, 0, 0, .2);
+  overflow: hidden;
+}
+.mobileHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 2px 14px; border-bottom: 1px solid var(--admin-border-soft); flex: 0 0 auto; }
+.mobileClose { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm); background: var(--admin-surface); color: var(--admin-ink-soft); cursor: pointer; }
+.mobileSearchBtn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 40px;
+  margin-top: 12px;
+  padding: 0 11px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-border-soft);
+  color: var(--admin-muted);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.mobileNav { flex: 1 1 auto; min-height: 0; overflow-y: auto; margin-top: 10px; }
+.mobileGroup { margin-bottom: 6px; }
+.mobileGroupLabel { padding: 10px 10px 4px; color: var(--admin-muted); font-size: 10px; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; }
+.mobileItem { display: flex; align-items: center; gap: 11px; height: 42px; padding: 0 10px; border-radius: var(--admin-radius-sm); color: var(--admin-ink-soft); font-size: 13px; font-weight: 700; text-decoration: none; }
+.mobileItem:hover { background: var(--admin-border-soft); }
+.mobileItem svg { opacity: .72; flex: 0 0 auto; }
+.mobileItemActive { background: var(--admin-accent); color: var(--admin-accent-ink); }
+.mobileItemActive svg { opacity: 1; }
+.mobileFoot { flex: 0 0 auto; display: grid; gap: 3px; margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--admin-border-soft); }
+.mobileFoot .rolePill { margin: 0 0 6px 2px; }
+
+@media (max-width: 900px) {
+  .primary { display: none; }
+  .hamburger { display: inline-flex; }
+  .bar { padding: 0 14px; gap: 10px; }
+  .brandText { display: none; }
+}

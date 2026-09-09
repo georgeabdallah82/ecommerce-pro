@@ -1,11 +1,8 @@
 import './admin-overhaul.css'
-import Link from 'next/link'
 import { getCurrentUser } from '@/lib/auth'
 import { hasPermission, type Permission } from '@/lib/permissions'
 import { redirect } from 'next/navigation'
-import AdminSidebarDrawer, { type AdminSidebarGroup } from '@/components/admin-sidebar-drawer'
-import AdminTopbar from '@/components/admin-topbar'
-import { LogOut, Store, ShieldCheck } from 'lucide-react'
+import AdminNav, { type AdminSidebarGroup } from '@/components/admin-nav'
 
 const groups: AdminSidebarGroup[] = [
   { id: 'home', label: 'Home', items: [
@@ -52,11 +49,10 @@ const groups: AdminSidebarGroup[] = [
 ]
 
 /*
- * Design tokens, shell layout (.adminShell/.adminSide/.adminMain), the brand mark,
- * nav tree (.adminNavTree/.adminNavItem/...) and topbar all live in ./admin-overhaul.css
- * and the sidebar components themselves - keep page-specific rules only here to avoid
- * the multiple competing !important declarations that used to fight over the same
- * classes with different pixel values depending on load order.
+ * Design tokens and shared page-content rules (cards, buttons, tables, the shell's
+ * own min-height/flex box) live in ./admin-overhaul.css. The nav itself - top bar,
+ * dropdowns, mobile drawer, search - lives entirely in components/admin-nav.tsx and
+ * its CSS module, not here. Keep only page-specific rules in this string.
  */
 const adminCss = `
 body:has(.adminShell) > .nav, body:has(.adminShell) .nav { display:none !important; }
@@ -109,13 +105,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return <>
     <style dangerouslySetInnerHTML={{__html:adminCss}} />
     <div className="adminShell">
-      <aside className="adminSide">
-        <div className="adminBrand"><div className="adminBrandMark"><ShieldCheck size={20}/></div><div><div className="logo">Control Center</div><div className="muted" style={{fontSize:12}}>Store operations</div></div></div>
-        <div className="pill" style={{margin:'18px 0'}}>{user.role}</div>
-        <AdminSidebarDrawer groups={visibleGroups} />
-        <div className="adminSideBottom"><Link href="/"><Store size={16}/> View storefront</Link><form action="/api/auth/logout" method="post"><button className="sideButton" type="submit"><LogOut size={16}/> Sign out</button></form></div>
-      </aside>
-      <section className="adminMain"><AdminTopbar name={user.name} email={user.email} vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} groups={visibleGroups} role={user.role}/>{children}</section>
+      <AdminNav groups={visibleGroups} name={user.name} email={user.email} role={user.role} vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} />
+      <main className="adminMain">{children}</main>
     </div>
   </>
 }
