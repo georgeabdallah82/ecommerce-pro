@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Copy, Eye, GripVertical, Plus, Save, Trash2, X } from 'lucide-react'
+import { ArrowLeft, Copy, Eye, Plus, Save, Trash2, X } from 'lucide-react'
 import s from './admin-product-editor.module.css'
 import MediaPicker from './media-picker'
 
@@ -74,6 +74,8 @@ export default function ProductEditorV2({ initial, creating, categories, definit
   function updateVariant(i: number, p: Partial<Variant>) { update({ variants: product.variants.map((v, n) => n === i ? { ...v, ...p } : v) }) }
 
   async function save() {
+    if (!product.name.trim()) { setError('Title is required'); setTab('General'); return }
+    if (!product.sku.trim()) { setError('SKU is required'); setTab('Inventory'); return }
     setBusy(true); setError(''); setMessage('')
     try {
       const payload = {
@@ -96,6 +98,16 @@ export default function ProductEditorV2({ initial, creating, categories, definit
       const data = await api(`/api/admin/products/${product.id}/duplicate`, { method: 'POST' })
       window.location.href = `/admin/products/${data.product.id}`
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to duplicate') } finally { setBusy(false) }
+  }
+
+  async function deleteProduct() {
+    if (!product.id) return
+    if (!confirm(`Permanently delete "${product.name || 'this product'}"? This cannot be undone.`)) return
+    setBusy(true); setError('')
+    try {
+      await api(`/api/admin/products/${product.id}`, { method: 'DELETE' })
+      window.location.href = '/admin/products'
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to delete product'); setBusy(false) }
   }
 
   function generateVariants() {
@@ -143,9 +155,9 @@ export default function ProductEditorV2({ initial, creating, categories, definit
           <Card title="Media" sub="Reorder, upload, or choose from your media library">
             <div className={s.mediaGrid}>
               {(product.images || []).map((im, i) => <div className={s.mediaItem} key={im.id || i}>
-                <div className={s.dragHandle}><GripVertical size={15} /></div>
                 {im.url ? <img src={im.url} alt={im.alt || ''} /> : <div className={s.mediaPlaceholder}>No image</div>}
                 <div className={s.mediaControls}>
+                  {i === 0 && <span className={s.pill}>Main image</span>}
                   <input className="input" placeholder="Alt text" value={im.alt || ''} onChange={e => update({ images: product.images.map((x, n) => n === i ? { ...x, alt: e.target.value } : x) })} />
                   <div className="inline">
                     <button className="btn ghost smallBtn" onClick={() => moveImage(i, -1)} disabled={i === 0}>↑</button>
@@ -275,6 +287,9 @@ export default function ProductEditorV2({ initial, creating, categories, definit
           <div className={s.summaryLine}><span>Inventory</span><strong>{inventoryTotal}</strong></div>
           <div className={s.summaryLine}><span>Featured</span><strong>{product.featured ? 'Yes' : 'No'}</strong></div>
         </Card>
+        {!creating && <Card title="Danger zone" sub="Irreversible actions">
+          <button className={s.dangerButton} onClick={deleteProduct} disabled={busy}><Trash2 size={15} /> Delete product</button>
+        </Card>}
       </aside>
     </div>
 

@@ -42,7 +42,7 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
 
     const product=await db.$transaction(async tx=>{
       const p=await tx.product.update({where:{id},data})
-      if(Array.isArray(b.images)){const keptIds=b.images.filter((x:any)=>x.id).map((x:any)=>String(x.id));if(keptIds.length)await tx.productImage.deleteMany({where:{productId:id,id:{notIn:keptIds}}});else await tx.productImage.deleteMany({where:{productId:id}});const existingImageById=new Map(existing.images.map(img=>[img.id,img]));for(let i=0;i<b.images.length;i++){const x=b.images[i];const url=String(x.url||'').trim();if(!url)continue;if(x.id){const alt=x.alt?String(x.alt):null;const cur=existingImageById.get(String(x.id));if(cur&&cur.url===url&&cur.alt===alt&&cur.sortOrder===i)continue;await tx.productImage.update({where:{id:String(x.id)},data:{url,alt,sortOrder:i}})}else await tx.productImage.create({data:{productId:id,url,alt:x.alt?String(x.alt):null,sortOrder:i}})}}
+      if(Array.isArray(b.images)){const images=b.images.slice(0,20);const keptIds=images.filter((x:any)=>x.id).map((x:any)=>String(x.id));if(keptIds.length)await tx.productImage.deleteMany({where:{productId:id,id:{notIn:keptIds}}});else await tx.productImage.deleteMany({where:{productId:id}});const existingImageById=new Map(existing.images.map(img=>[img.id,img]));for(let i=0;i<images.length;i++){const x=images[i];const url=String(x.url||'').trim();if(!url)continue;if(x.id){const alt=x.alt?String(x.alt):null;const cur=existingImageById.get(String(x.id));if(cur&&cur.url===url&&cur.alt===alt&&cur.sortOrder===i)continue;await tx.productImage.update({where:{id:String(x.id)},data:{url,alt,sortOrder:i}})}else await tx.productImage.create({data:{productId:id,url,alt:x.alt?String(x.alt):null,sortOrder:i}})}}
       if(Array.isArray(b.tags)){await tx.productTag.deleteMany({where:{productId:id}});const tags:string[]=Array.from(new Set<string>(b.tags.map((t:unknown)=>String(t).trim()).filter((t:string)=>t.length>0)));if(tags.length)await tx.productTag.createMany({data:tags.map((value:string)=>({productId:id,value}))})}
       if(b.quantity!==undefined||b.lowStockThreshold!==undefined||b.location!==undefined){const row=await tx.inventoryItem.findFirst({where:{productId:id,variantId:null}});const requested=b.quantity!==undefined?Math.max(0,Math.trunc(Number(b.quantity))):row?.quantity??0;if(row)await tx.inventoryItem.update({where:{id:row.id},data:{quantity:Math.max(row.reserved,requested),lowStockThreshold:b.lowStockThreshold!==undefined?Math.max(0,Math.trunc(Number(b.lowStockThreshold))):row.lowStockThreshold,location:b.location!==undefined?String(b.location||''):row.location}});else await tx.inventoryItem.create({data:{productId:id,quantity:requested,lowStockThreshold:Math.max(0,Math.trunc(Number(b.lowStockThreshold)||5)),location:String(b.location||'Main')}})}
       if(Array.isArray(b.metafields)){await tx.metafieldValue.deleteMany({where:{ownerType:'PRODUCT',ownerId:id}});const vals=b.metafields.filter((m:any)=>m.definitionId&&m.value!==undefined&&String(m.value)!=='').map((m:any)=>({definitionId:String(m.definitionId),ownerType:'PRODUCT',ownerId:id,value:typeof m.value==='string'?m.value:JSON.stringify(m.value)}));if(vals.length)await tx.metafieldValue.createMany({data:vals})}
@@ -54,7 +54,7 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
         const existingVariantById=new Map(existing.variants.map(v=>[v.id,v]))
         for(const v of b.variants){
           const variantId=v.id?String(v.id):null
-          const vd:any={name:String(v.name||'Default Title'),sku:String(v.sku||`${existing.sku}-${Date.now()}`),barcode:v.barcode?String(v.barcode):null,optionJson:typeof v.optionJson==='string'?v.optionJson:JSON.stringify(v.options||{}),price:v.price===''||v.price==null?null:Math.trunc(Number(v.price)),compareAtPrice:v.compareAtPrice===''||v.compareAtPrice==null?null:Math.trunc(Number(v.compareAtPrice)),weight:v.weight===''||v.weight==null?null:Number(v.weight),weightUnit:v.weight?String(v.weightUnit):null}
+          const vd:any={name:String(v.name||'Default Title'),sku:String(v.sku||`${existing.sku}-${Date.now()}`),barcode:v.barcode?String(v.barcode):null,optionJson:typeof v.optionJson==='string'?v.optionJson:JSON.stringify(v.options||{}),price:v.price===''||v.price==null?null:Math.trunc(Number(v.price)),compareAtPrice:v.compareAtPrice===''||v.compareAtPrice==null?null:Math.trunc(Number(v.compareAtPrice)),weight:v.weight===''||v.weight==null?null:Number(v.weight),weightUnit:v.weightUnit?String(v.weightUnit):null}
           const existingVariant=variantId?existingVariantById.get(variantId):undefined
           // Skip the write entirely when nothing about this variant actually changed -- the
           // editor re-submits every variant on every save, and each write here is a full
@@ -78,5 +78,34 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
     const message=e instanceof Error?e.message:'Unable to update product'
     if(typeof message==='string'&&message.includes('Unique constraint'))return json({error:'A product, SKU or barcode with the same unique value already exists.'},{status:409})
     return json({error:message},{status:400})
+  }
+}
+
+export async function DELETE(_req:Request,{params}:{params:Promise<{id:string}>}){
+  try{
+    const actor=await requirePermission('products.manage')
+    const {id}=await params
+    const existing=await db.product.findUnique({where:{id},include:{orderItems:{select:{id:true}},inventory:true}})
+    if(!existing)return json({error:'Product not found'},{status:404})
+    if(existing.orderItems.length>0)return json({error:'This product appears in past orders and cannot be deleted. Archive it instead to hide it from the storefront while keeping order history intact.'},{status:409})
+    await db.$transaction(async tx=>{
+      // No hard foreign keys under MongoDB, so every dependent collection is cleared explicitly
+      // (same manual-cascade approach the variant-removal code above already uses) rather than
+      // relying on Prisma's declared onDelete: Cascade, which MongoDB doesn't enforce.
+      for(const inv of existing.inventory)if(inv.quantity>0)await tx.inventoryMovement.create({data:{inventoryId:inv.id,type:'ADJUSTMENT',quantity:-inv.quantity,reason:'Product deleted',referenceId:id}})
+      await tx.inventoryItem.deleteMany({where:{productId:id}})
+      await tx.productImage.deleteMany({where:{productId:id}})
+      await tx.productVariant.deleteMany({where:{productId:id}})
+      await tx.productTag.deleteMany({where:{productId:id}})
+      await tx.metafieldValue.deleteMany({where:{ownerType:'PRODUCT',ownerId:id}})
+      await tx.collectionProduct.deleteMany({where:{productId:id}})
+      await tx.review.deleteMany({where:{productId:id}})
+      await tx.wishlistItem.deleteMany({where:{productId:id}})
+      await tx.product.delete({where:{id}})
+    })
+    await audit(actor.id,'product.deleted','Product',id,{name:existing.name,sku:existing.sku})
+    return json({ok:true})
+  }catch(e){
+    return json({error:e instanceof Error?e.message:'Unable to delete product'},{status:400})
   }
 }
