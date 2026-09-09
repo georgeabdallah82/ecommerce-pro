@@ -67,7 +67,7 @@ body:has(.adminShell) .sectionHead .muted{font-size:13px!important;line-height:1
 body:has(.adminShell) .catalogPage,body:has(.adminShell) .operationsPage,body:has(.adminShell) .customersPage,body:has(.adminShell) .inventoryPage{max-width:1480px!important;margin:0 auto!important;padding-bottom:32px!important}
 
 /* Surfaces */
-body:has(.adminShell) .card,body:has(.adminShell) .dashboardPanel,body:has(.adminShell) .recentPanel,body:has(.adminShell) .editorCard,body:has(.adminShell) .productTableCard,body:has(.adminShell) .shopifyTableCard,body:has(.adminShell) .opsCard,body:has(.adminShell) .healthCheck,body:has(.adminShell) .healthHero,body:has(.adminShell) .settingsCard,body:has(.adminShell) .settingsGroupCard{background:var(--admin-surface)!important;border-color:var(--admin-border)!important;border-radius:var(--admin-radius-lg)!important;box-shadow:var(--admin-shadow-sm)!important;color:var(--admin-ink)!important;transition:box-shadow .18s ease,transform .18s ease!important}
+body:has(.adminShell) .card,body:has(.adminShell) .dashboardPanel,body:has(.adminShell) .recentPanel,body:has(.adminShell) .productTableCard,body:has(.adminShell) .shopifyTableCard,body:has(.adminShell) .opsCard,body:has(.adminShell) .healthCheck,body:has(.adminShell) .healthHero,body:has(.adminShell) .settingsCard,body:has(.adminShell) .settingsGroupCard{background:var(--admin-surface)!important;border-color:var(--admin-border)!important;border-radius:var(--admin-radius-lg)!important;box-shadow:var(--admin-shadow-sm)!important;color:var(--admin-ink)!important;transition:box-shadow .18s ease,transform .18s ease!important}
 body:has(.adminShell) .card:hover,body:has(.adminShell) .dashboardPanel:hover,body:has(.adminShell) .opsCard:hover{box-shadow:var(--admin-shadow-md)!important}
 body:has(.adminShell) .statCard,body:has(.adminShell) .inventoryStat{background:var(--admin-surface)!important;border-color:var(--admin-border)!important;border-radius:var(--admin-radius-lg)!important;box-shadow:var(--admin-shadow-sm)!important;color:var(--admin-ink)!important}
 body:has(.adminShell) .statCard:hover,body:has(.adminShell) .inventoryStat.clickable:hover{box-shadow:var(--admin-shadow-md)!important}
@@ -133,7 +133,6 @@ body:has(.adminShell) .alert.danger{border-color:var(--admin-danger-border)!impo
 body:has(.adminShell) .alert:not(.danger){border-color:var(--admin-border)!important;background:var(--admin-accent-soft)!important;color:var(--admin-accent-strong)!important}
 
 /* Editor / theme studio */
-body:has(.adminShell) .editorTopbar{background:var(--admin-surface)!important;border-color:var(--admin-border)!important}
 body:has(.adminShell) .themeStudio,body:has(.adminShell) .themeStudioPro{background:var(--admin-bg)!important}
 
 /* Responsive workspace */

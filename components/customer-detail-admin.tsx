@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Mail, MapPin, Phone, Save, ShieldOff, UserCheck, Plus, X, CreditCard, UsersRound, Coins } from 'lucide-react'
 import { money } from '@/lib/config'
+import s from './admin-customer-detail.module.css'
 
 async function api(path: string, init?: RequestInit) {
   const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
@@ -14,8 +15,12 @@ async function api(path: string, init?: RequestInit) {
 
 const initials = (name: string) => name.trim().split(/\s+/).slice(0, 2).map(x => x[0]?.toUpperCase() || '').join('') || '?'
 
+type ProfileFields = { name: string; email: string; phone: string | null; isActive: boolean }
+
 export default function CustomerDetailAdmin({ initial }: { initial: any }) {
   const [customer, setCustomer] = useState(initial)
+  const [original, setOriginal] = useState<ProfileFields>({ name: initial.name, email: initial.email, phone: initial.phone, isActive: initial.isActive })
+  const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -28,11 +33,36 @@ export default function CustomerDetailAdmin({ initial }: { initial: any }) {
   const [coinReason, setCoinReason] = useState('')
   const [coinBusy, setCoinBusy] = useState(false)
 
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => { if (dirty) { e.preventDefault(); e.returnValue = '' } }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [dirty])
+
+  function updateProfile(patch: Partial<ProfileFields>) {
+    setCustomer((c: any) => ({ ...c, ...patch }))
+    setDirty(true)
+    setMessage('')
+  }
+
   async function save() {
+    // Only ship the fields that actually changed -- resubmitting every field on every
+    // save (as this page used to) means an unconditional user.update write plus an email
+    // uniqueness lookup on the server even when the email never changed, on every click.
+    const patch: Record<string, unknown> = {}
+    if (customer.name !== original.name) patch.name = customer.name
+    if (customer.email !== original.email) patch.email = customer.email
+    if ((customer.phone || '') !== (original.phone || '')) patch.phone = customer.phone
+    if (customer.isActive !== original.isActive) patch.isActive = customer.isActive
+    if (!Object.keys(patch).length) { setDirty(false); setMessage('No changes to save'); return }
+
     setSaving(true); setMessage(''); setError('')
     try {
-      const data = await api(`/api/admin/customers/${customer.id}`, { method: 'PATCH', body: JSON.stringify({ name: customer.name, email: customer.email, phone: customer.phone, isActive: customer.isActive }) })
-      setCustomer({ ...customer, ...data.customer }); setMessage('Customer saved')
+      const data = await api(`/api/admin/customers/${customer.id}`, { method: 'PATCH', body: JSON.stringify(patch) })
+      setCustomer((c: any) => ({ ...c, ...data.customer }))
+      setOriginal({ name: data.customer.name, email: data.customer.email, phone: data.customer.phone, isActive: data.customer.isActive })
+      setDirty(false)
+      setMessage('Customer saved')
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to save customer') }
     finally { setSaving(false) }
   }
@@ -43,7 +73,7 @@ export default function CustomerDetailAdmin({ initial }: { initial: any }) {
     try {
       const data = await api(`/api/admin/customers/${customer.id}/tags`, { method: 'POST', body: JSON.stringify({ value: tag }) })
       setCustomer((c: any) => ({ ...c, tags: [data.tag, ...(c.tags || []).filter((x: any) => x.id !== data.tag.id)] }))
-      setTagInput(''); setMessage(`Added tag “${tag}”`); setError('')
+      setTagInput(''); setMessage(`Added tag "${tag}"`); setError('')
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to add tag') }
   }
 
@@ -91,40 +121,152 @@ export default function CustomerDetailAdmin({ initial }: { initial: any }) {
     finally { setCoinBusy(false) }
   }
 
-  const totalOrders = customer.orders?.length || 0
+  const orders: any[] = customer.orders || []
+  const totalOrders = orders.length
+  const billableOrders = orders.filter((o: any) => o.status !== 'CANCELLED').length
   const totalSpent = customer.orderTotal || 0
-  const average = totalOrders ? Math.round(totalSpent / totalOrders) : 0
+  // Average order value is spend-per-order among orders that actually counted toward
+  // totalSpent (sumCustomerSpend excludes cancelled orders) -- dividing by every order
+  // including cancelled ones understated this whenever a customer had a cancellation.
+  const average = billableOrders ? Math.round(totalSpent / billableOrders) : 0
   const usedTagValues = new Set((customer.tags || []).map((x: any) => x.value))
   const availableTags = (customer.availableTags || []).filter((x: any) => !usedTagValues.has(x.value))
   const usedSegments = new Set((customer.segments || []).map((x: any) => x.id))
   const availableSegments = (customer.availableSegments || []).filter((x: any) => !usedSegments.has(x.id))
 
-  return <div className="customerDetailPage">
-    <div className="editorTopbar"><div className="editorTopLeft"><Link href="/admin/customers" className="iconBtn"><ArrowLeft size={18}/></Link><div><div className="muted tiny">CUSTOMER</div><h1 className="editorTitle">{customer.name}</h1></div></div><div className="editorTopActions"><span className={customer.isActive ? 'statusPill active' : 'statusPill archived'}>{customer.isActive ? <UserCheck size={13}/> : <ShieldOff size={13}/>} {customer.isActive ? 'Active' : 'Disabled'}</span><button className="btn" onClick={save} disabled={saving}><Save size={16}/> {saving ? 'Saving…' : 'Save'}</button></div></div>
-    {(error || message) && <div className={error ? 'alert danger' : 'alert'}>{error || message}</div>}
+  return <div className={s.page}>
+    <div className={s.topbar}>
+      <div className={s.topLeft}>
+        <Link href="/admin/customers" className="iconBtn" onClick={e => { if (dirty && !confirm('Discard unsaved changes?')) e.preventDefault() }}><ArrowLeft size={18}/></Link>
+        <div><div className="muted tiny">CUSTOMER</div><h1 className={s.title}>{customer.name}</h1>{dirty && <div className="muted tiny">Unsaved changes</div>}</div>
+      </div>
+      <div className={s.topActions}>
+        <span className={customer.isActive ? 'statusPill active' : 'statusPill archived'}>{customer.isActive ? <UserCheck size={13}/> : <ShieldOff size={13}/>} {customer.isActive ? 'Active' : 'Disabled'}</span>
+        <button className="btn" onClick={save} disabled={saving}><Save size={16}/> {saving ? 'Saving…' : 'Save'}</button>
+      </div>
+    </div>
+    {(error || message) && <div className={error ? 'alert danger' : 'alert'} style={{ margin: '0 0 14px' }}>{error || message}</div>}
 
-    <div className="card customerHero"><div className="customerHeroAvatar">{initials(customer.name)}</div><div className="customerHeroInfo"><h2>{customer.name}</h2><div className="muted">Customer since {new Date(customer.createdAt).toLocaleDateString()}</div><div className="inline customerContacts"><span className="muted"><Mail size={14}/> {customer.email}</span>{customer.phone && <span className="muted"><Phone size={14}/> {customer.phone}</span>}</div></div><div className="customerHeroActions"><a className="btn secondary" href={`mailto:${customer.email}`}><Mail size={15}/> Email</a>{customer.phone && <a className="btn secondary" href={`tel:${customer.phone}`}><Phone size={15}/> Call</a>}</div></div>
+    <div className={`card ${s.hero}`}>
+      <div className={s.heroAvatar}>{initials(customer.name)}</div>
+      <div className={s.heroInfo}>
+        <h2>{customer.name}</h2>
+        <div className="muted">Customer since {new Date(customer.createdAt).toLocaleDateString()}</div>
+        <div className={s.heroContacts}><span className="muted"><Mail size={14}/> {customer.email}</span>{customer.phone && <span className="muted"><Phone size={14}/> {customer.phone}</span>}</div>
+      </div>
+      <div className={s.heroActions}>
+        <a className="btn secondary" href={`mailto:${customer.email}`}><Mail size={15}/> Email</a>
+        {customer.phone && <a className="btn secondary" href={`tel:${customer.phone}`}><Phone size={15}/> Call</a>}
+      </div>
+    </div>
 
-    <div className="accountStats"><div className="card stat"><span className="muted">Total spent</span><strong>{money(totalSpent)}</strong></div><div className="card stat"><span className="muted">Orders</span><strong>{totalOrders}</strong></div><div className="card stat"><span className="muted">Average order</span><strong>{money(average)}</strong></div><div className="card stat"><span className="muted">Wallet</span><strong>{money(customer.creditBalance || 0)}</strong></div><div className="card stat"><span className="muted">Coins</span><strong>{Number(customer.coinBalance || 0).toLocaleString()}</strong></div></div>
+    <div className={s.stats}>
+      <div className={`card ${s.statCard}`}><span className="muted">Total spent</span><strong>{money(totalSpent)}</strong></div>
+      <div className={`card ${s.statCard}`}><span className="muted">Orders</span><strong>{totalOrders}</strong></div>
+      <div className={`card ${s.statCard}`}><span className="muted">Average order</span><strong>{money(average)}</strong></div>
+      <div className={`card ${s.statCard}`}><span className="muted">Wallet</span><strong>{money(customer.creditBalance || 0)}</strong></div>
+      <div className={`card ${s.statCard}`}><span className="muted">Coins</span><strong>{Number(customer.coinBalance || 0).toLocaleString()}</strong></div>
+    </div>
 
-    <div className="customerWorkspace"><main className="customerMain">
-      <section className="editorCard"><div className="editorCardHead"><div><h3>Customer information</h3><p>Contact details used across orders and account communications.</p></div></div><div className="editorCardBody"><div className="twoColFields"><label className="fieldLabel">Full name<input className="input" value={customer.name} onChange={e => setCustomer({ ...customer, name: e.target.value })}/></label><label className="fieldLabel">Email<input className="input" value={customer.email} onChange={e => setCustomer({ ...customer, email: e.target.value })}/></label><label className="fieldLabel">Phone<input className="input" value={customer.phone || ''} onChange={e => setCustomer({ ...customer, phone: e.target.value })}/></label><label className="fieldLabel">Account status<select className="input" value={customer.isActive ? 'ACTIVE' : 'DISABLED'} onChange={e => setCustomer({ ...customer, isActive: e.target.value === 'ACTIVE' })}><option value="ACTIVE">Active</option><option value="DISABLED">Disabled</option></select></label></div></div></section>
+    <div className={s.workspace}>
+      <main className={s.main}>
+        <Card title="Customer information" sub="Contact details used across orders and account communications.">
+          <div className={s.twoCol}>
+            <label className={s.field}>Full name<input className="input" value={customer.name} onChange={e => updateProfile({ name: e.target.value })}/></label>
+            <label className={s.field}>Email<input className="input" value={customer.email} onChange={e => updateProfile({ email: e.target.value })}/></label>
+            <label className={s.field}>Phone<input className="input" value={customer.phone || ''} onChange={e => updateProfile({ phone: e.target.value })}/></label>
+            <label className={s.field}>Account status<select className="input" value={customer.isActive ? 'ACTIVE' : 'DISABLED'} onChange={e => updateProfile({ isActive: e.target.value === 'ACTIVE' })}><option value="ACTIVE">Active</option><option value="DISABLED">Disabled</option></select></label>
+          </div>
+        </Card>
 
-      <section className="editorCard"><div className="editorCardHead"><div><h3>Tags & segments</h3><p>Organize this customer for filtering, marketing and operational workflows.</p></div></div><div className="editorCardBody"><div className="tagCloud">{(customer.tags || []).map((tag: any) => <span className="customerTag" key={tag.id}>{tag.value}<button type="button" onClick={() => removeTag(tag.id)} aria-label={`Remove ${tag.value}`}><X size={12}/></button></span>)}{!(customer.tags || []).length && <span className="muted">No tags yet.</span>}</div><div className="inline addControlRow"><input className="input" placeholder="Add tag" value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void addTag() } }}/><button className="btn secondary" onClick={() => addTag()} disabled={!tagInput.trim()}><Plus size={15}/> Add tag</button>{availableTags.slice(0, 6).map((tag: any) => <button className="chipButton" type="button" key={tag.id} onClick={() => addTag(tag.value)}>+ {tag.value}</button>)}</div><div className="segmentRows">{(customer.segments || []).map((seg: any) => <div className="segmentRow" key={seg.id}><div><strong>{seg.name}</strong><div className="muted">{seg.description || 'Customer segment'}</div></div><button className="iconBtn" onClick={() => removeSegment(seg.id)} title="Remove segment"><X size={14}/></button></div>)}{!(customer.segments || []).length && <span className="muted">No segments assigned.</span>}</div><div className="inline addControlRow"><select className="input" value={segmentId} onChange={e => setSegmentId(e.target.value)}><option value="">Add to a segment…</option>{availableSegments.map((seg: any) => <option value={seg.id} key={seg.id}>{seg.name}</option>)}</select><button className="btn secondary" onClick={addSegment} disabled={!segmentId}><UsersRound size={15}/> Add segment</button></div><Link href="/admin/customer-segments" className="textLink">Manage segments</Link></div></section>
+        <Card title="Tags & segments" sub="Organize this customer for filtering, marketing and operational workflows.">
+          <div className={s.tagCloud}>
+            {(customer.tags || []).map((tag: any) => <span className={s.tagChip} key={tag.id}>{tag.value}<button type="button" onClick={() => removeTag(tag.id)} aria-label={`Remove ${tag.value}`}><X size={12}/></button></span>)}
+            {!(customer.tags || []).length && <span className="muted">No tags yet.</span>}
+          </div>
+          <div className={s.addRow}>
+            <input className="input" placeholder="Add tag" value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void addTag() } }}/>
+            <button className="btn secondary" onClick={() => addTag()} disabled={!tagInput.trim()}><Plus size={15}/> Add tag</button>
+            {availableTags.slice(0, 6).map((tag: any) => <button className={s.chipButton} type="button" key={tag.id} onClick={() => addTag(tag.value)}>+ {tag.value}</button>)}
+          </div>
+          <div className={s.segmentRows}>
+            {(customer.segments || []).map((seg: any) => <div className={s.segmentRow} key={seg.id}><div><strong>{seg.name}</strong><div>{seg.description || 'Customer segment'}</div></div><button className="iconBtn" onClick={() => removeSegment(seg.id)} title="Remove segment"><X size={14}/></button></div>)}
+            {!(customer.segments || []).length && <span className="muted">No segments assigned.</span>}
+          </div>
+          <div className={s.addRow}>
+            <select className="input" value={segmentId} onChange={e => setSegmentId(e.target.value)}><option value="">Add to a segment…</option>{availableSegments.map((seg: any) => <option value={seg.id} key={seg.id}>{seg.name}</option>)}</select>
+            <button className="btn secondary" onClick={addSegment} disabled={!segmentId}><UsersRound size={15}/> Add segment</button>
+          </div>
+          <Link href="/admin/customer-segments" className={s.link}>Manage segments</Link>
+        </Card>
 
-      <section className="editorCard"><div className="editorCardHead"><div><h3>Order history</h3><p>Every order linked to this customer.</p></div><Link className="btn secondary" href="/admin/orders">View all orders</Link></div><div className="editorCardBody">{!customer.orders?.length ? <div className="emptyInline">No orders yet.</div> : <div className="tableWrap"><table className="table"><thead><tr><th>Order</th><th>Status</th><th>Payment</th><th>Total</th><th>Date</th></tr></thead><tbody>{customer.orders.slice(0, 25).map((o: any) => <tr key={o.id}><td><Link className="textLink" href={`/admin/orders/${o.id}`}>#{o.orderNumber}</Link></td><td><span className="pill">{o.status}</span></td><td><span className="pill">{o.paymentStatus}</span></td><td><strong>{money(o.grandTotal, o.currency)}</strong></td><td>{new Date(o.createdAt).toLocaleDateString()}</td></tr>)}</tbody></table></div>}</div></section>
+        <Card title="Order history" sub="Every order linked to this customer." action={<Link className="btn secondary" href="/admin/orders">View all orders</Link>}>
+          {!orders.length ? <div className={s.emptyInline}>No orders yet.</div> : <div className={s.tableWrap}><table className="table"><thead><tr><th>Order</th><th>Status</th><th>Payment</th><th>Total</th><th>Date</th></tr></thead><tbody>{orders.slice(0, 25).map((o: any) => <tr key={o.id}><td><Link className={s.link} href={`/admin/orders/${o.id}`}>#{o.orderNumber}</Link></td><td><span className="pill">{o.status}</span></td><td><span className="pill">{o.paymentStatus}</span></td><td><strong>{money(o.grandTotal, o.currency)}</strong></td><td>{new Date(o.createdAt).toLocaleDateString()}</td></tr>)}</tbody></table></div>}
+        </Card>
 
-      <section className="editorCard"><div className="editorCardHead"><div><h3>Reviews</h3><p>Reviews written by this customer.</p></div></div><div className="editorCardBody">{!customer.reviews?.length ? <div className="emptyInline">No reviews yet.</div> : customer.reviews.map((r: any) => <div key={r.id} className="reviewRow"><div className="inline" style={{ justifyContent: 'space-between' }}><strong>{r.product?.name}</strong><span>{'★'.repeat(Math.max(0, Math.min(5, r.rating)))}</span></div>{r.title && <strong className="reviewTitle">{r.title}</strong>}<div className="muted">{r.body || 'No review text'}</div></div>)}</div></section>
-    </main>
+        <Card title="Reviews" sub="Reviews written by this customer.">
+          {!customer.reviews?.length ? <div className={s.emptyInline}>No reviews yet.</div> : customer.reviews.map((r: any) => <div key={r.id} className={s.reviewRow}>
+            <div className={s.reviewRowHead}>
+              <strong>{r.product?.name}</strong>
+              <span className={s.stars}>{'★'.repeat(Math.max(0, Math.min(5, r.rating)))}{'☆'.repeat(Math.max(0, 5 - r.rating))}</span>
+            </div>
+            {r.title && <strong className={s.reviewTitle}>{r.title}</strong>}
+            <div className={s.reviewBody}>{r.body || 'No review text'}</div>
+            <span className={r.approved ? s.pillApproved : s.pillPending}>{r.approved ? 'Approved' : 'Pending approval'}</span>
+          </div>)}
+        </Card>
+      </main>
 
-    <aside className="customerRail">
-      <section className="editorCard"><div className="editorCardHead"><div><h3>Wallet</h3><p>Store credit balance with a protected ledger.</p></div><CreditCard size={18}/></div><div className="editorCardBody"><div className="creditBalance">{money(customer.creditBalance || 0)}<span>available wallet balance</span></div><div className="twoColFields"><label className="fieldLabel">Adjustment<input className="input" type="number" step="0.01" placeholder="+50 or -25" value={creditAmount} onChange={e => setCreditAmount(e.target.value)}/></label><label className="fieldLabel">Reason<input className="input" value={creditReason} onChange={e => setCreditReason(e.target.value)} placeholder="Customer goodwill"/></label></div><button className="btn" onClick={adjustCredit} disabled={creditBusy || !creditAmount}>{creditBusy ? 'Updating…' : 'Adjust wallet'}</button><div className="creditHistory">{(customer.creditTransactions || []).slice(0, 8).map((tx: any) => <div className="summaryLine" key={tx.id}><span>{tx.reason || tx.type}<small className="muted">{new Date(tx.createdAt).toLocaleDateString()}</small></span><strong className={tx.amount >= 0 ? 'creditPositive' : 'creditNegative'}>{tx.amount >= 0 ? '+' : ''}{money(tx.amount, tx.currency)}</strong></div>)}</div></div></section>
+      <aside className={s.rail}>
+        <Card title="Wallet" sub="Store credit balance with a protected ledger." icon={<CreditCard size={18}/>}>
+          <div className={s.balance}>{money(customer.creditBalance || 0)}<span>available wallet balance</span></div>
+          <div className={s.twoCol}>
+            <label className={s.field}>Adjustment<input className="input" type="number" step="0.01" placeholder="+50 or -25" value={creditAmount} onChange={e => setCreditAmount(e.target.value)}/></label>
+            <label className={s.field}>Reason<input className="input" value={creditReason} onChange={e => setCreditReason(e.target.value)} placeholder="Customer goodwill"/></label>
+          </div>
+          <button className="btn" onClick={adjustCredit} disabled={creditBusy || !creditAmount}>{creditBusy ? 'Updating…' : 'Adjust wallet'}</button>
+          <div className={s.history}>{(customer.creditTransactions || []).slice(0, 8).map((tx: any) => <div className={s.historyRow} key={tx.id}><span>{tx.reason || tx.type}<small>{new Date(tx.createdAt).toLocaleDateString()}</small></span><strong className={tx.amount >= 0 ? s.amountPositive : s.amountNegative}>{tx.amount >= 0 ? '+' : ''}{money(tx.amount, tx.currency)}</strong></div>)}
+          {!(customer.creditTransactions || []).length && <span className="muted">No wallet activity yet.</span>}</div>
+        </Card>
 
-      <section className="editorCard"><div className="editorCardHead"><div><h3>Coins</h3><p>1 coin redeems as 0.01 store currency unit.</p></div><Coins size={18}/></div><div className="editorCardBody"><div className="creditBalance">{Number(customer.coinBalance || 0).toLocaleString()}<span>available coins</span></div><div className="twoColFields"><label className="fieldLabel">Adjustment<input className="input" type="number" step="1" placeholder="+500 or -100" value={coinAmount} onChange={e => setCoinAmount(e.target.value)}/></label><label className="fieldLabel">Reason<input className="input" value={coinReason} onChange={e => setCoinReason(e.target.value)} placeholder="Loyalty bonus"/></label></div><button className="btn" onClick={adjustCoins} disabled={coinBusy || !coinAmount}>{coinBusy ? 'Updating…' : 'Adjust coins'}</button><div className="creditHistory">{(customer.coinTransactions || []).slice(0, 8).map((tx: any) => <div className="summaryLine" key={tx.id}><span>{tx.reason || tx.type}<small className="muted">{new Date(tx.createdAt).toLocaleDateString()}</small></span><strong className={tx.amount >= 0 ? 'creditPositive' : 'creditNegative'}>{tx.amount >= 0 ? '+' : ''}{tx.amount}</strong></div>)}</div></div></section>
+        <Card title="Coins" sub="1 coin redeems as 0.01 store currency unit." icon={<Coins size={18}/>}>
+          <div className={s.balance}>{Number(customer.coinBalance || 0).toLocaleString()}<span>available coins</span></div>
+          <div className={s.twoCol}>
+            <label className={s.field}>Adjustment<input className="input" type="number" step="1" placeholder="+500 or -100" value={coinAmount} onChange={e => setCoinAmount(e.target.value)}/></label>
+            <label className={s.field}>Reason<input className="input" value={coinReason} onChange={e => setCoinReason(e.target.value)} placeholder="Loyalty bonus"/></label>
+          </div>
+          <button className="btn" onClick={adjustCoins} disabled={coinBusy || !coinAmount}>{coinBusy ? 'Updating…' : 'Adjust coins'}</button>
+          <div className={s.history}>{(customer.coinTransactions || []).slice(0, 8).map((tx: any) => <div className={s.historyRow} key={tx.id}><span>{tx.reason || tx.type}<small>{new Date(tx.createdAt).toLocaleDateString()}</small></span><strong className={tx.amount >= 0 ? s.amountPositive : s.amountNegative}>{tx.amount >= 0 ? '+' : ''}{Number(tx.amount).toLocaleString()}</strong></div>)}
+          {!(customer.coinTransactions || []).length && <span className="muted">No coin activity yet.</span>}</div>
+        </Card>
 
-      <section className="editorCard"><div className="editorCardHead"><div><h3>Addresses</h3><p>Saved customer addresses.</p></div></div><div className="editorCardBody">{!customer.addresses?.length ? <div className="emptyInline">No saved addresses.</div> : customer.addresses.map((a: any) => <div className="addressItem" key={a.id}><div className="inline"><MapPin size={15}/><strong>{a.label || 'Address'}</strong>{a.isDefault && <span className="pill">Default</span>}</div><div>{a.firstName} {a.lastName}</div><div>{a.line1}{a.line2 ? `, ${a.line2}` : ''}</div><div>{a.city}{a.region ? `, ${a.region}` : ''} {a.postalCode || ''}</div><div>{a.country}</div></div>)}</div></section>
+        <Card title="Addresses" sub="Saved customer addresses.">
+          {!customer.addresses?.length ? <div className={s.emptyInline}>No saved addresses.</div> : <div className={s.addressList}>{customer.addresses.map((a: any) => <div className={s.addressItem} key={a.id}>
+            <div className={s.addressHead}><MapPin size={15}/><span>{a.label || 'Address'}</span>{a.isDefault && <span className="pill">Default</span>}</div>
+            <div>{a.firstName} {a.lastName}</div>
+            <div>{a.line1}{a.line2 ? `, ${a.line2}` : ''}</div>
+            <div>{a.city}{a.region ? `, ${a.region}` : ''} {a.postalCode || ''}</div>
+            <div>{a.country}</div>
+          </div>)}</div>}
+        </Card>
 
-      <section className="editorCard"><div className="editorCardHead"><div><h3>Account</h3><p>Customer login information.</p></div></div><div className="editorCardBody"><div className="summaryLine"><span>Status</span><strong>{customer.isActive ? 'Active' : 'Disabled'}</strong></div><div className="summaryLine"><span>Last login</span><strong>{customer.lastLoginAt ? new Date(customer.lastLoginAt).toLocaleDateString() : 'Never'}</strong></div><div className="summaryLine"><span>Reviews</span><strong>{customer._count?.reviews || 0}</strong></div></div></section>
-    </aside></div>
+        <Card title="Account" sub="Customer login information.">
+          <div className={s.summaryLine}><span>Status</span><strong>{customer.isActive ? 'Active' : 'Disabled'}</strong></div>
+          <div className={s.summaryLine}><span>Last login</span><strong>{customer.lastLoginAt ? new Date(customer.lastLoginAt).toLocaleDateString() : 'Never'}</strong></div>
+          <div className={s.summaryLine}><span>Reviews</span><strong>{customer._count?.reviews || 0}</strong></div>
+        </Card>
+      </aside>
+    </div>
   </div>
+
+  function Card({ title, sub, children, action, icon }: { title: string; sub?: string; children: React.ReactNode; action?: React.ReactNode; icon?: React.ReactNode }) {
+    return <section className={s.card}>
+      <div className={s.cardHead}>
+        <div><h3>{title}</h3>{sub && <p>{sub}</p>}</div>
+        {action}
+        {icon && <span className={s.cardHeadIcon}>{icon}</span>}
+      </div>
+      <div className={s.cardBody}>{children}</div>
+    </section>
+  }
 }

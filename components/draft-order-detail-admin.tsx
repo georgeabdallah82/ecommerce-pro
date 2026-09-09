@@ -99,7 +99,7 @@ export default function DraftOrderDetailAdmin({ initial, canManage }: { initial:
         <span className={`statusPill ${STATUS_TONE[d.status] || ''}`}>{d.status}</span>
         {canManage && !isFinal && <button className="btn secondary" onClick={beginEdit}><Pencil size={15} /> Edit</button>}
         {canManage && !isFinal && <button className="btn" onClick={complete} disabled={busy}><Check size={15} /> {busy ? 'Working…' : 'Complete order'}</button>}
-        {canManage && !isFinal && <button className={`btn ${styles.dangerBtn}`} onClick={cancelDraft} disabled={busy}><X size={15} /> Cancel</button>}
+        {canManage && !isFinal && <button className={styles.dangerBtn} onClick={cancelDraft} disabled={busy}><X size={15} /> Cancel</button>}
       </div>
     </div>
 

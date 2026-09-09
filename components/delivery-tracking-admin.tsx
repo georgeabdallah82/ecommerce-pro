@@ -68,7 +68,7 @@ export default function DeliveryTrackingAdmin({ orderId, orderStatus }: { orderI
     {canTrack && <>
       <div className="twoColFields">
         <label className="fieldLabel">ETA (minutes)<input className="input" inputMode="numeric" min="0" max="1440" value={eta} onChange={e=>setEta(e.target.value.replace(/\D/g,''))} placeholder="e.g. 25" /></label>
-        <div className="fieldLabel"><span>Current status</span><div className="inline" style={{minHeight:40}}><span className="pill">{active ? 'LIVE' : 'OFF'}</span>{updatedAt&&<span className="muted"><Clock3 size={13}/> {new Date(updatedAt).toLocaleTimeString()}</span>}</div></div>
+        <div className="fieldLabel"><span>Current status</span><div className="inline" style={{minHeight:40}}><span className="pill" style={active ? { background: 'var(--admin-accent-soft)', color: 'var(--admin-accent-strong)', borderColor: 'transparent' } : undefined}>{active ? 'LIVE' : 'OFF'}</span>{updatedAt&&<span className="muted"><Clock3 size={13}/> {new Date(updatedAt).toLocaleTimeString()}</span>}</div></div>
       </div>
       <div className="inline" style={{marginTop:12,flexWrap:'wrap'}}>
         <button className="btn" onClick={updateLocation} disabled={saving}><LocateFixed size={15}/>{saving?'Updating…':'Use my current location'}</button>

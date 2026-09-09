@@ -29,8 +29,30 @@
 .search:focus-within { border-color: var(--admin-accent); box-shadow: 0 0 0 3px var(--admin-focus); background: var(--admin-surface); }
 .statusSelect { min-width: 160px; }
 
-.dangerBtn { background: var(--admin-danger); border-color: var(--admin-danger); color: #fff; }
-.dangerBtn:hover:not(:disabled) { background: var(--admin-danger); border-color: var(--admin-danger); filter: brightness(0.92); }
+/* Self-contained rather than layered on the shared .btn -- the admin overhaul's
+   "body:has(.adminShell) .btn" selector outranks this module's single hashed
+   class (more classes in its selector chain) and is itself !important, so a
+   plain override here would silently lose the cascade and always render as
+   the default accent color instead of a danger action. */
+.dangerBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: var(--admin-radius-md);
+  border: 1px solid var(--admin-danger);
+  background: var(--admin-danger);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 850;
+  box-shadow: var(--admin-shadow-sm);
+  cursor: pointer;
+}
+.dangerBtn:hover:not(:disabled) { filter: brightness(0.92); }
+.dangerBtn:disabled { opacity: .6; cursor: not-allowed; }
 
 .detailHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
 

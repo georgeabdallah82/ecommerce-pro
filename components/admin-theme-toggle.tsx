@@ -51,7 +51,6 @@ export default function AdminThemeToggle({ compact }: { compact?: boolean }) {
 
         /* Shared surfaces */
         html[data-admin-theme='dark'] body:has(.adminShell) .card,
-        html[data-admin-theme='dark'] body:has(.adminShell) .editorCard,
         html[data-admin-theme='dark'] body:has(.adminShell) .productTableCard,
         html[data-admin-theme='dark'] body:has(.adminShell) .opsCard,
         html[data-admin-theme='dark'] body:has(.adminShell) .healthCheck,
@@ -73,10 +72,7 @@ export default function AdminThemeToggle({ compact }: { compact?: boolean }) {
         html[data-admin-theme='dark'] body:has(.adminShell) .inventoryPreview{background:#191c1a!important;border-color:#2b302c!important;color:#e9edea!important;box-shadow:0 10px 28px rgba(0,0,0,.22)!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .table,
         html[data-admin-theme='dark'] body:has(.adminShell) .tableTopline,
-        html[data-admin-theme='dark'] body:has(.adminShell) .catalogPagination,
-        html[data-admin-theme='dark'] body:has(.adminShell) .editorTopbar,
-        html[data-admin-theme='dark'] body:has(.adminShell) .editorCardHead,
-        html[data-admin-theme='dark'] body:has(.adminShell) .editorCardBody{background:#191c1a!important;color:#e9edea!important;border-color:#2b302c!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .catalogPagination{background:#191c1a!important;color:#e9edea!important;border-color:#2b302c!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .table th,
         html[data-admin-theme='dark'] body:has(.adminShell) .inventoryTablePro th{background:#202421!important;color:#9ea8a1!important;border-color:#303631!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .table td,
