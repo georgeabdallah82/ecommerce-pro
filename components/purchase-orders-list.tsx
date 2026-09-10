@@ -52,7 +52,7 @@ export default function PurchaseOrdersList({ initial, canManage }: { initial: PO
           <h1 className={styles.title}>Purchase orders</h1>
           <p className={ui.muted}>Order stock from suppliers and record what arrives at each location.</p>
         </div>
-        {canManage && <Link className={ui.btn} href="/admin/purchase-orders/new"><Plus size={16} /> New purchase order</Link>}
+        {canManage && <Link className={`${ui.btn} ${styles.headerBtn}`} href="/admin/purchase-orders/new"><Plus size={16} /> New purchase order</Link>}
       </div>
 
       <div className={`${ui.card} ${styles.views}`}>

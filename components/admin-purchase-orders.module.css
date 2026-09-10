@@ -52,7 +52,12 @@
 
 @media (max-width: 700px) {
   .header { flex-direction: column; align-items: stretch; }
-  .header :global(.btn) { width: 100%; justify-content: center; }
+  /* Was `.header :global(.btn)` -- the New purchase order button now
+     composes the shared, build-time-hashed ui.btn instead of the bare
+     "btn" classname, so a :global(.btn) selector here silently stopped
+     matching (the same :global() pitfall as #90/#91/#103/#104/#105) --
+     retargeted onto this page-local class, applied alongside ui.btn. */
+  .headerBtn { width: 100%; justify-content: center; }
   .title { font-size: 32px; }
   .views { width: 100%; }
 }

@@ -143,7 +143,7 @@ export default function CustomerDetailAdmin({ initial }: { initial: any }) {
       </div>
       <div className={s.topActions}>
         <span className={`${ui.statusPill} ${customer.isActive ? ui.statusPillSuccess : ''}`}>{customer.isActive ? <UserCheck size={13}/> : <ShieldOff size={13}/>} {customer.isActive ? 'Active' : 'Disabled'}</span>
-        <button className={ui.btn} onClick={save} disabled={saving}><Save size={16}/> {saving ? 'Saving…' : 'Save'}</button>
+        <button className={`${ui.btn} ${s.topActionsBtn}`} onClick={save} disabled={saving}><Save size={16}/> {saving ? 'Saving…' : 'Save'}</button>
       </div>
     </div>
     {(error || message) && <div className={`${ui.alert} ${error ? ui.alertDanger : ''} ${s.alert}`}>{error || message}</div>}
