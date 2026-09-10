@@ -35,6 +35,20 @@
 
 .mediaModal { width: min(560px, 92vw); padding: 24px; display: grid; gap: 14px; }
 
+/* Was `className="h3"` on the modal <h2> in both consumers of this module --
+   ".h3" is never defined anywhere in globals.css or admin-overhaul.css, the
+   same dead classname already found on the Categories/Collections modals
+   (#80, #88). Sized to match that same convention. */
+.modalTitle { margin: 6px 0 4px; font-size: 19px; letter-spacing: -.02em; color: var(--admin-ink); }
+
+/* The grid/list view toggle icon buttons never had an active-state rule at
+   all -- className={view === 'grid' ? 'iconBtn active' : 'iconBtn'} combined
+   a bare, undefined "active" with the shared .iconBtn, so which view was
+   selected has never been visually indicated. Matches the same
+   accent-background "active toggle" treatment already used for list-page
+   view tabs elsewhere (e.g. admin-order-edits.module.css's .viewActive). */
+.viewToggleActive { background: var(--admin-accent); border-color: var(--admin-accent); color: var(--admin-accent-ink); }
+
 .mediaListThumb { width: 52px; height: 52px; border-radius: var(--admin-radius-sm); overflow: hidden; background: var(--admin-border-soft); }
 .mediaListThumb img { width: 100%; height: 100%; object-fit: cover; }
 
