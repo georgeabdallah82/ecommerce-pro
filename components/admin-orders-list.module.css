@@ -83,6 +83,12 @@
 .search input { min-width: 0; flex: 1 1 auto; border: 0; outline: 0; background: transparent; font: inherit; color: var(--admin-ink); }
 .search button { border: 0; background: transparent; color: var(--admin-muted); display: grid; place-items: center; cursor: pointer; }
 .statusSelect { min-width: 170px; }
+/* Was globals.css's `.input.compact`, height/min-width set only via a
+   `body:has(.adminShell) .tableTopline .input.compact` rule in app/admin/layout.tsx --
+   but that literal `.tableTopline` selector can never match this module's hashed
+   `.tableTopline` class, so it has never applied: the "Rows" per-page select has
+   always rendered at full input height instead of the intended compact size. */
+.compactSelect { height: 34px; min-height: 34px; min-width: 74px; }
 .revenue { margin-left: auto; font-size: 14px; font-weight: 800; color: var(--admin-ink); white-space: nowrap; }
 .revenue span { display: block; font-size: 10.5px; font-weight: 700; color: var(--admin-muted); text-transform: uppercase; letter-spacing: .05em; }
 
