@@ -46,18 +46,21 @@ export default function AdminThemeToggle({ compact }: { compact?: boolean }) {
            Core chrome (the shell box, headings, .muted, .pill) and the nav bar
            itself (components/admin-nav.module.css, driven entirely by the same
            --admin-* custom properties) both flip automatically under this same
-           [data-admin-theme='dark'] selector - no need to duplicate it here. */
-        html[data-admin-theme='dark'] body:has(.adminShell) .healthTimestamp{color:#9ba49e!important}
+           [data-admin-theme='dark'] selector - no need to duplicate it here.
+           Same goes for every page migrated onto a CSS Module (components/admin-
+           *.module.css): those consume the --admin-* tokens directly via var(),
+           so they need no entry in this file either. .opsCard, .healthCheck and
+           .healthHero/.healthTimestamp/.opsLoading used to need hardcoded patches
+           here because they were still bare, unmigrated classnames when this file
+           was written; #74 has since moved them onto admin-operations-hub.module.css
+           and admin-system-health.module.css, so those entries were removed. */
 
         /* Shared surfaces */
         html[data-admin-theme='dark'] body:has(.adminShell) .card,
         html[data-admin-theme='dark'] body:has(.adminShell) .productTableCard,
-        html[data-admin-theme='dark'] body:has(.adminShell) .opsCard,
-        html[data-admin-theme='dark'] body:has(.adminShell) .healthCheck,
         html[data-admin-theme='dark'] body:has(.adminShell) .statCard,
         html[data-admin-theme='dark'] body:has(.adminShell) .orderCard,
         html[data-admin-theme='dark'] body:has(.adminShell) .summaryCard,
-        html[data-admin-theme='dark'] body:has(.adminShell) .healthHero,
         html[data-admin-theme='dark'] body:has(.adminShell) .successCard,
         html[data-admin-theme='dark'] body:has(.adminShell) .adminPanel,
         html[data-admin-theme='dark'] body:has(.adminShell) .inventoryStat,
@@ -107,8 +110,7 @@ export default function AdminThemeToggle({ compact }: { compact?: boolean }) {
         html[data-admin-theme='dark'] body:has(.adminShell) .orderViews button.active{background:#f0f3f1!important;color:#171918!important}
 
         /* Empty/error states and live map */
-        html[data-admin-theme='dark'] body:has(.adminShell) .empty,
-        html[data-admin-theme='dark'] body:has(.adminShell) .opsLoading{background:#191c1a!important;border-color:#3a413c!important;color:#9fa8a1!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .empty{background:#191c1a!important;border-color:#3a413c!important;color:#9fa8a1!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .empty strong{color:#eef2ef!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .leaflet-control-attribution{background:rgba(25,28,26,.9)!important;color:#c7cec9!important}
       `}</style>
