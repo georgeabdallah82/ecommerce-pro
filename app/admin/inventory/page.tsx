@@ -2,7 +2,6 @@ import { requirePermission } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
 import { db } from '@/lib/prisma'
 import InventoryAdminPro from '@/components/inventory-admin-pro'
-import AdminInventoryVisualStyles from '@/components/admin-inventory-visual-styles'
 
 export default async function Inventory() {
   const user = await requirePermission('inventory.view')
@@ -14,5 +13,5 @@ export default async function Inventory() {
     },
     orderBy: [{ quantity: 'asc' }, { id: 'asc' }],
   })
-  return <><AdminInventoryVisualStyles /><InventoryAdminPro initial={JSON.parse(JSON.stringify(rows))} canManage={hasPermission(user.role, 'inventory.manage')} /></>
+  return <InventoryAdminPro initial={JSON.parse(JSON.stringify(rows))} canManage={hasPermission(user.role, 'inventory.manage')} />
 }
