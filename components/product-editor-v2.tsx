@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Copy, Eye, Plus, Save, Trash2, X } from 'lucide-react'
 import s from './admin-product-editor.module.css'
+import ui from './admin-ui.module.css'
 import MediaPicker from './media-picker'
 
 type ImageItem = { id?: string; url: string; alt?: string | null }
@@ -129,27 +130,27 @@ export default function ProductEditorV2({ initial, creating, categories, definit
   return <div className={s.page}>
     <div className={s.topbar}>
       <div className={s.topLeft}>
-        <Link href="/admin/products" className="iconBtn" onClick={e => { if (dirty && !confirm('Discard unsaved changes?')) e.preventDefault() }}><ArrowLeft size={18} /></Link>
-        <div><div className="muted tiny">PRODUCT</div><h1 className={s.title}>{creating ? 'Add product' : product.name || 'Untitled product'}</h1>{dirty && <div className="muted tiny">Unsaved changes</div>}</div>
+        <Link href="/admin/products" className={ui.iconBtn} onClick={e => { if (dirty && !confirm('Discard unsaved changes?')) e.preventDefault() }}><ArrowLeft size={18} /></Link>
+        <div><div className={`${ui.muted} ${ui.tiny}`}>PRODUCT</div><h1 className={s.title}>{creating ? 'Add product' : product.name || 'Untitled product'}</h1>{dirty && <div className={`${ui.muted} ${ui.tiny}`}>Unsaved changes</div>}</div>
       </div>
       <div className={s.topActions}>
-        <Link className="btn secondary" href={creating ? '/admin/products' : `/product/${product.slug}`} target="_blank"><Eye size={16} /> Preview</Link>
-        {!creating && <button className="btn secondary" onClick={duplicate} disabled={busy}><Copy size={16} /> Duplicate</button>}
-        <button className="btn" onClick={save} disabled={busy}>{busy ? 'Saving…' : <><Save size={16} /> Save</>}</button>
+        <Link className={`${ui.btn} ${ui.btnSecondary} ${s.topActionBtn}`} href={creating ? '/admin/products' : `/product/${product.slug}`} target="_blank"><Eye size={16} /> Preview</Link>
+        {!creating && <button className={`${ui.btn} ${ui.btnSecondary} ${s.topActionBtn}`} onClick={duplicate} disabled={busy}><Copy size={16} /> Duplicate</button>}
+        <button className={`${ui.btn} ${s.topActionBtn}`} onClick={save} disabled={busy}>{busy ? 'Saving…' : <><Save size={16} /> Save</>}</button>
       </div>
     </div>
 
-    {(error || message) && <div className={error ? 'alert danger' : 'alert'} style={{ margin: '0 0 14px' }}>{error || message}</div>}
+    {(error || message) && <div className={`${ui.alert} ${error ? ui.alertDanger : ''}`} style={{ margin: '0 0 14px' }}>{error || message}</div>}
 
-    <div className={s.tabs}>{tabs.map(t => <button key={t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>{t}</button>)}</div>
+    <div className={s.tabs}>{tabs.map(t => <button key={t} className={tab === t ? s.active : ''} onClick={() => setTab(t)}>{t}</button>)}</div>
 
     <div className={s.body}>
       <main className={s.main}>
         {tab === 'General' && <>
           <Card title="Title & description" sub="Storefront-facing product content">
-            <Field label="Title"><input className="input" value={product.name} onChange={e => update({ name: e.target.value })} /></Field>
-            <Field label="Short description"><textarea className="textarea" rows={4} value={product.shortDescription || ''} onChange={e => update({ shortDescription: e.target.value })} /></Field>
-            <Field label="Description"><textarea className="textarea" rows={12} value={product.description || ''} onChange={e => update({ description: e.target.value })} /></Field>
+            <Field label="Title"><input className={ui.input} value={product.name} onChange={e => update({ name: e.target.value })} /></Field>
+            <Field label="Short description"><textarea className={ui.textarea} rows={4} value={product.shortDescription || ''} onChange={e => update({ shortDescription: e.target.value })} /></Field>
+            <Field label="Description"><textarea className={ui.textarea} rows={12} value={product.description || ''} onChange={e => update({ description: e.target.value })} /></Field>
           </Card>
 
           <Card title="Media" sub="Reorder, upload, or choose from your media library">
@@ -158,11 +159,11 @@ export default function ProductEditorV2({ initial, creating, categories, definit
                 {im.url ? <img src={im.url} alt={im.alt || ''} /> : <div className={s.mediaPlaceholder}>No image</div>}
                 <div className={s.mediaControls}>
                   {i === 0 && <span className={s.pill}>Main image</span>}
-                  <input className="input" placeholder="Alt text" value={im.alt || ''} onChange={e => update({ images: product.images.map((x, n) => n === i ? { ...x, alt: e.target.value } : x) })} />
+                  <input className={ui.input} placeholder="Alt text" value={im.alt || ''} onChange={e => update({ images: product.images.map((x, n) => n === i ? { ...x, alt: e.target.value } : x) })} />
                   <div className="inline">
-                    <button className="btn ghost smallBtn" onClick={() => moveImage(i, -1)} disabled={i === 0}>↑</button>
-                    <button className="btn ghost smallBtn" onClick={() => moveImage(i, 1)} disabled={i === product.images.length - 1}>↓</button>
-                    <button className="textButton dangerText" onClick={() => update({ images: product.images.filter((_, n) => n !== i) })}><Trash2 size={14} /> Remove</button>
+                    <button className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} onClick={() => moveImage(i, -1)} disabled={i === 0}>↑</button>
+                    <button className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} onClick={() => moveImage(i, 1)} disabled={i === product.images.length - 1}>↓</button>
+                    <button className={`${ui.textButton} ${ui.textButtonDanger}`} onClick={() => update({ images: product.images.filter((_, n) => n !== i) })}><Trash2 size={14} /> Remove</button>
                   </div>
                 </div>
               </div>)}
@@ -172,15 +173,15 @@ export default function ProductEditorV2({ initial, creating, categories, definit
 
           <Card title="Organization" sub="Catalog structure and publishing">
             <div className={s.twoCol}>
-              <Field label="Vendor / brand"><input className="input" value={product.vendor || product.brand || ''} onChange={e => update({ vendor: e.target.value, brand: e.target.value })} /></Field>
-              <Field label="Product type"><input className="input" value={product.productType || ''} onChange={e => update({ productType: e.target.value })} /></Field>
-              <Field label="Category"><select className="input" value={product.categoryId || ''} onChange={e => update({ categoryId: e.target.value || null })}><option value="">Uncategorized</option>{categories.map(c => <option key={c.id} value={c.id}>{c.parentId ? '↳ ' : ''}{c.name}</option>)}</select></Field>
-              <Field label="Status"><select className="input" value={product.status} onChange={e => update({ status: e.target.value, publishedAt: e.target.value === 'ACTIVE' ? new Date().toISOString() : null })}><option value="DRAFT">Draft</option><option value="ACTIVE">Active</option><option value="ARCHIVED">Archived</option></select></Field>
+              <Field label="Vendor / brand"><input className={ui.input} value={product.vendor || product.brand || ''} onChange={e => update({ vendor: e.target.value, brand: e.target.value })} /></Field>
+              <Field label="Product type"><input className={ui.input} value={product.productType || ''} onChange={e => update({ productType: e.target.value })} /></Field>
+              <Field label="Category"><select className={ui.select} value={product.categoryId || ''} onChange={e => update({ categoryId: e.target.value || null })}><option value="">Uncategorized</option>{categories.map(c => <option key={c.id} value={c.id}>{c.parentId ? '↳ ' : ''}{c.name}</option>)}</select></Field>
+              <Field label="Status"><select className={ui.select} value={product.status} onChange={e => update({ status: e.target.value, publishedAt: e.target.value === 'ACTIVE' ? new Date().toISOString() : null })}><option value="DRAFT">Draft</option><option value="ACTIVE">Active</option><option value="ARCHIVED">Archived</option></select></Field>
             </div>
             <Field label="Tags">
               <div className={s.tagRow}>
                 {(product.tags || []).map((t: any, i: number) => <span className={s.tagChip} key={i}>{typeof t === 'string' ? t : t.value}<button onClick={() => update({ tags: product.tags.filter((_, n) => n !== i) })}>×</button></span>)}
-                <input className="input" placeholder="Add tag and press Enter" onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); const v = e.currentTarget.value.trim(); if (v) update({ tags: [...(product.tags || []), { value: v }] }); e.currentTarget.value = '' } }} />
+                <input className={`${ui.input} ${s.tagRowField}`} placeholder="Add tag and press Enter" onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); const v = e.currentTarget.value.trim(); if (v) update({ tags: [...(product.tags || []), { value: v }] }); e.currentTarget.value = '' } }} />
               </div>
             </Field>
           </Card>
@@ -198,9 +199,9 @@ export default function ProductEditorV2({ initial, creating, categories, definit
         {tab === 'Inventory' && <>
           <Card title="Inventory" sub="Stock tracking and identifiers">
             <div className={s.threeCol}>
-              <Field label="SKU"><input className="input" value={product.sku} onChange={e => update({ sku: e.target.value })} /></Field>
-              <Field label="Barcode"><input className="input" value={product.barcode || ''} onChange={e => update({ barcode: e.target.value })} /></Field>
-              <Field label="Low stock at"><input className="input" type="number" value={product.lowStockThreshold || 5} onChange={e => update({ lowStockThreshold: Number(e.target.value) })} /></Field>
+              <Field label="SKU"><input className={ui.input} value={product.sku} onChange={e => update({ sku: e.target.value })} /></Field>
+              <Field label="Barcode"><input className={ui.input} value={product.barcode || ''} onChange={e => update({ barcode: e.target.value })} /></Field>
+              <Field label="Low stock at"><input className={ui.input} type="number" value={product.lowStockThreshold || 5} onChange={e => update({ lowStockThreshold: Number(e.target.value) })} /></Field>
             </div>
             <div className={s.checkGrid}>
               <Check checked={product.trackInventory} onChange={v => update({ trackInventory: v })} title="Track inventory" text="Prevent overselling when stock is exhausted." />
@@ -210,9 +211,9 @@ export default function ProductEditorV2({ initial, creating, categories, definit
           </Card>
           {(!product.variants.length || product.sharedInventory) && <Card title="Product inventory" sub="Used for non-variant stock or a shared variant pool">
             <div className={s.threeCol}>
-              <Field label="Available"><input className="input" type="number" value={available} onChange={e => update({ quantity: Number(e.target.value) })} /></Field>
-              <Field label="Location"><input className="input" value={product.location || product.inventory?.[0]?.location || 'Main'} onChange={e => update({ location: e.target.value })} /></Field>
-              <Field label="Low stock"><input className="input" type="number" value={product.lowStockThreshold || product.inventory?.[0]?.lowStockThreshold || 5} onChange={e => update({ lowStockThreshold: Number(e.target.value) })} /></Field>
+              <Field label="Available"><input className={ui.input} type="number" value={available} onChange={e => update({ quantity: Number(e.target.value) })} /></Field>
+              <Field label="Location"><input className={ui.input} value={product.location || product.inventory?.[0]?.location || 'Main'} onChange={e => update({ location: e.target.value })} /></Field>
+              <Field label="Low stock"><input className={ui.input} type="number" value={product.lowStockThreshold || product.inventory?.[0]?.lowStockThreshold || 5} onChange={e => update({ lowStockThreshold: Number(e.target.value) })} /></Field>
             </div>
           </Card>}
         </>}
@@ -221,14 +222,14 @@ export default function ProductEditorV2({ initial, creating, categories, definit
           <Card title="Options" sub="Up to three option dimensions">
             <div className={s.optionList}>
               {optionNames.map((n, i) => <div className={s.optionRow} key={i}>
-                <input className="input" placeholder={`Option ${i + 1} name`} value={n} onChange={e => { const a = [...optionNames]; a[i] = e.target.value; setOptionNames(a); setDirty(true) }} />
-                <input className="input" placeholder="Values separated by commas" value={(optionValues[i] || []).join(', ')} onChange={e => { const a = [...optionValues]; a[i] = e.target.value.split(',').map(x => x.trim()).filter(Boolean); setOptionValues(a); setDirty(true) }} />
-                {optionNames.length > 1 && <button className="iconBtn" onClick={() => { setOptionNames(optionNames.filter((_, x) => x !== i)); setOptionValues(optionValues.filter((_, x) => x !== i)); setDirty(true) }}><X size={15} /></button>}
+                <input className={ui.input} placeholder={`Option ${i + 1} name`} value={n} onChange={e => { const a = [...optionNames]; a[i] = e.target.value; setOptionNames(a); setDirty(true) }} />
+                <input className={ui.input} placeholder="Values separated by commas" value={(optionValues[i] || []).join(', ')} onChange={e => { const a = [...optionValues]; a[i] = e.target.value.split(',').map(x => x.trim()).filter(Boolean); setOptionValues(a); setDirty(true) }} />
+                {optionNames.length > 1 && <button className={ui.iconBtn} onClick={() => { setOptionNames(optionNames.filter((_, x) => x !== i)); setOptionValues(optionValues.filter((_, x) => x !== i)); setDirty(true) }}><X size={15} /></button>}
               </div>)}
             </div>
             <div className="inline">
-              <button className="btn secondary" onClick={() => { if (optionNames.length < 3) { setOptionNames(x => [...x, '']); setOptionValues(x => [...x, []]); setDirty(true) } }} disabled={optionNames.length >= 3}><Plus size={15} /> Add option</button>
-              <button className="btn" onClick={generateVariants}><Plus size={15} /> Generate variants</button>
+              <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => { if (optionNames.length < 3) { setOptionNames(x => [...x, '']); setOptionValues(x => [...x, []]); setDirty(true) } }} disabled={optionNames.length >= 3}><Plus size={15} /> Add option</button>
+              <button className={ui.btn} onClick={generateVariants}><Plus size={15} /> Generate variants</button>
             </div>
           </Card>
           <Card title="Inventory mode" sub="Variant stock or one shared product pool">
@@ -237,11 +238,11 @@ export default function ProductEditorV2({ initial, creating, categories, definit
           <Card title="Variants" sub={`${product.variants.length} variants`}>
             <div className={s.variantHead}><span>Variant</span><span>SKU</span><span>Price</span><span>Stock</span><span></span></div>
             {product.variants.map((v, i) => <div className={s.variantRow} key={v.id || i}>
-              <input className="input" value={v.name} onChange={e => updateVariant(i, { name: e.target.value })} />
-              <input className="input" value={v.sku} onChange={e => updateVariant(i, { sku: e.target.value })} />
-              <input className="input" value={moneyValue(v.price)} onChange={e => updateVariant(i, { price: Math.round(Number(e.target.value || 0) * 100) })} />
-              <input className="input" type="number" value={variantStock(v)} disabled={Boolean(product.sharedInventory)} onChange={e => updateVariant(i, { quantity: Number(e.target.value) })} />
-              <button className="iconBtn" onClick={() => update({ variants: product.variants.filter((_, n) => n !== i) })}><Trash2 size={16} /></button>
+              <input className={`${ui.input} ${s.variantField}`} value={v.name} onChange={e => updateVariant(i, { name: e.target.value })} />
+              <input className={`${ui.input} ${s.variantField}`} value={v.sku} onChange={e => updateVariant(i, { sku: e.target.value })} />
+              <input className={`${ui.input} ${s.variantField}`} value={moneyValue(v.price)} onChange={e => updateVariant(i, { price: Math.round(Number(e.target.value || 0) * 100) })} />
+              <input className={`${ui.input} ${s.variantField}`} type="number" value={variantStock(v)} disabled={Boolean(product.sharedInventory)} onChange={e => updateVariant(i, { quantity: Number(e.target.value) })} />
+              <button className={`${ui.iconBtn} ${s.variantDeleteBtn}`} onClick={() => update({ variants: product.variants.filter((_, n) => n !== i) })}><Trash2 size={16} /></button>
             </div>)}
             {!product.variants.length && <div className={s.emptyInline}>No variants yet.</div>}
           </Card>
@@ -254,9 +255,9 @@ export default function ProductEditorV2({ initial, creating, categories, definit
             <Check checked={product.giftCard} onChange={v => update({ giftCard: v })} title="Gift card" text="Reserved for gift-card product types." />
           </div>
           <div className={s.threeCol}>
-            <Field label="Weight"><input className="input" type="number" step="0.01" value={product.weight ?? ''} onChange={e => update({ weight: e.target.value === '' ? null : Number(e.target.value) })} /></Field>
-            <Field label="Weight unit"><select className="input" value={product.weightUnit || 'kg'} onChange={e => update({ weightUnit: e.target.value })}><option>kg</option><option>g</option><option>lb</option><option>oz</option></select></Field>
-            <Field label="Template"><select className="input" value={product.productTemplate || 'product'} onChange={e => update({ productTemplate: e.target.value })}><option value="product">Default product</option><option value="product.featured">Featured product</option><option value="product.minimal">Minimal product</option></select></Field>
+            <Field label="Weight"><input className={ui.input} type="number" step="0.01" value={product.weight ?? ''} onChange={e => update({ weight: e.target.value === '' ? null : Number(e.target.value) })} /></Field>
+            <Field label="Weight unit"><select className={ui.select} value={product.weightUnit || 'kg'} onChange={e => update({ weightUnit: e.target.value })}><option>kg</option><option>g</option><option>lb</option><option>oz</option></select></Field>
+            <Field label="Template"><select className={ui.select} value={product.productTemplate || 'product'} onChange={e => update({ productTemplate: e.target.value })}><option value="product">Default product</option><option value="product.featured">Featured product</option><option value="product.minimal">Minimal product</option></select></Field>
           </div>
         </Card>}
 
@@ -264,17 +265,17 @@ export default function ProductEditorV2({ initial, creating, categories, definit
           {definitions.length ? definitions.map((d: any) => {
             const cur = product.metafields?.find((m: any) => m.definitionId === d.id)?.value || ''
             return <Field key={d.id} label={d.name}>
-              <span className="fieldHelp">{d.namespace}.{d.key} · {d.type}</span>
-              <input className="input" value={cur} onChange={e => { const n = [...(product.metafields || [])].filter((m: any) => m.definitionId !== d.id); if (e.target.value) n.push({ definitionId: d.id, value: e.target.value }); update({ metafields: n }) }} />
+              <span className={ui.fieldHelp}>{d.namespace}.{d.key} · {d.type}</span>
+              <input className={ui.input} value={cur} onChange={e => { const n = [...(product.metafields || [])].filter((m: any) => m.definitionId !== d.id); if (e.target.value) n.push({ definitionId: d.id, value: e.target.value }); update({ metafields: n }) }} />
             </Field>
           }) : <div className={s.emptyInline}>No metafield definitions yet.</div>}
         </Card>}
 
         {tab === 'Search & SEO' && <Card title="Search engine listing" sub="SEO title, description and URL handle">
-          <Field label="URL handle"><input className="input" value={product.slug} onChange={e => update({ slug: e.target.value })} /></Field>
-          <Field label="SEO title"><input className="input" value={product.seoTitle || ''} onChange={e => update({ seoTitle: e.target.value })} /></Field>
-          <Field label="SEO description"><textarea className="textarea" rows={5} value={product.seoDescription || ''} onChange={e => update({ seoDescription: e.target.value })} /></Field>
-          <Field label="SEO image URL"><input className="input" value={product.seoImageUrl || ''} onChange={e => update({ seoImageUrl: e.target.value })} /></Field>
+          <Field label="URL handle"><input className={ui.input} value={product.slug} onChange={e => update({ slug: e.target.value })} /></Field>
+          <Field label="SEO title"><input className={ui.input} value={product.seoTitle || ''} onChange={e => update({ seoTitle: e.target.value })} /></Field>
+          <Field label="SEO description"><textarea className={ui.textarea} rows={5} value={product.seoDescription || ''} onChange={e => update({ seoDescription: e.target.value })} /></Field>
+          <Field label="SEO image URL"><input className={ui.input} value={product.seoImageUrl || ''} onChange={e => update({ seoImageUrl: e.target.value })} /></Field>
           <div className={s.notice} style={{ display: 'block' }}><strong>{product.seoTitle || product.name}</strong><span style={{ display: 'block', marginTop: 4 }}>/product/{product.slug || 'product-handle'}</span><span style={{ display: 'block', marginTop: 4 }}>{product.seoDescription || product.shortDescription || 'Add an SEO description.'}</span></div>
         </Card>}
       </main>
