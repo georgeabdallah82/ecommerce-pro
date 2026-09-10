@@ -177,6 +177,24 @@ body:has(.adminShell) .table tbody tr:hover{background:var(--admin-border-soft)!
 body:has(.adminShell) .tableWrap{overflow:auto!important}
 body:has(.adminShell) .catalogPagination{background:var(--admin-surface)!important;border-top:1px solid var(--admin-border-soft)!important}
 body:has(.adminShell) input[type=checkbox]{accent-color:var(--admin-accent)}
+/* Reviews table cell content -- .ratingStars and .reviewSnippet had no rule
+   anywhere, so the star rating rendered in plain inherited text color instead
+   of the amber tone used for "attention" elsewhere in the admin, and a long
+   review body could grow the row unbounded instead of clamping. */
+body:has(.adminShell) .ratingStars{color:var(--admin-warning)!important;letter-spacing:1px!important;font-size:13px!important}
+body:has(.adminShell) .reviewSnippet{display:-webkit-box!important;-webkit-line-clamp:2!important;-webkit-box-orient:vertical!important;overflow:hidden!important;max-width:360px!important}
+/* .tableTopline (bare, on Customers list -- Coupons already has its own
+   tokenized module-scoped copy) had only a dark-mode-only hardcoded-hex patch
+   in admin-theme-toggle.tsx and no light-mode/layout rule at all, so the "N
+   customers / rows per page" toolbar row above the table had no flex layout,
+   padding or border in light mode. Ported the already-correct values from
+   admin-coupons.module.css's .tableTopline. */
+body:has(.adminShell) .tableTopline{display:flex!important;justify-content:space-between!important;align-items:center!important;gap:12px!important;padding:12px 16px!important;border-bottom:1px solid var(--admin-border-soft)!important;font-size:13px!important;color:var(--admin-muted)!important}
+/* .catalogFilters (Customers list's status-filter + search row) and
+   .customerAvatar (the circular initials badge in each customer row) had no
+   rule anywhere either. */
+body:has(.adminShell) .catalogFilters{display:flex!important;align-items:center!important;gap:10px!important;margin-bottom:16px!important;flex-wrap:wrap!important}
+body:has(.adminShell) .customerAvatar{width:36px!important;height:36px!important;border-radius:50%!important;background:var(--admin-accent-soft)!important;color:var(--admin-accent-strong)!important;display:grid!important;place-items:center!important;font-size:12px!important;font-weight:800!important;flex:0 0 auto!important}
 
 /* Tabs / views */
 body:has(.adminShell) .orderViews,body:has(.adminShell) .opsTabs{border:1px solid var(--admin-border)!important;background:var(--admin-surface)!important;border-radius:var(--admin-radius-md)!important;padding:4px!important;box-shadow:var(--admin-shadow-sm)!important}
@@ -211,6 +229,16 @@ body:has(.adminShell) .toggleRow input{margin-top:3px}
 body:has(.adminShell) .toggleRow span{display:grid;gap:3px}
 body:has(.adminShell) .toggleRow small{font-size:11px;color:var(--admin-muted);line-height:1.4}
 @media(max-width:650px){body:has(.adminShell) .discountFormGrid{grid-template-columns:1fr}body:has(.adminShell) .discountForm{padding:18px}body:has(.adminShell) .discountsModal .inventoryModalHead{padding:18px}}
+
+/* Content block modal (Online store > Content) -- .contentModal, .checkboxLine
+   and .contentJsonEditor had no rule anywhere, so the modal had no explicit
+   width (stretching to whatever the flex/block context allowed instead of
+   matching every other modal's fixed width), the "Publish this block"
+   checkbox and its label had no alignment, and the JSON textarea used the
+   plain .input font instead of a monospace one sized for editing JSON. */
+body:has(.adminShell) .contentModal{width:min(700px,94vw);padding:0;max-height:92vh;overflow:auto}
+body:has(.adminShell) .checkboxLine{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--admin-ink)}
+body:has(.adminShell) .contentJsonEditor{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;min-height:160px}
 
 /* Drawers */
 
