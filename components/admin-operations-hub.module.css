@@ -1,0 +1,58 @@
+/*
+ * Operations hub - CSS Modules, same componentization pattern as the rest
+ * of #74. Before this module, every visual detail on this page (the tile
+ * grid, tile icon chips, the "attention" tone, panel list rows) came from a
+ * single hardcoded, light-only CSS string injected in app/admin/layout.tsx
+ * (see the `adminCss` block there) - values like #fff, #e4e4df, #6a6a64,
+ * #f2f2ed, #3d3d38, #fafaf8, #ecece7 and #ead9a4 have no dark-mode
+ * counterpart, so this entire page (including every list row, and the
+ * "attention" tone used to flag abandoned checkouts) rendered with the
+ * light theme's colors even with dark mode on. This module uses the real
+ * --admin-* tokens instead, so dark mode is automatic.
+ */
+
+.page { max-width: 1480px; margin: 0 auto; padding-bottom: 32px; }
+
+.loading { padding: 24px; text-align: center; }
+
+.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+.grid.wide { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+.tile { display: flex; align-items: center; gap: 12px; padding: 18px; }
+.tileAttention { border-color: var(--admin-warning); }
+.tileIcon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-border-soft);
+  color: var(--admin-ink-soft);
+}
+.tileLabel { font-size: 12px; }
+.tileCount { display: block; margin-top: 5px; font-size: 26px; letter-spacing: -.03em; color: var(--admin-ink); }
+
+.panel { padding: 20px; }
+.panel h3 { margin: 0 0 5px; font-size: 17px; color: var(--admin-ink); }
+
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+
+.list { display: grid; gap: 8px; margin-top: 16px; }
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) auto minmax(100px, .8fr);
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  background: var(--admin-border-soft);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-sm);
+  font-size: 13px;
+  color: var(--admin-ink);
+  text-decoration: none;
+}
+a.row { cursor: pointer; }
+
+@media (max-width: 1100px) { .grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 760px) { .grid, .grid.wide { grid-template-columns: 1fr; } }
