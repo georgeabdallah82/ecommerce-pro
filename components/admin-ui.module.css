@@ -76,6 +76,15 @@
    needs !important to win. */
 .btnSmall { min-height: 36px; padding: 0 12px; }
 
+/* `className="btn wide"` shows up on the primary submit button in at least
+   five order/procurement creation forms (manual order, draft order,
+   purchase order, order edit, inventory transfer), always the sidebar-rail
+   copy of the page's main CTA -- clearly meant to span the rail's full
+   width. `.wide` has never been defined anywhere in this codebase (not in
+   globals.css, admin-overhaul.css, or any component), so that button has
+   always rendered at its natural content width instead. */
+.btnWide { width: 100%; justify-content: center; }
+
 .iconBtn {
   width: 42px;
   height: 42px;
@@ -154,6 +163,14 @@
    override without `min-height` alongside it (confirmed by computed style when
    this was first found in the Orders list migration) -- both are set here. */
 .selectCompact { height: 34px; min-height: 34px; min-width: 74px; }
+/* Same "never applied" story as .selectCompact above, for an <input> instead
+   of a <select>: globals.css's bare `.compact{height:38px;width:auto;
+   min-width:120px}` never won against admin-overhaul.css's `!important`
+   height:46px on .input. Only the height half is reproduced here -- every
+   real consumer (e.g. a line-item quantity cell) already sets its own
+   explicit width inline, and this atom's min-width would otherwise fight
+   that inline width. */
+.inputCompact { height: 38px; min-height: 38px; }
 
 .fieldLabel { display: block; margin-bottom: 7px; font-size: 11px; font-weight: 850; color: var(--admin-ink-soft); }
 .fieldHelp { display: block; margin-top: 6px; font-size: 11px; line-height: 1.5; color: var(--admin-muted); }
