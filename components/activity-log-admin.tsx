@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { History, Search, X } from 'lucide-react'
 import styles from './admin-activity.module.css'
+import ui from './admin-ui.module.css'
 
 type Row = {
   id: string
@@ -75,12 +76,12 @@ export default function ActivityLogAdmin({ initial, total, entities, pageSize }:
 
   const empty = useMemo(() => !loading && rows.length === 0, [loading, rows.length])
 
-  return <div className={`catalogPage ${styles.page}`}>
-    <div className="sectionHead catalogHead">
-      <div><span className="muted">SECURITY</span><h1 className="h2">Activity log</h1><p className="muted">Every sensitive change made in the admin, who made it, and when.</p></div>
-      <span className="pill">{count} event{count === 1 ? '' : 's'}</span>
+  return <div className={styles.page}>
+    <div className={ui.sectionHead}>
+      <div><span className={ui.muted}>SECURITY</span><h1 className={ui.title}>Activity log</h1><p className={ui.muted}>Every sensitive change made in the admin, who made it, and when.</p></div>
+      <span className={ui.pill}>{count} event{count === 1 ? '' : 's'}</span>
     </div>
-    {error && <div className="alert danger">{error}</div>}
+    {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
 
     <div className={styles.toolbar}>
       <div className={styles.search}>
@@ -88,16 +89,16 @@ export default function ActivityLogAdmin({ initial, total, entities, pageSize }:
         <input placeholder="Search by actor, action, entity or reference…" value={q} onChange={e => setQ(e.target.value)} />
         {q && <button type="button" className={styles.clearBtn} onClick={() => setQ('')}><X size={14} /></button>}
       </div>
-      <select className={`input ${styles.select}`} value={entity} onChange={e => setEntity(e.target.value)}>
+      <select className={`${ui.select} ${styles.select}`} value={entity} onChange={e => setEntity(e.target.value)}>
         <option value="">All entities</option>
         {entities.map(e => <option key={e} value={e}>{e}</option>)}
       </select>
       <span className={styles.count}>{loading ? 'Loading…' : `Showing ${rows.length} of ${count}`}</span>
     </div>
 
-    <div className={`card productTableCard ${styles.tableCard}`}>
-      <div className="tableWrap">
-        <table className={`table ${styles.table}`}>
+    <div className={`${ui.card} ${styles.tableCard}`}>
+      <div className={ui.tableWrap}>
+        <table className={`${ui.table} ${styles.table}`}>
           <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Entity</th><th>Reference</th><th>Details</th></tr></thead>
           <tbody>
             {rows.map(r => {
@@ -105,7 +106,7 @@ export default function ActivityLogAdmin({ initial, total, entities, pageSize }:
               const isOpen = Boolean(expanded[r.id])
               return <tr key={r.id}>
                 <td className={styles.timeCell}>{new Date(r.createdAt).toLocaleString()}</td>
-                <td>{r.actor ? <><div className={styles.actorName}>{r.actor.name}</div><div className={styles.actorEmail}>{r.actor.email}</div></> : <span className="muted">System</span>}</td>
+                <td>{r.actor ? <><div className={styles.actorName}>{r.actor.name}</div><div className={styles.actorEmail}>{r.actor.email}</div></> : <span className={ui.muted}>System</span>}</td>
                 <td><span className={`${styles.actionPill} ${actionTone(r.action)}`}>{r.action}</span></td>
                 <td>{r.entity}</td>
                 <td className={styles.entityId}>{r.entityId || '—'}</td>
@@ -120,8 +121,8 @@ export default function ActivityLogAdmin({ initial, total, entities, pageSize }:
           </tbody>
         </table>
       </div>
-      {empty && <div className="empty"><History size={26} /><h3>No matching activity</h3><p className="muted">{q || entity ? 'Try a different search or clear the filters.' : 'Actions taken in the admin will appear here.'}</p></div>}
-      {canLoadMore && !empty && <div className={styles.loadMoreBar}><button type="button" className="btn secondary" disabled={loadingMore} onClick={() => fetchPage(false)}>{loadingMore ? 'Loading…' : 'Load more'}</button></div>}
+      {empty && <div className={ui.empty}><History size={26} /><h3>No matching activity</h3><p className={ui.muted}>{q || entity ? 'Try a different search or clear the filters.' : 'Actions taken in the admin will appear here.'}</p></div>}
+      {canLoadMore && !empty && <div className={styles.loadMoreBar}><button type="button" className={`${ui.btn} ${ui.btnSecondary}`} disabled={loadingMore} onClick={() => fetchPage(false)}>{loadingMore ? 'Loading…' : 'Load more'}</button></div>}
     </div>
   </div>
 }
