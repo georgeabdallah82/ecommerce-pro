@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { BarChart3, RefreshCw, TrendingDown, TrendingUp, Package, Users, ShoppingBag, DollarSign } from 'lucide-react'
 import { money } from '@/lib/config'
 import styles from './admin-analytics.module.css'
+import ui from './admin-ui.module.css'
 
 type Analytics = {
   periodDays: number
@@ -52,11 +53,11 @@ export default function AnalyticsAdmin() {
 
   return (
     <div className={styles.page}>
-      <div className="sectionHead catalogHead">
+      <div className={`${ui.sectionHead} catalogHead`}>
         <div>
-          <span className="muted">ANALYTICS</span>
-          <h1 className="h2">Analytics</h1>
-          <p className="muted">Understand sales, customers and inventory at a glance.</p>
+          <span className={ui.muted}>ANALYTICS</span>
+          <h1 className={ui.title}>Analytics</h1>
+          <p className={ui.muted}>Understand sales, customers and inventory at a glance.</p>
         </div>
         <div className="inline">
           <div className={styles.rangeBar}>
@@ -70,19 +71,19 @@ export default function AnalyticsAdmin() {
               </button>
             ))}
           </div>
-          <button className="btn secondary" onClick={load} disabled={loading}>
+          <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={load} disabled={loading}>
             <RefreshCw size={15} /> Refresh
           </button>
         </div>
       </div>
 
-      {error && <div className="alert danger">{error}</div>}
+      {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
 
       {loading && !data ? (
         <div className={styles.loading}>
-          <div className={`card ${styles.skeleton}`} />
-          <div className={`card ${styles.skeleton}`} />
-          <div className={`card ${styles.skeleton}`} />
+          <div className={`${ui.card} ${styles.skeleton}`} />
+          <div className={`${ui.card} ${styles.skeleton}`} />
+          <div className={`${ui.card} ${styles.skeleton}`} />
         </div>
       ) : data && (
         <>
@@ -95,13 +96,13 @@ export default function AnalyticsAdmin() {
           </div>
 
           <div className={styles.grid}>
-            <section className={`card ${styles.analyticsCard}`}>
+            <section className={`${ui.card} ${styles.analyticsCard}`}>
               <div className={styles.cardHead}>
                 <div>
                   <h3>Sales overview</h3>
-                  <p className="muted">{data.granularity === 'month' ? 'Net revenue by month' : 'Net revenue by day'}</p>
+                  <p className={ui.muted}>{data.granularity === 'month' ? 'Net revenue by month' : 'Net revenue by day'}</p>
                 </div>
-                <span className="pill">Last {days === 365 ? '12 months' : `${days} days`}</span>
+                <span className={ui.pill}>Last {days === 365 ? '12 months' : `${days} days`}</span>
               </div>
               <div className={styles.chart}>
                 <div className={styles.chartBars}>
@@ -115,11 +116,11 @@ export default function AnalyticsAdmin() {
               </div>
             </section>
 
-            <section className={`card ${styles.analyticsCard}`}>
+            <section className={`${ui.card} ${styles.analyticsCard}`}>
               <div className={styles.cardHead}>
                 <div>
                   <h3>Top products</h3>
-                  <p className="muted">Best performers by sales</p>
+                  <p className={ui.muted}>Best performers by sales</p>
                 </div>
               </div>
               <div className={styles.rankList}>
@@ -130,7 +131,7 @@ export default function AnalyticsAdmin() {
                     <span className={styles.rank}>{i + 1}</span>
                     <div className={styles.rankInfo}>
                       <strong>{p.name}</strong>
-                      <span className="muted">{p.quantity} units</span>
+                      <span className={ui.muted}>{p.quantity} units</span>
                     </div>
                     <strong>{money(p.sales)}</strong>
                   </div>
@@ -140,13 +141,13 @@ export default function AnalyticsAdmin() {
           </div>
 
           <div className={`${styles.grid} ${styles.gridBottom}`}>
-            <section className={`card ${styles.analyticsCard}`}>
+            <section className={`${ui.card} ${styles.analyticsCard}`}>
               <div className={styles.cardHead}>
                 <div>
                   <h3>Inventory watch</h3>
-                  <p className="muted">Products that need attention</p>
+                  <p className={ui.muted}>Products that need attention</p>
                 </div>
-                <a className="textLink" href="/admin/inventory">View inventory</a>
+                <a className={ui.textLink} href="/admin/inventory">View inventory</a>
               </div>
               {!data.lowStock.length ? (
                 <div className="emptyInline">Inventory looks healthy.</div>
@@ -156,34 +157,34 @@ export default function AnalyticsAdmin() {
                     <div className={styles.rankRow} key={x.id}>
                       <div className={styles.rankInfo}>
                         <strong>{x.product}</strong>
-                        <span className="muted">{x.sku}{x.variant ? ` · ${x.variant}` : ''}</span>
+                        <span className={ui.muted}>{x.sku}{x.variant ? ` · ${x.variant}` : ''}</span>
                       </div>
-                      <span className={x.available <= 0 ? 'statusPill danger' : 'statusPill warning'}>{x.available} available</span>
+                      <span className={`${ui.statusPill} ${x.available <= 0 ? ui.statusPillDanger : ui.statusPillWarning}`}>{x.available} available</span>
                     </div>
                   ))}
                 </div>
               )}
             </section>
 
-            <section className={`card ${styles.analyticsCard}`}>
+            <section className={`${ui.card} ${styles.analyticsCard}`}>
               <div className={styles.cardHead}>
                 <div>
                   <h3>Quick insights</h3>
-                  <p className="muted">Useful operational signals</p>
+                  <p className={ui.muted}>Useful operational signals</p>
                 </div>
               </div>
               <div className={styles.insightList}>
                 <div>
                   <strong>{data.kpis.revenueChange >= 0 ? 'Sales are trending up' : 'Sales are trending down'}</strong>
-                  <span className="muted">{Math.abs(data.kpis.revenueChange)}% vs previous period</span>
+                  <span className={ui.muted}>{Math.abs(data.kpis.revenueChange)}% vs previous period</span>
                 </div>
                 <div>
                   <strong>{data.kpis.orders ? Math.round((data.kpis.itemsSold / data.kpis.orders) * 10) / 10 : 0} items</strong>
-                  <span className="muted">Average items per order</span>
+                  <span className={ui.muted}>Average items per order</span>
                 </div>
                 <div>
                   <strong>{data.lowStock.length}</strong>
-                  <span className="muted">Low-stock items to review</span>
+                  <span className={ui.muted}>Low-stock items to review</span>
                 </div>
               </div>
             </section>
@@ -196,9 +197,9 @@ export default function AnalyticsAdmin() {
 
 function Metric({ icon, label, value, change }: { icon: React.ReactNode; label: string; value: React.ReactNode; change?: number }) {
   return (
-    <div className={`card ${styles.metricCard}`}>
+    <div className={`${ui.card} ${styles.metricCard}`}>
       <div className={styles.metricIcon}>{icon}</div>
-      <span className="muted">{label}</span>
+      <span className={ui.muted}>{label}</span>
       <strong>{value}</strong>
       {typeof change === 'number' && (
         <small className={change >= 0 ? styles.metricUp : styles.metricDown}>
