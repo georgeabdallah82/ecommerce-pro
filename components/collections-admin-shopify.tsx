@@ -76,7 +76,7 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
           <h1 className={styles.title}>Collections</h1>
           <p className={ui.muted}>Group products into storefront-ready merchandising destinations.</p>
         </div>
-        <button className={ui.btn} onClick={() => setShow(true)}>
+        <button className={`${ui.btn} ${styles.headerBtn}`} onClick={() => setShow(true)}>
           <Plus size={16} /> Create collection
         </button>
       </div>

@@ -26,7 +26,12 @@
 .topLeft { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .topLeft > div:last-child { min-width: 0; }
 .topActions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
-.topActions :global(.btn) { min-height: 40px; }
+/* topActionsBtn is applied alongside ui.btn on the Save button -- a
+   :global(.btn) selector here would silently stop matching once that
+   button composes the shared, build-time-hashed ui.btn instead of the
+   bare "btn" classname (the same :global() pitfall as #90/#91/#104/#105).
+   ui.btn's own min-height is already 40px, so that half of the old rule
+   is simply dropped as redundant rather than ported. */
 .title { margin: 2px 0 0; font-size: 26px; line-height: 1.15; letter-spacing: -.04em; color: var(--admin-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: min(52vw, 640px); }
 
 .alert { margin: 0 0 14px; }
@@ -139,7 +144,7 @@
 @media (max-width: 700px) {
   .topbar { position: relative; top: auto; flex-direction: column; gap: 12px; padding: 10px 0 12px; }
   .topActions { width: 100%; justify-content: stretch; }
-  .topActions :global(.btn) { flex: 1; }
+  .topActionsBtn { flex: 1; }
   .title { font-size: 21px; max-width: 72vw; }
   .hero { padding: 16px; }
   .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }

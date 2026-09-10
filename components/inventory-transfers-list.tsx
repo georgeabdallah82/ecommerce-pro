@@ -41,7 +41,7 @@ export default function InventoryTransfersList({ initial, canManage }: { initial
           <h1 className={styles.title}>Transfers</h1>
           <p className={ui.muted}>Move stock between locations and track what has shipped and arrived.</p>
         </div>
-        {canManage && <Link className={ui.btn} href="/admin/inventory/transfers/new"><Plus size={16} /> New transfer</Link>}
+        {canManage && <Link className={`${ui.btn} ${styles.headerBtn}`} href="/admin/inventory/transfers/new"><Plus size={16} /> New transfer</Link>}
       </div>
 
       <div className={`${ui.card} ${styles.views}`}>

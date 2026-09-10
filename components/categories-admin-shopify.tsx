@@ -100,7 +100,7 @@ export default function CategoriesAdminShopify({ initial }: { initial: Category[
     <div className={styles.page}>
       <div className={styles.head}>
         <div><span className={ui.muted}>CATALOG</span><h1 className={styles.title}>Categories</h1><p className={ui.muted}>Organize products into a clean hierarchy for merchandising and navigation.</p></div>
-        <button className={ui.btn} onClick={openCreate}><Plus size={16} /> Add category</button>
+        <button className={`${ui.btn} ${styles.headBtn}`} onClick={openCreate}><Plus size={16} /> Add category</button>
       </div>
       {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
       <div className={`${ui.card} ${styles.toolbar}`}>
