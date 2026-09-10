@@ -103,5 +103,11 @@
   .search { width: 100%; }
   .marketSummary { grid-template-columns: 1fr; }
   .head :global(.inline) { align-items: stretch; }
-  .head :global(.btn) { width: 100%; }
+  /* Was `.head :global(.btn)` -- reached the Save button only while it
+     carried the bare global "btn" classname. Now that the button composes
+     the shared admin-ui.module.css .btn (build-time-hashed), a
+     :global(.btn) selector here would silently stop matching anything.
+     saveBtn is a page-local class applied alongside ui.btn purely so this
+     mobile rule still has something real to target. */
+  .head .saveBtn { width: 100%; }
 }

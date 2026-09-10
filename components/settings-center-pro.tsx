@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Save, Store, CreditCard, Truck, Globe2, Mail, ShieldCheck, Search, Bell, Code2, ChevronRight } from 'lucide-react'
 import styles from './admin-settings-center.module.css'
+import ui from './admin-ui.module.css'
 
 const groups = [
   { key: 'General', label: 'General', icon: Store, desc: 'Store identity and regional defaults' },
@@ -100,22 +101,22 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
     <div className={styles.page}>
       <div className={styles.head}>
         <div>
-          <span className="muted tiny">SETTINGS</span>
-          <h1 className="h2">Settings</h1>
-          <p className="muted">Manage your store from one place.</p>
+          <span className={`${ui.muted} ${ui.tiny}`}>SETTINGS</span>
+          <h1 className={ui.heading}>Settings</h1>
+          <p className={ui.muted}>Manage your store from one place.</p>
         </div>
         <div className="inline">
           <div className={styles.search}>
             <Search size={15} />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search settings" />
           </div>
-          <button className="btn" onClick={save} disabled={saving || paymentLoading}>
+          <button className={`${ui.btn} ${styles.saveBtn}`} onClick={save} disabled={saving || paymentLoading}>
             <Save size={15} />{saving ? 'Saving…' : 'Save'}
           </button>
         </div>
       </div>
 
-      {notice && <div className="alert" style={{ marginBottom: 14 }}>{notice}</div>}
+      {notice && <div className={ui.alert} style={{ marginBottom: 14 }}>{notice}</div>}
 
       <div className={styles.layout}>
         <aside className={styles.nav}>
@@ -138,7 +139,7 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
         <main className={styles.main}>
           {tab === 'General' && (
             <Card title="Store details" desc="Basic information used throughout your storefront.">
-              <div className="twoColFields">
+              <div className={ui.twoCol}>
                 <Field label="Store name" value={values['store.name']} onChange={v => set('store.name', v)} />
                 <Field label="Currency" value={values['store.currency']} onChange={v => set('store.currency', v.toUpperCase())} />
                 <Field label="Country" value={values['store.country']} onChange={v => set('store.country', v)} />
@@ -159,23 +160,23 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
               </Card>
 
               <Card title="Online payment provider" desc="Connect and switch gateways without changing checkout code.">
-                <label className="fieldLabel">
+                <label className={ui.fieldLabel}>
                   Provider
-                  <select className="input" value={paymentConfig.provider} onChange={e => setPaymentConfig(v => ({ ...v, provider: e.target.value }))}>
+                  <select className={ui.select} value={paymentConfig.provider} onChange={e => setPaymentConfig(v => ({ ...v, provider: e.target.value }))}>
                     <option value="manual">Manual / no online gateway</option>
                     <option value="areeba_mpgs">Areeba Hosted Checkout (MPGS)</option>
                   </select>
                 </label>
-                <div className="twoColFields">
+                <div className={ui.twoCol}>
                   <Field label="Merchant ID" value={paymentConfig.merchantId} onChange={v => setPaymentConfig(c => ({ ...c, merchantId: v }))} />
                   <Field label="Merchant name" value={paymentConfig.merchantName} onChange={v => setPaymentConfig(c => ({ ...c, merchantName: v }))} />
                   <Field label="Gateway API base URL" value={paymentConfig.apiBaseUrl} onChange={v => setPaymentConfig(c => ({ ...c, apiBaseUrl: v }))} />
                   <Field label="API version" value={paymentConfig.apiVersion} onChange={v => setPaymentConfig(c => ({ ...c, apiVersion: v }))} />
                   <Field label="Checkout script URL" value={paymentConfig.checkoutScriptUrl} onChange={v => setPaymentConfig(c => ({ ...c, checkoutScriptUrl: v }))} />
-                  <label className="fieldLabel">
+                  <label className={ui.fieldLabel}>
                     API password
                     <input
-                      className="input"
+                      className={ui.input}
                       type="password"
                       value={paymentConfig.apiPassword}
                       onChange={e => setPaymentConfig(c => ({ ...c, apiPassword: e.target.value }))}
@@ -188,7 +189,7 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
                   <ShieldCheck size={20} />
                   <div>
                     <strong>Gateway secret protected</strong>
-                    <p className="muted">The API password is encrypted before it is stored and is never returned to the admin UI.</p>
+                    <p className={ui.muted}>The API password is encrypted before it is stored and is never returned to the admin UI.</p>
                   </div>
                 </div>
               </Card>
@@ -197,7 +198,7 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
 
           {tab === 'Shipping' && (
             <Card title="Shipping & delivery" desc="Configure checkout defaults; detailed rates are managed in Shipping.">
-              <div className="twoColFields">
+              <div className={ui.twoCol}>
                 <Field label="Free shipping threshold" value={values['checkout.freeShippingThreshold']} onChange={v => set('checkout.freeShippingThreshold', v)} />
                 <Field label="Default tax rate (%)" value={values['checkout.taxRatePercent']} onChange={v => set('checkout.taxRatePercent', v)} />
               </div>
@@ -237,17 +238,17 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
                 <ShieldCheck size={20} />
                 <div>
                   <strong>Protected admin access</strong>
-                  <p className="muted">Passwords are hashed, inactive staff are blocked, and admin mutations require permissions.</p>
+                  <p className={ui.muted}>Passwords are hashed, inactive staff are blocked, and admin mutations require permissions.</p>
                 </div>
               </div>
-              <a className="btn secondary" href="/admin/users">Manage users &amp; roles</a>
+              <a className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/users">Manage users &amp; roles</a>
             </Card>
           )}
 
           {tab === 'Custom data' && (
             <Card title="Custom data" desc="Create structured fields for products and other commerce entities.">
-              <p className="muted">Custom definitions remain available from the dedicated Metafields manager and product editor.</p>
-              <a className="btn secondary" href="/admin/metafields">Open metafields</a>
+              <p className={ui.muted}>Custom definitions remain available from the dedicated Metafields manager and product editor.</p>
+              <a className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/metafields">Open metafields</a>
             </Card>
           )}
         </main>
@@ -258,11 +259,11 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
 
 function Card({ title, desc, children }: { title: string; desc: string; children: React.ReactNode }) {
   return (
-    <section className={`card ${styles.card}`}>
+    <section className={`${ui.card} ${styles.card}`}>
       <header className={styles.cardHead}>
         <div>
           <h2>{title}</h2>
-          <p className="muted">{desc}</p>
+          <p className={ui.muted}>{desc}</p>
         </div>
       </header>
       <div className={styles.cardBody}>{children}</div>
@@ -272,9 +273,9 @@ function Card({ title, desc, children }: { title: string; desc: string; children
 
 function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
-    <label className="fieldLabel">
+    <label className={ui.fieldLabel}>
       {label}
-      <input className="input" value={value || ''} onChange={e => onChange(e.target.value)} />
+      <input className={ui.input} value={value || ''} onChange={e => onChange(e.target.value)} />
     </label>
   )
 }
