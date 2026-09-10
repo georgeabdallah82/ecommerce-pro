@@ -31,7 +31,6 @@
 .search:focus-within { border-color: var(--admin-accent); box-shadow: 0 0 0 3px var(--admin-focus); background: var(--admin-surface); }
 
 .modal { width: min(100%, 560px); }
-.modalHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px 22px 0; }
 .modalBody { display: grid; gap: 14px; padding: 16px 22px 22px; }
 .modalFooter { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
 
