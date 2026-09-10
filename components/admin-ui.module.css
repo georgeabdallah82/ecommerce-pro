@@ -229,7 +229,17 @@
 /* Page rhythm */
 .sectionHead { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 22px; }
 .sectionHead .muted { font-size: 13px; line-height: 1.55; }
+/* Card-header variant (e.g. "Items" / "Customer" sub-headers) -- align-items switches
+   to center per globals.css's .sectionHead.small, margin-bottom stays 22px since
+   admin-overhaul.css's un-scoped `!important` rule on plain .sectionHead applies
+   regardless of the .small modifier and outranks globals' un-important 12px. */
+.sectionHeadSmall { align-items: center; }
 .title { margin: 0; font-size: 36px; line-height: 1.04; letter-spacing: -.045em; color: var(--admin-ink); }
+/* Standalone page heading (not inside .sectionHead/.catalogHead) -- those get the
+   larger .title treatment above via a context override in the old system; a bare
+   `.h2` outside that context only ever got globals.css's plain 32px style. */
+.heading { margin: 0; font-size: 32px; letter-spacing: -.035em; color: var(--admin-ink); }
+.tiny { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 800; }
 .muted { color: var(--admin-muted); }
 
 /* Modals */

@@ -27,6 +27,13 @@
 .summaryBox .total { font-size: 17px; font-weight: 800; color: var(--admin-ink); padding-top: 10px; margin-top: 4px; border-top: 1px solid var(--admin-border-soft); }
 .summaryBox .total strong { font-size: 17px; }
 
+/* Standalone key/value rows (Payment, Order information, Draft information sidebar
+   cards) - replaces globals.css's bare .summaryLine, which borders with the
+   storefront-only --line token and never picked up a dark-mode value, so every one
+   of these rows showed a light beige divider on an otherwise dark admin card. */
+.summaryLine { display: flex; justify-content: space-between; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--admin-border-soft); font-size: 14px; }
+.summaryLineTotal { border-bottom: 0; font-size: 18px; padding-top: 16px; }
+
 .editToolbar {
   position: sticky;
   top: 76px;
