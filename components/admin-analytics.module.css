@@ -121,6 +121,13 @@
   .kpis { grid-template-columns: repeat(3, 1fr); }
 }
 @media (max-width: 800px) {
+  /* The heading row keeps the bare global "catalogHead" classname alongside
+     the shared admin-ui.module.css sectionHead atom specifically so this
+     :global() selector keeps matching -- it is otherwise redundant (36px
+     heading sizing already comes from .sectionHead .h2 alone), but dropping
+     it here would silently break this responsive stacking rule, the same
+     way :global(.btn) went dead in admin-settings-center.module.css (#90)
+     once its target switched to a hashed classname. */
   .page :global(.catalogHead) { align-items: flex-start; flex-direction: column; }
   .rangeBar { width: 100%; overflow: auto; }
   .rangeBtn { white-space: nowrap; }
