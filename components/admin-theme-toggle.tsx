@@ -54,8 +54,6 @@ export default function AdminThemeToggle({ compact }: { compact?: boolean }) {
         html[data-admin-theme='dark'] body:has(.adminShell) .productTableCard,
         html[data-admin-theme='dark'] body:has(.adminShell) .opsCard,
         html[data-admin-theme='dark'] body:has(.adminShell) .healthCheck,
-        html[data-admin-theme='dark'] body:has(.adminShell) .miniAlert,
-        html[data-admin-theme='dark'] body:has(.adminShell) .settingsCard,
         html[data-admin-theme='dark'] body:has(.adminShell) .statCard,
         html[data-admin-theme='dark'] body:has(.adminShell) .orderCard,
         html[data-admin-theme='dark'] body:has(.adminShell) .summaryCard,

@@ -489,7 +489,7 @@ function EditDrawer({ item, items, categories, collections, onClose, patch, remo
       </div>
       <div className={styles.drawerFoot}>
         <button className="btn secondary" onClick={onClose}>Done</button>
-        <button className={`btn ${styles.removeBtn}`} onClick={() => { remove(item.id); onClose() }}>Remove item</button>
+        <button className={styles.removeBtn} onClick={() => { remove(item.id); onClose() }}>Remove item</button>
       </div>
     </div>
   )
