@@ -98,13 +98,13 @@ body:has(.adminShell) .adminMain{min-width:0!important;padding:28px 36px 56px!im
 body:has(.adminShell) .sectionHead{margin-bottom:22px!important}
 body:has(.adminShell) .sectionHead .h2,body:has(.adminShell) .catalogHead .h2{font-size:36px!important;line-height:1.04!important;letter-spacing:-.045em!important;color:var(--admin-ink)!important}
 body:has(.adminShell) .sectionHead .muted{font-size:13px!important;line-height:1.55!important;color:var(--admin-muted)!important}
-body:has(.adminShell) .catalogPage,body:has(.adminShell) .operationsPage,body:has(.adminShell) .customersPage,body:has(.adminShell) .inventoryPage{max-width:1480px!important;margin:0 auto!important;padding-bottom:32px!important}
+body:has(.adminShell) .catalogPage,body:has(.adminShell) .operationsPage,body:has(.adminShell) .customersPage{max-width:1480px!important;margin:0 auto!important;padding-bottom:32px!important}
 
 /* Surfaces */
 body:has(.adminShell) .card,body:has(.adminShell) .dashboardPanel,body:has(.adminShell) .recentPanel,body:has(.adminShell) .productTableCard,body:has(.adminShell) .opsCard,body:has(.adminShell) .healthCheck,body:has(.adminShell) .healthHero{background:var(--admin-surface)!important;border-color:var(--admin-border)!important;border-radius:var(--admin-radius-lg)!important;box-shadow:var(--admin-shadow-sm)!important;color:var(--admin-ink)!important;transition:box-shadow .18s ease,transform .18s ease!important}
 body:has(.adminShell) .card:hover,body:has(.adminShell) .dashboardPanel:hover,body:has(.adminShell) .opsCard:hover{box-shadow:var(--admin-shadow-md)!important}
-body:has(.adminShell) .statCard,body:has(.adminShell) .inventoryStat{background:var(--admin-surface)!important;border-color:var(--admin-border)!important;border-radius:var(--admin-radius-lg)!important;box-shadow:var(--admin-shadow-sm)!important;color:var(--admin-ink)!important}
-body:has(.adminShell) .statCard:hover,body:has(.adminShell) .inventoryStat.clickable:hover{box-shadow:var(--admin-shadow-md)!important}
+body:has(.adminShell) .statCard{background:var(--admin-surface)!important;border-color:var(--admin-border)!important;border-radius:var(--admin-radius-lg)!important;box-shadow:var(--admin-shadow-sm)!important;color:var(--admin-ink)!important}
+body:has(.adminShell) .statCard:hover{box-shadow:var(--admin-shadow-md)!important}
 body:has(.adminShell) .statCard span,body:has(.adminShell) .stat .muted{color:var(--admin-muted)!important}
 body:has(.adminShell) .statCard strong,body:has(.adminShell) .stat strong{color:var(--admin-ink)!important}
 
@@ -142,15 +142,15 @@ body:has(.adminShell) .statusPill.danger{background:var(--admin-danger-soft)!imp
 body:has(.adminShell) button:focus-visible,body:has(.adminShell) a:focus-visible,body:has(.adminShell) input:focus-visible,body:has(.adminShell) select:focus-visible,body:has(.adminShell) textarea:focus-visible{outline:3px solid var(--admin-focus)!important;outline-offset:2px!important}
 
 /* Search/filter/tool bars */
-body:has(.adminShell) .catalogToolbar,body:has(.adminShell) .inventoryControlBar{border:1px solid var(--admin-border)!important;background:var(--admin-surface)!important;border-radius:var(--admin-radius-lg)!important;box-shadow:var(--admin-shadow-sm)!important}
-body:has(.adminShell) .productSearch,body:has(.adminShell) .inventorySearchBox{background:var(--admin-border-soft)!important;border-color:var(--admin-border)!important;border-radius:var(--admin-radius-md)!important}
-body:has(.adminShell) .productSearch:focus-within,body:has(.adminShell) .inventorySearchBox:focus-within{border-color:var(--admin-accent)!important;box-shadow:0 0 0 3px var(--admin-focus)!important;background:var(--admin-surface)!important}
+body:has(.adminShell) .catalogToolbar{border:1px solid var(--admin-border)!important;background:var(--admin-surface)!important;border-radius:var(--admin-radius-lg)!important;box-shadow:var(--admin-shadow-sm)!important}
+body:has(.adminShell) .productSearch{background:var(--admin-border-soft)!important;border-color:var(--admin-border)!important;border-radius:var(--admin-radius-md)!important}
+body:has(.adminShell) .productSearch:focus-within{border-color:var(--admin-accent)!important;box-shadow:0 0 0 3px var(--admin-focus)!important;background:var(--admin-surface)!important}
 
 /* Tables */
 body:has(.adminShell) .table{background:var(--admin-surface)!important}
-body:has(.adminShell) .table th,body:has(.adminShell) .inventoryTablePro th{background:var(--admin-border-soft)!important;color:var(--admin-muted)!important;border-bottom:1px solid var(--admin-border)!important;font-size:10px!important;font-weight:900!important;letter-spacing:.07em!important;text-transform:uppercase!important;padding:12px 14px!important}
-body:has(.adminShell) .table td,body:has(.adminShell) .inventoryTablePro td{border-bottom:1px solid var(--admin-border-soft)!important;font-size:12px!important;color:var(--admin-ink)!important;padding:12px 14px!important}
-body:has(.adminShell) .table tbody tr:hover,body:has(.adminShell) .inventoryRow:hover{background:var(--admin-border-soft)!important}
+body:has(.adminShell) .table th{background:var(--admin-border-soft)!important;color:var(--admin-muted)!important;border-bottom:1px solid var(--admin-border)!important;font-size:10px!important;font-weight:900!important;letter-spacing:.07em!important;text-transform:uppercase!important;padding:12px 14px!important}
+body:has(.adminShell) .table td{border-bottom:1px solid var(--admin-border-soft)!important;font-size:12px!important;color:var(--admin-ink)!important;padding:12px 14px!important}
+body:has(.adminShell) .table tbody tr:hover{background:var(--admin-border-soft)!important}
 body:has(.adminShell) .tableWrap{overflow:auto!important}
 body:has(.adminShell) .catalogPagination{background:var(--admin-surface)!important;border-top:1px solid var(--admin-border-soft)!important}
 body:has(.adminShell) input[type=checkbox]{accent-color:var(--admin-accent)}
@@ -190,11 +190,9 @@ body:has(.adminShell) .toggleRow small{font-size:11px;color:var(--admin-muted);l
 @media(max-width:650px){body:has(.adminShell) .discountFormGrid{grid-template-columns:1fr}body:has(.adminShell) .discountForm{padding:18px}body:has(.adminShell) .discountsModal .inventoryModalHead{padding:18px}}
 
 /* Drawers */
-body:has(.adminShell) .inventoryDrawerOverlay{z-index:1200!important;background:rgba(15,18,16,.44)!important;backdrop-filter:blur(4px)!important}
-body:has(.adminShell) .inventoryDrawer{background:var(--admin-surface)!important;box-shadow:-24px 0 70px rgba(0,0,0,.22)!important;border-left:1px solid var(--admin-border)!important}
 
 /* Loading / empty / alerts */
-body:has(.adminShell) .empty,body:has(.adminShell) .emptyInline,body:has(.adminShell) .inventoryEmpty,body:has(.adminShell) .opsLoading{border-color:var(--admin-border)!important;background:var(--admin-surface)!important;border-radius:var(--admin-radius-md)!important;color:var(--admin-muted)!important}
+body:has(.adminShell) .empty,body:has(.adminShell) .emptyInline,body:has(.adminShell) .opsLoading{border-color:var(--admin-border)!important;background:var(--admin-surface)!important;border-radius:var(--admin-radius-md)!important;color:var(--admin-muted)!important}
 body:has(.adminShell) .empty strong{color:var(--admin-ink)!important}
 body:has(.adminShell) .alert.danger{border-color:var(--admin-danger-border)!important;background:var(--admin-danger-soft)!important;color:var(--admin-danger)!important}
 body:has(.adminShell) .alert:not(.danger){border-color:var(--admin-border)!important;background:var(--admin-accent-soft)!important;color:var(--admin-accent-strong)!important}

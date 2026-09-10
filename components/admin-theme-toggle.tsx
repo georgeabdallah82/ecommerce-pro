@@ -62,50 +62,29 @@ export default function AdminThemeToggle({ compact }: { compact?: boolean }) {
         html[data-admin-theme='dark'] body:has(.adminShell) .orderCard,
         html[data-admin-theme='dark'] body:has(.adminShell) .summaryCard,
         html[data-admin-theme='dark'] body:has(.adminShell) .successCard,
-        html[data-admin-theme='dark'] body:has(.adminShell) .adminPanel,
-        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryStat,
-        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryControlBar,
-        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryTableShell,
-        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryDrawer,
-        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryDrawerHeader,
-        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryDrawerStats div,
-        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryAmountBlock,
-        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryPreview{background:#191c1a!important;border-color:#2b302c!important;color:#e9edea!important;box-shadow:0 10px 28px rgba(0,0,0,.22)!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .adminPanel{background:#191c1a!important;border-color:#2b302c!important;color:#e9edea!important;box-shadow:0 10px 28px rgba(0,0,0,.22)!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .table,
         html[data-admin-theme='dark'] body:has(.adminShell) .tableTopline,
         html[data-admin-theme='dark'] body:has(.adminShell) .catalogPagination{background:#191c1a!important;color:#e9edea!important;border-color:#2b302c!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .table th,
-        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryTablePro th{background:#202421!important;color:#9ea8a1!important;border-color:#303631!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .table td,
-        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryTablePro td{color:#e1e6e2!important;border-color:#2b302c!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .table tbody tr:hover,
-        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryRow:hover{background:#202421!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .table th{background:#202421!important;color:#9ea8a1!important;border-color:#303631!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .table td{color:#e1e6e2!important;border-color:#2b302c!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .table tbody tr:hover{background:#202421!important}
 
         /* Forms */
         html[data-admin-theme='dark'] body:has(.adminShell) .input,
         html[data-admin-theme='dark'] body:has(.adminShell) .textarea,
         html[data-admin-theme='dark'] body:has(.adminShell) select,
-        html[data-admin-theme='dark'] body:has(.adminShell) .productSearch,
-        html[data-admin-theme='dark'] body:has(.adminShell) .inventorySearchBox,
-        html[data-admin-theme='dark'] body:has(.adminShell) .inventorySelect,
-        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryAmountInput{background:#151817!important;color:#eef2ef!important;border-color:#343a36!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .productSearch{background:#151817!important;color:#eef2ef!important;border-color:#343a36!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .input::placeholder,
-        html[data-admin-theme='dark'] body:has(.adminShell) .textarea::placeholder,
-        html[data-admin-theme='dark'] body:has(.adminShell) .inventorySearchBox input::placeholder{color:#707a73!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .textarea::placeholder{color:#707a73!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .input:focus,
         html[data-admin-theme='dark'] body:has(.adminShell) .textarea:focus,
-        html[data-admin-theme='dark'] body:has(.adminShell) select:focus,
-        html[data-admin-theme='dark'] body:has(.adminShell) .inventorySearchBox:focus-within{border-color:#6d8878!important;box-shadow:0 0 0 3px rgba(102,194,146,.12)!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) select:focus{border-color:#6d8878!important;box-shadow:0 0 0 3px rgba(102,194,146,.12)!important}
 
         /* Product / orders / inventory */
         html[data-admin-theme='dark'] body:has(.adminShell) .opsTabs button.active{background:#f0f3f1!important;color:#171918!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .orderViews button{color:#e7ece8!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .orderViews button:hover{background:#262b28!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryThumb{background:#242926!important;color:#9fa8a1!important;border-color:#343a36!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryStatus.success{background:#173524!important;color:#a8e5bd!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryStatus.warning{background:#3a3118!important;color:#f1d88d!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryStatus.danger{background:#44211f!important;color:#f1aaa4!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .inventoryNotice{background:#173524!important;color:#a8e5bd!important;border-color:#28563a!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .confirmBox{background:#202421!important;border-color:#343a36!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .orderViews button.active{background:#f0f3f1!important;color:#171918!important}
 
