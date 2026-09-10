@@ -84,6 +84,12 @@
 
 .channel { display: inline-flex; padding: 5px 8px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm); font-size: 10px; color: var(--admin-ink-soft); background: var(--admin-surface); }
 
+/* Was `className="h3"` on the modal <h2> -- ".h3" is never defined anywhere
+   in globals.css or admin-overhaul.css, the same dead classname already
+   found on the Categories modal (#80). Sized to match the same
+   modal-heading convention established there. */
+.modalTitle { margin: 6px 0 4px; font-size: 19px; letter-spacing: -.02em; color: var(--admin-ink); }
+
 @media (max-width: 700px) {
   .header { flex-direction: column; align-items: stretch; }
   .header :global(.btn) { width: 100%; justify-content: center; }

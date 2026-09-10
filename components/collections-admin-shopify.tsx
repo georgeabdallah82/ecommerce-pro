@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Eye, MoreHorizontal, Plus, Search, Tag, X } from 'lucide-react'
 import styles from './admin-collections.module.css'
+import ui from './admin-ui.module.css'
 
 async function api(path: string, init?: RequestInit) {
   const response = await fetch(path, {
@@ -71,18 +72,18 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
     <div className={styles.page}>
       <div className={styles.header}>
         <div>
-          <span className="muted">MERCHANDISING</span>
+          <span className={ui.muted}>MERCHANDISING</span>
           <h1 className={styles.title}>Collections</h1>
-          <p className="muted">Group products into storefront-ready merchandising destinations.</p>
+          <p className={ui.muted}>Group products into storefront-ready merchandising destinations.</p>
         </div>
-        <button className="btn" onClick={() => setShow(true)}>
+        <button className={ui.btn} onClick={() => setShow(true)}>
           <Plus size={16} /> Create collection
         </button>
       </div>
 
-      {error && <div className="alert danger">{error}</div>}
+      {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
 
-      <div className={`card ${styles.views}`}>
+      <div className={`${ui.card} ${styles.views}`}>
         {views.map(([value, label]) => (
           <button
             key={value}
@@ -90,7 +91,7 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
             onClick={() => setStatus(value)}
           >
             {label}{' '}
-            <span className="muted">
+            <span className={ui.muted}>
               {value === 'ALL'
                 ? rows.length
                 : rows.filter((collection) =>
@@ -101,7 +102,7 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
         ))}
       </div>
 
-      <div className={`card ${styles.toolbar}`}>
+      <div className={`${ui.card} ${styles.toolbar}`}>
         <div className={styles.search}>
           <Search size={16} />
           <input
@@ -110,20 +111,20 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
             placeholder="Search collections"
           />
           {q && (
-            <button className="iconBtn" onClick={() => setQ('')} aria-label="Clear search">
+            <button className={ui.iconBtn} onClick={() => setQ('')} aria-label="Clear search">
               <X size={14} />
             </button>
           )}
         </div>
-        <span className="pill">{filtered.length} shown</span>
-        <button className="btn secondary" onClick={refresh} disabled={busy}>
+        <span className={ui.pill}>{filtered.length} shown</span>
+        <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={refresh} disabled={busy}>
           {busy ? 'Refreshing…' : 'Refresh'}
         </button>
       </div>
 
-      <div className={`card ${styles.tableCard}`}>
-        <div className="tableWrap">
-          <table className={`table ${styles.resultsTable}`}>
+      <div className={`${ui.card} ${styles.tableCard}`}>
+        <div className={ui.tableWrap}>
+          <table className={`${ui.table} ${styles.resultsTable}`}>
             <thead>
               <tr>
                 <th>Collection</th>
@@ -148,13 +149,13 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
                       </div>
                       <div>
                         <strong>{collection.name}</strong>
-                        <span className="muted">/{collection.slug}</span>
+                        <span className={ui.muted}>/{collection.slug}</span>
                       </div>
                     </div>
                   </td>
                   <td>{collection._count?.products ?? 0}</td>
                   <td>
-                    <span className={`statusPill ${collection.isActive ? 'active' : 'archived'}`}>
+                    <span className={`${ui.statusPill} ${collection.isActive ? ui.statusPillSuccess : ''}`}>
                       {collection.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </td>
@@ -167,14 +168,14 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
                   <td>
                     <div className="inline">
                       <Link
-                        className="iconBtn"
+                        className={ui.iconBtn}
                         href={`/admin/collections/${collection.id}`}
                         title="Edit"
                       >
                         <MoreHorizontal size={16} />
                       </Link>
                       <Link
-                        className="iconBtn"
+                        className={ui.iconBtn}
                         href={`/collections/${collection.slug}`}
                         target="_blank"
                         title="Preview"
@@ -188,53 +189,53 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
             </tbody>
           </table>
         </div>
-        {!filtered.length && <div className="empty">No collections match your current filters.</div>}
+        {!filtered.length && <div className={ui.empty}>No collections match your current filters.</div>}
       </div>
 
       {show && (
-        <div className="modalOverlay" onClick={() => setShow(false)}>
+        <div className={ui.modalOverlay} onClick={() => setShow(false)}>
           <form
-            className="card"
+            className={ui.card}
             style={{ width: 'min(560px,94vw)', padding: 24 }}
             onClick={(event) => event.stopPropagation()}
             onSubmit={create}
           >
-            <div className="sectionHead small">
+            <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}>
               <div>
-                <h2 className="h3">Create collection</h2>
-                <p className="muted">Set the collection identity now; products can be arranged from its editor.</p>
+                <h2 className={styles.modalTitle}>Create collection</h2>
+                <p className={ui.muted}>Set the collection identity now; products can be arranged from its editor.</p>
               </div>
-              <button type="button" className="iconBtn" onClick={() => setShow(false)} aria-label="Close">
+              <button type="button" className={ui.iconBtn} onClick={() => setShow(false)} aria-label="Close">
                 ×
               </button>
             </div>
-            <label className="fieldLabel">
+            <label className={ui.fieldLabel}>
               Name
-              <input className="input" required value={name} onChange={(event) => setName(event.target.value)} />
+              <input className={ui.input} required value={name} onChange={(event) => setName(event.target.value)} />
             </label>
-            <label className="fieldLabel">
+            <label className={ui.fieldLabel}>
               Handle
               <input
-                className="input"
+                className={ui.input}
                 placeholder="summer-sale"
                 value={slug}
                 onChange={(event) => setSlug(event.target.value)}
               />
             </label>
-            <label className="fieldLabel">
+            <label className={ui.fieldLabel}>
               Description
               <textarea
-                className="textarea"
+                className={ui.textarea}
                 rows={5}
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
               />
             </label>
             <div className="inline" style={{ justifyContent: 'flex-end', marginTop: 18 }}>
-              <button type="button" className="btn secondary" onClick={() => setShow(false)}>
+              <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setShow(false)}>
                 Cancel
               </button>
-              <button className="btn" disabled={busy}>
+              <button className={ui.btn} disabled={busy}>
                 {busy ? 'Creating…' : 'Create collection'}
               </button>
             </div>
