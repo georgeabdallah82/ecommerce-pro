@@ -7,6 +7,7 @@ import { money } from '@/lib/config'
 import { canTransitionOrder, canTransitionPayment } from '@/lib/orders'
 import s from './admin-order-detail.module.css'
 import ui from './admin-ui.module.css'
+import DeliveryTrackingAdmin from './delivery-tracking-admin'
 
 async function api(path: string, init?: RequestInit) {
   const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
@@ -144,6 +145,8 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit }: { initi
         {!editing&&<section className={ui.card}><div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Internal notes</h3></div><div className="inline" style={{alignItems:'stretch'}}><textarea className={ui.textarea} rows={3} value={note} onChange={e=>setNote(e.target.value)} placeholder="Add a private note for staff…"/><button className={ui.btn} onClick={addNote} disabled={addingNote||!note.trim()}><Plus size={15}/>{addingNote?'Adding…':'Add note'}</button></div><div className={s.timeline} style={{marginTop:18}}>{(o.notesHistory||[]).map((n:any)=><div className={s.timelineItem} key={n.id}><div className={s.dot}/><div><strong>{n.user?.name||'Staff'}</strong><p>{n.body}</p><small className={ui.muted}>{new Date(n.createdAt).toLocaleString()}</small></div></div>)}{!o.notesHistory?.length&&<p className={ui.muted}>No internal notes yet.</p>}</div></section>}
 
         <section className={ui.card}><div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Order timeline</h3></div><div className={s.timeline}>{(o.events||[]).map((e:any)=><div className={s.timelineItem} key={e.id}><div className={s.dot}/><div><strong>{e.status}</strong><p className={ui.muted}>{e.message||'Order updated'}</p><small className={ui.muted}>{new Date(e.createdAt).toLocaleString()}</small></div></div>)}{!o.events?.length&&<p className={ui.muted}>No status events yet.</p>}</div></section>
+
+        <DeliveryTrackingAdmin orderId={o.id} orderStatus={o.status}/>
       </main>
 
       <aside className={s.rail}>
