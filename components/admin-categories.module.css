@@ -1,0 +1,106 @@
+/*
+ * Categories - CSS Modules, same pattern as admin-collections.module.css:
+ * every class gets a build-time unique name and colors come from the
+ * --admin-* tokens in ../app/admin/admin-overhaul.css via var(), so dark
+ * mode is free. Replaces the old inline <style> block that hardcoded
+ * light-mode-only hex colors (#dfdfd8, #fafaf8, #77776f, ...).
+ */
+
+.page { max-width: 1180px; margin: 0 auto; padding-bottom: 24px; }
+
+.head { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; margin-bottom: 18px; }
+.title { font-size: 38px; letter-spacing: -.045em; margin: 0; color: var(--admin-ink); }
+
+.toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px 12px; margin-bottom: 12px; }
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 260px;
+  height: 42px;
+  padding: 0 11px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-border-soft);
+  color: var(--admin-muted);
+}
+.search input { border: 0; outline: 0; flex: 1; min-width: 0; font: inherit; background: transparent; color: var(--admin-ink); }
+.search:focus-within { border-color: var(--admin-accent); box-shadow: 0 0 0 3px var(--admin-focus); background: var(--admin-surface); }
+
+/* overflow-x: auto (not hidden) lets the grid below scroll horizontally once
+   its min-width can't fit - without it, the three fixed-width columns eat
+   most of a phone-width viewport and force the name column down to ~40px,
+   crushing "Electronics" into "E." and running the header labels together. */
+.table { overflow-x: auto; overflow-y: hidden; }
+.tableHeader, .row {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 110px 110px 92px;
+  align-items: center;
+  gap: 12px;
+  min-width: 480px;
+}
+.tableHeader {
+  padding: 11px 16px;
+  background: var(--admin-border-soft);
+  border-bottom: 1px solid var(--admin-border);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--admin-muted);
+  font-weight: 800;
+}
+.row { min-height: 58px; padding: 7px 16px; border-bottom: 1px solid var(--admin-border-soft); }
+.row:last-child { border-bottom: 0; }
+.row:hover { background: var(--admin-border-soft); }
+
+.name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.name strong { font-size: 13px; color: var(--admin-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.name span { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chevron { color: var(--admin-muted); flex: none; }
+
+.rowActions { display: flex; gap: 6px; justify-content: flex-end; }
+.actionBtn {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+  border-radius: var(--admin-radius-sm);
+  color: var(--admin-ink-soft);
+  cursor: pointer;
+}
+.actionBtn:hover { background: var(--admin-border-soft); color: var(--admin-ink); }
+.actionBtn:disabled { opacity: .5; cursor: default; }
+/* Fully self-contained danger button - the global body:has(.adminShell) .btn
+   rule (0,2,1) outranks a module class combined with .btn, so this must not
+   carry .btn alongside it and must define every visual property itself. */
+.deleteBtn {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--admin-danger-border);
+  background: var(--admin-danger-soft);
+  border-radius: var(--admin-radius-sm);
+  color: var(--admin-danger);
+  cursor: pointer;
+  box-shadow: none;
+  font-size: 13px;
+}
+.deleteBtn:hover:not(:disabled) { background: var(--admin-danger); color: #fff; }
+.deleteBtn:disabled { opacity: .5; cursor: default; }
+
+.modal { width: min(560px, 94vw); padding: 24px; }
+.modalGrid { display: grid; gap: 14px; margin-top: 4px; }
+.twoCol { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.checkboxRow { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--admin-ink); }
+.modalFoot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+
+@media (max-width: 700px) {
+  .head { flex-direction: column; align-items: stretch; }
+  .head :global(.btn) { width: 100%; justify-content: center; }
+  .title { font-size: 32px; }
+  .tableHeader, .row { grid-template-columns: minmax(0,1fr) 72px 84px 76px; }
+  .twoCol { grid-template-columns: 1fr; }
+}

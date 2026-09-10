@@ -32,7 +32,7 @@ function formatMovement(row: any) {
   return `${qty >= 0 ? '+' : '-'}${Math.abs(qty)} ${type}`
 }
 
-export default function InventoryAdminPro({ initial }: { initial: InventoryRow[] }) {
+export default function InventoryAdminPro({ initial, canManage = true }: { initial: InventoryRow[]; canManage?: boolean }) {
   const [rows, setRows] = useState<InventoryRow[]>(initial || [])
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState<Filter>('ALL')
@@ -72,7 +72,7 @@ export default function InventoryAdminPro({ initial }: { initial: InventoryRow[]
 
   function openAdjust(row: InventoryRow, amount = 1) {
     setSelected(row)
-    setDrawerTab('ADJUST')
+    setDrawerTab(canManage ? 'ADJUST' : 'HISTORY')
     setDelta(String(amount))
     setReason(amount > 0 ? 'Stock received' : amount < 0 ? 'Stock reduction' : 'Stock adjustment')
     setMovementType('ADJUSTMENT')
@@ -154,7 +154,7 @@ export default function InventoryAdminPro({ initial }: { initial: InventoryRow[]
           <td><div className="inventoryProductCell"><div className="inventoryThumb">{r.product?.images?.[0]?.url ? <img src={r.product.images[0].url} alt=""/> : <Boxes size={18}/>}</div><div><strong>{r.product?.name || 'Product'}</strong><div className="muted">{r.variant?.name || r.product?.sku || 'Default'}{r.variant?.sku ? ` · ${r.variant.sku}` : ''}</div></div></div></td>
           <td><span className="inventoryLocation"><MapPin size={13}/>{r.location || 'Main'}</span></td><td className="num"><strong>{s.quantity}</strong></td><td className="num"><span className="reservedValue">{s.reserved}</span></td><td className="num"><strong className={s.available <= 0 ? 'inventoryQty dangerText' : s.available <= Number(r.lowStockThreshold ?? 5) ? 'inventoryQty warningText' : 'inventoryQty'}>{s.available}</strong></td>
           <td><span className={`inventoryStatus ${state.tone}`}>{state.tone === 'success' ? <Check size={12}/> : <AlertTriangle size={12}/>} {state.label}</span></td>
-          <td className="actionsCol" onClick={e => e.stopPropagation()}><div className="inventoryQuick"><button type="button" title="Add 1" onClick={() => openAdjust(r, 1)}><Plus size={14}/></button><button type="button" title={availability(r).available > 0 ? 'Remove 1' : 'No available units to remove'} onClick={() => openAdjust(r, -1)} disabled={availability(r).available <= 0}><Minus size={14}/></button></div></td>
+          <td className="actionsCol" onClick={e => e.stopPropagation()}>{canManage ? <div className="inventoryQuick"><button type="button" title="Add 1" onClick={() => openAdjust(r, 1)}><Plus size={14}/></button><button type="button" title={availability(r).available > 0 ? 'Remove 1' : 'No available units to remove'} onClick={() => openAdjust(r, -1)} disabled={availability(r).available <= 0}><Minus size={14}/></button></div> : <span className="muted">View only</span>}</td>
         </tr> })}
       </tbody></table></div>
       {!filtered.length && <div className="inventoryEmpty"><Boxes size={30}/><h3>No inventory found</h3><p className="muted">Try a different search, stock status, or location.</p></div>}

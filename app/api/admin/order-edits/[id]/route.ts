@@ -2,6 +2,7 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
+import { reserveStock, releaseReservedQuantity } from '@/lib/inventory'
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -18,6 +19,37 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       if (['CANCELLED', 'REFUNDED'].includes(current.status)) throw new Error('Cancelled or refunded orders cannot be edited')
 
       const oldMap = new Map(current.items.map(i => [i.id, i]))
+
+      // Checkout reserves stock per line item; changing quantities here without touching that
+      // reservation either leaves an order under-reserved (fulfillment later fails outright for
+      // the whole order) or over-reserved (stock stays locked up forever once the order ships).
+      // Reconcile the reservation pool for every product/variant whose net quantity changes
+      // before writing the new item rows, so an edit that would oversell a product fails here
+      // instead of silently corrupting inventory.
+      const deltaByKey = new Map<string, { productId: string; variantId: string | null; delta: number }>()
+      for (const item of edit.items) {
+        const existing = item.orderItemId ? oldMap.get(item.orderItemId) : undefined
+        const previousQty = existing ? existing.quantity : 0
+        const nextQty = existing ? item.quantity : (item.quantity > 0 ? item.quantity : 0)
+        const delta = nextQty - previousQty
+        if (!delta) continue
+        const key = `${item.productId}:${item.variantId || ''}`
+        const entry = deltaByKey.get(key) || { productId: item.productId, variantId: item.variantId || null, delta: 0 }
+        entry.delta += delta
+        deltaByKey.set(key, entry)
+      }
+      if (deltaByKey.size) {
+        const productIds = Array.from(new Set(Array.from(deltaByKey.values()).map(d => d.productId)))
+        const products = await tx.product.findMany({ where: { id: { in: productIds } }, include: { inventory: true } })
+        const productById = new Map(products.map((p: any) => [p.id, p]))
+        for (const { productId, variantId, delta } of deltaByKey.values()) {
+          const product = productById.get(productId)
+          if (!product) continue
+          if (delta > 0) await reserveStock(tx, product, variantId, delta, current.orderNumber)
+          else await releaseReservedQuantity(tx, product, variantId, -delta, current.orderNumber)
+        }
+      }
+
       for (const item of edit.items) {
         if (item.orderItemId && oldMap.has(item.orderItemId)) {
           await tx.orderItem.update({ where: { id: item.orderItemId }, data: { quantity: item.quantity, unitPrice: item.unitPrice, totalPrice: item.totalPrice } })

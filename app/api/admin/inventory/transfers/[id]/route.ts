@@ -5,7 +5,7 @@ import { json } from '@/lib/utils'
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const actor = await requirePermission('inventory.manage')
+    const actor = await requirePermission('transfers.manage')
     const { id } = await params
     const b = await req.json()
     const transfer = await db.inventoryTransfer.findUnique({ where: { id }, include: { items: true, fromLocation: true, toLocation: true } })

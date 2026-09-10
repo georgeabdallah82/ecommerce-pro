@@ -5,14 +5,14 @@ import { json } from '@/lib/utils'
 
 export async function GET() {
   try {
-    await requirePermission('inventory.view')
+    await requirePermission('purchaseOrders.view')
     return json(await db.purchaseOrder.findMany({ include: { items: true, location: true }, orderBy: { createdAt: 'desc' }, take: 200 }))
   } catch (e) { return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 }) }
 }
 
 export async function POST(req: Request) {
   try {
-    const actor = await requirePermission('inventory.manage')
+    const actor = await requirePermission('purchaseOrders.manage')
     const b = await req.json()
     const items = Array.isArray(b.items) ? b.items : []
     if (!items.length) return json({ error: 'At least one purchase order item is required' }, { status: 400 })
