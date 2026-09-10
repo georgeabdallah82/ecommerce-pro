@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, Trash2 } from 'lucide-react'
+import s from './admin-order-detail.module.css'
+import ui from './admin-ui.module.css'
 
 type Variant = { id: string; name: string; sku: string }
 type Product = { id: string; name: string; sku: string; variants?: Variant[] }
@@ -61,73 +63,71 @@ export default function InventoryTransferForm({ products, locations }: { product
   }
 
   return (
-    <div className="section">
-      <div className="container">
-        <div className="sectionHead">
-          <div>
-            <Link className="textLink" href="/admin/inventory/transfers">← Back to transfers</Link>
-            <span className="muted tiny" style={{ display: 'block', marginTop: 12 }}>INVENTORY</span>
-            <h1 className="h2">New transfer</h1>
-            <p className="muted">Move stock from one location to another.</p>
-          </div>
-          <div className="inline"><span className="pill">Draft</span><button className="btn" disabled={saving || !lines.length} onClick={create}>{saving ? 'Creating…' : 'Create transfer'}</button></div>
+    <div>
+      <div className={ui.sectionHead}>
+        <div>
+          <Link className={ui.textLink} href="/admin/inventory/transfers">← Back to transfers</Link>
+          <span className={`${ui.muted} ${ui.tiny}`} style={{ display: 'block', marginTop: 12 }}>INVENTORY</span>
+          <h1 className={ui.title}>New transfer</h1>
+          <p className={ui.muted}>Move stock from one location to another.</p>
         </div>
+        <div className="inline"><span className={ui.pill}>Draft</span><button className={ui.btn} disabled={saving || !lines.length} onClick={create}>{saving ? 'Creating…' : 'Create transfer'}</button></div>
+      </div>
 
-        {error && <div className="alert danger">{error}</div>}
+      {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
 
-        <div className="orderDetailGrid">
-          <main className="orderDetailMain">
-            <section className="card adminPanel" style={{ padding: 20 }}>
-              <div className="sectionHead small"><h3>Locations</h3></div>
-              <div className="twoColFields">
-                <label className="fieldLabel">From location<select className="input" value={fromLocationId} onChange={e => setFromLocationId(e.target.value)}><option value="">Unassigned</option>{locations.map(l => <option key={l.id} value={l.id}>{l.name}{l.isDefault ? ' (default)' : ''}</option>)}</select></label>
-                <label className="fieldLabel">To location<select className="input" value={toLocationId} onChange={e => setToLocationId(e.target.value)}><option value="">Unassigned</option>{locations.map(l => <option key={l.id} value={l.id}>{l.name}{l.isDefault ? ' (default)' : ''}</option>)}</select></label>
-              </div>
-            </section>
+      <div className={s.grid}>
+        <main className={s.main}>
+          <section className={ui.card} style={{ padding: 20 }}>
+            <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Locations</h3></div>
+            <div className={ui.twoCol}>
+              <label className={ui.fieldLabel}>From location<select className={ui.select} value={fromLocationId} onChange={e => setFromLocationId(e.target.value)}><option value="">Unassigned</option>{locations.map(l => <option key={l.id} value={l.id}>{l.name}{l.isDefault ? ' (default)' : ''}</option>)}</select></label>
+              <label className={ui.fieldLabel}>To location<select className={ui.select} value={toLocationId} onChange={e => setToLocationId(e.target.value)}><option value="">Unassigned</option>{locations.map(l => <option key={l.id} value={l.id}>{l.name}{l.isDefault ? ' (default)' : ''}</option>)}</select></label>
+            </div>
+          </section>
 
-            <section className="card adminPanel" style={{ padding: 20 }}>
-              <div className="sectionHead small"><h3>Items</h3></div>
-              <div className="twoColFields">
-                <label className="fieldLabel">Product<select className="input" value={productId} onChange={e => { setProductId(e.target.value); setVariantId('') }}><option value="">Select product</option>{products.map(p => <option key={p.id} value={p.id}>{p.name} — {p.sku}</option>)}</select></label>
-                <label className="fieldLabel">Variant<select className="input" value={variantId} disabled={!variants.length} onChange={e => setVariantId(e.target.value)}><option value="">Default / shared stock</option>{variants.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}</select></label>
-              </div>
-              <div className="inline" style={{ alignItems: 'end' }}>
-                <label className="fieldLabel" style={{ maxWidth: 140 }}>Qty<input className="input" type="number" min="1" value={qty} onChange={e => setQty(Number(e.target.value) || 1)} /></label>
-                <button className="btn secondary" onClick={addLine}><Plus size={15} /> Add item</button>
-              </div>
-              <div className="tableWrap" style={{ marginTop: 14 }}>
-                <table className="table">
-                  <thead><tr><th>Item</th><th>SKU</th><th>Qty</th><th /></tr></thead>
-                  <tbody>
-                    {lines.map((l, i) => (
-                      <tr key={`${l.productId}:${l.variantId || ''}`}>
-                        <td><strong>{l.name}</strong></td>
-                        <td className="muted">{l.sku}</td>
-                        <td><input className="input compact" style={{ width: 80 }} type="number" min="1" value={l.quantity} onChange={e => setLines(prev => prev.map((x, j) => (j === i ? { ...x, quantity: Math.max(1, Number(e.target.value) || 1) } : x)))} /></td>
-                        <td><button className="btn ghost smallBtn" onClick={() => setLines(prev => prev.filter((_, j) => j !== i))}><Trash2 size={14} /></button></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {!lines.length && <p className="muted" style={{ marginTop: 10 }}>No items added yet.</p>}
-            </section>
+          <section className={ui.card} style={{ padding: 20 }}>
+            <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Items</h3></div>
+            <div className={ui.twoCol}>
+              <label className={ui.fieldLabel}>Product<select className={ui.select} value={productId} onChange={e => { setProductId(e.target.value); setVariantId('') }}><option value="">Select product</option>{products.map(p => <option key={p.id} value={p.id}>{p.name} — {p.sku}</option>)}</select></label>
+              <label className={ui.fieldLabel}>Variant<select className={ui.select} value={variantId} disabled={!variants.length} onChange={e => setVariantId(e.target.value)}><option value="">Default / shared stock</option>{variants.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}</select></label>
+            </div>
+            <div className="inline" style={{ alignItems: 'end' }}>
+              <label className={ui.fieldLabel} style={{ maxWidth: 140 }}>Qty<input className={ui.input} type="number" min="1" value={qty} onChange={e => setQty(Number(e.target.value) || 1)} /></label>
+              <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={addLine}><Plus size={15} /> Add item</button>
+            </div>
+            <div className={ui.tableWrap} style={{ marginTop: 14 }}>
+              <table className={ui.table}>
+                <thead><tr><th>Item</th><th>SKU</th><th>Qty</th><th /></tr></thead>
+                <tbody>
+                  {lines.map((l, i) => (
+                    <tr key={`${l.productId}:${l.variantId || ''}`}>
+                      <td><strong>{l.name}</strong></td>
+                      <td className={ui.muted}>{l.sku}</td>
+                      <td><input className={ui.inputCompact} style={{ width: 80 }} type="number" min="1" value={l.quantity} onChange={e => setLines(prev => prev.map((x, j) => (j === i ? { ...x, quantity: Math.max(1, Number(e.target.value) || 1) } : x)))} /></td>
+                      <td><button className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} onClick={() => setLines(prev => prev.filter((_, j) => j !== i))}><Trash2 size={14} /></button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {!lines.length && <p className={ui.muted} style={{ marginTop: 10 }}>No items added yet.</p>}
+          </section>
 
-            <section className="card adminPanel" style={{ padding: 20 }}>
-              <div className="sectionHead small"><h3>Notes</h3></div>
-              <textarea className="textarea" rows={4} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional note for this transfer…" />
-            </section>
-          </main>
+          <section className={ui.card} style={{ padding: 20 }}>
+            <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Notes</h3></div>
+            <textarea className={ui.textarea} rows={4} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional note for this transfer…" />
+          </section>
+        </main>
 
-          <aside className="orderDetailRail">
-            <section className="card adminPanel" style={{ padding: 20 }}>
-              <div className="sectionHead small"><h3>Summary</h3></div>
-              <div className="summaryLine"><span>Items</span><strong>{lines.length}</strong></div>
-              <div className="summaryLine total"><span>Total units</span><strong>{lines.reduce((s, l) => s + l.quantity, 0)}</strong></div>
-              <button className="btn wide" disabled={saving || !lines.length} onClick={create} style={{ marginTop: 14 }}>{saving ? 'Creating…' : 'Create transfer'}</button>
-            </section>
-          </aside>
-        </div>
+        <aside className={s.rail}>
+          <section className={ui.card} style={{ padding: 20 }}>
+            <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Summary</h3></div>
+            <div className={s.summaryLine}><span>Items</span><strong>{lines.length}</strong></div>
+            <div className={`${s.summaryLine} ${s.summaryLineTotal}`}><span>Total units</span><strong>{lines.reduce((sum, l) => sum + l.quantity, 0)}</strong></div>
+            <button className={`${ui.btn} ${ui.btnWide}`} disabled={saving || !lines.length} onClick={create} style={{ marginTop: 14 }}>{saving ? 'Creating…' : 'Create transfer'}</button>
+          </section>
+        </aside>
       </div>
     </div>
   )
