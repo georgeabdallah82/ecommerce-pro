@@ -98,6 +98,11 @@ body:has(.adminShell) .adminMain{min-width:0!important;padding:28px 36px 56px!im
 body:has(.adminShell) .sectionHead{margin-bottom:22px!important}
 body:has(.adminShell) .sectionHead .h2,body:has(.adminShell) .catalogHead .h2{font-size:36px!important;line-height:1.04!important;letter-spacing:-.045em!important;color:var(--admin-ink)!important}
 body:has(.adminShell) .sectionHead .muted{font-size:13px!important;line-height:1.55!important;color:var(--admin-muted)!important}
+/* .h3 (Customers "Add customer" panel heading, Shipping zone-detail heading)
+   had no rule anywhere, so it rendered as a bare <h2> at the browser's huge
+   default heading size/weight and default (non-token) color instead of the
+   smaller sub-heading treatment already used for modal titles. */
+body:has(.adminShell) .h3{margin:0!important;font-size:19px!important;color:var(--admin-ink)!important}
 body:has(.adminShell) .catalogPage,body:has(.adminShell) .operationsPage,body:has(.adminShell) .customersPage{max-width:1480px!important;margin:0 auto!important;padding-bottom:32px!important}
 
 /* Surfaces */
@@ -176,6 +181,10 @@ body:has(.adminShell) .table td{border-bottom:1px solid var(--admin-border-soft)
 body:has(.adminShell) .table tbody tr:hover{background:var(--admin-border-soft)!important}
 body:has(.adminShell) .tableWrap{overflow:auto!important}
 body:has(.adminShell) .catalogPagination{background:var(--admin-surface)!important;border-top:1px solid var(--admin-border-soft)!important}
+/* .strike (Products list -- the compare-at price shown next to the current
+   price) had no rule anywhere, so a "was $50, now $30" price pair rendered
+   as two plain muted numbers with no visual line separating them. */
+body:has(.adminShell) .strike{text-decoration:line-through!important}
 body:has(.adminShell) input[type=checkbox]{accent-color:var(--admin-accent)}
 /* Reviews table cell content -- .ratingStars and .reviewSnippet had no rule
    anywhere, so the star rating rendered in plain inherited text color instead
@@ -239,6 +248,9 @@ body:has(.adminShell) .toggleRow small{font-size:11px;color:var(--admin-muted);l
 body:has(.adminShell) .contentModal{width:min(700px,94vw);padding:0;max-height:92vh;overflow:auto}
 body:has(.adminShell) .checkboxLine{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--admin-ink)}
 body:has(.adminShell) .contentJsonEditor{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;min-height:160px}
+/* .modalFooter (the Cancel/Save row at the bottom of the content block
+   modal) had no rule anywhere, so the two buttons had no gap or alignment. */
+body:has(.adminShell) .modalFooter{display:flex;justify-content:flex-end;gap:10px;margin-top:4px}
 
 /* Drawers */
 
