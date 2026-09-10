@@ -92,6 +92,15 @@
 .deleteBtn:disabled { opacity: .5; cursor: default; }
 
 .modal { width: min(560px, 94vw); padding: 24px; }
+/* Was `className="h3"` on the modal <h2> -- ".h3" is never defined anywhere in
+   globals.css or admin-overhaul.css, so this title has always rendered with
+   plain browser-default h2 styling (~1.5em, default margins) instead of a
+   design-system heading. The same dead classname is used the same broken way
+   in 5 other files (shipping, customers, media picker/admin, collections);
+   left for those pages' own migration batches. Sized to match the existing
+   modal-heading convention already established for the Orders modal
+   (admin-orders-list.module.css's `.modalHead h2`). */
+.modalTitle { margin: 6px 0 4px; font-size: 19px; letter-spacing: -.02em; color: var(--admin-ink); }
 .modalGrid { display: grid; gap: 14px; margin-top: 4px; }
 .twoCol { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .checkboxRow { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--admin-ink); }
