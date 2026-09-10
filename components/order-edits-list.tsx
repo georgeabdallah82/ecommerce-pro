@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { FileEdit } from 'lucide-react'
 import { money } from '@/lib/config'
 import styles from './admin-order-edits.module.css'
+import ui from './admin-ui.module.css'
 
 type OrderEdit = {
   id: string
@@ -43,23 +44,23 @@ export default function OrderEditsList({ initial, canManage }: { initial: OrderE
     <div className={styles.page}>
       <div className={styles.header}>
         <div>
-          <span className="muted">ORDERS</span>
+          <span className={ui.muted}>ORDERS</span>
           <h1 className={styles.title}>Order edits</h1>
-          <p className="muted">Draft and applied changes to line items, quantities and pricing on existing orders.</p>
+          <p className={ui.muted}>Draft and applied changes to line items, quantities and pricing on existing orders.</p>
         </div>
       </div>
 
-      <div className={`card ${styles.views}`}>
+      <div className={`${ui.card} ${styles.views}`}>
         {views.map(([value, label]) => (
           <button key={value} className={`${styles.view}${status === value ? ` ${styles.viewActive}` : ''}`} onClick={() => setStatus(value)}>
-            {label} <span className="muted">{value === 'ALL' ? rows.length : rows.filter(r => r.status === value).length}</span>
+            {label} <span className={ui.muted}>{value === 'ALL' ? rows.length : rows.filter(r => r.status === value).length}</span>
           </button>
         ))}
       </div>
 
-      <div className={`card ${styles.tableCard}`}>
-        <div className="tableWrap">
-          <table className={`table ${styles.resultsTable}`}>
+      <div className={`${ui.card} ${styles.tableCard}`}>
+        <div className={ui.tableWrap}>
+          <table className={`${ui.table} ${styles.resultsTable}`}>
             <thead>
               <tr>
                 <th>Order</th>
@@ -75,7 +76,7 @@ export default function OrderEditsList({ initial, canManage }: { initial: OrderE
                 <tr key={edit.id} onClick={() => { window.location.href = `/admin/order-edits/${edit.id}` }}>
                   <td>
                     <strong>{edit.order ? `#${edit.order.orderNumber}` : edit.orderId.slice(0, 8)}</strong>
-                    {edit.order && <div className="muted" style={{ fontSize: 11 }}>{edit.order.status}</div>}
+                    {edit.order && <div className={ui.muted} style={{ fontSize: 11 }}>{edit.order.status}</div>}
                   </td>
                   <td><span className={`${styles.statusPill} ${statusClass(edit.status)}`}>{edit.status}</span></td>
                   <td>{edit.items?.length || 0}</td>
@@ -84,18 +85,18 @@ export default function OrderEditsList({ initial, canManage }: { initial: OrderE
                       {edit.deltaTotal > 0 ? '+' : ''}{money(edit.deltaTotal, edit.order?.currency)}
                     </span>
                   </td>
-                  <td className="muted">{edit.reason || '—'}</td>
-                  <td className="muted">{new Date(edit.createdAt).toLocaleString()}</td>
+                  <td className={ui.muted}>{edit.reason || '—'}</td>
+                  <td className={ui.muted}>{new Date(edit.createdAt).toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
         {!filtered.length && (
-          <div className="empty">
+          <div className={ui.empty}>
             <FileEdit size={20} />
             <p style={{ marginTop: 8 }}>No order edits {status === 'ALL' ? 'yet' : `with status ${status.toLowerCase()}`}.</p>
-            {canManage && <p className="muted">Start one from an order's detail page.</p>}
+            {canManage && <p className={ui.muted}>Start one from an order's detail page.</p>}
           </div>
         )}
       </div>
