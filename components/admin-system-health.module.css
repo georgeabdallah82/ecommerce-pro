@@ -1,0 +1,58 @@
+/*
+ * System health - CSS Modules, same pattern as the rest of the admin
+ * componentization (#74): build-time-unique classnames plus the --admin-*
+ * tokens from ../app/admin/admin-overhaul.css via var(), so dark mode is
+ * automatic.
+ *
+ * Before this module, this page's layout classnames (systemHealthPage,
+ * healthTimestamp, healthTotals, healthGrid, healthCheckHead, and the
+ * .ok/.warning/.critical severity modifiers on healthCheck) were never
+ * defined anywhere in globals.css or admin-overhaul.css - only the shared
+ * .card look (background/border/radius/shadow) ever reached healthHero and
+ * healthCheck, via a `body:has(.adminShell) ... .healthCheck,
+ * .healthHero{...}` rule. Every other layout on this page - the hero row,
+ * the totals row, the check-card grid, the per-check header row, and any
+ * visual distinction between an ok/warning/critical check - was rendering
+ * as unstyled default block flow.
+ */
+
+.page { max-width: 1100px; margin: 0 auto; padding-bottom: 24px; }
+
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 20px;
+  margin-bottom: 18px;
+}
+.timestamp { margin-top: 8px; font-size: 12px; color: var(--admin-muted); }
+
+.totals { display: flex; gap: 28px; }
+.totals > div { display: grid; gap: 3px; text-align: right; }
+.totals strong { font-size: 25px; letter-spacing: -.03em; color: var(--admin-ink); }
+.totals span { font-size: 11px; color: var(--admin-muted); }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+
+.check {
+  padding: 16px 18px;
+  border-left: 3px solid var(--admin-border);
+  display: grid;
+  gap: 6px;
+}
+.check.warning { border-left-color: var(--admin-warning); }
+.check.critical { border-left-color: var(--admin-danger); }
+
+.checkHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.checkHead strong { font-size: 15px; color: var(--admin-ink); }
+
+.check h3 { margin: 0; font-size: 14px; color: var(--admin-ink); }
+.check p { margin: 0; font-size: 12px; color: var(--admin-muted); }
+
+@media (max-width: 640px) {
+  .hero { flex-direction: column; align-items: stretch; }
+  .totals { justify-content: space-between; }
+  .totals > div { text-align: left; }
+}
