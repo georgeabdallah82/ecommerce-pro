@@ -14,6 +14,24 @@ export default function AdminDashboardStyles(){
     @media(max-width:650px){.dashboardHero{align-items:flex-start;flex-direction:column}.dashboardHero h2{font-size:31px}.dashboardActions{width:100%}.dashboardActions>*{flex:1}.dashboardKpis{grid-template-columns:1fr 1fr}.attentionGrid{grid-template-columns:1fr}}
     @media(max-width:430px){.dashboardKpis{grid-template-columns:1fr}}
     html[data-admin-theme='dark'] .dashboardHero .eyebrow,html[data-admin-theme='dark'] .dashboardHero p,html[data-admin-theme='dark'] .dashboardKpiTop,html[data-admin-theme='dark'] .dashboardKpi small,html[data-admin-theme='dark'] .dashboardPanelHead p,html[data-admin-theme='dark'] .mutedSmall,html[data-admin-theme='dark'] .dashboardFoot{color:#9ba49e!important}
-    html[data-admin-theme='dark'] .dashboardKpiIcon{background:#232724;color:#dce3de}.attentionCard{color:inherit}html[data-admin-theme='dark'] .attentionCard{background:#151817;border-color:#303631}.topProduct{border-color:#2b302c}.recentTableWrap{border-color:#2b302c}
+    html[data-admin-theme='dark'] .dashboardKpiIcon{background:#232724;color:#dce3de}.attentionCard{color:inherit}html[data-admin-theme='dark'] .attentionCard{background:#151817;border-color:#303631}
+    /* .topProduct/.recentTableWrap border-color used to be set here WITHOUT the
+       html[data-admin-theme='dark'] prefix, so the dark divider/border color
+       applied unconditionally in light mode too, clobbering the correct light
+       value (#ededE8/#ecece7) set above -- properly scoped to dark mode here. */
+    html[data-admin-theme='dark'] .topProduct{border-color:#2b302c}
+    html[data-admin-theme='dark'] .recentTableWrap{border-color:#2b302c}
+    /* .dashboardKpi (the 4 top-row stat cards) had no dark-mode rule at all
+       anywhere in this file or admin-overhaul.css, unlike every sibling
+       surface on this page (.dashboardPanel/.recentPanel are covered by
+       admin-overhaul.css, .attentionCard has its own rule two lines up) -- so
+       these cards stayed hardcoded white on a dark admin shell. */
+    html[data-admin-theme='dark'] .dashboardKpi{background:#151817;border-color:#303631;box-shadow:0 4px 15px rgba(0,0,0,.22)}
+    /* The "needs attention" tile numbers (pending/low-stock/reviews counts)
+       used fixed light-mode-tuned hex with no dark equivalent, so they read as
+       muddy, low-contrast text on a dark background. */
+    html[data-admin-theme='dark'] .attentionCard.pending strong{color:#e8b95a}
+    html[data-admin-theme='dark'] .attentionCard.low strong{color:#f0776a}
+    html[data-admin-theme='dark'] .attentionCard.reviews strong{color:#9b9bd6}
   `}</style>
 }
