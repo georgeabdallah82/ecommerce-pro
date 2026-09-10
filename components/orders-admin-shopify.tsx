@@ -267,7 +267,7 @@ export function OrdersAdminShopify({ initial, canRefund = false }: { initial: In
                         <Link className="iconBtn" href={`/admin/orders/${o.id}`} title="Open order"><ArrowUpRight size={15} /></Link>
                         <Link className="iconBtn" href={`/admin/orders/${o.id}/invoice`} title="Invoice"><FileText size={15} /></Link>
                         <button className="iconBtn" onClick={() => { setTrackingNumber(o.trackingNumber || ''); setTrackingCompany(o.trackingCompany || ''); setModal({ type: 'tracking', order: o }) }} disabled={busy === o.id} title="Tracking"><Truck size={15} /></button>
-                        {canCancel && <button className={`iconBtn ${styles.dangerIcon}`} onClick={() => setModal({ type: 'cancel', order: o })} disabled={busy === o.id} title="Cancel"><X size={15} /></button>}
+                        {canCancel && <button className={styles.dangerIcon} onClick={() => setModal({ type: 'cancel', order: o })} disabled={busy === o.id} title="Cancel"><X size={15} /></button>}
                         {canRefund && o.paymentStatus !== 'REFUNDED' && o.status !== 'CANCELLED' && <button className="iconBtn" onClick={() => { setRefundAmount(''); setModal({ type: 'refund', order: o }) }} disabled={busy === o.id} title="Refund"><RefreshCw size={15} /></button>}
                       </div>
                     </td>

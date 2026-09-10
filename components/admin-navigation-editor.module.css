@@ -168,7 +168,28 @@
 .hint { padding: 12px; border-radius: 9px; background: var(--admin-border-soft); color: var(--admin-ink-soft); font-size: 11px; line-height: 1.5; }
 
 .drawerFoot { margin-top: auto; padding: 14px 18px; border-top: 1px solid var(--admin-border-soft); display: flex; justify-content: space-between; gap: 10px; }
-.removeBtn { background: var(--admin-danger-soft) !important; border-color: var(--admin-danger-border) !important; color: var(--admin-danger) !important; }
+/* Self-contained rather than layered on the shared .btn -- the admin overhaul's
+   "body:has(.adminShell) .btn" selector (0,2,1) outranks this module's single
+   hashed class even under !important, so this would silently lose the cascade
+   and render as the default accent color instead of a danger action. */
+.removeBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: var(--admin-radius-md);
+  border: 1px solid var(--admin-danger-border);
+  background: var(--admin-danger-soft);
+  color: var(--admin-danger);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 850;
+  box-shadow: var(--admin-shadow-sm);
+  cursor: pointer;
+}
+.removeBtn:hover:not(:disabled) { background: var(--admin-danger-border); }
 
 .parentBadge { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: var(--admin-radius-pill); background: var(--admin-accent-soft); color: var(--admin-accent-strong); font-size: 10px; font-weight: 800; }
 .saveDot { font-size: 11px; color: var(--admin-muted); }

@@ -1,4 +1,38 @@
-/* Control Center — unified admin design system (tokens + rules) */
+/*
+ * Control Center — unified admin design system (tokens + rules).
+ *
+ * WHY `body:has(.adminShell) X { ... !important }` INSTEAD OF PLAIN `.adminShell X`:
+ * app/globals.css is imported once in the root layout (app/layout.tsx) and applies to
+ * every route, storefront and admin alike. It defines shared classnames — .btn, .card,
+ * .input, .table, .pill, .statusPill, .alert, .empty, .iconBtn, .fieldLabel,
+ * .modalOverlay, .sectionHead, .tableWrap, .textLink, .textButton, .muted — with
+ * storefront-oriented tokens and colors. Admin pages reuse those SAME classnames rather
+ * than a separate admin vocabulary, so this file has to reliably outrank globals.css for
+ * every one of them, including two-class combinators it defines like `.btn.secondary`.
+ * `body:has(.adminShell)` adds one extra type-selector unit of specificity over a bare
+ * `.adminShell` prefix specifically to survive that fight, and `!important` guards
+ * against CSS chunk load order (not guaranteed stable across builds/route splits).
+ *
+ * THE RECURRING BUG THIS CAUSES — READ BEFORE ADDING A "DANGER"/OVERRIDE VARIANT:
+ * A page's CSS Module can't beat these rules by layering a hashed class on top of the
+ * shared global one (e.g. `className={`btn ${styles.dangerBtn}`}`), even if the module
+ * rule also uses `!important`. Ties between `!important` rules are broken by selector
+ * specificity, not source order, and a CSS Module produces a single low-specificity
+ * class — it loses to `body:has(.adminShell) .btn` (and definitely to `.btn.secondary`)
+ * every time. This has silently shipped colorless/wrong-colored buttons and icons on
+ * live pages at least half a dozen times this project (orders' and draft-orders'
+ * Cancel buttons, the orders list's Cancel icon, the navigation editor's Remove button,
+ * the categories/metafields/content delete icons) before being caught by screenshot
+ * verification, not code review — the bug is invisible in the diff.
+ *
+ * THE FIX, every time: never combine an override class with the shared global one.
+ * Make the override class FULLY SELF-CONTAINED — display, padding/min-height,
+ * border-radius, font-size/weight, box-shadow, cursor, EVERY visual property the base
+ * class would have supplied, not just color/background — and apply ONLY that class to
+ * the element. Search this codebase for "Self-contained rather than layered on" for
+ * worked examples (e.g. components/admin-orders-list.module.css's .dangerBtn/.dangerIcon,
+ * components/admin-navigation-editor.module.css's .removeBtn).
+ */
 body:has(.adminShell){
   --admin-bg:#f6f5f0;
   --admin-surface:#ffffff;
@@ -67,7 +101,7 @@ body:has(.adminShell) .sectionHead .muted{font-size:13px!important;line-height:1
 body:has(.adminShell) .catalogPage,body:has(.adminShell) .operationsPage,body:has(.adminShell) .customersPage,body:has(.adminShell) .inventoryPage{max-width:1480px!important;margin:0 auto!important;padding-bottom:32px!important}
 
 /* Surfaces */
-body:has(.adminShell) .card,body:has(.adminShell) .dashboardPanel,body:has(.adminShell) .recentPanel,body:has(.adminShell) .productTableCard,body:has(.adminShell) .shopifyTableCard,body:has(.adminShell) .opsCard,body:has(.adminShell) .healthCheck,body:has(.adminShell) .healthHero,body:has(.adminShell) .settingsCard,body:has(.adminShell) .settingsGroupCard{background:var(--admin-surface)!important;border-color:var(--admin-border)!important;border-radius:var(--admin-radius-lg)!important;box-shadow:var(--admin-shadow-sm)!important;color:var(--admin-ink)!important;transition:box-shadow .18s ease,transform .18s ease!important}
+body:has(.adminShell) .card,body:has(.adminShell) .dashboardPanel,body:has(.adminShell) .recentPanel,body:has(.adminShell) .productTableCard,body:has(.adminShell) .opsCard,body:has(.adminShell) .healthCheck,body:has(.adminShell) .healthHero{background:var(--admin-surface)!important;border-color:var(--admin-border)!important;border-radius:var(--admin-radius-lg)!important;box-shadow:var(--admin-shadow-sm)!important;color:var(--admin-ink)!important;transition:box-shadow .18s ease,transform .18s ease!important}
 body:has(.adminShell) .card:hover,body:has(.adminShell) .dashboardPanel:hover,body:has(.adminShell) .opsCard:hover{box-shadow:var(--admin-shadow-md)!important}
 body:has(.adminShell) .statCard,body:has(.adminShell) .inventoryStat{background:var(--admin-surface)!important;border-color:var(--admin-border)!important;border-radius:var(--admin-radius-lg)!important;box-shadow:var(--admin-shadow-sm)!important;color:var(--admin-ink)!important}
 body:has(.adminShell) .statCard:hover,body:has(.adminShell) .inventoryStat.clickable:hover{box-shadow:var(--admin-shadow-md)!important}
@@ -108,9 +142,9 @@ body:has(.adminShell) .statusPill.danger{background:var(--admin-danger-soft)!imp
 body:has(.adminShell) button:focus-visible,body:has(.adminShell) a:focus-visible,body:has(.adminShell) input:focus-visible,body:has(.adminShell) select:focus-visible,body:has(.adminShell) textarea:focus-visible{outline:3px solid var(--admin-focus)!important;outline-offset:2px!important}
 
 /* Search/filter/tool bars */
-body:has(.adminShell) .catalogToolbar,body:has(.adminShell) .inventoryControlBar,body:has(.adminShell) .collectionToolbar{border:1px solid var(--admin-border)!important;background:var(--admin-surface)!important;border-radius:var(--admin-radius-lg)!important;box-shadow:var(--admin-shadow-sm)!important}
-body:has(.adminShell) .productSearch,body:has(.adminShell) .inventorySearchBox,body:has(.adminShell) .collectionSearch{background:var(--admin-border-soft)!important;border-color:var(--admin-border)!important;border-radius:var(--admin-radius-md)!important}
-body:has(.adminShell) .productSearch:focus-within,body:has(.adminShell) .inventorySearchBox:focus-within,body:has(.adminShell) .collectionSearch:focus-within{border-color:var(--admin-accent)!important;box-shadow:0 0 0 3px var(--admin-focus)!important;background:var(--admin-surface)!important}
+body:has(.adminShell) .catalogToolbar,body:has(.adminShell) .inventoryControlBar{border:1px solid var(--admin-border)!important;background:var(--admin-surface)!important;border-radius:var(--admin-radius-lg)!important;box-shadow:var(--admin-shadow-sm)!important}
+body:has(.adminShell) .productSearch,body:has(.adminShell) .inventorySearchBox{background:var(--admin-border-soft)!important;border-color:var(--admin-border)!important;border-radius:var(--admin-radius-md)!important}
+body:has(.adminShell) .productSearch:focus-within,body:has(.adminShell) .inventorySearchBox:focus-within{border-color:var(--admin-accent)!important;box-shadow:0 0 0 3px var(--admin-focus)!important;background:var(--admin-surface)!important}
 
 /* Tables */
 body:has(.adminShell) .table{background:var(--admin-surface)!important}
@@ -166,11 +200,11 @@ body:has(.adminShell) .alert.danger{border-color:var(--admin-danger-border)!impo
 body:has(.adminShell) .alert:not(.danger){border-color:var(--admin-border)!important;background:var(--admin-accent-soft)!important;color:var(--admin-accent-strong)!important}
 
 /* Editor / theme studio */
-body:has(.adminShell) .themeStudio,body:has(.adminShell) .themeStudioPro{background:var(--admin-bg)!important}
+body:has(.adminShell) .themeStudioPro{background:var(--admin-bg)!important}
 
 /* Responsive workspace */
 @media(max-width:1050px){body:has(.adminShell) .adminMain{padding:0 22px 42px!important}}
-@media(max-width:760px){body:has(.adminShell) .adminMain{padding:0 14px 34px!important}.sectionHead{align-items:flex-start!important;flex-direction:column!important}.sectionHead .inline{width:100%!important}.sectionHead .inline>*{flex:1}.sectionHead .h2,.catalogHead .h2{font-size:29px!important}.dashboardKpis{grid-template-columns:1fr 1fr!important}.twoColFields{grid-template-columns:1fr!important}.marketCards{grid-template-columns:1fr!important}.settingsCenter,.navEditorLayout{grid-template-columns:1fr!important}.adminTileGrid{grid-template-columns:1fr 1fr!important}}
+@media(max-width:760px){body:has(.adminShell) .adminMain{padding:0 14px 34px!important}.sectionHead{align-items:flex-start!important;flex-direction:column!important}.sectionHead .inline{width:100%!important}.sectionHead .inline>*{flex:1}.sectionHead .h2,.catalogHead .h2{font-size:29px!important}.dashboardKpis{grid-template-columns:1fr 1fr!important}.twoColFields{grid-template-columns:1fr!important}.adminTileGrid{grid-template-columns:1fr 1fr!important}}
 @media(max-width:480px){body:has(.adminShell) .dashboardKpis{grid-template-columns:1fr!important}.catalogStats{grid-template-columns:1fr!important}.adminTileGrid{grid-template-columns:1fr!important}.modalOverlay{padding:10px!important}.modalOverlay>.card{width:min(100%,520px)!important;border-radius:15px!important}}
 
 /* Headings/text pick up ink tokens automatically via inheritance */
