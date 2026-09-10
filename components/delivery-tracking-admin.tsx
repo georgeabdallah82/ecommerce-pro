@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { LocateFixed, Copy, Check, Navigation, Clock3 } from 'lucide-react'
+import ui from './admin-ui.module.css'
 
 async function api(path: string, init?: RequestInit) {
   const response = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
@@ -62,21 +63,21 @@ export default function DeliveryTrackingAdmin({ orderId, orderStatus }: { orderI
     try { await navigator.clipboard.writeText(publicUrl); setCopied(true); window.setTimeout(() => setCopied(false), 1200) } catch {}
   }
 
-  return <section className="card adminPanel">
-    <div className="sectionHead small"><div><h3>Live delivery tracking</h3><span className="muted">Share an approximate courier position with the customer.</span></div><Navigation size={18} /></div>
-    {!canTrack && <p className="muted">Tracking becomes available when the order is PROCESSING or SHIPPED.</p>}
+  return <section className={ui.card}>
+    <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><div><h3>Live delivery tracking</h3><span className={ui.muted}>Share an approximate courier position with the customer.</span></div><Navigation size={18} /></div>
+    {!canTrack && <p className={ui.muted}>Tracking becomes available when the order is PROCESSING or SHIPPED.</p>}
     {canTrack && <>
-      <div className="twoColFields">
-        <label className="fieldLabel">ETA (minutes)<input className="input" inputMode="numeric" min="0" max="1440" value={eta} onChange={e=>setEta(e.target.value.replace(/\D/g,''))} placeholder="e.g. 25" /></label>
-        <div className="fieldLabel"><span>Current status</span><div className="inline" style={{minHeight:40}}><span className="pill" style={active ? { background: 'var(--admin-accent-soft)', color: 'var(--admin-accent-strong)', borderColor: 'transparent' } : undefined}>{active ? 'LIVE' : 'OFF'}</span>{updatedAt&&<span className="muted"><Clock3 size={13}/> {new Date(updatedAt).toLocaleTimeString()}</span>}</div></div>
+      <div className={ui.twoCol}>
+        <label className={ui.fieldLabel}>ETA (minutes)<input className={ui.input} inputMode="numeric" min="0" max="1440" value={eta} onChange={e=>setEta(e.target.value.replace(/\D/g,''))} placeholder="e.g. 25" /></label>
+        <div className={ui.fieldLabel}><span>Current status</span><div className="inline" style={{minHeight:40}}><span className={`${ui.statusPill} ${active ? ui.statusPillSuccess : ''}`}>{active ? 'LIVE' : 'OFF'}</span>{updatedAt&&<span className={ui.muted}><Clock3 size={13}/> {new Date(updatedAt).toLocaleTimeString()}</span>}</div></div>
       </div>
       <div className="inline" style={{marginTop:12,flexWrap:'wrap'}}>
-        <button className="btn" onClick={updateLocation} disabled={saving}><LocateFixed size={15}/>{saving?'Updating…':'Use my current location'}</button>
-        {active&&<button className="btn secondary" onClick={disableTracking} disabled={saving}>Stop tracking</button>}
-        {publicUrl&&<button className="btn ghost" onClick={copyLink}>{copied?<Check size={15}/>:<Copy size={15}/>} {copied?'Copied':'Copy tracking link'}</button>}
+        <button className={ui.btn} onClick={updateLocation} disabled={saving}><LocateFixed size={15}/>{saving?'Updating…':'Use my current location'}</button>
+        {active&&<button className={`${ui.btn} ${ui.btnSecondary}`} onClick={disableTracking} disabled={saving}>Stop tracking</button>}
+        {publicUrl&&<button className={`${ui.btn} ${ui.btnGhost}`} onClick={copyLink}>{copied?<Check size={15}/>:<Copy size={15}/>} {copied?'Copied':'Copy tracking link'}</button>}
       </div>
-      {message&&<p className="muted" style={{marginTop:10}}>{message}</p>}
-      {publicUrl&&<p className="muted" style={{marginTop:10,wordBreak:'break-all'}}>Customer link: {publicUrl}</p>}
+      {message&&<p className={ui.muted} style={{marginTop:10}}>{message}</p>}
+      {publicUrl&&<p className={ui.muted} style={{marginTop:10,wordBreak:'break-all'}}>Customer link: {publicUrl}</p>}
     </>}
   </section>
 }
