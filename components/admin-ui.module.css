@@ -158,6 +158,15 @@
 .fieldLabel { display: block; margin-bottom: 7px; font-size: 11px; font-weight: 850; color: var(--admin-ink-soft); }
 .fieldHelp { display: block; margin-top: 6px; font-size: 11px; line-height: 1.5; color: var(--admin-muted); }
 
+/* Standalone key/value sidebar rows (Payment, Order information, Timeline, etc).
+   Was globals.css's bare .summaryLine, which borders with the storefront-only
+   --line token and never picked up a dark-mode value, so every one of these
+   rows showed a light beige divider on an otherwise-dark admin card -- fixed
+   once already per-page in admin-order-detail.module.css (#76), found again
+   here on a 4th, unrelated page, so it now lives here for every consumer. */
+.summaryLine { display: flex; justify-content: space-between; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--admin-border-soft); font-size: 14px; }
+.summaryLineTotal { border-bottom: 0; font-size: 18px; padding-top: 16px; }
+
 /* Was globals.css's bare `.twoColFields{display:grid;grid-template-columns:1fr
    1fr;gap:16px}`, admin-overridden to gap:14px via !important -- a plain,
    reusable two-column form-row layout with no page-specific styling, so it
