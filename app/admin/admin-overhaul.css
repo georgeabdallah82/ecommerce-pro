@@ -136,6 +136,12 @@ body:has(.adminShell) .iconBtn{border-color:var(--admin-border)!important;backgr
    hacks. */
 body:has(.adminShell) .iconBtn.dangerIcon{border-color:var(--admin-danger-border)!important;background:var(--admin-danger-soft)!important;color:var(--admin-danger)!important}
 body:has(.adminShell) .iconBtn.dangerIcon:hover:not(:disabled){background:var(--admin-danger)!important;border-color:var(--admin-danger)!important;color:#fff!important}
+/* .iconTextBtn (content/reviews list tables -- wraps a statusPill toggle like
+   Active/Inactive or Approved/Pending) had no rule anywhere, so it rendered
+   with the browser's default <button> chrome (border, padding, background)
+   around the pill instead of disappearing into a plain clickable wrapper. */
+body:has(.adminShell) .iconTextBtn{display:inline-flex!important;align-items:center!important;gap:6px!important;border:0!important;background:transparent!important;padding:0!important;cursor:pointer!important;font:inherit!important}
+body:has(.adminShell) .iconTextBtn:disabled{opacity:.5!important;cursor:not-allowed!important}
 body:has(.adminShell) .input,body:has(.adminShell) .textarea,body:has(.adminShell) select{border-color:var(--admin-border)!important;background:var(--admin-surface)!important;border-radius:var(--admin-radius-md)!important;color:var(--admin-ink)!important;min-height:42px!important;font-size:13px!important}
 body:has(.adminShell) .textarea{min-height:110px!important;padding-top:11px!important}
 body:has(.adminShell) .input::placeholder,body:has(.adminShell) .textarea::placeholder{color:var(--admin-muted-soft)!important}
@@ -157,6 +163,11 @@ body:has(.adminShell) button:focus-visible,body:has(.adminShell) a:focus-visible
 body:has(.adminShell) .catalogToolbar{border:1px solid var(--admin-border)!important;background:var(--admin-surface)!important;border-radius:var(--admin-radius-lg)!important;box-shadow:var(--admin-shadow-sm)!important}
 body:has(.adminShell) .productSearch{background:var(--admin-border-soft)!important;border-color:var(--admin-border)!important;border-radius:var(--admin-radius-md)!important}
 body:has(.adminShell) .productSearch:focus-within{border-color:var(--admin-accent)!important;box-shadow:0 0 0 3px var(--admin-focus)!important;background:var(--admin-surface)!important}
+/* .searchClear (the "X" button that clears a .productSearch input on Content,
+   Shipping, Reviews, Coupons and Customers) had no rule anywhere either, so it
+   rendered with default <button> chrome instead of a plain icon button. */
+body:has(.adminShell) .searchClear{display:grid!important;place-items:center!important;border:0!important;background:transparent!important;color:var(--admin-muted)!important;cursor:pointer!important;padding:4px!important;border-radius:var(--admin-radius-sm)!important}
+body:has(.adminShell) .searchClear:hover{color:var(--admin-ink)!important;background:var(--admin-border-soft)!important}
 
 /* Tables */
 body:has(.adminShell) .table{background:var(--admin-surface)!important}
