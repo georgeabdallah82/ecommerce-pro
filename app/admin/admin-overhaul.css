@@ -107,6 +107,18 @@ body:has(.adminShell) .statCard{background:var(--admin-surface)!important;border
 body:has(.adminShell) .statCard:hover{box-shadow:var(--admin-shadow-md)!important}
 body:has(.adminShell) .statCard span,body:has(.adminShell) .stat .muted{color:var(--admin-muted)!important}
 body:has(.adminShell) .statCard strong,body:has(.adminShell) .stat strong{color:var(--admin-ink)!important}
+/* .statCard.active ("selected" filter tile, e.g. Coupons/Shipping/Customers list
+   stat rows) was never defined anywhere in the codebase -- confirmed by grep --
+   so clicking a filter tile gave zero visual feedback about which one was
+   selected on any of those three pages. Mirrors the already-correct
+   .typeCard.active pattern in admin-coupons.module.css. */
+body:has(.adminShell) .statCard.active{border-color:var(--admin-accent)!important;box-shadow:0 0 0 1px var(--admin-accent) inset!important;background:var(--admin-accent-soft)!important}
+body:has(.adminShell) .statCard.active strong{color:var(--admin-accent-strong)!important}
+/* .catalogStats (the row wrapping those stat tiles) had a mobile-only override
+   at 480px but no base rule at all -- confirmed by grep -- so on every screen
+   above 480px the tiles stacked as plain full-width blocks with no grid/gap on
+   Coupons, Shipping zones, and Customers list. */
+body:has(.adminShell) .catalogStats{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:12px!important;margin-bottom:18px!important}
 
 /* Controls */
 body:has(.adminShell) .btn{min-height:40px!important;border-radius:var(--admin-radius-md)!important;padding:0 16px!important;font-size:12px!important;font-weight:850!important;background:var(--admin-accent)!important;border-color:var(--admin-accent)!important;color:var(--admin-accent-ink)!important;box-shadow:var(--admin-shadow-sm)!important;transition:transform .15s ease,box-shadow .15s ease,background .15s ease,border-color .15s ease!important}
@@ -202,8 +214,8 @@ body:has(.adminShell) .themeStudioPro{background:var(--admin-bg)!important}
 
 /* Responsive workspace */
 @media(max-width:1050px){body:has(.adminShell) .adminMain{padding:0 22px 42px!important}}
-@media(max-width:760px){body:has(.adminShell) .adminMain{padding:0 14px 34px!important}.sectionHead{align-items:flex-start!important;flex-direction:column!important}.sectionHead .inline{width:100%!important}.sectionHead .inline>*{flex:1}.sectionHead .h2,.catalogHead .h2{font-size:29px!important}.dashboardKpis{grid-template-columns:1fr 1fr!important}.twoColFields{grid-template-columns:1fr!important}.adminTileGrid{grid-template-columns:1fr 1fr!important}}
-@media(max-width:480px){body:has(.adminShell) .dashboardKpis{grid-template-columns:1fr!important}.catalogStats{grid-template-columns:1fr!important}.adminTileGrid{grid-template-columns:1fr!important}.modalOverlay{padding:10px!important}.modalOverlay>.card{width:min(100%,520px)!important;border-radius:15px!important}}
+@media(max-width:760px){body:has(.adminShell) .adminMain{padding:0 14px 34px!important}.sectionHead{align-items:flex-start!important;flex-direction:column!important}.sectionHead .inline{width:100%!important}.sectionHead .inline>*{flex:1}.sectionHead .h2,.catalogHead .h2{font-size:29px!important}.dashboardKpis{grid-template-columns:1fr 1fr!important}.twoColFields{grid-template-columns:1fr!important}.adminTileGrid{grid-template-columns:1fr 1fr!important}body:has(.adminShell) .catalogStats{grid-template-columns:1fr 1fr!important}}
+@media(max-width:480px){body:has(.adminShell) .dashboardKpis{grid-template-columns:1fr!important}body:has(.adminShell) .catalogStats{grid-template-columns:1fr!important}.adminTileGrid{grid-template-columns:1fr!important}.modalOverlay{padding:10px!important}.modalOverlay>.card{width:min(100%,520px)!important;border-radius:15px!important}}
 
 /* Headings/text pick up ink tokens automatically via inheritance */
 body:has(.adminShell) h1,body:has(.adminShell) h2,body:has(.adminShell) h3,body:has(.adminShell) h4{color:var(--admin-ink)!important}
