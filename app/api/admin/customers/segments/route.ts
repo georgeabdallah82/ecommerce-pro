@@ -7,7 +7,11 @@ export async function GET() {
   try {
     await requirePermission('customerSegments.view')
     const segments = await db.customerSegment.findMany({ orderBy: { updatedAt: 'desc' } })
-    const rows = await Promise.all(segments.map(async segment => ({ ...segment, _count: { members: await db.customerSegmentMember.count({ where: { segmentId: segment.id } }) } })))
+    const counts = (segments.length
+      ? await db.customerSegmentMember.groupBy({ by: ['segmentId'], _count: { _all: true }, where: { segmentId: { in: segments.map(s => s.id) } } })
+      : []) as { segmentId: string; _count: { _all: number } }[]
+    const countBySegment = Object.fromEntries(counts.map(c => [c.segmentId, c._count._all]))
+    const rows = segments.map(segment => ({ ...segment, _count: { members: countBySegment[segment.id] || 0 } }))
     return json(rows)
   } catch (e) { return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 }) }
 }

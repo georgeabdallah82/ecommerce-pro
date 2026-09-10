@@ -50,6 +50,7 @@ export default function PurchaseOrderDetail({ initial, canManage }: { initial: a
       .filter((it: any) => (receiveNow[it.id] || 0) > 0)
       .map((it: any) => ({ id: it.id, received: Math.min(it.quantityOrdered, it.quantityReceived + (Number(receiveNow[it.id]) || 0)) }))
     if (!items.length) return setMsg('Enter a quantity to receive for at least one item.')
+    if (!po.location) return setMsg('This purchase order has no receiving location. Set one before receiving items.')
     setBusy(true); setMsg('')
     try {
       const d = await api(`/api/admin/purchase-orders/${po.id}`, { method: 'PATCH', body: JSON.stringify({ items }) })
@@ -118,7 +119,7 @@ export default function PurchaseOrderDetail({ initial, canManage }: { initial: a
             ))}
             {!isTerminal && canManage && (
               <div className="inline" style={{ marginTop: 14, justifyContent: 'flex-end' }}>
-                <button className="btn" onClick={saveReceiving} disabled={busy || totalReceiveNow <= 0}>{busy ? 'Saving…' : 'Save received quantities'}</button>
+                <button className="btn" onClick={saveReceiving} disabled={busy || totalReceiveNow <= 0 || !po.location} title={!po.location ? 'Set a receiving location first' : undefined}>{busy ? 'Saving…' : 'Save received quantities'}</button>
               </div>
             )}
           </section>

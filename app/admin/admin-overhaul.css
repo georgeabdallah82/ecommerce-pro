@@ -83,6 +83,13 @@ body:has(.adminShell) .btn.ghost{border-color:var(--admin-border)!important;back
 body:has(.adminShell) .btn.ghost:hover:not(:disabled){background:var(--admin-border-soft)!important}
 body:has(.adminShell) .btn:disabled{background:var(--admin-border-soft)!important;border-color:var(--admin-border)!important;color:var(--admin-muted-soft)!important}
 body:has(.adminShell) .iconBtn{border-color:var(--admin-border)!important;background:var(--admin-surface)!important;color:var(--admin-ink-soft)!important;border-radius:var(--admin-radius-sm)!important;box-shadow:var(--admin-shadow-sm)!important}
+/* .iconBtn.dangerIcon (metafields, content) previously had no matching rule
+   anywhere, so delete buttons rendered as plain neutral icon buttons with no
+   danger affordance. Two classes here outrank the plain .iconBtn rule above
+   even with both !important, so this wins without needing extra specificity
+   hacks. */
+body:has(.adminShell) .iconBtn.dangerIcon{border-color:var(--admin-danger-border)!important;background:var(--admin-danger-soft)!important;color:var(--admin-danger)!important}
+body:has(.adminShell) .iconBtn.dangerIcon:hover:not(:disabled){background:var(--admin-danger)!important;border-color:var(--admin-danger)!important;color:#fff!important}
 body:has(.adminShell) .input,body:has(.adminShell) .textarea,body:has(.adminShell) select{border-color:var(--admin-border)!important;background:var(--admin-surface)!important;border-radius:var(--admin-radius-md)!important;color:var(--admin-ink)!important;min-height:42px!important;font-size:13px!important}
 body:has(.adminShell) .textarea{min-height:110px!important;padding-top:11px!important}
 body:has(.adminShell) .input::placeholder,body:has(.adminShell) .textarea::placeholder{color:var(--admin-muted-soft)!important}

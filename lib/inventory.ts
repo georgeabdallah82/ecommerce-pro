@@ -57,6 +57,48 @@ export async function reserveStock(tx: any, product: any, variantId: string | nu
   return reservations
 }
 
+// Releases up to `quantity` units of reserved stock for a single product/variant, used when an
+// order edit reduces a line item's quantity after checkout already reserved stock for it. Unlike
+// releaseOrderReservations (which walks an order's full reservation history), this is a
+// best-effort partial release against the row's current `reserved` pool - reserved is tracked as
+// a shared aggregate on InventoryItem, not partitioned per order, so this mirrors how
+// reserveStock/releaseOrderReservations already treat it.
+export async function releaseReservedQuantity(tx: any, product: any, variantId: string | null | undefined, quantity: number, referenceId: string, reason = 'Order edit adjustment') {
+  if (quantity <= 0) return []
+  if (!product.trackInventory || product.continueSellingWhenOutOfStock) return []
+
+  const variantRows = variantId ? product.inventory.filter((x: any) => x.variantId === variantId) : []
+  const rows = variantRows.length > 0 ? variantRows : product.inventory.filter((x: any) => !x.variantId)
+
+  let remaining = quantity
+  const releases: Array<{ inventoryId: string; quantity: number }> = []
+  for (const row of rows) {
+    if (remaining <= 0) break
+    const canRelease = Math.min(remaining, row.reserved)
+    if (canRelease <= 0) continue
+
+    const affected = await tx.inventoryItem.updateMany({
+      where: { id: row.id, reserved: { gte: canRelease } },
+      data: { reserved: { decrement: canRelease } },
+    })
+    if (affected.count !== 1) continue
+
+    await tx.inventoryMovement.create({
+      data: {
+        inventoryId: row.id,
+        type: InventoryMovementType.SALE_RELEASE,
+        quantity: canRelease,
+        reason,
+        referenceId,
+      },
+    })
+    releases.push({ inventoryId: row.id, quantity: canRelease })
+    remaining -= canRelease
+  }
+
+  return releases
+}
+
 export async function releaseOrderReservations(tx: any, orderId: string, reason = 'Order reservation released') {
   const order = await tx.order.findUnique({ where: { id: orderId } })
   if (!order) throw new Error('Order not found')

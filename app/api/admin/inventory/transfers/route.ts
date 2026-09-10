@@ -5,14 +5,14 @@ import { json } from '@/lib/utils'
 
 export async function GET() {
   try {
-    await requirePermission('inventory.view')
+    await requirePermission('transfers.view')
     return json(await db.inventoryTransfer.findMany({ include: { items: true, fromLocation: true, toLocation: true }, orderBy: { createdAt: 'desc' }, take: 200 }))
   } catch (e) { return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 }) }
 }
 
 export async function POST(req: Request) {
   try {
-    const actor = await requirePermission('inventory.manage')
+    const actor = await requirePermission('transfers.manage')
     const b = await req.json()
     const items = Array.isArray(b.items) ? b.items : []
     if (!items.length) return json({ error: 'At least one transfer item is required' }, { status: 400 })

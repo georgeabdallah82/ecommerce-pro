@@ -5,7 +5,7 @@ import { json } from '@/lib/utils'
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const actor = await requirePermission('inventory.manage')
+    const actor = await requirePermission('purchaseOrders.manage')
     const { id } = await params
     const b = await req.json()
     const po = await db.purchaseOrder.findUnique({ where: { id }, include: { items: true, location: true } })
@@ -24,6 +24,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const receivedItems = nextStatus === 'RECEIVED'
       ? po.items.map(item => ({ id: item.id, received: suppliedReceived.get(item.id) ?? item.quantityOrdered }))
       : po.items.filter(item => suppliedReceived.has(item.id)).map(item => ({ id: item.id, received: suppliedReceived.get(item.id)! }))
+    // A PO with no receiving location silently skipped the inventoryItem credit below (it's
+    // gated on `if (po.location)`) while still marking items as received - stock would never
+    // actually land anywhere, but the PO would show progress as if it had. Require a location
+    // for any receiving action, not just the "mark fully received" one.
+    if (receivedItems.length && !po.location) return json({ error: 'A receiving location is required before receiving items' }, { status: 400 })
     const updated = await db.$transaction(async tx => {
       if (receivedItems.length) {
         for (const received of receivedItems) {
