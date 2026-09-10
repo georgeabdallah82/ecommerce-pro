@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight, GripVertical, Link2, Plus, Save, Settings2, Trash2, X } from 'lucide-react'
 import styles from './admin-navigation-editor.module.css'
+import ui from './admin-ui.module.css'
 
 type Item = { id: string; label: string; url?: string | null; type?: string; parentId?: string | null; resourceId?: string | null }
 type Props = { initial: Item[]; categories: any[]; collections: any[] }
@@ -101,15 +102,15 @@ export default function NavigationEditorPro({ initial, categories, collections }
         <div>
           <div className={styles.eyebrow}>ONLINE STORE · NAVIGATION</div>
           <h1>Navigation</h1>
-          <p className="muted">Build your menus without fighting drag-and-drop. Add a menu item, choose where it belongs, and Shopify-style dropdowns are created automatically.</p>
+          <p className={ui.muted}>Build your menus without fighting drag-and-drop. Add a menu item, choose where it belongs, and Shopify-style dropdowns are created automatically.</p>
         </div>
         <div className="inline">
-          <button className="btn secondary" onClick={() => setPreviewOpen(v => !v)}>{previewOpen ? 'Hide preview' : 'Show preview'}</button>
-          <button className="btn" onClick={save} disabled={saving}><Save size={15} />{saving ? 'Saving…' : 'Save'}</button>
+          <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setPreviewOpen(v => !v)}>{previewOpen ? 'Hide preview' : 'Show preview'}</button>
+          <button className={ui.btn} onClick={save} disabled={saving}><Save size={15} />{saving ? 'Saving…' : 'Save'}</button>
         </div>
       </div>
 
-      {(notice || error) && <div className={`alert ${styles.alertSpacing} ${error ? 'danger' : ''}`}>{error || notice}</div>}
+      {(notice || error) && <div className={`${ui.alert} ${styles.alertSpacing} ${error ? ui.alertDanger : ''}`}>{error || notice}</div>}
 
       <div className={styles.grid}>
         <section className={styles.panel}>
@@ -122,7 +123,7 @@ export default function NavigationEditorPro({ initial, categories, collections }
           </div>
 
           <div className={styles.toolbar}>
-            <button className="btn secondary" onClick={() => setAdding({ parentId: null })}><Plus size={15} /> Add menu item</button>
+            <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setAdding({ parentId: null })}><Plus size={15} /> Add menu item</button>
             <div className={styles.toolbarHint}>{roots.length} top-level items</div>
           </div>
 
@@ -131,8 +132,8 @@ export default function NavigationEditorPro({ initial, categories, collections }
               <div className={styles.emptyState}>
                 <Link2 size={26} />
                 <strong>No menu items yet</strong>
-                <span className="muted">Start with your first menu item.</span>
-                <button className="btn" onClick={() => setAdding({ parentId: null })}><Plus size={15} /> Add menu item</button>
+                <span className={ui.muted}>Start with your first menu item.</span>
+                <button className={ui.btn} onClick={() => setAdding({ parentId: null })}><Plus size={15} /> Add menu item</button>
               </div>
             )}
             {roots.map(root => {
@@ -219,7 +220,7 @@ export default function NavigationEditorPro({ initial, categories, collections }
 
           <div className={styles.toolbar}>
             <div className={styles.toolbarHint}>Tip: You can use the Submenu button instead of dragging anything.</div>
-            <button className="btn secondary" onClick={() => setAdding({ parentId: null })}><Plus size={15} /> Add another item</button>
+            <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setAdding({ parentId: null })}><Plus size={15} /> Add another item</button>
           </div>
         </section>
 
@@ -230,7 +231,7 @@ export default function NavigationEditorPro({ initial, categories, collections }
                 <strong>Storefront preview</strong>
                 <span>Header + dropdown structure</span>
               </div>
-              <span className="previewBadge">Desktop</span>
+              <span className={ui.pill}>Desktop</span>
             </div>
             <div className={styles.browser}>
               <div className={styles.browserTop}>
@@ -245,7 +246,7 @@ export default function NavigationEditorPro({ initial, categories, collections }
                     <span key={root.id}>{root.label}{childrenOf(items, root.id).length > 0 && <ChevronDown size={11} />}</span>
                   ))}
                 </div>
-                <span className={`muted ${styles.previewCartHint}`}>Bag</span>
+                <span className={`${ui.muted} ${styles.previewCartHint}`}>Bag</span>
               </div>
               <div className={styles.mockHero}>
                 <small>LIVE PREVIEW</small>
@@ -302,7 +303,7 @@ function AddDrawer({ parentId, items, categories, collections, onClose, onCreate
           <div className={styles.eyebrow}>ADD MENU ITEM</div>
           <h2 className={styles.drawerTitle}>Create menu item</h2>
         </div>
-        <button className="iconBtn" onClick={onClose}><X size={17} /></button>
+        <button className={ui.iconBtn} onClick={onClose}><X size={17} /></button>
       </div>
       <div className={styles.drawerBody}>
         <div className={styles.field}>
@@ -315,7 +316,7 @@ function AddDrawer({ parentId, items, categories, collections, onClose, onCreate
 
         <div className={styles.destination}>
           <strong>{draft.parentId ? `Dropdown under “${items.find(x => x.id === draft.parentId)?.label || ''}”` : 'Top-level menu item'}</strong>
-          <div className={`muted ${styles.destinationNote}`}>You can change the parent here without dragging.</div>
+          <div className={`${ui.muted} ${styles.destinationNote}`}>You can change the parent here without dragging.</div>
         </div>
 
         <div className={styles.field}>
@@ -363,8 +364,8 @@ function AddDrawer({ parentId, items, categories, collections, onClose, onCreate
         <div className={styles.hint}><strong>Shopify-style workflow:</strong> choose the parent first, then choose the destination. No dragging is required to create dropdowns.</div>
       </div>
       <div className={styles.drawerFoot}>
-        <button className="btn secondary" onClick={onClose}>Cancel</button>
-        <button className="btn" onClick={() => onCreate(draft)} disabled={!draft.label.trim() || !draft.url}>Add item</button>
+        <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={onClose}>Cancel</button>
+        <button className={ui.btn} onClick={() => onCreate(draft)} disabled={!draft.label.trim() || !draft.url}>Add item</button>
       </div>
     </div>
   )
@@ -415,7 +416,7 @@ function EditDrawer({ item, items, categories, collections, onClose, patch, remo
           <div className={styles.eyebrow}>MENU ITEM</div>
           <h2 className={styles.drawerTitle}>{item.label || 'Menu item'}</h2>
         </div>
-        <button className="iconBtn" onClick={onClose}><X size={17} /></button>
+        <button className={ui.iconBtn} onClick={onClose}><X size={17} /></button>
       </div>
       <div className={styles.drawerBody}>
         <div className={styles.field}>
@@ -488,7 +489,7 @@ function EditDrawer({ item, items, categories, collections, onClose, patch, remo
         )}
       </div>
       <div className={styles.drawerFoot}>
-        <button className="btn secondary" onClick={onClose}>Done</button>
+        <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={onClose}>Done</button>
         <button className={styles.removeBtn} onClick={() => { remove(item.id); onClose() }}>Remove item</button>
       </div>
     </div>
