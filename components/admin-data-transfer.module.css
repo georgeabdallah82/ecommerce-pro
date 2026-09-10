@@ -1,0 +1,36 @@
+/*
+ * Data transfer widget - CSS Modules, same pattern as the rest of the admin
+ * componentization (#74): build-time-unique classnames plus the --admin-*
+ * tokens from ../app/admin/admin-overhaul.css via var(), so dark mode is
+ * automatic.
+ *
+ * .icon replaces a bare `className="metricIcon"` that was never defined
+ * anywhere in globals.css or admin-overhaul.css - the icon chip has never
+ * actually been styled (no size, no background, no radius). Sized to match
+ * the equivalent, real .metricIcon treatment in admin-analytics.module.css.
+ *
+ * .checklist replaces an inline `style={{border:'1px solid var(--border)',
+ * ...}}` - `--border` is not a custom property defined anywhere in this
+ * codebase (the real tokens are --admin-border here and --line on the
+ * storefront), so that border has never actually rendered.
+ */
+
+.icon {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-border-soft);
+  color: var(--admin-ink-soft);
+}
+
+.checklist {
+  margin-top: 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  padding: 10px;
+  max-height: 210px;
+  overflow: auto;
+}
