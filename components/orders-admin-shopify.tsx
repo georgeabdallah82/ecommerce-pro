@@ -6,6 +6,7 @@ import { ArrowUpRight, ChevronLeft, ChevronRight, FileText, PackageCheck, Plus, 
 import { money } from '@/lib/config'
 import { canTransitionOrder } from '@/lib/orders'
 import styles from './admin-orders-list.module.css'
+import ui from './admin-ui.module.css'
 
 type Order = any
 type Modal = { type: 'cancel' | 'refund' | 'tracking'; order: Order } | null
@@ -167,12 +168,12 @@ export function OrdersAdminShopify({ initial, canRefund = false }: { initial: In
           <p className={styles.subtitle}>Manage orders, fulfillment, payments, tracking and refunds.</p>
         </div>
         <div className="inline">
-          <button className="btn secondary" onClick={() => load(page)} disabled={loading || busy !== null}><RefreshCw size={15} /> Refresh</button>
-          <Link className="btn" href="/admin/orders/new"><Plus size={15} /> Create order</Link>
+          <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => load(page)} disabled={loading || busy !== null}><RefreshCw size={15} /> Refresh</button>
+          <Link className={ui.btn} href="/admin/orders/new"><Plus size={15} /> Create order</Link>
         </div>
       </div>
 
-      {(error || notice) && <div className={error ? 'alert danger' : 'alert'}>{error || notice}</div>}
+      {(error || notice) && <div className={`${ui.alert} ${error ? ui.alertDanger : ''}`}>{error || notice}</div>}
 
       <div className={styles.statGrid}>
         <button className={`${styles.statCard}${tab === 'all' ? ` ${styles.statCardActive}` : ''}`} onClick={() => setTab('all')}><span>Loaded orders</span><strong>{stats.total}</strong></button>
@@ -181,7 +182,7 @@ export function OrdersAdminShopify({ initial, canRefund = false }: { initial: In
         <button className={`${styles.statCard}${tab === 'fulfilled' ? ` ${styles.statCardActive}` : ''}`} onClick={() => setTab('fulfilled')}><span>Fulfilled</span><strong>{stats.fulfilled}</strong></button>
       </div>
 
-      <div className={`card ${styles.viewBar}`}>
+      <div className={`${ui.card} ${styles.viewBar}`}>
         {['all', 'unfulfilled', 'unpaid', 'fulfilled', 'cancelled'].map(v => (
           <button key={v} className={`${styles.view}${tab === v ? ` ${styles.viewActive}` : ''}`} onClick={() => setTab(v)}>
             {v[0].toUpperCase() + v.slice(1)} <span>{tabCount(rows, v)}</span>
@@ -189,17 +190,17 @@ export function OrdersAdminShopify({ initial, canRefund = false }: { initial: In
         ))}
       </div>
 
-      <div className={`card ${styles.toolbar}`}>
+      <div className={`${ui.card} ${styles.toolbar}`}>
         <div className={styles.search}>
           <Search size={16} />
           <input value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void load(1) }} placeholder="Search orders, customers, email…" />
           {q && <button onClick={() => { setQ(''); void load(1) }} aria-label="Clear search"><X size={14} /></button>}
         </div>
-        <select className={`input ${styles.statusSelect}`} value={filter} onChange={e => { setFilter(e.target.value); void load(1) }}>
+        <select className={`${ui.select} ${styles.statusSelect}`} value={filter} onChange={e => { setFilter(e.target.value); void load(1) }}>
           <option value="">All statuses</option>
           {statuses.map(s => <option key={s}>{s}</option>)}
         </select>
-        <button className="btn secondary" onClick={() => load(1)} disabled={loading}>{loading ? 'Searching…' : 'Apply'}</button>
+        <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => load(1)} disabled={loading}>{loading ? 'Searching…' : 'Apply'}</button>
         <span className={styles.revenue}><span>Revenue (loaded)</span>{money(stats.revenue)}</span>
       </div>
 
@@ -213,27 +214,27 @@ export function OrdersAdminShopify({ initial, canRefund = false }: { initial: In
         <div className={styles.bulkBar}>
           <div className={styles.bulkCount}><strong>{selected.length}</strong><span> selected</span></div>
           <div className={styles.bulkActions}>
-            <button className="btn ghost smallBtn" onClick={() => setSelected([])}>Clear</button>
-            <button className="btn ghost smallBtn" disabled={busy === 'bulk'} onClick={() => bulkStatus('PROCESSING')}>Mark processing</button>
-            <button className="btn ghost smallBtn" disabled={busy === 'bulk'} onClick={() => bulkStatus('SHIPPED')}>Mark shipped</button>
-            <button className="btn ghost smallBtn" disabled={busy === 'bulk'} onClick={() => bulkStatus('CANCELLED')}>Cancel</button>
+            <button className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} onClick={() => setSelected([])}>Clear</button>
+            <button className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} disabled={busy === 'bulk'} onClick={() => bulkStatus('PROCESSING')}>Mark processing</button>
+            <button className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} disabled={busy === 'bulk'} onClick={() => bulkStatus('SHIPPED')}>Mark shipped</button>
+            <button className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} disabled={busy === 'bulk'} onClick={() => bulkStatus('CANCELLED')}>Cancel</button>
           </div>
         </div>
       )}
 
-      <div className={`card ${styles.tableCard}`}>
+      <div className={`${ui.card} ${styles.tableCard}`}>
         <div className={styles.tableTopline}>
           <span>{shown.length} order{shown.length === 1 ? '' : 's'} on this page</span>
           <label className="inline" style={{ gap: 8, fontSize: 12 }}>Rows
-            <select className="input compact" value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); void load(1) }}>
+            <select className={`${ui.select} ${styles.compactSelect}`} value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); void load(1) }}>
               <option value={25}>25</option>
               <option value={50}>50</option>
               <option value={100}>100</option>
             </select>
           </label>
         </div>
-        <div className="tableWrap">
-          <table className={`table ${styles.ordersTable}`}>
+        <div className={ui.tableWrap}>
+          <table className={`${ui.table} ${styles.ordersTable}`}>
             <thead>
               <tr>
                 <th><input aria-label="Select all" type="checkbox" checked={allShownSelected} onChange={() => setSelected(allShownSelected ? selected.filter(id => !shown.some(o => o.id === id)) : [...new Set([...selected, ...shown.map(o => o.id)])])} /></th>
@@ -254,7 +255,7 @@ export function OrdersAdminShopify({ initial, canRefund = false }: { initial: In
                   <tr key={o.id} className={isSelected ? styles.selectedRow : undefined}>
                     <td><input aria-label={`Select order ${o.orderNumber}`} type="checkbox" checked={isSelected} onChange={() => setSelected(current => current.includes(o.id) ? current.filter(id => id !== o.id) : [...current, o.id])} /></td>
                     <td>
-                      <Link className="textLink" href={`/admin/orders/${o.id}`}><span className={styles.orderNumber}>#{o.orderNumber}</span></Link>
+                      <Link className={ui.textLink} href={`/admin/orders/${o.id}`}><span className={styles.orderNumber}>#{o.orderNumber}</span></Link>
                       <div className={styles.rowMeta}>{new Date(o.createdAt).toLocaleString()}</div>
                     </td>
                     <td><strong>{o.user?.name || 'Guest'}</strong><div className={styles.rowMeta}>{o.email}</div></td>
@@ -264,11 +265,11 @@ export function OrdersAdminShopify({ initial, canRefund = false }: { initial: In
                     <td><span className={`${styles.statusPill} ${statusPillClass(o.status)}`}>{o.status}</span>{o.trackingNumber && <div className={styles.rowMeta}>{o.trackingNumber}</div>}</td>
                     <td>
                       <div className={`inline ${styles.orderActions}`}>
-                        <Link className="iconBtn" href={`/admin/orders/${o.id}`} title="Open order"><ArrowUpRight size={15} /></Link>
-                        <Link className="iconBtn" href={`/admin/orders/${o.id}/invoice`} title="Invoice"><FileText size={15} /></Link>
-                        <button className="iconBtn" onClick={() => { setTrackingNumber(o.trackingNumber || ''); setTrackingCompany(o.trackingCompany || ''); setModal({ type: 'tracking', order: o }) }} disabled={busy === o.id} title="Tracking"><Truck size={15} /></button>
+                        <Link className={ui.iconBtn} href={`/admin/orders/${o.id}`} title="Open order"><ArrowUpRight size={15} /></Link>
+                        <Link className={ui.iconBtn} href={`/admin/orders/${o.id}/invoice`} title="Invoice"><FileText size={15} /></Link>
+                        <button className={ui.iconBtn} onClick={() => { setTrackingNumber(o.trackingNumber || ''); setTrackingCompany(o.trackingCompany || ''); setModal({ type: 'tracking', order: o }) }} disabled={busy === o.id} title="Tracking"><Truck size={15} /></button>
                         {canCancel && <button className={styles.dangerIcon} onClick={() => setModal({ type: 'cancel', order: o })} disabled={busy === o.id} title="Cancel"><X size={15} /></button>}
-                        {canRefund && o.paymentStatus !== 'REFUNDED' && o.status !== 'CANCELLED' && <button className="iconBtn" onClick={() => { setRefundAmount(''); setModal({ type: 'refund', order: o }) }} disabled={busy === o.id} title="Refund"><RefreshCw size={15} /></button>}
+                        {canRefund && o.paymentStatus !== 'REFUNDED' && o.status !== 'CANCELLED' && <button className={ui.iconBtn} onClick={() => { setRefundAmount(''); setModal({ type: 'refund', order: o }) }} disabled={busy === o.id} title="Refund"><RefreshCw size={15} /></button>}
                       </div>
                     </td>
                   </tr>
@@ -277,26 +278,26 @@ export function OrdersAdminShopify({ initial, canRefund = false }: { initial: In
             </tbody>
           </table>
         </div>
-        {!shown.length && <div className="empty"><PackageCheck size={28} /><h3>No orders found</h3><p className="muted">Try another view, filter or search term.</p></div>}
+        {!shown.length && <div className={ui.empty}><PackageCheck size={28} /><h3>No orders found</h3><p className={ui.muted}>Try another view, filter or search term.</p></div>}
         <div className={styles.pagination}>
-          <span className="muted">Page {page} of {pages} · {total.toLocaleString()} matching order{total === 1 ? '' : 's'}</span>
+          <span className={ui.muted}>Page {page} of {pages} · {total.toLocaleString()} matching order{total === 1 ? '' : 's'}</span>
           <div className="inline">
-            <button className="iconBtn" disabled={page <= 1 || loading} onClick={() => load(page - 1)}><ChevronLeft size={16} /></button>
-            <button className="iconBtn" disabled={page >= pages || loading} onClick={() => load(page + 1)}><ChevronRight size={16} /></button>
+            <button className={ui.iconBtn} disabled={page <= 1 || loading} onClick={() => load(page - 1)}><ChevronLeft size={16} /></button>
+            <button className={ui.iconBtn} disabled={page >= pages || loading} onClick={() => load(page + 1)}><ChevronRight size={16} /></button>
           </div>
         </div>
       </div>
 
       {modal && (
-        <div className="modalOverlay" onClick={() => setModal(null)}>
-          <div className={`card ${styles.orderModal}`} onClick={e => e.stopPropagation()}>
+        <div className={ui.modalOverlay} onClick={() => setModal(null)}>
+          <div className={`${ui.card} ${styles.orderModal}`} onClick={e => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <div>
-                <span className="muted tiny">ORDER #{modal.order.orderNumber}</span>
+                <span className={`${ui.muted} ${ui.tiny}`}>ORDER #{modal.order.orderNumber}</span>
                 <h2>{modal.type === 'cancel' ? 'Cancel order' : modal.type === 'refund' ? 'Refund order' : 'Add tracking'}</h2>
-                <p className="muted">{modal.type === 'cancel' ? 'This will release any remaining stock reservation.' : modal.type === 'refund' ? 'Refunds are recorded against the order and protected against over-refunding.' : 'Customers can use this tracking information to follow shipment progress.'}</p>
+                <p className={ui.muted}>{modal.type === 'cancel' ? 'This will release any remaining stock reservation.' : modal.type === 'refund' ? 'Refunds are recorded against the order and protected against over-refunding.' : 'Customers can use this tracking information to follow shipment progress.'}</p>
               </div>
-              <button className="iconBtn" onClick={() => setModal(null)}><X size={17} /></button>
+              <button className={ui.iconBtn} onClick={() => setModal(null)}><X size={17} /></button>
             </div>
 
             {modal.type === 'cancel' && <>
@@ -306,28 +307,28 @@ export function OrdersAdminShopify({ initial, canRefund = false }: { initial: In
                 <small>Current status: {modal.order.status}</small>
               </div>
               <div className={styles.modalFooter}>
-                <button className="btn secondary" onClick={() => setModal(null)}>Keep order</button>
+                <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setModal(null)}>Keep order</button>
                 <button className={styles.dangerBtn} onClick={cancelOrder} disabled={busy === modal.order.id}>{busy === modal.order.id ? 'Cancelling…' : 'Cancel order'}</button>
               </div>
             </>}
 
             {modal.type === 'refund' && <>
-              <label className="fieldLabel">Refund amount
-                <input className="input" autoFocus type="number" min="0.01" step="0.01" value={refundAmount} onChange={e => setRefundAmount(e.target.value)} placeholder={money(modal.order.grandTotal, modal.order.currency)} />
+              <label className={ui.fieldLabel}>Refund amount
+                <input className={ui.input} autoFocus type="number" min="0.01" step="0.01" value={refundAmount} onChange={e => setRefundAmount(e.target.value)} placeholder={money(modal.order.grandTotal, modal.order.currency)} />
               </label>
-              <p className={`muted ${styles.refundHint}`}>Maximum refundable: <strong>{money(Math.max(0, Number(modal.order.grandTotal || 0) - Number(modal.order.refundedTotal || modal.order.refundedAmount || 0)), modal.order.currency)}</strong></p>
+              <p className={`${ui.muted} ${styles.refundHint}`}>Maximum refundable: <strong>{money(Math.max(0, Number(modal.order.grandTotal || 0) - Number(modal.order.refundedTotal || modal.order.refundedAmount || 0)), modal.order.currency)}</strong></p>
               <div className={styles.modalFooter}>
-                <button className="btn secondary" onClick={() => setModal(null)}>Cancel</button>
-                <button className="btn" onClick={refundOrder} disabled={busy === modal.order.id}>{busy === modal.order.id ? 'Processing…' : 'Issue refund'}</button>
+                <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setModal(null)}>Cancel</button>
+                <button className={ui.btn} onClick={refundOrder} disabled={busy === modal.order.id}>{busy === modal.order.id ? 'Processing…' : 'Issue refund'}</button>
               </div>
             </>}
 
             {modal.type === 'tracking' && <>
-              <label className="fieldLabel">Tracking number<input className="input" autoFocus value={trackingNumber} onChange={e => setTrackingNumber(e.target.value)} placeholder="Enter tracking number" /></label>
-              <label className="fieldLabel">Carrier<input className="input" value={trackingCompany} onChange={e => setTrackingCompany(e.target.value)} placeholder="Aramex, DHL, LibanPost…" /></label>
+              <label className={ui.fieldLabel}>Tracking number<input className={ui.input} autoFocus value={trackingNumber} onChange={e => setTrackingNumber(e.target.value)} placeholder="Enter tracking number" /></label>
+              <label className={ui.fieldLabel}>Carrier<input className={ui.input} value={trackingCompany} onChange={e => setTrackingCompany(e.target.value)} placeholder="Aramex, DHL, LibanPost…" /></label>
               <div className={styles.modalFooter}>
-                <button className="btn secondary" onClick={() => setModal(null)}>Cancel</button>
-                <button className="btn" onClick={saveTracking} disabled={busy === modal.order.id}>{busy === modal.order.id ? 'Saving…' : 'Save tracking'}</button>
+                <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setModal(null)}>Cancel</button>
+                <button className={ui.btn} onClick={saveTracking} disabled={busy === modal.order.id}>{busy === modal.order.id ? 'Saving…' : 'Save tracking'}</button>
               </div>
             </>}
           </div>

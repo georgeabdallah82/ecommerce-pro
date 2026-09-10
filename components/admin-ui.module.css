@@ -67,6 +67,15 @@
 .btnGhost { border-color: var(--admin-border); background: transparent; color: var(--admin-ink-soft); }
 .btnGhost:hover:not(:disabled) { background: var(--admin-border-soft); transform: translateY(-1px); box-shadow: var(--admin-shadow-md); }
 
+/* Was app/globals.css's bare `.smallBtn{min-height:36px;padding:0 12px}`, combined with
+   `.btn` in JSX -- but admin-overhaul.css's `body:has(.adminShell) .btn{min-height:40px
+   !important;padding:0 16px!important}` always wins over a non-!important rule regardless
+   of specificity, so old markup like `className="btn ghost smallBtn"` never actually
+   shrank: every "small" button across the app (bulk-action bar, table row actions, etc.)
+   has been rendering at full 40px height. This atom finally works because nothing here
+   needs !important to win. */
+.btnSmall { min-height: 36px; padding: 0 12px; }
+
 .iconBtn {
   width: 42px;
   height: 42px;
