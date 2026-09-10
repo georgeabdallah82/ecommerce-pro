@@ -1,0 +1,126 @@
+/*
+ * Inventory admin — CSS Module on the shared --admin-* tokens, same pattern as every
+ * other admin page rebuilt this cycle (see github.com/georgeabdallah82/ecommerce-pro
+ * issue #74). Most of this page's bespoke "inventory*" classnames (inventoryStats,
+ * inventoryLive/inventoryLiveDot, the entire drawer's internal layout --
+ * inventoryDrawerHeader/Stats/Status/Tabs/Body/Actions, inventoryFieldLabel,
+ * inventoryQuickAmounts, inventoryAmountInput, inventoryTwoFields, inventoryPreview,
+ * inventoryHistoryList/Item, inventoryProductCell, inventoryThumb, inventoryLocation,
+ * inventoryQuick, inventoryQty, inventoryStatus, reservedValue, historyIcon, .num,
+ * .actionsCol -- had NO CSS defined anywhere in the codebase at all (confirmed by grep
+ * across globals.css and admin-overhaul.css), so the stats row, search/filter bar,
+ * table numeric columns, product cells, quick +/- buttons, and the entire adjustment
+ * drawer have been rendering as unstyled, unpositioned content this whole time. The
+ * handful of classnames that DID have styling (inventoryPage, inventoryStat,
+ * inventoryControlBar, inventorySearchBox, inventoryTablePro, inventoryRow,
+ * inventoryDrawer, inventoryDrawerOverlay, inventoryEmpty) lived in the legacy
+ * `body:has(.adminShell) X{...!important}` override block in admin-overhaul.css and are
+ * ported here with the same values; those entries are removed from admin-overhaul.css
+ * now that nothing reads them. Dark mode is automatic since every color comes from
+ * var(--admin-*).
+ */
+
+.page { max-width: 1480px; margin: 0 auto; padding-bottom: 32px; }
+
+.liveBadge { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; color: var(--admin-accent-strong); }
+.liveDot { width: 8px; height: 8px; border-radius: 50%; background: var(--admin-accent-strong); box-shadow: 0 0 0 3px var(--admin-accent-soft); }
+
+/* Stats row */
+.statsGrid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+.stat { padding: 16px 18px; display: grid; gap: 5px; text-align: left; font: inherit; border: 1px solid transparent; }
+.stat span:first-child { font-size: 12px; color: var(--admin-muted); font-weight: 650; }
+.stat strong { font-size: 21px; color: var(--admin-ink); letter-spacing: -.02em; }
+.stat small { font-size: 11px; color: var(--admin-muted); }
+.statClickable { cursor: pointer; }
+.statClickable:hover { box-shadow: var(--admin-shadow-md); }
+.statActive { border-color: var(--admin-accent); box-shadow: 0 0 0 3px var(--admin-focus); }
+.statWarning strong { color: var(--admin-warning); }
+.statDanger strong { color: var(--admin-danger); }
+
+/* Control bar */
+.controlBar { display: flex; align-items: center; gap: 14px; padding: 12px 14px; flex-wrap: wrap; justify-content: space-between; margin-bottom: 16px; }
+.searchBox { display: flex; align-items: center; gap: 8px; flex: 1 1 260px; min-width: 0; height: 42px; padding: 0 12px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); background: var(--admin-border-soft); color: var(--admin-muted); transition: background .15s ease, border-color .15s ease; }
+.searchBox:focus-within { border-color: var(--admin-accent); box-shadow: 0 0 0 3px var(--admin-focus); background: var(--admin-surface); }
+.searchBox input { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-size: 13px; color: var(--admin-ink); outline: 0; }
+.searchBox input::placeholder { color: var(--admin-muted-soft); }
+.searchClear { display: grid; place-items: center; border: 0; background: transparent; color: var(--admin-muted); cursor: pointer; padding: 4px; }
+.searchClear:hover { color: var(--admin-ink); }
+.controlGroup { display: flex; gap: 10px; flex-wrap: wrap; }
+.selectField { display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 12px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); background: var(--admin-surface); color: var(--admin-muted); }
+.selectField select { border: 0; background: transparent; font: inherit; font-size: 12px; font-weight: 700; color: var(--admin-ink); outline: 0; }
+
+/* Table shell */
+.tableHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--admin-border); flex-wrap: wrap; }
+.tableHeader strong { color: var(--admin-ink); font-size: 13px; }
+.row { cursor: pointer; }
+.productCell { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.thumb { width: 40px; height: 40px; border-radius: var(--admin-radius-sm); background: var(--admin-border-soft); display: grid; place-items: center; overflow: hidden; flex: 0 0 auto; color: var(--admin-muted); }
+.thumb img { width: 100%; height: 100%; object-fit: cover; }
+.locationTag { display: inline-flex; align-items: center; gap: 5px; color: var(--admin-ink-soft); font-size: 12px; }
+.reservedValue { color: var(--admin-ink-soft); }
+.qty { font-weight: 750; }
+.qtyWarning { color: var(--admin-warning); }
+.qtyDanger { color: var(--admin-danger); }
+.quickActions { display: flex; gap: 6px; justify-content: flex-end; }
+.quickActions button { width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm); background: var(--admin-surface); color: var(--admin-ink-soft); cursor: pointer; }
+.quickActions button:hover:not(:disabled) { background: var(--admin-border-soft); color: var(--admin-ink); }
+.quickActions button:disabled { opacity: .35; cursor: not-allowed; }
+.emptyCompact { padding: 34px 20px; }
+
+/* Drawer */
+.drawerOverlay { position: fixed; inset: 0; z-index: 1200; display: flex; justify-content: flex-end; background: rgba(15, 18, 16, .44); backdrop-filter: blur(4px); animation: inventoryFadeIn .16s ease-out; }
+.drawer { width: min(420px, 100%); height: 100%; overflow-y: auto; background: var(--admin-surface); box-shadow: -24px 0 70px rgba(0, 0, 0, .22); border-left: 1px solid var(--admin-border); display: grid; align-content: start; animation: inventorySlideIn .2s ease-out; }
+@keyframes inventoryFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes inventorySlideIn { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.drawerHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 20px 20px 0; }
+.drawerHeader h2 { margin: 3px 0 0; font-size: 18px; color: var(--admin-ink); }
+.drawerClose { border: 0; background: transparent; color: var(--admin-muted); cursor: pointer; padding: 4px; display: grid; place-items: center; }
+.drawerClose:hover:not(:disabled) { color: var(--admin-ink); }
+.drawerClose:disabled { opacity: .4; cursor: not-allowed; }
+
+.drawerStats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 16px 20px 0; }
+.drawerStats > div { display: grid; gap: 3px; }
+.drawerStats span { font-size: 11px; color: var(--admin-muted); }
+.drawerStats strong { font-size: 18px; color: var(--admin-ink); }
+
+.drawerStatus { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 20px 0; }
+
+.drawerTabs { display: flex; gap: 3px; margin: 16px 20px 0; padding: 4px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); background: var(--admin-bg); }
+.drawerTabs button { flex: 1; border: 0; background: transparent; color: var(--admin-muted); font: inherit; font-size: 12px; font-weight: 700; padding: 8px; border-radius: var(--admin-radius-sm); cursor: pointer; }
+.drawerTabs button.active { background: var(--admin-accent); color: var(--admin-accent-ink); }
+
+.drawerBody { padding: 16px 20px 20px; display: grid; gap: 14px; }
+.amountBlock { display: grid; gap: 8px; }
+.fieldLabel { display: grid; gap: 3px; font-size: 12px; font-weight: 650; color: var(--admin-ink-soft); }
+.fieldLabel small { font-size: 11px; font-weight: 500; color: var(--admin-muted); }
+.quickAmounts { display: flex; gap: 6px; flex-wrap: wrap; }
+.quickAmounts button { min-width: 44px; height: 34px; padding: 0 10px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm); background: var(--admin-surface); color: var(--admin-ink-soft); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.quickAmounts button:hover:not(:disabled) { background: var(--admin-border-soft); }
+.quickAmounts button.active { background: var(--admin-accent); border-color: var(--admin-accent); color: var(--admin-accent-ink); }
+.quickAmounts button:disabled { opacity: .35; cursor: not-allowed; }
+.amountInput { width: 100%; height: 42px; padding: 0 14px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); background: var(--admin-surface); color: var(--admin-ink); font: inherit; font-size: 14px; font-weight: 700; }
+
+.twoFields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.preview { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 13px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm); background: var(--admin-bg); }
+.preview div { display: grid; gap: 2px; }
+.preview span { font-size: 11px; color: var(--admin-muted); }
+.preview strong { font-size: 16px; color: var(--admin-ink); }
+
+.drawerActions { display: flex; gap: 10px; justify-content: flex-end; }
+
+.historyList { display: grid; gap: 2px; }
+.historyItem { display: flex; align-items: flex-start; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--admin-border-soft); }
+.historyItem:last-child { border-bottom: 0; }
+.historyIcon { width: 28px; height: 28px; border-radius: var(--admin-radius-sm); background: var(--admin-border-soft); color: var(--admin-muted); display: grid; place-items: center; flex: 0 0 auto; margin-top: 1px; }
+.historyItem strong { font-size: 13px; color: var(--admin-ink); }
+
+@media (max-width: 950px) {
+  .statsGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .statsGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .drawer { width: 100%; }
+  .twoFields { grid-template-columns: 1fr; }
+}

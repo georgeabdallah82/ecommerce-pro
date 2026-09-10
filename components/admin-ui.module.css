@@ -204,6 +204,11 @@
   cursor: pointer;
   font: inherit;
 }
+/* Was globals.css's bare `.dangerText{color:#ad3123}` -- a hardcoded hex that
+   doesn't even match the light-mode --admin-danger token (#c1372a), and has no
+   dark-mode value at all, so a "Remove image" style text button rendered the
+   wrong red in light mode and an unreadably dark red on dark surfaces. */
+.textButtonDanger { color: var(--admin-danger); }
 
 /* Pills / badges */
 .pill {

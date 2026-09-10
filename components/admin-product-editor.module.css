@@ -25,7 +25,12 @@
 .topLeft > div:last-child { min-width: 0; }
 .title { margin: 2px 0 0; font-size: 28px; line-height: 1.15; letter-spacing: -.04em; color: var(--admin-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: min(52vw, 720px); }
 .topActions { justify-content: flex-end; flex-wrap: wrap; }
-.topActions :global(.btn) { min-height: 40px; }
+/* topActionBtn is applied alongside admin-ui.module.css's ui.btn on each button in
+   .topActions -- a :global(.btn) selector here would silently stop matching once
+   those buttons compose the shared, build-time-hashed ui.btn instead of the bare
+   "btn" classname (the same pitfall already fixed in #90/#91/#103). ui.btn's own
+   min-height is already 40px, so that half of the old rule is simply dropped as
+   redundant rather than ported. */
 
 .tabs {
   position: sticky;
@@ -63,7 +68,9 @@
 .checkGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 
 .tagRow { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
-.tagRow :global(.input) { flex: 1 1 190px; }
+/* Was `.tagRow :global(.input)` -- same :global() pitfall as topActionBtn above,
+   for the tag input once it composes ui.input instead of the bare "input" class. */
+.tagRowField { flex: 1 1 190px; }
 .tagChip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 10px; border-radius: var(--admin-radius-pill); background: var(--admin-border-soft); color: var(--admin-ink); font-size: 12px; }
 .tagChip button { border: 0; background: none; color: var(--admin-muted); cursor: pointer; font-size: 14px; line-height: 1; padding: 2px; }
 
@@ -81,7 +88,9 @@
 .variantHead, .variantRow { display: grid; grid-template-columns: minmax(170px, 1.5fr) minmax(130px, 1fr) minmax(100px, .7fr) minmax(90px, .6fr) 40px; gap: 8px; align-items: center; }
 .variantHead { padding: 0 2px 7px; color: var(--admin-muted); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
 .variantRow { padding: 8px 0; border-top: 1px solid var(--admin-border-soft); }
-.variantRow :global(.input) { min-width: 0; }
+/* Was `.variantRow :global(.input)` -- same :global() pitfall, for the four
+   per-variant inputs once they compose ui.input instead of bare "input". */
+.variantField { min-width: 0; }
 
 .notice, .pricingPreview { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 13px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm); background: var(--admin-bg); }
 .notice span { font-size: 12px; color: var(--admin-muted); }
@@ -145,7 +154,7 @@
   .topbar { position: relative; top: auto; flex-direction: column; gap: 12px; padding: 10px 0 12px; }
   .topLeft, .topActions { width: 100%; }
   .topActions { justify-content: stretch; }
-  .topActions :global(.btn) { flex: 1; }
+  .topActionBtn { flex: 1; }
   .title { font-size: 22px; max-width: 72vw; }
   .tabs { position: sticky; top: 0; z-index: 35; }
   .tabs button { padding: 9px 12px; }
@@ -154,12 +163,12 @@
   .optionRow { grid-template-columns: 1fr; }
   .variantHead { display: none; }
   .variantRow { grid-template-columns: 1fr 1fr; align-items: stretch; }
-  .variantRow :global(.iconBtn) { grid-column: 2; justify-self: end; }
+  .variantDeleteBtn { grid-column: 2; justify-self: end; }
 }
 
 @media (max-width: 480px) {
   .topActions { display: grid; grid-template-columns: 1fr 1fr; }
-  .topActions :global(.btn):last-child { grid-column: 1 / -1; }
+  .topActionBtn:last-child { grid-column: 1 / -1; }
   .card { border-radius: var(--admin-radius-md); }
   .tabs { margin-bottom: 10px; }
 }
