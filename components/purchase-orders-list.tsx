@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Boxes, Plus } from 'lucide-react'
 import { money } from '@/lib/config'
 import styles from './admin-purchase-orders.module.css'
+import ui from './admin-ui.module.css'
 
 type PO = {
   id: string
@@ -47,24 +48,24 @@ export default function PurchaseOrdersList({ initial, canManage }: { initial: PO
     <div className={styles.page}>
       <div className={styles.header}>
         <div>
-          <span className="muted">INVENTORY</span>
+          <span className={ui.muted}>INVENTORY</span>
           <h1 className={styles.title}>Purchase orders</h1>
-          <p className="muted">Order stock from suppliers and record what arrives at each location.</p>
+          <p className={ui.muted}>Order stock from suppliers and record what arrives at each location.</p>
         </div>
-        {canManage && <Link className="btn" href="/admin/purchase-orders/new"><Plus size={16} /> New purchase order</Link>}
+        {canManage && <Link className={ui.btn} href="/admin/purchase-orders/new"><Plus size={16} /> New purchase order</Link>}
       </div>
 
-      <div className={`card ${styles.views}`}>
+      <div className={`${ui.card} ${styles.views}`}>
         {views.map(([value, label]) => (
           <button key={value} className={`${styles.view}${status === value ? ` ${styles.viewActive}` : ''}`} onClick={() => setStatus(value)}>
-            {label} <span className="muted">{value === 'ALL' ? rows.length : rows.filter(r => r.status === value).length}</span>
+            {label} <span className={ui.muted}>{value === 'ALL' ? rows.length : rows.filter(r => r.status === value).length}</span>
           </button>
         ))}
       </div>
 
-      <div className={`card ${styles.tableCard}`}>
-        <div className="tableWrap">
-          <table className={`table ${styles.resultsTable}`}>
+      <div className={`${ui.card} ${styles.tableCard}`}>
+        <div className={ui.tableWrap}>
+          <table className={`${ui.table} ${styles.resultsTable}`}>
             <thead>
               <tr>
                 <th>PO number</th><th>Supplier</th><th>Location</th><th>Status</th><th>Receiving</th><th>Total cost</th><th>Created</th>
@@ -76,8 +77,8 @@ export default function PurchaseOrdersList({ initial, canManage }: { initial: PO
                 return (
                   <tr key={po.id} onClick={() => { window.location.href = `/admin/purchase-orders/${po.id}` }}>
                     <td><strong>{po.number}</strong></td>
-                    <td>{po.supplierName || <span className="muted">—</span>}</td>
-                    <td>{po.location?.name || <span className="muted">Unassigned</span>}</td>
+                    <td>{po.supplierName || <span className={ui.muted}>—</span>}</td>
+                    <td>{po.location?.name || <span className={ui.muted}>Unassigned</span>}</td>
                     <td><span className={`${styles.statusPill} ${statusClass(po.status)}`}>{po.status.replace('_', ' ')}</span></td>
                     <td>
                       <div className={styles.progressWrap}>
@@ -86,7 +87,7 @@ export default function PurchaseOrdersList({ initial, canManage }: { initial: PO
                       </div>
                     </td>
                     <td>{money(po.totalCost, po.currency)}</td>
-                    <td className="muted">{new Date(po.createdAt).toLocaleDateString()}</td>
+                    <td className={ui.muted}>{new Date(po.createdAt).toLocaleDateString()}</td>
                   </tr>
                 )
               })}
@@ -94,10 +95,10 @@ export default function PurchaseOrdersList({ initial, canManage }: { initial: PO
           </table>
         </div>
         {!filtered.length && (
-          <div className="empty">
+          <div className={ui.empty}>
             <Boxes size={20} />
             <p style={{ marginTop: 8 }}>No purchase orders {status === 'ALL' ? 'yet' : `with status ${status.toLowerCase().replace('_', ' ')}`}.</p>
-            {canManage && <Link className="btn secondary" href="/admin/purchase-orders/new" style={{ marginTop: 10, display: 'inline-flex' }}>Create the first one</Link>}
+            {canManage && <Link className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/purchase-orders/new" style={{ marginTop: 10, display: 'inline-flex' }}>Create the first one</Link>}
           </div>
         )}
       </div>
