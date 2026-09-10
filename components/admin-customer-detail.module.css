@@ -70,7 +70,14 @@
 .tagChip button:hover { color: var(--admin-danger); }
 
 .addRow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.addRow :global(.input) { flex: 1 1 190px; min-width: 0; }
+/* Was `.addRow :global(.input)` -- reached the tag/segment input and select
+   only while they carried the bare global "input" classname. Now that they
+   compose the shared admin-ui.module.css .input/.select (build-time-hashed),
+   a :global(.input) selector here would silently stop matching anything, the
+   same way :global(.btn) went dead in admin-settings-center.module.css (#90).
+   addRowField is a page-local class applied alongside ui.input/ui.select so
+   this flex-basis rule still has something real to target. */
+.addRowField { flex: 1 1 190px; min-width: 0; }
 .chipButton { border: 1px dashed var(--admin-border); background: transparent; color: var(--admin-muted); border-radius: var(--admin-radius-pill); padding: 6px 11px; font-size: 12px; font-weight: 650; cursor: pointer; }
 .chipButton:hover { border-color: var(--admin-accent); color: var(--admin-ink); background: var(--admin-border-soft); }
 

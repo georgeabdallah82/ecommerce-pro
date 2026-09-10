@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ArrowLeft, Mail, MapPin, Phone, Save, ShieldOff, UserCheck, Plus, X, CreditCard, UsersRound, Coins } from 'lucide-react'
 import { money } from '@/lib/config'
 import s from './admin-customer-detail.module.css'
+import ui from './admin-ui.module.css'
 
 async function api(path: string, init?: RequestInit) {
   const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
@@ -137,71 +138,71 @@ export default function CustomerDetailAdmin({ initial }: { initial: any }) {
   return <div className={s.page}>
     <div className={s.topbar}>
       <div className={s.topLeft}>
-        <Link href="/admin/customers" className="iconBtn" onClick={e => { if (dirty && !confirm('Discard unsaved changes?')) e.preventDefault() }}><ArrowLeft size={18}/></Link>
-        <div><div className="muted tiny">CUSTOMER</div><h1 className={s.title}>{customer.name}</h1>{dirty && <div className="muted tiny">Unsaved changes</div>}</div>
+        <Link href="/admin/customers" className={ui.iconBtn} onClick={e => { if (dirty && !confirm('Discard unsaved changes?')) e.preventDefault() }}><ArrowLeft size={18}/></Link>
+        <div><div className={`${ui.muted} ${ui.tiny}`}>CUSTOMER</div><h1 className={s.title}>{customer.name}</h1>{dirty && <div className={`${ui.muted} ${ui.tiny}`}>Unsaved changes</div>}</div>
       </div>
       <div className={s.topActions}>
-        <span className={customer.isActive ? 'statusPill active' : 'statusPill archived'}>{customer.isActive ? <UserCheck size={13}/> : <ShieldOff size={13}/>} {customer.isActive ? 'Active' : 'Disabled'}</span>
-        <button className="btn" onClick={save} disabled={saving}><Save size={16}/> {saving ? 'Saving…' : 'Save'}</button>
+        <span className={`${ui.statusPill} ${customer.isActive ? ui.statusPillSuccess : ''}`}>{customer.isActive ? <UserCheck size={13}/> : <ShieldOff size={13}/>} {customer.isActive ? 'Active' : 'Disabled'}</span>
+        <button className={ui.btn} onClick={save} disabled={saving}><Save size={16}/> {saving ? 'Saving…' : 'Save'}</button>
       </div>
     </div>
-    {(error || message) && <div className={error ? 'alert danger' : 'alert'} style={{ margin: '0 0 14px' }}>{error || message}</div>}
+    {(error || message) && <div className={`${ui.alert} ${error ? ui.alertDanger : ''} ${s.alert}`}>{error || message}</div>}
 
-    <div className={`card ${s.hero}`}>
+    <div className={`${ui.card} ${s.hero}`}>
       <div className={s.heroAvatar}>{initials(customer.name)}</div>
       <div className={s.heroInfo}>
         <h2>{customer.name}</h2>
-        <div className="muted">Customer since {new Date(customer.createdAt).toLocaleDateString()}</div>
-        <div className={s.heroContacts}><span className="muted"><Mail size={14}/> {customer.email}</span>{customer.phone && <span className="muted"><Phone size={14}/> {customer.phone}</span>}</div>
+        <div className={ui.muted}>Customer since {new Date(customer.createdAt).toLocaleDateString()}</div>
+        <div className={s.heroContacts}><span className={ui.muted}><Mail size={14}/> {customer.email}</span>{customer.phone && <span className={ui.muted}><Phone size={14}/> {customer.phone}</span>}</div>
       </div>
       <div className={s.heroActions}>
-        <a className="btn secondary" href={`mailto:${customer.email}`}><Mail size={15}/> Email</a>
-        {customer.phone && <a className="btn secondary" href={`tel:${customer.phone}`}><Phone size={15}/> Call</a>}
+        <a className={`${ui.btn} ${ui.btnSecondary}`} href={`mailto:${customer.email}`}><Mail size={15}/> Email</a>
+        {customer.phone && <a className={`${ui.btn} ${ui.btnSecondary}`} href={`tel:${customer.phone}`}><Phone size={15}/> Call</a>}
       </div>
     </div>
 
     <div className={s.stats}>
-      <div className={`card ${s.statCard}`}><span className="muted">Total spent</span><strong>{money(totalSpent)}</strong></div>
-      <div className={`card ${s.statCard}`}><span className="muted">Orders</span><strong>{totalOrders}</strong></div>
-      <div className={`card ${s.statCard}`}><span className="muted">Average order</span><strong>{money(average)}</strong></div>
-      <div className={`card ${s.statCard}`}><span className="muted">Wallet</span><strong>{money(customer.creditBalance || 0)}</strong></div>
-      <div className={`card ${s.statCard}`}><span className="muted">Coins</span><strong>{Number(customer.coinBalance || 0).toLocaleString()}</strong></div>
+      <div className={`${ui.card} ${s.statCard}`}><span className={ui.muted}>Total spent</span><strong>{money(totalSpent)}</strong></div>
+      <div className={`${ui.card} ${s.statCard}`}><span className={ui.muted}>Orders</span><strong>{totalOrders}</strong></div>
+      <div className={`${ui.card} ${s.statCard}`}><span className={ui.muted}>Average order</span><strong>{money(average)}</strong></div>
+      <div className={`${ui.card} ${s.statCard}`}><span className={ui.muted}>Wallet</span><strong>{money(customer.creditBalance || 0)}</strong></div>
+      <div className={`${ui.card} ${s.statCard}`}><span className={ui.muted}>Coins</span><strong>{Number(customer.coinBalance || 0).toLocaleString()}</strong></div>
     </div>
 
     <div className={s.workspace}>
       <main className={s.main}>
         <Card title="Customer information" sub="Contact details used across orders and account communications.">
           <div className={s.twoCol}>
-            <label className={s.field}>Full name<input className="input" value={customer.name} onChange={e => updateProfile({ name: e.target.value })}/></label>
-            <label className={s.field}>Email<input className="input" value={customer.email} onChange={e => updateProfile({ email: e.target.value })}/></label>
-            <label className={s.field}>Phone<input className="input" value={customer.phone || ''} onChange={e => updateProfile({ phone: e.target.value })}/></label>
-            <label className={s.field}>Account status<select className="input" value={customer.isActive ? 'ACTIVE' : 'DISABLED'} onChange={e => updateProfile({ isActive: e.target.value === 'ACTIVE' })}><option value="ACTIVE">Active</option><option value="DISABLED">Disabled</option></select></label>
+            <label className={s.field}>Full name<input className={ui.input} value={customer.name} onChange={e => updateProfile({ name: e.target.value })}/></label>
+            <label className={s.field}>Email<input className={ui.input} value={customer.email} onChange={e => updateProfile({ email: e.target.value })}/></label>
+            <label className={s.field}>Phone<input className={ui.input} value={customer.phone || ''} onChange={e => updateProfile({ phone: e.target.value })}/></label>
+            <label className={s.field}>Account status<select className={ui.select} value={customer.isActive ? 'ACTIVE' : 'DISABLED'} onChange={e => updateProfile({ isActive: e.target.value === 'ACTIVE' })}><option value="ACTIVE">Active</option><option value="DISABLED">Disabled</option></select></label>
           </div>
         </Card>
 
         <Card title="Tags & segments" sub="Organize this customer for filtering, marketing and operational workflows.">
           <div className={s.tagCloud}>
             {(customer.tags || []).map((tag: any) => <span className={s.tagChip} key={tag.id}>{tag.value}<button type="button" onClick={() => removeTag(tag.id)} aria-label={`Remove ${tag.value}`}><X size={12}/></button></span>)}
-            {!(customer.tags || []).length && <span className="muted">No tags yet.</span>}
+            {!(customer.tags || []).length && <span className={ui.muted}>No tags yet.</span>}
           </div>
           <div className={s.addRow}>
-            <input className="input" placeholder="Add tag" value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void addTag() } }}/>
-            <button className="btn secondary" onClick={() => addTag()} disabled={!tagInput.trim()}><Plus size={15}/> Add tag</button>
+            <input className={`${ui.input} ${s.addRowField}`} placeholder="Add tag" value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void addTag() } }}/>
+            <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => addTag()} disabled={!tagInput.trim()}><Plus size={15}/> Add tag</button>
             {availableTags.slice(0, 6).map((tag: any) => <button className={s.chipButton} type="button" key={tag.id} onClick={() => addTag(tag.value)}>+ {tag.value}</button>)}
           </div>
           <div className={s.segmentRows}>
-            {(customer.segments || []).map((seg: any) => <div className={s.segmentRow} key={seg.id}><div><strong>{seg.name}</strong><div>{seg.description || 'Customer segment'}</div></div><button className="iconBtn" onClick={() => removeSegment(seg.id)} title="Remove segment"><X size={14}/></button></div>)}
-            {!(customer.segments || []).length && <span className="muted">No segments assigned.</span>}
+            {(customer.segments || []).map((seg: any) => <div className={s.segmentRow} key={seg.id}><div><strong>{seg.name}</strong><div>{seg.description || 'Customer segment'}</div></div><button className={ui.iconBtn} onClick={() => removeSegment(seg.id)} title="Remove segment"><X size={14}/></button></div>)}
+            {!(customer.segments || []).length && <span className={ui.muted}>No segments assigned.</span>}
           </div>
           <div className={s.addRow}>
-            <select className="input" value={segmentId} onChange={e => setSegmentId(e.target.value)}><option value="">Add to a segment…</option>{availableSegments.map((seg: any) => <option value={seg.id} key={seg.id}>{seg.name}</option>)}</select>
-            <button className="btn secondary" onClick={addSegment} disabled={!segmentId}><UsersRound size={15}/> Add segment</button>
+            <select className={`${ui.select} ${s.addRowField}`} value={segmentId} onChange={e => setSegmentId(e.target.value)}><option value="">Add to a segment…</option>{availableSegments.map((seg: any) => <option value={seg.id} key={seg.id}>{seg.name}</option>)}</select>
+            <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={addSegment} disabled={!segmentId}><UsersRound size={15}/> Add segment</button>
           </div>
           <Link href="/admin/customer-segments" className={s.link}>Manage segments</Link>
         </Card>
 
-        <Card title="Order history" sub="Every order linked to this customer." action={<Link className="btn secondary" href="/admin/orders">View all orders</Link>}>
-          {!orders.length ? <div className={s.emptyInline}>No orders yet.</div> : <div className={s.tableWrap}><table className="table"><thead><tr><th>Order</th><th>Status</th><th>Payment</th><th>Total</th><th>Date</th></tr></thead><tbody>{orders.slice(0, 25).map((o: any) => <tr key={o.id}><td><Link className={s.link} href={`/admin/orders/${o.id}`}>#{o.orderNumber}</Link></td><td><span className="pill">{o.status}</span></td><td><span className="pill">{o.paymentStatus}</span></td><td><strong>{money(o.grandTotal, o.currency)}</strong></td><td>{new Date(o.createdAt).toLocaleDateString()}</td></tr>)}</tbody></table></div>}
+        <Card title="Order history" sub="Every order linked to this customer." action={<Link className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/orders">View all orders</Link>}>
+          {!orders.length ? <div className={s.emptyInline}>No orders yet.</div> : <div className={s.tableWrap}><table className={ui.table}><thead><tr><th>Order</th><th>Status</th><th>Payment</th><th>Total</th><th>Date</th></tr></thead><tbody>{orders.slice(0, 25).map((o: any) => <tr key={o.id}><td><Link className={s.link} href={`/admin/orders/${o.id}`}>#{o.orderNumber}</Link></td><td><span className={ui.pill}>{o.status}</span></td><td><span className={ui.pill}>{o.paymentStatus}</span></td><td><strong>{money(o.grandTotal, o.currency)}</strong></td><td>{new Date(o.createdAt).toLocaleDateString()}</td></tr>)}</tbody></table></div>}
         </Card>
 
         <Card title="Reviews" sub="Reviews written by this customer.">
@@ -221,28 +222,28 @@ export default function CustomerDetailAdmin({ initial }: { initial: any }) {
         <Card title="Wallet" sub="Store credit balance with a protected ledger." icon={<CreditCard size={18}/>}>
           <div className={s.balance}>{money(customer.creditBalance || 0)}<span>available wallet balance</span></div>
           <div className={s.twoCol}>
-            <label className={s.field}>Adjustment<input className="input" type="number" step="0.01" placeholder="+50 or -25" value={creditAmount} onChange={e => setCreditAmount(e.target.value)}/></label>
-            <label className={s.field}>Reason<input className="input" value={creditReason} onChange={e => setCreditReason(e.target.value)} placeholder="Customer goodwill"/></label>
+            <label className={s.field}>Adjustment<input className={ui.input} type="number" step="0.01" placeholder="+50 or -25" value={creditAmount} onChange={e => setCreditAmount(e.target.value)}/></label>
+            <label className={s.field}>Reason<input className={ui.input} value={creditReason} onChange={e => setCreditReason(e.target.value)} placeholder="Customer goodwill"/></label>
           </div>
-          <button className="btn" onClick={adjustCredit} disabled={creditBusy || !creditAmount}>{creditBusy ? 'Updating…' : 'Adjust wallet'}</button>
+          <button className={ui.btn} onClick={adjustCredit} disabled={creditBusy || !creditAmount}>{creditBusy ? 'Updating…' : 'Adjust wallet'}</button>
           <div className={s.history}>{(customer.creditTransactions || []).slice(0, 8).map((tx: any) => <div className={s.historyRow} key={tx.id}><span>{tx.reason || tx.type}<small>{new Date(tx.createdAt).toLocaleDateString()}</small></span><strong className={tx.amount >= 0 ? s.amountPositive : s.amountNegative}>{tx.amount >= 0 ? '+' : ''}{money(tx.amount, tx.currency)}</strong></div>)}
-          {!(customer.creditTransactions || []).length && <span className="muted">No wallet activity yet.</span>}</div>
+          {!(customer.creditTransactions || []).length && <span className={ui.muted}>No wallet activity yet.</span>}</div>
         </Card>
 
         <Card title="Coins" sub="1 coin redeems as 0.01 store currency unit." icon={<Coins size={18}/>}>
           <div className={s.balance}>{Number(customer.coinBalance || 0).toLocaleString()}<span>available coins</span></div>
           <div className={s.twoCol}>
-            <label className={s.field}>Adjustment<input className="input" type="number" step="1" placeholder="+500 or -100" value={coinAmount} onChange={e => setCoinAmount(e.target.value)}/></label>
-            <label className={s.field}>Reason<input className="input" value={coinReason} onChange={e => setCoinReason(e.target.value)} placeholder="Loyalty bonus"/></label>
+            <label className={s.field}>Adjustment<input className={ui.input} type="number" step="1" placeholder="+500 or -100" value={coinAmount} onChange={e => setCoinAmount(e.target.value)}/></label>
+            <label className={s.field}>Reason<input className={ui.input} value={coinReason} onChange={e => setCoinReason(e.target.value)} placeholder="Loyalty bonus"/></label>
           </div>
-          <button className="btn" onClick={adjustCoins} disabled={coinBusy || !coinAmount}>{coinBusy ? 'Updating…' : 'Adjust coins'}</button>
+          <button className={ui.btn} onClick={adjustCoins} disabled={coinBusy || !coinAmount}>{coinBusy ? 'Updating…' : 'Adjust coins'}</button>
           <div className={s.history}>{(customer.coinTransactions || []).slice(0, 8).map((tx: any) => <div className={s.historyRow} key={tx.id}><span>{tx.reason || tx.type}<small>{new Date(tx.createdAt).toLocaleDateString()}</small></span><strong className={tx.amount >= 0 ? s.amountPositive : s.amountNegative}>{tx.amount >= 0 ? '+' : ''}{Number(tx.amount).toLocaleString()}</strong></div>)}
-          {!(customer.coinTransactions || []).length && <span className="muted">No coin activity yet.</span>}</div>
+          {!(customer.coinTransactions || []).length && <span className={ui.muted}>No coin activity yet.</span>}</div>
         </Card>
 
         <Card title="Addresses" sub="Saved customer addresses.">
           {!customer.addresses?.length ? <div className={s.emptyInline}>No saved addresses.</div> : <div className={s.addressList}>{customer.addresses.map((a: any) => <div className={s.addressItem} key={a.id}>
-            <div className={s.addressHead}><MapPin size={15}/><span>{a.label || 'Address'}</span>{a.isDefault && <span className="pill">Default</span>}</div>
+            <div className={s.addressHead}><MapPin size={15}/><span>{a.label || 'Address'}</span>{a.isDefault && <span className={ui.pill}>Default</span>}</div>
             <div>{a.firstName} {a.lastName}</div>
             <div>{a.line1}{a.line2 ? `, ${a.line2}` : ''}</div>
             <div>{a.city}{a.region ? `, ${a.region}` : ''} {a.postalCode || ''}</div>
