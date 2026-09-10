@@ -146,8 +146,26 @@
   box-shadow: 0 0 0 3px var(--admin-focus);
 }
 
+/* Was app/admin/layout.tsx's `body:has(.adminShell) .tableTopline .input.compact`
+   (height/min-width only) -- that selector needs a literal `.tableTopline`
+   ancestor, which a CSS Module's hashed class never produces, and several real
+   consumers don't even have a `.tableTopline`-named wrapper at all, so this has
+   never applied anywhere. A native <select> also ignores a bare `height`
+   override without `min-height` alongside it (confirmed by computed style when
+   this was first found in the Orders list migration) -- both are set here. */
+.selectCompact { height: 34px; min-height: 34px; min-width: 74px; }
+
 .fieldLabel { display: block; margin-bottom: 7px; font-size: 11px; font-weight: 850; color: var(--admin-ink-soft); }
 .fieldHelp { display: block; margin-top: 6px; font-size: 11px; line-height: 1.5; color: var(--admin-muted); }
+
+/* Was globals.css's bare `.twoColFields{display:grid;grid-template-columns:1fr
+   1fr;gap:16px}`, admin-overridden to gap:14px via !important -- a plain,
+   reusable two-column form-row layout with no page-specific styling, so it
+   lives here instead of being redefined per page module. */
+.twoCol { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 700px) {
+  .twoCol { grid-template-columns: 1fr; }
+}
 
 /* Text-as-button */
 .textLink, .textButton {

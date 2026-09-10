@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { CreditCard, Plus, RefreshCw, Search, Settings2, X } from 'lucide-react'
 import { money } from '@/lib/config'
 import styles from './admin-gift-cards.module.css'
+import ui from './admin-ui.module.css'
 
 type GiftCard = {
   id: string
@@ -20,7 +21,7 @@ type GiftCard = {
   updatedAt: string
 }
 
-const STATUS_TONE: Record<string, string> = { ACTIVE: 'success', DISABLED: 'danger', EXPIRED: 'warning' }
+const STATUS_TONE: Record<string, string> = { ACTIVE: ui.statusPillSuccess, DISABLED: ui.statusPillDanger, EXPIRED: ui.statusPillWarning }
 const STATUSES = ['ACTIVE', 'DISABLED', 'EXPIRED'] as const
 
 async function api(path: string, init?: RequestInit) {
@@ -150,97 +151,97 @@ export default function GiftCardsAdmin({ initial, canManage, defaultCurrency }: 
 
   return <div className={styles.page}>
     <div className={styles.header}>
-      <div><span className="muted tiny">CUSTOMERS</span><h1 className="h2">Gift cards</h1><p className="muted">Issue store credit cards and manage balances, status and expiry.</p></div>
+      <div><span className={`${ui.muted} ${ui.tiny}`}>CUSTOMERS</span><h1 className={ui.heading}>Gift cards</h1><p className={ui.muted}>Issue store credit cards and manage balances, status and expiry.</p></div>
       <div className="inline">
-        <button className="btn secondary" onClick={search} disabled={loading}><RefreshCw size={15} /> Refresh</button>
-        {canManage && <button className="btn" onClick={openCreate}><Plus size={15} /> New gift card</button>}
+        <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={search} disabled={loading}><RefreshCw size={15} /> Refresh</button>
+        {canManage && <button className={ui.btn} onClick={openCreate}><Plus size={15} /> New gift card</button>}
       </div>
     </div>
 
-    {(error || notice) && <div className={error ? 'alert danger' : 'alert'}>{error || notice}</div>}
+    {(error || notice) && <div className={`${ui.alert} ${error ? ui.alertDanger : ''}`}>{error || notice}</div>}
 
-    <div className={`card ${styles.toolbar}`}>
+    <div className={`${ui.card} ${styles.toolbar}`}>
       <div className={styles.search}><Search size={15} /><input value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && search()} placeholder="Search by code or last 4 digits…" /></div>
-      <select className="input compact" value={status} onChange={e => setStatus(e.target.value)}>
+      <select className={`${ui.select} ${ui.selectCompact}`} value={status} onChange={e => setStatus(e.target.value)}>
         <option value="ALL">All statuses</option>
         {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
       </select>
-      <button className="btn secondary" onClick={search} disabled={loading}>Search</button>
+      <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={search} disabled={loading}>Search</button>
     </div>
 
-    <div className="card productTableCard">
-      <div className="tableWrap">
-        <table className="table">
+    <div className={ui.card}>
+      <div className={ui.tableWrap}>
+        <table className={ui.table}>
           <thead><tr><th>Code</th><th>Balance</th><th>Status</th><th>Created</th><th>Expires</th><th></th></tr></thead>
           <tbody>
             {shown.map(card => <tr key={card.id}>
-              <td><strong>{card.code}</strong><div className="muted">•••• {card.last4}</div></td>
-              <td><strong>{money(card.balance, card.currency)}</strong><div className="muted">of {money(card.initialAmount, card.currency)}</div></td>
-              <td><span className={`statusPill ${STATUS_TONE[card.status] || ''}`}>{card.status}</span></td>
-              <td className="muted">{new Date(card.createdAt).toLocaleDateString()}</td>
-              <td className="muted">{card.expiresAt ? new Date(card.expiresAt).toLocaleDateString() : 'No expiry'}</td>
-              <td>{canManage && <button className="iconBtn" title="Manage gift card" onClick={() => openManage(card)}><Settings2 size={15} /></button>}</td>
+              <td><strong>{card.code}</strong><div className={ui.muted}>•••• {card.last4}</div></td>
+              <td><strong>{money(card.balance, card.currency)}</strong><div className={ui.muted}>of {money(card.initialAmount, card.currency)}</div></td>
+              <td><span className={`${ui.statusPill} ${STATUS_TONE[card.status] || ''}`}>{card.status}</span></td>
+              <td className={ui.muted}>{new Date(card.createdAt).toLocaleDateString()}</td>
+              <td className={ui.muted}>{card.expiresAt ? new Date(card.expiresAt).toLocaleDateString() : 'No expiry'}</td>
+              <td>{canManage && <button className={ui.iconBtn} title="Manage gift card" onClick={() => openManage(card)}><Settings2 size={15} /></button>}</td>
             </tr>)}
           </tbody>
         </table>
       </div>
-      {!shown.length && <div className="empty"><CreditCard size={28} /><h3>No gift cards found</h3><p className="muted">{canManage ? 'Issue a gift card to see it here.' : 'Gift cards issued by staff will show up here.'}</p></div>}
+      {!shown.length && <div className={ui.empty}><CreditCard size={28} /><h3>No gift cards found</h3><p className={ui.muted}>{canManage ? 'Issue a gift card to see it here.' : 'Gift cards issued by staff will show up here.'}</p></div>}
     </div>
 
-    {createOpen && <div className="modalOverlay" onClick={closeCreate}>
-      <div className={`card ${styles.modal}`} onClick={e => e.stopPropagation()}>
+    {createOpen && <div className={ui.modalOverlay} onClick={closeCreate}>
+      <div className={`${ui.card} ${styles.modal}`} onClick={e => e.stopPropagation()}>
         <div className={styles.modalHead}>
-          <div><span className="muted tiny">NEW GIFT CARD</span><h2>Issue a gift card</h2><p className="muted">A code is generated automatically unless you provide one.</p></div>
-          <button className="iconBtn" onClick={closeCreate}><X size={17} /></button>
+          <div><span className={`${ui.muted} ${ui.tiny}`}>NEW GIFT CARD</span><h2>Issue a gift card</h2><p className={ui.muted}>A code is generated automatically unless you provide one.</p></div>
+          <button className={ui.iconBtn} onClick={closeCreate}><X size={17} /></button>
         </div>
         <div className={styles.modalBody}>
-          {createError && <div className="alert danger">{createError}</div>}
-          <div className="twoColFields">
-            <label className="fieldLabel">Initial balance<input className="input" type="number" min="0" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="50.00" autoFocus /></label>
-            <label className="fieldLabel">Currency<input className="input" value={currency} onChange={e => setCurrency(e.target.value.toUpperCase())} placeholder={defaultCurrency} /></label>
+          {createError && <div className={`${ui.alert} ${ui.alertDanger}`}>{createError}</div>}
+          <div className={ui.twoCol}>
+            <label className={ui.fieldLabel}>Initial balance<input className={ui.input} type="number" min="0" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="50.00" autoFocus /></label>
+            <label className={ui.fieldLabel}>Currency<input className={ui.input} value={currency} onChange={e => setCurrency(e.target.value.toUpperCase())} placeholder={defaultCurrency} /></label>
           </div>
-          <div className="twoColFields">
-            <label className="fieldLabel">Code (optional)<input className="input" value={code} onChange={e => setCode(e.target.value.toUpperCase())} placeholder="Auto-generated" /></label>
-            <label className="fieldLabel">Expiry date (optional)<input className="input" type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)} /></label>
+          <div className={ui.twoCol}>
+            <label className={ui.fieldLabel}>Code (optional)<input className={ui.input} value={code} onChange={e => setCode(e.target.value.toUpperCase())} placeholder="Auto-generated" /></label>
+            <label className={ui.fieldLabel}>Expiry date (optional)<input className={ui.input} type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)} /></label>
           </div>
-          <label className="fieldLabel">Customer ID (optional)<input className="input" value={customerId} onChange={e => setCustomerId(e.target.value)} placeholder="Link this card to a customer record" /></label>
-          <label className="fieldLabel">Note (optional)<textarea className="textarea" rows={2} value={note} onChange={e => setNote(e.target.value)} placeholder="Internal note" /></label>
+          <label className={ui.fieldLabel}>Customer ID (optional)<input className={ui.input} value={customerId} onChange={e => setCustomerId(e.target.value)} placeholder="Link this card to a customer record" /></label>
+          <label className={ui.fieldLabel}>Note (optional)<textarea className={ui.textarea} rows={2} value={note} onChange={e => setNote(e.target.value)} placeholder="Internal note" /></label>
           <div className={styles.modalFooter}>
-            <button className="btn secondary" onClick={closeCreate} disabled={creating}>Cancel</button>
-            <button className="btn" onClick={createGiftCard} disabled={creating}>{creating ? 'Issuing…' : 'Issue gift card'}</button>
+            <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={closeCreate} disabled={creating}>Cancel</button>
+            <button className={ui.btn} onClick={createGiftCard} disabled={creating}>{creating ? 'Issuing…' : 'Issue gift card'}</button>
           </div>
         </div>
       </div>
     </div>}
 
-    {manageCard && <div className="modalOverlay" onClick={closeManage}>
-      <div className={`card ${styles.modal}`} onClick={e => e.stopPropagation()}>
+    {manageCard && <div className={ui.modalOverlay} onClick={closeManage}>
+      <div className={`${ui.card} ${styles.modal}`} onClick={e => e.stopPropagation()}>
         <div className={styles.modalHead}>
-          <div><span className="muted tiny">GIFT CARD</span><h2>{manageCard.code}</h2><p className="muted">{money(manageCard.balance, manageCard.currency)} available of {money(manageCard.initialAmount, manageCard.currency)}</p></div>
-          <button className="iconBtn" onClick={closeManage}><X size={17} /></button>
+          <div><span className={`${ui.muted} ${ui.tiny}`}>GIFT CARD</span><h2>{manageCard.code}</h2><p className={ui.muted}>{money(manageCard.balance, manageCard.currency)} available of {money(manageCard.initialAmount, manageCard.currency)}</p></div>
+          <button className={ui.iconBtn} onClick={closeManage}><X size={17} /></button>
         </div>
         <div className={styles.modalBody}>
-          {manageError && <div className="alert danger">{manageError}</div>}
+          {manageError && <div className={`${ui.alert} ${ui.alertDanger}`}>{manageError}</div>}
 
           <div className={styles.manageSection}>
-            <label className="fieldLabel">Adjust balance<input className="input" type="number" min="0" step="0.01" value={adjustAmount} onChange={e => setAdjustAmount(e.target.value)} placeholder="0.00" /></label>
+            <label className={ui.fieldLabel}>Adjust balance<input className={ui.input} type="number" min="0" step="0.01" value={adjustAmount} onChange={e => setAdjustAmount(e.target.value)} placeholder="0.00" /></label>
             <div className="inline">
-              <button className="btn secondary" onClick={() => adjustBalance(1)} disabled={adjustBusy || !adjustAmount}>{adjustBusy ? 'Updating…' : 'Add funds'}</button>
-              <button className="btn secondary" onClick={() => adjustBalance(-1)} disabled={adjustBusy || !adjustAmount}>{adjustBusy ? 'Updating…' : 'Deduct funds'}</button>
+              <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => adjustBalance(1)} disabled={adjustBusy || !adjustAmount}>{adjustBusy ? 'Updating…' : 'Add funds'}</button>
+              <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => adjustBalance(-1)} disabled={adjustBusy || !adjustAmount}>{adjustBusy ? 'Updating…' : 'Deduct funds'}</button>
             </div>
           </div>
 
           <div className={styles.manageSection}>
-            <span className="fieldLabel">Status</span>
+            <span className={ui.fieldLabel}>Status</span>
             <div className="inline">
-              {STATUSES.map(s => <button key={s} type="button" className={s === manageCard.status ? 'btn smallBtn' : 'btn secondary smallBtn'} disabled={manageBusy} onClick={() => changeStatus(s)}>{s}</button>)}
+              {STATUSES.map(s => <button key={s} type="button" className={s === manageCard.status ? `${ui.btn} ${ui.btnSmall}` : `${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} disabled={manageBusy} onClick={() => changeStatus(s)}>{s}</button>)}
             </div>
           </div>
 
           <div className={styles.manageSection}>
-            <label className="fieldLabel">Expiry date<input className="input" type="date" value={manageExpiresAt} onChange={e => setManageExpiresAt(e.target.value)} /></label>
-            <label className="fieldLabel">Note<textarea className="textarea" rows={2} value={manageNote} onChange={e => setManageNote(e.target.value)} /></label>
-            <button className="btn secondary" onClick={saveDetails} disabled={manageBusy}>{manageBusy ? 'Saving…' : 'Save details'}</button>
+            <label className={ui.fieldLabel}>Expiry date<input className={ui.input} type="date" value={manageExpiresAt} onChange={e => setManageExpiresAt(e.target.value)} /></label>
+            <label className={ui.fieldLabel}>Note<textarea className={ui.textarea} rows={2} value={manageNote} onChange={e => setManageNote(e.target.value)} /></label>
+            <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={saveDetails} disabled={manageBusy}>{manageBusy ? 'Saving…' : 'Save details'}</button>
           </div>
         </div>
       </div>
