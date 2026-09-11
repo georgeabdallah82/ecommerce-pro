@@ -1,4 +1,4 @@
-import { Inter, Space_Grotesk, Archivo, Manrope, Sora, DM_Sans, Poppins, Bricolage_Grotesque } from 'next/font/google'
+import { Inter, Space_Grotesk, Archivo, Manrope, Sora, DM_Sans, Poppins, Bricolage_Grotesque, Libre_Caslon_Text, Work_Sans } from 'next/font/google'
 
 export { FONT_OPTIONS, fontCssStack } from '@/lib/font-options'
 
@@ -19,7 +19,9 @@ const sora = Sora({ subsets: ['latin'], variable: '--font-sora', display: 'swap'
 const dmSans = DM_Sans({ subsets: ['latin'], variable: '--font-dm-sans', display: 'swap' })
 const poppins = Poppins({ subsets: ['latin'], weight: ['400', '500', '600', '700', '800'], variable: '--font-poppins', display: 'swap' })
 const bricolage = Bricolage_Grotesque({ subsets: ['latin'], variable: '--font-bricolage', display: 'swap' })
+const libreCaslonText = Libre_Caslon_Text({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-libre-caslon-text', display: 'swap' })
+const workSans = Work_Sans({ subsets: ['latin'], variable: '--font-work-sans', display: 'swap' })
 
-export const FONT_VARIABLE_CLASSES = [inter, spaceGrotesk, archivo, manrope, sora, dmSans, poppins, bricolage]
+export const FONT_VARIABLE_CLASSES = [inter, spaceGrotesk, archivo, manrope, sora, dmSans, poppins, bricolage, libreCaslonText, workSans]
   .map(f => f.variable)
   .join(' ')

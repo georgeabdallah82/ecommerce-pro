@@ -3273,3 +3273,55 @@ body > .footer {
 }
 
 
+
+/* ============================================================
+   Quiet Minimal redesign layer (Phase 2 of the storefront redesign)
+   ------------------------------------------------------------
+   Deliberately appended last so it wins over the legacy rules above
+   without having to untangle six overlapping color-token systems.
+   Phase 1 already wired color/font/radius *tokens* (now warm stone/
+   ink, Libre Caslon Text + Work Sans, 2px radius) into the concrete
+   button/card rules; this layer is the handful of treatment details
+   tokens alone can't express -- letter-spacing tuned for a serif
+   instead of a grotesk, a plain-text hero eyebrow instead of a boxed
+   pill, no aggressive hover states. "Confident through restraint":
+   quieter than the default, not louder.
+   ============================================================ */
+
+/* Headings: Libre Caslon Text only ships weight 400/700 -- the base
+   layer's hardcoded font-weight:750 has no matching font file to snap
+   to and would render synthesized-bold. Explicit 400 renders the
+   actual regular-weight serif. The grotesk-tuned tight negative
+   tracking on the hero h1 also reads cramped on a serif; loosen it. */
+.focalStorefront h1,.focalStorefront h2,.focalStorefront h3{font-weight:400}
+.focalStorefront .focalType-hero h1{font-weight:400!important}
+.focalStorefront .focalHeroContent h1{letter-spacing:-.01em}
+.focalStorefront .focalSectionHead h2{letter-spacing:-.005em}
+
+/* Nav: a quiet hairline instead of a heavy border, normal-case links
+   (already the default -- no transform to undo) */
+.focalStorefront .focalNav{border-bottom:1px solid var(--store-border,#e4e0d6)}
+.focalStorefront .focalCartCount{background:var(--store-accent,#5f6e4c)!important;color:var(--store-button-text,#faf9f6)!important}
+
+/* Hero/slideshow eyebrow: a plain accent-colored label, not a boxed
+   pill -- the pill's white-tinted glass background was tuned for a
+   dark photo overlay and goes invisible against a light, image-less
+   hero (this theme's default state) */
+.focalStorefront .focalPill{background:transparent;border:0;padding:0;margin-bottom:18px;color:var(--store-accent,#5f6e4c);font-weight:600;backdrop-filter:none;gap:8px}
+.focalStorefront .focalPill .heroDot{width:6px;height:6px;background:var(--store-accent,#5f6e4c);box-shadow:none}
+
+/* Section eyebrows: plain letter-spaced label, no marker glyph */
+.focalStorefront .focalEyebrow::before{content:none}
+
+/* Product & collection cards: near-square corners (token-driven radius
+   already applies), no shadow-lift or hard-border hover -- the
+   photography carries the interest, not the frame around it */
+.focalStorefront .focalProductCard:hover{transform:none!important;box-shadow:none!important}
+.focalStorefront .focalCollectionCard:hover{transform:none}
+
+/* Badges: solid ink fill, warm-light text, tight corners */
+.focalStorefront .focalBadge{background:var(--store-text,#242219)!important;color:var(--store-background,#faf9f6)!important;border-radius:2px!important;text-transform:uppercase;letter-spacing:.03em;font-weight:600!important}
+
+/* Footer: accent-color link hover, no forced case change */
+.focalStorefront .focalFooter a{transition:color .16s ease}
+.focalStorefront .focalFooter a:hover{color:var(--store-accent,#5f6e4c)}

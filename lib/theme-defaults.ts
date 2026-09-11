@@ -1,11 +1,11 @@
 export const defaultTheme={
   brandName:process.env.NEXT_PUBLIC_BRAND_NAME||'YOUR BRAND',
   logoUrl:'',faviconUrl:'',
-  colors:{background:'#ffffff',surface:'#f5f5f5',text:'#0a0a0a',muted:'#6b6b6b',primary:'#0a0a0a',secondary:'#f0f0f0',buttonText:'#ffffff',border:'#e5e5e5',announcementBg:'#0a0a0a',announcementText:'#ffffff',accent:'#d4ff3f',sale:'#ff3b30',success:'#16805b',warning:'#b7791f'},
-  typography:{heading:'spaceGrotesk',body:'inter',scale:'100',headingWeight:'700',bodyWeight:'450',letterSpacing:'tight',lineHeight:'1.45'},
+  colors:{background:'#faf9f6',surface:'#ffffff',text:'#242219',muted:'#7a7669',primary:'#242219',secondary:'#ece8dc',buttonText:'#faf9f6',border:'#e4e0d6',announcementBg:'#242219',announcementText:'#faf9f6',accent:'#5f6e4c',sale:'#a3503c',success:'#16805b',warning:'#b7791f'},
+  typography:{heading:'libreCaslonText',body:'workSans',scale:'100',headingWeight:'400',bodyWeight:'450',letterSpacing:'normal',lineHeight:'1.5'},
   layout:{maxWidth:1360,sectionSpacing:84,productColumns:4,cardGap:20,contentWidth:'wide',pageGutter:28},
-  buttons:{radius:8,style:'solid',hover:'lift',height:'50',uppercase:true,shadow:'none'},
-  cards:{radius:14,shadow:'soft',hover:'lift',imageRatio:'square',showQuickAdd:true,showWishlist:true,showBadge:true},
+  buttons:{radius:2,style:'solid',hover:'lift',height:'48',uppercase:false,shadow:'none'},
+  cards:{radius:2,shadow:'none',hover:'lift',imageRatio:'square',showQuickAdd:true,showWishlist:true,showBadge:true},
   productCard:{titleLines:2,showVendor:false,showComparePrice:true,showReviews:true,showSwatches:true,hoverImage:true,showQuickView:true,showQuickBuy:true},
   productPage:{gallery:'left',stickyInfo:true,stickyAddToCart:true,showBreadcrumbs:true,showVendor:true,showReviews:true,showShare:true,showWishlist:true,showShippingAccordion:true,showDescription:true,showSpecs:true,showRelated:true,relatedLimit:4,showTrustBadges:true,showStockCounter:true,showQuantity:true},
   collectionPage:{showBreadcrumbs:true,showDescription:true,showImage:false,showSort:true,showFilters:true,columns:4,cardStyle:'cards',showCollectionNavigation:true},
@@ -17,7 +17,7 @@ export const defaultTheme={
   animations:{enabled:true,preset:'smooth',reveal:'fade-up',hover:'lift',duration:420,easing:'cubic-bezier(.22,.8,.26,1)',marquee:true,slideshowAutoplay:true,slideshowSpeed:5,reducedMotionRespect:true},
   accessibility:{focusRing:true,highContrast:false},
   customCss:'',
-  presets:{active:'Focal Bold'}
+  presets:{active:'Quiet Minimal'}
 }
 
 export const defaultSections=[
