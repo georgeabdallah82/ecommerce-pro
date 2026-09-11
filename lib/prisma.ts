@@ -161,8 +161,10 @@ const mockCollections = [
   },
 ]
 
-// Default hash for 'ChangeMe123!' or 'admin123'
-const defaultAdminHash = '$2b$10$vI8aWBnW3fID.ZQ4/zo1G.qH0.6xLz33MhQ2tE0aGz4/w3oYjBymG'
+// Hash for the README-documented default seed password 'ChangeMe123!'. The
+// previous hash here didn't actually match either candidate password it
+// claimed to, so the mock admin account was never loginable in local dev.
+const defaultAdminHash = '$2b$10$/W2erNHQLpGmyCqMv3V6/O1YUf.kibZXLWMXM0jT4rCmES1z8xMpe'
 
 const mockUsers = [
   {
@@ -360,6 +362,15 @@ type ExtendedPrismaClient = ReturnType<typeof createExtendedClient>
 const isProduction = process.env.NODE_ENV === 'production'
 let realPrisma: ExtendedPrismaClient | null = null
 try {
+  // `new PrismaClient()` returns synchronously even when DATABASE_URL is
+  // missing or invalid — it only discovers that when a query actually runs,
+  // as an unhandled promise rejection this try/catch can never observe (it
+  // isn't awaited here). Checking the env var directly, before constructing
+  // the client at all, is what actually lets a missing DATABASE_URL reach
+  // the production-throws / non-production-falls-back-to-mock branch below
+  // instead of silently leaving realPrisma set to a client that will fail
+  // every real query later.
+  if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not set')
   realPrisma = createExtendedClient()
 } catch (error) {
   if (isProduction) {
@@ -388,7 +399,10 @@ function createResilientPrismaClient(): any {
       }
 
       if (prop in target) return Reflect.get(target, prop)
-      if (!isProduction && ['product','category','collection','user','setting','order','coupon','shippingZone'].includes(prop)) return getMockHandler(prop)
+      // adminLoginLockout has full findUnique/upsert handling below (mockAdminLoginLockouts)
+      // but was never added to this dispatch list, so admin login always 500'd in local dev
+      // with no DATABASE_URL configured -- the one path that's supposed to work everywhere.
+      if (!isProduction && ['product','category','collection','user','setting','order','coupon','shippingZone','adminLoginLockout'].includes(prop)) return getMockHandler(prop)
       return Reflect.get(target, prop)
     },
   })

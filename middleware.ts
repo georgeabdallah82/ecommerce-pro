@@ -46,7 +46,10 @@ export function middleware(request: NextRequest) {
 
   const response = NextResponse.next()
   response.headers.set('X-Content-Type-Options', 'nosniff')
-  response.headers.set('X-Frame-Options', 'DENY')
+  // The theme editor's live preview (components/theme-preview-frame.tsx) embeds
+  // this one route in a same-origin <iframe>; every other route stays DENY.
+  const isThemePreview = pathname === '/admin/online-store/theme-editor/preview'
+  response.headers.set('X-Frame-Options', isThemePreview ? 'SAMEORIGIN' : 'DENY')
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
   response.headers.set('X-DNS-Prefetch-Control', 'on')

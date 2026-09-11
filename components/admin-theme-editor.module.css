@@ -4,11 +4,13 @@
  * build-time-unique name, and every color/radius/shadow value comes from the
  * --admin-* tokens in ../app/admin/admin-overhaul.css via var(), so dark mode
  * is automatic. This file styles only the EDITOR CHROME (top bar, side rail,
- * section list, drawer, add-section picker) - the live preview inside
- * .frame renders real storefront components (CartProvider/StoreNavFixed/
- * StorefrontSections) and is intentionally left alone; those keep their own
- * --focal-* storefront tokens so the preview still looks like the storefront
- * being edited, not like the admin.
+ * section list, drawer, add-section picker) - the live preview inside .frame
+ * is a same-origin <iframe> (see components/theme-preview-frame.tsx) loading
+ * the real storefront components in their own document, driven by postMessage
+ * rather than shared DOM/props. That keeps this file's admin tokens and the
+ * storefront's own --focal-* tokens from ever sharing one cascade, and makes
+ * the device-width preview a real iframe viewport instead of a max-width
+ * wrapper div faking it.
  */
 
 .editor {
