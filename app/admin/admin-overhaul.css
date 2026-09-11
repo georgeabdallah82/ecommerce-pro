@@ -1,37 +1,37 @@
 /*
  * Control Center — unified admin design system (tokens + rules).
  *
- * WHY `body:has(.adminShell) X { ... !important }` INSTEAD OF PLAIN `.adminShell X`:
- * app/globals.css is imported once in the root layout (app/layout.tsx) and applies to
- * every route, storefront and admin alike. It defines shared classnames — .btn, .card,
- * .input, .table, .pill, .statusPill, .alert, .empty, .iconBtn, .fieldLabel,
- * .modalOverlay, .sectionHead, .tableWrap, .textLink, .textButton, .muted — with
- * storefront-oriented tokens and colors. Admin pages reuse those SAME classnames rather
- * than a separate admin vocabulary, so this file has to reliably outrank globals.css for
- * every one of them, including two-class combinators it defines like `.btn.secondary`.
- * `body:has(.adminShell)` adds one extra type-selector unit of specificity over a bare
- * `.adminShell` prefix specifically to survive that fight, and `!important` guards
- * against CSS chunk load order (not guaranteed stable across builds/route splits).
+ * HISTORY: this file used to carry `body:has(.adminShell) X { ... !important }`
+ * overrides for every storefront-shared classname admin pages reused from
+ * app/globals.css (.btn, .card, .input, .table, .pill, .statusPill, .alert,
+ * .empty, .iconBtn, .fieldLabel, .modalOverlay, .sectionHead, .tableWrap,
+ * .textLink, .textButton, .muted) — `body:has(.adminShell)` bought the extra
+ * specificity needed to reliably outrank globals.css, and `!important` guarded
+ * against CSS chunk load order. That reuse-and-override pattern had a sharp,
+ * recurring edge: a page's own CSS Module could never beat it by layering a
+ * hashed class on top of the shared one, even with its own `!important` —
+ * ties between `!important` rules are broken by selector specificity, not
+ * source order, and a single hashed class always loses to
+ * `body:has(.adminShell) .btn`. That silently shipped colorless/wrong-colored
+ * buttons and icons to production at least half a dozen times (orders' and
+ * draft-orders' Cancel buttons, the orders list's Cancel icon, the navigation
+ * editor's Remove button, the categories/metafields/content delete icons)
+ * before being caught by screenshot verification, not code review.
  *
- * THE RECURRING BUG THIS CAUSES — READ BEFORE ADDING A "DANGER"/OVERRIDE VARIANT:
- * A page's CSS Module can't beat these rules by layering a hashed class on top of the
- * shared global one (e.g. `className={`btn ${styles.dangerBtn}`}`), even if the module
- * rule also uses `!important`. Ties between `!important` rules are broken by selector
- * specificity, not source order, and a CSS Module produces a single low-specificity
- * class — it loses to `body:has(.adminShell) .btn` (and definitely to `.btn.secondary`)
- * every time. This has silently shipped colorless/wrong-colored buttons and icons on
- * live pages at least half a dozen times this project (orders' and draft-orders'
- * Cancel buttons, the orders list's Cancel icon, the navigation editor's Remove button,
- * the categories/metafields/content delete icons) before being caught by screenshot
- * verification, not code review — the bug is invisible in the diff.
+ * THE FIX: every admin consumer of those 16 classnames has been migrated onto
+ * components/admin-ui.module.css's build-time-hashed atoms (ui.btn, ui.card,
+ * ui.input, etc.), which structurally cannot collide with globals.css's
+ * storefront rules — no specificity race left to lose. The `body:has(.adminShell)
+ * X !important` overrides for those 16 classnames were deleted from this file
+ * once their last bare consumer was gone (tracked in GitHub issue #74).
  *
- * THE FIX, every time: never combine an override class with the shared global one.
- * Make the override class FULLY SELF-CONTAINED — display, padding/min-height,
- * border-radius, font-size/weight, box-shadow, cursor, EVERY visual property the base
- * class would have supplied, not just color/background — and apply ONLY that class to
- * the element. Search this codebase for "Self-contained rather than layered on" for
- * worked examples (e.g. components/admin-orders-list.module.css's .dangerBtn/.dangerIcon,
- * components/admin-navigation-editor.module.css's .removeBtn).
+ * What's still here is everything that was never a storefront/admin naming
+ * collision in the first place — admin-only classnames (.catalogToolbar,
+ * .statCard, .discountsModal, .opsRow, .inventoryModalHead, etc.) that only
+ * ever existed in this file, so they carry no risk of losing a specificity
+ * fight to globals.css and don't need migrating anywhere. New admin UI should
+ * be built with admin-ui.module.css's shared atoms directly rather than adding
+ * more bare classnames here.
  */
 body:has(.adminShell){
   --admin-bg:#f6f5f0;
@@ -103,9 +103,6 @@ body:has(.adminShell) .adminShell{min-height:100vh!important;display:flex!import
 body:has(.adminShell) .adminMain{min-width:0!important;padding:28px 36px 56px!important;background:var(--admin-bg)!important}
 
 /* Shared page rhythm */
-body:has(.adminShell) .sectionHead{margin-bottom:22px!important}
-body:has(.adminShell) .sectionHead .h2,body:has(.adminShell) .catalogHead .h2{font-size:36px!important;line-height:1.04!important;letter-spacing:-.045em!important;color:var(--admin-ink)!important}
-body:has(.adminShell) .sectionHead .muted{font-size:13px!important;line-height:1.55!important;color:var(--admin-muted)!important}
 /* .h3 (Customers "Add customer" panel heading, Shipping zone-detail heading)
    had no rule anywhere, so it rendered as a bare <h2> at the browser's huge
    default heading size/weight and default (non-token) color instead of the
@@ -114,8 +111,8 @@ body:has(.adminShell) .h3{margin:0!important;font-size:19px!important;color:var(
 body:has(.adminShell) .catalogPage,body:has(.adminShell) .operationsPage,body:has(.adminShell) .customersPage{max-width:1480px!important;margin:0 auto!important;padding-bottom:32px!important}
 
 /* Surfaces */
-body:has(.adminShell) .card,body:has(.adminShell) .dashboardPanel,body:has(.adminShell) .recentPanel,body:has(.adminShell) .productTableCard,body:has(.adminShell) .opsCard,body:has(.adminShell) .healthCheck,body:has(.adminShell) .healthHero{background:var(--admin-surface)!important;border-color:var(--admin-border)!important;border-radius:var(--admin-radius-lg)!important;box-shadow:var(--admin-shadow-sm)!important;color:var(--admin-ink)!important;transition:box-shadow .18s ease,transform .18s ease!important}
-body:has(.adminShell) .card:hover,body:has(.adminShell) .dashboardPanel:hover,body:has(.adminShell) .opsCard:hover{box-shadow:var(--admin-shadow-md)!important}
+body:has(.adminShell) .dashboardPanel,body:has(.adminShell) .recentPanel,body:has(.adminShell) .productTableCard,body:has(.adminShell) .opsCard,body:has(.adminShell) .healthCheck,body:has(.adminShell) .healthHero{background:var(--admin-surface)!important;border-color:var(--admin-border)!important;border-radius:var(--admin-radius-lg)!important;box-shadow:var(--admin-shadow-sm)!important;color:var(--admin-ink)!important;transition:box-shadow .18s ease,transform .18s ease!important}
+body:has(.adminShell) .dashboardPanel:hover,body:has(.adminShell) .opsCard:hover{box-shadow:var(--admin-shadow-md)!important}
 body:has(.adminShell) .statCard{background:var(--admin-surface)!important;border-color:var(--admin-border)!important;border-radius:var(--admin-radius-lg)!important;box-shadow:var(--admin-shadow-sm)!important;color:var(--admin-ink)!important}
 body:has(.adminShell) .statCard:hover{box-shadow:var(--admin-shadow-md)!important}
 body:has(.adminShell) .statCard span,body:has(.adminShell) .stat .muted{color:var(--admin-muted)!important}
@@ -134,42 +131,14 @@ body:has(.adminShell) .statCard.active strong{color:var(--admin-accent-strong)!i
 body:has(.adminShell) .catalogStats{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:12px!important;margin-bottom:18px!important}
 
 /* Controls */
-body:has(.adminShell) .btn{min-height:40px!important;border-radius:var(--admin-radius-md)!important;padding:0 16px!important;font-size:12px!important;font-weight:850!important;background:var(--admin-accent)!important;border-color:var(--admin-accent)!important;color:var(--admin-accent-ink)!important;box-shadow:var(--admin-shadow-sm)!important;transition:transform .15s ease,box-shadow .15s ease,background .15s ease,border-color .15s ease!important}
-body:has(.adminShell) .btn:hover:not(:disabled){transform:translateY(-1px)!important;box-shadow:var(--admin-shadow-md)!important;background:var(--admin-accent-strong)!important;border-color:var(--admin-accent-strong)!important}
-body:has(.adminShell) .btn.secondary{border-color:var(--admin-border)!important;background:var(--admin-surface)!important;color:var(--admin-ink-soft)!important}
-body:has(.adminShell) .btn.secondary:hover:not(:disabled){background:var(--admin-border-soft)!important;border-color:var(--admin-border)!important}
-body:has(.adminShell) .btn.ghost{border-color:var(--admin-border)!important;background:transparent!important;color:var(--admin-ink-soft)!important}
-body:has(.adminShell) .btn.ghost:hover:not(:disabled){background:var(--admin-border-soft)!important}
-body:has(.adminShell) .btn:disabled{background:var(--admin-border-soft)!important;border-color:var(--admin-border)!important;color:var(--admin-muted-soft)!important}
-body:has(.adminShell) .iconBtn{border-color:var(--admin-border)!important;background:var(--admin-surface)!important;color:var(--admin-ink-soft)!important;border-radius:var(--admin-radius-sm)!important;box-shadow:var(--admin-shadow-sm)!important}
-/* .iconBtn.dangerIcon (metafields, content) previously had no matching rule
-   anywhere, so delete buttons rendered as plain neutral icon buttons with no
-   danger affordance. Two classes here outrank the plain .iconBtn rule above
-   even with both !important, so this wins without needing extra specificity
-   hacks. */
-body:has(.adminShell) .iconBtn.dangerIcon{border-color:var(--admin-danger-border)!important;background:var(--admin-danger-soft)!important;color:var(--admin-danger)!important}
-body:has(.adminShell) .iconBtn.dangerIcon:hover:not(:disabled){background:var(--admin-danger)!important;border-color:var(--admin-danger)!important;color:#fff!important}
 /* .iconTextBtn (content/reviews list tables -- wraps a statusPill toggle like
    Active/Inactive or Approved/Pending) had no rule anywhere, so it rendered
    with the browser's default <button> chrome (border, padding, background)
    around the pill instead of disappearing into a plain clickable wrapper. */
 body:has(.adminShell) .iconTextBtn{display:inline-flex!important;align-items:center!important;gap:6px!important;border:0!important;background:transparent!important;padding:0!important;cursor:pointer!important;font:inherit!important}
 body:has(.adminShell) .iconTextBtn:disabled{opacity:.5!important;cursor:not-allowed!important}
-body:has(.adminShell) .input,body:has(.adminShell) .textarea,body:has(.adminShell) select{border-color:var(--admin-border)!important;background:var(--admin-surface)!important;border-radius:var(--admin-radius-md)!important;color:var(--admin-ink)!important;min-height:42px!important;font-size:13px!important}
-body:has(.adminShell) .textarea{min-height:110px!important;padding-top:11px!important}
-body:has(.adminShell) .input::placeholder,body:has(.adminShell) .textarea::placeholder{color:var(--admin-muted-soft)!important}
-body:has(.adminShell) .input:focus,body:has(.adminShell) .textarea:focus,body:has(.adminShell) select:focus{border-color:var(--admin-accent)!important;box-shadow:0 0 0 3px var(--admin-focus)!important;outline:none!important}
-body:has(.adminShell) .fieldLabel{font-size:11px!important;font-weight:850!important;color:var(--admin-ink-soft)!important}
-body:has(.adminShell) .fieldHelp{font-size:11px!important;color:var(--admin-muted)!important;line-height:1.5!important}
-/* .textButton/.textLink (globals.css) hardcode color:var(--ink), a storefront
-   token that's never redefined for dark mode - so these read as near-black
-   text on a dark admin background. Re-point them at the admin ink token. */
-body:has(.adminShell) .textButton,body:has(.adminShell) .textLink{color:var(--admin-ink)!important}
-body:has(.adminShell) .pill{border:1px solid var(--admin-border)!important;background:var(--admin-border-soft)!important;color:var(--admin-ink-soft)!important;font-size:10px!important;font-weight:850!important;border-radius:var(--admin-radius-pill)!important}
-body:has(.adminShell) .statusPill{font-size:10px!important;font-weight:850!important;border:1px solid var(--admin-border)!important;background:var(--admin-border-soft)!important;color:var(--admin-ink-soft)!important}
-body:has(.adminShell) .statusPill.active,body:has(.adminShell) .statusPill.success{background:var(--admin-accent-soft)!important;color:var(--admin-accent-strong)!important;border-color:transparent!important}
-body:has(.adminShell) .statusPill.warning{background:var(--admin-warning-soft)!important;color:var(--admin-warning)!important;border-color:transparent!important}
-body:has(.adminShell) .statusPill.danger{background:var(--admin-danger-soft)!important;color:var(--admin-danger)!important;border-color:transparent!important}
+body:has(.adminShell) select{border-color:var(--admin-border)!important;background:var(--admin-surface)!important;border-radius:var(--admin-radius-md)!important;color:var(--admin-ink)!important;min-height:42px!important;font-size:13px!important}
+body:has(.adminShell) select:focus{border-color:var(--admin-accent)!important;box-shadow:0 0 0 3px var(--admin-focus)!important;outline:none!important}
 body:has(.adminShell) button:focus-visible,body:has(.adminShell) a:focus-visible,body:has(.adminShell) input:focus-visible,body:has(.adminShell) select:focus-visible,body:has(.adminShell) textarea:focus-visible{outline:3px solid var(--admin-focus)!important;outline-offset:2px!important}
 
 /* Search/filter/tool bars */
@@ -183,11 +152,6 @@ body:has(.adminShell) .searchClear{display:grid!important;place-items:center!imp
 body:has(.adminShell) .searchClear:hover{color:var(--admin-ink)!important;background:var(--admin-border-soft)!important}
 
 /* Tables */
-body:has(.adminShell) .table{background:var(--admin-surface)!important}
-body:has(.adminShell) .table th{background:var(--admin-border-soft)!important;color:var(--admin-muted)!important;border-bottom:1px solid var(--admin-border)!important;font-size:10px!important;font-weight:900!important;letter-spacing:.07em!important;text-transform:uppercase!important;padding:12px 14px!important}
-body:has(.adminShell) .table td{border-bottom:1px solid var(--admin-border-soft)!important;font-size:12px!important;color:var(--admin-ink)!important;padding:12px 14px!important}
-body:has(.adminShell) .table tbody tr:hover{background:var(--admin-border-soft)!important}
-body:has(.adminShell) .tableWrap{overflow:auto!important}
 body:has(.adminShell) .catalogPagination{background:var(--admin-surface)!important;border-top:1px solid var(--admin-border-soft)!important}
 /* .strike (Products list -- the compare-at price shown next to the current
    price) had no rule anywhere, so a "was $50, now $30" price pair rendered
@@ -218,12 +182,7 @@ body:has(.adminShell) .orderViews,body:has(.adminShell) .opsTabs{border:1px soli
 body:has(.adminShell) .orderViews button,body:has(.adminShell) .opsTabs button{border-radius:var(--admin-radius-sm)!important;font-size:11px!important;font-weight:800!important;color:var(--admin-muted)!important}
 body:has(.adminShell) .orderViews button.active,body:has(.adminShell) .opsTabs button.active{background:var(--admin-accent)!important;color:var(--admin-accent-ink)!important}
 
-/* Modals — fixes previously unstyled overlay bug */
-body:has(.adminShell) .modalOverlay{position:fixed!important;inset:0!important;z-index:1200!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:22px!important;background:rgba(15,18,16,.46)!important;backdrop-filter:blur(5px)!important;animation:adminFadeIn .16s ease-out}
-body:has(.adminShell) .modalOverlay>.card{position:relative!important;max-height:calc(100vh - 44px)!important;overflow:auto!important;border:1px solid var(--admin-border)!important;border-radius:var(--admin-radius-lg)!important;background:var(--admin-surface)!important;box-shadow:var(--admin-shadow-lg)!important;animation:adminModalIn .2s ease-out}
-body:has(.adminShell) .modalOverlay .sectionHead.small{align-items:flex-start!important}
-body:has(.adminShell) .modalOverlay .fieldLabel{display:grid!important;gap:7px!important;margin:0!important}
-body:has(.adminShell) .modalOverlay .twoColFields{gap:14px!important}
+/* Modals */
 /* `.inventoryModalHead` (the title + close-button row at the top of most admin
    modals - returns, discounts, shipping zones, content blocks) had no layout
    rule anywhere, so it rendered as an unstyled stacked block instead of a
@@ -231,8 +190,6 @@ body:has(.adminShell) .modalOverlay .twoColFields{gap:14px!important}
 body:has(.adminShell) .inventoryModalHead{display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:16px!important;padding:20px 22px 0!important}
 body:has(.adminShell) .inventoryModalHead h2{margin:4px 0 0!important;font-size:19px!important}
 body:has(.adminShell) .inventoryModalHead p{margin:4px 0 0!important}
-@keyframes adminFadeIn{from{opacity:0}to{opacity:1}}
-@keyframes adminModalIn{from{opacity:0;transform:translateY(8px) scale(.99)}to{opacity:1;transform:none}}
 
 /* Shared modal-form helpers (e.g. shipping zones' add/edit rate forms).
    Previously lived only in app/admin/coupons/coupons.css with hardcoded
@@ -269,19 +226,15 @@ body:has(.adminShell) .modalFooter{display:flex;justify-content:flex-end;gap:10p
 /* Drawers */
 
 /* Loading / empty / alerts */
-body:has(.adminShell) .empty,body:has(.adminShell) .emptyInline,body:has(.adminShell) .opsLoading{border-color:var(--admin-border)!important;background:var(--admin-surface)!important;border-radius:var(--admin-radius-md)!important;color:var(--admin-muted)!important}
-body:has(.adminShell) .empty strong{color:var(--admin-ink)!important}
-body:has(.adminShell) .alert.danger{border-color:var(--admin-danger-border)!important;background:var(--admin-danger-soft)!important;color:var(--admin-danger)!important}
-body:has(.adminShell) .alert:not(.danger){border-color:var(--admin-border)!important;background:var(--admin-accent-soft)!important;color:var(--admin-accent-strong)!important}
+body:has(.adminShell) .emptyInline,body:has(.adminShell) .opsLoading{border-color:var(--admin-border)!important;background:var(--admin-surface)!important;border-radius:var(--admin-radius-md)!important;color:var(--admin-muted)!important}
 
 /* Editor / theme studio */
 body:has(.adminShell) .themeStudioPro{background:var(--admin-bg)!important}
 
 /* Responsive workspace */
 @media(max-width:1050px){body:has(.adminShell) .adminMain{padding:0 22px 42px!important}}
-@media(max-width:760px){body:has(.adminShell) .adminMain{padding:0 14px 34px!important}.sectionHead{align-items:flex-start!important;flex-direction:column!important}.sectionHead .inline{width:100%!important}.sectionHead .inline>*{flex:1}.sectionHead .h2,.catalogHead .h2{font-size:29px!important}.dashboardKpis{grid-template-columns:1fr 1fr!important}.twoColFields{grid-template-columns:1fr!important}.adminTileGrid{grid-template-columns:1fr 1fr!important}body:has(.adminShell) .catalogStats{grid-template-columns:1fr 1fr!important}}
-@media(max-width:480px){body:has(.adminShell) .dashboardKpis{grid-template-columns:1fr!important}body:has(.adminShell) .catalogStats{grid-template-columns:1fr!important}.adminTileGrid{grid-template-columns:1fr!important}.modalOverlay{padding:10px!important}.modalOverlay>.card{width:min(100%,520px)!important;border-radius:15px!important}}
+@media(max-width:760px){body:has(.adminShell) .adminMain{padding:0 14px 34px!important}.dashboardKpis{grid-template-columns:1fr 1fr!important}.adminTileGrid{grid-template-columns:1fr 1fr!important}body:has(.adminShell) .catalogStats{grid-template-columns:1fr 1fr!important}}
+@media(max-width:480px){body:has(.adminShell) .dashboardKpis{grid-template-columns:1fr!important}body:has(.adminShell) .catalogStats{grid-template-columns:1fr!important}.adminTileGrid{grid-template-columns:1fr!important}}
 
 /* Headings/text pick up ink tokens automatically via inheritance */
 body:has(.adminShell) h1,body:has(.adminShell) h2,body:has(.adminShell) h3,body:has(.adminShell) h4{color:var(--admin-ink)!important}
-body:has(.adminShell) .muted{color:var(--admin-muted)!important}
