@@ -1,6 +1,6 @@
 'use client'
 
-import { Copy, GripVertical, Plus, Trash2 } from 'lucide-react'
+import { GripVertical, Plus, Trash2 } from 'lucide-react'
 
 type Section = { id: string; type: string; enabled?: boolean; settings?: Record<string, any>; blocks?: any[] }
 
@@ -42,37 +42,273 @@ function BlocksEditor({ section, type, onUpdateBlocks }: { section: Section; typ
   return <div className="themeBlockList">{blocks.map((block,index)=><div className="themeBlock" key={block.id || index}><div className="themeBlockHeader"><GripVertical size={14}/><strong>{labels[block.type] || label} {index+1}</strong><button type="button" className="themeBlockDelete" onClick={()=>remove(index)} aria-label={`Delete ${label}`}><Trash2 size={14}/></button></div><div className="themeBlockFields">{type==='promo'&&<><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><TextArea label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><Field label="Image URL" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Link URL" value={block.settings?.url} onChange={value=>update(index,{url:value})}/></>}{type==='quote'&&<><TextArea label="Quote" value={block.settings?.quote} onChange={value=>update(index,{quote:value})}/><Field label="Author" value={block.settings?.author} onChange={value=>update(index,{author:value})}/><Field label="Role" value={block.settings?.role} onChange={value=>update(index,{role:value})}/><Select label="Rating" value={block.settings?.rating??5} options={['1','2','3','4','5']} onChange={value=>update(index,{rating:Number(value)})}/></>}{type==='column'&&<><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><TextArea label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><Field label="Icon / image URL" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/></>}{type==='question'&&<><Field label="Question" value={block.settings?.question||block.settings?.heading} onChange={value=>update(index,{question:value,heading:value})}/><TextArea label="Answer" value={block.settings?.answer||block.settings?.text} onChange={value=>update(index,{answer:value,text:value})}/></>}{type==='slide'&&<><Field label="Eyebrow" value={block.settings?.eyebrow} onChange={value=>update(index,{eyebrow:value})}/><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><TextArea label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><Field label="Image URL" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Button URL" value={block.settings?.buttonUrl} onChange={value=>update(index,{buttonUrl:value})}/></>}{type==='logo'&&<><Field label="Logo URL" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Alt text" value={block.settings?.alt} onChange={value=>update(index,{alt:value})}/><Field label="Link URL" value={block.settings?.url} onChange={value=>update(index,{url:value})}/></>}</div></div>)}<button type="button" className="themeAddBlock" onClick={add}><Plus size={14}/> Add {label}</button></div>
 }
 
+// ---- Declarative field schema ----
+// Every section type below maps to a list of panels; each panel is a list of
+// fields (or arrays of fields, rendered together in one themeInspectorGrid
+// row, matching the original inline-JSX grouping). Each field's get/set pair
+// is a literal transcription of that field's old inline value/onChange
+// closure -- this is a structural refactor, not a behavior change.
+type SettingsMap = Record<string, any>
+type FieldCtx = { s: SettingsMap; products: any[]; collections: any[] }
+type OptionList = Array<{ value: string; label: string }> | string[]
+type OptionsSource = OptionList | ((ctx: FieldCtx) => OptionList)
+
+type FieldSchema =
+  | { kind: 'text'; label: string; placeholder?: string; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
+  | { kind: 'textarea'; label: string; placeholder?: string; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
+  | { kind: 'select'; label: string; options: OptionsSource; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
+  | { kind: 'toggle'; label: string; get: (s: SettingsMap) => boolean; set: (value: boolean) => Record<string, any> }
+  | { kind: 'range'; label: string; min: number; max: number; step?: number; get: (s: SettingsMap) => number; set: (value: number) => Record<string, any> }
+  | { kind: 'blocks'; label: string; blockType: string }
+
+type PanelSchema = { title: string; fields: Array<FieldSchema | FieldSchema[]> }
+
+const text = (label: string, name: string, placeholder?: string): FieldSchema =>
+  ({ kind: 'text', label, placeholder, get: s => s[name], set: value => ({ [name]: value }) })
+const textarea = (label: string, name: string, placeholder?: string): FieldSchema =>
+  ({ kind: 'textarea', label, placeholder, get: s => s[name], set: value => ({ [name]: value }) })
+const select = (label: string, name: string, options: OptionsSource, fallback = ''): FieldSchema =>
+  ({ kind: 'select', label, options, get: s => s[name] || fallback, set: value => ({ [name]: value }) })
+const toggle = (label: string, name: string, defaultTrue: boolean): FieldSchema =>
+  ({ kind: 'toggle', label, get: s => defaultTrue ? s[name] !== false : Boolean(s[name]), set: value => ({ [name]: value }) })
+const range = (label: string, name: string, min: number, max: number, fallback: number, step?: number): FieldSchema =>
+  ({ kind: 'range', label, min, max, step, get: s => Number(s[name] ?? fallback), set: value => ({ [name]: value }) })
+const blocks = (label: string, blockType: string): FieldSchema => ({ kind: 'blocks', label, blockType })
+
+const commonLayoutPanel: PanelSchema = {
+  title: 'Layout & appearance',
+  fields: [[
+    { kind: 'select', label: 'Background', options: ['default','surface','secondary','dark','primary','gradient'], get: s => s.background || 'default', set: value => ({ background: value === 'default' ? '' : value }) },
+    select('Text alignment', 'textAlign', ['left','center','right'], 'left'),
+    range('Spacing', 'spacing', 0, 160, 72),
+    range('Columns', 'columns', 2, 6, 4),
+  ]],
+}
+
+function productTypePanels(featured: boolean): PanelSchema[] {
+  const selectionField: FieldSchema = featured
+    ? { kind: 'select', label: 'Product', options: ({ products }) => products.map(p => ({ value: p.id, label: p.name })), get: s => s.productId || '', set: value => ({ productId: value }) }
+    : { kind: 'select', label: 'Collection', options: ({ collections }) => [{ value: '', label: 'All products' }, ...collections.map(c => ({ value: c.slug || c.id, label: c.name }))], get: s => s.collection || '', set: value => ({ collection: value }) }
+  return [
+    { title: 'Content', fields: [
+      text('Heading', 'heading'),
+      textarea('Subheading', 'subheading'),
+      selectionField,
+      [range('Product limit', 'limit', 1, 48, 8), range('Columns', 'columns', 2, 6, 4)],
+      toggle('Show View all', 'showViewAll', true),
+    ] },
+    { title: 'Card display', fields: [
+      [select('Card style', 'style', ['cards','minimal','editorial'], 'cards'), select('Image ratio', 'imageRatio', ['square','portrait','landscape'], 'square')],
+    ] },
+  ]
+}
+
+function collectionTypePanels(): PanelSchema[] {
+  return [
+    { title: 'Content', fields: [
+      text('Heading', 'heading'),
+      textarea('Subheading', 'subheading'),
+      range('Collections shown', 'limit', 1, 24, 4),
+      range('Columns', 'columns', 2, 6, 4),
+    ] },
+    { title: 'Collection selection', fields: [
+      { kind: 'select', label: 'Collection', options: ({ collections }) => [{ value: '', label: 'Automatic' }, ...collections.map(c => ({ value: c.id, label: c.name }))], get: s => (Array.isArray(s.collectionIds) ? s.collectionIds[0] : '') || '', set: value => ({ collectionIds: value ? [value] : [] }) },
+    ] },
+  ]
+}
+
+function richTextPanels(): PanelSchema[] {
+  return [
+    { title: 'Content', fields: [
+      text('Eyebrow', 'eyebrow'),
+      text('Heading', 'heading'),
+      textarea('Text', 'text'),
+      text('Button label', 'buttonLabel'),
+      text('Button URL', 'buttonUrl'),
+    ] },
+    commonLayoutPanel,
+  ]
+}
+
+function mediaPanels(type: 'video' | 'slideshow'): PanelSchema[] {
+  const mediaKey = type === 'video' ? 'videoUrl' : 'imageUrl'
+  const posterKey = type === 'video' ? 'posterUrl' : 'imageUrl'
+  const fields: Array<FieldSchema | FieldSchema[]> = [
+    { kind: 'text', label: 'Media URL', get: s => s.imageUrl || s.videoUrl, set: value => ({ [mediaKey]: value }) },
+    { kind: 'text', label: 'Poster image', get: s => s.posterUrl || s.imageUrl, set: value => ({ [posterKey]: value }) },
+  ]
+  if (type === 'slideshow') fields.push(blocks('Slides', 'slide'))
+  fields.push(toggle('Autoplay', 'autoplay', true))
+  fields.push(range('Height', 'minHeight', 320, 860, 560))
+  return [{ title: type === 'video' ? 'Video' : 'Slideshow', fields }]
+}
+
+function templatePanels(): PanelSchema[] {
+  return [{ title: 'Template section', fields: [
+    text('Heading', 'heading'),
+    range('Columns', 'columns', 2, 6, 4),
+    range('Product limit', 'limit', 1, 48, 24),
+    toggle('Show shipping information', 'showShipping', true),
+  ] }]
+}
+
+const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
+  hero: () => [
+    { title: 'Content', fields: [
+      text('Eyebrow', 'eyebrow'),
+      text('Heading', 'heading'),
+      textarea('Text', 'text'),
+      [text('Button label', 'buttonLabel'), text('Button URL', 'buttonUrl'), text('Secondary label', 'secondaryLabel'), text('Secondary URL', 'secondaryUrl')],
+    ] },
+    { title: 'Media', fields: [
+      { kind: 'text', label: 'Desktop image URL', get: s => s.desktopImageUrl || s.imageUrl, set: value => ({ desktopImageUrl: value }) },
+      text('Mobile image URL', 'mobileImageUrl'),
+      text('Alt text', 'imageAlt'),
+      [
+        select('Image fit', 'imageFit', ['cover','contain','fill'], 'cover'),
+        select('Overlay style', 'overlayStyle', ['none','solid','bottom-gradient','full-gradient'], 'bottom-gradient'),
+        { kind: 'range', label: 'Overlay', min: 0, max: 100, get: s => Math.round(Number(s.overlay ?? .24) * 100), set: value => ({ overlay: value / 100 }) },
+        text('Overlay color', 'overlayColor'),
+      ],
+      [range('Focal X', 'focalX', 0, 100, 50), range('Focal Y', 'focalY', 0, 100, 50)],
+    ] },
+    { title: 'Position & size', fields: [
+      [
+        select('Content position', 'contentPosition', ['top-left','top-center','top-right','center-left','center','center-right','bottom-left','bottom-center','bottom-right'], 'center-left'),
+        select('Text alignment', 'textAlign', ['left','center','right'], 'left'),
+        range('Content width', 'contentWidth', 320, 900, 620),
+        range('Height', 'minHeight', 360, 900, 640),
+      ],
+      toggle('Full bleed', 'fullBleed', true),
+      toggle('Content box', 'contentBox', false),
+    ] },
+  ],
+  product_grid: () => productTypePanels(false),
+  product_carousel: () => productTypePanels(false),
+  featured_product: () => productTypePanels(true),
+  product_recommendations: () => productTypePanels(false),
+  collection_grid: () => collectionTypePanels(),
+  collection_carousel: () => collectionTypePanels(),
+  image_with_text: () => [
+    { title: 'Content', fields: [
+      text('Eyebrow', 'eyebrow'),
+      text('Heading', 'heading'),
+      textarea('Text', 'text'),
+      [text('Button label', 'buttonLabel'), text('Button URL', 'buttonUrl')],
+    ] },
+    { title: 'Media & layout', fields: [
+      text('Image URL', 'imageUrl'),
+      select('Image position', 'layout', ['image-left','image-right'], 'image-right'),
+      select('Background', 'background', ['default','secondary','surface','dark'], 'secondary'),
+      range('Min height', 'minHeight', 260, 700, 420),
+    ] },
+  ],
+  promo_grid: () => [
+    { title: 'Content', fields: [text('Heading', 'heading'), range('Columns', 'columns', 2, 4, 3)] },
+    { title: 'Promo cards', fields: [blocks('Promo cards', 'promo')] },
+  ],
+  testimonials: () => [
+    { title: 'Content', fields: [text('Heading', 'heading'), textarea('Subheading', 'subheading'), range('Columns', 'columns', 1, 4, 3), toggle('Autoplay', 'autoplay', true)] },
+    { title: 'Testimonials', fields: [blocks('Testimonials', 'quote')] },
+  ],
+  newsletter: () => [
+    { title: 'Content', fields: [text('Heading', 'heading'), textarea('Text', 'text'), text('Button label', 'buttonLabel')] },
+    { title: 'Appearance', fields: [select('Background', 'background', ['primary','secondary','surface','dark'], 'primary')] },
+  ],
+  rich_text: () => richTextPanels(),
+  main_collection_banner: () => richTextPanels(),
+  multicolumn: () => [
+    { title: 'Content', fields: [text('Heading', 'heading'), textarea('Subheading', 'subheading'), range('Columns', 'columns', 2, 4, 3)] },
+    { title: 'Columns', fields: [blocks('Columns', 'column')] },
+  ],
+  faq: () => [
+    { title: 'Content', fields: [text('Heading', 'heading'), textarea('Subheading', 'subheading')] },
+    { title: 'Questions', fields: [blocks('Questions', 'question')] },
+  ],
+  logo_list: () => [
+    { title: 'Content', fields: [text('Heading', 'heading'), range('Columns', 'columns', 2, 6, 4)] },
+    { title: 'Logos', fields: [blocks('Logos', 'logo')] },
+  ],
+  announcement: () => [
+    { title: 'Announcement', fields: [
+      toggle('Enabled', 'enabled', true),
+      text('Text', 'text'),
+      text('Link URL', 'link'),
+      [range('Height', 'height', 28, 72, 40), range('Speed', 'speed', 1, 15, 6)],
+      toggle('Dismissible', 'dismissible', true),
+      toggle('Show icon', 'showIcon', false),
+      toggle('Uppercase', 'uppercase', false),
+    ] },
+  ],
+  header: () => [
+    { title: 'Header', fields: [
+      select('Style', 'style', ['split','centered','minimal'], 'split'),
+      toggle('Sticky', 'sticky', true),
+      toggle('Search', 'showSearch', true),
+      toggle('Account', 'showAccount', true),
+      toggle('Cart', 'showCart', true),
+      toggle('Mega menu', 'megaMenu', true),
+      range('Logo width', 'logoWidth', 80, 260, 160),
+      range('Navigation spacing', 'navSpacing', 8, 56, 24),
+    ] },
+  ],
+  footer: () => [
+    { title: 'Footer', fields: [toggle('Newsletter', 'showNewsletter', true), textarea('Footer text', 'text'), range('Columns', 'columns', 2, 5, 4)] },
+  ],
+  video: () => mediaPanels('video'),
+  slideshow: () => mediaPanels('slideshow'),
+  main_product: () => templatePanels(),
+  main_collection_grid: () => templatePanels(),
+}
+
+function renderField(schema: FieldSchema, ctx: FieldCtx, set: (patch: Record<string, any>) => void): React.ReactNode {
+  const { s } = ctx
+  switch (schema.kind) {
+    case 'text':
+      return <Field key={schema.label} label={schema.label} placeholder={schema.placeholder} value={schema.get(s)} onChange={value => set(schema.set(value))} />
+    case 'textarea':
+      return <TextArea key={schema.label} label={schema.label} placeholder={schema.placeholder} value={schema.get(s)} onChange={value => set(schema.set(value))} />
+    case 'select': {
+      const options = typeof schema.options === 'function' ? schema.options(ctx) : schema.options
+      return <Select key={schema.label} label={schema.label} value={schema.get(s)} options={options} onChange={value => set(schema.set(value))} />
+    }
+    case 'toggle':
+      return <Toggle key={schema.label} label={schema.label} value={schema.get(s)} onChange={value => set(schema.set(value))} />
+    case 'range':
+      return <Range key={schema.label} label={schema.label} min={schema.min} max={schema.max} step={schema.step} value={schema.get(s)} onChange={value => set(schema.set(value))} />
+    case 'blocks':
+      return null
+  }
+}
+
+function renderPanel(panel: PanelSchema, ctx: FieldCtx, set: (patch: Record<string, any>) => void, section: Section, onUpdateBlocks: (blocks: any[]) => void) {
+  return (
+    <SectionPanel key={panel.title} title={panel.title}>
+      {panel.fields.map((entry, index) => {
+        if (Array.isArray(entry)) {
+          return <div className="themeInspectorGrid" key={index}>{entry.map(field => renderField(field, ctx, set))}</div>
+        }
+        if (entry.kind === 'blocks') {
+          return <BlocksEditor key={entry.label} section={section} type={entry.blockType} onUpdateBlocks={onUpdateBlocks} />
+        }
+        return renderField(entry, ctx, set)
+      })}
+    </SectionPanel>
+  )
+}
+
 export default function ShopifyThemeInspector({ section, products, collections, onUpdate, onUpdateBlocks }: Props) {
   const s = section.settings || {}
-  const set = (key: string, value: any) => onUpdate({ [key]: value })
-  const addCommonLayout = () => <SectionPanel title="Layout & appearance"><div className="themeInspectorGrid"><Select label="Background" value={s.background || 'default'} options={['default','surface','secondary','dark','primary','gradient']} onChange={value=>set('background',value==='default'?'':value)}/><Select label="Text alignment" value={s.textAlign || 'left'} options={['left','center','right']} onChange={value=>set('textAlign',value)}/><Range label="Spacing" value={Number(s.spacing ?? 72)} min={0} max={160} onChange={value=>set('spacing',value)}/><Range label="Columns" value={Number(s.columns ?? 4)} min={2} max={6} onChange={value=>set('columns',value)}/></div></SectionPanel>
-  return <div className="themeInspector">
-    <SectionPanel title="General"><Toggle label="Section enabled" value={section.enabled !== false} onChange={value=>onUpdate({ enabled:value })}/><Field label="Section ID" value={section.id} onChange={()=>{}} /></SectionPanel>
-
-    {section.type==='hero'&&<><SectionPanel title="Content"><Field label="Eyebrow" value={s.eyebrow} onChange={value=>set('eyebrow',value)}/><Field label="Heading" value={s.heading} onChange={value=>set('heading',value)}/><TextArea label="Text" value={s.text} onChange={value=>set('text',value)}/><div className="themeInspectorGrid"><Field label="Button label" value={s.buttonLabel} onChange={value=>set('buttonLabel',value)}/><Field label="Button URL" value={s.buttonUrl} onChange={value=>set('buttonUrl',value)}/><Field label="Secondary label" value={s.secondaryLabel} onChange={value=>set('secondaryLabel',value)}/><Field label="Secondary URL" value={s.secondaryUrl} onChange={value=>set('secondaryUrl',value)}/></div></SectionPanel><SectionPanel title="Media"><Field label="Desktop image URL" value={s.desktopImageUrl || s.imageUrl} onChange={value=>set('desktopImageUrl',value)}/><Field label="Mobile image URL" value={s.mobileImageUrl} onChange={value=>set('mobileImageUrl',value)}/><Field label="Alt text" value={s.imageAlt} onChange={value=>set('imageAlt',value)}/><div className="themeInspectorGrid"><Select label="Image fit" value={s.imageFit || 'cover'} options={['cover','contain','fill']} onChange={value=>set('imageFit',value)}/><Select label="Overlay style" value={s.overlayStyle || 'bottom-gradient'} options={['none','solid','bottom-gradient','full-gradient']} onChange={value=>set('overlayStyle',value)}/><Range label="Overlay" value={Math.round(Number(s.overlay ?? .24)*100)} min={0} max={100} onChange={value=>set('overlay',value/100)}/><Field label="Overlay color" value={s.overlayColor || '#000000'} onChange={value=>set('overlayColor',value)}/></div><div className="themeInspectorGrid"><Range label="Focal X" value={Number(s.focalX ?? 50)} min={0} max={100} onChange={value=>set('focalX',value)}/><Range label="Focal Y" value={Number(s.focalY ?? 50)} min={0} max={100} onChange={value=>set('focalY',value)}/></div></SectionPanel><SectionPanel title="Position & size"><div className="themeInspectorGrid"><Select label="Content position" value={s.contentPosition || 'center-left'} options={['top-left','top-center','top-right','center-left','center','center-right','bottom-left','bottom-center','bottom-right']} onChange={value=>set('contentPosition',value)}/><Select label="Text alignment" value={s.textAlign || 'left'} options={['left','center','right']} onChange={value=>set('textAlign',value)}/><Range label="Content width" value={Number(s.contentWidth ?? 620)} min={320} max={900} onChange={value=>set('contentWidth',value)}/><Range label="Height" value={Number(s.minHeight ?? 640)} min={360} max={900} onChange={value=>set('minHeight',value)}/></div><Toggle label="Full bleed" value={s.fullBleed !== false} onChange={value=>set('fullBleed',value)}/><Toggle label="Content box" value={Boolean(s.contentBox)} onChange={value=>set('contentBox',value)}/></SectionPanel></>}
-
-    {(section.type==='product_grid'||section.type==='product_carousel'||section.type==='featured_product'||section.type==='product_recommendations')&&<><SectionPanel title="Content"><Field label="Heading" value={s.heading} onChange={value=>set('heading',value)}/><TextArea label="Subheading" value={s.subheading} onChange={value=>set('subheading',value)}/>{section.type==='featured_product'&&<Select label="Product" value={s.productId || ''} options={products.map(p=>({value:p.id,label:p.name}))} onChange={value=>set('productId',value)}/>} {section.type!=='featured_product'&&<Select label="Collection" value={s.collection || ''} options={[{value:'',label:'All products'},...collections.map(c=>({value:c.slug||c.id,label:c.name}))]} onChange={value=>set('collection',value)}/>}<div className="themeInspectorGrid"><Range label="Product limit" value={Number(s.limit ?? 8)} min={1} max={48} onChange={value=>set('limit',value)}/><Range label="Columns" value={Number(s.columns ?? 4)} min={2} max={6} onChange={value=>set('columns',value)}/></div><Toggle label="Show View all" value={s.showViewAll !== false} onChange={value=>set('showViewAll',value)}/></SectionPanel><SectionPanel title="Card display"><div className="themeInspectorGrid"><Select label="Card style" value={s.style || 'cards'} options={['cards','minimal','editorial']} onChange={value=>set('style',value)}/><Select label="Image ratio" value={s.imageRatio || 'square'} options={['square','portrait','landscape']} onChange={value=>set('imageRatio',value)}/></div></SectionPanel></>}
-
-    {(section.type==='collection_grid'||section.type==='collection_carousel')&&<><SectionPanel title="Content"><Field label="Heading" value={s.heading} onChange={value=>set('heading',value)}/><TextArea label="Subheading" value={s.subheading} onChange={value=>set('subheading',value)}/><Range label="Collections shown" value={Number(s.limit ?? 4)} min={1} max={24} onChange={value=>set('limit',value)}/><Range label="Columns" value={Number(s.columns ?? 4)} min={2} max={6} onChange={value=>set('columns',value)}/></SectionPanel><SectionPanel title="Collection selection"><Select label="Collection" value={(Array.isArray(s.collectionIds)?s.collectionIds[0]:'') || ''} options={[{value:'',label:'Automatic'},...collections.map(c=>({value:c.id,label:c.name}))]} onChange={value=>set('collectionIds',value?[value]:[])} /></SectionPanel></>}
-
-    {section.type==='image_with_text'&&<><SectionPanel title="Content"><Field label="Eyebrow" value={s.eyebrow} onChange={value=>set('eyebrow',value)}/><Field label="Heading" value={s.heading} onChange={value=>set('heading',value)}/><TextArea label="Text" value={s.text} onChange={value=>set('text',value)}/><div className="themeInspectorGrid"><Field label="Button label" value={s.buttonLabel} onChange={value=>set('buttonLabel',value)}/><Field label="Button URL" value={s.buttonUrl} onChange={value=>set('buttonUrl',value)}/></div></SectionPanel><SectionPanel title="Media & layout"><Field label="Image URL" value={s.imageUrl} onChange={value=>set('imageUrl',value)}/><Select label="Image position" value={s.layout || 'image-right'} options={['image-left','image-right']} onChange={value=>set('layout',value)}/><Select label="Background" value={s.background || 'secondary'} options={['default','secondary','surface','dark']} onChange={value=>set('background',value)}/><Range label="Min height" value={Number(s.minHeight ?? 420)} min={260} max={700} onChange={value=>set('minHeight',value)}/></SectionPanel></>}
-
-    {section.type==='promo_grid'&&<><SectionPanel title="Content"><Field label="Heading" value={s.heading} onChange={value=>set('heading',value)}/><Range label="Columns" value={Number(s.columns ?? 3)} min={2} max={4} onChange={value=>set('columns',value)}/></SectionPanel><SectionPanel title="Promo cards"><BlocksEditor section={section} type="promo" onUpdateBlocks={onUpdateBlocks}/></SectionPanel></>}
-    {section.type==='testimonials'&&<><SectionPanel title="Content"><Field label="Heading" value={s.heading} onChange={value=>set('heading',value)}/><TextArea label="Subheading" value={s.subheading} onChange={value=>set('subheading',value)}/><Range label="Columns" value={Number(s.columns ?? 3)} min={1} max={4} onChange={value=>set('columns',value)}/><Toggle label="Autoplay" value={s.autoplay !== false} onChange={value=>set('autoplay',value)}/></SectionPanel><SectionPanel title="Testimonials"><BlocksEditor section={section} type="quote" onUpdateBlocks={onUpdateBlocks}/></SectionPanel></>}
-    {section.type==='newsletter'&&<><SectionPanel title="Content"><Field label="Heading" value={s.heading} onChange={value=>set('heading',value)}/><TextArea label="Text" value={s.text} onChange={value=>set('text',value)}/><Field label="Button label" value={s.buttonLabel} onChange={value=>set('buttonLabel',value)}/></SectionPanel><SectionPanel title="Appearance"><Select label="Background" value={s.background || 'primary'} options={['primary','secondary','surface','dark']} onChange={value=>set('background',value)}/></SectionPanel></>}
-    {(section.type==='rich_text'||section.type==='main_collection_banner')&&<><SectionPanel title="Content"><Field label="Eyebrow" value={s.eyebrow} onChange={value=>set('eyebrow',value)}/><Field label="Heading" value={s.heading} onChange={value=>set('heading',value)}/><TextArea label="Text" value={s.text} onChange={value=>set('text',value)}/><Field label="Button label" value={s.buttonLabel} onChange={value=>set('buttonLabel',value)}/><Field label="Button URL" value={s.buttonUrl} onChange={value=>set('buttonUrl',value)}/></SectionPanel>{addCommonLayout()}</>}
-
-    {section.type==='multicolumn'&&<><SectionPanel title="Content"><Field label="Heading" value={s.heading} onChange={value=>set('heading',value)}/><TextArea label="Subheading" value={s.subheading} onChange={value=>set('subheading',value)}/><Range label="Columns" value={Number(s.columns ?? 3)} min={2} max={4} onChange={value=>set('columns',value)}/></SectionPanel><SectionPanel title="Columns"><BlocksEditor section={section} type="column" onUpdateBlocks={onUpdateBlocks}/></SectionPanel></>}
-    {section.type==='faq'&&<><SectionPanel title="Content"><Field label="Heading" value={s.heading} onChange={value=>set('heading',value)}/><TextArea label="Subheading" value={s.subheading} onChange={value=>set('subheading',value)}/></SectionPanel><SectionPanel title="Questions"><BlocksEditor section={section} type="question" onUpdateBlocks={onUpdateBlocks}/></SectionPanel></>}
-    {section.type==='logo_list'&&<><SectionPanel title="Content"><Field label="Heading" value={s.heading} onChange={value=>set('heading',value)}/><Range label="Columns" value={Number(s.columns ?? 4)} min={2} max={6} onChange={value=>set('columns',value)}/></SectionPanel><SectionPanel title="Logos"><BlocksEditor section={section} type="logo" onUpdateBlocks={onUpdateBlocks}/></SectionPanel></>}
-
-    {section.type==='announcement'&&<SectionPanel title="Announcement"><Toggle label="Enabled" value={s.enabled !== false} onChange={value=>set('enabled',value)}/><Field label="Text" value={s.text} onChange={value=>set('text',value)}/><Field label="Link URL" value={s.link} onChange={value=>set('link',value)}/><div className="themeInspectorGrid"><Range label="Height" value={Number(s.height ?? 40)} min={28} max={72} onChange={value=>set('height',value)}/><Range label="Speed" value={Number(s.speed ?? 6)} min={1} max={15} onChange={value=>set('speed',value)}/></div><Toggle label="Dismissible" value={s.dismissible !== false} onChange={value=>set('dismissible',value)}/><Toggle label="Show icon" value={Boolean(s.showIcon)} onChange={value=>set('showIcon',value)}/><Toggle label="Uppercase" value={Boolean(s.uppercase)} onChange={value=>set('uppercase',value)}/></SectionPanel>}
-    {section.type==='header'&&<SectionPanel title="Header"><Select label="Style" value={s.style || 'split'} options={['split','centered','minimal']} onChange={value=>set('style',value)}/><Toggle label="Sticky" value={s.sticky !== false} onChange={value=>set('sticky',value)}/><Toggle label="Search" value={s.showSearch !== false} onChange={value=>set('showSearch',value)}/><Toggle label="Account" value={s.showAccount !== false} onChange={value=>set('showAccount',value)}/><Toggle label="Cart" value={s.showCart !== false} onChange={value=>set('showCart',value)}/><Toggle label="Mega menu" value={s.megaMenu !== false} onChange={value=>set('megaMenu',value)}/><Range label="Logo width" value={Number(s.logoWidth ?? 160)} min={80} max={260} onChange={value=>set('logoWidth',value)}/><Range label="Navigation spacing" value={Number(s.navSpacing ?? 24)} min={8} max={56} onChange={value=>set('navSpacing',value)}/></SectionPanel>}
-    {section.type==='footer'&&<SectionPanel title="Footer"><Toggle label="Newsletter" value={s.showNewsletter !== false} onChange={value=>set('showNewsletter',value)}/><TextArea label="Footer text" value={s.text} onChange={value=>set('text',value)}/><Range label="Columns" value={Number(s.columns ?? 4)} min={2} max={5} onChange={value=>set('columns',value)}/></SectionPanel>}
-    {(section.type==='video'||section.type==='slideshow')&&<SectionPanel title={section.type==='video'?'Video':'Slideshow'}><Field label="Media URL" value={s.imageUrl || s.videoUrl} onChange={value=>set(section.type==='video'?'videoUrl':'imageUrl',value)}/><Field label="Poster image" value={s.posterUrl || s.imageUrl} onChange={value=>set(section.type==='video'?'posterUrl':'imageUrl',value)}/>{section.type==='slideshow'&&<BlocksEditor section={section} type="slide" onUpdateBlocks={onUpdateBlocks}/>}<Toggle label="Autoplay" value={s.autoplay !== false} onChange={value=>set('autoplay',value)}/><Range label="Height" value={Number(s.minHeight ?? 560)} min={320} max={860} onChange={value=>set('minHeight',value)}/></SectionPanel>}
-
-    {(section.type==='main_product'||section.type==='main_collection_grid')&&<SectionPanel title="Template section"><Field label="Heading" value={s.heading} onChange={value=>set('heading',value)}/><Range label="Columns" value={Number(s.columns ?? 4)} min={2} max={6} onChange={value=>set('columns',value)}/><Range label="Product limit" value={Number(s.limit ?? 24)} min={1} max={48} onChange={value=>set('limit',value)}/><Toggle label="Show shipping information" value={s.showShipping !== false} onChange={value=>set('showShipping',value)}/></SectionPanel>}
-
-    {!['hero','product_grid','product_carousel','featured_product','product_recommendations','collection_grid','collection_carousel','image_with_text','promo_grid','testimonials','newsletter','rich_text','main_collection_banner','multicolumn','faq','logo_list','announcement','header','footer','video','slideshow','main_product','main_collection_grid'].includes(section.type)&&addCommonLayout()}
-  </div>
+  const ctx: FieldCtx = { s, products, collections }
+  const set = (patch: Record<string, any>) => onUpdate(patch)
+  const panels = (SECTION_PANELS[section.type] || (() => [commonLayoutPanel]))()
+  return (
+    <div className="themeInspector">
+      <SectionPanel title="General">
+        <Toggle label="Section enabled" value={section.enabled !== false} onChange={value => onUpdate({ enabled: value })} />
+        <Field label="Section ID" value={section.id} onChange={() => {}} />
+      </SectionPanel>
+      {panels.map(panel => renderPanel(panel, ctx, set, section, onUpdateBlocks))}
+    </div>
+  )
 }
