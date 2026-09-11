@@ -143,12 +143,22 @@ function mediaPanels(type: 'video' | 'slideshow'): PanelSchema[] {
   return [{ title: type === 'video' ? 'Video' : 'Slideshow', fields }]
 }
 
-function templatePanels(): PanelSchema[] {
+// main_product and main_collection_grid used to share this panel, but they
+// render completely different settings: MainProductSection (storefront-
+// sections.tsx) only ever reads settings.shippingText, while the
+// main_collection_grid branch there reads heading/columns/limit/showFilters
+// -- neither reads showShipping, which is what this panel used to expose.
+function mainProductPanel(): PanelSchema[] {
+  return [{ title: 'Product page', fields: [
+    textarea('Shipping & returns text', 'shippingText', 'Free standard delivery is automatically applied to orders over $50. Tracked shipping worldwide.'),
+  ] }]
+}
+function mainCollectionGridPanel(): PanelSchema[] {
   return [{ title: 'Template section', fields: [
     text('Heading', 'heading'),
     range('Columns', 'columns', 2, 6, 4),
     range('Product limit', 'limit', 1, 48, 24),
-    toggle('Show shipping information', 'showShipping', true),
+    toggle('Show filters', 'showFilters', true),
   ] }]
 }
 
@@ -257,8 +267,8 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
   ],
   video: () => mediaPanels('video'),
   slideshow: () => mediaPanels('slideshow'),
-  main_product: () => templatePanels(),
-  main_collection_grid: () => templatePanels(),
+  main_product: () => mainProductPanel(),
+  main_collection_grid: () => mainCollectionGridPanel(),
 }
 
 function renderField(schema: FieldSchema, ctx: FieldCtx, set: (patch: Record<string, any>) => void): React.ReactNode {
