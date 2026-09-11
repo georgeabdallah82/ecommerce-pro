@@ -43,6 +43,7 @@ import {
 import ShopifyThemeInspector from '@/components/shopify-theme-inspector'
 import ThemeInspectorStyles from '@/components/theme-inspector-styles'
 import ThemePublishBar from '@/components/theme-publish-bar'
+import { FONT_OPTIONS } from '@/lib/font-options'
 import styles from './admin-theme-editor.module.css'
 
 const PREVIEW_PATH = '/admin/online-store/theme-editor/preview'
@@ -154,6 +155,63 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
   )
 }
 
+const HEX_RE = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i
+
+function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  const [text, setText] = useState(value)
+  useEffect(() => { setText(value) }, [value])
+  return (
+    <label className={styles.field}>
+      <span>{label}</span>
+      <div className={styles.colorRow}>
+        <input
+          type="color"
+          value={HEX_RE.test(value) && value.length === 7 ? value : '#000000'}
+          onChange={event => { setText(event.target.value); onChange(event.target.value) }}
+          className={styles.colorSwatch}
+          aria-label={`${label} swatch`}
+        />
+        <input
+          type="text"
+          value={text}
+          onChange={event => { setText(event.target.value); if (HEX_RE.test(event.target.value)) onChange(event.target.value) }}
+          className={styles.input}
+          placeholder="#000000"
+        />
+      </div>
+    </label>
+  )
+}
+
+function SelectField({ label, value, options, onChange }: { label: string; value: string; options: Array<{ value: string; label: string }>; onChange: (value: string) => void }) {
+  return (
+    <label className={styles.field}>
+      <span>{label}</span>
+      <select className={styles.fieldSelect} value={value} onChange={event => onChange(event.target.value)}>
+        {options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+      </select>
+    </label>
+  )
+}
+
+function RangeField({ label, value, min, max, step = 1, unit = '', onChange }: { label: string; value: number; min: number; max: number; step?: number; unit?: string; onChange: (value: number) => void }) {
+  return (
+    <label className={styles.field}>
+      <span>{label} — {value}{unit}</span>
+      <input type="range" min={min} max={max} step={step} value={value} onChange={event => onChange(Number(event.target.value))} />
+    </label>
+  )
+}
+
+function ToggleField({ label, value, onChange }: { label: string; value: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <label className={`${styles.field} ${styles.toggleField}`}>
+      <span>{label}</span>
+      <input type="checkbox" checked={value} onChange={event => onChange(event.target.checked)} />
+    </label>
+  )
+}
+
 export default function FocalThemeEditor({ initial }: Props) {
   const fallback = useMemo(() => defaultTemplates(initial.sections), [initial.sections])
   const [theme, setTheme] = useState<AnyMap>(() => clone(initial.theme || {}))
@@ -257,6 +315,9 @@ export default function FocalThemeEditor({ initial }: Props) {
   const patch = (patches: AnyMap) => {
     if (!selected) return
     commit({ ...templates, [page]: current.map(section => (section.id === selected.id ? { ...section, settings: { ...(section.settings || {}), ...patches } } : section)) })
+  }
+  const patchTheme = (group: string, patches: AnyMap) => {
+    commit(templates, { ...theme, [group]: { ...(theme[group] || {}), ...patches } })
   }
   const patchBlocks = (blocks: any[]) => {
     if (!selected) return
@@ -514,11 +575,35 @@ export default function FocalThemeEditor({ initial }: Props) {
               <Panel title="Brand">
                 <Field label="Brand name" value={theme.brandName || ''} onChange={value => commit(templates, { ...theme, brandName: value })} />
                 <Field label="Logo URL" value={theme.logoUrl || ''} onChange={value => commit(templates, { ...theme, logoUrl: value })} />
+                <Field label="Favicon URL" value={theme.faviconUrl || ''} onChange={value => commit(templates, { ...theme, faviconUrl: value })} />
               </Panel>
-              <Panel title="Palette">
-                <Field label="Primary" value={theme.colors?.primary || '#ff5a1f'} onChange={value => commit(templates, { ...theme, colors: { ...(theme.colors || {}), primary: value } })} />
-                <Field label="Background" value={theme.colors?.background || '#ffffff'} onChange={value => commit(templates, { ...theme, colors: { ...(theme.colors || {}), background: value } })} />
-                <Field label="Text" value={theme.colors?.text || '#202223'} onChange={value => commit(templates, { ...theme, colors: { ...(theme.colors || {}), text: value } })} />
+              <Panel title="Colors">
+                <ColorField label="Primary" value={theme.colors?.primary || '#0a0a0a'} onChange={value => patchTheme('colors', { primary: value })} />
+                <ColorField label="Secondary" value={theme.colors?.secondary || '#f0f0f0'} onChange={value => patchTheme('colors', { secondary: value })} />
+                <ColorField label="Accent" value={theme.colors?.accent || '#d4ff3f'} onChange={value => patchTheme('colors', { accent: value })} />
+                <ColorField label="Background" value={theme.colors?.background || '#ffffff'} onChange={value => patchTheme('colors', { background: value })} />
+                <ColorField label="Surface" value={theme.colors?.surface || '#f5f5f5'} onChange={value => patchTheme('colors', { surface: value })} />
+                <ColorField label="Text" value={theme.colors?.text || '#0a0a0a'} onChange={value => patchTheme('colors', { text: value })} />
+                <ColorField label="Muted text" value={theme.colors?.muted || '#6b6b6b'} onChange={value => patchTheme('colors', { muted: value })} />
+                <ColorField label="Border" value={theme.colors?.border || '#e5e5e5'} onChange={value => patchTheme('colors', { border: value })} />
+                <ColorField label="Button text" value={theme.colors?.buttonText || '#ffffff'} onChange={value => patchTheme('colors', { buttonText: value })} />
+                <ColorField label="Announcement bg" value={theme.colors?.announcementBg || '#0a0a0a'} onChange={value => patchTheme('colors', { announcementBg: value })} />
+                <ColorField label="Announcement text" value={theme.colors?.announcementText || '#ffffff'} onChange={value => patchTheme('colors', { announcementText: value })} />
+                <ColorField label="Sale" value={theme.colors?.sale || '#ff3b30'} onChange={value => patchTheme('colors', { sale: value })} />
+              </Panel>
+              <Panel title="Typography">
+                <SelectField label="Heading font" value={theme.typography?.heading || 'spaceGrotesk'} options={FONT_OPTIONS.map(f => ({ value: f.key, label: f.label }))} onChange={value => patchTheme('typography', { heading: value })} />
+                <SelectField label="Body font" value={theme.typography?.body || 'inter'} options={FONT_OPTIONS.map(f => ({ value: f.key, label: f.label }))} onChange={value => patchTheme('typography', { body: value })} />
+              </Panel>
+              <Panel title="Buttons">
+                <RangeField label="Corner radius" value={theme.buttons?.radius ?? 8} min={0} max={32} unit="px" onChange={value => patchTheme('buttons', { radius: value })} />
+                <RangeField label="Height" value={theme.buttons?.height ?? 50} min={36} max={64} unit="px" onChange={value => patchTheme('buttons', { height: value })} />
+                <ToggleField label="Uppercase label" value={theme.buttons?.uppercase !== false} onChange={value => patchTheme('buttons', { uppercase: value })} />
+              </Panel>
+              <Panel title="Cards & layout">
+                <RangeField label="Card corner radius" value={theme.cards?.radius ?? 14} min={0} max={32} unit="px" onChange={value => patchTheme('cards', { radius: value })} />
+                <RangeField label="Section spacing" value={theme.layout?.sectionSpacing ?? 84} min={32} max={160} unit="px" onChange={value => patchTheme('layout', { sectionSpacing: value })} />
+                <RangeField label="Max page width" value={theme.layout?.maxWidth ?? 1360} min={960} max={1600} step={20} unit="px" onChange={value => patchTheme('layout', { maxWidth: value })} />
               </Panel>
             </div>
           ) : (

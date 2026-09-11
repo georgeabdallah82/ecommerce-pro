@@ -4,6 +4,39 @@ import { useEffect, useState } from 'react'
 import { CartProvider } from '@/components/cart-provider'
 import StoreNavFixed from '@/components/store-nav-fixed'
 import StorefrontSections from '@/components/storefront-sections'
+import { fontCssStack } from '@/lib/font-options'
+
+// The page this iframe is mounted at renders through the same root
+// app/layout.tsx as the live site, so its <html> already carries --store-*
+// vars computed from the *published* theme. Editing is draft-only until
+// Publish, so this recomputes the same vars from the postMessage'd draft
+// theme and writes them directly onto document.documentElement (<html>) via
+// a DOM effect below -- several storefront-legacy.css :root{} rules resolve
+// their own tokens with var(--store-x, fallback), and that lookup only sees
+// custom properties visible at :root (<html>) itself or an ancestor, so
+// setting these any lower (e.g. a wrapping div) would silently be invisible
+// to those rules and fall back to their hardcoded defaults.
+function themeCssVars(theme: Record<string, any>): React.CSSProperties {
+  const colors = theme.colors || {}
+  const layout = theme.layout || {}
+  const cards = theme.cards || {}
+  const buttons = theme.buttons || {}
+  const animations = theme.animations || {}
+  return {
+    '--store-bg': colors.background, '--store-surface': colors.surface, '--store-text': colors.text, '--store-muted': colors.muted,
+    '--store-primary': colors.primary, '--store-secondary': colors.secondary, '--store-accent': colors.accent,
+    '--store-button-text': colors.buttonText, '--store-border': colors.border, '--store-max': layout.maxWidth ? `${layout.maxWidth}px` : undefined,
+    '--store-announcement-bg': colors.announcementBg, '--store-announcement-text': colors.announcementText,
+    '--store-section-space': layout.sectionSpacing ? `${layout.sectionSpacing}px` : undefined,
+    '--store-card-radius': cards.radius !== undefined ? `${cards.radius}px` : undefined,
+    '--store-button-radius': buttons.radius !== undefined ? `${buttons.radius}px` : undefined,
+    '--store-button-height': `${buttons.height || 48}px`, '--store-btn-transform': buttons.uppercase ? 'uppercase' : 'none',
+    '--store-font-heading': fontCssStack(theme.typography?.heading), '--store-font-body': fontCssStack(theme.typography?.body),
+    '--store-animation-duration': `${animations.duration || 420}ms`,
+    '--store-animation-easing': animations.easing || 'cubic-bezier(.22,.8,.26,1)', '--store-btn-style': buttons.style || 'solid', '--store-btn-hover': buttons.hover || 'lift',
+    '--store-header-logo-width': theme.header?.logoWidth ? `${theme.header.logoWidth}px` : undefined,
+  } as React.CSSProperties
+}
 
 type AnyMap = Record<string, any>
 type PreviewState = {
@@ -55,6 +88,16 @@ export default function ThemePreviewFrame() {
     report()
     return () => observer.disconnect()
   }, [state])
+
+  useEffect(() => {
+    if (!state?.theme) return
+    const root = document.documentElement
+    const vars = themeCssVars(state.theme)
+    Object.entries(vars).forEach(([key, value]) => {
+      if (value === undefined) return
+      root.style.setProperty(key, String(value))
+    })
+  }, [state?.theme])
 
   useEffect(() => {
     if (!state?.selectedId) return
