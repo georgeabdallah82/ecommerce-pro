@@ -19,7 +19,7 @@ function isSameOrigin(request: NextRequest) {
   }
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   if (request.headers.get('Render-Health-Check') === '1') {
     return new Response('ok', {
       status: 200,
