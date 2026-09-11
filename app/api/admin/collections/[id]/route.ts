@@ -70,7 +70,15 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     const { id } = await params
     const existing = await db.collection.findUnique({ where: { id } })
     if (!existing) return json({ error: 'Collection not found' }, { status: 404 })
-    await db.collection.delete({ where: { id } })
+    // CollectionProduct.collectionId is a required field with a declared
+    // onDelete: Cascade that MongoDB's schema conversion strips to NoAction
+    // (no native FK support) -- clear the join rows ourselves first, matching
+    // the intended Cascade semantics, instead of leaving orphaned rows or
+    // hitting Prisma's emulated referential-integrity error on delete.
+    await db.$transaction(async tx => {
+      await tx.collectionProduct.deleteMany({ where: { collectionId: id } })
+      await tx.collection.delete({ where: { id } })
+    })
     await audit(actor.id, 'collection.deleted', 'Collection', id, { name: existing.name })
     return json({ ok: true })
   } catch (e) {

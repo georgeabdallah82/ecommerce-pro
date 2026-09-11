@@ -49,7 +49,16 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     const { id } = await params
     const existing = await db.category.findUnique({ where: { id }, include: { _count: { select: { products: true, children: true } } } })
     if (!existing) return json({ error: 'Category not found' }, { status: 404 })
-    await db.category.delete({ where: { id } })
+    // MongoDB has no native FK support, so onDelete: SetNull (declared on both
+    // Product.category and Category.parent in the source schema) is stripped to
+    // NoAction by the mongodb schema conversion -- clear the references
+    // ourselves before deleting, matching the intended SetNull semantics
+    // instead of leaving dangling categoryId/parentId values behind.
+    await db.$transaction(async tx => {
+      await tx.product.updateMany({ where: { categoryId: id }, data: { categoryId: null } })
+      await tx.category.updateMany({ where: { parentId: id }, data: { parentId: null } })
+      await tx.category.delete({ where: { id } })
+    })
     await audit(actor.id, 'category.deleted', 'Category', id, { name: existing.name, productCount: existing._count.products, childCount: existing._count.children })
     return json({ ok: true })
   } catch (e) {
