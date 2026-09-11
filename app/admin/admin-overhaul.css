@@ -239,15 +239,15 @@ body:has(.adminShell) .toggleRow span{display:grid;gap:3px}
 body:has(.adminShell) .toggleRow small{font-size:11px;color:var(--admin-muted);line-height:1.4}
 @media(max-width:650px){body:has(.adminShell) .discountFormGrid{grid-template-columns:1fr}body:has(.adminShell) .discountForm{padding:18px}body:has(.adminShell) .discountsModal .inventoryModalHead{padding:18px}}
 
-/* Content block modal (Online store > Content) -- .contentModal, .checkboxLine
-   and .contentJsonEditor had no rule anywhere, so the modal had no explicit
-   width (stretching to whatever the flex/block context allowed instead of
-   matching every other modal's fixed width), the "Publish this block"
-   checkbox and its label had no alignment, and the JSON textarea used the
-   plain .input font instead of a monospace one sized for editing JSON. */
-body:has(.adminShell) .contentModal{width:min(700px,94vw);padding:0;max-height:92vh;overflow:auto}
-body:has(.adminShell) .checkboxLine{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--admin-ink)}
-body:has(.adminShell) .contentJsonEditor{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;min-height:160px}
+/* .contentModal/.checkboxLine/.contentJsonEditor turned out to already have a
+   complete definition in app/admin/content/page.tsx's own page-scoped <style>
+   block -- missed when this classname was audited in batch 29, which wrongly
+   assumed it was unstyled anywhere. Duplicating them here with different
+   values silently won (higher selector specificity) over the page's intended
+   padding/min-height, leaving the modal with 0 padding below its header
+   (misaligned against the indented header row) and a JSON textarea 20px
+   shorter than intended. Removed the duplicate so the page's own values,
+   which are complete and correct, are the single source of truth again. */
 /* .modalFooter (the Cancel/Save row at the bottom of the content block
    modal) had no rule anywhere, so the two buttons had no gap or alignment. */
 body:has(.adminShell) .modalFooter{display:flex;justify-content:flex-end;gap:10px;margin-top:4px}
