@@ -5,18 +5,38 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowUp,
+  BadgeCheck,
   Check,
+  Columns3,
   Copy,
+  FolderOpen,
+  GalleryHorizontal,
+  GalleryHorizontalEnd,
   GripVertical,
+  HelpCircle,
+  Image as ImageIcon,
+  Images,
+  LayoutGrid,
+  Grid3x3,
+  Mail,
+  MessageSquareQuote,
   Monitor,
+  Package,
+  PackageCheck,
   Palette,
+  PanelBottom,
+  PanelTop,
   Plus,
   Redo2,
   Save,
   Smartphone,
+  Sparkles,
+  SplitSquareHorizontal,
   Tablet,
   Trash2,
+  Type as TypeIcon,
   Undo2,
+  Video,
   X,
 } from 'lucide-react'
 import ShopifyThemeInspector from '@/components/shopify-theme-inspector'
@@ -54,6 +74,28 @@ const META: Record<string, string> = {
   faq: 'Collapsible content',
   newsletter: 'Email signup',
   footer: 'Footer',
+}
+const SECTION_ICONS: Record<string, typeof ImageIcon> = {
+  hero: ImageIcon,
+  slideshow: Images,
+  video: Video,
+  image_with_text: SplitSquareHorizontal,
+  product_grid: Grid3x3,
+  product_carousel: GalleryHorizontalEnd,
+  featured_product: Package,
+  product_recommendations: Sparkles,
+  main_product: PackageCheck,
+  collection_grid: FolderOpen,
+  collection_carousel: GalleryHorizontal,
+  main_collection_banner: PanelTop,
+  main_collection_grid: LayoutGrid,
+  multicolumn: Columns3,
+  rich_text: TypeIcon,
+  testimonials: MessageSquareQuote,
+  logo_list: BadgeCheck,
+  faq: HelpCircle,
+  newsletter: Mail,
+  footer: PanelBottom,
 }
 const clone = <T,>(value: T): T => structuredClone(value)
 const makeId = (type: string) => `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
@@ -471,12 +513,15 @@ export default function FocalThemeEditor({ initial }: Props) {
             <div className={styles.pickerList}>
               {Object.entries(META)
                 .filter(([key]) => !['announcement', 'header'].includes(key))
-                .map(([key, label]) => (
-                  <button key={key} className={`${styles.btn} ${styles.pickerItem}`} onClick={() => addSection(key)}>
-                    <span>{label}</span>
-                    <Plus size={14} />
-                  </button>
-                ))}
+                .map(([key, label]) => {
+                  const Icon = SECTION_ICONS[key] || LayoutGrid
+                  return (
+                    <button key={key} className={styles.pickerCard} onClick={() => addSection(key)}>
+                      <span className={styles.pickerIcon}><Icon size={20} /></span>
+                      <span className={styles.pickerLabel}>{label}</span>
+                    </button>
+                  )
+                })}
             </div>
           </div>
         </div>
