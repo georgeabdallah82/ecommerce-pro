@@ -2,7 +2,7 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
-import { defaultNavigation, defaultSections, defaultTheme } from '@/lib/theme'
+import { defaultNavigation, defaultSections, defaultTheme, getThemeEditorState } from '@/lib/theme'
 
 function normalizeSections(input: any[]): any[] { return (Array.isArray(input) ? input : defaultSections).filter(Boolean).map((s: any) => ({ ...s, type: s.type === 'image_banner' ? 'hero' : s.type, enabled: s.enabled !== false, settings: { ...(s.settings || {}) }, blocks: Array.isArray(s.blocks) ? s.blocks : [] })) }
 function normalizeTemplates(input: any): Record<string, any[]> { const source = input && typeof input === 'object' ? input : {}; const out: Record<string, any[]> = {}; for (const [key, value] of Object.entries(source)) out[key] = normalizeSections(value as any[]); return out }
@@ -11,19 +11,8 @@ function parseSetting(value: string | null | undefined, fallback: any) { if (!va
 export async function GET() {
   try {
     await requirePermission('content.view')
-    const [draft, published, publishedSections, draftSections, navigation, draftNavigation] = await Promise.all([
-      db.setting.findUnique({ where: { key: 'theme.draft' } }), db.setting.findUnique({ where: { key: 'theme.config' } }),
-      db.setting.findUnique({ where: { key: 'theme.sections' } }), db.setting.findUnique({ where: { key: 'theme.draft.sections' } }),
-      db.setting.findUnique({ where: { key: 'navigation.main' } }), db.setting.findUnique({ where: { key: 'navigation.draft' } }),
-    ])
-    const publishedTheme = parseSetting(published?.value, defaultTheme)
-    const rawTheme = parseSetting(draft?.value, publishedTheme)
-    const publishedHome = normalizeSections(parseSetting(publishedSections?.value, defaultSections))
-    const home = normalizeSections(parseSetting(draftSections?.value, publishedHome))
-    const editorTemplates = normalizeTemplates(rawTheme.editorTemplates)
-    if (!Object.prototype.hasOwnProperty.call(editorTemplates, 'Home page')) editorTemplates['Home page'] = home
-    const theme = { ...rawTheme, editorTemplates }
-    return json({ theme, sections: home, editorTemplates, navigation: parseSetting(draftNavigation?.value, parseSetting(navigation?.value, defaultNavigation)), draft: Boolean(draft), publishedTheme }, { headers: { 'cache-control': 'no-store' } })
+    const state = await getThemeEditorState()
+    return json(state, { headers: { 'cache-control': 'no-store' } })
   } catch (e) { return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 }) }
 }
 

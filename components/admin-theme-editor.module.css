@@ -58,7 +58,7 @@
 .body { display: grid; grid-template-columns: 310px minmax(0, 1fr); min-height: 0; }
 .side { background: var(--admin-surface); border-right: 1px solid var(--admin-border); overflow: auto; }
 
-.tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px; }
+.tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 8px; }
 .tabs button {
   height: 34px;
   border: 0;

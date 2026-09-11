@@ -14,6 +14,7 @@ import {
   GalleryHorizontalEnd,
   GripVertical,
   HelpCircle,
+  History,
   Image as ImageIcon,
   Images,
   LayoutGrid,
@@ -164,7 +165,7 @@ export default function FocalThemeEditor({ initial }: Props) {
   const [page, setPage] = useState('Home page')
   const [selectedId, setSelectedId] = useState('')
   const [device, setDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
-  const [sideTab, setSideTab] = useState<'sections' | 'theme'>('sections')
+  const [sideTab, setSideTab] = useState<'sections' | 'theme' | 'history'>('sections')
   const [drawerTab, setDrawerTab] = useState<'content' | 'design' | 'advanced'>('content')
   const [drawer, setDrawer] = useState(false)
   const [picker, setPicker] = useState(false)
@@ -179,6 +180,10 @@ export default function FocalThemeEditor({ initial }: Props) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [previewReady, setPreviewReady] = useState(false)
   const [previewHeight, setPreviewHeight] = useState(0)
+  const [versions, setVersions] = useState<Array<{ id: string; createdAt: string; createdBy: string | null }>>([])
+  const [versionsLoading, setVersionsLoading] = useState(false)
+  const [versionsError, setVersionsError] = useState('')
+  const [restoringId, setRestoringId] = useState<string | null>(null)
 
   const current = templates[page] || []
   const selectedIndex = current.findIndex(section => section.id === selectedId)
@@ -350,6 +355,45 @@ export default function FocalThemeEditor({ initial }: Props) {
     }
   }
 
+  useEffect(() => {
+    if (sideTab !== 'history' || versions.length || versionsLoading) return
+    setVersionsLoading(true)
+    setVersionsError('')
+    fetch('/api/admin/theme/versions', { cache: 'no-store' })
+      .then(response => response.json())
+      .then(data => { if (Array.isArray(data.versions)) setVersions(data.versions); else throw new Error(data.error || 'Unable to load theme history') })
+      .catch(error => setVersionsError(error instanceof Error ? error.message : 'Unable to load theme history'))
+      .finally(() => setVersionsLoading(false))
+  }, [sideTab, versions.length, versionsLoading])
+
+  const restoreVersion = async (id: string) => {
+    if (typeof window !== 'undefined' && !window.confirm('Restore this version? It will replace your current draft (published content is unaffected until you publish again).')) return
+    setRestoringId(id)
+    setVersionsError('')
+    try {
+      const response = await fetch(`/api/admin/theme/versions/${id}/restore`, { method: 'POST' })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || 'Unable to restore theme version')
+      setMessage('Version restored to draft — reloading…')
+      window.setTimeout(() => window.location.reload(), 600)
+    } catch (error) {
+      setVersionsError(error instanceof Error ? error.message : 'Unable to restore theme version')
+      setRestoringId(null)
+    }
+  }
+
+  const formatVersionTime = (iso: string) => {
+    const diffMs = Date.now() - new Date(iso).getTime()
+    const minutes = Math.round(diffMs / 60000)
+    if (minutes < 1) return 'Just now'
+    if (minutes < 60) return `${minutes}m ago`
+    const hours = Math.round(minutes / 60)
+    if (hours < 24) return `${hours}h ago`
+    const days = Math.round(hours / 24)
+    if (days < 30) return `${days}d ago`
+    return new Date(iso).toLocaleDateString()
+  }
+
   const maxWidth = device === 'mobile' ? 390 : device === 'tablet' ? 820 : 1320
   const frameClass = device === 'mobile' ? styles.frameMobile : device === 'tablet' ? styles.frameTablet : styles.frameDesktop
 
@@ -392,6 +436,7 @@ export default function FocalThemeEditor({ initial }: Props) {
           <div className={styles.tabs}>
             <button className={sideTab === 'sections' ? styles.active : ''} onClick={() => setSideTab('sections')}><GripVertical size={13} />Sections</button>
             <button className={sideTab === 'theme' ? styles.active : ''} onClick={() => setSideTab('theme')}><Palette size={13} />Theme</button>
+            <button className={sideTab === 'history' ? styles.active : ''} onClick={() => setSideTab('history')}><History size={13} />History</button>
           </div>
 
           {sideTab === 'sections' ? (
@@ -426,7 +471,7 @@ export default function FocalThemeEditor({ initial }: Props) {
               </div>
               <button className={styles.add} onClick={() => setPicker(true)}><Plus size={14} />Add section</button>
             </>
-          ) : (
+          ) : sideTab === 'theme' ? (
             <div className={styles.sideThemeTab}>
               <Panel title="Brand">
                 <Field label="Brand name" value={theme.brandName || ''} onChange={value => commit(templates, { ...theme, brandName: value })} />
@@ -437,6 +482,28 @@ export default function FocalThemeEditor({ initial }: Props) {
                 <Field label="Background" value={theme.colors?.background || '#ffffff'} onChange={value => commit(templates, { ...theme, colors: { ...(theme.colors || {}), background: value } })} />
                 <Field label="Text" value={theme.colors?.text || '#202223'} onChange={value => commit(templates, { ...theme, colors: { ...(theme.colors || {}), text: value } })} />
               </Panel>
+            </div>
+          ) : (
+            <div className={styles.sideThemeTab}>
+              {versionsLoading && <div className={styles.sideSectionsCount}>Loading history…</div>}
+              {versionsError && <div className={styles.sideSectionsCount}>{versionsError}</div>}
+              {!versionsLoading && !versionsError && !versions.length && <div className={styles.sideSectionsCount}>No published versions yet. History fills in after your next publish.</div>}
+              <div className={styles.rows}>
+                {versions.map(version => (
+                  <div className={styles.row} key={version.id}>
+                    <div className={styles.rowMain}>
+                      <History size={13} />
+                      <span>
+                        {formatVersionTime(version.createdAt)}
+                        {version.createdBy && <small> · {version.createdBy}</small>}
+                      </span>
+                    </div>
+                    <button className={styles.rowToggle} disabled={restoringId === version.id} onClick={() => restoreVersion(version.id)} aria-label="Restore this version">
+                      {restoringId === version.id ? '…' : <Undo2 size={14} />}
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </aside>
