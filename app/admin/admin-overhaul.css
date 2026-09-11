@@ -246,6 +246,12 @@ body:has(.adminShell) .toggleRow input{margin-top:3px}
 body:has(.adminShell) .toggleRow span{display:grid;gap:3px}
 body:has(.adminShell) .toggleRow small{font-size:11px;color:var(--admin-muted);line-height:1.4}
 @media(max-width:650px){body:has(.adminShell) .discountFormGrid{grid-template-columns:1fr}body:has(.adminShell) .discountForm{padding:18px}body:has(.adminShell) .discountsModal .inventoryModalHead{padding:18px}}
+/* .opsRow (Shipping -- each rate row inside an expanded zone's rate list,
+   app/admin/layout.tsx's adminCss) hardcodes background:#fafaf8 and
+   border-color:#ecece7 with no dark-mode counterpart anywhere, so every rate
+   row rendered as a bright white card with barely-legible muted text on the
+   dark theme. Re-pointed at the same soft-surface tokens .toggleRow uses. */
+body:has(.adminShell) .opsRow{background:var(--admin-border-soft)!important;border-color:var(--admin-border)!important;color:var(--admin-ink)!important}
 
 /* .contentModal/.checkboxLine/.contentJsonEditor turned out to already have a
    complete definition in app/admin/content/page.tsx's own page-scoped <style>
