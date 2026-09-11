@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowDown,
   ArrowLeft,
@@ -19,12 +19,11 @@ import {
   Undo2,
   X,
 } from 'lucide-react'
-import { CartProvider } from '@/components/cart-provider'
-import StoreNavFixed from '@/components/store-nav-fixed'
-import StorefrontSections from '@/components/storefront-sections'
 import ShopifyThemeInspector from '@/components/shopify-theme-inspector'
 import ThemeInspectorStyles from '@/components/theme-inspector-styles'
 import styles from './admin-theme-editor.module.css'
+
+const PREVIEW_PATH = '/admin/online-store/theme-editor/preview'
 
 type AnyMap = Record<string, any>
 type Section = { id: string; type: string; enabled?: boolean; settings?: AnyMap; blocks?: AnyMap[] }
@@ -135,6 +134,9 @@ export default function FocalThemeEditor({ initial }: Props) {
   const [products, setProducts] = useState<any[]>([])
   const [collections, setCollections] = useState<any[]>([])
   const [dragId, setDragId] = useState<string | null>(null)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+  const [previewReady, setPreviewReady] = useState(false)
+  const [previewHeight, setPreviewHeight] = useState(0)
 
   const current = templates[page] || []
   const selectedIndex = current.findIndex(section => section.id === selectedId)
@@ -148,16 +150,6 @@ export default function FocalThemeEditor({ initial }: Props) {
   }, [current, selectedId])
 
   useEffect(() => {
-    if (!selectedId || typeof document === 'undefined') return
-    const visibleIndex = current
-      .filter(section => section.enabled !== false && section.settings?.enabled !== false && section.type !== 'header' && section.type !== 'announcement' && section.type !== 'footer')
-      .findIndex(section => section.id === selectedId)
-    if (visibleIndex < 0) return
-    const nodes = document.querySelectorAll<HTMLElement>('.themeEditorPreview .focalSection')
-    nodes[visibleIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }, [selectedId, page])
-
-  useEffect(() => {
     Promise.all([
       fetch('/api/products', { cache: 'no-store' }).then(r => (r.ok ? r.json() : [])).catch(() => []),
       fetch('/api/admin/collections', { cache: 'no-store' }).then(r => (r.ok ? r.json() : [])).catch(() => []),
@@ -166,6 +158,39 @@ export default function FocalThemeEditor({ initial }: Props) {
       setCollections(rows(collectionData))
     })
   }, [])
+
+  // The preview lives in a same-origin iframe (components/theme-preview-frame.tsx),
+  // driven entirely by postMessage instead of shared props/DOM, so the editor
+  // chrome's CSS can never bleed into (or be bled into by) the real storefront
+  // CSS it's previewing, and device-width preview reflects a real iframe
+  // viewport instead of a max-width wrapper div.
+  useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      if (event.origin !== window.location.origin) return
+      if (event.source !== iframeRef.current?.contentWindow) return
+      const data = event.data
+      if (!data || data.source !== 'theme-preview') return
+      if (data.type === 'ready') setPreviewReady(true)
+      else if (data.type === 'select') { setSelectedId(data.sectionId); setDrawer(true) }
+      else if (data.type === 'height') setPreviewHeight(Number(data.height) || 0)
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [])
+
+  useEffect(() => {
+    if (!previewReady) return
+    iframeRef.current?.contentWindow?.postMessage({
+      source: 'theme-editor',
+      type: 'state',
+      theme,
+      sections: current,
+      navigation: initial.navigation,
+      products,
+      collections,
+      selectedId,
+    }, window.location.origin)
+  }, [previewReady, theme, current, initial.navigation, products, collections, selectedId])
 
   const commit = (nextTemplates: Record<string, Section[]>, nextTheme = theme) => {
     setHistory(history => [...history, { theme: clone(theme), templates: clone(templates), page, selectedId }].slice(-50))
@@ -380,20 +405,14 @@ export default function FocalThemeEditor({ initial }: Props) {
             <span className={styles.canvasBarStatus}>{dirty ? 'Live preview · unsaved changes' : 'Live preview'}</span>
           </div>
           <div className={styles.preview}>
-            <div className={`${styles.frame} ${frameClass}`} style={{ maxWidth }}>
-              <CartProvider>
-                <StoreNavFixed theme={{ ...theme, editorTemplates: { ...(theme.editorTemplates || {}), Pages: current } }} navigation={initial.navigation} />
-                <StorefrontSections
-                  theme={theme}
-                  sections={current}
-                  products={products}
-                  collections={collections}
-                  preview
-                  selectedId={selectedId}
-                  onSelect={sectionId => { setSelectedId(sectionId); setDrawer(true) }}
-                />
-              </CartProvider>
-            </div>
+            <iframe
+              ref={iframeRef}
+              src={PREVIEW_PATH}
+              title="Storefront preview"
+              className={`${styles.frame} ${frameClass}`}
+              style={{ maxWidth, height: previewHeight || '100%', border: 0 }}
+              onLoad={() => setPreviewReady(false)}
+            />
           </div>
         </main>
 
