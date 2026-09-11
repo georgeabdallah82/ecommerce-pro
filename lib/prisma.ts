@@ -358,6 +358,11 @@ function getMockHandler(model: string) {
     },
     createMany: async (args: any) => ({ count: args?.data?.length || 0 }),
     updateMany: async () => ({ count: 1 }),
+    // Generic aggregation fallbacks -- an empty group list / all-zero
+    // aggregate is always a safe shape for callers that only ever consume
+    // real data when a database is actually connected (dashboards, reports).
+    groupBy: async () => [],
+    aggregate: async () => ({ _sum: {}, _count: {}, _avg: {}, _min: {}, _max: {} }),
     deleteMany: async (args?: any) => {
       if (model === 'themeVersion' && args?.where?.id?.in) {
         const ids = new Set<string>(args.where.id.in)
@@ -422,10 +427,18 @@ function createResilientPrismaClient(): any {
       }
 
       if (prop in target) return Reflect.get(target, prop)
-      // adminLoginLockout has full findUnique/upsert handling below (mockAdminLoginLockouts)
-      // but was never added to this dispatch list, so admin login always 500'd in local dev
-      // with no DATABASE_URL configured -- the one path that's supposed to work everywhere.
-      if (!isProduction && ['product','category','collection','user','setting','order','coupon','shippingZone','adminLoginLockout','themeVersion','auditLog','liveVisitorSession'].includes(prop)) return getMockHandler(prop)
+      // Any model prop not already resolved above (no real client, or the
+      // real client doesn't have it) gets a generic in-memory mock in
+      // non-production. This used to be an explicit allowlist that had to
+      // be updated by hand every time a route queried a new Prisma model
+      // without DATABASE_URL configured, and every miss was the same
+      // "Cannot read properties of undefined" crash -- adminLoginLockout,
+      // auditLog, liveVisitorSession and inventoryItem all hit it before
+      // being added one at a time. getMockHandler's generic fallbacks
+      // (empty list / null / create-or-update echo) are always safe for a
+      // model with no special-cased mock data, so there's nothing left for
+      // an allowlist to gate.
+      if (!isProduction) return getMockHandler(prop)
       return Reflect.get(target, prop)
     },
   })

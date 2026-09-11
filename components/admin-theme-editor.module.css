@@ -204,6 +204,20 @@
   font-size: 11px;
 }
 .textarea { min-height: 80px; resize: vertical; }
+.colorRow { display: flex; align-items: center; gap: 8px; }
+.colorRow .input { flex: 1; }
+.colorSwatch {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  padding: 2px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-surface);
+  cursor: pointer;
+}
+.toggleField { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; }
+.toggleField input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
 
 .notice {
   position: fixed;
