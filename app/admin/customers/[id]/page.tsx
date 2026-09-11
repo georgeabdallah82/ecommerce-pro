@@ -3,6 +3,7 @@ import { db } from '@/lib/prisma'
 import CustomerDetailAdmin from '@/components/customer-detail-admin'
 import { sumCustomerSpend } from '@/lib/orders'
 import type { OrderStatus } from '@prisma/client'
+import ui from '@/components/admin-ui.module.css'
 
 type WalletTransaction = {
   id: string
@@ -48,7 +49,7 @@ export default async function CustomerDetail({ params }: { params: Promise<{ id:
       _count: { select: { orders: true, reviews: true } },
     },
   })
-  if (!customer) return <div className="empty">Customer not found.</div>
+  if (!customer) return <div className={ui.empty}>Customer not found.</div>
 
   const [tagMembers, segmentMembers, loyalty, availableTags, availableSegments] = await Promise.all([
     db.customerTagMember.findMany({ where: { customerId: id }, include: { tag: true }, orderBy: { createdAt: 'desc' } }),

@@ -11,7 +11,6 @@ export default function AdminRouteStateStyles(){
     .adminRouteNotFound span{font-size:10px;letter-spacing:.11em;font-weight:900;color:#858a82}
     .adminRouteNotFound h1{margin:7px 0 5px;font-size:25px;letter-spacing:-.04em}
     .adminRouteNotFound p{margin:0 0 15px;color:#777b74;font-size:12px;line-height:1.6}
-    .adminRouteNotFound .btn{display:inline-flex}
     @keyframes adminSpin{to{transform:rotate(360deg)}}
     html[data-admin-theme='dark'] .adminRouteState{background:#191d1b;color:#eef2ef;border-color:#2c332e}
     html[data-admin-theme='dark'] .adminRouteSpinner{border-color:#343b36;border-top-color:#eef2ef}
