@@ -231,6 +231,14 @@ const mockShippingZones = [
 
 const mockAdminLoginLockouts = new Map<string, { id: string; email: string; failedCount: number; lockedUntil: Date | null; updatedAt: Date }>()
 const mockThemeVersions: Array<{ id: string; theme: string; sections: string; navigation: string; createdAt: Date; createdBy: string | null }> = []
+// Locations/sales channels/webhooks/API credentials all start empty (no seed
+// data) and are populated only through their admin CRUD routes -- unlike the
+// generic fallback below, these arrays are actually mutated on create/update/
+// delete so the admin operations hub's forms round-trip in local dev.
+const mockStoreLocations: any[] = []
+const mockSalesChannels: any[] = []
+const mockWebhookEndpoints: any[] = []
+const mockApiCredentials: any[] = []
 
 function getMockHandler(model: string) {
   return {
@@ -259,6 +267,10 @@ function getMockHandler(model: string) {
         if (args?.take) list = list.slice(0, args.take)
         return list
       }
+      if (model === 'storeLocation') return [...mockStoreLocations].sort((a, b) => Number(b.isDefault) - Number(a.isDefault) || a.name.localeCompare(b.name))
+      if (model === 'salesChannel') return [...mockSalesChannels].map(c => ({ ...c, _count: { publications: 0 } }))
+      if (model === 'webhookEndpoint') return [...mockWebhookEndpoints].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      if (model === 'apiCredential') return [...mockApiCredentials].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       return []
     },
     findUnique: async (args: any) => {
@@ -293,6 +305,10 @@ function getMockHandler(model: string) {
       if (model === 'coupon' && where.code) return mockCoupons.find((c) => c.code.toUpperCase() === String(where.code).toUpperCase()) || null
       if (model === 'adminLoginLockout' && where.email) return mockAdminLoginLockouts.get(where.email) || null
       if (model === 'themeVersion' && where.id) return mockThemeVersions.find((v) => v.id === where.id) || null
+      if (model === 'storeLocation') return (where.id ? mockStoreLocations.find((x) => x.id === where.id) : where.handle ? mockStoreLocations.find((x) => x.handle === where.handle) : null) || null
+      if (model === 'salesChannel') return (where.id ? mockSalesChannels.find((x) => x.id === where.id) : where.handle ? mockSalesChannels.find((x) => x.handle === where.handle) : null) || null
+      if (model === 'webhookEndpoint' && where.id) return mockWebhookEndpoints.find((x) => x.id === where.id) || null
+      if (model === 'apiCredential' && where.id) return mockApiCredentials.find((x) => x.id === where.id) || null
       return null
     },
     findFirst: async (args?: any) => {
@@ -339,6 +355,10 @@ function getMockHandler(model: string) {
       const item = { id: `${model}-${Date.now()}`, createdAt: new Date(), updatedAt: new Date(), ...(args?.data || {}) }
       if (model === 'order') mockOrders.unshift(item)
       if (model === 'themeVersion') mockThemeVersions.unshift(item)
+      if (model === 'storeLocation') { if (item.isDefault) for (const x of mockStoreLocations) x.isDefault = false; mockStoreLocations.push(item) }
+      if (model === 'salesChannel') mockSalesChannels.push(item)
+      if (model === 'webhookEndpoint') mockWebhookEndpoints.push(item)
+      if (model === 'apiCredential') { if (item.status === undefined) item.status = 'ACTIVE'; mockApiCredentials.push(item) }
       return item
     },
     update: async (args: any) => {
@@ -347,9 +367,22 @@ function getMockHandler(model: string) {
         if (u) Object.assign(u, args.data || {})
         return u || args.data
       }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials }
+      if (byId[model] && args.where?.id) {
+        const row = byId[model].find((x) => x.id === args.where.id)
+        if (!row) throw new Error('Record to update not found')
+        if (model === 'storeLocation' && args.data?.isDefault === true) for (const x of mockStoreLocations) x.isDefault = false
+        Object.assign(row, args.data || {}, { updatedAt: new Date() })
+        return row
+      }
       return args?.data || {}
     },
-    delete: async () => ({}),
+    delete: async (args?: any) => {
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials }
+      const list = byId[model]
+      if (list && args?.where?.id) { const i = list.findIndex((x) => x.id === args.where.id); if (i >= 0) return list.splice(i, 1)[0] }
+      return {}
+    },
     count: async () => {
       if (model === 'product') return mockProducts.length
       if (model === 'order') return mockOrders.length
@@ -357,7 +390,15 @@ function getMockHandler(model: string) {
       return 0
     },
     createMany: async (args: any) => ({ count: args?.data?.length || 0 }),
-    updateMany: async () => ({ count: 1 }),
+    updateMany: async (args?: any) => {
+      if (model === 'storeLocation') {
+        const excludeId = args?.where?.id?.not
+        let count = 0
+        for (const x of mockStoreLocations) { if (excludeId && x.id === excludeId) continue; Object.assign(x, args?.data || {}); count++ }
+        return { count }
+      }
+      return { count: 1 }
+    },
     // Generic aggregation fallbacks -- an empty group list / all-zero
     // aggregate is always a safe shape for callers that only ever consume
     // real data when a database is actually connected (dashboards, reports).

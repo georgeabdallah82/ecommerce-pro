@@ -41,7 +41,10 @@ export async function POST(req: Request) {
 
     const webhook = await db.webhookEndpoint.create({ data: { topic, endpointUrl, secret, status: 'ACTIVE' } })
     await audit(actor.id, 'webhook.created', 'WebhookEndpoint', webhook.id, { topic, endpointUrl })
-    return json({ webhook: { ...webhook, secret: undefined, secretConfigured: true } }, { status: 201 })
+    // Unlike every other response from this route, the create response includes
+    // the cleartext secret once (matching /api/admin/api-credentials' pattern) --
+    // it's otherwise unrecoverable, since GET and PATCH always strip it.
+    return json({ webhook: { ...webhook, secretConfigured: true } }, { status: 201 })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unable to create webhook endpoint'
     return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 400 })
