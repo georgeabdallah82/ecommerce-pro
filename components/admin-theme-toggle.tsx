@@ -59,9 +59,6 @@ export default function AdminThemeToggle({ compact }: { compact?: boolean }) {
         html[data-admin-theme='dark'] body:has(.adminShell) .card,
         html[data-admin-theme='dark'] body:has(.adminShell) .productTableCard,
         html[data-admin-theme='dark'] body:has(.adminShell) .statCard,
-        html[data-admin-theme='dark'] body:has(.adminShell) .orderCard,
-        html[data-admin-theme='dark'] body:has(.adminShell) .summaryCard,
-        html[data-admin-theme='dark'] body:has(.adminShell) .successCard,
         html[data-admin-theme='dark'] body:has(.adminShell) .adminPanel{background:#191c1a!important;border-color:#2b302c!important;color:#e9edea!important;box-shadow:0 10px 28px rgba(0,0,0,.22)!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .table,
         html[data-admin-theme='dark'] body:has(.adminShell) .catalogPagination{background:#191c1a!important;color:#e9edea!important;border-color:#2b302c!important}
@@ -84,7 +81,6 @@ export default function AdminThemeToggle({ compact }: { compact?: boolean }) {
         html[data-admin-theme='dark'] body:has(.adminShell) .opsTabs button.active{background:#f0f3f1!important;color:#171918!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .orderViews button{color:#e7ece8!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .orderViews button:hover{background:#262b28!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .confirmBox{background:#202421!important;border-color:#343a36!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .orderViews button.active{background:#f0f3f1!important;color:#171918!important}
 
         /* Empty/error states and live map */
