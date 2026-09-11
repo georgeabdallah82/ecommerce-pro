@@ -27,6 +27,7 @@ import {
 import type { Map as LeafletMap, Marker } from 'leaflet'
 import L from 'leaflet'
 import styles from './admin-live-visitors.module.css'
+import ui from './admin-ui.module.css'
 
 type Visitor = {
   sessionId: string
@@ -212,7 +213,7 @@ function MapPanel({ visitors, selectedId, onSelect }: { visitors: Visitor[]; sel
             <div style={{ width: 54, height: 54, margin: '0 auto', borderRadius: 16, display: 'grid', placeItems: 'center', background: 'var(--admin-border-soft)' }}><MapPin size={24} /></div>
             <h3 style={{ margin: '16px 0 6px', fontSize: 18 }}>Waiting for live locations</h3>
             <p style={{ margin: 0, color: 'var(--admin-muted)', fontSize: 13, lineHeight: 1.65 }}>Visitors appear here when they explicitly allow precise browser location. Visitors who decline are still visible in the live session feed.</p>
-            <div className="pill" style={{ marginTop: 14, display: 'inline-flex', alignItems: 'center', gap: 6 }}><Radio size={12} /> Listening for visitors</div>
+            <div className={ui.pill} style={{ marginTop: 14, display: 'inline-flex', alignItems: 'center', gap: 6 }}><Radio size={12} /> Listening for visitors</div>
           </div>
         </div>
       )}
