@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { Check, Cloud, Loader2, UploadCloud } from 'lucide-react'
+import s from './admin-theme-publish-bar.module.css'
 
 export default function ThemePublishBar() {
   const [draft, setDraft] = useState(false)
@@ -45,13 +46,13 @@ export default function ThemePublishBar() {
   }
 
   return (
-    <div style={{position:'fixed',right:24,bottom:24,zIndex:9999,display:'flex',alignItems:'center',gap:12,padding:'10px 12px',border:'1px solid #e5e7eb',borderRadius:14,background:'#fff',boxShadow:'0 12px 36px rgba(0,0,0,.14)',fontFamily:'system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif'}}>
-      <div style={{display:'flex',alignItems:'center',gap:8,minWidth:145}}>
-        {draft ? <><span style={{width:8,height:8,borderRadius:99,background:'#f59e0b'}}/><span style={{fontSize:13,fontWeight:600,color:'#374151'}}>Draft changes</span></> : <><Check size={15} color="#16a34a"/><span style={{fontSize:13,fontWeight:600,color:'#374151'}}>Published</span></>}
+    <div className={s.bar}>
+      <div className={s.status}>
+        {draft ? <><span className={s.dot}/><span className={s.statusText}>Draft changes</span></> : <><Check size={15} className={s.publishedIcon}/><span className={s.statusText}>Published</span></>}
       </div>
-      {message && <span style={{fontSize:12,color:'#16a34a'}}>{message}</span>}
-      {error && <span style={{fontSize:12,color:'#dc2626',maxWidth:220}}>{error}</span>}
-      <button onClick={publish} disabled={!draft || publishing} style={{display:'inline-flex',alignItems:'center',gap:7,border:0,borderRadius:10,padding:'9px 14px',background:draft?'#111827':'#e5e7eb',color:draft?'#fff':'#6b7280',fontSize:13,fontWeight:700,cursor:draft?'pointer':'default'}}>
+      {message && <span className={s.message}>{message}</span>}
+      {error && <span className={s.error}>{error}</span>}
+      <button onClick={publish} disabled={!draft || publishing} className={`${s.publishBtn} ${draft ? s.draft : ''}`}>
         {publishing ? <Loader2 size={15} className="animate-spin"/> : draft ? <UploadCloud size={15}/> : <Cloud size={15}/>}
         {publishing ? 'Publishing…' : 'Publish'}
       </button>
