@@ -38,7 +38,7 @@ describe('lib/permissions', () => {
       const excluded: Permission[] = [
         'settings.manage', 'users.view', 'users.manage', 'activity.view',
         'media.manage', 'content.manage', 'themes.manage', 'navigation.manage',
-        'webhooks.manage', 'apiCredentials.manage',
+        'apiCredentials.manage',
       ]
       for (const permission of excluded) {
         assert.equal(hasPermission(Role.MANAGER, permission), false, `MANAGER should not have ${permission}`)

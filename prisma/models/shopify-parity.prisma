@@ -385,18 +385,6 @@ model ProductPublication {
   @@index([productId])
 }
 
-model StoreCreditTransaction {
-  id          String   @id @default(cuid())
-  customerId  String
-  type        String
-  amount      Int
-  currency    String   @default("USD")
-  referenceId String?
-  reason      String?
-  createdAt   DateTime @default(now())
-  @@index([customerId, createdAt])
-}
-
 model AbandonedCheckout {
   id           String                  @id @default(cuid())
   token        String                  @unique

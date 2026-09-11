@@ -4,7 +4,6 @@ export type Permission =
   | 'dashboard.view'
   | 'products.view' | 'products.manage'
   | 'inventory.view' | 'inventory.manage'
-  | 'locations.view' | 'locations.manage'
   | 'transfers.view' | 'transfers.manage'
   | 'purchaseOrders.view' | 'purchaseOrders.manage'
   | 'orders.view' | 'orders.manage' | 'orders.refund'
@@ -30,7 +29,6 @@ export type Permission =
   | 'themes.view' | 'themes.manage'
   | 'metafields.view' | 'metafields.manage'
   | 'salesChannels.view' | 'salesChannels.manage'
-  | 'webhooks.view' | 'webhooks.manage'
   | 'apiCredentials.view' | 'apiCredentials.manage'
   | 'abandonedCheckouts.view' | 'abandonedCheckouts.manage'
   | 'analytics.view'
@@ -41,7 +39,6 @@ const all: Permission[] = [
   'dashboard.view',
   'products.view', 'products.manage',
   'inventory.view', 'inventory.manage',
-  'locations.view', 'locations.manage',
   'transfers.view', 'transfers.manage',
   'purchaseOrders.view', 'purchaseOrders.manage',
   'orders.view', 'orders.manage', 'orders.refund',
@@ -67,7 +64,6 @@ const all: Permission[] = [
   'themes.view', 'themes.manage',
   'metafields.view', 'metafields.manage',
   'salesChannels.view', 'salesChannels.manage',
-  'webhooks.view', 'webhooks.manage',
   'apiCredentials.view', 'apiCredentials.manage',
   'abandonedCheckouts.view', 'abandonedCheckouts.manage',
   'analytics.view',
@@ -84,7 +80,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   MANAGER: all.filter(p => ![
     'settings.manage', 'users.view', 'users.manage', 'activity.view',
     'media.manage', 'content.manage', 'themes.manage', 'navigation.manage',
-    'webhooks.manage', 'apiCredentials.manage'
+    'apiCredentials.manage'
   ].includes(p)),
   SUPPORT: [
     'dashboard.view',
