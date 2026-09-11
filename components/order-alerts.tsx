@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Bell } from 'lucide-react'
+import ui from './admin-ui.module.css'
 
 function urlBase64ToUint8Array(value: string) {
   const padding = '='.repeat((4 - (value.length % 4)) % 4)
@@ -118,7 +119,7 @@ export default function OrderAlerts({ vapidPublicKey }: { vapidPublicKey?: strin
         <span>{busy ? 'Working…' : state === 'enabled' ? 'Order alerts on' : 'Enable order alerts'}</span>
       </button>
       {state === 'enabled' && <button type="button" className="orderAlertsTest" onClick={test} disabled={busy}>Test alert</button>}
-      {message && <span className="orderAlertsMsg muted">{message}</span>}
+      {message && <span className={`orderAlertsMsg ${ui.muted}`}>{message}</span>}
       <style jsx>{`
         .orderAlertsWrap{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
         .orderAlertsBtn{display:flex;align-items:center;gap:6px;pointer-events:auto;touch-action:manipulation;border:1px solid var(--admin-border);background:var(--admin-surface);border-radius:999px;padding:0 11px;height:38px;font-size:12px;font-weight:700;color:var(--admin-ink-soft);cursor:pointer;white-space:nowrap}
