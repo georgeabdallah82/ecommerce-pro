@@ -73,9 +73,7 @@ body:has(.adminShell) .catalogToolbar { display:grid; grid-template-columns:minm
 body:has(.adminShell) .productSearch { max-width:none; height:44px; border-radius:10px; }
 body:has(.adminShell) .catalogFilters { display:grid; grid-template-columns:1fr 1fr auto; gap:10px; align-items:center; }
 body:has(.adminShell) .catalogFilters .input { min-width:0; }
-body:has(.adminShell) .mobileFilterBtn { display:none; }
 body:has(.adminShell) .catalogToolbar .btn { min-height:44px; }
-body:has(.adminShell) .bulkBar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; margin-bottom:12px; border:1px solid #d9d9d2; border-radius:12px; background:#fff; position:sticky; top:78px; z-index:25; box-shadow:0 6px 18px rgba(0,0,0,.05); }
 body:has(.adminShell) .productTableCard { border-radius:15px; box-shadow:0 1px 2px rgba(0,0,0,.03); }
 body:has(.adminShell) .tableTopline { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid #ededeb; }
 body:has(.adminShell) .tableTopline .input.compact { height:34px; min-width:74px; }
@@ -85,13 +83,7 @@ body:has(.adminShell) .productTable td { padding:13px 14px; height:68px; vertica
 body:has(.adminShell) .productTable tbody tr:hover { background:#fcfcfa; }
 body:has(.adminShell) .productTable tbody tr.selectedRow { background:#f3f3ef; }
 body:has(.adminShell) .productListName { min-width:280px; }
-body:has(.adminShell) .productThumb { width:48px; height:48px; border-radius:10px; background:#f5f5f1; }
-body:has(.adminShell) .productThumb span { color:#999; font-size:20px; }
-body:has(.adminShell) .productThumb img { object-fit:cover; }
 body:has(.adminShell) .statusPill { padding:6px 9px; border:1px solid transparent; }
-body:has(.adminShell) .stockCell { display:grid; gap:2px; }
-body:has(.adminShell) .stockCell strong { font-size:14px; }
-body:has(.adminShell) .stockCell span { font-size:11px; }
 body:has(.adminShell) .table .iconBtn { width:34px; height:34px; border-radius:9px; }
 body:has(.adminShell) .catalogPagination { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-top:1px solid #ededeb; }
 body:has(.adminShell) .alert { margin-bottom:12px; }
@@ -103,7 +95,7 @@ body:has(.adminShell) .input:focus, body:has(.adminShell) .textarea:focus { outl
 /* Still consumed by components/shipping-admin-pro.tsx's zone-rate editor (not yet migrated onto a CSS Module) - do not remove until that page is componentized too. */
 .opsPanel{padding:20px}.opsList{display:grid;gap:8px;margin-top:16px}.opsRow{display:grid;grid-template-columns:minmax(0,1.5fr) auto minmax(100px,.8fr);align-items:center;gap:12px;padding:11px 12px;background:#fafaf8;border:1px solid #ecece7;border-radius:10px;font-size:13px}
 @media(max-width:1100px){body:has(.adminShell) .catalogToolbar{grid-template-columns:1fr}}
-@media(max-width:760px){.catalogStats{grid-template-columns:repeat(2,1fr) !important}.catalogToolbar{grid-template-columns:1fr !important}.catalogFilters{grid-template-columns:1fr !important}.mobileFilterBtn{display:inline-flex !important}.productTableCard{overflow:auto}.productTable{min-width:860px}}
+@media(max-width:760px){.catalogStats{grid-template-columns:repeat(2,1fr) !important}.catalogToolbar{grid-template-columns:1fr !important}.catalogFilters{grid-template-columns:1fr !important}.productTableCard{overflow:auto}.productTable{min-width:860px}}
 `
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
