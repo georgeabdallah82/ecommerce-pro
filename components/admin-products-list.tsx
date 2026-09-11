@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Archive, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Plus, Search, Star, StarOff, Tag, X } from 'lucide-react'
 import { money } from '@/lib/config'
 import styles from './admin-products-list.module.css'
+import ui from './admin-ui.module.css'
 
 type ProductRow = any
 
@@ -112,13 +113,13 @@ export default function AdminProductsList({ initial }: { initial: any }) {
             <span className={styles.countPill}>{total.toLocaleString()}</span>
           </div>
         </div>
-        <Link className="btn" href="/admin/products/new"><Plus size={16} /> Add product</Link>
+        <Link className={ui.btn} href="/admin/products/new"><Plus size={16} /> Add product</Link>
       </div>
 
-      {error && <div className="alert danger">{error}</div>}
-      {notice && <div className="alert">{notice}</div>}
+      {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
+      {notice && <div className={ui.alert}>{notice}</div>}
 
-      <div className={`${styles.viewBar} card`}>
+      <div className={`${styles.viewBar} ${ui.card}`}>
         <div className={styles.views} role="tablist" aria-label="Product views">
           {views.map(([value, label, count]) => (
             <button
@@ -133,12 +134,12 @@ export default function AdminProductsList({ initial }: { initial: any }) {
             </button>
           ))}
         </div>
-        <button type="button" className="btn secondary" onClick={() => setFiltersOpen(value => !value)}>
+        <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setFiltersOpen(value => !value)}>
           Filters <ChevronDown className={`${styles.chevron}${filtersOpen ? ` ${styles.chevronOpen}` : ''}`} size={15} />
         </button>
       </div>
 
-      <div className={`card ${styles.filterBar}`}>
+      <div className={`${ui.card} ${styles.filterBar}`}>
         <div className={styles.search}>
           <Search size={16} />
           <input value={q} onChange={event => setQ(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') void load(1) }} placeholder="Search products" aria-label="Search products" />
@@ -148,14 +149,14 @@ export default function AdminProductsList({ initial }: { initial: any }) {
           <div className={styles.filterGrid}>
             <label>
               <span>Category</span>
-              <select className="input" value={categoryId} onChange={event => setCategoryId(event.target.value)}>
+              <select className={ui.input} value={categoryId} onChange={event => setCategoryId(event.target.value)}>
                 <option value="ALL">All categories</option>
                 {categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}
               </select>
             </label>
             <label>
               <span>Sort</span>
-              <select className="input" value={sort} onChange={event => setSort(event.target.value)}>
+              <select className={ui.input} value={sort} onChange={event => setSort(event.target.value)}>
                 <option value="updated_desc">Recently updated</option>
                 <option value="created_desc">Newest</option>
                 <option value="name_asc">Name A–Z</option>
@@ -164,7 +165,7 @@ export default function AdminProductsList({ initial }: { initial: any }) {
                 <option value="price_desc">Price high–low</option>
               </select>
             </label>
-            <button type="button" className="btn secondary" onClick={() => load(1)} disabled={loading}>{loading ? 'Loading…' : 'Apply filters'}</button>
+            <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => load(1)} disabled={loading}>{loading ? 'Loading…' : 'Apply filters'}</button>
           </div>
         )}
       </div>
@@ -173,11 +174,11 @@ export default function AdminProductsList({ initial }: { initial: any }) {
         <div className={styles.bulkBar}>
           <div className={styles.bulkCount}><strong>{selected.length}</strong><span> selected</span></div>
           <div className={styles.bulkActions}>
-            <button className="btn secondary" onClick={() => bulk('ACTIVE')}><CheckCircle2 size={15} /> Activate</button>
-            <button className="btn secondary" onClick={() => bulk('DRAFT')}><Tag size={15} /> Draft</button>
-            <button className="btn secondary" onClick={() => bulk('ARCHIVED')}><Archive size={15} /> Archive</button>
+            <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => bulk('ACTIVE')}><CheckCircle2 size={15} /> Activate</button>
+            <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => bulk('DRAFT')}><Tag size={15} /> Draft</button>
+            <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => bulk('ARCHIVED')}><Archive size={15} /> Archive</button>
             <div className={styles.actionMenu}>
-              <button className="btn secondary" onClick={() => setBulkOpen(value => !value)}>More <ChevronDown size={14} /></button>
+              <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setBulkOpen(value => !value)}>More <ChevronDown size={14} /></button>
               {bulkOpen && (
                 <div className={styles.menu}>
                   <button onClick={() => bulk('FEATURED_ON')}><Star size={14} /> Feature products</button>
@@ -190,19 +191,19 @@ export default function AdminProductsList({ initial }: { initial: any }) {
         </div>
       )}
 
-      <div className={`card ${styles.tableCard}`}>
+      <div className={`${ui.card} ${styles.tableCard}`}>
         <div className={styles.tableMeta}>
           <span>{total.toLocaleString()} products</span>
           <label>Rows
-            <select className="input compact" value={pageSize} onChange={event => setPageSize(Number(event.target.value))}>
+            <select className={`${ui.input} ${ui.inputCompact}`} value={pageSize} onChange={event => setPageSize(Number(event.target.value))}>
               <option value={25}>25</option>
               <option value={50}>50</option>
               <option value={100}>100</option>
             </select>
           </label>
         </div>
-        <div className="tableWrap">
-          <table className={`table ${styles.productTable}`}>
+        <div className={ui.tableWrap}>
+          <table className={styles.productTable}>
             <thead>
               <tr>
                 <th><input aria-label="Select all products" type="checkbox" checked={allSelected} onChange={toggleAll} /></th>
@@ -234,25 +235,25 @@ export default function AdminProductsList({ initial }: { initial: any }) {
                         <div className={stock.available <= 5 ? `${styles.stock} ${styles.stockLow}` : styles.stock}>
                           <strong>{stock.available}</strong><span>{stock.reserved ? `${stock.reserved} reserved` : 'available'}</span>
                         </div>
-                      ) : <span className="muted">Not tracked</span>}
+                      ) : <span className={ui.muted}>Not tracked</span>}
                     </td>
                     <td>{product.category?.name || '—'}</td>
-                    <td><strong>{money(product.basePrice)}</strong>{product.compareAtPrice ? <div className="muted strike">{money(product.compareAtPrice)}</div> : null}</td>
+                    <td><strong>{money(product.basePrice)}</strong>{product.compareAtPrice ? <div className={`${ui.muted} strike`}>{money(product.compareAtPrice)}</div> : null}</td>
                     <td><span className={styles.channel}>Online Store</span></td>
                     <td>{new Date(product.updatedAt).toLocaleDateString()}</td>
-                    <td><Link className="iconBtn" href={`/admin/products/${product.id}`} title="Open product"><MoreHorizontal size={17} /></Link></td>
+                    <td><Link className={ui.iconBtn} href={`/admin/products/${product.id}`} title="Open product"><MoreHorizontal size={17} /></Link></td>
                   </tr>
                 )
               })}
             </tbody>
           </table>
         </div>
-        {!rows.length && <div className="empty">No products match your current view.</div>}
+        {!rows.length && <div className={ui.empty}>No products match your current view.</div>}
         <div className={styles.pagination}>
-          <span className="muted">Page {page} of {pages}</span>
+          <span className={ui.muted}>Page {page} of {pages}</span>
           <div className="inline">
-            <button className="iconBtn" disabled={page <= 1 || loading} onClick={() => load(page - 1)}><ChevronLeft size={16} /></button>
-            <button className="iconBtn" disabled={page >= pages || loading} onClick={() => load(page + 1)}><ChevronRight size={16} /></button>
+            <button className={ui.iconBtn} disabled={page <= 1 || loading} onClick={() => load(page - 1)}><ChevronLeft size={16} /></button>
+            <button className={ui.iconBtn} disabled={page >= pages || loading} onClick={() => load(page + 1)}><ChevronRight size={16} /></button>
           </div>
         </div>
       </div>
