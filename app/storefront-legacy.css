@@ -3273,3 +3273,49 @@ body > .footer {
 }
 
 
+
+/* ============================================================
+   Bold/modern redesign layer (Phase 2 of the storefront redesign)
+   ------------------------------------------------------------
+   Deliberately appended last so it wins over the legacy soft-
+   rounded/pastel rules above without having to untangle six
+   overlapping color-token systems accumulated over time. This is
+   the actual visual-language change (sharper corners, high-contrast
+   borders instead of soft shadows, uppercase tracked type, accent-
+   color punctuation) -- Phase 1 only wired the color/font *tokens*
+   admins can control; this is what those tokens are used *for*.
+   ============================================================ */
+
+/* Nav: sharper, higher-contrast, uppercase tracked link type */
+.focalStorefront .focalNav{border-bottom:2px solid var(--store-text,#0a0a0a)!important}
+.focalStorefront .focalLogo{text-transform:uppercase;letter-spacing:.02em}
+.focalStorefront .focalNavLink{text-transform:uppercase;font-size:12px!important;letter-spacing:.05em;font-weight:800!important}
+.focalStorefront .focalNavIcon{border-radius:6px!important}
+.focalStorefront .focalCartCount{background:var(--store-accent,#d4ff3f)!important;color:var(--store-text,#0a0a0a)!important;border-radius:4px!important;font-weight:900!important}
+
+/* Hero: blockier eyebrow pill, heavier display type */
+.focalStorefront .focalPill{background:var(--store-accent,#d4ff3f);color:#0a0a0a;border:2px solid #0a0a0a;border-radius:4px;font-weight:900;backdrop-filter:none;gap:7px}
+.focalStorefront .focalPill .heroDot{background:#0a0a0a;box-shadow:none}
+.focalStorefront .focalHeroContent h1{font-weight:800!important;letter-spacing:-.045em!important}
+.focalStorefront .focalHeroContent .focalButton.secondary{border-width:2px}
+
+/* Section eyebrows: small accent square marker instead of plain caps text */
+.focalStorefront .focalEyebrow{display:inline-flex;align-items:center;gap:7px}
+.focalStorefront .focalEyebrow::before{content:'';display:inline-block;width:7px;height:7px;background:var(--store-accent,#d4ff3f);border:1.5px solid var(--store-text,#0a0a0a)}
+
+/* Product cards: sharp corners, outline-on-hover instead of soft shadow-lift, blocky badges */
+.focalStorefront .focalProductMedia{border-radius:4px!important;border:2px solid transparent;transition:border-color .18s ease,transform .25s ease!important}
+.focalStorefront .focalProductCard:hover .focalProductMedia{border-color:var(--store-text,#0a0a0a)}
+.focalStorefront .focalProductCard:hover{transform:none!important;box-shadow:none!important}
+.focalStorefront .focalBadge{background:var(--store-text,#0a0a0a)!important;color:var(--store-surface,#fff)!important;border-radius:3px!important;text-transform:uppercase;letter-spacing:.03em;font-weight:900!important}
+.focalStorefront .focalCollectionMedia{border:2px solid transparent;transition:border-color .18s ease}
+.focalStorefront .focalCollectionCard:hover .focalCollectionMedia{border-color:var(--store-text,#0a0a0a)}
+
+/* Footer: bigger bolder wordmark, accent-color link hover */
+.focalStorefront .focalFooter .logo{font-size:24px;text-transform:uppercase;letter-spacing:.02em;font-weight:900}
+.focalStorefront .focalFooter a{transition:color .16s ease}
+.focalStorefront .focalFooter a:hover{color:var(--store-accent,#d4ff3f)}
+
+@media(max-width:700px){
+  .focalStorefront .focalNavLink{font-size:11px!important}
+}
