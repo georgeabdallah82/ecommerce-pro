@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { canCustomerCancel, canTransitionOrder, canTransitionPayment, fulfillmentForStatus } from '@/lib/orders'
+import { canCustomerCancel, canTransitionOrder, canTransitionPayment, fulfillmentForStatus, sumCustomerSpend } from '@/lib/orders'
 import { availableQuantity } from '@/lib/inventory'
 
 describe('core ecommerce business rules', () => {
@@ -21,6 +21,22 @@ describe('core ecommerce business rules', () => {
       assert.equal(canTransitionOrder('CANCELLED', 'CONFIRMED'), false)
     })
 
+    it('treats a same-status "transition" as always allowed (idempotent save)', () => {
+      assert.equal(canTransitionOrder('PENDING', 'PENDING'), true)
+      assert.equal(canTransitionOrder('CANCELLED', 'CANCELLED'), true)
+      assert.equal(canTransitionOrder('REFUNDED', 'REFUNDED'), true)
+    })
+
+    it('never allows a transition out of a terminal order status', () => {
+      assert.equal(canTransitionOrder('CANCELLED', 'PENDING'), false)
+      assert.equal(canTransitionOrder('REFUNDED', 'DELIVERED'), false)
+    })
+
+    it('only allows DELIVERED to move to REFUNDED', () => {
+      assert.equal(canTransitionOrder('DELIVERED', 'REFUNDED'), true)
+      assert.equal(canTransitionOrder('DELIVERED', 'SHIPPED'), false)
+    })
+
     it('allows customer cancellation only before fulfillment', () => {
       assert.equal(canCustomerCancel('PENDING'), true)
       assert.equal(canCustomerCancel('CONFIRMED'), true)
@@ -35,6 +51,42 @@ describe('core ecommerce business rules', () => {
       assert.equal(fulfillmentForStatus('SHIPPED'), 'PARTIAL')
       assert.equal(fulfillmentForStatus('DELIVERED'), 'FULFILLED')
     })
+
+    it('falls back to UNFULFILLED for every other order status', () => {
+      assert.equal(fulfillmentForStatus('CONFIRMED'), 'UNFULFILLED')
+      assert.equal(fulfillmentForStatus('CANCELLED'), 'UNFULFILLED')
+      assert.equal(fulfillmentForStatus('REFUNDED'), 'UNFULFILLED')
+    })
+  })
+
+  describe('customer spend', () => {
+    it('sums grand totals across an order history', () => {
+      const orders = [
+        { status: 'DELIVERED' as const, grandTotal: 5000 },
+        { status: 'SHIPPED' as const, grandTotal: 3000 },
+      ]
+      assert.equal(sumCustomerSpend(orders), 8000)
+    })
+
+    it('excludes cancelled orders from total spend', () => {
+      const orders = [
+        { status: 'DELIVERED' as const, grandTotal: 5000 },
+        { status: 'CANCELLED' as const, grandTotal: 9999 },
+      ]
+      assert.equal(sumCustomerSpend(orders), 5000)
+    })
+
+    it('returns 0 for a customer with no orders', () => {
+      assert.equal(sumCustomerSpend([]), 0)
+    })
+
+    it('returns 0 when every order was cancelled', () => {
+      const orders = [
+        { status: 'CANCELLED' as const, grandTotal: 1000 },
+        { status: 'CANCELLED' as const, grandTotal: 2000 },
+      ]
+      assert.equal(sumCustomerSpend(orders), 0)
+    })
   })
 
   describe('payment transitions', () => {
@@ -45,6 +97,21 @@ describe('core ecommerce business rules', () => {
       assert.equal(canTransitionPayment('PAID', 'REFUNDED'), true)
       assert.equal(canTransitionPayment('REFUNDED', 'PAID'), false)
       assert.equal(canTransitionPayment('FAILED', 'REFUNDED'), false)
+    })
+
+    it('treats a same-status "transition" as always allowed (idempotent save)', () => {
+      assert.equal(canTransitionPayment('PAID', 'PAID'), true)
+      assert.equal(canTransitionPayment('REFUNDED', 'REFUNDED'), true)
+    })
+
+    it('never allows a transition out of REFUNDED', () => {
+      assert.equal(canTransitionPayment('REFUNDED', 'PENDING'), false)
+      assert.equal(canTransitionPayment('REFUNDED', 'UNPAID'), false)
+    })
+
+    it('allows a failed payment to be retried', () => {
+      assert.equal(canTransitionPayment('FAILED', 'PENDING'), true)
+      assert.equal(canTransitionPayment('FAILED', 'PAID'), true)
     })
   })
 })
