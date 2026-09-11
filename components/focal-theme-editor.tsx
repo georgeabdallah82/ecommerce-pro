@@ -118,7 +118,7 @@ const rows = (value: any) => (Array.isArray(value) ? value : Array.isArray(value
 
 function sectionDefaults(type: string): Section {
   const base = { spacing: 72, contentWidth: 1180, animation: 'fade-up' }
-  if (type === 'announcement') return { id: makeId(type), type, enabled: true, settings: { ...base, text: 'Free shipping on orders over $50', height: 40 } }
+  if (type === 'announcement') return { id: makeId(type), type, enabled: true, settings: { ...base, height: 40, speed: 6, autoplay: true, dismissible: true, position: 'above' }, blocks: [{ id: makeId('message'), type: 'message', settings: { text: 'Free shipping on orders over $50', link: '' } }] }
   if (type === 'header') return { id: makeId(type), type, enabled: true, settings: { ...base, sticky: true, showSearch: true, showAccount: true, showCart: true, logoWidth: 160 } }
   if (type === 'hero') return { id: makeId(type), type, enabled: true, settings: { ...base, eyebrow: 'NEW COLLECTION', heading: 'Make your store impossible to ignore.', text: 'A premium storefront built for conversion.', buttonLabel: 'Shop now', buttonUrl: '/shop', imageUrl: '', mobileImageUrl: '', minHeight: 640, contentPosition: 'center-left', overlay: 0.2, overlayColor: '#000000', overlayStyle: 'none', imageFit: 'cover', focalX: 50, focalY: 50 } }
   if (type === 'product_grid' || type === 'product_carousel' || type === 'product_recommendations') return { id: makeId(type), type, enabled: true, settings: { ...base, heading: type === 'product_recommendations' ? 'You may also like' : 'Featured products', limit: 8, columns: 4, showViewAll: true } }

@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowRight, Check, ChevronDown, Heart, Menu, Minus, Plus, Search, ShoppingBag, Sparkles, Trash2, Truck, UserRound, X } from 'lucide-react'
+import { ArrowRight, Check, ChevronDown, Clock, Gift, Heart, Megaphone, Menu, Minus, Plus, Search, ShoppingBag, Sparkles, Tag, Trash2, Truck, UserRound, X } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
@@ -8,6 +8,50 @@ import { keyOf, useCart } from './cart-provider'
 
 type NavItem = { id: string; label: string; url?: string | null; parentId?: string | null }
 type TreeItem = NavItem & { children: TreeItem[] }
+
+const ANNOUNCEMENT_ICONS: Record<string, typeof Sparkles> = { spark: Sparkles, truck: Truck, tag: Tag, gift: Gift, clock: Clock, megaphone: Megaphone }
+
+// Reads settings from the section first (what the theme editor's Content
+// panel actually edits), falling back to the theme-level announcement
+// defaults, then a hardcoded default -- mirrors the fallback chain already
+// used for text/link below. Extracted as its own component (not inline JSX)
+// because it needs its own rotation-timer state, and it's rendered from two
+// different places (header-disabled early return, and above/below the
+// header in the normal return).
+function AnnouncementBar({ theme, announcementSection, closed, onDismiss }: { theme: any; announcementSection: any; closed: boolean; onDismiss: () => void }) {
+  const s = announcementSection?.settings || {}
+  const g = theme.announcement || {}
+  const height = Number(s.height ?? g.height ?? 40)
+  const speed = Math.max(1, Number(s.speed ?? g.speed ?? 6))
+  const autoplay = s.autoplay ?? g.autoplay ?? true
+  const dismissible = s.dismissible ?? g.dismissible ?? true
+  const showIcon = s.showIcon ?? g.showIcon ?? false
+  const iconKey = s.icon ?? g.icon ?? 'spark'
+  const uppercase = s.uppercase ?? g.uppercase ?? false
+  const blocks = Array.isArray(announcementSection?.blocks) ? announcementSection.blocks : []
+  const messages = blocks.length
+    ? blocks.map((b: any) => ({ text: b.settings?.text || '', link: b.settings?.link || '' }))
+    : [{ text: s.text || g.text || 'Free shipping on orders over $50', link: s.link || g.link || '' }]
+  const [index, setIndex] = useState(0)
+  useEffect(() => {
+    if (!autoplay || messages.length < 2) return
+    const id = setInterval(() => setIndex(i => (i + 1) % messages.length), speed * 1000)
+    return () => clearInterval(id)
+  }, [autoplay, speed, messages.length])
+  if (closed) return null
+  const current = messages[index % messages.length] || messages[0]
+  const Icon = ANNOUNCEMENT_ICONS[iconKey] || Sparkles
+  return (
+    <div className="focalAnnouncementGlobal">
+      <div className="focalAnnouncementGlobalInner" style={{ '--focal-announcement-height': `${height}px`, textTransform: uppercase ? 'uppercase' : 'none' } as React.CSSProperties}>
+        {showIcon && <span className="focalAnnouncementIcon"><Icon size={13}/></span>}
+        <span>{current.text}</span>
+        {current.link && <Link href={current.link}>Learn more</Link>}
+        {dismissible && <button className="focalAnnouncementDismiss" aria-label="Dismiss" onClick={onDismiss}><X size={13}/></button>}
+      </div>
+    </div>
+  )
+}
 
 const css = `
 .focalNav{z-index:50;border-bottom:1px solid var(--focal-line);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);transition:background-color .3s ease}
@@ -33,7 +77,7 @@ const css = `
 .focalCartCount{position:absolute;top:-4px;right:-4px;min-width:19px;height:19px;border-radius:999px;background:var(--focal-primary);color:#fff;font-size:10px;font-weight:900;display:grid;place-items:center;padding:0 5px;box-shadow:0 2px 6px rgba(0,0,0,.2);animation:focalBadgeBounce .3s cubic-bezier(.16,1,.3,1)}
 @keyframes focalBadgeBounce{0%{transform:scale(.6)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
 .focalNavMobile{display:none;width:42px;height:42px;border:1px solid var(--focal-line);background:#fff;border-radius:12px;place-items:center;cursor:pointer}
-.focalAnnouncementGlobal{background:var(--focal-primary);color:#fff}.focalAnnouncementGlobalInner{min-height:40px;display:flex;align-items:center;justify-content:center;gap:15px;padding:0 16px;font-size:12px;font-weight:850}.focalAnnouncementGlobalInner a{text-decoration:underline;text-underline-offset:3px}.focalAnnouncementDismiss{border:0;background:transparent;color:inherit;opacity:.8;cursor:pointer}
+.focalAnnouncementGlobal{background:var(--store-announcement-bg,var(--focal-primary));color:var(--store-announcement-text,#fff)}.focalAnnouncementGlobalInner{display:flex;align-items:center;justify-content:center;gap:10px;padding:0 16px;font-size:12px;font-weight:850;transition:opacity .25s ease}.focalAnnouncementGlobalInner a{text-decoration:underline;text-underline-offset:3px;color:inherit}.focalAnnouncementDismiss{border:0;background:transparent;color:inherit;opacity:.8;cursor:pointer;flex:none}.focalAnnouncementIcon{display:inline-flex;flex:none;opacity:.9}
 
 /* ANIMATED CART DRAWER */
 .focalCartOverlay{position:fixed;inset:0;z-index:100;background:rgba(18,16,14,.42);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;justify-content:flex-end;animation:focalFadeIn .22s ease-out forwards}
@@ -177,10 +221,11 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
   const shippingProgress = Math.min(100, Math.round((subtotal / FREE_SHIPPING_THRESHOLD) * 100))
   const freeShippingUnlocked = subtotal >= FREE_SHIPPING_THRESHOLD
 
+  const announcementDismissible = announcementSection?.settings?.dismissible ?? theme.announcement?.dismissible ?? true
   useEffect(() => {
-    if (!theme.announcement?.dismissible) return
+    if (!announcementDismissible) return
     try { setAnnouncementClosed(sessionStorage.getItem('focal-announcement-dismissed') === '1') } catch {}
-  }, [theme.announcement?.dismissible])
+  }, [announcementDismissible])
 
   // Escape key listener for modals/drawers
   useEffect(() => {
@@ -222,16 +267,16 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
   const tree = useMemo(() => buildTree(navigation || []), [navigation])
   const money = (v: number) => `${theme.currency || 'USD'} ${(v / 100).toFixed(2)}`
   const transparent = headerSettings.transparent === true || (headerSettings.transparentHome === true && pathname === '/')
-  const announcementText = announcementSection?.settings?.text || theme.announcement?.text || 'Free shipping on orders over $50'
-  const announcementLink = announcementSection?.settings?.link
+  const announcementPosition = announcementSection?.settings?.position ?? theme.announcement?.position ?? 'above'
+  const dismissAnnouncement = () => { setAnnouncementClosed(true); try { sessionStorage.setItem('focal-announcement-dismissed', '1') } catch {} }
 
   const toggleMobile = (id: string) => setMobileOpen(current => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next })
 
-  if (!headerEnabled) return announcementEnabled && !announcementClosed ? <><style dangerouslySetInnerHTML={{ __html: css }} /><div className="focalAnnouncementGlobal"><div className="focalAnnouncementGlobalInner"><span>{announcementText}</span>{announcementLink && <Link href={announcementLink}>Learn more</Link>}<button className="focalAnnouncementDismiss" onClick={() => { setAnnouncementClosed(true); try { sessionStorage.setItem('focal-announcement-dismissed', '1') } catch {} }}><X size={13}/></button></div></div></> : null
+  if (!headerEnabled) return announcementEnabled ? <><style dangerouslySetInnerHTML={{ __html: css }} /><AnnouncementBar theme={theme} announcementSection={announcementSection} closed={announcementClosed} onDismiss={dismissAnnouncement}/></> : null
 
   return <>
     <style dangerouslySetInnerHTML={{ __html: css }} />
-    {announcementEnabled && !announcementClosed && <div className="focalAnnouncementGlobal"><div className="focalAnnouncementGlobalInner"><span>{announcementText}</span>{announcementLink && <Link href={announcementLink}>Learn more</Link>}{theme.announcement?.dismissible && <button className="focalAnnouncementDismiss" aria-label="Dismiss" onClick={() => { setAnnouncementClosed(true); try { sessionStorage.setItem('focal-announcement-dismissed', '1') } catch {} }}><X size={13}/></button>}</div></div>}
+    {announcementEnabled && announcementPosition !== 'below' && <AnnouncementBar theme={theme} announcementSection={announcementSection} closed={announcementClosed} onDismiss={dismissAnnouncement}/>}
 
     <header className="focalNav" style={{ background: transparent ? 'transparent' : theme.colors.surface, borderColor: theme.colors.border, position: headerSettings.sticky ? 'sticky' : 'relative', top: 0 }}>
       <div className="focalNavInner focalContainer">
@@ -248,6 +293,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
         </div>
       </div>
     </header>
+    {announcementEnabled && announcementPosition === 'below' && <AnnouncementBar theme={theme} announcementSection={announcementSection} closed={announcementClosed} onDismiss={dismissAnnouncement}/>}
 
     {/* PREDICTIVE LIVE SEARCH OVERLAY */}
     {search && <div className="focalSearchOverlay" onClick={() => setSearch(false)}>

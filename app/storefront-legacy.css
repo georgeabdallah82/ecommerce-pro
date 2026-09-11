@@ -3371,3 +3371,17 @@ body > .footer {
   .focalCountdownTimer{width:100%;justify-content:space-between}
   .focalCountdownUnit{min-width:0;flex:1}
 }
+
+/* Announcement bar: an early base-layer rule hardcodes background:#1f1f1f
+   and a fixed min-height (34px, 36px on mobile), all !important -- beating
+   both the dedicated --store-announcement-bg/text tokens (set via the admin
+   Colors panel, wired to CSS vars in layout.tsx, but never actually
+   consumed here) and the per-section Height field (passed inline as
+   --focal-announcement-height by components/store-nav-fixed.tsx, since a
+   plain inline style can't win against an !important external rule either).
+   Override with equal specificity, later in the cascade, referencing that
+   variable so the height stays admin-controlled instead of frozen at the
+   old hardcoded values. */
+.focalAnnouncementGlobal{background:var(--store-announcement-bg,#242219)!important}
+.focalAnnouncementGlobalInner{color:var(--store-announcement-text,#faf9f6)!important;min-height:var(--focal-announcement-height,40px)!important}
+@media(max-width:600px){.focalAnnouncementGlobalInner{min-height:var(--focal-announcement-height,40px)!important}}
