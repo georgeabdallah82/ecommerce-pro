@@ -146,18 +146,26 @@
   color: var(--admin-muted);
 }
 .tableMeta label { display: flex; align-items: center; gap: 7px; font-size: 12px; }
-.productTable { min-width: 1050px; }
+/* Self-contained rather than layered on the shared ui.table -- this table's
+   own th/td font-weight/size/padding used to differ slightly from ui.table's
+   (800 vs 900, 12.5px vs 12px, 11px vs 12px padding), which the old
+   admin-overhaul.css !important override always silently won anyway, so
+   those page-local values never actually rendered. Copied the values that
+   were actually winning (and always have) so this table no longer depends
+   on being combined with ui.table at all, or on import-order luck to match. */
+.productTable { width: 100%; border-collapse: collapse; background: var(--admin-surface); min-width: 1050px; }
 .productTable th {
   background: var(--admin-border-soft);
   padding: 12px 14px;
   border-bottom: 1px solid var(--admin-border);
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 900;
   text-transform: uppercase;
-  letter-spacing: .06em;
+  letter-spacing: .07em;
+  text-align: left;
   color: var(--admin-muted);
 }
-.productTable td { padding: 11px 14px; height: 70px; vertical-align: middle; border-bottom: 1px solid var(--admin-border-soft); font-size: 12.5px; color: var(--admin-ink); }
+.productTable td { padding: 12px 14px; height: 70px; vertical-align: middle; border-bottom: 1px solid var(--admin-border-soft); font-size: 12px; text-align: left; color: var(--admin-ink); }
 .productTable tbody tr:hover { background: var(--admin-border-soft); }
 .selectedRow { background: var(--admin-accent-soft) !important; }
 
