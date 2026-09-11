@@ -457,6 +457,16 @@ model Setting {
   updatedAt DateTime @updatedAt
 }
 
+model ThemeVersion {
+  id         String   @id @default(cuid())
+  theme      String
+  sections   String
+  navigation String
+  createdAt  DateTime @default(now())
+  createdBy  String?
+  @@index([createdAt])
+}
+
 model MetafieldDefinition {
   id          String   @id @default(cuid())
   namespace   String

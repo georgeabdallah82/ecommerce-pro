@@ -1,5 +1,5 @@
 import { requirePermission } from '@/lib/auth'
-import { getThemeState } from '@/lib/theme'
+import { getThemeEditorState } from '@/lib/theme'
 import ShopifyThemeEditorPage from '@/components/shopify-theme-editor-page'
 import ThemePublishBar from '@/components/theme-publish-bar'
 
@@ -8,7 +8,7 @@ export const revalidate = 0
 
 export default async function ThemeEditorPage() {
   await requirePermission('content.view')
-  const state = await getThemeState()
+  const state = await getThemeEditorState()
   return (
     <>
       <ShopifyThemeEditorPage

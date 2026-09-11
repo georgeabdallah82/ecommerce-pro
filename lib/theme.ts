@@ -95,3 +95,37 @@ export async function getThemeState(){
 
   return {theme,sections,navigation:parseJson<any[]>(navigationSetting?.value,defaultNavigation)}
 }
+
+// getThemeState() above always resolves the currently PUBLISHED theme --
+// that's correct for the live storefront, which must never render an
+// admin's unpublished edits. The editor itself needs the opposite: it
+// should reopen showing whatever was last saved (draft or published),
+// otherwise a saved-but-unpublished draft looks like it silently vanished
+// on every page reload. This mirrors the draft-aware precedence that
+// GET /api/admin/theme already applies when the editor polls for its own
+// state client-side, so the editor's initial server-rendered load and its
+// client-side refetches agree.
+function parseSettingValue(value: string | null | undefined, fallback: any) { if (!value) return fallback; try { return JSON.parse(value) } catch { return fallback } }
+function normalizeEditorSections(input: any[]): any[] { return (Array.isArray(input) ? input : defaultSections).filter(Boolean).map((s: any) => ({ ...s, type: s.type === 'image_banner' ? 'hero' : s.type, enabled: s.enabled !== false, settings: { ...(s.settings || {}) }, blocks: Array.isArray(s.blocks) ? s.blocks : [] })) }
+function normalizeEditorTemplates(input: any): Record<string, any[]> { const source = input && typeof input === 'object' ? input : {}; const out: Record<string, any[]> = {}; for (const [key, value] of Object.entries(source)) out[key] = normalizeEditorSections(value as any[]); return out }
+// defaultSections lists announcement before header; every rendered page
+// (storefront and editor alike) expects header first. Reorder without
+// re-running normalizeEditorSections -- the input here is already normalized.
+function headerFirstEditor(list: any[]): any[] { const headers = list.filter((s: any) => s.type === 'header'); const rest = list.filter((s: any) => s.type !== 'header'); return headers.length ? [headers[0], ...rest] : rest }
+
+export async function getThemeEditorState() {
+  const [draft,published,publishedSections,draftSections,navigation,draftNavigation]=await Promise.all([
+    db.setting.findUnique({where:{key:'theme.draft'}}), db.setting.findUnique({where:{key:'theme.config'}}),
+    db.setting.findUnique({where:{key:'theme.sections'}}), db.setting.findUnique({where:{key:'theme.draft.sections'}}),
+    db.setting.findUnique({where:{key:'navigation.main'}}), db.setting.findUnique({where:{key:'navigation.draft'}}),
+  ])
+  const publishedTheme=parseSettingValue(published?.value,defaultTheme)
+  const rawTheme=parseSettingValue(draft?.value,publishedTheme)
+  const publishedHome=headerFirstEditor(normalizeEditorSections(parseSettingValue(publishedSections?.value,defaultSections)))
+  const home=headerFirstEditor(normalizeEditorSections(parseSettingValue(draftSections?.value,publishedHome)))
+  const editorTemplates=normalizeEditorTemplates(rawTheme.editorTemplates)
+  if(!Object.prototype.hasOwnProperty.call(editorTemplates,'Home page')) editorTemplates['Home page']=home
+  for(const key of Object.keys(editorTemplates)) editorTemplates[key]=headerFirstEditor(editorTemplates[key])
+  const theme={...rawTheme,editorTemplates}
+  return {theme,sections:home,editorTemplates,navigation:parseSettingValue(draftNavigation?.value,parseSettingValue(navigation?.value,defaultNavigation)),draft:Boolean(draft),publishedTheme}
+}

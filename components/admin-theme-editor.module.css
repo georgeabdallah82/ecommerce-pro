@@ -58,7 +58,7 @@
 .body { display: grid; grid-template-columns: 310px minmax(0, 1fr); min-height: 0; }
 .side { background: var(--admin-surface); border-right: 1px solid var(--admin-border); overflow: auto; }
 
-.tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px; }
+.tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 8px; }
 .tabs button {
   height: 34px;
   border: 0;
@@ -221,7 +221,7 @@
 /* Add-section picker */
 .pickerOverlay { position: absolute; inset: 0; z-index: 70; background: rgba(0, 0, 0, .3); display: grid; place-items: center; }
 .pickerDialog {
-  width: min(560px, 92vw);
+  width: min(680px, 92vw);
   max-height: 80vh;
   overflow: auto;
   background: var(--admin-surface);
@@ -230,8 +230,33 @@
   padding: 16px;
 }
 .pickerTitle { font-size: 14px; }
-.pickerList { margin-top: 12px; display: grid; gap: 7px; }
-.pickerItem { justify-content: space-between; }
+.pickerList { margin-top: 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
+.pickerCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 10px 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-surface);
+  color: var(--admin-ink);
+  cursor: pointer;
+  font: inherit;
+  text-align: center;
+}
+.pickerCard:hover { border-color: var(--admin-accent); background: var(--admin-accent-soft); }
+.pickerIcon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-accent-soft);
+  color: var(--admin-accent-strong);
+}
+.pickerCard:hover .pickerIcon { background: var(--admin-surface); }
+.pickerLabel { font-size: 10.5px; font-weight: 800; line-height: 1.25; }
 
 @media (max-width: 1050px) {
   .body { grid-template-columns: 270px minmax(0, 1fr); }

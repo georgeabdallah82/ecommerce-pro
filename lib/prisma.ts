@@ -230,6 +230,7 @@ const mockShippingZones = [
 ]
 
 const mockAdminLoginLockouts = new Map<string, { id: string; email: string; failedCount: number; lockedUntil: Date | null; updatedAt: Date }>()
+const mockThemeVersions: Array<{ id: string; theme: string; sections: string; navigation: string; createdAt: Date; createdBy: string | null }> = []
 
 function getMockHandler(model: string) {
   return {
@@ -253,6 +254,11 @@ function getMockHandler(model: string) {
       if (model === 'shippingZone') return [...mockShippingZones]
       if (model === 'user') return [...mockUsers]
       if (model === 'setting') return Array.from(mockSettings.entries()).map(([key, value]) => ({ key, value }))
+      if (model === 'themeVersion') {
+        let list = [...mockThemeVersions].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        if (args?.take) list = list.slice(0, args.take)
+        return list
+      }
       return []
     },
     findUnique: async (args: any) => {
@@ -279,6 +285,7 @@ function getMockHandler(model: string) {
       }
       if (model === 'coupon' && where.code) return mockCoupons.find((c) => c.code.toUpperCase() === String(where.code).toUpperCase()) || null
       if (model === 'adminLoginLockout' && where.email) return mockAdminLoginLockouts.get(where.email) || null
+      if (model === 'themeVersion' && where.id) return mockThemeVersions.find((v) => v.id === where.id) || null
       return null
     },
     findFirst: async (args?: any) => {
@@ -324,6 +331,7 @@ function getMockHandler(model: string) {
     create: async (args: any) => {
       const item = { id: `${model}-${Date.now()}`, createdAt: new Date(), updatedAt: new Date(), ...(args?.data || {}) }
       if (model === 'order') mockOrders.unshift(item)
+      if (model === 'themeVersion') mockThemeVersions.unshift(item)
       return item
     },
     update: async (args: any) => {
@@ -343,7 +351,15 @@ function getMockHandler(model: string) {
     },
     createMany: async (args: any) => ({ count: args?.data?.length || 0 }),
     updateMany: async () => ({ count: 1 }),
-    deleteMany: async () => ({ count: 0 }),
+    deleteMany: async (args?: any) => {
+      if (model === 'themeVersion' && args?.where?.id?.in) {
+        const ids = new Set<string>(args.where.id.in)
+        const before = mockThemeVersions.length
+        for (let i = mockThemeVersions.length - 1; i >= 0; i--) if (ids.has(mockThemeVersions[i].id)) mockThemeVersions.splice(i, 1)
+        return { count: before - mockThemeVersions.length }
+      }
+      return { count: 0 }
+    },
   }
 }
 
@@ -402,7 +418,7 @@ function createResilientPrismaClient(): any {
       // adminLoginLockout has full findUnique/upsert handling below (mockAdminLoginLockouts)
       // but was never added to this dispatch list, so admin login always 500'd in local dev
       // with no DATABASE_URL configured -- the one path that's supposed to work everywhere.
-      if (!isProduction && ['product','category','collection','user','setting','order','coupon','shippingZone','adminLoginLockout'].includes(prop)) return getMockHandler(prop)
+      if (!isProduction && ['product','category','collection','user','setting','order','coupon','shippingZone','adminLoginLockout','themeVersion','auditLog'].includes(prop)) return getMockHandler(prop)
       return Reflect.get(target, prop)
     },
   })
