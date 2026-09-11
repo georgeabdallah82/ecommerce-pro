@@ -189,18 +189,6 @@ body:has(.adminShell) .table td{border-bottom:1px solid var(--admin-border-soft)
 body:has(.adminShell) .table tbody tr:hover{background:var(--admin-border-soft)!important}
 body:has(.adminShell) .tableWrap{overflow:auto!important}
 body:has(.adminShell) .catalogPagination{background:var(--admin-surface)!important;border-top:1px solid var(--admin-border-soft)!important}
-/* .productListName (Customers list -- the avatar+name link in each row) only
-   ever had a bare min-width rule (app/admin/layout.tsx), so the <a> stayed at
-   its default display:inline, stacking the avatar circle above the name/email
-   text instead of laying them out side by side, with default blue/underlined
-   link styling showing through on top of it. */
-body:has(.adminShell) .productListName{display:flex!important;align-items:center!important;gap:12px!important;color:inherit!important;text-decoration:none!important}
-/* .fourFields (the "Add definition"/"Add user" inline-create forms on
-   Metafields and Users) composes with the bare .grid atom (globals.css:
-   display:grid;gap:20px, no column count), so its fields stacked one per row
-   instead of the intended compact multi-column layout its name describes. */
-body:has(.adminShell) .fourFields{grid-template-columns:repeat(4,minmax(0,1fr))!important}
-@media(max-width:760px){body:has(.adminShell) .fourFields{grid-template-columns:1fr!important}}
 /* .strike (Products list -- the compare-at price shown next to the current
    price) had no rule anywhere, so a "was $50, now $30" price pair rendered
    as two plain muted numbers with no visual line separating them. */
