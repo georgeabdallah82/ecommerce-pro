@@ -12,6 +12,7 @@ import {
   FolderOpen,
   GalleryHorizontal,
   GalleryHorizontalEnd,
+  Camera,
   GripVertical,
   HelpCircle,
   History,
@@ -30,11 +31,14 @@ import {
   Plus,
   Redo2,
   Save,
+  ShieldCheck,
   Smartphone,
   Sparkles,
   SplitSquareHorizontal,
   Tablet,
+  Timer,
   Trash2,
+  TrendingUp,
   Type as TypeIcon,
   Undo2,
   Video,
@@ -76,6 +80,10 @@ const META: Record<string, string> = {
   logo_list: 'Logo list',
   faq: 'Collapsible content',
   newsletter: 'Email signup',
+  trust_badges: 'Trust badges',
+  countdown: 'Countdown timer',
+  stats: 'Stats / counters',
+  social_grid: 'Social / Instagram feed',
   footer: 'Footer',
 }
 const SECTION_ICONS: Record<string, typeof ImageIcon> = {
@@ -98,6 +106,10 @@ const SECTION_ICONS: Record<string, typeof ImageIcon> = {
   logo_list: BadgeCheck,
   faq: HelpCircle,
   newsletter: Mail,
+  trust_badges: ShieldCheck,
+  countdown: Timer,
+  stats: TrendingUp,
+  social_grid: Camera,
   footer: PanelBottom,
 }
 const clone = <T,>(value: T): T => structuredClone(value)
@@ -118,6 +130,20 @@ function sectionDefaults(type: string): Section {
   if (type === 'image_with_text') return { id: makeId(type), type, enabled: true, settings: { ...base, eyebrow: 'THE BRAND', heading: 'Tell your story.', text: 'Combine imagery, copy and a strong call to action.', buttonLabel: 'Learn more', buttonUrl: '/about', imageUrl: '', layout: 'image-right' } }
   if (type === 'newsletter') return { id: makeId(type), type, enabled: true, settings: { ...base, heading: 'Stay in the loop', text: 'Get launches, drops and offers in your inbox.', buttonLabel: 'Subscribe', background: 'primary' } }
   if (type === 'footer') return { id: makeId(type), type, enabled: true, settings: { ...base, columns: 4 } }
+  if (type === 'trust_badges') return { id: makeId(type), type, enabled: true, settings: { ...base }, blocks: [
+    { id: makeId('badge'), type: 'badge', settings: { icon: 'truck', heading: 'Free shipping', text: 'On orders over $50' } },
+    { id: makeId('badge'), type: 'badge', settings: { icon: 'return', heading: 'Easy returns', text: '30-day window' } },
+    { id: makeId('badge'), type: 'badge', settings: { icon: 'lock', heading: 'Secure checkout', text: 'Encrypted payments' } },
+    { id: makeId('badge'), type: 'badge', settings: { icon: 'support', heading: '24/7 support', text: 'We are here to help' } },
+  ] }
+  if (type === 'countdown') return { id: makeId(type), type, enabled: true, settings: { ...base, eyebrow: 'LIMITED TIME', heading: 'Sale ends soon', text: "Don't miss out on this offer.", buttonLabel: 'Shop now', buttonUrl: '/shop', endDate: '' } }
+  if (type === 'stats') return { id: makeId(type), type, enabled: true, settings: { ...base, heading: 'Trusted by thousands', columns: 4 }, blocks: [
+    { id: makeId('stat'), type: 'stat', settings: { value: '50K+', label: 'Happy customers' } },
+    { id: makeId('stat'), type: 'stat', settings: { value: '4.9', label: 'Average rating' } },
+    { id: makeId('stat'), type: 'stat', settings: { value: '120+', label: 'Countries shipped' } },
+    { id: makeId('stat'), type: 'stat', settings: { value: '24/7', label: 'Customer support' } },
+  ] }
+  if (type === 'social_grid') return { id: makeId(type), type, enabled: true, settings: { ...base, heading: 'Shop the feed', handle: '@yourbrand', columns: 5 }, blocks: [] }
   return { id: makeId(type), type, enabled: true, settings: { ...base, heading: META[type] || 'Section' } }
 }
 
