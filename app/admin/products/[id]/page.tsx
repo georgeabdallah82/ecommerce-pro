@@ -1,6 +1,7 @@
 import { requirePermission } from '@/lib/auth'
 import { db } from '@/lib/prisma'
 import ProductEditorV2 from '@/components/product-editor-v2'
+import ui from '@/components/admin-ui.module.css'
 
 type ProductEditPageProps = { params: Promise<{ id: string }> }
 
@@ -23,7 +24,7 @@ export default async function ProductEdit({ params }: ProductEditPageProps) {
     db.metafieldDefinition.findMany({ where: { ownerType: 'PRODUCT' }, orderBy: [{ namespace: 'asc' }, { key: 'asc' }] }),
   ])
 
-  if (!product) return <div className="empty">Product not found.</div>
+  if (!product) return <div className={ui.empty}>Product not found.</div>
 
   const sharedInventory = product.variants.length > 0 && product.variants.every(v => v.inventory.length === 0) && product.inventory.length > 0
   const serializedProduct = JSON.parse(JSON.stringify({ ...product, sharedInventory }))

@@ -2,6 +2,7 @@ import { requirePermission } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
 import { db } from '@/lib/prisma'
 import OrderDetailAdmin from '@/components/order-detail-admin'
+import ui from '@/components/admin-ui.module.css'
 
 export default async function OrderDetail({params}:{params:Promise<{id:string}>}){
   const user = await requirePermission('orders.view')
@@ -16,7 +17,7 @@ export default async function OrderDetail({params}:{params:Promise<{id:string}>}
       paymentTransactions:{orderBy:{createdAt:'desc'}}
     }
   })
-  if(!order)return <div className="empty">Order not found.</div>
+  if(!order)return <div className={ui.empty}>Order not found.</div>
   const canStartOrderEdit = hasPermission(user.role, 'orderEdits.manage') && !['CANCELLED','REFUNDED'].includes(order.status)
   return <OrderDetailAdmin initial={JSON.parse(JSON.stringify(order))} canStartOrderEdit={canStartOrderEdit}/>
 }
