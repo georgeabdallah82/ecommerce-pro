@@ -268,8 +268,15 @@ function getMockHandler(model: string) {
         return val ? { id: `set-${where.key}`, key: where.key, value: val } : null
       }
       if (model === 'product') {
-        if (where.id) return mockProducts.find((p) => p.id === where.id) || null
-        if (where.slug) return mockProducts.find((p) => p.slug === where.slug) || null
+        const found = where.id
+          ? mockProducts.find((p) => p.id === where.id)
+          : where.slug
+            ? mockProducts.find((p) => p.slug === where.slug)
+            : undefined
+        // mockProducts entries don't carry every relation Prisma's `include` can ask
+        // for (e.g. reviews, tags) -- default those to empty arrays so callers that
+        // assume Prisma's always-an-array shape (never undefined) don't crash.
+        return found ? { reviews: [], tags: [], ...found } : null
       }
       if (model === 'user') {
         if (where.email) return mockUsers.find((u) => u.email.toLowerCase() === String(where.email).toLowerCase()) || null
@@ -418,7 +425,7 @@ function createResilientPrismaClient(): any {
       // adminLoginLockout has full findUnique/upsert handling below (mockAdminLoginLockouts)
       // but was never added to this dispatch list, so admin login always 500'd in local dev
       // with no DATABASE_URL configured -- the one path that's supposed to work everywhere.
-      if (!isProduction && ['product','category','collection','user','setting','order','coupon','shippingZone','adminLoginLockout','themeVersion','auditLog'].includes(prop)) return getMockHandler(prop)
+      if (!isProduction && ['product','category','collection','user','setting','order','coupon','shippingZone','adminLoginLockout','themeVersion','auditLog','liveVisitorSession'].includes(prop)) return getMockHandler(prop)
       return Reflect.get(target, prop)
     },
   })
