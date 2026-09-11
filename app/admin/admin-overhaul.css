@@ -82,6 +82,14 @@ html[data-admin-theme='dark'] body:has(.adminShell){
   --admin-warning:#e8b95a;
   --admin-warning-soft:#332a17;
   --admin-focus:rgba(79,209,139,.22);
+  /* --admin-shadow-sm/-md were missing from this dark block entirely, so every
+     .card/.statCard/.dashboardPanel/etc. (nearly every surface in the admin
+     panel) fell back to the light-mode rgba(27,26,22,x) shadow -- a low-alpha
+     shadow tuned for a light background that's imperceptible against the dark
+     one, so cards lost all elevation/hover feedback in dark mode. Only
+     --admin-shadow-lg (used by modals) had a dark value already. */
+  --admin-shadow-sm:0 1px 2px rgba(0,0,0,.3);
+  --admin-shadow-md:0 8px 24px rgba(0,0,0,.35);
   --admin-shadow-lg:0 26px 80px rgba(0,0,0,.5);
   --admin-topbar-bg:rgba(15,18,16,.9);
   background:var(--admin-bg)!important;color:var(--admin-ink)!important
