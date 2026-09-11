@@ -46,7 +46,7 @@
     "@types/web-push": "^3.6.4",
     "prisma": "^6.19.3",
     "tsx": "^4.19.4",
-    "typescript": "^5.7.3",
+    "typescript": "^7.0.2",
     "wrangler": "^4.129.1"
   },
   "overrides": {
