@@ -42,6 +42,7 @@ import {
 } from 'lucide-react'
 import ShopifyThemeInspector from '@/components/shopify-theme-inspector'
 import ThemeInspectorStyles from '@/components/theme-inspector-styles'
+import ThemePublishBar from '@/components/theme-publish-bar'
 import styles from './admin-theme-editor.module.css'
 
 const PREVIEW_PATH = '/admin/online-store/theme-editor/preview'
@@ -49,7 +50,7 @@ const PREVIEW_PATH = '/admin/online-store/theme-editor/preview'
 type AnyMap = Record<string, any>
 type Section = { id: string; type: string; enabled?: boolean; settings?: AnyMap; blocks?: AnyMap[] }
 type Snapshot = { theme: AnyMap; templates: Record<string, Section[]>; page: string; selectedId: string }
-type Props = { initial: { theme: AnyMap; sections: Section[]; navigation: any[] } }
+type Props = { initial: { theme: AnyMap; sections: Section[]; navigation: any[]; draft: boolean } }
 
 const PAGES = ['Home page', 'Products', 'Product', 'Collections', 'Collection', 'Cart', 'Pages', 'Blog']
 const META: Record<string, string> = {
@@ -184,6 +185,13 @@ export default function FocalThemeEditor({ initial }: Props) {
   const [versionsLoading, setVersionsLoading] = useState(false)
   const [versionsError, setVersionsError] = useState('')
   const [restoringId, setRestoringId] = useState<string | null>(null)
+  const [confirmState, setConfirmState] = useState<{ message: string; onConfirm: () => void } | null>(null)
+  const [dragOverId, setDragOverId] = useState<string | null>(null)
+  const confirmAction = (message: string, onConfirm: () => void) => setConfirmState({ message, onConfirm })
+  const [hasDraft, setHasDraft] = useState(initial.draft)
+  const [publishing, setPublishing] = useState(false)
+  const [publishMessage, setPublishMessage] = useState('')
+  const [publishError, setPublishError] = useState('')
 
   const current = templates[page] || []
   const selectedIndex = current.findIndex(section => section.id === selectedId)
@@ -269,11 +277,13 @@ export default function FocalThemeEditor({ initial }: Props) {
   }
   const removeSection = () => {
     if (!selected) return
-    const list = current.filter(section => section.id !== selected.id)
-    const nextId = list[Math.max(0, selectedIndex - 1)]?.id || list[0]?.id || ''
-    commit({ ...templates, [page]: list })
-    setSelectedId(nextId)
-    setDrawer(false)
+    confirmAction(`Delete "${META[selected.type] || selected.type.replaceAll('_', ' ')}"? You can undo this from the toolbar.`, () => {
+      const list = current.filter(section => section.id !== selected.id)
+      const nextId = list[Math.max(0, selectedIndex - 1)]?.id || list[0]?.id || ''
+      commit({ ...templates, [page]: list })
+      setSelectedId(nextId)
+      setDrawer(false)
+    })
   }
   const duplicateSection = () => {
     if (!selected) return
@@ -325,12 +335,15 @@ export default function FocalThemeEditor({ initial }: Props) {
     setSelectedId(snapshot.selectedId)
     setDirty(true)
   }
-  const changePage = (nextPage: string) => {
-    if (nextPage === page) return
-    if (dirty && typeof window !== 'undefined' && !window.confirm('You have unsaved changes. Switch templates anyway?')) return
+  const switchPage = (nextPage: string) => {
     setPage(nextPage)
     setSelectedId('')
     setDrawer(false)
+  }
+  const changePage = (nextPage: string) => {
+    if (nextPage === page) return
+    if (dirty) { confirmAction('You have unsaved changes. Switch templates anyway?', () => switchPage(nextPage)); return }
+    switchPage(nextPage)
   }
   const save = async () => {
     setSaving(true)
@@ -347,11 +360,32 @@ export default function FocalThemeEditor({ initial }: Props) {
       if (!response.ok) throw new Error(data.error || 'Unable to save theme')
       setTheme(data.theme || nextTheme)
       setDirty(false)
+      setHasDraft(true)
       setMessage('Theme saved')
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to save theme')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const publish = async () => {
+    if (!hasDraft || publishing) return
+    setPublishing(true)
+    setPublishMessage('')
+    setPublishError('')
+    try {
+      const response = await fetch('/api/admin/theme/publish', { method: 'POST' })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || 'Unable to publish theme')
+      setHasDraft(false)
+      setPublishMessage('Published')
+      window.setTimeout(() => setPublishMessage(''), 2500)
+    } catch (error) {
+      setPublishError(error instanceof Error ? error.message : 'Unable to publish theme')
+      window.setTimeout(() => setPublishError(''), 4000)
+    } finally {
+      setPublishing(false)
     }
   }
 
@@ -366,8 +400,10 @@ export default function FocalThemeEditor({ initial }: Props) {
       .finally(() => setVersionsLoading(false))
   }, [sideTab, versions.length, versionsLoading])
 
-  const restoreVersion = async (id: string) => {
-    if (typeof window !== 'undefined' && !window.confirm('Restore this version? It will replace your current draft (published content is unaffected until you publish again).')) return
+  const restoreVersion = (id: string) => {
+    confirmAction('Restore this version? It will replace your current draft (published content is unaffected until you publish again).', () => performRestore(id))
+  }
+  const performRestore = async (id: string) => {
     setRestoringId(id)
     setVersionsError('')
     try {
@@ -454,9 +490,11 @@ export default function FocalThemeEditor({ initial }: Props) {
                     key={section.id}
                     draggable
                     onDragStart={() => setDragId(section.id)}
-                    onDragOver={event => event.preventDefault()}
-                    onDrop={() => dropSection(section.id)}
-                    className={`${styles.row} ${selectedId === section.id ? styles.active : ''}`}
+                    onDragOver={event => { event.preventDefault(); if (dragId && dragId !== section.id) setDragOverId(section.id) }}
+                    onDragLeave={() => setDragOverId(prev => (prev === section.id ? null : prev))}
+                    onDrop={() => { dropSection(section.id); setDragOverId(null) }}
+                    onDragEnd={() => { setDragId(null); setDragOverId(null) }}
+                    className={`${styles.row} ${selectedId === section.id ? styles.active : ''} ${dragOverId === section.id && dragId !== section.id ? styles.dropTarget : ''}`}
                   >
                     <button className={styles.rowMain} onClick={() => { setSelectedId(section.id); setDrawer(true); setDrawerTab('content') }}>
                       <GripVertical size={13} />
@@ -594,7 +632,30 @@ export default function FocalThemeEditor({ initial }: Props) {
         </div>
       )}
 
+      {confirmState && (
+        <div className={styles.pickerOverlay} onMouseDown={() => setConfirmState(null)}>
+          <div className={styles.confirmDialog} onMouseDown={event => event.stopPropagation()}>
+            <p className={styles.confirmMessage}>{confirmState.message}</p>
+            <div className={styles.confirmActions}>
+              <button className={styles.btn} onClick={() => setConfirmState(null)}>Cancel</button>
+              <button
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                onClick={() => {
+                  const action = confirmState.onConfirm
+                  setConfirmState(null)
+                  action()
+                }}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {message && <div className={styles.notice}>{message}</div>}
+
+      <ThemePublishBar draft={hasDraft} publishing={publishing} message={publishMessage} error={publishError} onPublish={publish} />
     </div>
   )
 }
