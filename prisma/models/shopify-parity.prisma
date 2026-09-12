@@ -90,6 +90,7 @@ model StoreLocation {
   transfersFrom InventoryTransfer[] @relation("TransferFrom")
   transfersTo   InventoryTransfer[] @relation("TransferTo")
   purchaseOrders PurchaseOrder[] @relation("PurchaseLocation")
+  inventoryItems InventoryItem[]
   @@index([status])
 }
 

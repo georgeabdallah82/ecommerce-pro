@@ -18,6 +18,8 @@ Checkout is server-authoritative: prices, coupons, shipping, tax, and inventory 
 - `continueSellingWhenOutOfStock=true` skips reservation.
 - Reservations are recorded as inventory movements and are released on cancellation or expiration.
 - Shipping/delivery fulfillment converts reservations into stock deductions.
+- `InventoryItem.locationId` is a real foreign key to `StoreLocation` (managed in Admin > Operations), not a free-text field. Inventory transfers and purchase order receiving move stock by matching `locationId`, not by name, so renaming a location no longer silently orphans the inventory rows tagged with its old name.
+- **One-time migration for existing deployments**: if this app was already live before `locationId` existed, `InventoryItem` rows still carry the old free-text `location` string in MongoDB (Mongo doesn't drop removed schema fields on its own). Run `DATABASE_URL='mongodb://...' node scripts/backfill-inventory-locations.mjs` once, using a direct MongoDB connection string (not the `prisma://` Accelerate URL), after pulling this change so the local Prisma client matches the new schema. It creates a `StoreLocation` per distinct existing location string (case-insensitive match against ones that already exist) and sets `locationId` accordingly; safe to re-run. Until it runs, existing inventory rows just show as "Unassigned" in the admin UI -- stock levels, reservations, and checkout are unaffected either way. A brand-new deployment with no prior inventory data can skip this entirely.
 
 ## Expired reservations
 
@@ -133,3 +135,4 @@ Without `CLOUDFLARE_API_TOKEN` set, the `deploy` job fails fast with a clear err
 9. Verify `/robots.txt` and `/sitemap.xml` on the production domain.
 10. Create the `ecommerce-pro-media` R2 bucket (`npx wrangler r2 bucket create ecommerce-pro-media`) before the first deploy, and verify an admin file upload from `/admin/media` round-trips (uploads, then loads back via its `/api/media/[key]` URL).
 11. Set `RESEND_API_KEY` and `EMAIL_FROM`, then verify a real order confirmation and a real password reset email both arrive.
+12. If this is an existing deployment with prior inventory data, run `scripts/backfill-inventory-locations.mjs` once (see "Inventory" above) to migrate legacy free-text locations onto real `StoreLocation` records.

@@ -45,8 +45,8 @@ function convert(schema, sourceName) {
   // are replaced with indexes for the first migration phase. Application-level
   // uniqueness is audited separately before production cutover.
   schema = schema.replace(
-    '  @@unique([productId, variantId, location])\n',
-    '  @@index([productId, variantId, location])\n',
+    '  @@unique([productId, variantId, locationId])\n',
+    '  @@index([productId, variantId, locationId])\n',
   )
   schema = schema.replace(
     '  @@unique([userId, referenceId, type])\n',

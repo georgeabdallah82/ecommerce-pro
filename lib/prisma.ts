@@ -30,7 +30,7 @@ const mockProducts = [
     ],
     collections: [],
     variants: [],
-    inventory: [{ id: 'inv-1', quantity: 48, lowStockThreshold: 5, location: 'Main' }],
+    inventory: [{ id: 'inv-1', quantity: 48, lowStockThreshold: 5, locationId: null, location: null }],
     createdAt: new Date('2025-01-01'),
     updatedAt: new Date('2025-01-01'),
   },
@@ -52,7 +52,7 @@ const mockProducts = [
     ],
     collections: [],
     variants: [],
-    inventory: [{ id: 'inv-2', quantity: 36, lowStockThreshold: 5, location: 'Main' }],
+    inventory: [{ id: 'inv-2', quantity: 36, lowStockThreshold: 5, locationId: null, location: null }],
     createdAt: new Date('2025-01-02'),
     updatedAt: new Date('2025-01-02'),
   },
@@ -74,7 +74,7 @@ const mockProducts = [
     ],
     collections: [],
     variants: [],
-    inventory: [{ id: 'inv-3', quantity: 24, lowStockThreshold: 5, location: 'Main' }],
+    inventory: [{ id: 'inv-3', quantity: 24, lowStockThreshold: 5, locationId: null, location: null }],
     createdAt: new Date('2025-01-03'),
     updatedAt: new Date('2025-01-03'),
   },
@@ -96,7 +96,7 @@ const mockProducts = [
     ],
     collections: [],
     variants: [],
-    inventory: [{ id: 'inv-4', quantity: 50, lowStockThreshold: 10, location: 'Main' }],
+    inventory: [{ id: 'inv-4', quantity: 50, lowStockThreshold: 10, locationId: null, location: null }],
     createdAt: new Date('2025-01-04'),
     updatedAt: new Date('2025-01-04'),
   },
@@ -118,7 +118,7 @@ const mockProducts = [
     ],
     collections: [],
     variants: [],
-    inventory: [{ id: 'inv-5', quantity: 30, lowStockThreshold: 5, location: 'Main' }],
+    inventory: [{ id: 'inv-5', quantity: 30, lowStockThreshold: 5, locationId: null, location: null }],
     createdAt: new Date('2025-01-05'),
     updatedAt: new Date('2025-01-05'),
   },
@@ -140,7 +140,7 @@ const mockProducts = [
     ],
     collections: [],
     variants: [],
-    inventory: [{ id: 'inv-6', quantity: 15, lowStockThreshold: 3, location: 'Main' }],
+    inventory: [{ id: 'inv-6', quantity: 15, lowStockThreshold: 3, locationId: null, location: null }],
     createdAt: new Date('2025-01-06'),
     updatedAt: new Date('2025-01-06'),
   },
@@ -357,7 +357,7 @@ function getMockHandler(model: string) {
       return args?.create || args?.update || {}
     },
     create: async (args: any) => {
-      const item = { id: `${model}-${Date.now()}`, createdAt: new Date(), updatedAt: new Date(), ...(args?.data || {}) }
+      const item = { id: `${model}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, createdAt: new Date(), updatedAt: new Date(), ...(args?.data || {}) }
       if (model === 'order') mockOrders.unshift(item)
       if (model === 'themeVersion') mockThemeVersions.unshift(item)
       if (model === 'storeLocation') { if (item.isDefault) for (const x of mockStoreLocations) x.isDefault = false; mockStoreLocations.push(item) }

@@ -21,7 +21,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       if (!transfer.toLocation) return json({ error: 'A destination location is required before shipping a transfer' }, { status: 400 })
       await db.$transaction(async tx => {
         for (const item of transfer.items) {
-          const source = await tx.inventoryItem.findFirst({ where: { productId: item.productId, variantId: item.variantId, location: transfer.fromLocation!.name } })
+          const source = await tx.inventoryItem.findFirst({ where: { productId: item.productId, variantId: item.variantId, locationId: transfer.fromLocationId } })
           if (!source) throw new Error(`No source inventory exists for product ${item.productId} at ${transfer.fromLocation!.name}`)
           const available = source.quantity - source.reserved
           if (available < item.quantity) throw new Error(`Not enough available stock to ship ${item.quantity} units from ${transfer.fromLocation!.name}`)
@@ -37,12 +37,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         for (const item of transfer.items) {
           const qty = Math.max(0, item.quantity - item.received)
           if (!qty) continue
-          const destination = await tx.inventoryItem.findFirst({ where: { productId: item.productId, variantId: item.variantId, location: transfer.toLocation!.name } })
+          const destination = await tx.inventoryItem.findFirst({ where: { productId: item.productId, variantId: item.variantId, locationId: transfer.toLocationId } })
           if (destination) {
             await tx.inventoryItem.update({ where: { id: destination.id }, data: { quantity: { increment: qty } } })
             await tx.inventoryMovement.create({ data: { inventoryId: destination.id, type: 'TRANSFER', quantity: qty, reason: `Received transfer ${transfer.reference}`, referenceId: transfer.id } })
           } else {
-            const created = await tx.inventoryItem.create({ data: { productId: item.productId, variantId: item.variantId, quantity: qty, reserved: 0, lowStockThreshold: 5, location: transfer.toLocation!.name } })
+            const created = await tx.inventoryItem.create({ data: { productId: item.productId, variantId: item.variantId, quantity: qty, reserved: 0, lowStockThreshold: 5, locationId: transfer.toLocationId } })
             await tx.inventoryMovement.create({ data: { inventoryId: created.id, type: 'TRANSFER', quantity: qty, reason: `Received transfer ${transfer.reference}`, referenceId: transfer.id } })
           }
           await tx.inventoryTransferItem.update({ where: { id: item.id }, data: { received: item.quantity } })
