@@ -51,6 +51,13 @@ enum DiscountType {
   PERCENTAGE
   FIXED
   FREE_SHIPPING
+  BUY_X_GET_Y
+}
+
+enum DiscountScope {
+  ALL_PRODUCTS
+  SPECIFIC_PRODUCTS
+  SPECIFIC_COLLECTIONS
 }
 
 enum PaymentMethod {
@@ -285,20 +292,35 @@ model WishlistItem {
 }
 
 model Coupon {
-  id              String       @id @default(cuid())
-  code            String       @unique
-  isAutomatic     Boolean      @default(false)
-  type            DiscountType
-  value           Int
-  minSubtotal     Int?
-  maxUses         Int?
-  usedCount       Int          @default(0)
-  startsAt        DateTime?
-  expiresAt       DateTime?
-  isActive        Boolean      @default(true)
-  firstOrderOnly  Boolean      @default(false)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  id                 String        @id @default(cuid())
+  code               String        @unique
+  isAutomatic        Boolean       @default(false)
+  type               DiscountType
+  value              Int
+  minSubtotal        Int?
+  maxUses            Int?
+  usedCount          Int           @default(0)
+  startsAt           DateTime?
+  expiresAt          DateTime?
+  isActive           Boolean       @default(true)
+  // Which line items the discount value applies to (PERCENTAGE/FIXED) -- or,
+  // for BUY_X_GET_Y, which line items count toward the "buy" requirement.
+  appliesTo          DiscountScope @default(ALL_PRODUCTS)
+  productIds         String[]      @default([])
+  collectionIds      String[]      @default([])
+  // BUY_X_GET_Y only: how many eligible units must be bought, how many
+  // eligible "get" units become discounted, and by how much (100 = free).
+  // getAppliesTo/getProductIds/getCollectionIds default to the buy-side
+  // scope above when left unset.
+  buyQuantity        Int?
+  getQuantity        Int?
+  getDiscountPercent Int?
+  getAppliesTo       DiscountScope?
+  getProductIds      String[]      @default([])
+  getCollectionIds   String[]      @default([])
+  firstOrderOnly     Boolean       @default(false)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 }
 
 model ShippingZone {

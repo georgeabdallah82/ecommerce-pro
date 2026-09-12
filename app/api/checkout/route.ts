@@ -35,25 +35,90 @@ function checkoutFingerprint(userId: string | null, input: any, merged: Map<stri
   })).digest('hex')
 }
 
-function discountAmount(coupon: { type: string; value: number }, subtotal: number) {
+type LineItem = { productId: string; quantity: number; unitPrice: number; totalPrice: number }
+
+/**
+ * Resolves a discount's target scope (the whole cart, a specific product
+ * list, or a specific collection list) down to the concrete set of eligible
+ * product ids. Collection membership lives on the Collection side of the
+ * relation (Collection.products), not Product.collections, so it's resolved
+ * with its own lookup rather than assuming the product records already carry
+ * their collection ids.
+ */
+async function resolveEligibleProductIds(scope: string | undefined, productIds: string[] | undefined, collectionIds: string[] | undefined): Promise<Set<string> | 'ALL'> {
+  if (scope === 'SPECIFIC_PRODUCTS') return new Set(productIds || [])
+  if (scope === 'SPECIFIC_COLLECTIONS') {
+    if (!collectionIds?.length) return new Set()
+    const collections = await db.collection.findMany({ where: { id: { in: collectionIds } }, include: { products: { select: { productId: true } } } })
+    const ids = new Set<string>()
+    for (const collection of collections) for (const link of collection.products) ids.add(link.productId)
+    return ids
+  }
+  return 'ALL'
+}
+
+function eligibleLineItems(items: LineItem[], eligible: Set<string> | 'ALL') {
+  return eligible === 'ALL' ? items : items.filter(item => eligible.has(item.productId))
+}
+
+/**
+ * Buy X, get Y: for every `buyQuantity` eligible units in the cart, `getQuantity`
+ * units from the (separately configurable) "get" scope are discounted by
+ * `getDiscountPercent` (100 = free). Matches Shopify's own behavior of
+ * discounting the cheapest eligible "get" units first, so the customer never
+ * ends up with less value than the offer promises regardless of cart order.
+ */
+async function buyXGetYDiscount(coupon: any, items: LineItem[]) {
+  const buyEligible = await resolveEligibleProductIds(coupon.appliesTo, coupon.productIds, coupon.collectionIds)
+  const buyQuantityInCart = eligibleLineItems(items, buyEligible).reduce((sum, item) => sum + item.quantity, 0)
+  const buyQuantity = Math.max(1, coupon.buyQuantity || 1)
+  const getQuantity = Math.max(1, coupon.getQuantity || 1)
+  const timesEarned = Math.floor(buyQuantityInCart / buyQuantity)
+  if (timesEarned <= 0) return 0
+
+  const getScope = coupon.getAppliesTo || coupon.appliesTo
+  const getProductIds = coupon.getProductIds?.length ? coupon.getProductIds : coupon.productIds
+  const getCollectionIds = coupon.getCollectionIds?.length ? coupon.getCollectionIds : coupon.collectionIds
+  const getEligible = await resolveEligibleProductIds(getScope, getProductIds, getCollectionIds)
+  const unitPrices = eligibleLineItems(items, getEligible)
+    .flatMap(item => Array(item.quantity).fill(item.unitPrice))
+    .sort((a, b) => a - b)
+
+  const discountedCount = Math.min(unitPrices.length, timesEarned * getQuantity)
+  const percent = Math.min(100, Math.max(0, coupon.getDiscountPercent ?? 100))
+  return unitPrices.slice(0, discountedCount).reduce((sum, price) => sum + Math.floor(price * percent / 100), 0)
+}
+
+async function discountAmount(coupon: any, items: LineItem[]) {
+  if (coupon.type === 'BUY_X_GET_Y') return buyXGetYDiscount(coupon, items)
+  const eligible = await resolveEligibleProductIds(coupon.appliesTo, coupon.productIds, coupon.collectionIds)
+  const eligibleSubtotal = eligibleLineItems(items, eligible).reduce((sum, item) => sum + item.totalPrice, 0)
   return coupon.type === 'PERCENTAGE'
-    ? Math.min(subtotal, Math.floor(subtotal * coupon.value / 100))
+    ? Math.min(eligibleSubtotal, Math.floor(eligibleSubtotal * coupon.value / 100))
     : coupon.type === 'FIXED'
-      ? Math.min(subtotal, coupon.value)
+      ? Math.min(eligibleSubtotal, coupon.value)
       : 0
 }
 
-async function applyCoupon(code: string, subtotal: number) {
+function misconfigured(coupon: { type: string; value: number; buyQuantity: number | null; getQuantity: number | null }) {
+  if (coupon.type === 'PERCENTAGE' && (coupon.value < 1 || coupon.value > 100)) return true
+  if (coupon.type === 'BUY_X_GET_Y' && (!coupon.buyQuantity || coupon.buyQuantity < 1 || !coupon.getQuantity || coupon.getQuantity < 1)) return true
+  return false
+}
+
+async function applyCoupon(code: string, subtotal: number, items: LineItem[]) {
   if (!code) return { discount: 0, coupon: null as any }
   const coupon = await db.coupon.findUnique({ where: { code: code.toUpperCase() } })
   const now = new Date()
   if (!coupon || !coupon.isActive) throw new Error('Invalid coupon code')
-  if (coupon.type === 'PERCENTAGE' && (coupon.value < 1 || coupon.value > 100)) throw new Error('This discount is not configured correctly')
+  if (misconfigured(coupon)) throw new Error('This discount is not configured correctly')
   if (coupon.startsAt && coupon.startsAt > now) throw new Error('This coupon is not active yet')
   if (coupon.expiresAt && coupon.expiresAt < now) throw new Error('This coupon has expired')
   if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) throw new Error('This coupon has reached its usage limit')
   if (coupon.minSubtotal !== null && subtotal < coupon.minSubtotal) throw new Error('Minimum order is required for this coupon')
-  return { discount: discountAmount(coupon, subtotal), coupon }
+  const discount = await discountAmount(coupon, items)
+  if (discount === 0 && coupon.type !== 'FREE_SHIPPING') throw new Error('This discount does not apply to the items in your cart')
+  return { discount, coupon }
 }
 
 /**
@@ -61,16 +126,17 @@ async function applyCoupon(code: string, subtotal: number) {
  * enter a code -- an explicitly typed code always wins, keeping exactly one
  * discount on an order. Ineligible automatic discounts (wrong subtotal,
  * outside their date range, exhausted, first-order-only for an ineligible
- * customer) are silently skipped rather than surfaced as an error, since the
- * customer never asked for them by name. Among the remaining eligible
- * candidates, the one worth the most to the customer is applied.
+ * customer, or simply not matching any item in this cart) are silently
+ * skipped rather than surfaced as an error, since the customer never asked
+ * for them by name. Among the remaining eligible candidates, the one worth
+ * the most to the customer is applied.
  */
-async function findAutomaticDiscount(subtotal: number, userId: string | null) {
+async function findAutomaticDiscount(subtotal: number, userId: string | null, items: LineItem[]) {
   const now = new Date()
   const candidates = await db.coupon.findMany({ where: { isActive: true, isAutomatic: true } })
   let best: { discount: number; coupon: any } | null = null
   for (const coupon of candidates) {
-    if (coupon.type === 'PERCENTAGE' && (coupon.value < 1 || coupon.value > 100)) continue
+    if (misconfigured(coupon)) continue
     if (coupon.startsAt && coupon.startsAt > now) continue
     if (coupon.expiresAt && coupon.expiresAt < now) continue
     if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) continue
@@ -80,7 +146,8 @@ async function findAutomaticDiscount(subtotal: number, userId: string | null) {
       const existingOrder = await db.order.findFirst({ where: { userId, status: { not: 'CANCELLED' } }, select: { id: true } })
       if (existingOrder) continue
     }
-    const discount = discountAmount(coupon, subtotal)
+    const discount = await discountAmount(coupon, items)
+    if (discount === 0 && coupon.type !== 'FREE_SHIPPING') continue
     if (!best || discount > best.discount) best = { discount, coupon }
   }
   return best ?? { discount: 0, coupon: null as any }
@@ -103,6 +170,7 @@ const SAFE_CHECKOUT_MESSAGES = new Set([
   'This coupon has expired',
   'This coupon has reached its usage limit',
   'Minimum order is required for this coupon',
+  'This discount does not apply to the items in your cart',
   'This coupon requires a customer account',
   'This coupon is for first orders only',
   'This coupon is no longer available',
@@ -219,8 +287,8 @@ export async function POST(req: Request) {
     }
 
     const { discount, coupon } = input.couponCode
-      ? await applyCoupon(input.couponCode, subtotal)
-      : await findAutomaticDiscount(subtotal, user?.id ?? null)
+      ? await applyCoupon(input.couponCode, subtotal, normalized)
+      : await findAutomaticDiscount(subtotal, user?.id ?? null, normalized)
     if (coupon?.firstOrderOnly && !user?.id) throw new Error('This coupon requires a customer account')
     const discountedSubtotal = Math.max(0, subtotal - discount)
     const requestedCoins = Math.max(0, Number(input.coinsToUse || 0))

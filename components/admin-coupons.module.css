@@ -64,13 +64,24 @@
 
 .formFooter { justify-content: space-between; margin-top: 4px; }
 
+.scopeBlock { display: grid; gap: 8px; padding: 14px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); background: var(--admin-border-soft); }
+.scopeButtons { display: flex; flex-wrap: wrap; gap: 6px; }
+.scopeBtn { border: 1px solid var(--admin-border); background: var(--admin-surface); color: var(--admin-ink-soft); border-radius: var(--admin-radius-pill); padding: 6px 12px; font: inherit; font-size: 11.5px; font-weight: 800; cursor: pointer; }
+.scopeBtn.active { border-color: var(--admin-accent); background: var(--admin-accent-soft); color: var(--admin-accent-strong); }
+.scopeList { display: grid; gap: 2px; max-height: 180px; overflow: auto; padding: 6px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm); background: var(--admin-surface); }
+.scopeList label { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: var(--admin-radius-sm); font-size: 12.5px; color: var(--admin-ink); cursor: pointer; }
+.scopeList label:hover { background: var(--admin-border-soft); }
+.scopeList small { color: var(--admin-muted); }
+
+.bxgyGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+
 @media (max-width: 700px) {
   .header { flex-direction: column; align-items: stretch; }
   .toolbar { flex-direction: column; align-items: stretch; }
 }
 
 @media (max-width: 650px) {
-  .typeGrid, .formGrid { grid-template-columns: 1fr; }
+  .typeGrid, .formGrid, .bxgyGrid { grid-template-columns: 1fr; }
   .codeRow { grid-template-columns: 1fr; }
   .form { padding: 18px; }
 }

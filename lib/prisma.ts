@@ -395,7 +395,7 @@ function getMockHandler(model: string) {
       if (model === 'webhookEndpoint') mockWebhookEndpoints.push(item)
       if (model === 'apiCredential') { if (item.status === undefined) item.status = 'ACTIVE'; mockApiCredentials.push(item) }
       if (model === 'taxRate') mockTaxRates.push(item)
-      if (model === 'coupon') mockCoupons.push(item)
+      if (model === 'coupon') { item.usedCount ??= 0; mockCoupons.push(item) }
       return item
     },
     update: async (args: any) => {
