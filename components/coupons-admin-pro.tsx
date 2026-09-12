@@ -9,6 +9,7 @@ import ui from './admin-ui.module.css'
 type Coupon = {
   id: string
   code: string
+  isAutomatic: boolean
   type: 'PERCENTAGE' | 'FIXED' | 'FREE_SHIPPING'
   value: number
   minSubtotal: number | null
@@ -53,7 +54,7 @@ export default function CouponsAdminPro({ initial }: { initial: Coupon[] }) {
   const [copied, setCopied] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({ code: '', type: 'PERCENTAGE', value: '10', minSubtotal: '', maxUses: '', startsAt: '', expiresAt: '', firstOrderOnly: false })
+  const [form, setForm] = useState({ code: '', isAutomatic: false, type: 'PERCENTAGE', value: '10', minSubtotal: '', maxUses: '', startsAt: '', expiresAt: '', firstOrderOnly: false })
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -92,6 +93,7 @@ export default function CouponsAdminPro({ initial }: { initial: Coupon[] }) {
       if (type !== 'FREE_SHIPPING' && valueNumber < 0) throw new Error('Discount value cannot be negative.')
       const data = await api('/api/admin/coupons', { method: 'POST', body: JSON.stringify({
         code: form.code,
+        isAutomatic: form.isAutomatic,
         type,
         value: type === 'PERCENTAGE' ? Math.round(valueNumber) : type === 'FIXED' ? Math.round(valueNumber * 100) : 0,
         minSubtotal: form.minSubtotal ? Math.round(Number(form.minSubtotal) * 100) : null,
@@ -101,7 +103,7 @@ export default function CouponsAdminPro({ initial }: { initial: Coupon[] }) {
         firstOrderOnly: form.firstOrderOnly,
       }) })
       setRows(current => [data.coupon, ...current])
-      setForm({ code: '', type: 'PERCENTAGE', value: '10', minSubtotal: '', maxUses: '', startsAt: '', expiresAt: '', firstOrderOnly: false })
+      setForm({ code: '', isAutomatic: false, type: 'PERCENTAGE', value: '10', minSubtotal: '', maxUses: '', startsAt: '', expiresAt: '', firstOrderOnly: false })
       setFormOpen(false)
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to create discount') }
     finally { setSaving(false) }
@@ -152,7 +154,7 @@ export default function CouponsAdminPro({ initial }: { initial: Coupon[] }) {
       <div className={styles.tableTopline}><span className={ui.muted}>{filtered.length} discount{filtered.length === 1 ? '' : 's'}</span><span className={ui.muted}>Codes are case-insensitive</span></div>
       <div className={ui.tableWrap}><table className={`${ui.table} productTable`}><thead><tr><th>Discount</th><th>Type</th><th>Value</th><th>Usage</th><th>Schedule</th><th>Status</th><th></th></tr></thead><tbody>
         {filtered.map(c => <tr key={c.id}>
-          <td><div className="inline"><div className={styles.discountIcon}><Tag size={18}/></div><div><strong>{c.code}</strong><div className={ui.muted}>{c.firstOrderOnly ? 'First order only' : 'Available to all customers'}</div></div></div></td>
+          <td><div className="inline"><div className={styles.discountIcon}><Tag size={18}/></div><div><strong>{c.code}</strong>{c.isAutomatic && <span className={ui.statusPill} style={{ marginLeft: 8 }}>Automatic</span>}<div className={ui.muted}>{c.firstOrderOnly ? 'First order only' : 'Available to all customers'}</div></div></div></td>
           <td>{label(c.type)}</td><td><strong>{valueLabel(c)}</strong>{c.minSubtotal ? <div className={ui.muted}>Min {money(c.minSubtotal)}</div> : null}</td>
           <td>{c.usedCount}{c.maxUses ? <span className={ui.muted}> / {c.maxUses}</span> : <span className={ui.muted}> / unlimited</span>}</td>
           <td>{c.expiresAt ? <span>{new Date(c.expiresAt).toLocaleDateString()}</span> : <span className={ui.muted}>No expiry</span>}</td>
@@ -167,6 +169,7 @@ export default function CouponsAdminPro({ initial }: { initial: Coupon[] }) {
       <div className="inventoryModalHead"><div><span className={`${ui.muted} ${ui.tiny}`}>CREATE DISCOUNT</span><h2>New discount</h2><p className={ui.muted}>Set the code, value and eligibility rules.</p></div><button className={ui.iconBtn} onClick={() => setFormOpen(false)} disabled={saving}><X size={17}/></button></div>
       <form onSubmit={createCoupon} className={styles.form}>
         <div className={styles.codeRow}><label className={ui.fieldLabel}>Discount code<input className={ui.input} required value={form.code} onChange={e => setForm({...form, code: e.target.value.toUpperCase().replace(/\s+/g, '-').slice(0, 64)})} placeholder="SUMMER10"/></label><button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setForm({...form, code: `SAVE${Math.floor(1000 + Math.random()*9000)}`})}>Generate</button></div>
+        <label className={styles.toggleRow}><input type="checkbox" checked={form.isAutomatic} onChange={e => setForm({...form, isAutomatic: e.target.checked})}/><span><strong>Apply automatically</strong><small>Customers get this discount at checkout without entering the code above. Only applies when they haven't entered a different code.</small></span></label>
         <div className={styles.typeGrid}><button type="button" className={`${styles.typeCard} ${form.type === 'PERCENTAGE' ? styles.active : ''}`} onClick={() => setForm({...form, type: 'PERCENTAGE'})}><Percent size={17}/><strong>Percentage</strong><span>10% off</span></button><button type="button" className={`${styles.typeCard} ${form.type === 'FIXED' ? styles.active : ''}`} onClick={() => setForm({...form, type: 'FIXED'})}><Tag size={17}/><strong>Fixed amount</strong><span>$10 off</span></button><button type="button" className={`${styles.typeCard} ${form.type === 'FREE_SHIPPING' ? styles.active : ''}`} onClick={() => setForm({...form, type: 'FREE_SHIPPING', value: '0'})}><Gift size={17}/><strong>Free shipping</strong><span>Remove shipping charge</span></button></div>
         {form.type !== 'FREE_SHIPPING' && <label className={ui.fieldLabel}>Value{form.type === 'PERCENTAGE' && <span className={ui.fieldHelp} style={{ display: 'inline', marginLeft: 6 }}>(whole percent)</span>}<input className={ui.input} required type="number" min="0" step={form.type === 'PERCENTAGE' ? '1' : '0.01'} max={form.type === 'PERCENTAGE' ? 100 : undefined} value={form.value} onChange={e => setForm({...form, value: e.target.value})}/></label>}
         <div className={styles.formGrid}><label className={ui.fieldLabel}>Minimum order<input className={ui.input} type="number" min="0" step="0.01" value={form.minSubtotal} onChange={e => setForm({...form, minSubtotal: e.target.value})} placeholder="None"/></label><label className={ui.fieldLabel}>Maximum uses<input className={ui.input} type="number" min="1" step="1" value={form.maxUses} onChange={e => setForm({...form, maxUses: e.target.value})} placeholder="Unlimited"/></label><label className={ui.fieldLabel}>Starts<input className={ui.input} type="datetime-local" value={form.startsAt} onChange={e => setForm({...form, startsAt: e.target.value})}/></label><label className={ui.fieldLabel}>Ends<input className={ui.input} type="datetime-local" value={form.expiresAt} onChange={e => setForm({...form, expiresAt: e.target.value})}/></label></div>
