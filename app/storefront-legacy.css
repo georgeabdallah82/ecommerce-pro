@@ -3530,3 +3530,18 @@ body > .footer {
    display (product cards, testimonials) already uses via
    .focalStars{color:var(--focal-primary)}. Same red everywhere. */
 .focalRating{color:var(--store-primary,#d42a2a)!important}
+
+/* ============================================================
+   Deal Marketplace redesign layer (Phase 6 -- full-site QA sweep)
+   ============================================================ */
+
+/* Same bug as .focalButton.primary (Phase 1/4), different class: a
+   "Shopify feel" pass hardcodes plain .btn (used by checkout, account
+   login/register/forgot-password/order-history, order success, and
+   error/not-found pages -- none of which use .focalButton) to
+   var(--shop-ink) via .btn:not(.secondary):not(.ghost), which beats
+   the token-driven base .btn rule on specificity (0,3,0 vs 0,1,0)
+   regardless of source order. Every primary button on those pages
+   rendered near-black instead of brand red. Match its specificity
+   here, later in the cascade, so this wins. */
+.btn:not(.secondary):not(.ghost){background:var(--store-primary,#d42a2a)!important;border-color:var(--store-primary,#d42a2a)!important;color:var(--store-button-text,#fff)!important}
