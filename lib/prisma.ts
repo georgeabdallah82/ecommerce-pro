@@ -330,8 +330,17 @@ function getMockHandler(model: string) {
         return val ? { id: `set-${where.key}`, key: where.key, value: val } : null
       }
       if (model === 'user') {
-        if (where.email) return mockUsers.find((u) => u.email.toLowerCase() === String(where.email).toLowerCase()) || null
-        return mockUsers[0] || null
+        const user = where.email
+          ? mockUsers.find((u) => u.email.toLowerCase() === String(where.email).toLowerCase())
+          : where.id
+            ? mockUsers.find((u) => u.id === where.id)
+            : mockUsers[0]
+        if (!user) return null
+        // Included relations must come back as arrays, never undefined, or every caller that
+        // reduces/maps over them (e.g. sumCustomerSpend on the customer detail page) crashes --
+        // the real Prisma client always returns an empty array for an included relation with no
+        // rows, so the mock needs to as well even though it doesn't actually join anything here.
+        return { orders: [], addresses: [], reviews: [], orderNotes: [], _count: { orders: 0, reviews: 0 }, ...user }
       }
       if (model === 'shippingZone') return mockShippingZones[0] || null
       if (model === 'product') return mockProducts[0] || null
@@ -391,7 +400,7 @@ function getMockHandler(model: string) {
       return args?.data || {}
     },
     delete: async (args?: any) => {
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, user: mockUsers }
       const list = byId[model]
       if (list && args?.where?.id) { const i = list.findIndex((x) => x.id === args.where.id); if (i >= 0) return list.splice(i, 1)[0] }
       return {}

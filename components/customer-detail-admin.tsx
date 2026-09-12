@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Mail, MapPin, Phone, Save, ShieldOff, UserCheck, Plus, X, CreditCard, UsersRound, Coins } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ArrowLeft, Mail, MapPin, Phone, Save, ShieldOff, UserCheck, Plus, Trash2, X, CreditCard, UsersRound, Coins } from 'lucide-react'
 import { money } from '@/lib/config'
 import s from './admin-customer-detail.module.css'
 import ui from './admin-ui.module.css'
@@ -18,8 +19,26 @@ const initials = (name: string) => name.trim().split(/\s+/).slice(0, 2).map(x =>
 
 type ProfileFields = { name: string; email: string; phone: string | null; isActive: boolean }
 
+// Defined at module scope, not inside CustomerDetailAdmin: a component declared inside
+// another component's body is a new function on every render, so React treats each render's
+// <Card> as a different component type and remounts its whole subtree -- every input inside
+// (including the coin/wallet amount fields) lost focus, and with it the on-screen keyboard,
+// after a single keystroke.
+function Card({ title, sub, children, action, icon }: { title: string; sub?: string; children: React.ReactNode; action?: React.ReactNode; icon?: React.ReactNode }) {
+  return <section className={s.card}>
+    <div className={s.cardHead}>
+      <div><h3>{title}</h3>{sub && <p>{sub}</p>}</div>
+      {action}
+      {icon && <span className={s.cardHeadIcon}>{icon}</span>}
+    </div>
+    <div className={s.cardBody}>{children}</div>
+  </section>
+}
+
 export default function CustomerDetailAdmin({ initial }: { initial: any }) {
+  const router = useRouter()
   const [customer, setCustomer] = useState(initial)
+  const [deleting, setDeleting] = useState(false)
   const [original, setOriginal] = useState<ProfileFields>({ name: initial.name, email: initial.email, phone: initial.phone, isActive: initial.isActive })
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -122,6 +141,15 @@ export default function CustomerDetailAdmin({ initial }: { initial: any }) {
     finally { setCoinBusy(false) }
   }
 
+  async function deleteCustomer() {
+    if (!confirm(`Delete ${customer.name}? This permanently removes their account, addresses, reviews and loyalty history. Their past orders are kept but no longer linked to an account.`)) return
+    setDeleting(true); setError('')
+    try {
+      await api(`/api/admin/customers/${customer.id}`, { method: 'DELETE' })
+      router.push('/admin/customers')
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to delete customer'); setDeleting(false) }
+  }
+
   const orders: any[] = customer.orders || []
   const totalOrders = orders.length
   const billableOrders = orders.filter((o: any) => o.status !== 'CANCELLED').length
@@ -143,6 +171,7 @@ export default function CustomerDetailAdmin({ initial }: { initial: any }) {
       </div>
       <div className={s.topActions}>
         <span className={`${ui.statusPill} ${customer.isActive ? ui.statusPillSuccess : ''}`}>{customer.isActive ? <UserCheck size={13}/> : <ShieldOff size={13}/>} {customer.isActive ? 'Active' : 'Disabled'}</span>
+        <button className={`${ui.btn} ${ui.btnSecondary} ${s.topActionsBtn}`} onClick={deleteCustomer} disabled={deleting}><Trash2 size={16}/> {deleting ? 'Deleting…' : 'Delete'}</button>
         <button className={`${ui.btn} ${s.topActionsBtn}`} onClick={save} disabled={saving}><Save size={16}/> {saving ? 'Saving…' : 'Save'}</button>
       </div>
     </div>
@@ -259,15 +288,4 @@ export default function CustomerDetailAdmin({ initial }: { initial: any }) {
       </aside>
     </div>
   </div>
-
-  function Card({ title, sub, children, action, icon }: { title: string; sub?: string; children: React.ReactNode; action?: React.ReactNode; icon?: React.ReactNode }) {
-    return <section className={s.card}>
-      <div className={s.cardHead}>
-        <div><h3>{title}</h3>{sub && <p>{sub}</p>}</div>
-        {action}
-        {icon && <span className={s.cardHeadIcon}>{icon}</span>}
-      </div>
-      <div className={s.cardBody}>{children}</div>
-    </section>
-  }
 }

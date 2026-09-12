@@ -78,6 +78,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return json(result, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error) {
     const message = error instanceof Error ? error.message : ''
+    if (message === 'UNAUTHORIZED') return json({ error: 'Unauthorized' }, { status: 401 })
+    if (message === 'FORBIDDEN') return json({ error: 'Forbidden' }, { status: 403 })
     if (message === 'Coin balance cannot become negative') return json({ error: message }, { status: 409 })
     if (message.includes('Unique constraint')) return json({ error: 'A coin adjustment with this reference already exists.' }, { status: 409 })
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') {

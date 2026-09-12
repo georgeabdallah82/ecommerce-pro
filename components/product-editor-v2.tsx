@@ -41,6 +41,24 @@ function combos(names: string[], values: string[][]) {
   )
 }
 
+// Defined at module scope, not inside ProductEditorV2: a component declared inside another
+// component's body is a new function on every render, so React treats each render's <Card>/
+// <Field>/etc as a different component type and remounts its whole subtree -- every field in
+// this editor (title, price, SKU, variants, SEO...) lost focus, and with it the on-screen
+// keyboard, after a single keystroke.
+function Card({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
+  return <section className={s.card}><div className={s.cardHead}><h3>{title}</h3>{sub && <p>{sub}</p>}</div><div className={s.cardBody}>{children}</div></section>
+}
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return <label className={s.field}>{label}{children}</label>
+}
+function MoneyField({ label, value, onChange }: { label: string; value?: number | null; onChange: (v: number | null) => void }) {
+  return <Field label={label}><div className={s.moneyInput}><span>$</span><input value={moneyValue(value)} onChange={e => onChange(e.target.value === '' ? null : Math.round(Number(e.target.value || 0) * 100))} /></div></Field>
+}
+function Check({ checked, onChange, title, text }: { checked: boolean; onChange: (v: boolean) => void; title: string; text: string }) {
+  return <label className={s.checkCard}><input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} /><span><strong>{title}</strong><small>{text}</small></span></label>
+}
+
 export default function ProductEditorV2({ initial, creating, categories, definitions, locations }: { initial: Product; creating: boolean; categories: any[]; definitions: any[]; locations?: StoreLocationOption[] }) {
   const [product, setProduct] = useState<Product>(initial)
   const [tab, setTab] = useState<typeof tabs[number]>('General')
@@ -297,17 +315,4 @@ export default function ProductEditorV2({ initial, creating, categories, definit
 
     <MediaPicker open={mediaPickerOpen} onClose={() => setMediaPickerOpen(false)} onAdd={images => update({ images: [...(product.images || []), ...images] })} />
   </div>
-
-  function Card({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
-    return <section className={s.card}><div className={s.cardHead}><h3>{title}</h3>{sub && <p>{sub}</p>}</div><div className={s.cardBody}>{children}</div></section>
-  }
-  function Field({ label, children }: { label: string; children: React.ReactNode }) {
-    return <label className={s.field}>{label}{children}</label>
-  }
-  function MoneyField({ label, value, onChange }: { label: string; value?: number | null; onChange: (v: number | null) => void }) {
-    return <Field label={label}><div className={s.moneyInput}><span>$</span><input value={moneyValue(value)} onChange={e => onChange(e.target.value === '' ? null : Math.round(Number(e.target.value || 0) * 100))} /></div></Field>
-  }
-  function Check({ checked, onChange, title, text }: { checked: boolean; onChange: (v: boolean) => void; title: string; text: string }) {
-    return <label className={s.checkCard}><input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} /><span><strong>{title}</strong><small>{text}</small></span></label>
-  }
 }

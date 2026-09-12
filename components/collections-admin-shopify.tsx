@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Eye, MoreHorizontal, Plus, Search, Tag, X } from 'lucide-react'
+import { Eye, MoreHorizontal, Plus, Search, Tag, Trash2, X } from 'lucide-react'
 import styles from './admin-collections.module.css'
 import ui from './admin-ui.module.css'
 
@@ -47,6 +47,17 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
       setError(error instanceof Error ? error.message : 'Unable to create collection')
     } finally {
       setBusy(false)
+    }
+  }
+
+  const deleteCollection = async (collection: { id: string; name: string }) => {
+    if (!confirm(`Delete "${collection.name}"? This cannot be undone.`)) return
+    setError('')
+    try {
+      await api(`/api/admin/collections/${collection.id}`, { method: 'DELETE' })
+      await refresh()
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Unable to delete collection')
     }
   }
 
@@ -182,6 +193,13 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
                       >
                         <Eye size={16} />
                       </Link>
+                      <button
+                        className={ui.iconBtn}
+                        title="Delete collection"
+                        onClick={() => deleteCollection(collection)}
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </div>
                   </td>
                 </tr>
