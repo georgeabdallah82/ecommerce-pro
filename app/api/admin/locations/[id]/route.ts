@@ -35,6 +35,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
       db.inventoryTransfer.count({ where: { OR: [{ fromLocationId: id }, { toLocationId: id }] } }),
       db.purchaseOrder.count({ where: { locationId: id } }),
       db.fulfillment.count({ where: { locationId: id } }),
+      db.inventoryItem.count({ where: { locationId: id } }),
     ])
     if (references.some(Boolean)) return json({ error: 'Location is referenced by inventory operations and cannot be deleted. Disable it instead.' }, { status: 409 })
     await db.storeLocation.delete({ where: { id } })

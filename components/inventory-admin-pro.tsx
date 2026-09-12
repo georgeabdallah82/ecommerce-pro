@@ -34,7 +34,9 @@ function formatMovement(row: any) {
   return `${qty >= 0 ? '+' : '-'}${Math.abs(qty)} ${type}`
 }
 
-export default function InventoryAdminPro({ initial, canManage = true }: { initial: InventoryRow[]; canManage?: boolean }) {
+type StoreLocationRow = { id: string; name: string; isDefault?: boolean }
+
+export default function InventoryAdminPro({ initial, locations: locationOptions, canManage = true }: { initial: InventoryRow[]; locations?: StoreLocationRow[]; canManage?: boolean }) {
   const [rows, setRows] = useState<InventoryRow[]>(initial || [])
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState<Filter>('ALL')
@@ -44,20 +46,20 @@ export default function InventoryAdminPro({ initial, canManage = true }: { initi
   const [delta, setDelta] = useState('1')
   const [reason, setReason] = useState('Stock received')
   const [movementType, setMovementType] = useState<'ADJUSTMENT' | 'DAMAGE'>('ADJUSTMENT')
-  const [newLocation, setNewLocation] = useState('')
+  const [newLocationId, setNewLocationId] = useState('')
   const [threshold, setThreshold] = useState('5')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
 
-  const locations = useMemo(() => Array.from(new Set(rows.map(r => String(r.location || 'Main')).filter(Boolean))).sort(), [rows])
+  const locations = locationOptions || []
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase()
     return rows.filter(r => {
       const state = statusFor(r).label
       const matchesQ = !needle || `${r.product?.name || ''} ${r.product?.sku || ''} ${r.variant?.name || ''} ${r.variant?.sku || ''}`.toLowerCase().includes(needle)
       const matchesFilter = filter === 'ALL' || (filter === 'IN_STOCK' && state === 'In stock') || (filter === 'LOW' && state === 'Low stock') || (filter === 'OUT' && state === 'Out of stock')
-      const matchesLocation = location === 'ALL' || String(r.location || 'Main') === location
+      const matchesLocation = location === 'ALL' || (location === 'UNASSIGNED' ? !r.locationId : r.locationId === location)
       return matchesQ && matchesFilter && matchesLocation
     })
   }, [rows, q, filter, location])
@@ -78,7 +80,7 @@ export default function InventoryAdminPro({ initial, canManage = true }: { initi
     setDelta(String(amount))
     setReason(amount > 0 ? 'Stock received' : amount < 0 ? 'Stock reduction' : 'Stock adjustment')
     setMovementType('ADJUSTMENT')
-    setNewLocation(String(row.location || 'Main'))
+    setNewLocationId(row.locationId || '')
     setThreshold(String(row.lowStockThreshold ?? 5))
     setError('')
     setNotice('')
@@ -92,15 +94,14 @@ export default function InventoryAdminPro({ initial, canManage = true }: { initi
     if (!Number.isInteger(change)) return setError('Enter a whole-number adjustment.')
     if (change < 0 && Math.abs(change) > availability(selected).available) return setError(`You cannot reduce more than the ${availability(selected).available} currently available units.`)
     if (!Number.isInteger(thresholdValue) || thresholdValue < 0) return setError('Low-stock threshold must be a non-negative whole number.')
-    if (newLocation.trim().length > 120) return setError('Location is too long.')
     if (reason === 'Damaged stock' && (movementType !== 'DAMAGE' || change >= 0)) return setError('Damaged stock must use a negative quantity and DAMAGE movement type.')
     const originalThreshold = Number(selected.lowStockThreshold ?? 5)
-    const originalLocation = String(selected.location || 'Main')
-    if (change === 0 && thresholdValue === originalThreshold && newLocation.trim() === originalLocation) return setError('Make a change before saving.')
+    const originalLocationId = selected.locationId || ''
+    if (change === 0 && thresholdValue === originalThreshold && newLocationId === originalLocationId) return setError('Make a change before saving.')
 
     setBusy(true); setError(''); setNotice('')
     try {
-      const payload = { id: selected.id, delta: change, reason, movementType, location: newLocation.trim() || 'Main', lowStockThreshold: thresholdValue }
+      const payload = { id: selected.id, delta: change, reason, movementType, locationId: newLocationId || null, lowStockThreshold: thresholdValue }
       const data = await api('/api/admin/inventory', { method: 'PATCH', body: JSON.stringify(payload) })
       setRows(prev => prev.map(r => r.id === selected.id ? { ...r, ...data.item, product: r.product, variant: r.variant, movements: data.item.movements || r.movements } : r))
       setSelected(null)
@@ -145,7 +146,7 @@ export default function InventoryAdminPro({ initial, canManage = true }: { initi
       </div>
       <div className={s.controlGroup}>
         <div className={s.selectField}><SlidersHorizontal size={15}/><select aria-label="Inventory status" value={filter} onChange={e => setFilter(e.target.value as Filter)}><option value="ALL">All stock</option><option value="IN_STOCK">In stock</option><option value="LOW">Low stock</option><option value="OUT">Out of stock</option></select><ChevronDown size={14}/></div>
-        <div className={s.selectField}><MapPin size={15}/><select aria-label="Inventory location" value={location} onChange={e => setLocation(e.target.value)}><option value="ALL">All locations</option>{locations.map(x => <option key={x} value={x}>{x}</option>)}</select><ChevronDown size={14}/></div>
+        <div className={s.selectField}><MapPin size={15}/><select aria-label="Inventory location" value={location} onChange={e => setLocation(e.target.value)}><option value="ALL">All locations</option><option value="UNASSIGNED">Unassigned</option>{locations.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select><ChevronDown size={14}/></div>
       </div>
     </div>
 
@@ -154,7 +155,7 @@ export default function InventoryAdminPro({ initial, canManage = true }: { initi
       <div className={ui.tableWrap}><table className={ui.table}><thead><tr><th>Product</th><th>Location</th><th style={{ textAlign: 'right' }}>On hand</th><th style={{ textAlign: 'right' }}>Reserved</th><th style={{ textAlign: 'right' }}>Available</th><th>Status</th><th style={{ textAlign: 'right' }}>Quick adjust</th></tr></thead><tbody>
         {filtered.map(r => { const a = availability(r), state = statusFor(r); return <tr key={r.id} className={s.row} onClick={() => openAdjust(r, 0)}>
           <td><div className={s.productCell}><div className={s.thumb}>{r.product?.images?.[0]?.url ? <img src={r.product.images[0].url} alt=""/> : <Boxes size={18}/>}</div><div><strong>{r.product?.name || 'Product'}</strong><div className={ui.muted}>{r.variant?.name || r.product?.sku || 'Default'}{r.variant?.sku ? ` · ${r.variant.sku}` : ''}</div></div></div></td>
-          <td><span className={s.locationTag}><MapPin size={13}/>{r.location || 'Main'}</span></td><td style={{ textAlign: 'right' }}><strong>{a.quantity}</strong></td><td style={{ textAlign: 'right' }}><span className={s.reservedValue}>{a.reserved}</span></td><td style={{ textAlign: 'right' }}><strong className={a.available <= 0 ? `${s.qty} ${s.qtyDanger}` : a.available <= Number(r.lowStockThreshold ?? 5) ? `${s.qty} ${s.qtyWarning}` : s.qty}>{a.available}</strong></td>
+          <td><span className={s.locationTag}><MapPin size={13}/>{r.location?.name || 'Unassigned'}</span></td><td style={{ textAlign: 'right' }}><strong>{a.quantity}</strong></td><td style={{ textAlign: 'right' }}><span className={s.reservedValue}>{a.reserved}</span></td><td style={{ textAlign: 'right' }}><strong className={a.available <= 0 ? `${s.qty} ${s.qtyDanger}` : a.available <= Number(r.lowStockThreshold ?? 5) ? `${s.qty} ${s.qtyWarning}` : s.qty}>{a.available}</strong></td>
           <td><span className={`${ui.statusPill} ${state.tone === 'success' ? ui.statusPillSuccess : state.tone === 'warning' ? ui.statusPillWarning : ui.statusPillDanger}`}>{state.tone === 'success' ? <Check size={12}/> : <AlertTriangle size={12}/>} {state.label}</span></td>
           <td style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>{canManage ? <div className={s.quickActions}><button type="button" title="Add 1" onClick={() => openAdjust(r, 1)}><Plus size={14}/></button><button type="button" title={availability(r).available > 0 ? 'Remove 1' : 'No available units to remove'} onClick={() => openAdjust(r, -1)} disabled={availability(r).available <= 0}><Minus size={14}/></button></div> : <span className={ui.muted}>View only</span>}</td>
         </tr> })}
@@ -164,7 +165,7 @@ export default function InventoryAdminPro({ initial, canManage = true }: { initi
 
     {selected && <div className={s.drawerOverlay} onMouseDown={closeDrawer}>
       <aside className={s.drawer} role="dialog" aria-modal="true" aria-label={`Edit inventory for ${selected.product?.name || 'product'}`} onMouseDown={e => e.stopPropagation()}>
-        <div className={s.drawerHeader}><div><span className={`${ui.muted} ${ui.tiny}`}>INVENTORY</span><h2>{selected.product?.name || 'Product'}</h2><p className={ui.muted}>{selected.variant?.name || selected.product?.sku || 'Default'} · {selected.location || 'Main'}</p></div><button type="button" className={s.drawerClose} onClick={closeDrawer} disabled={busy} aria-label="Close inventory drawer"><X size={18}/></button></div>
+        <div className={s.drawerHeader}><div><span className={`${ui.muted} ${ui.tiny}`}>INVENTORY</span><h2>{selected.product?.name || 'Product'}</h2><p className={ui.muted}>{selected.variant?.name || selected.product?.sku || 'Default'} · {selected.location?.name || 'Unassigned'}</p></div><button type="button" className={s.drawerClose} onClick={closeDrawer} disabled={busy} aria-label="Close inventory drawer"><X size={18}/></button></div>
         <div className={s.drawerStats}><div><span>On hand</span><strong>{current?.quantity}</strong></div><div><span>Reserved</span><strong>{current?.reserved}</strong></div><div><span>Available</span><strong>{current?.available}</strong></div></div>
         <div className={s.drawerStatus}><span className={`${ui.statusPill} ${selectedStatus?.tone === 'success' ? ui.statusPillSuccess : selectedStatus?.tone === 'warning' ? ui.statusPillWarning : ui.statusPillDanger}`}>{selectedStatus?.tone === 'success' ? <Check size={12}/> : <AlertTriangle size={12}/>} {selectedStatus?.label}</span><span className={ui.muted}>Threshold {selected.lowStockThreshold ?? 5}</span></div>
         <div className={s.drawerTabs}><button type="button" className={drawerTab === 'ADJUST' ? s.active : ''} onClick={() => setDrawerTab('ADJUST')}>Adjust</button><button type="button" className={drawerTab === 'HISTORY' ? s.active : ''} onClick={() => setDrawerTab('HISTORY')}>History</button></div>
@@ -172,7 +173,7 @@ export default function InventoryAdminPro({ initial, canManage = true }: { initi
           <div className={s.amountBlock}><div className={s.fieldLabel}><span>Quantity adjustment</span><small>Use + for receiving and − for reductions</small></div><div className={s.quickAmounts}>{[-10, -5, -1, 1, 5, 10].map(v => <button type="button" key={v} className={delta === String(v) ? s.active : ''} disabled={v < 0 && current != null && Math.abs(v) > current.available} onClick={() => setDelta(String(v))}>{v > 0 ? `+${v}` : v}</button>)}</div><input className={s.amountInput} aria-label="Quantity adjustment" type="number" step="1" value={delta} onChange={e => setDelta(e.target.value)}/></div>
           <label className={s.fieldLabel}><span>Reason</span><select className={ui.select} value={reason} onChange={e => { const value = e.target.value; setReason(value); if (value === 'Damaged stock') { setMovementType('DAMAGE'); if (Number(delta) > 0) setDelta(String(-Number(delta))) } else setMovementType('ADJUSTMENT') }}><option>Stock received</option><option>Stock return</option><option>Stock count correction</option><option>Stock reduction</option><option>Damaged stock</option><option>Stock adjustment</option></select></label>
           {reason === 'Damaged stock' && <label className={s.fieldLabel}><span>Movement type</span><select className={ui.select} value={movementType} onChange={e => setMovementType(e.target.value as 'ADJUSTMENT' | 'DAMAGE')}><option value="DAMAGE">Damage</option><option value="ADJUSTMENT">Adjustment</option></select></label>}
-          <div className={s.twoFields}><label className={s.fieldLabel}><span>Location</span><input className={ui.input} value={newLocation} onChange={e => setNewLocation(e.target.value)} placeholder="Main"/></label><label className={s.fieldLabel}><span>Low-stock threshold</span><input className={ui.input} min="0" type="number" value={threshold} onChange={e => setThreshold(e.target.value)}/></label></div>
+          <div className={s.twoFields}><label className={s.fieldLabel}><span>Location</span><select className={ui.select} value={newLocationId} onChange={e => setNewLocationId(e.target.value)}><option value="">Unassigned</option>{locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select></label><label className={s.fieldLabel}><span>Low-stock threshold</span><input className={ui.input} min="0" type="number" value={threshold} onChange={e => setThreshold(e.target.value)}/></label></div>
           {Number(delta) !== 0 && current && <div className={s.preview}><div><span>Current available</span><strong>{current.available}</strong></div><div><span>After adjustment</span><strong>{Math.max(0, current.quantity + Number(delta) - current.reserved)}</strong></div></div>}
           {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
           <div className={s.drawerActions}><button type="button" className={`${ui.btn} ${ui.btnSecondary}`} disabled={busy} onClick={closeDrawer}>Cancel</button><button type="button" className={ui.btn} disabled={busy} onClick={saveAdjustment}>{busy ? 'Saving…' : 'Save adjustment'}</button></div>

@@ -60,7 +60,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
           categoryId: source.categoryId,
           images: { create: source.images.map(image => ({ url: image.url, alt: image.alt, sortOrder: image.sortOrder })) },
           tags: { create: source.tags.map(tag => ({ value: tag.value })) },
-          inventory: !hasVariantInventory ? { create: { quantity: 0, reserved: 0, lowStockThreshold: directInventory?.lowStockThreshold ?? 5, location: directInventory?.location || 'Main' } } : undefined,
+          inventory: !hasVariantInventory ? { create: { quantity: 0, reserved: 0, lowStockThreshold: directInventory?.lowStockThreshold ?? 5, locationId: directInventory?.locationId ?? null } } : undefined,
         },
       })
 
@@ -81,11 +81,11 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
               ? {
                   inventory: {
                     create: {
-                      product: { connect: { id: product.id } },
+                      productId: product.id,
                       quantity: 0,
                       reserved: 0,
                       lowStockThreshold: variant.inventory[0]?.lowStockThreshold ?? 5,
-                      location: variant.inventory[0]?.location || 'Main',
+                      locationId: variant.inventory[0]?.locationId ?? null,
                     },
                   },
                 }

@@ -8,20 +8,21 @@ type ProductEditPageProps = { params: Promise<{ id: string }> }
 export default async function ProductEdit({ params }: ProductEditPageProps) {
   await requirePermission('products.view')
   const { id } = await params
-  const [product, categories, definitions] = await Promise.all([
+  const [product, categories, definitions, locations] = await Promise.all([
     db.product.findUnique({
       where: { id },
       include: {
         category: true,
         images: { orderBy: { sortOrder: 'asc' } },
-        variants: { include: { inventory: true } },
-        inventory: { where: { variantId: null } },
+        variants: { include: { inventory: { include: { location: true } } } },
+        inventory: { where: { variantId: null }, include: { location: true } },
         tags: true,
         metafields: { include: { definition: true } },
       },
     }),
     db.category.findMany({ orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] }),
     db.metafieldDefinition.findMany({ where: { ownerType: 'PRODUCT' }, orderBy: [{ namespace: 'asc' }, { key: 'asc' }] }),
+    db.storeLocation.findMany({ orderBy: [{ isDefault: 'desc' }, { name: 'asc' }] }),
   ])
 
   if (!product) return <div className={ui.empty}>Product not found.</div>
@@ -30,6 +31,7 @@ export default async function ProductEdit({ params }: ProductEditPageProps) {
   const serializedProduct = JSON.parse(JSON.stringify({ ...product, sharedInventory }))
   const serializedCategories = JSON.parse(JSON.stringify(categories))
   const serializedDefinitions = JSON.parse(JSON.stringify(definitions))
+  const serializedLocations = JSON.parse(JSON.stringify(locations))
 
-  return <ProductEditorV2 initial={serializedProduct} creating={false} categories={serializedCategories} definitions={serializedDefinitions} />
+  return <ProductEditorV2 initial={serializedProduct} creating={false} categories={serializedCategories} definitions={serializedDefinitions} locations={serializedLocations} />
 }

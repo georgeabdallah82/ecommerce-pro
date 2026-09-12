@@ -39,12 +39,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           if (!increment) continue
           await tx.purchaseOrderItem.update({ where: { id: item.id }, data: { quantityReceived: nextReceived } })
           if (po.location) {
-            const inventory = await tx.inventoryItem.findFirst({ where: { productId: item.productId, variantId: item.variantId, location: po.location.name } })
+            const inventory = await tx.inventoryItem.findFirst({ where: { productId: item.productId, variantId: item.variantId, locationId: po.locationId } })
             if (inventory) {
               await tx.inventoryItem.update({ where: { id: inventory.id }, data: { quantity: { increment } } })
               await tx.inventoryMovement.create({ data: { inventoryId: inventory.id, type: 'RECEIPT', quantity: increment, reason: `Received ${po.number}`, referenceId: po.id } })
             } else {
-              const created = await tx.inventoryItem.create({ data: { productId: item.productId, variantId: item.variantId, quantity: increment, reserved: 0, lowStockThreshold: 5, location: po.location.name } })
+              const created = await tx.inventoryItem.create({ data: { productId: item.productId, variantId: item.variantId, quantity: increment, reserved: 0, lowStockThreshold: 5, locationId: po.locationId } })
               await tx.inventoryMovement.create({ data: { inventoryId: created.id, type: 'RECEIPT', quantity: increment, reason: `Received ${po.number}`, referenceId: po.id } })
             }
           }

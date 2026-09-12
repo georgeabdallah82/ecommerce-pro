@@ -10,7 +10,7 @@ export async function GET() {
   try {
     await requirePermission('inventory.view')
     const rows = await db.inventoryItem.findMany({
-      include: { product: true, variant: true, movements: { orderBy: { createdAt: 'desc' }, take: HISTORY_LIMIT } },
+      include: { product: true, variant: true, location: true, movements: { orderBy: { createdAt: 'desc' }, take: HISTORY_LIMIT } },
       orderBy: { quantity: 'asc' },
     })
     return json(rows, { headers: { 'Cache-Control': 'private, no-store' } })
@@ -32,7 +32,7 @@ export async function PATCH(req: Request) {
     const reason = String(b.reason || 'Manual adjustment').trim().slice(0, 1000) || 'Manual adjustment'
     const movementType = String(b.movementType || '').toUpperCase() === 'DAMAGE' ? 'DAMAGE' : 'ADJUSTMENT'
     if (movementType === 'DAMAGE' && delta >= 0) return json({ error: 'Damage movements must reduce stock.' }, { status: 400 })
-    const requestedLocation = b.location !== undefined ? String(b.location || '').trim().slice(0, 120) || 'Main' : undefined
+    const requestedLocationId = b.locationId !== undefined ? (b.locationId === null ? null : String(b.locationId).trim()) : undefined
     const threshold = b.lowStockThreshold !== undefined ? clampInt(b.lowStockThreshold, 0, 100000, 5) : undefined
 
     const updated = await db.$transaction(async tx => {
@@ -41,9 +41,13 @@ export async function PATCH(req: Request) {
       const next = item.quantity + delta
       if (next < item.reserved) throw new Error('Cannot reduce stock below reserved quantity')
 
-      if (requestedLocation !== undefined && requestedLocation !== (item.location || 'Main')) {
+      if (requestedLocationId !== undefined && requestedLocationId !== item.locationId) {
+        if (requestedLocationId) {
+          const location = await tx.storeLocation.findUnique({ where: { id: requestedLocationId }, select: { id: true } })
+          if (!location) throw new Error('Selected location does not exist')
+        }
         const collision = await tx.inventoryItem.findFirst({
-          where: { id: { not: id }, productId: item.productId, variantId: item.variantId, location: requestedLocation },
+          where: { id: { not: id }, productId: item.productId, variantId: item.variantId, locationId: requestedLocationId },
           select: { id: true },
         })
         if (collision) throw new Error('That product/variant already has inventory at the selected location. Adjust the existing location record instead.')
@@ -51,7 +55,7 @@ export async function PATCH(req: Request) {
 
       const write = await tx.inventoryItem.updateMany({
         where: { id, quantity: item.quantity, reserved: { lte: next } },
-        data: { quantity: next, ...(threshold !== undefined ? { lowStockThreshold: threshold } : {}), ...(requestedLocation !== undefined ? { location: requestedLocation } : {}) },
+        data: { quantity: next, ...(threshold !== undefined ? { lowStockThreshold: threshold } : {}), ...(requestedLocationId !== undefined ? { locationId: requestedLocationId } : {}) },
       })
       if (write.count !== 1) throw new Error('Inventory changed concurrently; please retry the adjustment.')
 
@@ -59,18 +63,19 @@ export async function PATCH(req: Request) {
 
       return tx.inventoryItem.findUniqueOrThrow({
         where: { id },
-        include: { product: { include: { images: { orderBy: { sortOrder: 'asc' }, take: 1 } } }, variant: true, movements: { orderBy: { createdAt: 'desc' }, take: HISTORY_LIMIT } },
+        include: { product: { include: { images: { orderBy: { sortOrder: 'asc' }, take: 1 } } }, variant: true, location: true, movements: { orderBy: { createdAt: 'desc' }, take: HISTORY_LIMIT } },
       })
     })
 
-    await audit(actor.id, 'inventory.adjusted', 'InventoryItem', id, { delta, reason, movementType, location: requestedLocation, lowStockThreshold: threshold })
-    void dispatchWebhookEvent('inventory.updated', { id: updated.id, productId: updated.productId, variantId: updated.variantId, quantity: updated.quantity, reserved: updated.reserved, location: updated.location }).catch(error => console.error('[webhook] inventory.updated dispatch failed', error))
+    await audit(actor.id, 'inventory.adjusted', 'InventoryItem', id, { delta, reason, movementType, locationId: requestedLocationId, lowStockThreshold: threshold })
+    void dispatchWebhookEvent('inventory.updated', { id: updated.id, productId: updated.productId, variantId: updated.variantId, quantity: updated.quantity, reserved: updated.reserved, locationId: updated.locationId }).catch(error => console.error('[webhook] inventory.updated dispatch failed', error))
     return json({ item: updated }, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (e) {
     const message = e instanceof Error ? e.message : ''
     const known = new Set([
       'Inventory item not found',
       'Cannot reduce stock below reserved quantity',
+      'Selected location does not exist',
       'That product/variant already has inventory at the selected location. Adjust the existing location record instead.',
       'Inventory changed concurrently; please retry the adjustment.',
       'UNAUTHORIZED',

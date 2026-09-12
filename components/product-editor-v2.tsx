@@ -7,7 +7,8 @@ import ui from './admin-ui.module.css'
 import MediaPicker from './media-picker'
 
 type ImageItem = { id?: string; url: string; alt?: string | null }
-type Variant = { id?: string; name: string; sku: string; barcode?: string | null; optionJson: string; price?: number | null; compareAtPrice?: number | null; quantity?: number; lowStockThreshold?: number; location?: string; weight?: number | null; weightUnit?: string | null; inventory?: any[] }
+type Variant = { id?: string; name: string; sku: string; barcode?: string | null; optionJson: string; price?: number | null; compareAtPrice?: number | null; quantity?: number; lowStockThreshold?: number; locationId?: string | null; weight?: number | null; weightUnit?: string | null; inventory?: any[] }
+type StoreLocationOption = { id: string; name: string; isDefault?: boolean }
 type Product = {
   id?: string; name: string; slug: string; description?: string | null; shortDescription?: string | null
   brand?: string | null; vendor?: string | null; productType?: string | null
@@ -18,7 +19,7 @@ type Product = {
   requiresShipping: boolean; taxable: boolean; trackInventory: boolean; continueSellingWhenOutOfStock: boolean; giftCard: boolean
   productTemplate?: string | null; categoryId?: string | null; publishedAt?: string | null
   images: ImageItem[]; variants: Variant[]; inventory: any[]; tags: any[]; metafields?: any[]
-  sharedInventory?: boolean; quantity?: number; lowStockThreshold?: number; location?: string
+  sharedInventory?: boolean; quantity?: number; lowStockThreshold?: number; locationId?: string | null
 }
 
 const tabs = ['General', 'Inventory', 'Variants', 'Shipping', 'Metafields', 'Search & SEO'] as const
@@ -40,7 +41,7 @@ function combos(names: string[], values: string[][]) {
   )
 }
 
-export default function ProductEditorV2({ initial, creating, categories, definitions }: { initial: Product; creating: boolean; categories: any[]; definitions: any[] }) {
+export default function ProductEditorV2({ initial, creating, categories, definitions, locations }: { initial: Product; creating: boolean; categories: any[]; definitions: any[]; locations?: StoreLocationOption[] }) {
   const [product, setProduct] = useState<Product>(initial)
   const [tab, setTab] = useState<typeof tabs[number]>('General')
   const [busy, setBusy] = useState(false)
@@ -115,7 +116,7 @@ export default function ProductEditorV2({ initial, creating, categories, definit
     const c = combos(optionNames, optionValues)
     if (!c.length) { setError('Add an option name and values first'); return }
     const old = new Map(product.variants.map(v => [JSON.stringify(parseOptions(v)), v]))
-    const next = c.map((x, i) => old.get(JSON.stringify(x.options)) || ({ name: x.name, sku: `${product.sku}-${i + 1}`, barcode: null, optionJson: JSON.stringify(x.options), price: product.basePrice, compareAtPrice: product.compareAtPrice, quantity: 0, lowStockThreshold: 5, location: 'Main' } as Variant))
+    const next = c.map((x, i) => old.get(JSON.stringify(x.options)) || ({ name: x.name, sku: `${product.sku}-${i + 1}`, barcode: null, optionJson: JSON.stringify(x.options), price: product.basePrice, compareAtPrice: product.compareAtPrice, quantity: 0, lowStockThreshold: 5, locationId: product.locationId ?? null } as Variant))
     update({ variants: next })
     setMessage(`${next.length} variants ready to save`)
   }
@@ -212,7 +213,7 @@ export default function ProductEditorV2({ initial, creating, categories, definit
           {(!product.variants.length || product.sharedInventory) && <Card title="Product inventory" sub="Used for non-variant stock or a shared variant pool">
             <div className={s.threeCol}>
               <Field label="Available"><input className={ui.input} type="number" value={available} onChange={e => update({ quantity: Number(e.target.value) })} /></Field>
-              <Field label="Location"><input className={ui.input} value={product.location || product.inventory?.[0]?.location || 'Main'} onChange={e => update({ location: e.target.value })} /></Field>
+              <Field label="Location"><select className={ui.select} value={product.locationId ?? product.inventory?.[0]?.locationId ?? ''} onChange={e => update({ locationId: e.target.value || null })}><option value="">Unassigned</option>{(locations || []).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select></Field>
               <Field label="Low stock"><input className={ui.input} type="number" value={product.lowStockThreshold || product.inventory?.[0]?.lowStockThreshold || 5} onChange={e => update({ lowStockThreshold: Number(e.target.value) })} /></Field>
             </div>
           </Card>}
