@@ -46,6 +46,14 @@ The app keeps payment processing provider-neutral. A trusted gateway can call `P
 
 The endpoint rejects mismatched successful amounts, ignores stale status updates, and ignores duplicate external transaction IDs.
 
+## Transactional email
+
+Order confirmations and password reset emails are sent through [Resend](https://resend.com)'s HTTP API (`lib/email.ts`), chosen because Cloudflare Workers cannot open raw SMTP sockets. Set `RESEND_API_KEY` and `EMAIL_FROM` (a verified sender address/domain in the Resend dashboard) to enable sending; without them, `lib/email.ts` logs a warning and no-ops instead of failing the request that triggered it — checkout and password reset both work regardless, they just won't email anyone until these are configured.
+
+- Order confirmation sends once a payment method's order is truly placed: immediately for COD, bank transfer, and wallet orders, and on the `PAID` webhook event for card orders. It respects the "Order confirmation" toggle in Admin → Settings → Email (`email.customerOrder`, enabled by default).
+- Password reset emails send unconditionally when `APP_URL`/`NEXT_PUBLIC_SITE_URL` is set, independent of that toggle (a security-relevant flow, not a marketing one).
+- "Fulfillment / tracking" and "Abandoned checkout recovery" toggles exist in Admin → Settings → Email but have no sending logic wired up yet — they're the next things to build on top of `lib/email.ts`.
+
 ## Admin order lifecycle
 
 `/api/admin/orders/:id` supports authenticated order viewing and controlled status updates. Cancelling an order releases reservations. Moving an inventory-tracked order to `SHIPPED` or `DELIVERED` fulfills its reserved stock exactly once.
@@ -87,6 +95,7 @@ Cloudflare Workers don't share environment variables with any other platform —
 - `CRON_SECRET` (must match what's set on the `release-expired-reservations` worker above)
 - `PAYMENT_WEBHOOK_SECRET`
 - `NEXT_PUBLIC_SITE_URL`
+- `RESEND_API_KEY` and `EMAIL_FROM` — optional but recommended; without them, order confirmation and password reset emails silently no-op (see "Transactional email" above)
 - Other configured payment, notification, branding, and admin variables used by the application (see `.env.example`)
 
 Non-secret `NEXT_PUBLIC_*` build-time values can instead go in `wrangler.jsonc`'s `vars` if preferred, since they aren't sensitive.
@@ -115,3 +124,4 @@ Without `CLOUDFLARE_API_TOKEN` set, the `deploy` job fails fast with a clear err
 8. Deploy `workers/release-expired-reservations/` and verify its Cron Trigger is enabled in the Cloudflare dashboard.
 9. Verify `/robots.txt` and `/sitemap.xml` on the production domain.
 10. Create the `ecommerce-pro-media` R2 bucket (`npx wrangler r2 bucket create ecommerce-pro-media`) before the first deploy, and verify an admin file upload from `/admin/media` round-trips (uploads, then loads back via its `/api/media/[key]` URL).
+11. Set `RESEND_API_KEY` and `EMAIL_FROM`, then verify a real order confirmation and a real password reset email both arrive.

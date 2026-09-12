@@ -4,6 +4,7 @@ import { releaseOrderReservations } from '@/lib/inventory'
 import { consumeRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { areebaMpgsPaymentProvider, areebaWebhookToken, safeTokenEqual } from '@/lib/payments'
+import { sendOrderConfirmationEmail } from '@/lib/email'
 
 function parseCoinsUsed(rawJson: string | null) {
   if (!rawJson) return 0
@@ -69,6 +70,7 @@ async function processPaymentNotification(orderNumber: string, body: Record<stri
       await tx.paymentTransaction.update({ where: { id: transaction.id }, data: { status: 'paid' } })
     })
     await audit(null, 'payment.paid', 'Order', order.id, { provider: 'areeba_mpgs', orderNumber: order.orderNumber, source: 'webhook' })
+    void sendOrderConfirmationEmail(order.id).catch(error => console.error('[email] order confirmation failed', error))
   } else if (status === 'failed') {
     let transitioned = false
     await db.$transaction(async tx => {
