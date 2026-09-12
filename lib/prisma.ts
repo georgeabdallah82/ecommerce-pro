@@ -208,6 +208,7 @@ const mockCoupons = [
   {
     id: 'cp-welcome10',
     code: 'WELCOME10',
+    isAutomatic: false,
     type: 'PERCENTAGE',
     value: 10,
     maxUses: 100,
@@ -249,6 +250,7 @@ function getMockHandler(model: string) {
         if (args?.where?.status) list = list.filter((p) => p.status === args.where.status)
         if (args?.where?.featured !== undefined) list = list.filter((p) => p.featured === args.where.featured)
         if (args?.where?.slug) list = list.filter((p) => p.slug === args.where.slug)
+        if (args?.where?.id?.in) { const ids = new Set(args.where.id.in); list = list.filter((p) => ids.has(p.id)) }
         if (args?.take) list = list.slice(0, args.take)
         return list
       }
@@ -260,7 +262,12 @@ function getMockHandler(model: string) {
         return list
       }
       if (model === 'order') return [...mockOrders]
-      if (model === 'coupon') return [...mockCoupons]
+      if (model === 'coupon') {
+        let list = [...mockCoupons]
+        if (args?.where?.isActive !== undefined) list = list.filter((x) => x.isActive === args.where.isActive)
+        if (args?.where?.isAutomatic !== undefined) list = list.filter((x) => Boolean(x.isAutomatic) === args.where.isAutomatic)
+        return list
+      }
       if (model === 'shippingZone') return [...mockShippingZones]
       if (model === 'user') {
         let list = [...mockUsers]
@@ -388,6 +395,7 @@ function getMockHandler(model: string) {
       if (model === 'webhookEndpoint') mockWebhookEndpoints.push(item)
       if (model === 'apiCredential') { if (item.status === undefined) item.status = 'ACTIVE'; mockApiCredentials.push(item) }
       if (model === 'taxRate') mockTaxRates.push(item)
+      if (model === 'coupon') mockCoupons.push(item)
       return item
     },
     update: async (args: any) => {
@@ -396,7 +404,7 @@ function getMockHandler(model: string) {
         if (u) Object.assign(u, args.data || {})
         return u || args.data
       }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons }
       if (byId[model] && args.where?.id) {
         const row = byId[model].find((x) => x.id === args.where.id)
         if (!row) throw new Error('Record to update not found')
@@ -431,13 +439,26 @@ function getMockHandler(model: string) {
         for (const x of mockStoreLocations) { if (excludeId && x.id === excludeId) continue; Object.assign(x, args?.data || {}); count++ }
         return { count }
       }
-      const byModel: Record<string, any[]> = { user: mockUsers, collection: mockCollections }
+      const byModel: Record<string, any[]> = { user: mockUsers, collection: mockCollections, coupon: mockCoupons }
       const list = byModel[model]
       if (list) {
         let targets = list
         if (args?.where?.id?.in) { const ids = new Set(args.where.id.in); targets = targets.filter((x) => ids.has(x.id)) }
+        if (args?.where?.id !== undefined && typeof args.where.id === 'string') targets = targets.filter((x) => x.id === args.where.id)
         if (args?.where?.role !== undefined) targets = targets.filter((x) => x.role === args.where.role)
-        for (const target of targets) Object.assign(target, args?.data || {})
+        if (args?.where?.isActive !== undefined) targets = targets.filter((x) => x.isActive === args.where.isActive)
+        if (args?.where?.usedCount?.lt !== undefined) targets = targets.filter((x) => (x.usedCount || 0) < args.where.usedCount.lt)
+        if (args?.where?.usedCount?.gt !== undefined) targets = targets.filter((x) => (x.usedCount || 0) > args.where.usedCount.gt)
+        for (const target of targets) {
+          for (const [key, value] of Object.entries(args?.data || {})) {
+            if (value && typeof value === 'object' && ('increment' in value || 'decrement' in value)) {
+              const delta = (value as any).increment ?? -(value as any).decrement
+              target[key] = (target[key] || 0) + delta
+            } else {
+              target[key] = value
+            }
+          }
+        }
         return { count: targets.length }
       }
       return { count: 1 }

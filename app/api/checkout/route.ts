@@ -35,6 +35,14 @@ function checkoutFingerprint(userId: string | null, input: any, merged: Map<stri
   })).digest('hex')
 }
 
+function discountAmount(coupon: { type: string; value: number }, subtotal: number) {
+  return coupon.type === 'PERCENTAGE'
+    ? Math.min(subtotal, Math.floor(subtotal * coupon.value / 100))
+    : coupon.type === 'FIXED'
+      ? Math.min(subtotal, coupon.value)
+      : 0
+}
+
 async function applyCoupon(code: string, subtotal: number) {
   if (!code) return { discount: 0, coupon: null as any }
   const coupon = await db.coupon.findUnique({ where: { code: code.toUpperCase() } })
@@ -45,12 +53,37 @@ async function applyCoupon(code: string, subtotal: number) {
   if (coupon.expiresAt && coupon.expiresAt < now) throw new Error('This coupon has expired')
   if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) throw new Error('This coupon has reached its usage limit')
   if (coupon.minSubtotal !== null && subtotal < coupon.minSubtotal) throw new Error('Minimum order is required for this coupon')
-  const discount = coupon.type === 'PERCENTAGE'
-    ? Math.min(subtotal, Math.floor(subtotal * coupon.value / 100))
-    : coupon.type === 'FIXED'
-      ? Math.min(subtotal, coupon.value)
-      : 0
-  return { discount, coupon }
+  return { discount: discountAmount(coupon, subtotal), coupon }
+}
+
+/**
+ * Automatic (codeless) discounts only ever apply when the customer didn't
+ * enter a code -- an explicitly typed code always wins, keeping exactly one
+ * discount on an order. Ineligible automatic discounts (wrong subtotal,
+ * outside their date range, exhausted, first-order-only for an ineligible
+ * customer) are silently skipped rather than surfaced as an error, since the
+ * customer never asked for them by name. Among the remaining eligible
+ * candidates, the one worth the most to the customer is applied.
+ */
+async function findAutomaticDiscount(subtotal: number, userId: string | null) {
+  const now = new Date()
+  const candidates = await db.coupon.findMany({ where: { isActive: true, isAutomatic: true } })
+  let best: { discount: number; coupon: any } | null = null
+  for (const coupon of candidates) {
+    if (coupon.type === 'PERCENTAGE' && (coupon.value < 1 || coupon.value > 100)) continue
+    if (coupon.startsAt && coupon.startsAt > now) continue
+    if (coupon.expiresAt && coupon.expiresAt < now) continue
+    if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) continue
+    if (coupon.minSubtotal !== null && subtotal < coupon.minSubtotal) continue
+    if (coupon.firstOrderOnly) {
+      if (!userId) continue
+      const existingOrder = await db.order.findFirst({ where: { userId, status: { not: 'CANCELLED' } }, select: { id: true } })
+      if (existingOrder) continue
+    }
+    const discount = discountAmount(coupon, subtotal)
+    if (!best || discount > best.discount) best = { discount, coupon }
+  }
+  return best ?? { discount: 0, coupon: null as any }
 }
 
 function providerCheckout(rawJson: string | null) {
@@ -185,7 +218,9 @@ export async function POST(req: Request) {
       normalized.push({ productId: p.id, variantId: variant?.id ?? null, name: p.name + (variant ? ` — ${variant.name}` : ''), sku: variant?.sku ?? p.sku, quantity: raw.quantity, unitPrice, totalPrice: unitPrice * raw.quantity })
     }
 
-    const { discount, coupon } = await applyCoupon(input.couponCode || '', subtotal)
+    const { discount, coupon } = input.couponCode
+      ? await applyCoupon(input.couponCode, subtotal)
+      : await findAutomaticDiscount(subtotal, user?.id ?? null)
     if (coupon?.firstOrderOnly && !user?.id) throw new Error('This coupon requires a customer account')
     const discountedSubtotal = Math.max(0, subtotal - discount)
     const requestedCoins = Math.max(0, Number(input.coinsToUse || 0))
