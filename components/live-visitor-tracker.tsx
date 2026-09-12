@@ -181,7 +181,7 @@ export default function LiveVisitorTracker() {
   return (
     <div className="lv-consent-root" role="region" aria-label="Location preference">
       <style jsx>{`
-        .lv-consent-root{position:fixed;bottom:24px;left:24px;z-index:45;pointer-events:auto;animation:lv-rise .25s ease-out}
+        .lv-consent-root{position:fixed;bottom:24px;right:24px;z-index:45;pointer-events:auto;animation:lv-rise .25s ease-out}
         .lv-consent-card{width:min(380px,calc(100vw - 32px));overflow:hidden;border:1px solid rgba(232,232,227,.98);border-radius:18px;background:#fff;color:#191512;box-shadow:0 16px 48px rgba(0,0,0,.15)}
         .lv-consent-top{display:flex;align-items:flex-start;gap:12px;padding:16px 16px 12px}
         .lv-consent-icon{display:grid;width:38px;height:38px;flex:0 0 38px;place-items:center;border-radius:11px;background:#f0f6ef;color:#1c6b31}
