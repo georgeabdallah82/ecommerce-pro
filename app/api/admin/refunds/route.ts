@@ -3,6 +3,7 @@ import { requirePermission } from '@/lib/auth'
 import { getPaymentProvider } from '@/lib/payments'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
+import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { Prisma } from '@prisma/client'
 
 const REFUND_MESSAGES = new Set([
@@ -142,6 +143,7 @@ export async function POST(req: Request) {
         // Notifications are best-effort and must not turn a committed refund into a failure.
       }
     }
+    void dispatchWebhookEvent('order.updated', { id: result.order.id, orderNumber: result.order.orderNumber, status: result.order.status, paymentStatus: result.order.paymentStatus }).catch(error => console.error('[webhook] order.updated dispatch failed', error))
     return json({ order: result.order, refund: result.transaction, refundedTotal: result.refundedTotal }, { status: 201 })
   } catch (e) {
     const failure = refundFailure(e)

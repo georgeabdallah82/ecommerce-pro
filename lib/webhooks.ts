@@ -34,3 +34,18 @@ export async function dispatchWebhookEvent(topic: string, payload: Record<string
   const body = JSON.stringify({ topic, payload, sentAt: new Date().toISOString() })
   await Promise.all(endpoints.map((endpoint) => deliver(endpoint, body)))
 }
+
+/**
+ * Dispatches inventory.updated for each inventory item id, re-reading its
+ * current state first (callers pass ids collected during a transaction,
+ * not the row data itself, since the row may have changed further within
+ * that same transaction after the id was noted). Fire-and-forget, like
+ * dispatchWebhookEvent itself -- callers don't need to `void`/catch this.
+ */
+export function dispatchInventoryUpdated(inventoryIds: Iterable<string>) {
+  for (const id of inventoryIds) {
+    void db.inventoryItem.findUnique({ where: { id } })
+      .then(item => item && dispatchWebhookEvent('inventory.updated', { id: item.id, productId: item.productId, variantId: item.variantId, quantity: item.quantity, reserved: item.reserved, locationId: item.locationId }))
+      .catch(error => console.error('[webhook] inventory.updated dispatch failed', error))
+  }
+}

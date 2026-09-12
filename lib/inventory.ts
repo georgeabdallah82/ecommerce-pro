@@ -143,7 +143,8 @@ export async function releaseOrderReservations(tx: any, orderId: string, reason 
   }
 }
 
-export async function fulfillOrderStock(tx: any, orderId: string) {
+export async function fulfillOrderStock(tx: any, orderId: string): Promise<string[]> {
+  const affectedInventoryIds = new Set<string>()
   const order = await tx.order.findUnique({ where: { id: orderId }, include: { items: { include: { product: true } } } })
   if (!order) throw new Error('Order not found')
 
@@ -213,6 +214,7 @@ export async function fulfillOrderStock(tx: any, orderId: string) {
         data: { quantity: { decrement: qty }, reserved: { decrement: qty } },
       })
       if (updated.count !== 1) throw new Error(`Unable to fulfill stock for ${demand.name}`)
+      affectedInventoryIds.add(reservation.inventoryId)
 
       await tx.inventoryMovement.create({
         data: {
@@ -229,4 +231,6 @@ export async function fulfillOrderStock(tx: any, orderId: string) {
 
     if (remaining > 0) throw new Error(`Unable to fulfill stock for ${demand.name}`)
   }
+
+  return [...affectedInventoryIds]
 }
