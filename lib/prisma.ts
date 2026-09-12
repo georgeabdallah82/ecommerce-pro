@@ -155,7 +155,7 @@ const mockCollections = [
     sortOrder: 0,
     imageUrl: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=800&q=80',
     isActive: true,
-    products: mockProducts.filter((p) => p.featured).map((p) => ({ productId: p.id, collectionId: 'col-best-sellers' })),
+    products: mockProducts.filter((p) => p.featured).map((p) => ({ productId: p.id, collectionId: 'col-best-sellers', product: p })),
     createdAt: new Date('2025-01-01'),
     updatedAt: new Date('2025-01-01'),
   },
