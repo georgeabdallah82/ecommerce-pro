@@ -25,6 +25,7 @@ export function Footer({ theme }: { theme?: any }) {
   const social: Record<string, string> = theme?.social || {}
   const activeSocial = SOCIAL_LINKS.filter(item => social[item.key])
   const whatsappDigits = config.whatsapp.replace(/[^\d+]/g, '')
+  const brand = theme?.brandName || config.brand
 
   return <>
     <style dangerouslySetInnerHTML={{ __html: `
@@ -65,7 +66,7 @@ export function Footer({ theme }: { theme?: any }) {
     <footer className="footer focalFooter">
       <div className="focalContainer footerGrid marketplace">
         <div>
-          <div className="logo">{config.brand}</div>
+          <div className="logo">{brand}</div>
           <p className="muted">A refined shopping experience built to grow with your business.</p>
           {activeSocial.length > 0 && (
             <div className="focalFooterSocial">
@@ -89,7 +90,7 @@ export function Footer({ theme }: { theme?: any }) {
         </div>
       </div>
       <div className="focalContainer focalFooterBottom">
-        <span className="muted">{new Date().getFullYear()} &middot; {config.brand} &middot; All rights reserved</span>
+        <span className="muted">{new Date().getFullYear()} &middot; {brand} &middot; All rights reserved</span>
         <div className="focalFooterPayments">
           <span>Card</span>
           <span>Cash on delivery</span>

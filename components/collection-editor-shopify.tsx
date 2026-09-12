@@ -7,6 +7,7 @@ import { ArrowLeft, Check, Eye, GripVertical, Image as ImageIcon, Plus, Search, 
 import ui from './admin-ui.module.css'
 import s from './admin-collection-editor.module.css'
 import UnsavedBar from './admin-unsaved-bar'
+import MediaPicker from './media-picker'
 
 type Product = { id: string; name: string; slug: string; sku?: string | null; status: string; basePrice: number; images?: { url: string }[]; category?: { name: string } | null }
 type Collection = { id: string; name: string; slug: string; description?: string | null; imageUrl?: string | null; isActive: boolean; products: { product: Product }[] }
@@ -30,6 +31,7 @@ export default function CollectionEditorShopify({ id }: { id: string }) {
   const [notice, setNotice] = useState('')
   const [dirty, setDirty] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [mediaPickerOpen, setMediaPickerOpen] = useState(false)
   const [selected, setSelected] = useState<string[]>([])
   const [original, setOriginal] = useState<{ collection: Collection | null; selected: string[] }>({ collection: null, selected: [] })
 
@@ -116,7 +118,10 @@ export default function CollectionEditorShopify({ id }: { id: string }) {
             <label>Collection image
               <div className={s.imageField}>
                 <div className={s.imagePreview}>{collection.imageUrl ? <img src={collection.imageUrl} alt="" /> : <ImageIcon size={24} />}</div>
-                <input className={ui.input} placeholder="https://…" value={collection.imageUrl || ''} onChange={e => setField({ imageUrl: e.target.value })} />
+                <div className="inline">
+                  <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setMediaPickerOpen(true)}>{collection.imageUrl ? 'Change image' : 'Upload image'}</button>
+                  {collection.imageUrl && <button type="button" className={ui.iconBtn} aria-label="Remove image" onClick={() => setField({ imageUrl: '' })}><X size={16} /></button>}
+                </div>
               </div>
             </label>
           </div>
@@ -180,5 +185,7 @@ export default function CollectionEditorShopify({ id }: { id: string }) {
         </div>
       </div>
     </div>}
+
+    <MediaPicker open={mediaPickerOpen} onClose={() => setMediaPickerOpen(false)} onAdd={images => { if (images[0]) setField({ imageUrl: images[0].url }); setMediaPickerOpen(false) }} />
   </div>
 }
