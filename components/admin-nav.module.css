@@ -1,34 +1,48 @@
 /*
- * The admin top navigation - CSS Modules, not global !important rules. Every
- * class here gets a build-time-unique name, so there is no specificity race to
- * lose: nothing else on the page can accidentally out-rank or be out-ranked by
- * these selectors regardless of source order. That was the root cause of two
- * separate production bugs in the previous sidebar (a flex-direction default
- * and a display:grid/display:none tie) - both were "two !important rules,
+ * The admin shell - CSS Modules, not global !important rules. Every class
+ * here gets a build-time-unique name, so there is no specificity race to
+ * lose: nothing else on the page can accidentally out-rank or be out-ranked
+ * by these selectors regardless of source order. That was the root cause of
+ * two separate production bugs in an earlier sidebar attempt (a flex-direction
+ * default and a display:grid/none tie) - both were "two !important rules,
  * whichever has higher specificity wins, source order is irrelevant" traps.
- * Scoped modules remove the trap instead of dodging it.
+ * Scoped modules remove the trap instead of dodging it, so the sidebar shape
+ * below is safe to build the same way the previous top-bar rewrite was.
  *
  * Design tokens (--admin-*) are defined once in ../app/admin/admin-overhaul.css
  * and used here via var() - custom properties inherit normally regardless of
  * module scoping, so there is exactly one source of truth for color/radius/
  * shadow values across the whole admin.
+ *
+ * Shell shape: a full-width sticky top bar, then a row of [sidebar | main
+ * content] below it - Shopify's own admin layout. The sidebar is sticky
+ * under the top bar and scrolls its own overflow; the main column scrolls
+ * with the page. All heights are declared explicitly (never left to a
+ * flex/height default) since that was exactly the class of bug noted above.
  */
 
-.wrap { position: sticky; top: 0; z-index: 80; }
+:root {
+  --admin-topbar-h: 60px;
+}
 
-.bar {
-  min-height: 62px;
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  height: var(--admin-topbar-h);
+  min-height: var(--admin-topbar-h);
   display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 18px;
-  padding: 0 24px;
+  gap: 16px;
+  padding: 0 20px;
   background: var(--admin-topbar-bg);
   backdrop-filter: blur(18px);
   border-bottom: 1px solid var(--admin-border);
   box-sizing: border-box;
 }
 
-.left { display: flex; align-items: center; gap: 14px; flex: 0 0 auto; }
+.topbarLeft { display: flex; flex-direction: row; align-items: center; gap: 14px; flex: 0 0 auto; }
 
 .hamburger {
   display: none;
@@ -43,7 +57,7 @@
   cursor: pointer;
 }
 
-.brand { display: flex; align-items: center; gap: 9px; text-decoration: none; flex: 0 0 auto; }
+.brand { display: flex; flex-direction: row; align-items: center; gap: 9px; text-decoration: none; flex: 0 0 auto; }
 .brandMark {
   display: grid;
   place-items: center;
@@ -57,92 +71,32 @@
 }
 .brandText { font-size: 14px; font-weight: 900; letter-spacing: -.03em; color: var(--admin-ink); white-space: nowrap; }
 
-/*
- * flex-wrap, not overflow-x:auto - setting overflow-x alone forces overflow-y
- * to compute to 'auto' too (a browser default that's easy to miss reading the
- * CSS alone), which would turn this into a clipping container and silently
- * swallow every dropdownPanel below it that's supposed to overflow past this
- * row. Wrapping to a second line at narrow-but-still-desktop widths costs
- * nothing and never clips a descendant.
- */
-.primary {
+.topbarSearch {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 2px;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.navLink {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 36px;
-  padding: 0 11px;
-  border: 0;
-  border-radius: var(--admin-radius-sm);
-  background: transparent;
-  color: var(--admin-ink-soft);
-  font: inherit;
-  font-size: 12.5px;
-  font-weight: 750;
-  text-decoration: none;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.navLink:hover { background: var(--admin-border-soft); color: var(--admin-ink); }
-.navLinkActive { background: var(--admin-accent-soft); color: var(--admin-accent-strong); }
-
-.chevron { opacity: .6; transition: transform .15s ease; }
-.chevronOpen { transform: rotate(180deg); }
-
-.dropdown { position: relative; flex: 0 0 auto; }
-.dropdownPanel {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  min-width: 200px;
-  display: grid;
-  gap: 1px;
-  padding: 6px;
+  gap: 9px;
+  height: 38px;
+  width: min(420px, 100%);
+  margin: 0 auto;
+  padding: 0 12px;
   border: 1px solid var(--admin-border);
   border-radius: var(--admin-radius-md);
   background: var(--admin-surface);
-  box-shadow: var(--admin-shadow-lg);
-  z-index: 90;
-}
-.dropdownItem {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 36px;
-  padding: 0 10px;
-  border-radius: var(--admin-radius-sm);
-  color: var(--admin-ink-soft);
-  font-size: 12.5px;
-  font-weight: 700;
-  text-decoration: none;
-}
-.dropdownItem:hover { background: var(--admin-border-soft); color: var(--admin-ink); }
-.dropdownItem svg { opacity: .72; flex: 0 0 auto; }
-.dropdownItemActive { background: var(--admin-accent); color: var(--admin-accent-ink); }
-.dropdownItemActive svg { opacity: 1; }
-
-.right { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
-
-.iconBtn {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border: 1px solid var(--admin-border);
-  border-radius: var(--admin-radius-sm);
-  background: var(--admin-surface);
-  color: var(--admin-ink-soft);
+  color: var(--admin-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
+  flex: 1 1 auto;
+  min-width: 0;
+  box-sizing: border-box;
 }
-.iconBtn:hover { background: var(--admin-border-soft); color: var(--admin-ink); }
+.topbarSearch:hover { border-color: var(--admin-muted-soft); color: var(--admin-ink-soft); }
+.topbarSearch span { flex: 1 1 auto; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topbarSearch kbd { flex: 0 0 auto; padding: 2px 6px; border: 1px solid var(--admin-border); border-radius: 6px; background: var(--admin-border-soft); color: var(--admin-muted); font: 700 10px/1 ui-monospace, monospace; }
+
+.topbarRight { display: flex; flex-direction: row; align-items: center; gap: 8px; flex: 0 0 auto; }
 
 .account { position: relative; }
 .accountBtn { border: 0; background: transparent; padding: 0; cursor: pointer; border-radius: var(--admin-radius-sm); }
@@ -162,7 +116,8 @@
   top: calc(100% + 8px);
   right: 0;
   width: 240px;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 3px;
   padding: 8px;
   border: 1px solid var(--admin-border);
@@ -171,11 +126,11 @@
   box-shadow: var(--admin-shadow-lg);
   z-index: 90;
 }
-.accountHead { display: grid; gap: 4px; padding: 8px 9px 10px; border-bottom: 1px solid var(--admin-border-soft); margin-bottom: 3px; }
+.accountHead { display: flex; flex-direction: column; gap: 4px; padding: 8px 9px 10px; border-bottom: 1px solid var(--admin-border-soft); margin-bottom: 3px; }
 .accountHead strong { font-size: 13px; color: var(--admin-ink); }
 .accountHead span { font-size: 11px; color: var(--admin-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rolePill {
-  justify-self: start;
+  align-self: flex-start;
   margin-top: 3px;
   padding: 3px 8px;
   border: 1px solid var(--admin-border);
@@ -190,6 +145,7 @@
 .accountThemeRow :global(.adminThemeToggle) { border: 0; height: 36px; padding: 0 9px; }
 .accountItem {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 9px;
   width: 100%;
@@ -209,6 +165,53 @@
 }
 .accountItem:hover { background: var(--admin-border-soft); color: var(--admin-ink); }
 
+/* Body row: sidebar + main content, below the top bar. */
+.body {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.sidebar {
+  position: sticky;
+  top: var(--admin-topbar-h);
+  flex: 0 0 240px;
+  width: 240px;
+  max-height: calc(100vh - var(--admin-topbar-h));
+  overflow-y: auto;
+  padding: 16px 12px 24px;
+  border-right: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+  box-sizing: border-box;
+}
+
+.sidebarNav { display: flex; flex-direction: column; }
+.sidebarGroup { margin-bottom: 6px; }
+.sidebarGroupLabel { padding: 10px 10px 4px; color: var(--admin-muted); font-size: 10px; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; }
+.sidebarItem {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 11px;
+  height: 38px;
+  padding: 0 10px;
+  border-radius: var(--admin-radius-sm);
+  color: var(--admin-ink-soft);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.sidebarItem:hover { background: var(--admin-border-soft); color: var(--admin-ink); }
+.sidebarItem svg { opacity: .72; flex: 0 0 auto; }
+.sidebarItemActive { background: var(--admin-accent-soft); color: var(--admin-accent-strong); }
+.sidebarItemActive svg { opacity: 1; }
+
+.mainCol { flex: 1 1 auto; min-width: 0; }
+
 /* Search - portaled to <body>, so it escapes the top bar's own backdrop-filter
    containing block (backdrop-filter, like filter/transform, traps fixed-position
    descendants inside its own box - the exact bug the old mobile drawer had). */
@@ -226,17 +229,18 @@
   box-shadow: var(--admin-shadow-lg);
   overflow: hidden;
 }
-.searchInputWrap { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--admin-border-soft); color: var(--admin-muted); flex: 0 0 auto; }
+.searchInputWrap { display: flex; flex-direction: row; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--admin-border-soft); color: var(--admin-muted); flex: 0 0 auto; }
 .searchInputWrap input { flex: 1 1 auto; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 14px; font-weight: 600; color: var(--admin-ink); }
 .searchInputWrap kbd { flex: 0 0 auto; padding: 3px 6px; border: 1px solid var(--admin-border); border-radius: 6px; background: var(--admin-border-soft); color: var(--admin-muted); font: 700 10px/1 ui-monospace, monospace; }
 .searchResults { overflow-y: auto; padding: 6px; }
-.searchResult { display: flex; align-items: center; gap: 10px; height: 42px; padding: 0 10px; border-radius: var(--admin-radius-sm); color: var(--admin-ink-soft); text-decoration: none; }
+.searchResult { display: flex; flex-direction: row; align-items: center; gap: 10px; height: 42px; padding: 0 10px; border-radius: var(--admin-radius-sm); color: var(--admin-ink-soft); text-decoration: none; }
 .searchResult:hover { background: var(--admin-border-soft); color: var(--admin-ink); }
 .searchResult svg { opacity: .72; flex: 0 0 auto; }
 .searchResult small { margin-left: auto; color: var(--admin-muted-soft); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
 .searchEmpty { padding: 24px 16px; text-align: center; color: var(--admin-muted); font-size: 13px; }
 
-/* Mobile drawer - also portaled for the same containing-block reason. */
+/* Mobile drawer - substitutes for the sidebar below the sidebar breakpoint.
+   Also portaled for the same containing-block reason as search. */
 .mobileOverlay { position: fixed; inset: 0; z-index: 2000; }
 .mobileBackdrop { position: absolute; inset: 0; border: 0; background: rgba(8, 10, 9, .42); backdrop-filter: blur(2px); }
 .mobilePanel {
@@ -251,11 +255,13 @@
   background: var(--admin-surface);
   box-shadow: 20px 0 60px rgba(0, 0, 0, .2);
   overflow: hidden;
+  box-sizing: border-box;
 }
-.mobileHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 2px 14px; border-bottom: 1px solid var(--admin-border-soft); flex: 0 0 auto; }
+.mobileHead { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 2px 14px; border-bottom: 1px solid var(--admin-border-soft); flex: 0 0 auto; }
 .mobileClose { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm); background: var(--admin-surface); color: var(--admin-ink-soft); cursor: pointer; }
 .mobileSearchBtn {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 9px;
   height: 40px;
@@ -271,21 +277,17 @@
   text-align: left;
   cursor: pointer;
   flex: 0 0 auto;
+  box-sizing: border-box;
 }
 .mobileNav { flex: 1 1 auto; min-height: 0; overflow-y: auto; margin-top: 10px; }
-.mobileGroup { margin-bottom: 6px; }
-.mobileGroupLabel { padding: 10px 10px 4px; color: var(--admin-muted); font-size: 10px; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; }
-.mobileItem { display: flex; align-items: center; gap: 11px; height: 42px; padding: 0 10px; border-radius: var(--admin-radius-sm); color: var(--admin-ink-soft); font-size: 13px; font-weight: 700; text-decoration: none; }
-.mobileItem:hover { background: var(--admin-border-soft); }
-.mobileItem svg { opacity: .72; flex: 0 0 auto; }
-.mobileItemActive { background: var(--admin-accent); color: var(--admin-accent-ink); }
-.mobileItemActive svg { opacity: 1; }
-.mobileFoot { flex: 0 0 auto; display: grid; gap: 3px; margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--admin-border-soft); }
+.mobileFoot { flex: 0 0 auto; display: flex; flex-direction: column; gap: 3px; margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--admin-border-soft); }
 .mobileFoot .rolePill { margin: 0 0 6px 2px; }
 
 @media (max-width: 900px) {
-  .primary { display: none; }
+  .sidebar { display: none; }
   .hamburger { display: inline-flex; }
-  .bar { padding: 0 14px; gap: 10px; }
+  .topbar { padding: 0 14px; gap: 10px; }
   .brandText { display: none; }
+  .topbarSearch span, .topbarSearch kbd { display: none; }
+  .topbarSearch { width: 38px; height: 38px; padding: 0; justify-content: center; flex: 0 0 auto; }
 }

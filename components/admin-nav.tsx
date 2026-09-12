@@ -1,13 +1,16 @@
 'use client'
 
 /*
- * The admin's whole navigation surface, ground up: a horizontal top bar
- * (dropdowns for multi-item groups, a single link for one-item groups), a
- * command-palette-style search reachable by Ctrl/Cmd+K or the search icon,
- * and a full-screen mobile drawer - one component, one file, replacing the
- * old sidebar + its three satellite components. Nothing here uses a global
- * !important rule or a body:has() selector: layout comes from CSS Modules
- * (admin-nav.module.css), so there is no specificity race left to lose.
+ * The admin's whole navigation surface: a full-width top bar (brand, search,
+ * notifications, account) stacked above a persistent left sidebar + main
+ * content row - Shopify's own admin shell shape. A command-palette-style
+ * search reachable by Ctrl/Cmd+K or the search bar, and a full-screen mobile
+ * drawer that substitutes for the sidebar below the sidebar breakpoint.
+ * Nothing here uses a global !important rule or a body:has() selector:
+ * layout comes entirely from CSS Modules (admin-nav.module.css), so there is
+ * no specificity race to lose - the exact trap a previous sidebar attempt
+ * hit twice (a flex-direction default and a display:grid/none tie, both
+ * "two !important rules, whichever has higher specificity wins" bugs).
  */
 
 import Link from 'next/link'
@@ -15,7 +18,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  Activity, ArrowLeftRight, BarChart3, Boxes, ChevronDown, ClipboardList, CreditCard, FileEdit, FileSpreadsheet, FileText, FolderTree, Image as ImageIcon, Layers3,
+  Activity, ArrowLeftRight, BarChart3, Boxes, ClipboardList, CreditCard, FileEdit, FileSpreadsheet, FileText, FolderTree, Image as ImageIcon, Layers3,
   LayoutDashboard, LogOut, Menu, MessageSquare, PackageCheck, Palette, Percent, Radio, RotateCcw, Search, Settings2,
   ShieldCheck, ShoppingBag, Store, Tag, Truck, UserCog, Users, UsersRound, Workflow, X, type LucideIcon,
 } from 'lucide-react'
@@ -64,17 +67,39 @@ function useFocusTrap(active: boolean, containerRef: React.RefObject<HTMLElement
   }, [active, containerRef, onClose])
 }
 
+function NavGroups({ groups, pathname, onNavigate }: { groups: AdminSidebarGroup[]; pathname: string; onNavigate?: () => void }) {
+  return <>
+    {groups.map(group => (
+      <div className={styles.sidebarGroup} key={group.id}>
+        <div className={styles.sidebarGroupLabel}>{group.label}</div>
+        {group.items.map(item => {
+          const active = isActivePath(pathname, item.href)
+          const Icon = iconMap[item.icon] ?? Boxes
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`${styles.sidebarItem}${active ? ` ${styles.sidebarItemActive}` : ''}`}
+              onClick={onNavigate}
+            >
+              <Icon size={16} aria-hidden="true" /><span>{item.label}</span>
+            </Link>
+          )
+        })}
+      </div>
+    ))}
+  </>
+}
+
 export default function AdminNav({
-  groups, name, email, role, vapidPublicKey,
-}: { groups: AdminSidebarGroup[]; name: string | null; email: string; role?: string; vapidPublicKey?: string }) {
+  groups, name, email, role, vapidPublicKey, children,
+}: { groups: AdminSidebarGroup[]; name: string | null; email: string; role?: string; vapidPublicKey?: string; children: React.ReactNode }) {
   const pathname = usePathname()
   const [mounted, setMounted] = useState(false)
-  const [openGroup, setOpenGroup] = useState<string | null>(null)
   const [accountOpen, setAccountOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const barRef = useRef<HTMLElement>(null)
   const accountRef = useRef<HTMLDivElement>(null)
   const searchPanelRef = useRef<HTMLDivElement>(null)
   const mobilePanelRef = useRef<HTMLDivElement>(null)
@@ -85,21 +110,20 @@ export default function AdminNav({
 
   // App Router keeps this layout mounted across client navigations - close
   // every open panel when the route actually changes underneath it.
-  useEffect(() => { setOpenGroup(null); setAccountOpen(false); setMobileOpen(false); setSearchOpen(false) }, [pathname])
+  useEffect(() => { setAccountOpen(false); setMobileOpen(false); setSearchOpen(false) }, [pathname])
 
   useEffect(() => {
     function onPointerDown(event: MouseEvent) {
       const target = event.target as Node
-      if (openGroup && barRef.current && !barRef.current.contains(target)) setOpenGroup(null)
       if (accountOpen && accountRef.current && !accountRef.current.contains(target)) setAccountOpen(false)
     }
     document.addEventListener('mousedown', onPointerDown)
     return () => document.removeEventListener('mousedown', onPointerDown)
-  }, [openGroup, accountOpen])
+  }, [accountOpen])
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') { setOpenGroup(null); setAccountOpen(false) }
+      if (event.key === 'Escape') setAccountOpen(false)
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); setSearchOpen(true) }
     }
     window.addEventListener('keydown', onKey)
@@ -137,9 +161,9 @@ export default function AdminNav({
   )
 
   return (
-    <div className={styles.wrap}>
-      <header className={styles.bar} ref={barRef}>
-        <div className={styles.left}>
+    <>
+      <header className={styles.topbar}>
+        <div className={styles.topbarLeft}>
           <button type="button" className={styles.hamburger} aria-label="Open admin menu" onClick={() => setMobileOpen(true)}><Menu size={19} aria-hidden="true" /></button>
           <Link href="/admin" className={styles.brand}>
             <span className={styles.brandMark}><ShieldCheck size={18} aria-hidden="true" /></span>
@@ -147,59 +171,13 @@ export default function AdminNav({
           </Link>
         </div>
 
-        <nav className={styles.primary} aria-label="Admin sections">
-          {groups.map(group => {
-            const active = group.items.some(item => isActivePath(pathname, item.href))
-            if (group.items.length === 1) {
-              const item = group.items[0]
-              const Icon = iconMap[item.icon] ?? Boxes
-              return (
-                <Link key={group.id} href={item.href} className={`${styles.navLink}${active ? ` ${styles.navLinkActive}` : ''}`}>
-                  <Icon size={15} aria-hidden="true" /><span>{group.label}</span>
-                </Link>
-              )
-            }
-            const open = openGroup === group.id
-            return (
-              <div className={styles.dropdown} key={group.id}>
-                <button
-                  type="button"
-                  className={`${styles.navLink}${active ? ` ${styles.navLinkActive}` : ''}`}
-                  aria-expanded={open}
-                  aria-haspopup="menu"
-                  onClick={() => setOpenGroup(current => (current === group.id ? null : group.id))}
-                >
-                  <span>{group.label}</span>
-                  <ChevronDown size={13} className={`${styles.chevron}${open ? ` ${styles.chevronOpen}` : ''}`} aria-hidden="true" />
-                </button>
-                {open && (
-                  <div className={styles.dropdownPanel} role="menu">
-                    {group.items.map(item => {
-                      const itemActive = isActivePath(pathname, item.href)
-                      const Icon = iconMap[item.icon] ?? Boxes
-                      return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          role="menuitem"
-                          className={`${styles.dropdownItem}${itemActive ? ` ${styles.dropdownItemActive}` : ''}`}
-                          onClick={() => setOpenGroup(null)}
-                        >
-                          <Icon size={15} aria-hidden="true" /><span>{item.label}</span>
-                        </Link>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </nav>
+        <button type="button" className={styles.topbarSearch} onClick={() => setSearchOpen(true)}>
+          <Search size={15} aria-hidden="true" />
+          <span>Search admin…</span>
+          <kbd>⌘K</kbd>
+        </button>
 
-        <div className={styles.right}>
-          <button type="button" className={styles.iconBtn} onClick={() => setSearchOpen(true)} aria-label="Search admin" title="Search admin (Ctrl K)">
-            <Search size={16} aria-hidden="true" />
-          </button>
+        <div className={styles.topbarRight}>
           <OrderAlerts vapidPublicKey={vapidPublicKey} />
           <div className={styles.account} ref={accountRef}>
             <button type="button" className={styles.accountBtn} onClick={() => setAccountOpen(value => !value)} aria-expanded={accountOpen} aria-haspopup="menu" aria-label="Account menu">
@@ -222,6 +200,16 @@ export default function AdminNav({
           </div>
         </div>
       </header>
+
+      <div className={styles.body}>
+        <aside className={styles.sidebar} aria-label="Admin sections">
+          <nav className={styles.sidebarNav}>
+            <NavGroups groups={groups} pathname={pathname} />
+          </nav>
+        </aside>
+
+        <main className={`adminMain ${styles.mainCol}`}>{children}</main>
+      </div>
 
       {mounted && searchOpen && createPortal(
         <div className={styles.searchOverlay} role="dialog" aria-modal="true" aria-label="Search admin">
@@ -273,25 +261,7 @@ export default function AdminNav({
               <Search size={15} aria-hidden="true" /> Search admin…
             </button>
             <nav className={styles.mobileNav} aria-label="Admin sections">
-              {groups.map(group => (
-                <div className={styles.mobileGroup} key={group.id}>
-                  <div className={styles.mobileGroupLabel}>{group.label}</div>
-                  {group.items.map(item => {
-                    const itemActive = isActivePath(pathname, item.href)
-                    const Icon = iconMap[item.icon] ?? Boxes
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={`${styles.mobileItem}${itemActive ? ` ${styles.mobileItemActive}` : ''}`}
-                        onClick={() => setMobileOpen(false)}
-                      >
-                        <Icon size={16} aria-hidden="true" /><span>{item.label}</span>
-                      </Link>
-                    )
-                  })}
-                </div>
-              ))}
+              <NavGroups groups={groups} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
             </nav>
             <div className={styles.mobileFoot}>
               {role && <span className={styles.rolePill}>{role}</span>}
@@ -305,6 +275,6 @@ export default function AdminNav({
         </div>,
         document.body,
       )}
-    </div>
+    </>
   )
 }
