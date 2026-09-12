@@ -52,6 +52,12 @@ body:has(.adminShell){
   --admin-warning:#9a6a00;
   --admin-warning-soft:#fdf3df;
   --admin-focus:rgba(0,128,96,.16);
+  /* Chart series colors -- validated with dataviz's six-checks script
+     (lightness band, chroma floor, CVD separation, normal-vision floor,
+     contrast) rather than reused from --admin-accent/--admin-muted, which
+     fail CVD separation against each other at this lightness. */
+  --chart-current:#008060;
+  --chart-previous:#2563eb;
   --admin-radius-sm:9px;
   --admin-radius-md:13px;
   --admin-radius-lg:20px;
@@ -82,6 +88,8 @@ html[data-admin-theme='dark'] body:has(.adminShell){
   --admin-warning:#e8b95a;
   --admin-warning-soft:#332a17;
   --admin-focus:rgba(79,209,139,.22);
+  --chart-current:#2ea86a;
+  --chart-previous:#3f7fe0;
   /* --admin-shadow-sm/-md were missing from this dark block entirely, so every
      .card/.statCard/.dashboardPanel/etc. (nearly every surface in the admin
      panel) fell back to the light-mode rgba(27,26,22,x) shadow -- a low-alpha
