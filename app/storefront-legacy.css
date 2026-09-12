@@ -3463,10 +3463,19 @@ body > .footer {
 /* Primary button: an earlier "Shopify-lookalike" pass hardcodes
    .focalButton.primary to var(--shop-ink) (= --store-text, near-black)
    with !important, so the brand-red --store-primary never actually
-   reaches the button despite every token being wired correctly.
-   Win back with equal specificity, later in the cascade. */
-.focalStorefront .focalButton.primary{background:var(--store-primary,#d42a2a)!important;border-color:var(--store-primary,#d42a2a)!important;color:var(--store-button-text,#fff)!important}
-.focalStorefront .focalButton.primary:hover{background:color-mix(in srgb,var(--store-primary,#d42a2a) 85%,black)!important;border-color:color-mix(in srgb,var(--store-primary,#d42a2a) 85%,black)!important}
+   reaches the button despite every token being wired correctly. That
+   culprit rule (line ~106) is itself unscoped, not `.focalStorefront
+   .focalButton.primary` -- so scoping this fix to `.focalStorefront`
+   (as the Phase 1 version of this rule did) only fixed it inside
+   StorefrontSections' own wrapper, missing three real call sites that
+   render .focalButton.primary outside that wrapper entirely: the
+   header's cart-drawer checkout/continue-shopping links
+   (components/store-nav-fixed.tsx), the standalone /cart page's own
+   buttons (app/cart/page.tsx, which doesn't go through
+   StorefrontSections at all), and /shop's filter-bar "Apply" button.
+   Unscoped here too so it actually reaches all of them. */
+.focalButton.primary{background:var(--store-primary,#d42a2a)!important;border-color:var(--store-primary,#d42a2a)!important;color:var(--store-button-text,#fff)!important}
+.focalButton.primary:hover{background:color-mix(in srgb,var(--store-primary,#d42a2a) 85%,black)!important;border-color:color-mix(in srgb,var(--store-primary,#d42a2a) 85%,black)!important}
 
 /* ============================================================
    Deal Marketplace redesign layer (Phase 2 -- real per-product
@@ -3510,3 +3519,14 @@ body > .footer {
 @media(max-width:600px){
   .focalStorefront .focalType-collection_grid .focalCollectionGrid{grid-template-columns:repeat(auto-fill,minmax(78px,1fr))!important;gap:18px 10px}
 }
+
+/* ============================================================
+   Deal Marketplace redesign layer (Phase 4 -- header/nav)
+   ============================================================ */
+
+/* Main product page's own rating: two earlier passes hardcode an
+   amber/gold .focalRating color (#a76818, #b0741d) independent of any
+   token, so it never matched the brand-red stars every other rating
+   display (product cards, testimonials) already uses via
+   .focalStars{color:var(--focal-primary)}. Same red everywhere. */
+.focalRating{color:var(--store-primary,#d42a2a)!important}
