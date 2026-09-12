@@ -1,6 +1,8 @@
 'use client'
 
-import { GripVertical, Plus, Trash2 } from 'lucide-react'
+import { useState } from 'react'
+import { GripVertical, ImagePlus, Plus, Trash2, X } from 'lucide-react'
+import MediaPicker from './media-picker'
 
 type Section = { id: string; type: string; enabled?: boolean; settings?: Record<string, any>; blocks?: any[] }
 
@@ -14,6 +16,27 @@ type Props = {
 
 function Field({ label, value, onChange, placeholder }: { label: string; value: any; onChange: (value: string) => void; placeholder?: string }) {
   return <label className="themeInspectorField"><span>{label}</span><input value={value ?? ''} placeholder={placeholder} onChange={event => onChange(event.target.value)} /></label>
+}
+function ImageField({ label, value, onChange }: { label: string; value: any; onChange: (value: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const url = value ? String(value) : ''
+  return (
+    <label className="themeInspectorField themeImageField">
+      <span>{label}</span>
+      {url ? (
+        <div className="themeImagePreview">
+          <img className="themeImageThumb" src={url} alt="" />
+          <div className="themeImageActions">
+            <button type="button" onClick={() => setOpen(true)}>Change</button>
+            <button type="button" className="themeImageRemove" onClick={() => onChange('')} aria-label={`Remove ${label.toLowerCase()}`}><X size={13} /></button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" className="themeImageEmpty" onClick={() => setOpen(true)}><ImagePlus size={16} /> Upload image</button>
+      )}
+      <MediaPicker open={open} onClose={() => setOpen(false)} onAdd={images => { if (images[0]) onChange(images[0].url); setOpen(false) }} />
+    </label>
+  )
 }
 function TextArea({ label, value, onChange, placeholder }: { label: string; value: any; onChange: (value: string) => void; placeholder?: string }) {
   return <label className="themeInspectorField"><span>{label}</span><textarea value={value ?? ''} placeholder={placeholder} onChange={event => onChange(event.target.value)} /></label>
@@ -39,7 +62,7 @@ function BlocksEditor({ section, type, onUpdateBlocks }: { section: Section; typ
   const add = () => onUpdateBlocks([...blocks, { id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`, type, settings: {} }])
   const update = (index: number, patch: Record<string,any>) => onUpdateBlocks(blocks.map((block,index2) => index===index2 ? {...block,settings:{...(block.settings||{}),...patch}} : block))
   const remove = (index: number) => onUpdateBlocks(blocks.filter((_,index2)=>index!==index2))
-  return <div className="themeBlockList">{blocks.map((block,index)=><div className="themeBlock" key={block.id || index}><div className="themeBlockHeader"><GripVertical size={14}/><strong>{labels[block.type] || label} {index+1}</strong><button type="button" className="themeBlockDelete" onClick={()=>remove(index)} aria-label={`Delete ${label}`}><Trash2 size={14}/></button></div><div className="themeBlockFields">{type==='promo'&&<><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><TextArea label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><Field label="Image URL" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Link URL" value={block.settings?.url} onChange={value=>update(index,{url:value})}/></>}{type==='quote'&&<><TextArea label="Quote" value={block.settings?.quote} onChange={value=>update(index,{quote:value})}/><Field label="Author" value={block.settings?.author} onChange={value=>update(index,{author:value})}/><Field label="Role" value={block.settings?.role} onChange={value=>update(index,{role:value})}/><Select label="Rating" value={block.settings?.rating??5} options={['1','2','3','4','5']} onChange={value=>update(index,{rating:Number(value)})}/></>}{type==='column'&&<><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><TextArea label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><Field label="Icon / image URL" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/></>}{type==='question'&&<><Field label="Question" value={block.settings?.question||block.settings?.heading} onChange={value=>update(index,{question:value,heading:value})}/><TextArea label="Answer" value={block.settings?.answer||block.settings?.text} onChange={value=>update(index,{answer:value,text:value})}/></>}{type==='slide'&&<><Field label="Eyebrow" value={block.settings?.eyebrow} onChange={value=>update(index,{eyebrow:value})}/><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><TextArea label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><Field label="Image URL" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Button URL" value={block.settings?.buttonUrl} onChange={value=>update(index,{buttonUrl:value})}/></>}{type==='logo'&&<><Field label="Logo URL" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Alt text" value={block.settings?.alt} onChange={value=>update(index,{alt:value})}/><Field label="Link URL" value={block.settings?.url} onChange={value=>update(index,{url:value})}/></>}{type==='badge'&&<><Select label="Icon" value={block.settings?.icon||'shield'} options={[{value:'truck',label:'Shipping'},{value:'shield',label:'Secure'},{value:'return',label:'Returns'},{value:'lock',label:'Payment'},{value:'support',label:'Support'},{value:'award',label:'Quality'}]} onChange={value=>update(index,{icon:value})}/><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><Field label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/></>}{type==='stat'&&<><Field label="Value" value={block.settings?.value} onChange={value=>update(index,{value:value})}/><Field label="Label" value={block.settings?.label} onChange={value=>update(index,{label:value})}/></>}{type==='photo'&&<><Field label="Image URL" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Link URL" value={block.settings?.url} onChange={value=>update(index,{url:value})}/></>}{type==='message'&&<><Field label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><Field label="Link URL" value={block.settings?.link} onChange={value=>update(index,{link:value})}/></>}</div></div>)}<button type="button" className="themeAddBlock" onClick={add}><Plus size={14}/> Add {label}</button></div>
+  return <div className="themeBlockList">{blocks.map((block,index)=><div className="themeBlock" key={block.id || index}><div className="themeBlockHeader"><GripVertical size={14}/><strong>{labels[block.type] || label} {index+1}</strong><button type="button" className="themeBlockDelete" onClick={()=>remove(index)} aria-label={`Delete ${label}`}><Trash2 size={14}/></button></div><div className="themeBlockFields">{type==='promo'&&<><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><TextArea label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><ImageField label="Image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Link URL" value={block.settings?.url} onChange={value=>update(index,{url:value})}/></>}{type==='quote'&&<><TextArea label="Quote" value={block.settings?.quote} onChange={value=>update(index,{quote:value})}/><Field label="Author" value={block.settings?.author} onChange={value=>update(index,{author:value})}/><Field label="Role" value={block.settings?.role} onChange={value=>update(index,{role:value})}/><Select label="Rating" value={block.settings?.rating??5} options={['1','2','3','4','5']} onChange={value=>update(index,{rating:Number(value)})}/></>}{type==='column'&&<><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><TextArea label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><ImageField label="Icon / image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/></>}{type==='question'&&<><Field label="Question" value={block.settings?.question||block.settings?.heading} onChange={value=>update(index,{question:value,heading:value})}/><TextArea label="Answer" value={block.settings?.answer||block.settings?.text} onChange={value=>update(index,{answer:value,text:value})}/></>}{type==='slide'&&<><Field label="Eyebrow" value={block.settings?.eyebrow} onChange={value=>update(index,{eyebrow:value})}/><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><TextArea label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><ImageField label="Image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Button URL" value={block.settings?.buttonUrl} onChange={value=>update(index,{buttonUrl:value})}/></>}{type==='logo'&&<><ImageField label="Logo" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Alt text" value={block.settings?.alt} onChange={value=>update(index,{alt:value})}/><Field label="Link URL" value={block.settings?.url} onChange={value=>update(index,{url:value})}/></>}{type==='badge'&&<><Select label="Icon" value={block.settings?.icon||'shield'} options={[{value:'truck',label:'Shipping'},{value:'shield',label:'Secure'},{value:'return',label:'Returns'},{value:'lock',label:'Payment'},{value:'support',label:'Support'},{value:'award',label:'Quality'}]} onChange={value=>update(index,{icon:value})}/><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><Field label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/></>}{type==='stat'&&<><Field label="Value" value={block.settings?.value} onChange={value=>update(index,{value:value})}/><Field label="Label" value={block.settings?.label} onChange={value=>update(index,{label:value})}/></>}{type==='photo'&&<><ImageField label="Image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Link URL" value={block.settings?.url} onChange={value=>update(index,{url:value})}/></>}{type==='message'&&<><Field label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><Field label="Link URL" value={block.settings?.link} onChange={value=>update(index,{link:value})}/></>}</div></div>)}<button type="button" className="themeAddBlock" onClick={add}><Plus size={14}/> Add {label}</button></div>
 }
 
 // ---- Declarative field schema ----
@@ -55,6 +78,7 @@ type OptionsSource = OptionList | ((ctx: FieldCtx) => OptionList)
 
 type FieldSchema =
   | { kind: 'text'; label: string; placeholder?: string; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
+  | { kind: 'image'; label: string; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
   | { kind: 'textarea'; label: string; placeholder?: string; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
   | { kind: 'select'; label: string; options: OptionsSource; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
   | { kind: 'toggle'; label: string; get: (s: SettingsMap) => boolean; set: (value: boolean) => Record<string, any> }
@@ -65,6 +89,8 @@ type PanelSchema = { title: string; fields: Array<FieldSchema | FieldSchema[]> }
 
 const text = (label: string, name: string, placeholder?: string): FieldSchema =>
   ({ kind: 'text', label, placeholder, get: s => s[name], set: value => ({ [name]: value }) })
+const image = (label: string, name: string): FieldSchema =>
+  ({ kind: 'image', label, get: s => s[name], set: value => ({ [name]: value }) })
 const textarea = (label: string, name: string, placeholder?: string): FieldSchema =>
   ({ kind: 'textarea', label, placeholder, get: s => s[name], set: value => ({ [name]: value }) })
 const select = (label: string, name: string, options: OptionsSource, fallback = ''): FieldSchema =>
@@ -134,8 +160,10 @@ function mediaPanels(type: 'video' | 'slideshow'): PanelSchema[] {
   const mediaKey = type === 'video' ? 'videoUrl' : 'imageUrl'
   const posterKey = type === 'video' ? 'posterUrl' : 'imageUrl'
   const fields: Array<FieldSchema | FieldSchema[]> = [
-    { kind: 'text', label: 'Media URL', get: s => s.imageUrl || s.videoUrl, set: value => ({ [mediaKey]: value }) },
-    { kind: 'text', label: 'Poster image', get: s => s.posterUrl || s.imageUrl, set: value => ({ [posterKey]: value }) },
+    type === 'video'
+      ? { kind: 'text', label: 'Video URL', get: s => s.imageUrl || s.videoUrl, set: value => ({ [mediaKey]: value }) }
+      : { kind: 'image', label: 'Image', get: s => s.imageUrl || s.videoUrl, set: value => ({ [mediaKey]: value }) },
+    { kind: 'image', label: 'Poster image', get: s => s.posterUrl || s.imageUrl, set: value => ({ [posterKey]: value }) },
   ]
   if (type === 'slideshow') fields.push(blocks('Slides', 'slide'))
   fields.push(toggle('Autoplay', 'autoplay', true))
@@ -171,8 +199,8 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
       [text('Button label', 'buttonLabel'), text('Button URL', 'buttonUrl'), text('Secondary label', 'secondaryLabel'), text('Secondary URL', 'secondaryUrl')],
     ] },
     { title: 'Media', fields: [
-      { kind: 'text', label: 'Desktop image URL', get: s => s.desktopImageUrl || s.imageUrl, set: value => ({ desktopImageUrl: value }) },
-      text('Mobile image URL', 'mobileImageUrl'),
+      { kind: 'image', label: 'Desktop image', get: s => s.desktopImageUrl || s.imageUrl, set: value => ({ desktopImageUrl: value }) },
+      image('Mobile image', 'mobileImageUrl'),
       text('Alt text', 'imageAlt'),
       [
         select('Image fit', 'imageFit', ['cover','contain','fill'], 'cover'),
@@ -207,7 +235,7 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
       [text('Button label', 'buttonLabel'), text('Button URL', 'buttonUrl')],
     ] },
     { title: 'Media & layout', fields: [
-      text('Image URL', 'imageUrl'),
+      image('Image', 'imageUrl'),
       select('Image position', 'layout', ['image-left','image-right'], 'image-right'),
       select('Background', 'background', ['default','secondary','surface','dark'], 'secondary'),
       range('Min height', 'minHeight', 260, 700, 420),
@@ -299,6 +327,8 @@ function renderField(schema: FieldSchema, ctx: FieldCtx, set: (patch: Record<str
   switch (schema.kind) {
     case 'text':
       return <Field key={schema.label} label={schema.label} placeholder={schema.placeholder} value={schema.get(s)} onChange={value => set(schema.set(value))} />
+    case 'image':
+      return <ImageField key={schema.label} label={schema.label} value={schema.get(s)} onChange={value => set(schema.set(value))} />
     case 'textarea':
       return <TextArea key={schema.label} label={schema.label} placeholder={schema.placeholder} value={schema.get(s)} onChange={value => set(schema.set(value))} />
     case 'select': {
