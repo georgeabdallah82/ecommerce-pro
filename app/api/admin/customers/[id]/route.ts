@@ -4,6 +4,7 @@ import { db } from '@/lib/prisma'
 import { json } from '@/lib/utils'
 import { Role, OrderStatus } from '@prisma/client'
 import { sumCustomerSpend } from '@/lib/orders'
+import { deleteCustomerCascade } from '@/lib/customers'
 
 function sanitizeFailure(error: unknown) {
   const message = error instanceof Error ? error.message : ''
@@ -120,26 +121,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     const existing = await db.user.findFirst({ where: { id, role: Role.CUSTOMER }, select: { id: true, email: true } })
     if (!existing) return json({ error: 'Customer not found' }, { status: 404 })
 
-    // MongoDB has no native FK support, so scripts/prepare-mongodb-schema.mjs forces every
-    // @relation's onDelete to NoAction in the schema actually used at runtime, regardless of
-    // what this source schema declares -- deleting a User while any of these still reference it
-    // would throw a referential-integrity error instead of cascading/nulling. Clean up manually
-    // first, matching this schema's intended Cascade/SetNull semantics.
-    await db.$transaction(async tx => {
-      await tx.address.deleteMany({ where: { userId: id } })
-      await tx.review.deleteMany({ where: { userId: id } })
-      await tx.wishlistItem.deleteMany({ where: { userId: id } })
-      await tx.orderNote.deleteMany({ where: { userId: id } })
-      await tx.notification.deleteMany({ where: { userId: id } })
-      await tx.passwordResetToken.deleteMany({ where: { userId: id } })
-      await tx.walletTransaction.deleteMany({ where: { userId: id } })
-      await tx.coinTransaction.deleteMany({ where: { userId: id } })
-      await tx.customerTagMember.deleteMany({ where: { customerId: id } })
-      await tx.customerSegmentMember.deleteMany({ where: { customerId: id } })
-      await tx.order.updateMany({ where: { userId: id }, data: { userId: null } })
-      await tx.auditLog.updateMany({ where: { actorId: id }, data: { actorId: null } })
-      await tx.user.delete({ where: { id } })
-    })
+    await db.$transaction(async tx => { await deleteCustomerCascade(tx, id) })
 
     await audit(actor.id, 'customer.deleted', 'User', id, { email: existing.email })
     return json({ ok: true }, { headers: { 'Cache-Control': 'private, no-store' } })

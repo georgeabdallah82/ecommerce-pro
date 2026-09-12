@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Eye, MoreHorizontal, Plus, Search, Tag, Trash2, X } from 'lucide-react'
+import { CheckCircle2, Eye, MoreHorizontal, Plus, Search, Tag, Trash2, XCircle, X } from 'lucide-react'
 import styles from './admin-collections.module.css'
 import ui from './admin-ui.module.css'
 
@@ -26,8 +26,10 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
   const [description, setDescription] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [selected, setSelected] = useState<string[]>([])
+  const [bulkBusy, setBulkBusy] = useState(false)
 
-  const refresh = async () => setRows(await api('/api/admin/collections'))
+  const refresh = async () => { setRows(await api('/api/admin/collections')); setSelected([]) }
 
   const create = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -58,6 +60,23 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
       await refresh()
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Unable to delete collection')
+    }
+  }
+
+  const toggleRow = (id: string) => setSelected(current => current.includes(id) ? current.filter(x => x !== id) : [...current, id])
+  const toggleAll = () => setSelected(current => current.length === filtered.length ? [] : filtered.map((c: any) => c.id))
+
+  const bulk = async (bulkAction: 'ACTIVATE' | 'DEACTIVATE' | 'DELETE') => {
+    if (!selected.length) return
+    if (bulkAction === 'DELETE' && !confirm(`Delete ${selected.length} collection${selected.length === 1 ? '' : 's'}? This cannot be undone.`)) return
+    setBulkBusy(true); setError('')
+    try {
+      await api('/api/admin/collections', { method: 'POST', body: JSON.stringify({ action: 'bulk', ids: selected, bulkAction }) })
+      await refresh()
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Unable to update collections')
+    } finally {
+      setBulkBusy(false)
     }
   }
 
@@ -133,11 +152,23 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
         </button>
       </div>
 
+      {selected.length > 0 && (
+        <div className={ui.bulkBar}>
+          <div className={ui.bulkCount}><strong>{selected.length}</strong><span> selected</span></div>
+          <div className={ui.bulkActions}>
+            <button className={`${ui.btn} ${ui.btnSecondary}`} disabled={bulkBusy} onClick={() => bulk('ACTIVATE')}><CheckCircle2 size={15} /> Activate</button>
+            <button className={`${ui.btn} ${ui.btnSecondary}`} disabled={bulkBusy} onClick={() => bulk('DEACTIVATE')}><XCircle size={15} /> Deactivate</button>
+            <button className={`${ui.btn} ${ui.btnSecondary}`} disabled={bulkBusy} onClick={() => bulk('DELETE')}><Trash2 size={15} /> Delete</button>
+          </div>
+        </div>
+      )}
+
       <div className={`${ui.card} ${styles.tableCard}`}>
         <div className={ui.tableWrap}>
           <table className={`${ui.table} ${styles.resultsTable}`}>
             <thead>
               <tr>
+                <th><input type="checkbox" checked={filtered.length > 0 && selected.length === filtered.length} onChange={toggleAll} aria-label="Select all collections" /></th>
                 <th>Collection</th>
                 <th>Products</th>
                 <th>Status</th>
@@ -149,6 +180,7 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
             <tbody>
               {filtered.map((collection) => (
                 <tr key={collection.id}>
+                  <td><input type="checkbox" checked={selected.includes(collection.id)} onChange={() => toggleRow(collection.id)} aria-label={`Select ${collection.name}`} /></td>
                   <td>
                     <div className={styles.cell}>
                       <div className={styles.thumb}>

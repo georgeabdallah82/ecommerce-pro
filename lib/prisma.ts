@@ -256,12 +256,19 @@ function getMockHandler(model: string) {
       if (model === 'collection') {
         let list = [...mockCollections]
         if (args?.where?.isActive !== undefined) list = list.filter((c) => c.isActive === args.where.isActive)
+        if (args?.where?.id?.in) { const ids = new Set(args.where.id.in); list = list.filter((c) => ids.has(c.id)) }
         return list
       }
       if (model === 'order') return [...mockOrders]
       if (model === 'coupon') return [...mockCoupons]
       if (model === 'shippingZone') return [...mockShippingZones]
-      if (model === 'user') return [...mockUsers]
+      if (model === 'user') {
+        let list = [...mockUsers]
+        if (args?.where?.role !== undefined) list = list.filter((u) => u.role === args.where.role)
+        if (args?.where?.isActive !== undefined) list = list.filter((u) => u.isActive === args.where.isActive)
+        if (args?.where?.id?.in) { const ids = new Set(args.where.id.in); list = list.filter((u) => ids.has(u.id)) }
+        return list
+      }
       if (model === 'setting') return Array.from(mockSettings.entries()).map(([key, value]) => ({ key, value }))
       if (model === 'themeVersion') {
         let list = [...mockThemeVersions].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
@@ -405,10 +412,15 @@ function getMockHandler(model: string) {
       if (list && args?.where?.id) { const i = list.findIndex((x) => x.id === args.where.id); if (i >= 0) return list.splice(i, 1)[0] }
       return {}
     },
-    count: async () => {
+    count: async (args?: any) => {
       if (model === 'product') return mockProducts.length
       if (model === 'order') return mockOrders.length
-      if (model === 'user') return mockUsers.length
+      if (model === 'user') {
+        let list = mockUsers
+        if (args?.where?.role !== undefined) list = list.filter((u) => u.role === args.where.role)
+        if (args?.where?.isActive !== undefined) list = list.filter((u) => u.isActive === args.where.isActive)
+        return list.length
+      }
       return 0
     },
     createMany: async (args: any) => ({ count: args?.data?.length || 0 }),
@@ -418,6 +430,15 @@ function getMockHandler(model: string) {
         let count = 0
         for (const x of mockStoreLocations) { if (excludeId && x.id === excludeId) continue; Object.assign(x, args?.data || {}); count++ }
         return { count }
+      }
+      const byModel: Record<string, any[]> = { user: mockUsers, collection: mockCollections }
+      const list = byModel[model]
+      if (list) {
+        let targets = list
+        if (args?.where?.id?.in) { const ids = new Set(args.where.id.in); targets = targets.filter((x) => ids.has(x.id)) }
+        if (args?.where?.role !== undefined) targets = targets.filter((x) => x.role === args.where.role)
+        for (const target of targets) Object.assign(target, args?.data || {})
+        return { count: targets.length }
       }
       return { count: 1 }
     },

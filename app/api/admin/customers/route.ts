@@ -4,6 +4,7 @@ import { db } from '@/lib/prisma'
 import { json } from '@/lib/utils'
 import { Role, OrderStatus } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import { deleteCustomerCascade } from '@/lib/customers'
 
 export async function GET(req: Request) {
   try {
@@ -57,6 +58,25 @@ export async function POST(req: Request) {
   try {
     const actor = await requirePermission('customers.manage')
     const body = await req.json()
+    if (body.action === 'bulk') {
+      const ids: string[] = Array.from(new Set<string>(Array.isArray(body.ids) ? body.ids.map((x: unknown) => String(x).trim().slice(0, 100)).filter((x: string) => Boolean(x)) : []))
+      if (!ids.length) return json({ error: 'Select at least one customer' }, { status: 400 })
+      if (ids.length > 500) return json({ error: 'Too many customers selected' }, { status: 400 })
+      const bulkAction = String(body.bulkAction || '')
+      if (bulkAction === 'ACTIVATE' || bulkAction === 'DISABLE') {
+        const result = await db.user.updateMany({ where: { id: { in: ids }, role: Role.CUSTOMER }, data: { isActive: bulkAction === 'ACTIVATE' } })
+        await audit(actor.id, 'customer.bulk_updated', 'User', undefined, { ids, action: bulkAction, count: result.count })
+        return json({ ok: true, count: result.count })
+      }
+      if (bulkAction === 'DELETE') {
+        const targets = await db.user.findMany({ where: { id: { in: ids }, role: Role.CUSTOMER }, select: { id: true } })
+        await db.$transaction(async tx => { for (const target of targets) await deleteCustomerCascade(tx, target.id) })
+        await audit(actor.id, 'customer.bulk_deleted', 'User', undefined, { ids: targets.map(t => t.id), count: targets.length })
+        return json({ ok: true, count: targets.length })
+      }
+      return json({ error: 'Unsupported bulk action' }, { status: 400 })
+    }
+
     const name = String(body.name || '').trim()
     const email = String(body.email || '').trim().toLowerCase()
     const phone = body.phone ? String(body.phone).trim() : null
