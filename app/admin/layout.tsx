@@ -45,6 +45,8 @@ const groups: AdminSidebarGroup[] = [
   ]},
   { id: 'analytics', label: 'Analytics', items: [
     { href: '/admin/reports', label: 'Analytics & reports', permission: 'reports.view', icon: 'analytics' },
+    { href: '/admin/live-visitors', label: 'Live visitors', permission: 'reports.view', icon: 'liveVisitors' },
+    { href: '/admin/data-transfer', label: 'Data management', permission: 'reports.view', icon: 'dataTransfer' },
   ]},
   { id: 'settings', label: 'Settings', items: [
     { href: '/admin/shipping', label: 'Shipping', permission: 'shipping.view', icon: 'shipping' },

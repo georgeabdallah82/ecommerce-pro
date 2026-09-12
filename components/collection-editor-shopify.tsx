@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ArrowLeft, Check, Eye, GripVertical, Image as ImageIcon, Plus, Save, Search, Trash2, X } from 'lucide-react'
 import ui from './admin-ui.module.css'
 import s from './admin-collection-editor.module.css'
@@ -17,11 +18,13 @@ async function api(path: string, init?: RequestInit) {
 }
 
 export default function CollectionEditorShopify({ id }: { id: string }) {
+  const router = useRouter()
   const [collection, setCollection] = useState<Collection | null>(null)
   const [products, setProducts] = useState<Product[]>([])
   const [q, setQ] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [dirty, setDirty] = useState(false)
@@ -58,6 +61,15 @@ export default function CollectionEditorShopify({ id }: { id: string }) {
     finally { setSaving(false) }
   }
 
+  async function remove() {
+    if (!collection || !confirm(`Delete "${collection.name}"? This cannot be undone.`)) return
+    setDeleting(true); setError('')
+    try {
+      await api(`/api/admin/collections/${id}`, { method: 'DELETE' })
+      router.push('/admin/collections')
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to delete collection'); setDeleting(false) }
+  }
+
   if (loading) return <div className={s.loading}>Loading collection…</div>
   if (!collection) return <div className={ui.empty}>{error || 'Collection not found.'}</div>
 
@@ -73,6 +85,7 @@ export default function CollectionEditorShopify({ id }: { id: string }) {
       </div>
       <div className="inline">
         <Link className={`${ui.btn} ${ui.btnSecondary} ${s.topbarBtn}`} href={`/collections/${collection.slug}`} target="_blank"><Eye size={16} /> Preview</Link>
+        <button className={`${ui.btn} ${ui.btnSecondary} ${s.topbarBtn}`} disabled={deleting} onClick={remove}>{deleting ? 'Deleting…' : <><Trash2 size={16} /> Delete</>}</button>
         <button className={`${ui.btn} ${s.topbarBtn}`} disabled={saving || !dirty} onClick={save}>{saving ? 'Saving…' : <><Save size={16} /> Save</>}</button>
       </div>
     </div>

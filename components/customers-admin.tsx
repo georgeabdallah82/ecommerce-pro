@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, ChevronRight, Eye, Plus, Search, UserCheck, UserX, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Eye, Plus, Search, Trash2, UserCheck, UserX, X } from 'lucide-react'
 import { money } from '@/lib/config'
 import ui from './admin-ui.module.css'
 
@@ -60,6 +60,15 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
     finally { setLoading(false) }
   }
 
+  async function deleteCustomer(customer: { id: string; name: string }) {
+    if (!confirm(`Delete ${customer.name}? This permanently removes their account, addresses, reviews and loyalty history. Their past orders are kept but no longer linked to an account.`)) return
+    setError('')
+    try {
+      await api(`/api/admin/customers/${customer.id}`, { method: 'DELETE' })
+      await load(page)
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to delete customer') }
+  }
+
   return <div className="customersPage">
     <div className={ui.sectionHead}>
       <div><span className={ui.muted}>PEOPLE</span><h1 className={ui.title}>Customers</h1><p className={ui.muted}>See who buys from you, understand their history and manage customer accounts.</p></div>
@@ -90,7 +99,10 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
         <td><strong>{money(c.totalSpent || 0)}</strong></td>
         <td><span className={c.isActive ? `${ui.statusPill} ${ui.statusPillSuccess}` : ui.statusPill}>{c.isActive ? <UserCheck size={13}/> : <UserX size={13}/>} {c.isActive ? 'Active' : 'Disabled'}</span></td>
         <td>{new Date(c.createdAt).toLocaleDateString()}</td>
-        <td><Link className={ui.iconBtn} href={`/admin/customers/${c.id}`} title="View customer"><Eye size={16}/></Link></td>
+        <td><div className="inline">
+          <Link className={ui.iconBtn} href={`/admin/customers/${c.id}`} title="View customer"><Eye size={16}/></Link>
+          <button className={ui.iconBtn} title="Delete customer" onClick={() => deleteCustomer(c)}><Trash2 size={16}/></button>
+        </div></td>
       </tr>)}</tbody></table></div>
       {!rows.length && <div className={ui.empty}>No customers match your search.</div>}
       <div className="catalogPagination"><span className={ui.muted}>Page {page} of {pages}</span><div className="inline"><button className={ui.iconBtn} disabled={page <= 1 || loading} onClick={() => load(page - 1)}><ChevronLeft size={16}/></button><button className={ui.iconBtn} disabled={page >= pages || loading} onClick={() => load(page + 1)}><ChevronRight size={16}/></button></div></div>

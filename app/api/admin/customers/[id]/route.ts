@@ -111,3 +111,40 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return json({ error: failure.error }, { status: failure.status, headers: { 'Cache-Control': 'private, no-store' } })
   }
 }
+
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const actor = await requirePermission('customers.manage')
+    const { id } = await params
+    if (!id || id.length > 100) return json({ error: 'Customer not found' }, { status: 404 })
+    const existing = await db.user.findFirst({ where: { id, role: Role.CUSTOMER }, select: { id: true, email: true } })
+    if (!existing) return json({ error: 'Customer not found' }, { status: 404 })
+
+    // MongoDB has no native FK support, so scripts/prepare-mongodb-schema.mjs forces every
+    // @relation's onDelete to NoAction in the schema actually used at runtime, regardless of
+    // what this source schema declares -- deleting a User while any of these still reference it
+    // would throw a referential-integrity error instead of cascading/nulling. Clean up manually
+    // first, matching this schema's intended Cascade/SetNull semantics.
+    await db.$transaction(async tx => {
+      await tx.address.deleteMany({ where: { userId: id } })
+      await tx.review.deleteMany({ where: { userId: id } })
+      await tx.wishlistItem.deleteMany({ where: { userId: id } })
+      await tx.orderNote.deleteMany({ where: { userId: id } })
+      await tx.notification.deleteMany({ where: { userId: id } })
+      await tx.passwordResetToken.deleteMany({ where: { userId: id } })
+      await tx.walletTransaction.deleteMany({ where: { userId: id } })
+      await tx.coinTransaction.deleteMany({ where: { userId: id } })
+      await tx.customerTagMember.deleteMany({ where: { customerId: id } })
+      await tx.customerSegmentMember.deleteMany({ where: { customerId: id } })
+      await tx.order.updateMany({ where: { userId: id }, data: { userId: null } })
+      await tx.auditLog.updateMany({ where: { actorId: id }, data: { actorId: null } })
+      await tx.user.delete({ where: { id } })
+    })
+
+    await audit(actor.id, 'customer.deleted', 'User', id, { email: existing.email })
+    return json({ ok: true }, { headers: { 'Cache-Control': 'private, no-store' } })
+  } catch (e) {
+    const failure = sanitizeFailure(e)
+    return json({ error: failure.error }, { status: failure.status, headers: { 'Cache-Control': 'private, no-store' } })
+  }
+}
