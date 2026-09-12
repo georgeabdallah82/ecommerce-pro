@@ -1,5 +1,6 @@
 import {db} from '@/lib/prisma'
 import {getThemeState} from '@/lib/theme'
+import {withProductStats} from '@/lib/product-stats'
 import {ProductStatus} from '@prisma/client'
 import {Footer} from '@/components/footer'
 import LiveStorefrontSections from '@/components/live-storefront-sections'
@@ -13,11 +14,12 @@ export default async function Shop({searchParams}:{searchParams:Promise<{q?:stri
   const orderBy=sort==='price_asc'?{basePrice:'asc' as const}:sort==='price_desc'?{basePrice:'desc' as const}:{createdAt:'desc' as const}
   const priceFilter=(Number.isFinite(min)&&min>0)||(Number.isFinite(max)&&max>0)?{basePrice:{...(Number.isFinite(min)&&min>0?{gte:Math.trunc(min*100)}:{}),...(Number.isFinite(max)&&max>0?{lte:Math.trunc(max*100)}:{})}}:{}
   const searchFilter=q?{OR:[{name:{contains:q,mode:'insensitive' as const}},{sku:{contains:q,mode:'insensitive' as const}},{description:{contains:q,mode:'insensitive' as const}}]}:{}
-  const [{theme},products,categories]=await Promise.all([
+  const [{theme},rawProducts,categories]=await Promise.all([
     getThemeState(),
     db.product.findMany({where:{status:ProductStatus.ACTIVE,...searchFilter,...(sp.category?{category:{slug:sp.category}}:{}),...priceFilter},include:{images:true,category:true,collections:{include:{collection:true}}},orderBy}),
     db.category.findMany({where:{isActive:true},orderBy:{sortOrder:'asc'}})
   ])
+  const products=await withProductStats(rawProducts)
   const hasProductsTemplate=Object.prototype.hasOwnProperty.call(theme.editorTemplates||{},'Products')
   const templates=hasProductsTemplate?(Array.isArray(theme.editorTemplates.Products)?theme.editorTemplates.Products:[]):[{id:'announcement',type:'announcement',enabled:true,settings:{text:'Free shipping on orders over $50',background:'primary'}},{id:'intro',type:'rich_text',enabled:true,settings:{eyebrow:'STORE',heading:'Shop',text:`${products.length} products`}},{id:'grid',type:'product_grid',enabled:true,settings:{heading:'All products',limit:products.length,columns:4}},{id:'footer',type:'footer',enabled:true,settings:{}}]
   const footerEnabled=templates.some((s:any)=>s.type==='footer'&&s.enabled!==false&&s.settings?.enabled!==false)

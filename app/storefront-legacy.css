@@ -3467,3 +3467,17 @@ body > .footer {
    Win back with equal specificity, later in the cascade. */
 .focalStorefront .focalButton.primary{background:var(--store-primary,#d42a2a)!important;border-color:var(--store-primary,#d42a2a)!important;color:var(--store-button-text,#fff)!important}
 .focalStorefront .focalButton.primary:hover{background:color-mix(in srgb,var(--store-primary,#d42a2a) 85%,black)!important;border-color:color-mix(in srgb,var(--store-primary,#d42a2a) 85%,black)!important}
+
+/* ============================================================
+   Deal Marketplace redesign layer (Phase 2 -- real per-product
+   signals: star rating + review count, "X+ sold", on both the
+   card grid and the main product page)
+   ============================================================ */
+.focalStorefront .focalCardRating{display:flex;align-items:center;gap:5px;margin:2px 0 1px}
+.focalStorefront .focalCardRating .focalStars{gap:1px}
+.focalStorefront .focalCardRating .focalStars svg{width:12px;height:12px}
+.focalStorefront .focalCardRating span{font-size:11px;color:var(--store-muted,#68707a);font-weight:600}
+.focalStorefront .focalSoldCount{font-size:11px;color:var(--store-muted,#68707a);font-weight:700;margin-top:2px}
+.focalStorefront .focalSoldCount.standalone{margin:2px 0 4px}
+.focalStorefront .focalRating{display:flex;align-items:center;gap:8px}
+.focalStorefront .focalRating .focalStars svg{width:15px;height:15px}

@@ -15,6 +15,15 @@ function money(v:any,currency='USD'){return `${currency} ${(Number(v||0)/100).to
 function StoreImage({src,alt,className,eager=false,width,height}:{src:any;alt:string;className?:string;eager?:boolean;width?:number;height?:number}){const [failed,setFailed]=useState(false);const fallback='/placeholder-product.svg';const source=failed?fallback:(img(src)||fallback);return <img className={className} src={source} alt={alt} width={width} height={height} loading={eager?'eager':'lazy'} decoding="async" onError={()=>setFailed(true)}/>}
 function sectionStyle(theme:AnyMap,s:AnyMap){const bg=s.background==='primary'?theme.colors.primary:s.background==='secondary'?theme.colors.secondary:s.background==='dark'?'#15120f':s.background==='surface'?theme.colors.surface:s.background==='gradient'?`linear-gradient(135deg,${theme.colors.secondary},${theme.colors.background})`:theme.colors.background;const light=s.background==='primary'||s.background==='dark';return {background:bg,color:s.textColor||(light?'#fff':theme.colors.text)}}
 function shellClass(s:AnyMap,type:string){return `focalSection focalType-${type} ${s.animation||''} ${s.fullBleed===false?'contained':''}`}
+function StarRow({rating,size=13}:{rating:number;size?:number}){
+  const full=Math.round(rating);
+  return <span className="focalStars">{Array.from({length:5}).map((_,i)=><Star size={size} fill="currentColor" key={i} opacity={i<full?1:.22}/>)}</span>;
+}
+function formatSold(n:number){
+  if(!n||n<=0)return '';
+  if(n>=1000)return `${(n/1000).toFixed(n%1000===0?0:1)}k+ sold`;
+  return `${n}+ sold`;
+}
 function ProductCard({p,theme,onQuickView,preview,onSelect}:{p:AnyMap;theme:AnyMap;onQuickView:(p:AnyMap)=>void;preview?:boolean;onSelect?:()=>void}){
   const {addItem}=useCart();
   const [added,setAdded]=useState(false);
@@ -22,6 +31,9 @@ function ProductCard({p,theme,onQuickView,preview,onSelect}:{p:AnyMap;theme:AnyM
   const secondaryImage=p.images?.[1]?.url||null;
   const price=Number(p.basePrice||0);
   const compare=Number(p.compareAtPrice||0);
+  const discountPct=compare>price?Math.round((1-price/compare)*100):0;
+  const reviewCount=Number(p.reviewCount||0);
+  const soldLabel=formatSold(Number(p.soldCount||0));
   const quickAdd=(e:React.MouseEvent)=>{
     e.preventDefault();
     e.stopPropagation();
@@ -36,8 +48,7 @@ function ProductCard({p,theme,onQuickView,preview,onSelect}:{p:AnyMap;theme:AnyM
       <div className={`focalProductMedia ${secondaryImage?'hasHoverImage':''}`}>
         <StoreImage className="focalProductImagePrimary" src={primaryImage} alt={p.images?.[0]?.alt||p.name}/>
         {secondaryImage&&<StoreImage className="focalProductImageSecondary" src={secondaryImage} alt={p.images?.[1]?.alt||p.name}/>}
-        {compare>price&&<span className="focalBadge">Sale</span>}
-        {p.featured&&compare<=price&&<span className="focalBadge">Featured</span>}
+        {discountPct>0?<span className="focalBadge">-{discountPct}%</span>:p.featured&&<span className="focalBadge">Featured</span>}
         <div className="focalProductActions">
           <button type="button" onClick={quickView} aria-label="Quick view"><Search size={14}/></button>
           <button type="button" onClick={quickAdd} aria-label={added?'Added to cart':'Quick add'} className={added?'focalQuickAddDone':''}>
@@ -48,10 +59,12 @@ function ProductCard({p,theme,onQuickView,preview,onSelect}:{p:AnyMap;theme:AnyM
       <div className="focalProductBody">
         <span className="focalEyebrow">{p.vendor||p.category?.name||'Shop'}</span>
         <h3>{p.name}</h3>
+        {reviewCount>0&&<div className="focalCardRating"><StarRow rating={Number(p.rating||0)}/><span>({reviewCount})</span></div>}
         <div className="focalPrice">
           <strong>{money(price,theme.currency||'USD')}</strong>
           {compare>price&&<del>{money(compare,theme.currency||'USD')}</del>}
         </div>
+        {soldLabel&&<span className="focalSoldCount">{soldLabel}</span>}
       </div>
     </Link>
   );
@@ -167,7 +180,8 @@ function MainProductSection({section,theme,product,preview,selected,onSelect,wis
         <div className="focalProductInfo">
           <span className="focalEyebrow">{product.vendor||product.category?.name||'PRODUCT'}</span>
           <h1>{product.name}</h1>
-          <div className="focalRating">★★★★★ <span>{product.reviews?.length||0} reviews</span></div>
+          <div className="focalRating"><StarRow rating={Number(product.rating||0)} size={15}/> <span>{product.reviewCount||product.reviews?.length||0} reviews</span></div>
+          {Number(product.soldCount||0)>0&&<div className="focalSoldCount standalone">{formatSold(Number(product.soldCount))}</div>}
           <div className="focalPrice big">
             {money(currentPrice,theme.currency||'USD')}
             {product.compareAtPrice&&<del>{money(product.compareAtPrice,theme.currency||'USD')}</del>}
