@@ -53,6 +53,12 @@ function locationLabel(v: Visitor) {
   return [v.city, v.region, v.country].filter(Boolean).join(', ') || 'Location unavailable'
 }
 
+function pinKind(v: Visitor): 'precise' | 'approx' | 'none' {
+  if (Number.isFinite(v.latitude) && Number.isFinite(v.longitude)) return 'precise'
+  if (Number.isFinite(v.approxLatitude) && Number.isFinite(v.approxLongitude)) return 'approx'
+  return 'none'
+}
+
 export default function LiveVisitorsAdmin() {
   const [visitors, setVisitors] = useState<Visitor[]>([])
   const [loading, setLoading] = useState(true)
@@ -88,12 +94,12 @@ export default function LiveVisitorsAdmin() {
     return () => window.clearInterval(timer)
   }, [autoRefresh, load])
 
-  const precise = useMemo(() => visitors.filter(v => Number.isFinite(v.latitude) && Number.isFinite(v.longitude)).length, [visitors])
+  const precise = useMemo(() => visitors.filter(v => pinKind(v) === 'precise').length, [visitors])
   const countries = useMemo(() => new Set(visitors.map(v => v.country).filter(Boolean)).size, [visitors])
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return visitors
-    return visitors.filter(v => [v.name, v.path, v.country, v.city, v.region, v.device, v.browser, v.os].filter(Boolean).some(value => String(value).toLowerCase().includes(q)))
+    return visitors.filter(v => [v.name, v.path, v.ipAddress, v.isp, v.country, v.city, v.region, v.device, v.browser, v.os].filter(Boolean).some(value => String(value).toLowerCase().includes(q)))
   }, [query, visitors])
   const selected = visitors.find(v => v.sessionId === selectedId) || null
 
@@ -145,7 +151,7 @@ export default function LiveVisitorsAdmin() {
             <div className={styles.lvSideTitle}><h3>Active sessions</h3><span className={styles.lvSideCount}>{filtered.length}</span></div>
             <div className={styles.lvSearch}>
               <Search size={15} />
-              <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search visitor, page or location" />
+              <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search visitor, IP, page or location" />
             </div>
           </div>
           <div className={styles.lvList}>
@@ -156,7 +162,7 @@ export default function LiveVisitorsAdmin() {
                 <div style={{ marginTop: 5 }}>{visitors.length ? 'Try another search.' : 'Open the storefront from another browser or device to test live tracking.'}</div>
               </div>
             ) : filtered.map(visitor => {
-              const exact = Number.isFinite(visitor.latitude) && Number.isFinite(visitor.longitude)
+              const kind = pinKind(visitor)
               return (
                 <button
                   key={visitor.sessionId}
@@ -171,10 +177,10 @@ export default function LiveVisitorsAdmin() {
                       <span className={styles.lvRowName}>{visitor.name || 'Anonymous visitor'}</span>
                     </span>
                     <span className={styles.lvRowPage}>{visitor.path || '/'}</span>
-                    <span className={styles.lvRowLocation}><MapPin size={12} /><span>{locationLabel(visitor)}</span></span>
+                    <span className={styles.lvRowLocation}><MapPin size={12} /><span>{locationLabel(visitor)}{visitor.ipAddress ? ` · ${visitor.ipAddress}` : ''}</span></span>
                   </span>
                   <span className={styles.lvRowMeta}>
-                    <span className={styles.lvBadge}>{exact ? <Navigation size={10} /> : <MapPin size={10} />}{exact ? 'Precise' : 'Approx.'}</span>
+                    {kind !== 'none' && <span className={styles.lvBadge}>{kind === 'precise' ? <Navigation size={10} /> : <MapPin size={10} />}{kind === 'precise' ? 'Precise' : 'Approx.'}</span>}
                     <span className="inline"><DeviceIcon device={visitor.device} /> {relativeTime(visitor.lastSeenAt)}</span>
                   </span>
                 </button>
@@ -199,16 +205,24 @@ export default function LiveVisitorsAdmin() {
           <div className={styles.lvDetailGrid}>
             <div className={styles.lvDetailItem}><div className={styles.lvDetailLabel}>Current page</div><div className={styles.lvDetailValue} title={selected.path}>{selected.path}</div></div>
             <div className={styles.lvDetailItem}><div className={styles.lvDetailLabel}>Location</div><div className={styles.lvDetailValue} title={locationLabel(selected)}>{locationLabel(selected)}</div></div>
+            <div className={styles.lvDetailItem}><div className={styles.lvDetailLabel}>IP address</div><div className={styles.lvDetailValue}>{selected.ipAddress || 'Unavailable'}</div></div>
+            <div className={styles.lvDetailItem}><div className={styles.lvDetailLabel}>Network / ISP</div><div className={styles.lvDetailValue} title={selected.isp || undefined}>{selected.isp || 'Unknown'}</div></div>
             <div className={styles.lvDetailItem}><div className={styles.lvDetailLabel}>Device</div><div className={styles.lvDetailValue}>{[selected.device, selected.browser, selected.os].filter(Boolean).join(' · ') || 'Unknown device'}</div></div>
             <div className={styles.lvDetailItem}><div className={styles.lvDetailLabel}>First seen</div><div className={styles.lvDetailValue}>{new Date(selected.firstSeenAt).toLocaleTimeString()}</div></div>
           </div>
-          {Number.isFinite(selected.latitude) && Number.isFinite(selected.longitude) && (
-            <div className={styles.lvDetailActions}>
-              <a className={styles.lvPrimary} href={`https://www.google.com/maps?q=${selected.latitude},${selected.longitude}`} target="_blank" rel="noreferrer"><ExternalLink size={13} /> Open exact location</a>
-              <span className={styles.lvBadge}><LocateFixed size={11} /> Browser location consented</span>
-            </div>
-          )}
-          <p className={styles.lvNote}>Precise coordinates are shown only after explicit browser permission. Without that permission, the session can still appear here using the approximate location information available to the application.</p>
+          {(() => {
+            const kind = pinKind(selected)
+            if (kind === 'none') return null
+            const lat = kind === 'precise' ? selected.latitude : selected.approxLatitude
+            const lng = kind === 'precise' ? selected.longitude : selected.approxLongitude
+            return (
+              <div className={styles.lvDetailActions}>
+                <a className={styles.lvPrimary} href={`https://www.google.com/maps?q=${lat},${lng}`} target="_blank" rel="noreferrer"><ExternalLink size={13} /> {kind === 'precise' ? 'Open exact location' : 'Open approximate location'}</a>
+                <span className={styles.lvBadge}>{kind === 'precise' ? <><LocateFixed size={11} /> Browser location consented</> : <><MapPin size={11} /> From IP address</>}</span>
+              </div>
+            )
+          })()}
+          <p className={styles.lvNote}>Location is resolved from the visitor&apos;s IP address for every session. A sharper pin replaces it only after the visitor explicitly grants browser location permission.</p>
         </div>
       )}
     </section>

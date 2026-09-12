@@ -183,6 +183,9 @@
 .lvMarkerCore { position: relative; z-index: 2; width: 16px; height: 16px; border: 3px solid var(--admin-surface); border-radius: var(--admin-radius-pill); background: var(--admin-accent); box-shadow: var(--admin-shadow-sm); }
 .lvMarker.lvMarkerSelected .lvMarkerCore { width: 21px; height: 21px; background: var(--admin-ink); box-shadow: var(--admin-shadow-md); }
 .lvMarker.lvMarkerSelected .lvMarkerRing { background: var(--admin-border-soft); animation-duration: 1.5s; }
+.lvMarker.lvMarkerApprox .lvMarkerCore { background: var(--admin-warning); }
+.lvMarker.lvMarkerApprox .lvMarkerRing { background: var(--admin-warning); opacity: .5; }
+.lvMarker.lvMarkerApprox.lvMarkerSelected .lvMarkerCore { background: var(--admin-ink); }
 
 .lvTooltip {
   border: 1px solid var(--admin-border) !important;
