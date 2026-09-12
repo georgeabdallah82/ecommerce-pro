@@ -3410,3 +3410,60 @@ body > .footer {
    (.focalAccordions summary:after{content:'+'}) that was never removed
    once the chevron icon replaced it as the real indicator. */
 .focalStorefront .focalAccordions summary:after{content:none}
+
+/* ============================================================
+   Deal Marketplace redesign layer (Phase 1 of the marketplace
+   restyle -- palette/typography/badge foundation)
+   ------------------------------------------------------------
+   The "Quiet Minimal" layer above intentionally muted every loud
+   signal (plain-text eyebrows, ink-fill badges, no hover-lift,
+   regular-weight serif) for a boutique feel. This layer reverses
+   those specific calls for a dense, deal-driven marketplace feel
+   (ishtari.com-style: bold sans, colored discount badges, snappy
+   hover feedback) while still reading every value from the same
+   --store-* tokens, so an admin changing colors in Settings still
+   repaints everything correctly. Appended last so it wins.
+   ============================================================ */
+
+/* Headings: the new default font (Poppins/Inter) ships real bold
+   weights, unlike the serif -- restore full heading weight instead
+   of the Quiet Minimal layer's forced 400. */
+.focalStorefront h1,.focalStorefront h2,.focalStorefront h3{font-weight:700}
+.focalStorefront .focalType-hero h1{font-weight:800!important}
+.focalStorefront .focalHeroContent h1{letter-spacing:-.01em}
+
+/* Eyebrows: a small solid-color chip instead of plain letter-spaced
+   text -- reads as a label/tag, matching the badge language below. */
+.focalStorefront .focalEyebrow{display:inline-flex;align-items:center;background:color-mix(in srgb,var(--store-accent,#ff7a1a) 14%,transparent);color:var(--store-accent,#ff7a1a);padding:4px 10px;border-radius:999px;font-weight:800;letter-spacing:.02em}
+.focalStorefront .focalPill{background:color-mix(in srgb,var(--store-accent,#ff7a1a) 12%,var(--store-surface,#fff));border:0;padding:7px 14px;border-radius:999px;margin-bottom:18px;color:var(--store-accent,#ff7a1a);font-weight:800;backdrop-filter:none;gap:8px}
+.focalStorefront .focalPill .heroDot{width:6px;height:6px;background:var(--store-accent,#ff7a1a);box-shadow:none}
+
+/* Badges: bright, high-contrast discount ribbon -- rounded rect,
+   bold white text, small drop shadow for a bit of pop off the card. */
+.focalStorefront .focalBadge{background:var(--store-sale,#e11d2e)!important;color:#fff!important;border-radius:7px!important;text-transform:uppercase;letter-spacing:.02em;font-weight:800!important;box-shadow:0 3px 8px rgba(0,0,0,.18)}
+
+/* Price: bold, colored sale price outweighs the muted strikethrough
+   compare-at price -- the price is the whole point of a deal card. */
+.focalStorefront .focalPrice strong{color:var(--store-sale,#e11d2e);font-weight:800;font-size:1.05em}
+.focalStorefront .focalPrice del{color:var(--store-muted,#68707a);font-weight:500}
+
+/* Product & collection cards: restore hover-lift feedback (undo the
+   Quiet Minimal layer's deliberately flat, no-hover treatment). */
+.focalStorefront .focalProductCard:hover{transform:translateY(-4px)!important;box-shadow:0 16px 34px rgba(0,0,0,.12)!important}
+.focalStorefront .focalCollectionCard:hover{transform:translateY(-4px)}
+
+/* Cart count / accent chips: brand red instead of the boutique's
+   muted sage-green accent. */
+.focalStorefront .focalCartCount{background:var(--store-primary,#d42a2a)!important;color:var(--store-button-text,#fff)!important}
+
+/* Buttons: bold uppercase label sits better with extra letter-spacing
+   at this weight. */
+.focalStorefront .focalButton{font-weight:800;letter-spacing:.03em}
+
+/* Primary button: an earlier "Shopify-lookalike" pass hardcodes
+   .focalButton.primary to var(--shop-ink) (= --store-text, near-black)
+   with !important, so the brand-red --store-primary never actually
+   reaches the button despite every token being wired correctly.
+   Win back with equal specificity, later in the cascade. */
+.focalStorefront .focalButton.primary{background:var(--store-primary,#d42a2a)!important;border-color:var(--store-primary,#d42a2a)!important;color:var(--store-button-text,#fff)!important}
+.focalStorefront .focalButton.primary:hover{background:color-mix(in srgb,var(--store-primary,#d42a2a) 85%,black)!important;border-color:color-mix(in srgb,var(--store-primary,#d42a2a) 85%,black)!important}
