@@ -171,9 +171,9 @@ export default function AdminProductsList({ initial }: { initial: any }) {
       </div>
 
       {selected.length > 0 && (
-        <div className={styles.bulkBar}>
-          <div className={styles.bulkCount}><strong>{selected.length}</strong><span> selected</span></div>
-          <div className={styles.bulkActions}>
+        <div className={ui.bulkBar}>
+          <div className={ui.bulkCount}><strong>{selected.length}</strong><span> selected</span></div>
+          <div className={ui.bulkActions}>
             <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => bulk('ACTIVE')}><CheckCircle2 size={15} /> Activate</button>
             <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => bulk('DRAFT')}><Tag size={15} /> Draft</button>
             <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => bulk('ARCHIVED')}><Archive size={15} /> Archive</button>

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, ChevronRight, Eye, Plus, Search, Trash2, UserCheck, UserX, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Eye, Plus, Search, ShieldOff, Trash2, UserCheck, UserX, X } from 'lucide-react'
 import { money } from '@/lib/config'
 import ui from './admin-ui.module.css'
 
@@ -29,9 +29,11 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
   const [error, setError] = useState('')
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' })
+  const [selected, setSelected] = useState<string[]>([])
+  const [bulkBusy, setBulkBusy] = useState(false)
 
   async function load(nextPage = 1) {
-    setLoading(true); setError('')
+    setLoading(true); setError(''); setSelected([])
     try {
       const params = new URLSearchParams({ q, status, page: String(nextPage), pageSize: String(pageSize) })
       const data = await api('/api/admin/customers?' + params.toString())
@@ -39,6 +41,20 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
       setActiveCount(data.active || 0); setDisabledCount(data.disabled || 0)
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to load customers') }
     finally { setLoading(false) }
+  }
+
+  function toggleRow(id: string) { setSelected(current => current.includes(id) ? current.filter(x => x !== id) : [...current, id]) }
+  function toggleAll() { setSelected(current => current.length === rows.length ? [] : rows.map(r => r.id)) }
+
+  async function bulk(bulkAction: 'ACTIVATE' | 'DISABLE' | 'DELETE') {
+    if (!selected.length) return
+    if (bulkAction === 'DELETE' && !confirm(`Delete ${selected.length} customer${selected.length === 1 ? '' : 's'}? This permanently removes their accounts, addresses, reviews and loyalty history. Their past orders are kept but no longer linked to an account.`)) return
+    setBulkBusy(true); setError('')
+    try {
+      await api('/api/admin/customers', { method: 'POST', body: JSON.stringify({ action: 'bulk', ids: selected, bulkAction }) })
+      await load(page)
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to update customers') }
+    finally { setBulkBusy(false) }
   }
 
   useEffect(() => { void load(1) }, [status, pageSize])
@@ -89,9 +105,21 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
       <div className="catalogFilters open"><select className={ui.input} value={status} onChange={e => setStatus(e.target.value)}><option value="ALL">All customers</option><option value="ACTIVE">Active</option><option value="DISABLED">Disabled</option></select><button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => load(1)} disabled={loading}>{loading ? 'Loading…' : 'Search'}</button></div>
     </div>
 
+    {selected.length > 0 && (
+      <div className={ui.bulkBar}>
+        <div className={ui.bulkCount}><strong>{selected.length}</strong><span> selected</span></div>
+        <div className={ui.bulkActions}>
+          <button className={`${ui.btn} ${ui.btnSecondary}`} disabled={bulkBusy} onClick={() => bulk('ACTIVATE')}><UserCheck size={15} /> Activate</button>
+          <button className={`${ui.btn} ${ui.btnSecondary}`} disabled={bulkBusy} onClick={() => bulk('DISABLE')}><ShieldOff size={15} /> Disable</button>
+          <button className={`${ui.btn} ${ui.btnSecondary}`} disabled={bulkBusy} onClick={() => bulk('DELETE')}><Trash2 size={15} /> Delete</button>
+        </div>
+      </div>
+    )}
+
     <div className={`${ui.card} productTableCard`}>
       <div className="tableTopline"><span className={ui.muted}>{total.toLocaleString()} customers</span><label className={ui.muted}>Rows <select className={`${ui.input} ${ui.inputCompact}`} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}><option>25</option><option>50</option><option>100</option></select></label></div>
-      <div className={ui.tableWrap}><table className={ui.table}><thead><tr><th>Customer</th><th>Contact</th><th>Orders</th><th>Reviews</th><th>Spend</th><th>Status</th><th>Joined</th><th></th></tr></thead><tbody>{rows.map(c => <tr key={c.id}>
+      <div className={ui.tableWrap}><table className={ui.table}><thead><tr><th><input type="checkbox" checked={rows.length > 0 && selected.length === rows.length} onChange={toggleAll} aria-label="Select all customers" /></th><th>Customer</th><th>Contact</th><th>Orders</th><th>Reviews</th><th>Spend</th><th>Status</th><th>Joined</th><th></th></tr></thead><tbody>{rows.map(c => <tr key={c.id}>
+        <td><input type="checkbox" checked={selected.includes(c.id)} onChange={() => toggleRow(c.id)} aria-label={`Select ${c.name}`} /></td>
         <td><Link className="productListName" href={`/admin/customers/${c.id}`}><div className="customerAvatar">{initials(c.name)}</div><div><strong>{c.name}</strong><div className={ui.muted}>{c.email}</div></div></Link></td>
         <td><span>{c.phone || '—'}</span></td>
         <td><strong>{c._count?.orders || 0}</strong></td>

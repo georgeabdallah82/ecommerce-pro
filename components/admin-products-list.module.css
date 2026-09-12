@@ -86,24 +86,6 @@
 }
 .filterGrid label { display: grid; gap: 6px; font-size: 11px; color: var(--admin-muted); font-weight: 700; }
 
-.bulkBar {
-  position: sticky;
-  top: 74px;
-  z-index: 25;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 9px 12px;
-  margin-bottom: 12px;
-  border: 1px solid var(--admin-border);
-  border-radius: var(--admin-radius-md);
-  background: var(--admin-surface);
-  box-shadow: var(--admin-shadow-md);
-}
-.bulkCount { font-size: 13px; color: var(--admin-ink); }
-.bulkCount span { color: var(--admin-muted); font-weight: 500; }
-.bulkActions { display: flex; align-items: center; gap: 7px; }
 .actionMenu { position: relative; }
 .menu {
   position: absolute;
@@ -212,15 +194,14 @@
 @media (max-width: 900px) {
   .header { align-items: flex-start; }
   .filterGrid { grid-template-columns: 1fr; }
-  .bulkBar { position: relative; top: auto; align-items: flex-start; flex-direction: column; }
-  .bulkActions { flex-wrap: wrap; }
   /*
-   * flex-wrap above lets the "More" button land anywhere in its wrapped row,
-   * not just flush against the bar's right edge - so right:0 (correct on
-   * desktop, where the button sits near the viewport's right edge with room
-   * to its left) can push this 190px-wide panel off the left edge of a
-   * narrow viewport instead. Anchoring from the button's own left edge keeps
-   * it growing into free space regardless of where flex-wrap put the button.
+   * The shared .bulkActions (admin-ui.module.css) wraps at this same breakpoint,
+   * which lets the "More" button land anywhere in its wrapped row, not just
+   * flush against the bar's right edge - so right:0 (correct on desktop, where
+   * the button sits near the viewport's right edge with room to its left) can
+   * push this 190px-wide panel off the left edge of a narrow viewport instead.
+   * Anchoring from the button's own left edge keeps it growing into free space
+   * regardless of where flex-wrap put the button.
    */
   .menu { left: 0; right: auto; }
 }
