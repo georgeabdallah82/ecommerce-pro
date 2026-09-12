@@ -24,7 +24,7 @@ export async function GET(req: Request) {
     const orderBy = sort === 'name_asc' ? { name: 'asc' as const } : sort === 'name_desc' ? { name: 'desc' as const } : sort === 'price_asc' ? { basePrice: 'asc' as const } : sort === 'price_desc' ? { basePrice: 'desc' as const } : sort === 'created_desc' ? { createdAt: 'desc' as const } : { updatedAt: 'desc' as const }
     const [total, rows] = await Promise.all([
       db.product.count({ where }),
-      db.product.findMany({ where, include: { category: true, inventory: true, variants: { include: { inventory: true } }, images: true, collections: { include: { collection: true } } }, orderBy, skip: (page - 1) * pageSize, take: pageSize }),
+      db.product.findMany({ where, include: { category: true, inventory: true, variants: { include: { inventory: true } }, images: true }, orderBy, skip: (page - 1) * pageSize, take: pageSize }),
     ])
     return json({ rows, total, page, pageSize, pages: Math.max(1, Math.ceil(total / pageSize)) })
   } catch (e) {

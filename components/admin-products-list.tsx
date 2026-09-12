@@ -12,7 +12,7 @@ type ProductRow = any
 async function api(path: string, init?: RequestInit) {
   const response = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const data = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(data.error || 'Request failed')
+  if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`)
   return data
 }
 
