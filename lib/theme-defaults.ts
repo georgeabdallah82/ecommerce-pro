@@ -14,6 +14,7 @@ export const defaultTheme={
   header:{style:'split',sticky:true,transparentHome:false,showSearch:true,showAccount:true,showCart:true,showWishlist:false,showAnnouncement:true,megaMenu:true,logoWidth:160,navUppercase:false,navSpacing:24},
   announcement:{enabled:true,text:'Free shipping on orders over $50',link:'',dismissible:true,autoplay:true,speed:6,position:'above',height:40,showIcon:false,icon:'spark',uppercase:false},
   footer:{showNewsletter:true,text:'',columns:4},
+  social:{instagram:'',facebook:'',tiktok:'',twitter:'',youtube:''},
   animations:{enabled:true,preset:'smooth',reveal:'fade-up',hover:'lift',duration:420,easing:'cubic-bezier(.22,.8,.26,1)',marquee:true,slideshowAutoplay:true,slideshowSpeed:5,reducedMotionRespect:true},
   accessibility:{focusRing:true,highContrast:false},
   customCss:'',

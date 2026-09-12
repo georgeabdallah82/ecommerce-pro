@@ -19,5 +19,5 @@ export default async function Home(){
     ? (Array.isArray(theme.editorTemplates['Home page']) ? theme.editorTemplates['Home page'] : [])
     : sections
   const footerEnabled=homeTemplates.some((s:any)=>s.type==='footer'&&s.enabled!==false&&s.settings?.enabled!==false)
-  return <><LiveStorefrontSections theme={theme} sections={homeTemplates} products={products} collections={collections}/>{footerEnabled&&<Footer/>}</>
+  return <><LiveStorefrontSections theme={theme} sections={homeTemplates} products={products} collections={collections}/>{footerEnabled&&<Footer theme={theme}/>}</>
 }

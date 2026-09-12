@@ -613,6 +613,13 @@ export default function FocalThemeEditor({ initial }: Props) {
                 <Field label="Logo URL" value={theme.logoUrl || ''} onChange={value => commit(templates, { ...theme, logoUrl: value })} />
                 <Field label="Favicon URL" value={theme.faviconUrl || ''} onChange={value => commit(templates, { ...theme, faviconUrl: value })} />
               </Panel>
+              <Panel title="Social links">
+                <Field label="Instagram URL" value={theme.social?.instagram || ''} onChange={value => patchTheme('social', { instagram: value })} />
+                <Field label="Facebook URL" value={theme.social?.facebook || ''} onChange={value => patchTheme('social', { facebook: value })} />
+                <Field label="TikTok URL" value={theme.social?.tiktok || ''} onChange={value => patchTheme('social', { tiktok: value })} />
+                <Field label="X / Twitter URL" value={theme.social?.twitter || ''} onChange={value => patchTheme('social', { twitter: value })} />
+                <Field label="YouTube URL" value={theme.social?.youtube || ''} onChange={value => patchTheme('social', { youtube: value })} />
+              </Panel>
               <Panel title="Colors">
                 <ColorField label="Primary" value={theme.colors?.primary || '#0a0a0a'} onChange={value => patchTheme('colors', { primary: value })} />
                 <ColorField label="Secondary" value={theme.colors?.secondary || '#f0f0f0'} onChange={value => patchTheme('colors', { secondary: value })} />

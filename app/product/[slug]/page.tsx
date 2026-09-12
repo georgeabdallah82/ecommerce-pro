@@ -213,7 +213,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         trackInventory={product.trackInventory}
         continueSellingWhenOutOfStock={product.continueSellingWhenOutOfStock}
       />
-      {footerEnabled ? <Footer /> : null}
+      {footerEnabled ? <Footer theme={theme} /> : null}
     </>
   )
 }
