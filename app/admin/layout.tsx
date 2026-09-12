@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { hasPermission, type Permission } from '@/lib/permissions'
 import { redirect } from 'next/navigation'
 import AdminNav, { type AdminSidebarGroup } from '@/components/admin-nav'
+import { ToastProvider } from '@/components/admin-toast'
 
 const groups: AdminSidebarGroup[] = [
   { id: 'home', label: 'Home', items: [
@@ -109,9 +110,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return <>
     <style dangerouslySetInnerHTML={{__html:adminCss}} />
     <div className="adminShell">
-      <AdminNav groups={visibleGroups} name={user.name} email={user.email} role={user.role} vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}>
-        {children}
-      </AdminNav>
+      <ToastProvider>
+        <AdminNav groups={visibleGroups} name={user.name} email={user.email} role={user.role} vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}>
+          {children}
+        </AdminNav>
+      </ToastProvider>
     </div>
   </>
 }

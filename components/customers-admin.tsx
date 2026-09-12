@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Eye, Plus, Search, ShieldOff, Trash2, UserCheck, UserX, X } from 'lucide-react'
 import { money } from '@/lib/config'
 import ui from './admin-ui.module.css'
+import { useToast } from './admin-toast'
 
 async function api(path: string, init?: RequestInit) {
   const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
@@ -16,6 +17,7 @@ async function api(path: string, init?: RequestInit) {
 const initials = (name: string) => name.trim().split(/\s+/).slice(0, 2).map(x => x[0]?.toUpperCase() || '').join('') || '?'
 
 export default function CustomersAdmin({ initial }: { initial: any }) {
+  const toast = useToast()
   const [rows, setRows] = useState<any[]>(initial?.rows || [])
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('ALL')
@@ -49,11 +51,14 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
   async function bulk(bulkAction: 'ACTIVATE' | 'DISABLE' | 'DELETE') {
     if (!selected.length) return
     if (bulkAction === 'DELETE' && !confirm(`Delete ${selected.length} customer${selected.length === 1 ? '' : 's'}? This permanently removes their accounts, addresses, reviews and loyalty history. Their past orders are kept but no longer linked to an account.`)) return
-    setBulkBusy(true); setError('')
+    const count = selected.length
+    setBulkBusy(true)
     try {
       await api('/api/admin/customers', { method: 'POST', body: JSON.stringify({ action: 'bulk', ids: selected, bulkAction }) })
       await load(page)
-    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to update customers') }
+      const verb = bulkAction === 'ACTIVATE' ? 'activated' : bulkAction === 'DISABLE' ? 'disabled' : 'deleted'
+      toast(`${count} customer${count === 1 ? '' : 's'} ${verb}`)
+    } catch (e) { toast(e instanceof Error ? e.message : 'Unable to update customers', 'error') }
     finally { setBulkBusy(false) }
   }
 
@@ -68,21 +73,22 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
   }), [rows, activeCount, disabledCount])
 
   async function createCustomer() {
-    setLoading(true); setError('')
+    setLoading(true)
     try {
       await api('/api/admin/customers', { method: 'POST', body: JSON.stringify(form) })
       setShowCreate(false); setForm({ name: '', email: '', phone: '', password: '' }); await load(1)
-    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to create customer') }
+      toast('Customer created')
+    } catch (e) { toast(e instanceof Error ? e.message : 'Unable to create customer', 'error') }
     finally { setLoading(false) }
   }
 
   async function deleteCustomer(customer: { id: string; name: string }) {
     if (!confirm(`Delete ${customer.name}? This permanently removes their account, addresses, reviews and loyalty history. Their past orders are kept but no longer linked to an account.`)) return
-    setError('')
     try {
       await api(`/api/admin/customers/${customer.id}`, { method: 'DELETE' })
       await load(page)
-    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to delete customer') }
+      toast('Customer deleted')
+    } catch (e) { toast(e instanceof Error ? e.message : 'Unable to delete customer', 'error') }
   }
 
   return <div className="customersPage">

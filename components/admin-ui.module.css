@@ -341,7 +341,7 @@
    moved here so every resource list can share one definition. */
 .bulkBar {
   position: sticky;
-  top: 74px;
+  top: var(--admin-topbar-h, 74px);
   z-index: 25;
   display: flex;
   align-items: center;

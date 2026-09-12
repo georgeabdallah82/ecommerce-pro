@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { CheckCircle2, Eye, MoreHorizontal, Plus, Search, Tag, Trash2, XCircle, X } from 'lucide-react'
 import styles from './admin-collections.module.css'
 import ui from './admin-ui.module.css'
+import { useToast } from './admin-toast'
 
 async function api(path: string, init?: RequestInit) {
   const response = await fetch(path, {
@@ -17,6 +18,7 @@ async function api(path: string, init?: RequestInit) {
 }
 
 export default function CollectionsAdminShopify({ initial }: { initial: any[] }) {
+  const toast = useToast()
   const [rows, setRows] = useState<any[]>(initial || [])
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('ALL')
@@ -25,7 +27,6 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
   const [slug, setSlug] = useState('')
   const [description, setDescription] = useState('')
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
   const [selected, setSelected] = useState<string[]>([])
   const [bulkBusy, setBulkBusy] = useState(false)
 
@@ -34,7 +35,6 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
   const create = async (event: React.FormEvent) => {
     event.preventDefault()
     setBusy(true)
-    setError('')
     try {
       await api('/api/admin/collections', {
         method: 'POST',
@@ -45,8 +45,9 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
       setSlug('')
       setDescription('')
       await refresh()
+      toast('Collection created')
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Unable to create collection')
+      toast(error instanceof Error ? error.message : 'Unable to create collection', 'error')
     } finally {
       setBusy(false)
     }
@@ -54,12 +55,12 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
 
   const deleteCollection = async (collection: { id: string; name: string }) => {
     if (!confirm(`Delete "${collection.name}"? This cannot be undone.`)) return
-    setError('')
     try {
       await api(`/api/admin/collections/${collection.id}`, { method: 'DELETE' })
       await refresh()
+      toast('Collection deleted')
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Unable to delete collection')
+      toast(error instanceof Error ? error.message : 'Unable to delete collection', 'error')
     }
   }
 
@@ -69,12 +70,15 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
   const bulk = async (bulkAction: 'ACTIVATE' | 'DEACTIVATE' | 'DELETE') => {
     if (!selected.length) return
     if (bulkAction === 'DELETE' && !confirm(`Delete ${selected.length} collection${selected.length === 1 ? '' : 's'}? This cannot be undone.`)) return
-    setBulkBusy(true); setError('')
+    const count = selected.length
+    setBulkBusy(true)
     try {
       await api('/api/admin/collections', { method: 'POST', body: JSON.stringify({ action: 'bulk', ids: selected, bulkAction }) })
       await refresh()
+      const verb = bulkAction === 'ACTIVATE' ? 'activated' : bulkAction === 'DEACTIVATE' ? 'deactivated' : 'deleted'
+      toast(`${count} collection${count === 1 ? '' : 's'} ${verb}`)
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Unable to update collections')
+      toast(error instanceof Error ? error.message : 'Unable to update collections', 'error')
     } finally {
       setBulkBusy(false)
     }
@@ -110,8 +114,6 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
           <Plus size={16} /> Create collection
         </button>
       </div>
-
-      {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
 
       <div className={`${ui.card} ${styles.views}`}>
         {views.map(([value, label]) => (

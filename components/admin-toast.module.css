@@ -1,0 +1,61 @@
+/*
+ * Shopify's own feedback pattern for one-off action results (bulk update,
+ * delete, create): a transient toast at the bottom of the screen instead of
+ * a static inline banner the user has to be scrolled to in order to notice.
+ * Always dark, in both admin themes -- Shopify's toast is an overlay
+ * component that doesn't follow the surface/ink tokens, same as a native
+ * OS notification would not.
+ */
+.host {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 3000;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px 12px 16px;
+  border-radius: 10px;
+  background: #16201b;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .35);
+  pointer-events: auto;
+  animation: toastIn .18s ease-out;
+  max-width: min(420px, calc(100vw - 32px));
+}
+.toast svg { flex: 0 0 auto; color: #6fd6a8; }
+.toastError svg { color: #ff8577; }
+.toast span { flex: 1 1 auto; }
+.dismiss {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, .6);
+  cursor: pointer;
+  border-radius: 5px;
+}
+.dismiss:hover { background: rgba(255, 255, 255, .12); color: #fff; }
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (max-width: 480px) {
+  .host { left: 16px; right: 16px; transform: none; align-items: stretch; }
+  .toast { max-width: none; }
+}
