@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Bell } from 'lucide-react'
+import { Bell, BellOff, Send } from 'lucide-react'
 import ui from './admin-ui.module.css'
 
 function urlBase64ToUint8Array(value: string) {
@@ -73,6 +73,27 @@ export default function OrderAlerts({ vapidPublicKey }: { vapidPublicKey?: strin
     } finally { setBusy(false) }
   }
 
+  async function disableAlerts() {
+    setBusy(true)
+    setMessage('')
+    try {
+      const registration = await navigator.serviceWorker.getRegistration('/')
+      const subscription = await registration?.pushManager.getSubscription()
+      if (subscription) {
+        await fetch('/api/admin/notifications/push', {
+          method: 'DELETE',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ endpoint: subscription.endpoint }),
+        })
+        await subscription.unsubscribe().catch(() => undefined)
+      }
+      setState('disabled')
+      setMessage('Order alerts turned off on this device.')
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'Unable to turn off order alerts')
+    } finally { setBusy(false) }
+  }
+
   async function test() {
     setBusy(true)
     setMessage('')
@@ -118,14 +139,24 @@ export default function OrderAlerts({ vapidPublicKey }: { vapidPublicKey?: strin
         <Bell size={14} />
         <span>{busy ? 'Working…' : state === 'enabled' ? 'Order alerts on' : 'Enable order alerts'}</span>
       </button>
-      {state === 'enabled' && <button type="button" className="orderAlertsTest" onClick={test} disabled={busy}>Test alert</button>}
+      {state === 'enabled' && (
+        <>
+          <button type="button" className="orderAlertsIconBtn" onClick={test} disabled={busy} title="Send a test order alert to this device" aria-label="Send test alert">
+            <Send size={14} /><span>Test alert</span>
+          </button>
+          <button type="button" className="orderAlertsIconBtn" onClick={disableAlerts} disabled={busy} title="Turn off order alerts on this device" aria-label="Turn off order alerts on this device">
+            <BellOff size={14} /><span>Turn off</span>
+          </button>
+        </>
+      )}
       {message && <span className={`orderAlertsMsg ${ui.muted}`} role="status">{message}</span>}
       <style jsx>{`
         .orderAlertsWrap{position:relative;display:flex;align-items:center;gap:6px;justify-content:flex-end}
         .orderAlertsBtn{display:flex;align-items:center;gap:6px;pointer-events:auto;touch-action:manipulation;border:1px solid var(--admin-border);background:var(--admin-surface);border-radius:999px;padding:0 11px;height:38px;font-size:12px;font-weight:700;color:var(--admin-ink-soft);cursor:pointer;white-space:nowrap}
         .orderAlertsBtn[data-enabled='true']{background:var(--admin-accent-soft);border-color:var(--admin-accent);color:var(--admin-accent-strong)}
         .orderAlertsBtn:disabled{cursor:default}
-        .orderAlertsTest{pointer-events:auto;touch-action:manipulation;border:1px solid var(--admin-border);background:var(--admin-surface);border-radius:999px;padding:0 11px;height:38px;font-size:12px;font-weight:700;color:var(--admin-ink-soft);cursor:pointer;white-space:nowrap}
+        .orderAlertsIconBtn{display:flex;align-items:center;gap:6px;pointer-events:auto;touch-action:manipulation;border:1px solid var(--admin-border);background:var(--admin-surface);border-radius:999px;padding:0 11px;height:38px;font-size:12px;font-weight:700;color:var(--admin-ink-soft);cursor:pointer;white-space:nowrap}
+        .orderAlertsIconBtn:disabled{cursor:default;opacity:.6}
         /* Absolutely positioned rather than an inline flex sibling: the topbar
            that hosts this component has a fixed height with default (visible)
            overflow, so a wrapped inline message doesn't grow the header -- it
@@ -134,12 +165,11 @@ export default function OrderAlerts({ vapidPublicKey }: { vapidPublicKey?: strin
            matter how long the message is. */
         .orderAlertsMsg{position:absolute;top:100%;right:0;margin-top:8px;z-index:1;display:block;width:max-content;max-width:240px;padding:8px 10px;border:1px solid var(--admin-border);border-radius:10px;background:var(--admin-surface);box-shadow:var(--admin-shadow-md, 0 8px 24px rgba(0,0,0,.12));font-size:11px;line-height:1.4;text-align:left}
         @media(max-width:1100px){
-          .orderAlertsTest{display:none}
-          .orderAlertsBtn{width:38px;height:38px;padding:0;justify-content:center;border-radius:10px}
-          .orderAlertsBtn span{display:none}
+          .orderAlertsBtn,.orderAlertsIconBtn{width:38px;height:38px;padding:0;justify-content:center;border-radius:10px}
+          .orderAlertsBtn span,.orderAlertsIconBtn span{display:none}
         }
         @media(max-width:560px){
-          .orderAlertsBtn{width:36px;height:36px}
+          .orderAlertsBtn,.orderAlertsIconBtn{width:36px;height:36px}
         }
       `}</style>
     </div>
