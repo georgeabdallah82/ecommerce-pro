@@ -4,6 +4,7 @@ import { audit } from '@/lib/audit'
 import { reserveStock } from '@/lib/inventory'
 import { getPaymentProvider } from '@/lib/payments'
 import { sendNewOrderPush } from '@/lib/push'
+import { sendOrderConfirmationEmail } from '@/lib/email'
 import { json } from '@/lib/utils'
 import { PaymentMethod, PaymentStatus, OrderStatus, FulfillmentStatus } from '@prisma/client'
 
@@ -56,6 +57,9 @@ export async function POST(req: Request) {
     const orderNumber = `ORD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
     const order = await db.$transaction(async tx => { for (const line of normalized) await reserveStock(tx, byId.get(line.productId)!, line.variantId, line.quantity, orderNumber); return tx.order.create({ data: { orderNumber, userId: existingUser?.id ?? null, email: existingUser?.email ?? email, phone, subtotal, discountTotal: discount, shippingTotal, taxTotal, grandTotal, currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD', status, paymentStatus, fulfillmentStatus: FulfillmentStatus.UNFULFILLED, paymentMethod, shippingAddressJson: JSON.stringify(address), billingAddressJson: JSON.stringify(address), notes: String(body.notes || '').trim().slice(0, 5000) || `Manual order created by ${actor.email}`, shippingMethod: String(body.shippingMethod || 'Manual').trim().slice(0, 120), items: { create: normalized }, events: { create: { status: OrderStatus.PENDING, message: 'Manual order created by admin.' } }, paymentTransactions: paymentStatus !== PaymentStatus.UNPAID ? { create: { provider: 'manual', externalId: null, status: paymentStatus.toLowerCase(), amount: grandTotal, currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD' } } : undefined }, include: { items: true } }) })
     void sendNewOrderPush({ id: order.id, orderNumber: order.orderNumber, grandTotal: order.grandTotal, currency: order.currency }).catch(error => console.error('[push] manual-order notification failed', error))
+    if (paymentStatus !== PaymentStatus.UNPAID || paymentMethod !== PaymentMethod.CARD) {
+      void sendOrderConfirmationEmail(order.id).catch(error => console.error('[email] order confirmation failed', error))
+    }
     await audit(actor.id, 'order.created_manual', 'Order', order.id, { orderNumber, total: grandTotal, paymentMethod, paymentStatus })
     return json({ order: { id: order.id, orderNumber: order.orderNumber, grandTotal: order.grandTotal } }, { status: 201 })
   } catch (e) { const message = e instanceof Error ? e.message : 'Unable to create manual order'; return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 400 }) }

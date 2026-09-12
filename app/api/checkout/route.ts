@@ -8,6 +8,7 @@ import { calculateShipping, getTaxRatePercent } from '@/lib/pricing'
 import { releaseOrderReservations, reserveStock } from '@/lib/inventory'
 import { getPaymentProvider } from '@/lib/payments'
 import { sendNewOrderPush } from '@/lib/push'
+import { sendOrderConfirmationEmail } from '@/lib/email'
 import { consumeRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { PaymentMethod } from '@prisma/client'
@@ -304,6 +305,9 @@ export async function POST(req: Request) {
       }
     }
     void sendNewOrderPush({ id: order.id, orderNumber: order.orderNumber, grandTotal: order.grandTotal, currency: order.currency }).catch(error => console.error('[push] new-order notification failed', error))
+    if (paymentMethod !== PaymentMethod.CARD) {
+      void sendOrderConfirmationEmail(order.id).catch(error => console.error('[email] order confirmation failed', error))
+    }
     await audit(user?.id, 'order.created', 'Order', order.id, { orderNumber: order.orderNumber, total: grandTotal, paymentMethod, paymentProvider: paymentMethod === PaymentMethod.CARD ? paymentProvider.name : paymentMethod.toLowerCase(), coinsUsed: requestedCoins, coinDiscount })
     return json({ order: { id: order.id, orderNumber: order.orderNumber, total: order.grandTotal }, payment: clientCheckout, rewards: { coinsUsed: requestedCoins, coinDiscount } }, { status: 201, headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {

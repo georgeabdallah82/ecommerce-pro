@@ -3,6 +3,7 @@ import crypto from 'node:crypto'
 import { db } from '@/lib/prisma'
 import { consumeRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
+import { sendPasswordResetEmail } from '@/lib/email'
 
 const WINDOW_MS = 60 * 60 * 1000
 const MAX_PER_IP = 5
@@ -35,21 +36,9 @@ export async function POST(request: NextRequest) {
     })
 
     const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL
-    const webhook = process.env.PASSWORD_RESET_EMAIL_WEBHOOK_URL
-    if (webhook && appUrl) {
+    if (appUrl) {
       const resetUrl = `${appUrl.replace(/\/$/, '')}/account/reset-password?token=${encodeURIComponent(token)}`
-      try {
-        const webhookSecret = process.env.PASSWORD_RESET_EMAIL_WEBHOOK_SECRET
-        const response = await fetch(webhook, {
-          method: 'POST',
-          headers: webhookSecret ? { 'content-type': 'application/json', authorization: `Bearer ${webhookSecret}` } : { 'content-type': 'application/json' },
-          body: JSON.stringify({ to: user.email, resetUrl, expiresInMinutes: 30 }),
-          signal: AbortSignal.timeout(5000),
-        })
-        if (!response.ok) console.error('[password-recovery] email delivery rejected', response.status)
-      } catch (error) {
-        console.error('[password-recovery] email delivery failed', error)
-      }
+      void sendPasswordResetEmail(user.email, resetUrl, 30).catch(error => console.error('[password-recovery] email delivery failed', error))
     }
   }
 
