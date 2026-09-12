@@ -12,5 +12,5 @@ export default async function ReturnsPage() {
     : []
   const orderById = new Map(orders.map(o => [o.id, o]))
   const initial = rows.map(r => ({ ...r, order: orderById.get(r.orderId) || null }))
-  return <ReturnsAdmin initial={JSON.parse(JSON.stringify(initial))} canManage={hasPermission(user.role, 'returns.manage')} />
+  return <ReturnsAdmin initial={JSON.parse(JSON.stringify(initial))} canManage={hasPermission(user.role, 'returns.manage')} canRefund={hasPermission(user.role, 'orders.refund')} />
 }

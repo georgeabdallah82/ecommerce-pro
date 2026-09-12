@@ -27,7 +27,7 @@ async function api(path: string, init?: RequestInit) {
   return data
 }
 
-export default function ReturnsAdmin({ initial, canManage }: { initial: ReturnRequest[]; canManage: boolean }) {
+export default function ReturnsAdmin({ initial, canManage, canRefund }: { initial: ReturnRequest[]; canManage: boolean; canRefund: boolean }) {
   const [rows, setRows] = useState<ReturnRequest[]>(initial || [])
   const [q, setQ] = useState('')
   const [loading, setLoading] = useState(false)
@@ -184,8 +184,10 @@ export default function ReturnsAdmin({ initial, canManage }: { initial: ReturnRe
               </table>
             </div>
 
-            <label className={ui.fieldLabel}>Refund amount<input className={ui.input} type="number" min="0" step="0.01" value={refundAmount} onChange={e => setRefundAmount(e.target.value)} placeholder="0.00" /></label>
-            <p className={ui.muted} style={{ fontSize: 11 }}>Order total: {money(selectedOrder.grandTotal, selectedOrder.currency)}. The refund can't exceed what's still refundable on this order (already-refunded amounts are excluded). Leave blank for no refund.</p>
+            {canRefund ? <>
+              <label className={ui.fieldLabel}>Refund amount<input className={ui.input} type="number" min="0" step="0.01" value={refundAmount} onChange={e => setRefundAmount(e.target.value)} placeholder="0.00" /></label>
+              <p className={ui.muted} style={{ fontSize: 11 }}>Order total: {money(selectedOrder.grandTotal, selectedOrder.currency)}. The refund can't exceed what's still refundable on this order (already-refunded amounts are excluded). Leave blank for no refund.</p>
+            </> : <p className={ui.muted} style={{ fontSize: 11 }}>You don't have permission to issue refunds. This return will restock inventory only; ask someone with refund access to process any money back.</p>}
 
             <label className={styles.restockRow}><input type="checkbox" checked={restock} onChange={e => setRestock(e.target.checked)} /> Restock returned items into inventory</label>
 

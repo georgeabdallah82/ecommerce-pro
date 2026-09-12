@@ -1,5 +1,6 @@
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
+import { hasPermission } from '@/lib/permissions'
 import { getPaymentProvider } from '@/lib/payments'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
@@ -59,7 +60,7 @@ function returnFailure(error: unknown) {
 
 export async function POST(req: Request) {
   try {
-    const actor = await requirePermission('orders.manage')
+    const actor = await requirePermission('returns.manage')
     const body = await req.json()
     const orderId = String(body.orderId || '').trim()
     const requestedRefund = Number(body.refundAmount || 0)
@@ -68,6 +69,11 @@ export async function POST(req: Request) {
 
     if (!orderId || !inputItems.length) return json({ error: 'orderId and at least one return item are required' }, { status: 400 })
     if (!Number.isInteger(requestedRefund) || requestedRefund < 0) return json({ error: 'refundAmount must be a non-negative integer' }, { status: 400 })
+    // A return that also issues a refund moves money, same as the standalone
+    // refund endpoint (app/api/admin/refunds/route.ts) -- gate it on the same
+    // orders.refund permission rather than letting orders.manage/returns.manage
+    // (which SUPPORT holds without orders.refund) issue refunds through here.
+    if (requestedRefund > 0 && !hasPermission(actor.role, 'orders.refund')) throw new Error('FORBIDDEN')
 
     const result = await db.$transaction(async tx => {
       const orderRow = await tx.order.findUnique({ where: { id: orderId }, include: { items: true, paymentTransactions: true } })
