@@ -9,6 +9,7 @@ import { releaseOrderReservations, reserveStock } from '@/lib/inventory'
 import { getPaymentProvider } from '@/lib/payments'
 import { sendNewOrderPush } from '@/lib/push'
 import { sendOrderConfirmationEmail } from '@/lib/email'
+import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { consumeRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { PaymentMethod } from '@prisma/client'
@@ -308,6 +309,7 @@ export async function POST(req: Request) {
     if (paymentMethod !== PaymentMethod.CARD) {
       void sendOrderConfirmationEmail(order.id).catch(error => console.error('[email] order confirmation failed', error))
     }
+    void dispatchWebhookEvent('order.created', { id: order.id, orderNumber: order.orderNumber, email: order.email, grandTotal: order.grandTotal, currency: order.currency, status: order.status, paymentStatus: order.paymentStatus }).catch(error => console.error('[webhook] order.created dispatch failed', error))
     await audit(user?.id, 'order.created', 'Order', order.id, { orderNumber: order.orderNumber, total: grandTotal, paymentMethod, paymentProvider: paymentMethod === PaymentMethod.CARD ? paymentProvider.name : paymentMethod.toLowerCase(), coinsUsed: requestedCoins, coinDiscount })
     return json({ order: { id: order.id, orderNumber: order.orderNumber, total: order.grandTotal }, payment: clientCheckout, rewards: { coinsUsed: requestedCoins, coinDiscount } }, { status: 201, headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {

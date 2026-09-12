@@ -5,6 +5,7 @@ import { consumeRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { areebaMpgsPaymentProvider, areebaWebhookToken, safeTokenEqual } from '@/lib/payments'
 import { sendOrderConfirmationEmail } from '@/lib/email'
+import { dispatchWebhookEvent } from '@/lib/webhooks'
 
 function parseCoinsUsed(rawJson: string | null) {
   if (!rawJson) return 0
@@ -71,6 +72,7 @@ async function processPaymentNotification(orderNumber: string, body: Record<stri
     })
     await audit(null, 'payment.paid', 'Order', order.id, { provider: 'areeba_mpgs', orderNumber: order.orderNumber, source: 'webhook' })
     void sendOrderConfirmationEmail(order.id).catch(error => console.error('[email] order confirmation failed', error))
+    void dispatchWebhookEvent('order.updated', { id: order.id, orderNumber: order.orderNumber, paymentStatus: 'PAID' }).catch(error => console.error('[webhook] order.updated dispatch failed', error))
   } else if (status === 'failed') {
     let transitioned = false
     await db.$transaction(async tx => {
@@ -97,7 +99,10 @@ async function processPaymentNotification(orderNumber: string, body: Record<stri
       await tx.paymentTransaction.update({ where: { id: transaction.id }, data: { status: 'failed' } })
       transitioned = true
     })
-    if (transitioned) await audit(null, 'payment.failed', 'Order', order.id, { provider: 'areeba_mpgs', orderNumber: order.orderNumber, source: 'webhook' })
+    if (transitioned) {
+      await audit(null, 'payment.failed', 'Order', order.id, { provider: 'areeba_mpgs', orderNumber: order.orderNumber, source: 'webhook' })
+      void dispatchWebhookEvent('order.updated', { id: order.id, orderNumber: order.orderNumber, paymentStatus: 'FAILED' }).catch(error => console.error('[webhook] order.updated dispatch failed', error))
+    }
   }
   return true
 }

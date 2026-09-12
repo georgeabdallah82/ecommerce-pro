@@ -54,6 +54,14 @@ Order confirmations and password reset emails are sent through [Resend](https://
 - Password reset emails send unconditionally when `APP_URL`/`NEXT_PUBLIC_SITE_URL` is set, independent of that toggle (a security-relevant flow, not a marketing one).
 - "Fulfillment / tracking" and "Abandoned checkout recovery" toggles exist in Admin → Settings → Email but have no sending logic wired up yet — they're the next things to build on top of `lib/email.ts`.
 
+## Outbound webhooks
+
+Admin → Operations lets a store owner register endpoints (`WebhookEndpoint`) for `order.created`, `order.updated`, `order.fulfilled`, `product.updated`, `inventory.updated`, and `customer.created`. `lib/webhooks.ts`'s `dispatchWebhookEvent(topic, payload)` fires on the matching real-world action (order placed, admin order status change, product save, inventory adjustment, customer registration) to every `ACTIVE` endpoint subscribed to that topic.
+
+- Delivery is a single POST with body `{ topic, payload, sentAt }` and an `X-Webhook-Signature` header: HMAC-SHA256 of the raw request body, keyed with the endpoint's own secret (shown once at creation). Verify it by recomputing the same HMAC over the raw body.
+- There is no retry queue — a failed delivery is recorded (`lastStatus`/`lastError`/`lastSentAt` on the endpoint) and dropped. An integrator whose endpoint has downtime needs to poll the relevant admin API to catch up rather than rely on redelivery.
+- Dispatch is fire-and-forget from the caller's perspective (`void dispatchWebhookEvent(...).catch(...)`) so a slow or unreachable third-party endpoint never blocks checkout, admin saves, or registration.
+
 ## Admin order lifecycle
 
 `/api/admin/orders/:id` supports authenticated order viewing and controlled status updates. Cancelling an order releases reservations. Moving an inventory-tracked order to `SHIPPED` or `DELIVERED` fulfills its reserved stock exactly once.

@@ -5,6 +5,7 @@ import { reserveStock } from '@/lib/inventory'
 import { getPaymentProvider } from '@/lib/payments'
 import { sendNewOrderPush } from '@/lib/push'
 import { sendOrderConfirmationEmail } from '@/lib/email'
+import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { json } from '@/lib/utils'
 import { PaymentMethod, PaymentStatus, OrderStatus, FulfillmentStatus } from '@prisma/client'
 
@@ -60,6 +61,7 @@ export async function POST(req: Request) {
     if (paymentStatus !== PaymentStatus.UNPAID || paymentMethod !== PaymentMethod.CARD) {
       void sendOrderConfirmationEmail(order.id).catch(error => console.error('[email] order confirmation failed', error))
     }
+    void dispatchWebhookEvent('order.created', { id: order.id, orderNumber: order.orderNumber, email: order.email, grandTotal: order.grandTotal, currency: order.currency, status: order.status, paymentStatus: order.paymentStatus }).catch(error => console.error('[webhook] order.created dispatch failed', error))
     await audit(actor.id, 'order.created_manual', 'Order', order.id, { orderNumber, total: grandTotal, paymentMethod, paymentStatus })
     return json({ order: { id: order.id, orderNumber: order.orderNumber, grandTotal: order.grandTotal } }, { status: 201 })
   } catch (e) { const message = e instanceof Error ? e.message : 'Unable to create manual order'; return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 400 }) }
