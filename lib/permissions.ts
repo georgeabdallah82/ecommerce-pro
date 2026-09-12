@@ -23,6 +23,7 @@ export type Permission =
   | 'users.view' | 'users.manage'
   | 'activity.view'
   | 'shipping.view' | 'shipping.manage'
+  | 'tax.view' | 'tax.manage'
   | 'content.view' | 'content.manage'
   | 'media.view' | 'media.manage'
   | 'navigation.view' | 'navigation.manage'
@@ -58,6 +59,7 @@ const all: Permission[] = [
   'users.view', 'users.manage',
   'activity.view',
   'shipping.view', 'shipping.manage',
+  'tax.view', 'tax.manage',
   'content.view', 'content.manage',
   'media.view', 'media.manage',
   'navigation.view', 'navigation.manage',

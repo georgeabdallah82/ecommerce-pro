@@ -321,6 +321,15 @@ model ShippingRate {
   zone           ShippingZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
 }
 
+model TaxRate {
+  id        String   @id @default(cuid())
+  name      String
+  countries String
+  rate      Float
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
 model Order {
   id                  String             @id @default(cuid())
   orderNumber         String             @unique
