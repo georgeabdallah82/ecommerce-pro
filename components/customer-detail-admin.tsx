@@ -19,6 +19,22 @@ const initials = (name: string) => name.trim().split(/\s+/).slice(0, 2).map(x =>
 
 type ProfileFields = { name: string; email: string; phone: string | null; isActive: boolean }
 
+// Defined at module scope, not inside CustomerDetailAdmin: a component declared inside
+// another component's body is a new function on every render, so React treats each render's
+// <Card> as a different component type and remounts its whole subtree -- every input inside
+// (including the coin/wallet amount fields) lost focus, and with it the on-screen keyboard,
+// after a single keystroke.
+function Card({ title, sub, children, action, icon }: { title: string; sub?: string; children: React.ReactNode; action?: React.ReactNode; icon?: React.ReactNode }) {
+  return <section className={s.card}>
+    <div className={s.cardHead}>
+      <div><h3>{title}</h3>{sub && <p>{sub}</p>}</div>
+      {action}
+      {icon && <span className={s.cardHeadIcon}>{icon}</span>}
+    </div>
+    <div className={s.cardBody}>{children}</div>
+  </section>
+}
+
 export default function CustomerDetailAdmin({ initial }: { initial: any }) {
   const router = useRouter()
   const [customer, setCustomer] = useState(initial)
@@ -272,15 +288,4 @@ export default function CustomerDetailAdmin({ initial }: { initial: any }) {
       </aside>
     </div>
   </div>
-
-  function Card({ title, sub, children, action, icon }: { title: string; sub?: string; children: React.ReactNode; action?: React.ReactNode; icon?: React.ReactNode }) {
-    return <section className={s.card}>
-      <div className={s.cardHead}>
-        <div><h3>{title}</h3>{sub && <p>{sub}</p>}</div>
-        {action}
-        {icon && <span className={s.cardHeadIcon}>{icon}</span>}
-      </div>
-      <div className={s.cardBody}>{children}</div>
-    </section>
-  }
 }
