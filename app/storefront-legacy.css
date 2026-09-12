@@ -1109,23 +1109,23 @@ body:not(:has(.adminShell)) .focalType-hero .focalHero{overflow:hidden!important
 .focalStorefront a:focus-visible,.focalStorefront button:focus-visible{outline:3px solid color-mix(in srgb,var(--store-primary,#008060) 28%,white);outline-offset:3px}
 
 @media(max-width:1050px){
-  .focalType-product_grid .focalProductGrid{grid-template-columns:repeat(3,minmax(0,1fr))}
-  .focalType-collection_grid .focalCollectionGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .focalType-product_grid .focalProductGrid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  .focalType-collection_grid .focalCollectionGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
   .focalType-image_with_text .focalContainer{grid-template-columns:1fr 1fr}
   .focalType-testimonials .focalTestimonialGrid{grid-template-columns:1fr 1fr}
 }
 @media(max-width:760px){
   .focalStorefront .focalContainer{width:min(100% - 28px,1360px)}
   .focalType-product_grid,.focalType-collection_grid,.focalType-image_with_text,.focalType-promo_grid,.focalType-testimonials,.focalType-newsletter{padding-block:48px}
-  .focalType-product_grid .focalProductGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-  .focalType-product_grid .focalProductGrid:has(> :only-child){grid-template-columns:minmax(0,1fr)}
+  .focalType-product_grid .focalProductGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px}
+  .focalType-product_grid .focalProductGrid:has(> :only-child){grid-template-columns:minmax(0,1fr)!important}
   .focalType-product_grid .focalProductGrid:has(> :only-child) .focalProductMedia{aspect-ratio:4/3;max-height:none}
-  .focalType-collection_grid .focalCollectionGrid,.focalType-promo_grid .focalPromoGrid,.focalType-testimonials .focalTestimonialGrid{grid-template-columns:1fr 1fr;gap:12px}
+  .focalType-collection_grid .focalCollectionGrid,.focalType-promo_grid .focalPromoGrid,.focalType-testimonials .focalTestimonialGrid{grid-template-columns:1fr 1fr!important;gap:12px}
   .focalType-image_with_text .focalContainer{grid-template-columns:1fr;gap:28px}
   .focalType-image_with_text img{max-height:420px}
 }
 @media(max-width:500px){
-  .focalType-collection_grid .focalCollectionGrid,.focalType-promo_grid .focalPromoGrid,.focalType-testimonials .focalTestimonialGrid{grid-template-columns:1fr}
+  .focalType-collection_grid .focalCollectionGrid,.focalType-promo_grid .focalPromoGrid,.focalType-testimonials .focalTestimonialGrid{grid-template-columns:1fr!important}
   .focalType-product_grid .focalProductBody{padding:12px 13px 15px}
 }
 @media(prefers-reduced-motion:reduce){
