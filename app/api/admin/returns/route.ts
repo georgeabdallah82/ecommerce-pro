@@ -1,8 +1,10 @@
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
+import { hasPermission } from '@/lib/permissions'
 import { getPaymentProvider } from '@/lib/payments'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
+import { dispatchWebhookEvent, dispatchInventoryUpdated } from '@/lib/webhooks'
 import { randomUUID } from 'crypto'
 import { Prisma } from '@prisma/client'
 
@@ -59,7 +61,7 @@ function returnFailure(error: unknown) {
 
 export async function POST(req: Request) {
   try {
-    const actor = await requirePermission('orders.manage')
+    const actor = await requirePermission('returns.manage')
     const body = await req.json()
     const orderId = String(body.orderId || '').trim()
     const requestedRefund = Number(body.refundAmount || 0)
@@ -68,6 +70,11 @@ export async function POST(req: Request) {
 
     if (!orderId || !inputItems.length) return json({ error: 'orderId and at least one return item are required' }, { status: 400 })
     if (!Number.isInteger(requestedRefund) || requestedRefund < 0) return json({ error: 'refundAmount must be a non-negative integer' }, { status: 400 })
+    // A return that also issues a refund moves money, same as the standalone
+    // refund endpoint (app/api/admin/refunds/route.ts) -- gate it on the same
+    // orders.refund permission rather than letting orders.manage/returns.manage
+    // (which SUPPORT holds without orders.refund) issue refunds through here.
+    if (requestedRefund > 0 && !hasPermission(actor.role, 'orders.refund')) throw new Error('FORBIDDEN')
 
     const result = await db.$transaction(async tx => {
       const orderRow = await tx.order.findUnique({ where: { id: orderId }, include: { items: true, paymentTransactions: true } })
@@ -112,6 +119,7 @@ export async function POST(req: Request) {
       const guarded = await tx.order.updateMany({ where: { id: order.id, updatedAt: order.updatedAt }, data: { updatedAt: new Date() } })
       if (guarded.count !== 1) throw new Error(RETURN_CONFLICT_MESSAGE)
 
+      const restockedInventoryIds = new Set<string>()
       if (restock) {
         for (const entry of normalized) {
           const dedicated = await tx.inventoryItem.findMany({ where: { productId: entry.item.productId, variantId: entry.item.variantId || null }, orderBy: { id: 'asc' } })
@@ -123,6 +131,7 @@ export async function POST(req: Request) {
             if (remaining <= 0) break
             const add = remaining
             await tx.inventoryItem.update({ where: { id: row.id }, data: { quantity: { increment: add } } })
+            restockedInventoryIds.add(row.id)
             await tx.inventoryMovement.create({ data: { inventoryId: row.id, type: 'RETURN', quantity: add, reason: `Customer return ${entry.orderItemId}: ${String(body.reason || 'Returned item').slice(0, 1000)}`, referenceId: order.orderNumber } })
             remaining -= add
           }
@@ -153,8 +162,11 @@ export async function POST(req: Request) {
       const updated = await tx.order.update({ where: { id: order.id }, data: { paymentStatus, status: paymentStatus === 'REFUNDED' ? 'REFUNDED' : order.status, events: { create: { status: paymentStatus, message: `${returnRequest.id}: ${normalized.map(x => `${x.item.name} × ${x.quantity}`).join(', ')}${restock ? ' — restocked' : ' — not restocked'}${requestedRefund ? ` — ${refundStatus === 'refunded' ? `refunded ${requestedRefund} ${order.currency}` : `refund pending ${requestedRefund} ${order.currency}`}` : ''}` } } } })
 
       await audit(actor.id, 'order.returned', 'Order', order.id, { returnId: returnRequest.id, items: normalized.map(x => ({ orderItemId: x.orderItemId, quantity: x.quantity })), restocked: restock, refundId: refund?.id || null, refundAmount: requestedRefund, refundProvider })
-      return { order: updated, returnRequest, returnId: returnRequest.id, refund, refundProvider, refundExternalId: original?.externalId || null, items: normalized.map(x => ({ orderItemId: x.orderItemId, quantity: x.quantity })), restocked: restock }
+      return { order: updated, returnRequest, returnId: returnRequest.id, refund, refundProvider, refundExternalId: original?.externalId || null, items: normalized.map(x => ({ orderItemId: x.orderItemId, quantity: x.quantity })), restocked: restock, restockedInventoryIds: [...restockedInventoryIds] }
     })
+
+    void dispatchWebhookEvent('order.updated', { id: result.order.id, orderNumber: result.order.orderNumber, status: result.order.status, paymentStatus: result.order.paymentStatus }).catch(error => console.error('[webhook] order.updated dispatch failed', error))
+    dispatchInventoryUpdated(result.restockedInventoryIds)
 
     if (result.refund && result.refundProvider !== 'manual') {
       try {

@@ -4,7 +4,7 @@ import { audit } from '@/lib/audit'
 import { canTransitionOrder, canTransitionPayment, fulfillmentForStatus } from '@/lib/orders'
 import { fulfillOrderStock, releaseOrderReservations } from '@/lib/inventory'
 import { json } from '@/lib/utils'
-import { dispatchWebhookEvent } from '@/lib/webhooks'
+import { dispatchWebhookEvent, dispatchInventoryUpdated } from '@/lib/webhooks'
 import { OrderStatus, PaymentStatus } from '@prisma/client'
 
 const ORDER_STATUSES = new Set(Object.values(OrderStatus))
@@ -87,14 +87,14 @@ export async function PATCH(req: Request) {
       const cancelling = requestedStatus === OrderStatus.CANCELLED && order.status !== OrderStatus.CANCELLED
       const fulfilling = requestedStatus === OrderStatus.SHIPPED && order.fulfillmentStatus !== 'FULFILLED'
       if (cancelling) await releaseOrderReservations(tx, order.id, 'Order cancelled')
-      if (fulfilling) await fulfillOrderStock(tx, order.id)
+      const fulfilledInventoryIds = fulfilling ? await fulfillOrderStock(tx, order.id) : []
       const data: any = {
         ...detailsPatch,
         ...(statusChanged ? { status: requestedStatus, fulfillmentStatus: fulfillmentForStatus(requestedStatus!) } : {}),
         ...(paymentChanged ? { paymentStatus: requestedPayment } : {}),
       }
       const updated = await tx.order.update({ where: { id: order.id }, data: { ...data, ...(statusChanged ? { events: { create: { status: requestedStatus!, message: `Order moved from ${order.status} to ${requestedStatus}.` } } } : {}) } })
-      return { order, updated, statusChanged, paymentChanged, hasOnlyDetails }
+      return { order, updated, statusChanged, paymentChanged, hasOnlyDetails, fulfilledInventoryIds }
     })
     if (result.order.userId && result.statusChanged) await db.notification.create({ data: { userId: result.order.userId, title: `Order ${result.order.orderNumber} updated`, body: `Your order is now ${result.updated.status.toLowerCase().replaceAll('_', ' ')}.`, type: 'ORDER_STATUS' } })
     await audit(actor.id, 'order.updated', 'Order', result.order.id, { from: result.order.status, to: result.updated.status, paymentFrom: result.order.paymentStatus, paymentTo: result.updated.paymentStatus, statusChanged: result.statusChanged, paymentChanged: result.paymentChanged, detailsEdited: Object.keys(detailsPatch) })
@@ -105,6 +105,7 @@ export async function PATCH(req: Request) {
         void dispatchWebhookEvent('order.fulfilled', eventPayload).catch(error => console.error('[webhook] order.fulfilled dispatch failed', error))
       }
     }
+    dispatchInventoryUpdated(result.fulfilledInventoryIds)
     return json({ order: result.updated })
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : 'Unable to update order' }, { status: 400 })

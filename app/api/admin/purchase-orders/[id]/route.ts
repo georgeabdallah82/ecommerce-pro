@@ -2,6 +2,7 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
+import { dispatchInventoryUpdated } from '@/lib/webhooks'
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -29,6 +30,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     // actually land anywhere, but the PO would show progress as if it had. Require a location
     // for any receiving action, not just the "mark fully received" one.
     if (receivedItems.length && !po.location) return json({ error: 'A receiving location is required before receiving items' }, { status: 400 })
+    const receivedInventoryIds = new Set<string>()
     const updated = await db.$transaction(async tx => {
       if (receivedItems.length) {
         for (const received of receivedItems) {
@@ -43,9 +45,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
             if (inventory) {
               await tx.inventoryItem.update({ where: { id: inventory.id }, data: { quantity: { increment } } })
               await tx.inventoryMovement.create({ data: { inventoryId: inventory.id, type: 'RECEIPT', quantity: increment, reason: `Received ${po.number}`, referenceId: po.id } })
+              receivedInventoryIds.add(inventory.id)
             } else {
               const created = await tx.inventoryItem.create({ data: { productId: item.productId, variantId: item.variantId, quantity: increment, reserved: 0, lowStockThreshold: 5, locationId: po.locationId } })
               await tx.inventoryMovement.create({ data: { inventoryId: created.id, type: 'RECEIPT', quantity: increment, reason: `Received ${po.number}`, referenceId: po.id } })
+              receivedInventoryIds.add(created.id)
             }
           }
         }
@@ -57,6 +61,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return tx.purchaseOrder.update({ where: { id }, data: { status: effectiveStatus as any, orderedAt: effectiveStatus !== 'DRAFT' && effectiveStatus !== 'CANCELLED' ? (po.orderedAt || new Date()) : po.orderedAt, receivedAt: effectiveStatus === 'RECEIVED' ? new Date() : po.receivedAt }, include: { items: true, location: true } })
     })
     await audit(actor.id, 'purchase_order.updated', 'PurchaseOrder', id, { from: po.status, to: updated.status, receivedItems: receivedItems.length })
+    dispatchInventoryUpdated(receivedInventoryIds)
     return json({ purchaseOrder: updated })
   } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to update purchase order' }, { status: 400 }) }
 }

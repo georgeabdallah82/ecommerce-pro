@@ -2,6 +2,7 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
+import { dispatchInventoryUpdated } from '@/lib/webhooks'
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -19,6 +20,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (nextStatus === 'IN_TRANSIT') {
       if (!transfer.fromLocation) return json({ error: 'A source location is required before shipping a transfer' }, { status: 400 })
       if (!transfer.toLocation) return json({ error: 'A destination location is required before shipping a transfer' }, { status: 400 })
+      const shippedInventoryIds = new Set<string>()
       await db.$transaction(async tx => {
         for (const item of transfer.items) {
           const source = await tx.inventoryItem.findFirst({ where: { productId: item.productId, variantId: item.variantId, locationId: transfer.fromLocationId } })
@@ -27,12 +29,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           if (available < item.quantity) throw new Error(`Not enough available stock to ship ${item.quantity} units from ${transfer.fromLocation!.name}`)
           await tx.inventoryItem.update({ where: { id: source.id }, data: { quantity: { decrement: item.quantity } } })
           await tx.inventoryMovement.create({ data: { inventoryId: source.id, type: 'TRANSFER', quantity: -item.quantity, reason: `Shipped transfer ${transfer.reference} to ${transfer.toLocation!.name}`, referenceId: transfer.id } })
+          shippedInventoryIds.add(source.id)
         }
         await tx.inventoryTransfer.update({ where: { id }, data: { status: 'IN_TRANSIT', shippedAt: new Date() } })
       })
+      dispatchInventoryUpdated(shippedInventoryIds)
     } else if (nextStatus === 'RECEIVED') {
       if (!transfer.toLocation) return json({ error: 'A destination location is required before receiving a transfer' }, { status: 400 })
       if (transfer.status !== 'IN_TRANSIT') return json({ error: 'Transfer must be in transit before it can be received' }, { status: 409 })
+      const receivedInventoryIds = new Set<string>()
       await db.$transaction(async tx => {
         for (const item of transfer.items) {
           const qty = Math.max(0, item.quantity - item.received)
@@ -41,14 +46,17 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           if (destination) {
             await tx.inventoryItem.update({ where: { id: destination.id }, data: { quantity: { increment: qty } } })
             await tx.inventoryMovement.create({ data: { inventoryId: destination.id, type: 'TRANSFER', quantity: qty, reason: `Received transfer ${transfer.reference}`, referenceId: transfer.id } })
+            receivedInventoryIds.add(destination.id)
           } else {
             const created = await tx.inventoryItem.create({ data: { productId: item.productId, variantId: item.variantId, quantity: qty, reserved: 0, lowStockThreshold: 5, locationId: transfer.toLocationId } })
             await tx.inventoryMovement.create({ data: { inventoryId: created.id, type: 'TRANSFER', quantity: qty, reason: `Received transfer ${transfer.reference}`, referenceId: transfer.id } })
+            receivedInventoryIds.add(created.id)
           }
           await tx.inventoryTransferItem.update({ where: { id: item.id }, data: { received: item.quantity } })
         }
         await tx.inventoryTransfer.update({ where: { id }, data: { status: 'RECEIVED', receivedAt: new Date() } })
       })
+      dispatchInventoryUpdated(receivedInventoryIds)
     } else if (nextStatus === 'PENDING' || nextStatus === 'DRAFT') {
       if (transfer.status !== 'DRAFT' && transfer.status !== 'PENDING') return json({ error: 'This transfer cannot be moved back to a draft state' }, { status: 409 })
       await db.inventoryTransfer.update({ where: { id }, data: { status: nextStatus as any } })

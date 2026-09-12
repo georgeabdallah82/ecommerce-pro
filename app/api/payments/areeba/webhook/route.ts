@@ -36,6 +36,7 @@ async function reconcileRefunds(orderId: string, body: Record<string, any>) {
   if (!Number.isFinite(gatewayRefunded) || !['REFUNDED', 'PARTIALLY_REFUNDED', 'EXCESSIVELY_REFUNDED'].includes(gatewayStatus)) return false
   const gatewayRefundedMinor = Math.round(gatewayRefunded * 100)
   let reconciled = false
+  let webhookPayload: { id: string; orderNumber: string; paymentStatus: string } | null = null
   await db.$transaction(async tx => {
     const order = await tx.order.findUnique({ where: { id: orderId }, include: { paymentTransactions: true } })
     if (!order) return
@@ -50,8 +51,12 @@ async function reconcileRefunds(orderId: string, body: Record<string, any>) {
     await restoreCoinsForOrder(tx, order, gatewayRefundedMinor, `gateway-${gatewayRefundedMinor}`)
     await tx.order.update({ where: { id: order.id }, data: { paymentStatus, status, events: { create: { status, message: `Gateway refund confirmed (${gatewayRefundedMinor} ${order.currency}).` } } } })
     reconciled = true
+    webhookPayload = { id: order.id, orderNumber: order.orderNumber, paymentStatus }
   })
-  if (reconciled) await audit(null, 'order.refund_reconciled', 'Order', orderId, { provider: 'areeba_mpgs', gatewayStatus, gatewayRefunded })
+  if (reconciled) {
+    await audit(null, 'order.refund_reconciled', 'Order', orderId, { provider: 'areeba_mpgs', gatewayStatus, gatewayRefunded })
+    void dispatchWebhookEvent('order.updated', webhookPayload!).catch(error => console.error('[webhook] order.updated dispatch failed', error))
+  }
   return reconciled
 }
 
