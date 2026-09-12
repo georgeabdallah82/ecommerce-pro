@@ -193,7 +193,7 @@ export async function POST(req: Request) {
     if (requestedCoins > discountedSubtotal && requestedCoins > 0) throw new Error('Coin redemption exceeds the merchandise total.')
     const rewardAdjustedSubtotal = Math.max(0, discountedSubtotal - coinDiscount)
     const shipping = await calculateShipping(input.shippingAddress.country, rewardAdjustedSubtotal)
-    const taxRate = await getTaxRatePercent()
+    const taxRate = await getTaxRatePercent(input.shippingAddress.country)
     const taxTotal = Math.round(rewardAdjustedSubtotal * taxRate / 100)
     const shippingTotal = coupon?.type === 'FREE_SHIPPING' ? 0 : shipping.total
     const grandTotal = Math.max(0, rewardAdjustedSubtotal + shippingTotal + taxTotal)

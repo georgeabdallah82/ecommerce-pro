@@ -16,7 +16,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   Activity, ArrowLeftRight, BarChart3, Boxes, ChevronDown, ClipboardList, CreditCard, FileEdit, FileText, FolderTree, Image as ImageIcon, Layers3,
-  LayoutDashboard, LogOut, Menu, MessageSquare, PackageCheck, Palette, RotateCcw, Search, Settings2,
+  LayoutDashboard, LogOut, Menu, MessageSquare, PackageCheck, Palette, Percent, RotateCcw, Search, Settings2,
   ShieldCheck, ShoppingBag, Store, Tag, Truck, UserCog, Users, UsersRound, Workflow, X, type LucideIcon,
 } from 'lucide-react'
 import AdminThemeToggle from '@/components/admin-theme-toggle'
@@ -30,7 +30,7 @@ export type AdminSidebarGroup = { id: string; label: string; items: AdminSidebar
 const iconMap: Record<string, LucideIcon> = {
   dashboard: LayoutDashboard, orders: ShoppingBag, products: Boxes, inventory: PackageCheck, operations: Workflow,
   customers: Users, categories: FolderTree, collections: Layers3, discounts: Tag, reviews: MessageSquare,
-  shipping: Truck, store: ShoppingBag, theme: Palette, navigation: Menu, content: FileText, files: ImageIcon,
+  shipping: Truck, tax: Percent, store: ShoppingBag, theme: Palette, navigation: Menu, content: FileText, files: ImageIcon,
   analytics: BarChart3, system: Activity, users: UserCog, activity: Activity, settings: Settings2,
   orderEdits: FileEdit, purchaseOrders: ClipboardList, transfers: ArrowLeftRight,
   draftOrders: ClipboardList, returns: RotateCcw,

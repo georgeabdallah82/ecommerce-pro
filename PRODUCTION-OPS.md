@@ -10,6 +10,10 @@ There is no runtime dependency on Netlify, Render, or PostgreSQL. Both were used
 
 Checkout is server-authoritative: prices, coupons, shipping, tax, and inventory are recalculated on the server. Duplicate cart lines are merged before stock validation. Clients should send a stable `X-Idempotency-Key` for retries; the checkout endpoint returns the existing order when the same key is reused.
 
+## Tax
+
+Admin > Tax manages per-country tax rates (`TaxRate`), the same shape as Shipping's zones: a name, a comma-separated list of ISO country codes (or `*` for a fallback zone), a percent rate, and active/inactive. At checkout, `lib/pricing.ts`'s `getTaxRatePercent(country)` resolves in this order: an active zone whose country list contains the destination country, then an active `*` wildcard zone, then Settings > Shipping's "Default tax rate" field (the original single global rate, kept as the ultimate fallback so upgrading never silently drops an already-configured rate to 0%). Zones take priority over that fallback the moment any are configured.
+
 ## Inventory
 
 - Variant inventory is used when dedicated rows exist.

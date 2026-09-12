@@ -239,6 +239,7 @@ const mockStoreLocations: any[] = []
 const mockSalesChannels: any[] = []
 const mockWebhookEndpoints: any[] = []
 const mockApiCredentials: any[] = []
+const mockTaxRates: any[] = []
 
 function getMockHandler(model: string) {
   return {
@@ -276,6 +277,11 @@ function getMockHandler(model: string) {
         return list.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       }
       if (model === 'apiCredential') return [...mockApiCredentials].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      if (model === 'taxRate') {
+        let list = [...mockTaxRates]
+        if (args?.where?.isActive !== undefined) list = list.filter((x) => x.isActive === args.where.isActive)
+        return list.sort((a, b) => a.name.localeCompare(b.name))
+      }
       return []
     },
     findUnique: async (args: any) => {
@@ -314,6 +320,7 @@ function getMockHandler(model: string) {
       if (model === 'salesChannel') return (where.id ? mockSalesChannels.find((x) => x.id === where.id) : where.handle ? mockSalesChannels.find((x) => x.handle === where.handle) : null) || null
       if (model === 'webhookEndpoint' && where.id) return mockWebhookEndpoints.find((x) => x.id === where.id) || null
       if (model === 'apiCredential' && where.id) return mockApiCredentials.find((x) => x.id === where.id) || null
+      if (model === 'taxRate' && where.id) return mockTaxRates.find((x) => x.id === where.id) || null
       return null
     },
     findFirst: async (args?: any) => {
@@ -364,6 +371,7 @@ function getMockHandler(model: string) {
       if (model === 'salesChannel') mockSalesChannels.push(item)
       if (model === 'webhookEndpoint') mockWebhookEndpoints.push(item)
       if (model === 'apiCredential') { if (item.status === undefined) item.status = 'ACTIVE'; mockApiCredentials.push(item) }
+      if (model === 'taxRate') mockTaxRates.push(item)
       return item
     },
     update: async (args: any) => {
@@ -372,7 +380,7 @@ function getMockHandler(model: string) {
         if (u) Object.assign(u, args.data || {})
         return u || args.data
       }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates }
       if (byId[model] && args.where?.id) {
         const row = byId[model].find((x) => x.id === args.where.id)
         if (!row) throw new Error('Record to update not found')
@@ -383,7 +391,7 @@ function getMockHandler(model: string) {
       return args?.data || {}
     },
     delete: async (args?: any) => {
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates }
       const list = byId[model]
       if (list && args?.where?.id) { const i = list.findIndex((x) => x.id === args.where.id); if (i >= 0) return list.splice(i, 1)[0] }
       return {}

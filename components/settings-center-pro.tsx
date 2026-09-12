@@ -197,11 +197,12 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
           )}
 
           {tab === 'Shipping' && (
-            <Card title="Shipping & delivery" desc="Configure checkout defaults; detailed rates are managed in Shipping.">
+            <Card title="Shipping & delivery" desc="Configure checkout defaults; detailed shipping rates are managed in Shipping and per-country tax rates in Tax.">
               <div className={ui.twoCol}>
                 <Field label="Free shipping threshold" value={values['checkout.freeShippingThreshold']} onChange={v => set('checkout.freeShippingThreshold', v)} />
                 <Field label="Default tax rate (%)" value={values['checkout.taxRatePercent']} onChange={v => set('checkout.taxRatePercent', v)} />
               </div>
+              <p className={ui.muted}>The default tax rate above applies only when no Tax rate zone matches the customer's country.</p>
               <Toggle label="Guest checkout" keyName="checkout.guestCheckout" value={flags['checkout.guestCheckout']} onChange={() => toggle('checkout.guestCheckout')} />
             </Card>
           )}
