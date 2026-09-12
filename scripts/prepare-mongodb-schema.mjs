@@ -44,12 +44,20 @@ function convert(schema, sourceName) {
   // mandatory. These PostgreSQL constraints contain nullable fields, so they
   // are replaced with indexes for the first migration phase. Application-level
   // uniqueness is audited separately before production cutover.
+  // Both replacements use a global regex, not a plain string, because
+  // WalletTransaction and CoinTransaction declare byte-identical
+  // `@@unique([userId, referenceId, type])` lines -- a plain-string .replace()
+  // only touches the first match, silently leaving the second model with a
+  // real unique index on a nullable field. That let a customer's second
+  // coin/wallet adjustment with the same type and no referenceId (the normal
+  // admin-adjustment path, which never sets one) collide with the first as a
+  // duplicate (userId, null, type) key and fail with a unique-constraint error.
   schema = schema.replace(
-    '  @@unique([productId, variantId, locationId])\n',
+    /  @@unique\(\[productId, variantId, locationId\]\)\n/g,
     '  @@index([productId, variantId, locationId])\n',
   )
   schema = schema.replace(
-    '  @@unique([userId, referenceId, type])\n',
+    /  @@unique\(\[userId, referenceId, type\]\)\n/g,
     '  @@index([userId, referenceId, type])\n',
   )
 
