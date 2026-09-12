@@ -41,7 +41,6 @@ jobs:
       - name: Dependency audit
         id: dependency-audit
         if: always()
-        continue-on-error: true
         shell: bash
         run: |
           set +e
@@ -52,7 +51,25 @@ jobs:
           echo "===== npm audit report ====="
           cat npm-audit.json
           echo "===== end npm audit report ====="
-          exit ${audit_exit}
+
+          if [ "$audit_exit" -eq 0 ]; then
+            echo "result=clean" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # `npm audit` exits non-zero both when it finds real vulnerabilities and when
+          # the registry's audit endpoint itself errors (e.g. npm retiring the legacy
+          # "quick audit" endpoint returns a 400 with no vulnerability data at all, just
+          # an HTTP-error-shaped JSON body) -- the latter is registry-side noise, not a
+          # finding about this repo's dependencies, and must never fail every build (and
+          # block every deploy) on its own. A real report always carries
+          # `.metadata.vulnerabilities`; only fail the build on that shape.
+          if node -e "const r = require('./npm-audit.json'); process.exit(r && r.metadata && r.metadata.vulnerabilities ? 0 : 1)" 2>/dev/null; then
+            echo "result=vulnerabilities" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::npm audit did not return a usable vulnerability report (looks like a registry/API error, not a dependency finding) -- see the npm-audit-report artifact. Not failing the build on this."
+            echo "result=inconclusive" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Upload dependency audit report
         if: always()
@@ -70,7 +87,7 @@ jobs:
         run: npm run build:cloudflare
 
       - name: Enforce dependency audit result
-        if: steps.dependency-audit.outcome == 'failure'
+        if: steps.dependency-audit.outputs.result == 'vulnerabilities'
         run: |
           echo "Dependency audit found vulnerabilities. See the npm-audit-report artifact and the full JSON report above for exact package, advisory, severity, and dependency-path details."
           exit 1
