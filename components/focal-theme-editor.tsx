@@ -13,6 +13,7 @@ import {
   GalleryHorizontal,
   GalleryHorizontalEnd,
   Camera,
+  Grid2x2,
   GripVertical,
   HelpCircle,
   History,
@@ -21,6 +22,8 @@ import {
   LayoutGrid,
   Grid3x3,
   Mail,
+  Megaphone,
+  Menu,
   MessageSquareQuote,
   Monitor,
   Package,
@@ -75,6 +78,7 @@ const META: Record<string, string> = {
   main_collection_banner: 'Collection banner',
   main_collection_grid: 'Collection products',
   multicolumn: 'Multicolumn',
+  promo_grid: 'Promo grid',
   rich_text: 'Rich text',
   testimonials: 'Testimonials',
   logo_list: 'Logo list',
@@ -87,6 +91,8 @@ const META: Record<string, string> = {
   footer: 'Footer',
 }
 const SECTION_ICONS: Record<string, typeof ImageIcon> = {
+  announcement: Megaphone,
+  header: Menu,
   hero: ImageIcon,
   slideshow: Images,
   video: Video,
@@ -101,6 +107,7 @@ const SECTION_ICONS: Record<string, typeof ImageIcon> = {
   main_collection_banner: PanelTop,
   main_collection_grid: LayoutGrid,
   multicolumn: Columns3,
+  promo_grid: Grid2x2,
   rich_text: TypeIcon,
   testimonials: MessageSquareQuote,
   logo_list: BadgeCheck,
@@ -254,6 +261,7 @@ export default function FocalThemeEditor({ initial }: Props) {
   const [drawerTab, setDrawerTab] = useState<'content' | 'design' | 'advanced'>('content')
   const [drawer, setDrawer] = useState(false)
   const [picker, setPicker] = useState(false)
+  const [pickerQuery, setPickerQuery] = useState('')
   const [history, setHistory] = useState<Snapshot[]>([])
   const [future, setFuture] = useState<Snapshot[]>([])
   const [dirty, setDirty] = useState(false)
@@ -361,6 +369,7 @@ export default function FocalThemeEditor({ initial }: Props) {
     setSelectedId(next.id)
     setDrawer(true)
     setPicker(false)
+    setPickerQuery('')
   }
   const removeSection = () => {
     if (!selected) return
@@ -584,7 +593,8 @@ export default function FocalThemeEditor({ initial }: Props) {
                     className={`${styles.row} ${selectedId === section.id ? styles.active : ''} ${dragOverId === section.id && dragId !== section.id ? styles.dropTarget : ''}`}
                   >
                     <button className={styles.rowMain} onClick={() => { setSelectedId(section.id); setDrawer(true); setDrawerTab('content') }}>
-                      <GripVertical size={13} />
+                      <GripVertical size={13} className={styles.rowGrip} />
+                      {(() => { const Icon = SECTION_ICONS[section.type] || LayoutGrid; return <Icon size={15} className={styles.rowIcon} /> })()}
                       <span>{META[section.type] || section.type.replaceAll('_', ' ')}</span>
                       {index === 0 && <small>MAIN</small>}
                     </button>
@@ -723,22 +733,35 @@ export default function FocalThemeEditor({ initial }: Props) {
       </div>
 
       {picker && (
-        <div className={styles.pickerOverlay} onMouseDown={() => setPicker(false)}>
+        <div className={styles.pickerOverlay} onMouseDown={() => { setPicker(false); setPickerQuery('') }}>
           <div className={styles.pickerDialog} onMouseDown={event => event.stopPropagation()}>
             <strong className={styles.pickerTitle}>Add section</strong>
-            <div className={styles.pickerList}>
-              {Object.entries(META)
+            <input
+              className={styles.pickerSearch}
+              value={pickerQuery}
+              onChange={event => setPickerQuery(event.target.value)}
+              placeholder="Search sections…"
+              autoFocus
+            />
+            {(() => {
+              const results = Object.entries(META)
                 .filter(([key]) => !['announcement', 'header'].includes(key))
-                .map(([key, label]) => {
-                  const Icon = SECTION_ICONS[key] || LayoutGrid
-                  return (
-                    <button key={key} className={styles.pickerCard} onClick={() => addSection(key)}>
-                      <span className={styles.pickerIcon}><Icon size={20} /></span>
-                      <span className={styles.pickerLabel}>{label}</span>
-                    </button>
-                  )
-                })}
-            </div>
+                .filter(([, label]) => label.toLowerCase().includes(pickerQuery.trim().toLowerCase()))
+              if (!results.length) return <div className={styles.pickerEmpty}>No sections match &ldquo;{pickerQuery}&rdquo;.</div>
+              return (
+                <div className={styles.pickerList}>
+                  {results.map(([key, label]) => {
+                    const Icon = SECTION_ICONS[key] || LayoutGrid
+                    return (
+                      <button key={key} className={styles.pickerCard} onClick={() => addSection(key)}>
+                        <span className={styles.pickerIcon}><Icon size={20} /></span>
+                        <span className={styles.pickerLabel}>{label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )
+            })()}
           </div>
         </div>
       )}

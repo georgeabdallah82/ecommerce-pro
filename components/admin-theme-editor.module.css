@@ -100,6 +100,9 @@
 }
 .rowMain span { flex: 1; }
 .rowMain small { font-size: 8px; color: var(--admin-muted); }
+.rowGrip { color: var(--admin-muted); opacity: .5; flex: 0 0 auto; }
+.rowIcon { color: var(--admin-muted); flex: 0 0 auto; }
+.row.active .rowIcon { color: var(--admin-accent-strong); }
 .rowToggle { width: 34px; border: 0; background: transparent; color: inherit; cursor: pointer; }
 .add {
   margin: 8px 12px 14px;
@@ -245,6 +248,23 @@
   padding: 16px;
 }
 .pickerTitle { font-size: 14px; }
+.pickerSearch {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 10px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-surface);
+  color: var(--admin-ink);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+}
+.pickerSearch:focus { border-color: var(--admin-accent); box-shadow: 0 0 0 3px var(--admin-accent-soft); }
+.pickerEmpty { margin-top: 20px; padding: 20px 0; text-align: center; font-size: 12px; color: var(--admin-muted); }
 .pickerList { margin-top: 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
 .pickerCard {
   display: flex;
@@ -271,7 +291,7 @@
   color: var(--admin-accent-strong);
 }
 .pickerCard:hover .pickerIcon { background: var(--admin-surface); }
-.pickerLabel { font-size: 10.5px; font-weight: 800; line-height: 1.25; }
+.pickerLabel { font-size: 11.5px; font-weight: 800; line-height: 1.3; }
 
 /* Confirm dialog (replaces window.confirm) */
 .confirmDialog {
