@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Mail, MapPin, Phone, Save, ShieldOff, UserCheck, Plus, Trash2, X, CreditCard, UsersRound, Coins } from 'lucide-react'
+import { ArrowLeft, Mail, MapPin, Phone, ShieldOff, UserCheck, Plus, Trash2, X, CreditCard, UsersRound, Coins } from 'lucide-react'
 import { money } from '@/lib/config'
 import s from './admin-customer-detail.module.css'
 import ui from './admin-ui.module.css'
+import UnsavedBar from './admin-unsaved-bar'
 
 async function api(path: string, init?: RequestInit) {
   const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
@@ -85,6 +86,11 @@ export default function CustomerDetailAdmin({ initial }: { initial: any }) {
       setMessage('Customer saved')
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to save customer') }
     finally { setSaving(false) }
+  }
+
+  function discard() {
+    setCustomer((c: any) => ({ ...c, ...original }))
+    setDirty(false); setError(''); setMessage('')
   }
 
   async function addTag(value = tagInput) {
@@ -167,14 +173,14 @@ export default function CustomerDetailAdmin({ initial }: { initial: any }) {
     <div className={s.topbar}>
       <div className={s.topLeft}>
         <Link href="/admin/customers" className={ui.iconBtn} onClick={e => { if (dirty && !confirm('Discard unsaved changes?')) e.preventDefault() }}><ArrowLeft size={18}/></Link>
-        <div><div className={`${ui.muted} ${ui.tiny}`}>CUSTOMER</div><h1 className={s.title}>{customer.name}</h1>{dirty && <div className={`${ui.muted} ${ui.tiny}`}>Unsaved changes</div>}</div>
+        <div><div className={`${ui.muted} ${ui.tiny}`}>CUSTOMER</div><h1 className={s.title}>{customer.name}</h1></div>
       </div>
       <div className={s.topActions}>
         <span className={`${ui.statusPill} ${customer.isActive ? ui.statusPillSuccess : ''}`}>{customer.isActive ? <UserCheck size={13}/> : <ShieldOff size={13}/>} {customer.isActive ? 'Active' : 'Disabled'}</span>
         <button className={`${ui.btn} ${ui.btnSecondary} ${s.topActionsBtn}`} onClick={deleteCustomer} disabled={deleting}><Trash2 size={16}/> {deleting ? 'Deleting…' : 'Delete'}</button>
-        <button className={`${ui.btn} ${s.topActionsBtn}`} onClick={save} disabled={saving}><Save size={16}/> {saving ? 'Saving…' : 'Save'}</button>
       </div>
     </div>
+    <UnsavedBar dirty={dirty} saving={saving} onDiscard={discard} onSave={save} />
     {(error || message) && <div className={`${ui.alert} ${error ? ui.alertDanger : ''} ${s.alert}`}>{error || message}</div>}
 
     <div className={`${ui.card} ${s.hero}`}>

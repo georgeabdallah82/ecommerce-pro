@@ -1,0 +1,31 @@
+/*
+ * Shopify's signature editing UX: a sticky bar that appears only while a
+ * resource detail page has unsaved changes, offering Discard/Save right at
+ * the point of scroll instead of a static always-visible Save button.
+ * Sticks just below the app's own top bar (--admin-topbar-h, declared in
+ * admin-nav.module.css's :root block -- custom properties cascade through
+ * the whole document regardless of which module declared them).
+ */
+.bar {
+  position: sticky;
+  top: var(--admin-topbar-h);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-surface);
+  box-shadow: var(--admin-shadow-md);
+  animation: unsavedBarIn .15s ease-out;
+}
+.label { font-size: 13px; font-weight: 700; color: var(--admin-ink); }
+.actions { display: flex; align-items: center; gap: 8px; }
+
+@keyframes unsavedBarIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}

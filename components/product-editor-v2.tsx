@@ -1,10 +1,11 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Copy, Eye, Plus, Save, Trash2, X } from 'lucide-react'
+import { ArrowLeft, Copy, Eye, Plus, Trash2, X } from 'lucide-react'
 import s from './admin-product-editor.module.css'
 import ui from './admin-ui.module.css'
 import MediaPicker from './media-picker'
+import UnsavedBar from './admin-unsaved-bar'
 
 type ImageItem = { id?: string; url: string; alt?: string | null }
 type Variant = { id?: string; name: string; sku: string; barcode?: string | null; optionJson: string; price?: number | null; compareAtPrice?: number | null; quantity?: number; lowStockThreshold?: number; locationId?: string | null; weight?: number | null; weightUnit?: string | null; inventory?: any[] }
@@ -111,6 +112,13 @@ export default function ProductEditorV2({ initial, creating, categories, definit
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to save') } finally { setBusy(false) }
   }
 
+  function discard() {
+    setProduct(initial)
+    setOptionNames(initialNames)
+    setOptionValues(initialNames.map(n => Array.from(new Set((initial.variants || []).map(v => String(parseOptions(v)[n] || '')).filter(Boolean)))))
+    setDirty(false); setError(''); setMessage('')
+  }
+
   async function duplicate() {
     if (!product.id) return
     setBusy(true); setError('')
@@ -150,14 +158,16 @@ export default function ProductEditorV2({ initial, creating, categories, definit
     <div className={s.topbar}>
       <div className={s.topLeft}>
         <Link href="/admin/products" className={ui.iconBtn} onClick={e => { if (dirty && !confirm('Discard unsaved changes?')) e.preventDefault() }}><ArrowLeft size={18} /></Link>
-        <div><div className={`${ui.muted} ${ui.tiny}`}>PRODUCT</div><h1 className={s.title}>{creating ? 'Add product' : product.name || 'Untitled product'}</h1>{dirty && <div className={`${ui.muted} ${ui.tiny}`}>Unsaved changes</div>}</div>
+        <div><div className={`${ui.muted} ${ui.tiny}`}>PRODUCT</div><h1 className={s.title}>{creating ? 'Add product' : product.name || 'Untitled product'}</h1></div>
       </div>
       <div className={s.topActions}>
         <Link className={`${ui.btn} ${ui.btnSecondary} ${s.topActionBtn}`} href={creating ? '/admin/products' : `/product/${product.slug}`} target="_blank"><Eye size={16} /> Preview</Link>
         {!creating && <button className={`${ui.btn} ${ui.btnSecondary} ${s.topActionBtn}`} onClick={duplicate} disabled={busy}><Copy size={16} /> Duplicate</button>}
-        <button className={`${ui.btn} ${s.topActionBtn}`} onClick={save} disabled={busy}>{busy ? 'Saving…' : <><Save size={16} /> Save</>}</button>
+        {creating && <button className={`${ui.btn} ${s.topActionBtn}`} onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>}
       </div>
     </div>
+
+    {!creating && <UnsavedBar dirty={dirty} saving={busy} onDiscard={discard} onSave={save} />}
 
     {(error || message) && <div className={`${ui.alert} ${error ? ui.alertDanger : ''}`} style={{ margin: '0 0 14px' }}>{error || message}</div>}
 
