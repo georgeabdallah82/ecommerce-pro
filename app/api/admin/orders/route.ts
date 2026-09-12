@@ -4,6 +4,7 @@ import { audit } from '@/lib/audit'
 import { canTransitionOrder, canTransitionPayment, fulfillmentForStatus } from '@/lib/orders'
 import { fulfillOrderStock, releaseOrderReservations } from '@/lib/inventory'
 import { json } from '@/lib/utils'
+import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { OrderStatus, PaymentStatus } from '@prisma/client'
 
 const ORDER_STATUSES = new Set(Object.values(OrderStatus))
@@ -97,6 +98,13 @@ export async function PATCH(req: Request) {
     })
     if (result.order.userId && result.statusChanged) await db.notification.create({ data: { userId: result.order.userId, title: `Order ${result.order.orderNumber} updated`, body: `Your order is now ${result.updated.status.toLowerCase().replaceAll('_', ' ')}.`, type: 'ORDER_STATUS' } })
     await audit(actor.id, 'order.updated', 'Order', result.order.id, { from: result.order.status, to: result.updated.status, paymentFrom: result.order.paymentStatus, paymentTo: result.updated.paymentStatus, statusChanged: result.statusChanged, paymentChanged: result.paymentChanged, detailsEdited: Object.keys(detailsPatch) })
+    if (result.statusChanged || result.paymentChanged) {
+      const eventPayload = { id: result.updated.id, orderNumber: result.updated.orderNumber, status: result.updated.status, paymentStatus: result.updated.paymentStatus, fulfillmentStatus: result.updated.fulfillmentStatus }
+      void dispatchWebhookEvent('order.updated', eventPayload).catch(error => console.error('[webhook] order.updated dispatch failed', error))
+      if (result.statusChanged && (result.updated.status === OrderStatus.SHIPPED || result.updated.status === OrderStatus.DELIVERED)) {
+        void dispatchWebhookEvent('order.fulfilled', eventPayload).catch(error => console.error('[webhook] order.fulfilled dispatch failed', error))
+      }
+    }
     return json({ order: result.updated })
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : 'Unable to update order' }, { status: 400 })

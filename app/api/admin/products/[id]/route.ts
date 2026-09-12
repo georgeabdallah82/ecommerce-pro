@@ -2,6 +2,7 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json, slugify } from '@/lib/utils'
+import { dispatchWebhookEvent } from '@/lib/webhooks'
 
 async function getProduct(id:string){
   const product=await db.product.findUnique({where:{id},include:{category:true,images:{orderBy:{sortOrder:'asc'}},variants:{include:{inventory:true}},inventory:{where:{variantId:null}},tags:true,collections:{include:{collection:true}},metafields:{include:{definition:true}}}})
@@ -73,6 +74,7 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
       return p
     })
     await audit(actor.id,'product.updated','Product',id,{fields:Object.keys(data),images:Array.isArray(b.images)?b.images.length:undefined,variants:Array.isArray(b.variants)?b.variants.length:undefined,sharedInventory:b.sharedInventory})
+    void dispatchWebhookEvent('product.updated',{id:product.id,name:product.name,slug:product.slug,status:product.status}).catch(error=>console.error('[webhook] product.updated dispatch failed',error))
     return json({product:await getProduct(id)})
   }catch(e){
     const message=e instanceof Error?e.message:'Unable to update product'

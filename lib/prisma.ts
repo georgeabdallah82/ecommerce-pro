@@ -269,7 +269,12 @@ function getMockHandler(model: string) {
       }
       if (model === 'storeLocation') return [...mockStoreLocations].sort((a, b) => Number(b.isDefault) - Number(a.isDefault) || a.name.localeCompare(b.name))
       if (model === 'salesChannel') return [...mockSalesChannels].map(c => ({ ...c, _count: { publications: 0 } }))
-      if (model === 'webhookEndpoint') return [...mockWebhookEndpoints].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      if (model === 'webhookEndpoint') {
+        let list = [...mockWebhookEndpoints]
+        if (args?.where?.topic !== undefined) list = list.filter((x) => x.topic === args.where.topic)
+        if (args?.where?.status !== undefined) list = list.filter((x) => x.status === args.where.status)
+        return list.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      }
       if (model === 'apiCredential') return [...mockApiCredentials].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       return []
     },
