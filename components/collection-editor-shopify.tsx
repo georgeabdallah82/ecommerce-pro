@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Check, Eye, GripVertical, Image as ImageIcon, Plus, Save, Search, Trash2, X } from 'lucide-react'
+import { ArrowLeft, Check, Eye, GripVertical, Image as ImageIcon, Plus, Search, Trash2, X } from 'lucide-react'
 import ui from './admin-ui.module.css'
 import s from './admin-collection-editor.module.css'
+import UnsavedBar from './admin-unsaved-bar'
 
 type Product = { id: string; name: string; slug: string; sku?: string | null; status: string; basePrice: number; images?: { url: string }[]; category?: { name: string } | null }
 type Collection = { id: string; name: string; slug: string; description?: string | null; imageUrl?: string | null; isActive: boolean; products: { product: Product }[] }
@@ -30,10 +31,14 @@ export default function CollectionEditorShopify({ id }: { id: string }) {
   const [dirty, setDirty] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [selected, setSelected] = useState<string[]>([])
+  const [original, setOriginal] = useState<{ collection: Collection | null; selected: string[] }>({ collection: null, selected: [] })
 
   useEffect(() => {
     Promise.all([api(`/api/admin/collections/${id}`), api('/api/admin/products?page=1&pageSize=100&sort=name_asc')])
-      .then(([c, p]) => { setCollection(c.collection); setProducts(p.rows || []); setLoading(false) })
+      .then(([c, p]) => {
+        setCollection(c.collection); setProducts(p.rows || []); setLoading(false)
+        setOriginal({ collection: c.collection, selected: c.collection.products.map((x: any) => x.product.id) })
+      })
       .catch(e => { setError(e instanceof Error ? e.message : 'Unable to load collection'); setLoading(false) })
   }, [id])
   useEffect(() => { if (collection) setSelected(collection.products.map(x => x.product.id)) }, [collection?.id])
@@ -53,12 +58,20 @@ export default function CollectionEditorShopify({ id }: { id: string }) {
     try {
       await api(`/api/admin/collections/${id}`, { method: 'PATCH', body: JSON.stringify({ name: collection.name, slug: collection.slug, description: collection.description || null, imageUrl: collection.imageUrl || null, isActive: collection.isActive, productIds: selected }) })
       const fresh = await api(`/api/admin/collections/${id}`)
+      const freshSelected = fresh.collection.products.map((x: any) => x.product.id)
       setCollection(fresh.collection)
-      setSelected(fresh.collection.products.map((x: any) => x.product.id))
+      setSelected(freshSelected)
+      setOriginal({ collection: fresh.collection, selected: freshSelected })
       setDirty(false)
       setNotice('Collection saved')
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to save collection') }
     finally { setSaving(false) }
+  }
+
+  function discard() {
+    setCollection(original.collection)
+    setSelected(original.selected)
+    setDirty(false); setError(''); setNotice('')
   }
 
   async function remove() {
@@ -80,15 +93,15 @@ export default function CollectionEditorShopify({ id }: { id: string }) {
         <div>
           <div className={`${ui.muted} ${ui.tiny}`}>COLLECTION</div>
           <h1>{collection.name || 'Untitled collection'}</h1>
-          {dirty && <span className={`${ui.muted} ${ui.tiny}`}>Unsaved changes</span>}
         </div>
       </div>
       <div className="inline">
         <Link className={`${ui.btn} ${ui.btnSecondary} ${s.topbarBtn}`} href={`/collections/${collection.slug}`} target="_blank"><Eye size={16} /> Preview</Link>
         <button className={`${ui.btn} ${ui.btnSecondary} ${s.topbarBtn}`} disabled={deleting} onClick={remove}>{deleting ? 'Deleting…' : <><Trash2 size={16} /> Delete</>}</button>
-        <button className={`${ui.btn} ${s.topbarBtn}`} disabled={saving || !dirty} onClick={save}>{saving ? 'Saving…' : <><Save size={16} /> Save</>}</button>
       </div>
     </div>
+
+    <UnsavedBar dirty={dirty} saving={saving} onDiscard={discard} onSave={save} />
 
     {(error || notice) && <div className={`${ui.alert} ${error ? ui.alertDanger : ''}`}>{error || notice}</div>}
 
