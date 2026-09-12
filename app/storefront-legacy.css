@@ -3385,3 +3385,28 @@ body > .footer {
 .focalAnnouncementGlobal{background:var(--store-announcement-bg,#242219)!important}
 .focalAnnouncementGlobalInner{color:var(--store-announcement-text,#faf9f6)!important;min-height:var(--focal-announcement-height,40px)!important}
 @media(max-width:600px){.focalAnnouncementGlobalInner{min-height:var(--focal-announcement-height,40px)!important}}
+
+/* Invisible white-on-dark headings/text found in the Phase 5 QA pass:
+   two blanket legacy rules -- theme-fallback.css's `h1,h2,h3,h4{color:
+   var(--store-text)}` (specificity 0,0,1) and this file's own
+   `.focalStorefront p{color:color-mix(in srgb,var(--ux-ink) 72%,
+   var(--ux-muted))}` (0,1,1) -- force every heading and paragraph to the
+   site's ink text color regardless of context, clobbering the white
+   text .focalHeroContent and .focalNewsletter.primary already declare
+   on themselves (everything inside was meant to just inherit it).
+   Currently invisible against the newsletter's dark panel, and would go
+   invisible on the hero the moment a real (non-empty) hero photo is
+   set. Fixed with higher-specificity selectors (0,2,1 and 0,3,1) rather
+   than appending a same-or-lower-specificity override and relying on
+   source order to win. */
+.focalStorefront .focalHeroContent h1,
+.focalStorefront .focalHeroContent p{color:inherit}
+.focalStorefront .focalNewsletter.primary h2{color:inherit}
+
+/* Product page accordions (Description/Shipping & returns/Product
+   information) show two disclosure indicators: an intentional
+   ChevronDown icon in the summary's own JSX, plus a leftover
+   +/– floated ::after from an older, pre-redesign CSS era
+   (.focalAccordions summary:after{content:'+'}) that was never removed
+   once the chevron icon replaced it as the real indicator. */
+.focalStorefront .focalAccordions summary:after{content:none}
