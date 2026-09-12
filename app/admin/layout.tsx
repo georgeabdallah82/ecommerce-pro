@@ -109,8 +109,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return <>
     <style dangerouslySetInnerHTML={{__html:adminCss}} />
     <div className="adminShell">
-      <AdminNav groups={visibleGroups} name={user.name} email={user.email} role={user.role} vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} />
-      <main className="adminMain">{children}</main>
+      <AdminNav groups={visibleGroups} name={user.name} email={user.email} role={user.role} vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}>
+        {children}
+      </AdminNav>
     </div>
   </>
 }
