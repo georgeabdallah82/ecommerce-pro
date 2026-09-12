@@ -254,10 +254,10 @@ function MainProductSection({section,theme,product,preview,selected,onSelect,wis
     </section>
   );
 }
-function CountdownSection({section,theme,preview,click}:{section:AnyMap;theme:AnyMap;preview?:boolean;click:(id:string,e:React.MouseEvent)=>void}){
+function CountdownSection({section,theme,preview,click,products,onQuickView,onSelect,wishlist,toggleWish}:{section:AnyMap;theme:AnyMap;preview?:boolean;click:(id:string,e:React.MouseEvent)=>void;products:AnyMap[];onQuickView:(p:AnyMap)=>void;onSelect?:()=>void;wishlist:Record<string,boolean>;toggleWish:(id:string)=>void}){
   const s=section.settings||{}
   const commonStyle={...sectionStyle(theme,s),paddingTop:Number(s.spacing??72),paddingBottom:Number(s.spacing??72)}
-  const commonClass=shellClass(s,'countdown')
+  const commonClass=`${shellClass(s,'countdown')} ${s.background==='primary'||s.background==='dark'?'onDark':''}`
   const target=Date.parse(s.endDate||'')||0
   const [remaining,setRemaining]=useState(()=>Math.max(0,target-Date.now()))
   useEffect(()=>{
@@ -272,6 +272,8 @@ function CountdownSection({section,theme,preview,click}:{section:AnyMap;theme:An
   const mins=Math.floor((totalSec%3600)/60)
   const secs=totalSec%60
   const ended=target>0&&remaining<=0
+  const source=s.collection?products.filter((p:any)=>(p.collections||[]).some((x:any)=>x.collection?.id===s.collection||x.collection?.slug===s.collection||x.collectionId===s.collection)):products
+  const deals=Number(s.limit||0)>0?source.slice(0,Number(s.limit||6)):[]
   return (
     <section key={section.id} className={commonClass} style={commonStyle} onClick={e=>click(section.id,e)}>
       <div className="focalContainer focalCountdown">
@@ -289,6 +291,7 @@ function CountdownSection({section,theme,preview,click}:{section:AnyMap;theme:An
           </div>
         )}
       </div>
+      {deals.length>0&&<div className="focalContainer focalDealStrip">{deals.map((p:any)=><div className="focalDealCard" key={p.id}><ProductCard p={p} theme={theme} onQuickView={onQuickView} preview={preview} onSelect={onSelect} wishlist={wishlist} toggleWish={toggleWish}/></div>)}</div>}
     </section>
   )
 }
@@ -311,6 +314,6 @@ if(type==='newsletter')return <section key={section.id} className={commonClass} 
 if(type==='trust_badges')return <section key={section.id} className={commonClass} style={commonStyle} onClick={e=>click(section.id,e)}><div className="focalContainer"><div className="focalTrustBadges">{(section.blocks||[]).map((b:any)=>{const Icon=TRUST_ICONS[b.settings?.icon]||ShieldCheck;return <div className="focalTrustBadge" key={b.id}><Icon size={22}/><strong>{b.settings?.heading}</strong>{b.settings?.text&&<span>{b.settings.text}</span>}</div>})}</div></div></section>
 if(type==='stats')return <section key={section.id} className={commonClass} style={commonStyle} onClick={e=>click(section.id,e)}><div className="focalContainer"><div className="focalSectionHead"><div><span className="focalEyebrow">BY THE NUMBERS</span><h2>{s.heading||'Trusted by thousands'}</h2></div></div><div className="focalStatsGrid" style={{gridTemplateColumns:`repeat(${Math.min(Number(s.columns||4),6)},minmax(0,1fr))`}}>{(section.blocks||[]).map((b:any)=><div className="focalStat" key={b.id}><strong>{b.settings?.value}</strong><span>{b.settings?.label}</span></div>)}</div></div></section>
 if(type==='social_grid')return <section key={section.id} className={commonClass} style={commonStyle} onClick={e=>click(section.id,e)}><div className="focalContainer"><div className="focalSectionHead"><div><span className="focalEyebrow">{s.handle||'FOLLOW US'}</span><h2>{s.heading||'Shop the feed'}</h2></div></div><div className="focalSocialGrid" style={{gridTemplateColumns:`repeat(${Math.min(Number(s.columns||5),6)},minmax(0,1fr))`}}>{(section.blocks||[]).map((b:any)=><Link key={b.id} href={b.settings?.url||'#'} className="focalSocialItem" onClick={preview?(e:React.MouseEvent)=>{e.preventDefault();e.stopPropagation()}:undefined}>{b.settings?.imageUrl&&<StoreImage src={b.settings.imageUrl} alt=""/>}</Link>)}</div></div></section>
-if(type==='countdown')return <CountdownSection key={section.id} section={section} theme={theme} preview={preview} click={click}/>
+if(type==='countdown')return <CountdownSection key={section.id} section={section} theme={theme} preview={preview} click={click} products={products} onQuickView={setQuickProduct} onSelect={()=>onSelect?.(section.id)} wishlist={wishlist} toggleWish={toggleWish}/>
 if(type==='main_product')return <MainProductSection key={section.id} section={section} theme={theme} product={activeProduct} preview={preview} selected={selected} onSelect={onSelect} wishlist={wishlist} toggleWish={toggleWish}/>
 return null})}{preview&&(sections||[]).some((s:any)=>s&&s.type==='footer'&&s.enabled!==false&&s.settings?.enabled!==false)&&<div className="themeEditorFooter"><Footer theme={theme}/></div>}{quickProduct&&<QuickView product={quickProduct} theme={theme} onClose={()=>setQuickProduct(null)}/>}</div>}
