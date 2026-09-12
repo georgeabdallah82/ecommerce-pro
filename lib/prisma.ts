@@ -261,11 +261,24 @@ function getMockHandler(model: string) {
         if (args?.where?.id?.in) { const ids = new Set(args.where.id.in); list = list.filter((c) => ids.has(c.id)) }
         return list
       }
-      if (model === 'order') return [...mockOrders]
+      if (model === 'order') {
+        let list = [...mockOrders]
+        const w = args?.where || {}
+        if (w.createdAt?.gte) list = list.filter((o) => new Date(o.createdAt) >= new Date(w.createdAt.gte))
+        if (w.createdAt?.lt) list = list.filter((o) => new Date(o.createdAt) < new Date(w.createdAt.lt))
+        if (w.status?.not) list = list.filter((o) => o.status !== w.status.not)
+        if (w.couponCode?.not === null) list = list.filter((o) => o.couponCode != null)
+        if (w.userId?.in) { const ids = new Set(w.userId.in); list = list.filter((o) => ids.has(o.userId)) }
+        if (typeof w.userId === 'string') list = list.filter((o) => o.userId === w.userId)
+        if (args?.distinct?.includes('userId')) { const seen = new Set(); list = list.filter((o) => { if (seen.has(o.userId)) return false; seen.add(o.userId); return true }) }
+        if (args?.orderBy?.createdAt === 'asc') list = list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+        return list
+      }
       if (model === 'coupon') {
         let list = [...mockCoupons]
         if (args?.where?.isActive !== undefined) list = list.filter((x) => x.isActive === args.where.isActive)
         if (args?.where?.isAutomatic !== undefined) list = list.filter((x) => Boolean(x.isAutomatic) === args.where.isAutomatic)
+        if (args?.where?.code?.in) { const codes = new Set(args.where.code.in); list = list.filter((x) => codes.has(x.code)) }
         return list
       }
       if (model === 'shippingZone') return [...mockShippingZones]
@@ -274,6 +287,8 @@ function getMockHandler(model: string) {
         if (args?.where?.role !== undefined) list = list.filter((u) => u.role === args.where.role)
         if (args?.where?.isActive !== undefined) list = list.filter((u) => u.isActive === args.where.isActive)
         if (args?.where?.id?.in) { const ids = new Set(args.where.id.in); list = list.filter((u) => ids.has(u.id)) }
+        if (args?.where?.createdAt?.gte) list = list.filter((u) => new Date(u.createdAt) >= new Date(args.where.createdAt.gte))
+        if (args?.where?.createdAt?.lt) list = list.filter((u) => new Date(u.createdAt) < new Date(args.where.createdAt.lt))
         return list
       }
       if (model === 'setting') return Array.from(mockSettings.entries()).map(([key, value]) => ({ key, value }))
@@ -388,7 +403,25 @@ function getMockHandler(model: string) {
     },
     create: async (args: any) => {
       const item = { id: `${model}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, createdAt: new Date(), updatedAt: new Date(), ...(args?.data || {}) }
-      if (model === 'order') mockOrders.unshift(item)
+      if (model === 'order') {
+        // Prisma's nested relation-write shorthand (`items: { create: [...] }`,
+        // `paymentTransactions: { create: {...} }`) isn't a plain field value --
+        // the generic spread above leaves it as a raw `{create: ...}` wrapper
+        // instead of the array of rows every real Prisma client would return.
+        // Any code iterating order.items/.events/.paymentTransactions as
+        // arrays (this mock's own findMany included, since it returns these
+        // same stored objects) would crash on that wrapper the moment a real
+        // order existed -- expand it into real rows with their own ids here.
+        const expandCreate = (value: any) => {
+          if (!value || typeof value !== 'object') return []
+          const rows = Array.isArray(value) ? value : value.create ? (Array.isArray(value.create) ? value.create : [value.create]) : []
+          return rows.map((row: any) => ({ id: `${model}item-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, createdAt: new Date(), ...row }))
+        }
+        item.items = expandCreate(item.items)
+        item.events = expandCreate(item.events)
+        item.paymentTransactions = expandCreate(item.paymentTransactions)
+        mockOrders.unshift(item)
+      }
       if (model === 'themeVersion') mockThemeVersions.unshift(item)
       if (model === 'storeLocation') { if (item.isDefault) for (const x of mockStoreLocations) x.isDefault = false; mockStoreLocations.push(item) }
       if (model === 'salesChannel') mockSalesChannels.push(item)
