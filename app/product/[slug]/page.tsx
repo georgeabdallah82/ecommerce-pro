@@ -1,5 +1,6 @@
 import { db } from '@/lib/prisma'
 import { getThemeState } from '@/lib/theme'
+import { getProductStats, withProductStats } from '@/lib/product-stats'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { Footer } from '@/components/footer'
@@ -62,7 +63,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   if (!product || product.status !== 'ACTIVE') return notFound()
 
-  const related = product.category
+  const relatedRaw = product.category
     ? await db.product.findMany({
         where: { status: 'ACTIVE', categoryId: product.categoryId, id: { not: product.id } },
         select: {
@@ -91,6 +92,10 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         take: 24,
       })
     : []
+  const [related, [ownStats]] = await Promise.all([
+    withProductStats(relatedRaw),
+    getProductStats([product.id]).then(stats => [stats[product.id]]),
+  ])
 
   const configuredTemplates = Array.isArray(theme.editorTemplates?.Product) ? theme.editorTemplates.Product : []
   const hasMainProduct = configuredTemplates.some((section: any) => section?.type === 'main_product' && section?.enabled !== false && section?.settings?.enabled !== false)
@@ -121,6 +126,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     productType: product.productType,
     basePrice: product.basePrice,
     compareAtPrice: product.compareAtPrice,
+    rating: ownStats?.rating || 0,
+    reviewCount: ownStats?.reviewCount || 0,
+    soldCount: ownStats?.soldCount || 0,
     sku: product.sku,
     status: product.status,
     featured: product.featured,
