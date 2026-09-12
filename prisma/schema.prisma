@@ -669,19 +669,27 @@ model CoinTransaction {
 }
 
 model LiveVisitorSession {
-  id         String   @id @default(cuid())
-  sessionId  String   @unique
-  userId     String?
-  path       String
-  country    String?
-  city       String?
-  region     String?
-  latitude   Float?
-  longitude  Float?
-  device     String?
-  browser    String?
-  os         String?
-  referrer   String?
+  id              String   @id @default(cuid())
+  sessionId       String   @unique
+  userId          String?
+  path            String
+  ipAddress       String?
+  isp             String?
+  country         String?
+  city            String?
+  region          String?
+  // Browser-consented GPS coordinates (exact, opt-in).
+  latitude        Float?
+  longitude       Float?
+  // Server-side IP geolocation (approximate, no consent needed -- this is
+  // what powers the map for the ~100% of visitors who never see the consent
+  // prompt admin-side, i.e. every session).
+  approxLatitude  Float?
+  approxLongitude Float?
+  device          String?
+  browser         String?
+  os              String?
+  referrer        String?
   firstSeenAt DateTime @default(now())
   lastSeenAt  DateTime @default(now())
 

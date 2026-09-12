@@ -231,6 +231,7 @@ const mockShippingZones = [
 ]
 
 const mockAdminLoginLockouts = new Map<string, { id: string; email: string; failedCount: number; lockedUntil: Date | null; updatedAt: Date }>()
+const mockLiveVisitorSessions = new Map<string, any>()
 const mockThemeVersions: Array<{ id: string; theme: string; sections: string; navigation: string; createdAt: Date; createdBy: string | null }> = []
 // Locations/sales channels/webhooks/API credentials all start empty (no seed
 // data) and are populated only through their admin CRUD routes -- unlike the
@@ -310,6 +311,15 @@ function getMockHandler(model: string) {
         let list = [...mockTaxRates]
         if (args?.where?.isActive !== undefined) list = list.filter((x) => x.isActive === args.where.isActive)
         return list.sort((a, b) => a.name.localeCompare(b.name))
+      }
+      if (model === 'liveVisitorSession') {
+        let list = Array.from(mockLiveVisitorSessions.values())
+        if (args?.where?.lastSeenAt?.gte) list = list.filter((v) => v.lastSeenAt >= new Date(args.where.lastSeenAt.gte))
+        if (args?.where?.lastSeenAt?.lt) list = list.filter((v) => v.lastSeenAt < new Date(args.where.lastSeenAt.lt))
+        if (args?.where?.userId?.in) { const ids = new Set(args.where.userId.in); list = list.filter((v) => ids.has(v.userId)) }
+        list = list.sort((a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime())
+        if (args?.take) list = list.slice(0, args.take)
+        return list
       }
       return []
     },
@@ -397,6 +407,12 @@ function getMockHandler(model: string) {
           ? { ...existing, ...(args.update || {}), updatedAt: new Date() }
           : { id: `lockout-${Date.now()}`, email: args.where.email, failedCount: 0, lockedUntil: null, ...(args.create || {}), updatedAt: new Date() }
         mockAdminLoginLockouts.set(args.where.email, record)
+        return record
+      }
+      if (model === 'liveVisitorSession' && args.where?.sessionId) {
+        const existing = mockLiveVisitorSessions.get(args.where.sessionId)
+        const record = existing ? { ...existing, ...(args.update || {}) } : { id: `livevisitor-${Date.now()}`, ...(args.create || {}) }
+        mockLiveVisitorSessions.set(args.where.sessionId, record)
         return record
       }
       return args?.create || args?.update || {}
@@ -507,6 +523,16 @@ function getMockHandler(model: string) {
         const before = mockThemeVersions.length
         for (let i = mockThemeVersions.length - 1; i >= 0; i--) if (ids.has(mockThemeVersions[i].id)) mockThemeVersions.splice(i, 1)
         return { count: before - mockThemeVersions.length }
+      }
+      if (model === 'liveVisitorSession') {
+        const before = mockLiveVisitorSessions.size
+        if (args?.where?.sessionId) {
+          mockLiveVisitorSessions.delete(args.where.sessionId)
+        } else if (args?.where?.lastSeenAt?.lt) {
+          const cutoff = new Date(args.where.lastSeenAt.lt)
+          for (const [id, v] of mockLiveVisitorSessions) if (v.lastSeenAt < cutoff) mockLiveVisitorSessions.delete(id)
+        }
+        return { count: before - mockLiveVisitorSessions.size }
       }
       return { count: 0 }
     },

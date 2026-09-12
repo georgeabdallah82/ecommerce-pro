@@ -119,14 +119,20 @@ export default function OrderAlerts({ vapidPublicKey }: { vapidPublicKey?: strin
         <span>{busy ? 'Working…' : state === 'enabled' ? 'Order alerts on' : 'Enable order alerts'}</span>
       </button>
       {state === 'enabled' && <button type="button" className="orderAlertsTest" onClick={test} disabled={busy}>Test alert</button>}
-      {message && <span className={`orderAlertsMsg ${ui.muted}`}>{message}</span>}
+      {message && <span className={`orderAlertsMsg ${ui.muted}`} role="status">{message}</span>}
       <style jsx>{`
-        .orderAlertsWrap{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+        .orderAlertsWrap{position:relative;display:flex;align-items:center;gap:6px;justify-content:flex-end}
         .orderAlertsBtn{display:flex;align-items:center;gap:6px;pointer-events:auto;touch-action:manipulation;border:1px solid var(--admin-border);background:var(--admin-surface);border-radius:999px;padding:0 11px;height:38px;font-size:12px;font-weight:700;color:var(--admin-ink-soft);cursor:pointer;white-space:nowrap}
         .orderAlertsBtn[data-enabled='true']{background:var(--admin-accent-soft);border-color:var(--admin-accent);color:var(--admin-accent-strong)}
         .orderAlertsBtn:disabled{cursor:default}
         .orderAlertsTest{pointer-events:auto;touch-action:manipulation;border:1px solid var(--admin-border);background:var(--admin-surface);border-radius:999px;padding:0 11px;height:38px;font-size:12px;font-weight:700;color:var(--admin-ink-soft);cursor:pointer;white-space:nowrap}
-        .orderAlertsMsg{font-size:11px;max-width:220px;flex-basis:100%;text-align:right}
+        /* Absolutely positioned rather than an inline flex sibling: the topbar
+           that hosts this component has a fixed height with default (visible)
+           overflow, so a wrapped inline message doesn't grow the header -- it
+           spills straight through it and overlaps the page content underneath.
+           Floating it below the button keeps the header's box intact no
+           matter how long the message is. */
+        .orderAlertsMsg{position:absolute;top:100%;right:0;margin-top:8px;z-index:1;display:block;width:max-content;max-width:240px;padding:8px 10px;border:1px solid var(--admin-border);border-radius:10px;background:var(--admin-surface);box-shadow:var(--admin-shadow-md, 0 8px 24px rgba(0,0,0,.12));font-size:11px;line-height:1.4;text-align:left}
         @media(max-width:1100px){
           .orderAlertsTest{display:none}
           .orderAlertsBtn{width:38px;height:38px;padding:0;justify-content:center;border-radius:10px}

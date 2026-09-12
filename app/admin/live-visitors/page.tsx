@@ -9,7 +9,7 @@ export default async function LiveVisitors() {
       <div>
         <span className={ui.muted}>OPERATIONS & INSIGHTS</span>
         <h1 className={ui.title}>Live visitors</h1>
-        <p className={ui.muted}>See who is on your storefront right now, where they are, and what they are looking at.</p>
+        <p className={ui.muted}>See who is on your storefront right now, their IP address and location, and what they are looking at.</p>
       </div>
     </div>
     <LiveVisitorsAdmin />
