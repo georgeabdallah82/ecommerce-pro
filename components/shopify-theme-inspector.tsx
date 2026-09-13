@@ -21,7 +21,15 @@ function ImageField({ label, value, onChange }: { label: string; value: any; onC
   const [open, setOpen] = useState(false)
   const url = value ? String(value) : ''
   return (
-    <label className="themeInspectorField themeImageField">
+    // A plain div, not a <label> -- there's no native form control here for a
+    // <label> to legitimately point to, only a custom button-driven widget and
+    // a full-screen MediaPicker modal. Wrapping those in <label> triggered the
+    // browser's implicit label click-forwarding: any click on non-button
+    // content inside it (the modal's own backdrop included, since the modal
+    // renders as a descendant) synthesized an extra click on the field's
+    // first button ("Change"/"Upload image"), reopening the picker in the
+    // same tick it was told to close -- so the modal never visibly closed.
+    <div className="themeInspectorField themeImageField">
       <span>{label}</span>
       {url ? (
         <div className="themeImagePreview">
@@ -35,7 +43,7 @@ function ImageField({ label, value, onChange }: { label: string; value: any; onC
         <button type="button" className="themeImageEmpty" onClick={() => setOpen(true)}><ImagePlus size={16} /> Upload image</button>
       )}
       <MediaPicker open={open} onClose={() => setOpen(false)} onAdd={images => { if (images[0]) onChange(images[0].url); setOpen(false) }} />
-    </label>
+    </div>
   )
 }
 function TextArea({ label, value, onChange, placeholder }: { label: string; value: any; onChange: (value: string) => void; placeholder?: string }) {

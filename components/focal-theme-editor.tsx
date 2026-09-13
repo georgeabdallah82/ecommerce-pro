@@ -185,7 +185,13 @@ function ImageField({ label, value, onChange }: { label: string; value: any; onC
   const [open, setOpen] = useState(false)
   const url = value ? String(value) : ''
   return (
-    <label className="themeInspectorField themeImageField">
+    // A plain div, not a <label> -- see the matching note in
+    // shopify-theme-inspector.tsx's ImageField: nesting the MediaPicker modal
+    // inside a <label> made the browser's implicit label click-forwarding
+    // reopen the picker (via a synthesized click on "Change"/"Upload image")
+    // the instant any non-button area -- including the modal's own backdrop --
+    // was clicked, so the modal never visibly closed.
+    <div className="themeInspectorField themeImageField">
       <span>{label}</span>
       {url ? (
         <div className="themeImagePreview">
@@ -199,7 +205,7 @@ function ImageField({ label, value, onChange }: { label: string; value: any; onC
         <button type="button" className="themeImageEmpty" onClick={() => setOpen(true)}><ImagePlus size={16} /> Upload image</button>
       )}
       <MediaPicker open={open} onClose={() => setOpen(false)} onAdd={images => { if (images[0]) onChange(images[0].url); setOpen(false) }} />
-    </label>
+    </div>
   )
 }
 
