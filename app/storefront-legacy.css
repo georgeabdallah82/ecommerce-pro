@@ -3668,6 +3668,36 @@ body > .footer {
   .aliCategoryItem{width:64px;font-size:11px}
 }
 
+/* AliExpress full-site rebuild -- Cart page */
+.aliShippingBanner{display:flex;align-items:center;gap:9px;background:var(--focal-soft);border:1px solid var(--focal-line);color:var(--focal-ink);border-radius:14px;padding:12px 16px;margin-bottom:18px;font-size:13px}
+.aliShippingBanner svg{flex-shrink:0;color:var(--focal-primary)}
+.aliShippingBanner strong{color:var(--focal-primary)}
+.aliCartCheck{display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;letter-spacing:0;font-weight:700}
+.aliCartCheck input{width:17px;height:17px;accent-color:var(--focal-primary);cursor:pointer}
+.aliCartRowMedia{display:flex;flex-direction:column;align-items:center;gap:8px}
+.aliCartRowCheck{width:17px;height:17px;accent-color:var(--focal-primary);cursor:pointer}
+.cartRowUX.aliCartRow.unselected{opacity:.5}
+.aliCouponRow{display:flex;align-items:center;gap:10px;padding:16px 20px;border-top:1px solid var(--focal-line)}
+.aliCouponRow svg{flex-shrink:0;color:var(--focal-muted)}
+.aliCouponRow input{flex:1;min-width:0;height:42px;border:1px solid var(--focal-line);border-radius:10px;padding:0 12px;background:#fff;font-size:13px;text-transform:uppercase}
+.aliCouponRow input::placeholder{text-transform:none}
+.focalButton.disabled,a.focalButton[aria-disabled="true"]{opacity:.45;pointer-events:none}
+.aliCartStickyBar{display:none}
+
+@media(max-width:900px){
+  .aliCartRowMedia{gap:6px}
+}
+@media(max-width:700px){
+  .aliCartPage{padding-bottom:76px}
+  .aliCartPage .summaryUX .aliCartCheckoutLink{display:none}
+  .aliCartStickyBar{position:fixed;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:14px;background:#fff;border-top:1px solid var(--focal-line);padding:12px 16px;box-shadow:0 -8px 24px rgba(25,21,18,.08);z-index:40}
+  .aliCartStickyInfo{display:flex;flex-direction:column;line-height:1.3}
+  .aliCartStickyInfo span{font-size:11px;color:var(--focal-muted)}
+  .aliCartStickyInfo strong{font-size:17px}
+  .aliCartStickyBar .focalButton{min-width:150px}
+  body:has(.aliCartStickyBar) .lv-consent-root{bottom:88px}
+}
+
 /* ============================================================
    AliExpress full-site rebuild -- Product detail page
    ============================================================ */

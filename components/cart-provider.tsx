@@ -18,12 +18,20 @@ type CartContextValue = {
   updateQty: (key: string, qty: number) => void
   removeItem: (key: string) => void
   clear: () => void
+  clearSelected: () => void
   count: number
   subtotal: number
   isOpen: boolean
   openCart: () => void
   closeCart: () => void
   toggleCart: () => void
+  isSelected: (key: string) => boolean
+  toggleSelected: (key: string) => void
+  selectAll: () => void
+  deselectAll: () => void
+  selectedItems: CartItem[]
+  selectedCount: number
+  selectedSubtotal: number
 }
 
 const CartContext = createContext<CartContextValue | null>(null)
@@ -46,8 +54,16 @@ function sanitizeItems(value: unknown): CartItem[] {
     .filter(item => item.productId && item.sku)
 }
 
+function sanitizeSelected(value: unknown): Record<string, boolean> {
+  if (!value || typeof value !== 'object') return {}
+  const out: Record<string, boolean> = {}
+  for (const [key, val] of Object.entries(value as Record<string, unknown>)) out[key] = val !== false
+  return out
+}
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
+  const [selected, setSelected] = useState<Record<string, boolean>>({})
   const [ready, setReady] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
 
@@ -58,6 +74,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } catch {
       localStorage.removeItem('ecom-cart-v1')
       setItems([])
+    }
+    try {
+      const raw = localStorage.getItem('ecom-cart-selected-v1')
+      if (raw) setSelected(sanitizeSelected(JSON.parse(raw)))
+    } catch {
+      localStorage.removeItem('ecom-cart-selected-v1')
     } finally {
       setReady(true)
     }
@@ -66,6 +88,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (ready) localStorage.setItem('ecom-cart-v1', JSON.stringify(items))
   }, [items, ready])
+
+  useEffect(() => {
+    if (ready) localStorage.setItem('ecom-cart-selected-v1', JSON.stringify(selected))
+  }, [selected, ready])
 
   const openCart = () => setIsOpen(true)
   const closeCart = () => setIsOpen(false)
@@ -102,11 +128,33 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         ? prev.filter(x => keyOf(x) !== key)
         : prev.map(x => keyOf(x) === key ? { ...x, quantity: Math.min(MAX_QTY, Math.max(1, next)) } : x)
     }),
-    removeItem: key => setItems(prev => prev.filter(x => keyOf(x) !== key)),
-    clear: () => setItems([]),
+    removeItem: key => {
+      setItems(prev => prev.filter(x => keyOf(x) !== key))
+      setSelected(prev => {
+        if (!(key in prev)) return prev
+        const { [key]: _omit, ...rest } = prev
+        return rest
+      })
+    },
+    clear: () => { setItems([]); setSelected({}) },
+    clearSelected: () => {
+      setItems(prev => prev.filter(x => selected[keyOf(x)] === false))
+      setSelected(prev => {
+        const rest: Record<string, boolean> = {}
+        for (const [key, val] of Object.entries(prev)) if (val === false) rest[key] = val
+        return rest
+      })
+    },
     count: items.reduce((a, b) => a + b.quantity, 0),
     subtotal: items.reduce((a, b) => a + b.price * b.quantity, 0),
-  }), [items, isOpen])
+    isSelected: key => selected[key] !== false,
+    toggleSelected: key => setSelected(prev => ({ ...prev, [key]: prev[key] === false })),
+    selectAll: () => setSelected(Object.fromEntries(items.map(x => [keyOf(x), true]))),
+    deselectAll: () => setSelected(Object.fromEntries(items.map(x => [keyOf(x), false]))),
+    selectedItems: items.filter(x => selected[keyOf(x)] !== false),
+    selectedCount: items.filter(x => selected[keyOf(x)] !== false).reduce((a, b) => a + b.quantity, 0),
+    selectedSubtotal: items.filter(x => selected[keyOf(x)] !== false).reduce((a, b) => a + b.price * b.quantity, 0),
+  }), [items, isOpen, selected])
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>
 }
