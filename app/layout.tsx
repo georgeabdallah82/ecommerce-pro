@@ -21,11 +21,17 @@ export const viewport: Viewport = { width: 'device-width', initialScale: 1, view
 const brand = process.env.NEXT_PUBLIC_BRAND_NAME || 'Your Brand'
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '')
 
-export const metadata: Metadata = {
-  title: { default: brand, template: `%s | ${brand}` },
-  description: `Shop ${brand} online.`,
-  metadataBase: new URL(siteUrl),
-  robots: { index: true, follow: true },
+export async function generateMetadata(): Promise<Metadata> {
+  const seoSettings = await db.setting.findMany({ where: { key: { in: ['seo.title', 'seo.description'] } } }).catch(() => [])
+  const seoMap = new Map(seoSettings.map(s => [s.key, s.value]))
+  const title = seoMap.get('seo.title') || brand
+  const description = seoMap.get('seo.description') || `Shop ${brand} online.`
+  return {
+    title: { default: title, template: `%s | ${title}` },
+    description,
+    metadataBase: new URL(siteUrl),
+    robots: { index: true, follow: true },
+  }
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
