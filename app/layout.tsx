@@ -1,5 +1,6 @@
 import './globals.css'
 import './storefront-legacy.css'
+import { db } from '@/lib/prisma'
 import { getThemeState } from '@/lib/theme'
 import { FONT_VARIABLE_CLASSES } from '@/lib/fonts'
 import { fontCssStack } from '@/lib/font-options'
@@ -25,7 +26,10 @@ export const metadata: Metadata = {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const { theme, navigation } = await getThemeState()
+  const [{ theme, navigation }, categories] = await Promise.all([
+    getThemeState(),
+    db.category.findMany({ where: { isActive: true }, orderBy: { sortOrder: 'asc' } }),
+  ])
   const vars = {
     '--store-bg': theme.colors.background, '--store-surface': theme.colors.surface, '--store-text': theme.colors.text, '--store-muted': theme.colors.muted,
     '--store-primary': theme.colors.primary, '--store-secondary': theme.colors.secondary, '--store-accent': theme.colors.accent,
@@ -52,5 +56,5 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // diff that script's plain DOM mutation against React's tracked style
   // object and warn on every /admin/* load.
   const rootVarsCss = `:root{${Object.entries(vars).map(([key, value]) => `${key}:${String(value).replace(/[{}<]/g, '')}`).join(';')}}`
-  return <html lang="en" className={FONT_VARIABLE_CLASSES}><head><script dangerouslySetInnerHTML={{__html:adminThemeScript}}/><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/>{theme.faviconUrl ? <link rel="icon" href={theme.faviconUrl}/> : null}{theme.customCss ? <style dangerouslySetInnerHTML={{ __html: theme.customCss }}/> : null}</head><body className={theme.animations?.enabled ? 'animations-enabled' : ''}><CartProvider><LiveVisitorTracker/><StoreNavRuntime theme={theme} navigation={navigation}/><StoreNavScroll/>{children}</CartProvider></body></html>
+  return <html lang="en" className={FONT_VARIABLE_CLASSES}><head><script dangerouslySetInnerHTML={{__html:adminThemeScript}}/><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/>{theme.faviconUrl ? <link rel="icon" href={theme.faviconUrl}/> : null}{theme.customCss ? <style dangerouslySetInnerHTML={{ __html: theme.customCss }}/> : null}</head><body className={theme.animations?.enabled ? 'animations-enabled' : ''}><CartProvider><LiveVisitorTracker/><StoreNavRuntime theme={theme} navigation={navigation} categories={categories}/><StoreNavScroll/>{children}</CartProvider></body></html>
 }
