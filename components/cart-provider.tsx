@@ -1,6 +1,8 @@
 'use client'
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { trackAddToCart } from '@/lib/tracking-events'
+import { config } from '@/lib/config'
 
 export type CartItem = {
   productId: string
@@ -120,6 +122,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         if (found) return prev.map(x => keyOf(x) === key ? { ...x, quantity: Math.min(MAX_QTY, x.quantity + safe.quantity) } : x)
         return [...prev, safe]
       })
+      if (item.productId && item.sku) trackAddToCart({ name: item.name, sku: item.sku, price: item.price / 100, quantity: item.quantity }, config.currency)
       if (openDrawer) setIsOpen(true)
     },
     updateQty: (key, qty) => setItems(prev => {
