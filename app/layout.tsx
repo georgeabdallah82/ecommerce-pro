@@ -2,7 +2,7 @@ import './globals.css'
 import './storefront-legacy.css'
 import { headers } from 'next/headers'
 import { db } from '@/lib/prisma'
-import { getThemeState } from '@/lib/theme'
+import { getThemeState, defaultTheme, defaultNavigation } from '@/lib/theme'
 import { getTrackingConfig } from '@/lib/tracking'
 import { FONT_VARIABLE_CLASSES } from '@/lib/fonts'
 import { fontCssStack } from '@/lib/font-options'
@@ -30,10 +30,27 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const isMaintenancePage = (await headers()).get('x-maintenance-active') === '1'
+  // Every page on the site (storefront and admin alike) renders through this
+  // root layout, so a transient database hiccup here -- momentary network
+  // blip talking to Prisma Accelerate, a cold connection, anything short of
+  // a real outage -- must not take down the entire site. A root layout has
+  // no error boundary above it (only global-error.tsx, which replaces the
+  // whole page), so an uncaught rejection here previously surfaced as a raw
+  // Cloudflare "Worker threw exception" page instead of the storefront.
+  // Falling back to sane defaults keeps the site rendering through it.
   const [{ theme, navigation }, categories, tracking] = await Promise.all([
-    getThemeState(),
-    db.category.findMany({ where: { isActive: true }, orderBy: { sortOrder: 'asc' } }),
-    getTrackingConfig(),
+    getThemeState().catch(error => {
+      console.error('[layout] getThemeState failed, using defaults', error)
+      return { theme: defaultTheme, navigation: defaultNavigation }
+    }),
+    db.category.findMany({ where: { isActive: true }, orderBy: { sortOrder: 'asc' } }).catch(error => {
+      console.error('[layout] category fetch failed, using empty list', error)
+      return []
+    }),
+    getTrackingConfig().catch(error => {
+      console.error('[layout] getTrackingConfig failed, tracking disabled', error)
+      return { metaPixelId: '', gaMeasurementId: '', tiktokPixelId: '' }
+    }),
   ])
   const vars = {
     '--store-bg': theme.colors.background, '--store-surface': theme.colors.surface, '--store-text': theme.colors.text, '--store-muted': theme.colors.muted,
