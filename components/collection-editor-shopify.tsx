@@ -15,7 +15,7 @@ type Collection = { id: string; name: string; slug: string; description?: string
 async function api(path: string, init?: RequestInit) {
   const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const data = await r.json().catch(() => ({}))
-  if (!r.ok) throw new Error(data.error || 'Request failed')
+  if (!r.ok) throw new Error(data.error || `Request failed (${r.status})`)
   return data
 }
 
@@ -35,14 +35,25 @@ export default function CollectionEditorShopify({ id }: { id: string }) {
   const [selected, setSelected] = useState<string[]>([])
   const [original, setOriginal] = useState<{ collection: Collection | null; selected: string[] }>({ collection: null, selected: [] })
 
-  useEffect(() => {
-    Promise.all([api(`/api/admin/collections/${id}`), api('/api/admin/products?page=1&pageSize=100&sort=name_asc')])
-      .then(([c, p]) => {
-        setCollection(c.collection); setProducts(p.rows || []); setLoading(false)
+  function load() {
+    setLoading(true); setError('')
+    // The collection itself is essential; the product list only feeds the
+    // "Add products" picker. A transient hiccup on that second, non-essential
+    // call used to be bundled into one Promise.all and blank out the entire
+    // editor -- fetch them independently so the editor still opens (with the
+    // picker simply empty until a retry) as long as the collection loads.
+    api(`/api/admin/collections/${id}`)
+      .then(c => {
+        setCollection(c.collection); setLoading(false)
         setOriginal({ collection: c.collection, selected: c.collection.products.map((x: any) => x.product.id) })
       })
       .catch(e => { setError(e instanceof Error ? e.message : 'Unable to load collection'); setLoading(false) })
-  }, [id])
+    api('/api/admin/products?page=1&pageSize=100&sort=name_asc')
+      .then(p => setProducts(p.rows || []))
+      .catch(() => {})
+  }
+
+  useEffect(load, [id])
   useEffect(() => { if (collection) setSelected(collection.products.map(x => x.product.id)) }, [collection?.id])
 
   const filteredProducts = useMemo(() => products.filter(p => !q || `${p.name} ${p.sku || ''}`.toLowerCase().includes(q.toLowerCase())), [products, q])
@@ -86,7 +97,10 @@ export default function CollectionEditorShopify({ id }: { id: string }) {
   }
 
   if (loading) return <div className={s.loading}>Loading collection…</div>
-  if (!collection) return <div className={ui.empty}>{error || 'Collection not found.'}</div>
+  if (!collection) return <div className={ui.empty}>
+    <p>{error || 'Collection not found.'}</p>
+    {error && <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={load}>Retry</button>}
+  </div>
 
   return <div className={s.page}>
     <div className={s.topbar}>
