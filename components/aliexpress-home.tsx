@@ -3,12 +3,12 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
-import { ProductCard, CollectionCard, QuickView, StoreImage } from '@/components/storefront-sections'
+import { ProductCard, CollectionCard, QuickView, StoreImage, HeroSection } from '@/components/storefront-sections'
 import { useWishlist } from '@/components/use-wishlist'
 
 type AnyMap = Record<string, any>
 
-export default function AliExpressHome({ theme, products, collections, categories }: { theme: AnyMap; products: AnyMap[]; collections: AnyMap[]; categories: AnyMap[] }) {
+export default function AliExpressHome({ theme, hero, products, collections, categories }: { theme: AnyMap; hero?: AnyMap | null; products: AnyMap[]; collections: AnyMap[]; categories: AnyMap[] }) {
   const { wishlist, toggleWish } = useWishlist()
   const [quickProduct, setQuickProduct] = useState<AnyMap | null>(null)
 
@@ -38,6 +38,8 @@ export default function AliExpressHome({ theme, products, collections, categorie
 
   return (
     <div className="focalStorefront aliHome">
+      {hero && <HeroSection theme={theme} section={hero} />}
+
       {categories.length > 0 && (
         <section className="aliCategoryStrip">
           <div className="aliContainer aliCategoryRow">
