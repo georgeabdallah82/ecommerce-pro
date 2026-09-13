@@ -96,10 +96,10 @@ export async function GET(req: Request) {
       ...(q
         ? {
             OR: [
-              { name: { contains: q } },
-              { sku: { contains: q } },
-              { description: { contains: q } },
-              { shortDescription: { contains: q } },
+              { name: { contains: q, mode: 'insensitive' as const } },
+              { sku: { contains: q, mode: 'insensitive' as const } },
+              { description: { contains: q, mode: 'insensitive' as const } },
+              { shortDescription: { contains: q, mode: 'insensitive' as const } },
             ],
           }
         : {}),
