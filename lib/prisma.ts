@@ -243,6 +243,17 @@ const mockWebhookEndpoints: any[] = []
 const mockApiCredentials: any[] = []
 const mockTaxRates: any[] = []
 
+// Matches the storefront's product text-search field filters -- {contains, mode?} --
+// against a single mock product field. Real Prisma/Mongo does this server-side;
+// the mock has to reimplement it by hand since it never reaches a real database.
+function mockFieldContains(value: unknown, condition: any): boolean {
+  const contains = condition?.contains
+  if (typeof contains !== 'string' || typeof value !== 'string') return false
+  return condition?.mode === 'insensitive'
+    ? value.toLowerCase().includes(contains.toLowerCase())
+    : value.includes(contains)
+}
+
 function getMockHandler(model: string) {
   return {
     findMany: async (args?: any) => {
@@ -252,6 +263,13 @@ function getMockHandler(model: string) {
         if (args?.where?.featured !== undefined) list = list.filter((p) => p.featured === args.where.featured)
         if (args?.where?.slug) list = list.filter((p) => p.slug === args.where.slug)
         if (args?.where?.id?.in) { const ids = new Set(args.where.id.in); list = list.filter((p) => ids.has(p.id)) }
+        if (args?.where?.category?.slug) list = list.filter((p) => p.category?.slug === args.where.category.slug)
+        if (args?.where?.basePrice?.gte !== undefined) list = list.filter((p) => p.basePrice >= args.where.basePrice.gte)
+        if (args?.where?.basePrice?.lte !== undefined) list = list.filter((p) => p.basePrice <= args.where.basePrice.lte)
+        if (Array.isArray(args?.where?.OR)) {
+          const conditions: any[] = args.where.OR
+          list = list.filter((p) => conditions.some((cond) => Object.entries(cond).some(([field, sub]) => mockFieldContains((p as any)[field], sub))))
+        }
         if (args?.take) list = list.slice(0, args.take)
         return list
       }
