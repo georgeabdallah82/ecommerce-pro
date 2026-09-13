@@ -152,7 +152,7 @@ const css = `
 .focalMobileChild.level2{padding-left:12px;font-size:12px}
 
 /* ALIEXPRESS-STYLE INLINE SEARCH BAR (desktop) */
-.aliNavSearchWrap{flex:1;max-width:640px;margin:0 24px;position:relative}
+.aliNavSearchWrap{flex:1;max-width:760px;margin:0 24px;position:relative}
 .aliNavSearchBar{display:flex;align-items:stretch;height:42px;border:2px solid var(--focal-primary);border-radius:999px;overflow:hidden;background:#fff}
 .aliNavSearchBar input{flex:1;min-width:0;border:0;outline:0;padding:0 16px;font-size:13.5px;font-weight:600;background:transparent;color:var(--focal-ink)}
 .aliNavSearchSubmit{border:0;background:var(--focal-primary);color:#fff;padding:0 22px;display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:800;cursor:pointer;flex:none}
@@ -162,8 +162,7 @@ const css = `
 
 /* ALIEXPRESS-STYLE "ALL CATEGORIES" MEGA-MENU */
 .focalNavSecondary{border-top:1px solid var(--focal-line)}
-.focalNavSecondaryInner{height:46px;display:flex;align-items:center;gap:18px;overflow-x:auto;scrollbar-width:none}
-.focalNavSecondaryInner::-webkit-scrollbar{display:none}
+.focalNavSecondaryInner{height:46px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
 .aliNavCatWrap{position:relative;height:100%;display:flex;align-items:center;flex:none}
 .aliNavCatBtn{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 14px;border-radius:9px;background:var(--focal-primary);color:#fff;font-size:12.5px;font-weight:800;border:0;cursor:pointer;white-space:nowrap}
 .aliNavCatPanel{position:absolute;top:calc(100% + 8px);left:0;min-width:230px;background:#fff;border:1px solid var(--focal-line);border-radius:14px;box-shadow:0 20px 50px rgba(25,21,18,.14);padding:8px;z-index:60;animation:focalMenuPop .2s cubic-bezier(.16,1,.3,1)}
@@ -374,7 +373,7 @@ export default function StoreNavFixed({ theme, navigation, categories = [] }: { 
       <div className="focalNavSecondary focalContainer">
         <div className="focalNavSecondaryInner">
           <div className="aliNavCatWrap" onMouseEnter={() => setCatOpen(true)} onMouseLeave={() => setCatOpen(false)}>
-            <button className="aliNavCatBtn" aria-haspopup="true" aria-expanded={catOpen} onClick={() => setCatOpen(o => !o)}>
+            <button className="aliNavCatBtn" aria-haspopup="true" aria-expanded={catOpen} onClick={() => setCatOpen(true)}>
               <Grid3x3 size={14}/> All Categories <ChevronDown size={12}/>
             </button>
             {catOpen && (
