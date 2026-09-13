@@ -3823,3 +3823,14 @@ body > .footer {
 @media(max-width:600px){
   .aliShopGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 }
+
+/* Legal pages (Privacy / Terms / Refund policy) */
+.aliLegalPage{padding:36px 0 60px;max-width:760px}
+.aliLegalPage h1{font-size:32px;letter-spacing:-.02em;margin:0 0 6px}
+.aliLegalUpdated{color:var(--focal-muted);font-size:13px;margin:0 0 32px}
+.aliLegalPage h2{font-size:19px;margin:34px 0 10px;letter-spacing:-.01em}
+.aliLegalPage p{line-height:1.7;color:var(--focal-ink);margin:0 0 14px}
+.aliLegalPage ul{margin:0 0 14px;padding-left:20px;line-height:1.7;color:var(--focal-ink)}
+.aliLegalPage li{margin-bottom:6px}
+.aliLegalPage a{color:var(--focal-primary);text-decoration:underline}
+.aliLegalPlaceholder{background:var(--focal-soft);color:var(--focal-primary);padding:1px 5px;border-radius:5px;font-weight:700}

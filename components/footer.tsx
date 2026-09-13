@@ -36,7 +36,7 @@ export function Footer({ theme }: { theme?: any }) {
 .focalFooterHelp{background:var(--store-primary,#d42a2a);color:#fff}
 .focalFooterHelpInner{display:flex;align-items:center;justify-content:center;gap:14px;padding:14px 0;font-size:13px;font-weight:700;flex-wrap:wrap;text-align:center}
 .focalFooterWhatsapp{display:inline-flex;align-items:center;gap:7px;background:#fff;color:var(--store-primary,#d42a2a);padding:8px 16px;border-radius:999px;font-weight:800;font-size:12px}
-.footerGrid.marketplace{grid-template-columns:1.6fr 1fr 1fr}
+.footerGrid.marketplace{grid-template-columns:1.4fr 1fr 1fr 1fr}
 .focalFooterSocial{display:flex;gap:8px;margin-top:16px}
 .focalFooterSocial a{width:34px;height:34px;border-radius:50%;background:var(--store-primary,#d42a2a);color:#fff;display:inline-flex;align-items:center;justify-content:center}
 .focalFooterSocial a:hover{opacity:.85}
@@ -87,6 +87,12 @@ export function Footer({ theme }: { theme?: any }) {
           <p><Link href="/account">My account</Link></p>
           <p><Link href="/orders/lookup">Track your order</Link></p>
           <p><Link href="/cart">Cart</Link></p>
+        </div>
+        <div>
+          <strong>Legal</strong>
+          <p><Link href="/privacy-policy">Privacy Policy</Link></p>
+          <p><Link href="/terms-of-service">Terms of Service</Link></p>
+          <p><Link href="/refund-policy">Refund Policy</Link></p>
         </div>
       </div>
       <div className="focalContainer focalFooterBottom">
