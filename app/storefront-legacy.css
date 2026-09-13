@@ -3667,3 +3667,30 @@ body > .footer {
   .aliCategoryIcon{width:52px;height:52px}
   .aliCategoryItem{width:64px;font-size:11px}
 }
+
+/* AliExpress full-site rebuild -- Collections pages */
+.aliEmptyState{padding:60px 24px;text-align:center;color:var(--focal-muted,#746b64)}
+.aliCollectionsPage{padding:28px 0 60px}
+.aliCollectionsHead{margin-bottom:24px}
+.aliCollectionsHead h1{margin:6px 0 4px}
+.aliCollectionsHead p{margin:0;color:var(--focal-muted)}
+.aliCollectionCard .focalCollectionCopy{align-items:center}
+.aliCollectionCount{font-size:11px;font-weight:800;color:var(--focal-muted);white-space:nowrap}
+.aliCollectionDesc{margin:-8px 0 14px;padding:0 15px;color:var(--focal-muted);font-size:12.5px;line-height:1.5;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+
+.aliCollectionPage{padding-bottom:60px}
+.aliCollectionBanner{position:relative;min-height:280px;background:#f4eee9;overflow:hidden}
+.aliCollectionBanner img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.aliCollectionBannerOverlay{position:relative;min-height:280px;display:flex;align-items:flex-end;background:linear-gradient(180deg,rgba(20,16,13,.05),rgba(20,16,13,.72))}
+.aliCollectionBannerOverlay .aliContainer{padding-bottom:32px;color:#fff}
+.aliCollectionBannerOverlay h1{margin:8px 0 8px;color:#fff}
+.aliCollectionBannerOverlay p{margin:0 0 10px;max-width:62ch;color:rgba(255,255,255,.86)}
+.aliCollectionBannerOverlay .focalEyebrow{color:rgba(255,255,255,.86)}
+.aliCollectionBannerOverlay .aliCollectionCount{color:rgba(255,255,255,.86)}
+.aliCollectionToolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 0;border-bottom:1px solid var(--focal-line);margin-bottom:20px}
+.aliCollectionToolbar select{height:40px;border:1px solid var(--focal-line);border-radius:10px;background:#fff;padding:0 12px;font-size:13px}
+
+@media(max-width:700px){
+  .aliCollectionBanner,.aliCollectionBannerOverlay{min-height:200px}
+  .aliCollectionBannerOverlay .aliContainer{padding-bottom:20px}
+}
