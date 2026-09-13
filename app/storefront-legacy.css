@@ -3620,3 +3620,50 @@ body > .footer {
 @media(max-width:760px){
   .focalDealCard{width:150px}
 }
+
+/* ============================================================
+   Hardcoded AliExpress-style homepage (components/aliexpress-home.tsx)
+   ============================================================ */
+
+.aliHome{background:var(--store-bg,#fffaf6)}
+.aliContainer{width:min(1280px,calc(100% - 48px));margin:0 auto}
+
+.aliCategoryStrip{background:var(--store-surface,#fff);border-bottom:1px solid var(--store-border,#eaded4);padding:18px 0}
+.aliCategoryRow{display:flex;gap:22px;overflow-x:auto;scrollbar-width:thin;padding-bottom:2px}
+.aliCategoryItem{display:flex;flex-direction:column;align-items:center;gap:8px;flex:0 0 auto;width:76px;text-decoration:none;color:var(--store-text,#191512);font-size:12px;font-weight:700;text-align:center}
+.aliCategoryIcon{width:64px;height:64px;border-radius:50%;overflow:hidden;background:var(--store-secondary,#fff0e8);border:1px solid var(--store-border,#eaded4)}
+.aliCategoryIcon img{width:100%;height:100%;object-fit:cover;display:block}
+
+.aliFlash{background:var(--store-primary,#d42a2a);padding:28px 0 36px;color:#fff}
+.aliFlashHead{display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-bottom:18px}
+.aliFlashTitle{display:flex;align-items:center;gap:8px}
+.aliFlashTitle h2{margin:0;font-size:26px;letter-spacing:-.03em;color:#fff}
+.aliFlashBolt{font-size:22px}
+.aliFlashTimer{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:rgba(255,255,255,.85)}
+.aliFlashTimer strong{background:rgba(0,0,0,.28);border-radius:6px;padding:4px 7px;color:#fff;font-variant-numeric:tabular-nums}
+.aliFlash .aliViewAll{margin-left:auto;color:#fff}
+.aliFlashGrid{display:flex;gap:14px;overflow-x:auto;scrollbar-width:thin;padding-bottom:4px}
+.aliFlashGrid .focalProductCard{flex:0 0 auto;width:200px;background:#fff;border-radius:14px;overflow:hidden}
+.aliFlashGrid .focalProductBody{padding:10px 12px 14px}
+
+.aliSection{padding:36px 0}
+.aliSectionHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.aliSectionHead h2{margin:0;font-size:24px;letter-spacing:-.03em;color:var(--store-text,#191512)}
+.aliViewAll{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:800;color:var(--store-text,#191512);text-decoration:none}
+
+.aliCollectionGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.aliDenseGrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:14px}
+
+@media(max-width:1000px){
+  .aliCollectionGrid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .aliDenseGrid{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media(max-width:760px){
+  .aliCollectionGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .aliDenseGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .aliFlash{padding:22px 0 28px}
+  .aliFlashTitle h2,.aliSectionHead h2{font-size:19px}
+  .aliFlashGrid .focalProductCard{width:150px}
+  .aliCategoryIcon{width:52px;height:52px}
+  .aliCategoryItem{width:64px;font-size:11px}
+}

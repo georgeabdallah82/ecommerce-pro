@@ -1,23 +1,19 @@
 import {db} from '@/lib/prisma'
 import {getThemeState} from '@/lib/theme'
 import {withProductStats} from '@/lib/product-stats'
-import LiveStorefrontSections from '@/components/live-storefront-sections'
+import AliExpressHome from '@/components/aliexpress-home'
 import {Footer} from '@/components/footer'
 
 export const dynamic='force-dynamic'
 export const revalidate=0
 
 export default async function Home(){
-  const {theme,sections}=await getThemeState()
-  const [rawProducts,collections]=await Promise.all([
-    db.product.findMany({where:{status:'ACTIVE'},include:{images:true,category:true,collections:{include:{collection:true}}},orderBy:[{featured:'desc'},{createdAt:'desc'}],take:32}),
-    db.collection.findMany({where:{isActive:true},include:{products:{select:{productId:true}}},take:32,orderBy:{sortOrder:'asc'}})
+  const {theme}=await getThemeState()
+  const [rawProducts,collections,categories]=await Promise.all([
+    db.product.findMany({where:{status:'ACTIVE'},include:{images:true,category:true,collections:{include:{collection:true}}},orderBy:[{featured:'desc'},{createdAt:'desc'}],take:60}),
+    db.collection.findMany({where:{isActive:true},include:{products:{select:{productId:true}}},take:12,orderBy:{sortOrder:'asc'}}),
+    db.category.findMany({where:{isActive:true,parentId:null},take:12,orderBy:{sortOrder:'asc'}}),
   ])
   const products=await withProductStats(rawProducts)
-  const hasHomeTemplate=Object.prototype.hasOwnProperty.call(theme.editorTemplates || {}, 'Home page')
-  const homeTemplates=hasHomeTemplate
-    ? (Array.isArray(theme.editorTemplates['Home page']) ? theme.editorTemplates['Home page'] : [])
-    : sections
-  const footerEnabled=homeTemplates.some((s:any)=>s.type==='footer'&&s.enabled!==false&&s.settings?.enabled!==false)
-  return <><LiveStorefrontSections theme={theme} sections={homeTemplates} products={products} collections={collections}/>{footerEnabled&&<Footer theme={theme}/>}</>
+  return <><AliExpressHome theme={theme} products={products} collections={collections} categories={categories}/><Footer theme={theme}/></>
 }
