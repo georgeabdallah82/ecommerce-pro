@@ -27,6 +27,10 @@ const CLIENT_SETTING_KEYS = new Set([
   'tracking.metaPixelId',
   'tracking.gaMeasurementId',
   'tracking.tiktokPixelId',
+  'maintenance.enabled',
+  'maintenance.launchAt',
+  'maintenance.headline',
+  'maintenance.message',
 ])
 
 export default async function Settings() {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Save, Store, CreditCard, Truck, Globe2, Mail, ShieldCheck, Search, Bell, Code2, ChevronRight, BarChart3 } from 'lucide-react'
+import { Save, Store, CreditCard, Truck, Globe2, Mail, ShieldCheck, Search, Bell, Code2, ChevronRight, BarChart3, Timer } from 'lucide-react'
 import styles from './admin-settings-center.module.css'
 import ui from './admin-ui.module.css'
 
@@ -14,8 +14,17 @@ const groups = [
   { key: 'Email', label: 'Email & messaging', icon: Mail, desc: 'Customer communication preferences' },
   { key: 'Security', label: 'Security & access', icon: ShieldCheck, desc: 'Staff access and account protection' },
   { key: 'Tracking', label: 'Tracking & pixels', icon: BarChart3, desc: 'Facebook/Meta, Google Analytics, and TikTok pixels' },
+  { key: 'Coming soon', label: 'Coming soon', icon: Timer, desc: 'Show an under-construction page with a launch countdown' },
   { key: 'Custom data', label: 'Custom data', icon: Code2, desc: 'Metafields and structured data' },
 ]
+
+function isoToLocalInput(iso: string) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
 
 type PaymentConfig = {
   provider: string
@@ -61,12 +70,18 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
     'tracking.metaPixelId': map.get('tracking.metaPixelId') || '',
     'tracking.gaMeasurementId': map.get('tracking.gaMeasurementId') || '',
     'tracking.tiktokPixelId': map.get('tracking.tiktokPixelId') || '',
+    'maintenance.launchAt': map.get('maintenance.launchAt') || '',
+    'maintenance.headline': map.get('maintenance.headline') || "We're launching soon",
+    'maintenance.message': map.get('maintenance.message') || "We're putting the finishing touches on something great. Check back soon.",
   })
-  const [flags, setFlags] = useState<Record<string, boolean>>(() => Object.fromEntries([
-    'payment.cod', 'payment.card', 'payment.bank', 'payment.wallet',
-    'checkout.guestCheckout', 'notifications.orderEmail', 'notifications.lowStock',
-    'notifications.reviews', 'email.customerOrder', 'email.fulfillment', 'email.abandonedCheckout',
-  ].map(k => [k, map.get(k) !== 'false'])))
+  const [flags, setFlags] = useState<Record<string, boolean>>(() => ({
+    ...Object.fromEntries([
+      'payment.cod', 'payment.card', 'payment.bank', 'payment.wallet',
+      'checkout.guestCheckout', 'notifications.orderEmail', 'notifications.lowStock',
+      'notifications.reviews', 'email.customerOrder', 'email.fulfillment', 'email.abandonedCheckout',
+    ].map(k => [k, map.get(k) !== 'false'])),
+    'maintenance.enabled': map.get('maintenance.enabled') === 'true',
+  }))
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig>(defaultPaymentConfig)
   const [paymentLoading, setPaymentLoading] = useState(false)
 
@@ -257,6 +272,25 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
                 <Field label="Google Analytics measurement ID" value={values['tracking.gaMeasurementId']} onChange={v => set('tracking.gaMeasurementId', v)} />
                 <Field label="TikTok Pixel ID" value={values['tracking.tiktokPixelId']} onChange={v => set('tracking.tiktokPixelId', v)} />
               </div>
+            </Card>
+          )}
+
+          {tab === 'Coming soon' && (
+            <Card title="Coming soon" desc="While enabled, every visitor is shown this under-construction page with a countdown instead of the real storefront. You (signed-in staff) keep seeing the real site.">
+              <Toggle label="Show coming soon page" keyName="maintenance.enabled" value={flags['maintenance.enabled']} onChange={() => toggle('maintenance.enabled')} />
+              <div className={ui.twoCol}>
+                <label className={ui.fieldLabel}>
+                  Launch date &amp; time
+                  <input
+                    className={ui.input}
+                    type="datetime-local"
+                    value={isoToLocalInput(values['maintenance.launchAt'])}
+                    onChange={e => set('maintenance.launchAt', e.target.value ? new Date(e.target.value).toISOString() : '')}
+                  />
+                </label>
+                <Field label="Headline" value={values['maintenance.headline']} onChange={v => set('maintenance.headline', v)} />
+              </div>
+              <Field label="Message" value={values['maintenance.message']} onChange={v => set('maintenance.message', v)} />
             </Card>
           )}
 

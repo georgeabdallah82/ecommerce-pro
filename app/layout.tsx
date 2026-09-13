@@ -1,5 +1,6 @@
 import './globals.css'
 import './storefront-legacy.css'
+import { headers } from 'next/headers'
 import { db } from '@/lib/prisma'
 import { getThemeState } from '@/lib/theme'
 import { getTrackingConfig } from '@/lib/tracking'
@@ -28,6 +29,7 @@ export const metadata: Metadata = {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const isMaintenancePage = (await headers()).get('x-maintenance-active') === '1'
   const [{ theme, navigation }, categories, tracking] = await Promise.all([
     getThemeState(),
     db.category.findMany({ where: { isActive: true }, orderBy: { sortOrder: 'asc' } }),
@@ -59,5 +61,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // diff that script's plain DOM mutation against React's tracked style
   // object and warn on every /admin/* load.
   const rootVarsCss = `:root{${Object.entries(vars).map(([key, value]) => `${key}:${String(value).replace(/[{}<]/g, '')}`).join(';')}}`
+  if (isMaintenancePage) {
+    return <html lang="en" className={FONT_VARIABLE_CLASSES}><head><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/>{theme.faviconUrl ? <link rel="icon" href={theme.faviconUrl}/> : null}</head><body>{children}</body></html>
+  }
   return <html lang="en" className={FONT_VARIABLE_CLASSES}><head><script dangerouslySetInnerHTML={{__html:adminThemeScript}}/><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/>{theme.faviconUrl ? <link rel="icon" href={theme.faviconUrl}/> : null}{theme.customCss ? <style dangerouslySetInnerHTML={{ __html: theme.customCss }}/> : null}</head><body className={theme.animations?.enabled ? 'animations-enabled' : ''}><TrackingScripts config={tracking}/><CartProvider><LiveVisitorTracker/><StoreNavRuntime theme={theme} navigation={navigation} categories={categories}/><StoreNavScroll/>{children}</CartProvider></body></html>
 }
