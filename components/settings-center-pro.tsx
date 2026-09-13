@@ -157,16 +157,30 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
 
         <main className={styles.main}>
           {tab === 'General' && (
-            <Card title="Store details" desc="Basic information used throughout your storefront.">
-              <div className={ui.twoCol}>
-                <Field label="Store name" value={values['store.name']} onChange={v => set('store.name', v)} />
-                <Field label="Currency" value={values['store.currency']} onChange={v => set('store.currency', v.toUpperCase())} />
-                <Field label="Country" value={values['store.country']} onChange={v => set('store.country', v)} />
-                <Field label="Timezone" value={values['store.timezone']} onChange={v => set('store.timezone', v)} />
-                <Field label="Store email" value={values['contact.email']} onChange={v => set('contact.email', v)} />
-                <Field label="Phone / WhatsApp" value={values['contact.phone']} onChange={v => set('contact.phone', v)} />
-              </div>
-            </Card>
+            <>
+              <Card title="Store details" desc="Basic information used throughout your storefront.">
+                <div className={ui.twoCol}>
+                  <Field label="Store name" value={values['store.name']} onChange={v => set('store.name', v)} />
+                  <Field label="Currency" value={values['store.currency']} onChange={v => set('store.currency', v.toUpperCase())} />
+                  <Field label="Country" value={values['store.country']} onChange={v => set('store.country', v)} />
+                  <Field label="Timezone" value={values['store.timezone']} onChange={v => set('store.timezone', v)} />
+                  <Field label="Store email" value={values['contact.email']} onChange={v => set('contact.email', v)} />
+                  <Field label="Phone / WhatsApp" value={values['contact.phone']} onChange={v => set('contact.phone', v)} />
+                </div>
+              </Card>
+
+              <Card title="Search engine listing" desc="Title and description shown by Google and social previews for your homepage and any page that doesn't set its own.">
+                <Field label="SEO title" value={values['seo.title']} onChange={v => set('seo.title', v)} />
+                <label className={ui.fieldLabel}>
+                  SEO description
+                  <textarea className={ui.textarea} rows={3} value={values['seo.description'] || ''} onChange={e => set('seo.description', e.target.value)} />
+                </label>
+                <div className={ui.muted} style={{ border: '1px solid var(--admin-border, #e5e0da)', borderRadius: 10, padding: 12 }}>
+                  <strong style={{ display: 'block', color: 'inherit' }}>{values['seo.title'] || values['store.name']}</strong>
+                  <span style={{ display: 'block', marginTop: 4 }}>{values['seo.description'] || `Shop ${values['store.name']} online.`}</span>
+                </div>
+              </Card>
+            </>
           )}
 
           {tab === 'Payments' && (
