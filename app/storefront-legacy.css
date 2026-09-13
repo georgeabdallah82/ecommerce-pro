@@ -3667,3 +3667,42 @@ body > .footer {
   .aliCategoryIcon{width:52px;height:52px}
   .aliCategoryItem{width:64px;font-size:11px}
 }
+
+/* ============================================================
+   AliExpress full-site rebuild -- Shop/listing page
+   ============================================================ */
+
+.aliShopPage{background:var(--store-bg,#fffaf6);padding:24px 0 60px}
+.aliShopLayout{display:grid;grid-template-columns:220px 1fr;gap:28px;align-items:start}
+
+.aliShopSidebar{position:sticky;top:16px;display:flex;flex-direction:column;gap:24px}
+.aliShopSidebar h3{margin:0 0 10px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--store-muted,#746b64)}
+.aliCategoryList{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.aliCategoryList a{display:block;padding:8px 10px;border-radius:8px;text-decoration:none;color:var(--store-text,#191512);font-size:14px;font-weight:600}
+.aliCategoryList a:hover{background:var(--store-secondary,#fff0e8)}
+.aliCategoryList a.active{background:var(--store-primary,#d42a2a);color:#fff}
+.aliPriceFilter{display:flex;flex-direction:column;gap:10px}
+.aliPriceInputs{display:flex;align-items:center;gap:8px}
+.aliPriceInputs input{width:0;flex:1;height:38px;border:1px solid var(--store-border,#eaded4);border-radius:8px;padding:0 10px;font:inherit;background:var(--store-surface,#fff);color:var(--store-text,#191512)}
+.aliPriceApply{width:100%;min-height:38px}
+
+.aliShopMain{min-width:0}
+.aliShopToolbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.aliShopSearch{flex:1;min-width:180px;display:flex;align-items:center;gap:8px;height:44px;border:1px solid var(--store-border,#eaded4);border-radius:999px;padding:0 16px;background:var(--store-surface,#fff);color:var(--store-muted,#746b64)}
+.aliShopSearch input{border:0;outline:0;background:transparent;flex:1;color:var(--store-text,#191512);font:inherit}
+.aliShopToolbar select{height:44px;border:1px solid var(--store-border,#eaded4);border-radius:999px;padding:0 14px;background:var(--store-surface,#fff);color:var(--store-text,#191512);font:inherit}
+.aliResultCount{color:var(--store-muted,#746b64);font-size:13px;margin:0 0 14px}
+.aliShopGrid{grid-template-columns:repeat(5,minmax(0,1fr))}
+.aliEmptyState{padding:60px 0;text-align:center;color:var(--store-muted,#746b64)}
+
+@media(max-width:900px){
+  .aliShopLayout{grid-template-columns:1fr}
+  .aliShopSidebar{position:static;flex-direction:row;flex-wrap:wrap;gap:16px 24px}
+  .aliShopSidebar > div,.aliShopSidebar > form{flex:1;min-width:200px}
+  .aliCategoryList{flex-direction:row;flex-wrap:wrap;gap:6px}
+  .aliCategoryList a{padding:6px 12px;border:1px solid var(--store-border,#eaded4)}
+  .aliShopGrid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:600px){
+  .aliShopGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+}
