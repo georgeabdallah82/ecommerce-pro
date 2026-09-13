@@ -17,8 +17,16 @@ const defaultSettings:StoreSettings={payment:{cod:true,card:false,bank:false,wal
 declare global { interface Window { Checkout?: { configure: (options: unknown) => void; showPaymentPage: () => void } } }
 
 export default function Checkout() {
-  const { items, subtotal, clear } = useCart()
+  const { selectedItems: items, selectedSubtotal: subtotal, clearSelected } = useCart()
   const router = useRouter()
+  const [savedCoupon, setSavedCoupon] = useState('')
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('ecom-coupon-code')
+      if (saved) setSavedCoupon(saved)
+    } catch {}
+  }, [])
   const idempotencyKey = useRef(crypto.randomUUID())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -77,7 +85,8 @@ export default function Checkout() {
     try {
       const response=await fetch('/api/checkout',{method:'POST',headers:{'content-type':'application/json','x-idempotency-key':idempotencyKey.current},body:JSON.stringify(data)})
       const output=await response.json(); if(!response.ok)throw new Error(output.error||'Unable to place order')
-      clear()
+      clearSelected()
+      try { localStorage.removeItem('ecom-coupon-code') } catch {}
       if(output.payment?.type==='mpgs'){setClientCheckout(output.payment as ClientCheckout);setLoading(false);return}
       const successUrl = authenticated ? `/order/success?order=${encodeURIComponent(output.order.orderNumber)}` : `/order/success?order=${encodeURIComponent(output.order.orderNumber)}&email=${encodeURIComponent(data.email)}`
       router.push(successUrl)
@@ -102,7 +111,7 @@ export default function Checkout() {
     {paymentMethod==='WALLET' && authenticated && <div className={walletBalance>0?'alert':'alert danger'}><strong>Store wallet</strong><div>{money(walletBalance,walletCurrency)} available for this order.</div></div>}
     {authenticated && coinBalance>0 && <div className="card" style={{padding:16,marginTop:12}}><strong>Use loyalty coins</strong><p className="muted" style={{marginTop:4}}>1 coin = 0.01 in store currency.</p><div className="inline" style={{marginTop:10,gap:10}}><input className="input" type="number" min="0" max={coinBalance} step="1" inputMode="numeric" value={coinsToUse||''} onChange={e=>setCoinsToUse(Math.max(0,Math.min(coinBalance,Number(e.target.value)||0)))} placeholder="Coins to use" /><button className="btn secondary" type="button" onClick={()=>setCoinsToUse(coinBalance)}>Use all</button></div>{coinsToUse>0&&<div className="muted" style={{marginTop:8}}>Discount: {money(coinsToUse)}</div>}</div>}
     {showBankDetails && <div className="alert"><strong>Bank transfer details</strong><div>Bank: {bankDetails.bankName || '—'}</div><div>Account name: {bankDetails.accountName || '—'}</div><div>IBAN: {bankDetails.iban || '—'}</div>{bankDetails.instructions && <div>{bankDetails.instructions}</div>}</div>}
-    <label className="fieldLabel">Coupon <span className="muted">(optional)</span><input className="input" name="couponCode" autoCapitalize="characters" placeholder="Coupon code" /></label>
+    <label className="fieldLabel">Coupon <span className="muted">(optional)</span><input className="input" name="couponCode" autoCapitalize="characters" placeholder="Coupon code" defaultValue={savedCoupon} key={savedCoupon} /></label>
     {error&&<div className="alert danger" role="alert" aria-live="polite">{error}</div>}
     <button className="btn" type="submit" disabled={loading||!items.length||!settings||!sessionLoaded||enabledMethods.length===0||guestBlocked} aria-busy={loading}>{loading?'Placing order…':'Place order'}</button><Link className="textLink" href="/cart">Back to cart</Link>
   </form><aside className="card summaryCard"><span className="muted">ORDER SUMMARY</span>{items.map(item=><div className="summaryLine" key={item.productId+String(item.variantId)}><span>{item.name} × {item.quantity}</span><strong>{money(item.price*item.quantity)}</strong></div>)}<div className="summaryLine total"><span>Total before shipping</span><strong>{money(subtotal)}</strong></div><p className="muted">Shipping and tax are calculated securely at checkout from your delivery area and store rules.</p></aside></div></main>
