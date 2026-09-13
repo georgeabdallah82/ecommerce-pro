@@ -15,7 +15,31 @@ function img(raw:any){const value=String(raw||'').trim();if(!value)return '';if(
 export function money(v:any,currency='USD'){return `${currency} ${(Number(v||0)/100).toFixed(2)}`}
 export {img}
 export function StoreImage({src,alt,className,eager=false,width,height}:{src:any;alt:string;className?:string;eager?:boolean;width?:number;height?:number}){const [failed,setFailed]=useState(false);const fallback='/placeholder-product.svg';const source=failed?fallback:(img(src)||fallback);return <img className={className} src={source} alt={alt} width={width} height={height} loading={eager?'eager':'lazy'} decoding="async" onError={()=>setFailed(true)}/>}
-function HeroMedia({desktop,mobile,alt}:{desktop:string;mobile:string;alt:string}){const [failed,setFailed]=useState(false);if(failed)return <div className="focalHeroPlaceholder"/>;return <picture className="focalHeroMedia"><source media="(max-width:749px)" srcSet={mobile||desktop}/><img className="focalHeroImage" src={desktop} alt={alt} loading="eager" decoding="async" onError={()=>setFailed(true)}/></picture>}
+// On mobile, a merchant who never uploaded a dedicated mobile crop gets the
+// desktop banner reused verbatim -- but the mobile hero box is a different
+// (narrower, often taller) shape than a wide desktop banner, so `cover`
+// would slice off most of the image's width to fill it. Rather than crop,
+// that fallback case shows the full image via `object-fit:contain` with a
+// blurred, darkened duplicate of the same image filling the box behind it
+// (the common "letterbox" treatment), so nothing is ever cut off and there's
+// no dead flat-color space either. A dedicated mobile image is assumed to
+// already be cropped on purpose, so it keeps the merchant's normal fit/focal
+// settings instead.
+function HeroMedia({desktop,mobile,alt,fit,focalX,focalY,hasMobileImage}:{desktop:string;mobile:string;alt:string;fit:string;focalX:number;focalY:number;hasMobileImage:boolean}){
+  const [failed,setFailed]=useState(false)
+  if(failed)return <div className="focalHeroPlaceholder"/>
+  const objectPosition=`${focalX}% ${focalY}%`
+  return <div className="focalHeroMedia">
+    <picture className={hasMobileImage?'focalHeroPic':'focalHeroPic focalHeroDesktopOnly'}>
+      <source media="(max-width:749px)" srcSet={mobile||desktop}/>
+      <img className="focalHeroImage" style={{objectFit:fit as any,objectPosition}} src={desktop} alt={alt} loading="eager" decoding="async" onError={()=>setFailed(true)}/>
+    </picture>
+    {!hasMobileImage&&<div className="focalHeroMobileFallback">
+      <img className="focalHeroBackdrop" src={desktop} alt="" aria-hidden="true" loading="eager"/>
+      <img className="focalHeroImage focalHeroContain" src={desktop} alt={alt} loading="eager" decoding="async" onError={()=>setFailed(true)}/>
+    </div>}
+  </div>
+}
 function sectionStyle(theme:AnyMap,s:AnyMap){const bg=s.background==='primary'?theme.colors.primary:s.background==='secondary'?theme.colors.secondary:s.background==='dark'?'#15120f':s.background==='surface'?theme.colors.surface:s.background==='gradient'?`linear-gradient(135deg,${theme.colors.secondary},${theme.colors.background})`:theme.colors.background;const light=s.background==='primary'||s.background==='dark';return {background:bg,color:s.textColor||(light?'#fff':theme.colors.text)}}
 
 // Renders the admin-configurable "hero" section (theme editor: Home page > Hero) --
@@ -26,6 +50,10 @@ export function HeroSection({theme,section,preview=false,selected=false,onSelect
   const s=section.settings||{}
   const desktop=img(s.imageUrl||s.desktopImageUrl||s.mobileImageUrl)
   const mobile=img(s.mobileImageUrl||s.imageUrl||s.desktopImageUrl)
+  const hasMobileImage=Boolean(String(s.mobileImageUrl||'').trim())
+  const fit=['cover','contain','fill'].includes(s.imageFit)?s.imageFit:'cover'
+  const focalX=Math.max(0,Math.min(100,Number(s.focalX??50)))
+  const focalY=Math.max(0,Math.min(100,Number(s.focalY??50)))
   const overlayColor=s.overlayColor||'#000000'
   const raw=overlayColor.replace('#','')
   const hex=raw.length===3?raw.split('').map((x:string)=>x+x).join(''):raw
@@ -36,7 +64,7 @@ export function HeroSection({theme,section,preview=false,selected=false,onSelect
   const click=(e:React.MouseEvent)=>{if(preview){e.preventDefault();e.stopPropagation();onSelect?.(section.id)}}
   return <section className={`focalSection focalType-hero heroSection ${selected?'isSelected':''}`} style={{...sectionStyle(theme,s),padding:0}} onClick={click}>
     <div className={`focalHero ${s.fullBleed===false?'heroContained':''}`} style={{minHeight:adapt?undefined:Number(s.minHeight||s.customHeight||640),aspectRatio:adapt&&desktop?'16/7':undefined,borderRadius:Number(s.borderRadius||0)}}>
-      {desktop&&<><HeroMedia desktop={desktop} mobile={mobile} alt={s.imageAlt||s.heading||theme.brandName}/><div className="focalHeroOverlay" style={{background:overlay}}/></>}
+      {desktop&&<><HeroMedia desktop={desktop} mobile={mobile} alt={s.imageAlt||s.heading||theme.brandName} fit={fit} focalX={focalX} focalY={focalY} hasMobileImage={hasMobileImage}/><div className="focalHeroOverlay" style={{background:overlay}}/></>}
       {!desktop&&<div className="focalHeroPlaceholder"/>}
       <div className={`focalHeroContent ${s.contentBox?'boxed':''} pos-${s.contentPosition||'center-left'}`} style={{textAlign:s.textAlign||'left',maxWidth:Number(s.contentWidth||620)}}>
         <span className="focalPill"><span className="heroDot"/> {s.eyebrow||'NEW COLLECTION'}</span>
