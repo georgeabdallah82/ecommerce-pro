@@ -4,8 +4,7 @@ import { getProductStats, withProductStats } from '@/lib/product-stats'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { Footer } from '@/components/footer'
-import LiveStorefrontSections from '@/components/live-storefront-sections'
-import ProductAvailabilityGuard from '@/components/product-availability-guard'
+import AliExpressProduct from '@/components/aliexpress-product'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -96,14 +95,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     withProductStats(relatedRaw),
     getProductStats([product.id]).then(stats => [stats[product.id]]),
   ])
-
-  const configuredTemplates = Array.isArray(theme.editorTemplates?.Product) ? theme.editorTemplates.Product : []
-  const hasMainProduct = configuredTemplates.some((section: any) => section?.type === 'main_product' && section?.enabled !== false && section?.settings?.enabled !== false)
-  const templates = hasMainProduct
-    ? configuredTemplates
-    : [...configuredTemplates.filter((section: any) => section?.type !== 'main_product'), { id: 'main_product_fallback', type: 'main_product', enabled: true, settings: {} }]
-
-  const footerEnabled = templates.some((section: any) => section.type === 'footer' && section.enabled !== false && section.settings?.enabled !== false)
 
   const sharedRows = product.inventory.filter((inventory) => !inventory.variantId)
   const sharedAvailable = sharedRows.reduce((sum, inventory) => sum + inventory.quantity - inventory.reserved, 0)
@@ -206,14 +197,16 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, '\\u003c') }} />
-      <LiveStorefrontSections theme={theme} sections={templates} products={related} collections={[]} product={publicProduct} />
-      <ProductAvailabilityGuard
-        variants={variantAvailability}
+      <AliExpressProduct
+        theme={theme}
+        product={publicProduct}
+        related={related}
+        variantAvailability={variantAvailability}
         productAvailable={productAvailable}
         trackInventory={product.trackInventory}
         continueSellingWhenOutOfStock={product.continueSellingWhenOutOfStock}
       />
-      {footerEnabled ? <Footer theme={theme} /> : null}
+      <Footer theme={theme} />
     </>
   )
 }
