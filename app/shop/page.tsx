@@ -3,7 +3,7 @@ import {getThemeState} from '@/lib/theme'
 import {withProductStats} from '@/lib/product-stats'
 import {ProductStatus} from '@prisma/client'
 import {Footer} from '@/components/footer'
-import LiveStorefrontSections from '@/components/live-storefront-sections'
+import AliExpressShop from '@/components/aliexpress-shop'
 
 export const dynamic='force-dynamic'
 export const revalidate=0
@@ -20,8 +20,5 @@ export default async function Shop({searchParams}:{searchParams:Promise<{q?:stri
     db.category.findMany({where:{isActive:true},orderBy:{sortOrder:'asc'}})
   ])
   const products=await withProductStats(rawProducts)
-  const hasProductsTemplate=Object.prototype.hasOwnProperty.call(theme.editorTemplates||{},'Products')
-  const templates=hasProductsTemplate?(Array.isArray(theme.editorTemplates.Products)?theme.editorTemplates.Products:[]):[{id:'announcement',type:'announcement',enabled:true,settings:{text:'Free shipping on orders over $50',background:'primary'}},{id:'intro',type:'rich_text',enabled:true,settings:{eyebrow:'STORE',heading:'Shop',text:`${products.length} products`}},{id:'grid',type:'product_grid',enabled:true,settings:{heading:'All products',limit:products.length,columns:4}},{id:'footer',type:'footer',enabled:true,settings:{}}]
-  const footerEnabled=templates.some((s:any)=>s.type==='footer'&&s.enabled!==false&&s.settings?.enabled!==false)
-  return <><div className="focalStorefrontFilterBar"><form className="focalContainer focalShopFilters"><input className="focalInput" name="q" placeholder="Search products…" defaultValue={q}/><select className="focalSelect" name="category" defaultValue={sp.category||''}><option value="">All categories</option>{categories.map(c=><option key={c.id} value={c.slug}>{c.name}</option>)}</select><select className="focalSelect" name="sort" defaultValue={sort}><option value="newest">Newest</option><option value="price_asc">Price: low to high</option><option value="price_desc">Price: high to low</option></select><button className="focalButton primary" type="submit">Apply</button></form></div><LiveStorefrontSections theme={theme} sections={templates} products={products} collections={[]}/>{footerEnabled&&<Footer theme={theme}/>}</>
+  return <><AliExpressShop theme={theme} products={products} categories={categories} query={sp}/><Footer theme={theme}/></>
 }
