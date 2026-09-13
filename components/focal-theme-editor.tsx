@@ -143,7 +143,7 @@ function sectionDefaults(type: string): Section {
     { id: makeId('badge'), type: 'badge', settings: { icon: 'lock', heading: 'Secure checkout', text: 'Encrypted payments' } },
     { id: makeId('badge'), type: 'badge', settings: { icon: 'support', heading: '24/7 support', text: 'We are here to help' } },
   ] }
-  if (type === 'countdown') return { id: makeId(type), type, enabled: true, settings: { ...base, eyebrow: 'LIMITED TIME', heading: 'Sale ends soon', text: "Don't miss out on this offer.", buttonLabel: 'Shop now', buttonUrl: '/shop', endDate: '' } }
+  if (type === 'countdown') return { id: makeId(type), type, enabled: true, settings: { ...base, eyebrow: 'FLASH SALE', heading: 'Deals end soon', text: "Don't miss out on this offer.", buttonLabel: 'Shop now', buttonUrl: '/shop', endDate: '', collection: '', limit: 6, background: 'primary' } }
   if (type === 'stats') return { id: makeId(type), type, enabled: true, settings: { ...base, heading: 'Trusted by thousands', columns: 4 }, blocks: [
     { id: makeId('stat'), type: 'stat', settings: { value: '50K+', label: 'Happy customers' } },
     { id: makeId('stat'), type: 'stat', settings: { value: '4.9', label: 'Average rating' } },

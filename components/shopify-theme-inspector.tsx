@@ -268,6 +268,10 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
     { title: 'Countdown', fields: [
       text('End date & time', 'endDate', 'YYYY-MM-DDTHH:mm, e.g. 2026-12-31T23:59'),
     ] },
+    { title: 'Deal products (optional)', fields: [
+      { kind: 'select', label: 'Collection', options: ({ collections }) => [{ value: '', label: 'All products' }, ...collections.map(c => ({ value: c.slug || c.id, label: c.name }))], get: s => s.collection || '', set: value => ({ collection: value }) },
+      range('Number of products', 'limit', 0, 12, 0),
+    ] },
     commonLayoutPanel,
   ],
   stats: () => [

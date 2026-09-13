@@ -3556,3 +3556,67 @@ body > .footer {
    rendered near-black instead of brand red. Match its specificity
    here, later in the cascade, so this wins. */
 .btn:not(.secondary):not(.ghost){background:var(--store-primary,#d42a2a)!important;border-color:var(--store-primary,#d42a2a)!important;color:var(--store-button-text,#fff)!important}
+
+/* ============================================================
+   AliExpress-style redesign (Phase 1 -- denser product cards)
+   ============================================================ */
+
+/* Persistent wishlist heart on every product card (previously the
+   wishlist toggle only existed on the single product detail page --
+   the state/API were already there, just never wired into the card
+   used across product/collection grids). Always visible, top-right,
+   distinct from the hover-only quick view/quick add row. */
+.focalProductCard{position:relative}
+.focalProductCard .cardWishlist{position:absolute;top:10px;right:10px;z-index:3}
+.focalProductCard .cardWishlist.active{color:var(--store-primary,#d42a2a);border-color:var(--store-primary,#d42a2a)}
+
+/* Denser marketplace grid: more, smaller cards per row and tighter
+   gaps, closer to how AliExpress packs its listing grids, while
+   staying on the same --store-primary red token throughout. */
+.focalStorefront .focalType-product_grid .focalProductGrid,
+.focalStorefront .focalType-main_collection_grid .focalProductGrid{gap:14px}
+.focalStorefront .focalProductBody{padding:10px 2px 2px}
+@media(max-width:760px){
+  .focalStorefront .focalType-product_grid .focalProductGrid,
+  .focalStorefront .focalType-main_collection_grid .focalProductGrid{gap:10px}
+  .focalStorefront .focalProductBody{padding:8px 1px 2px}
+  .focalStorefront .focalProductBody h3{font-size:14px;line-height:1.3}
+  .focalStorefront .focalCardRating{font-size:11px}
+  .focalStorefront .focalSoldCount{font-size:11px}
+}
+
+/* ============================================================
+   AliExpress-style redesign (Phase 2 -- flash deals countdown)
+   ============================================================ */
+
+/* Countdown digits read as a bold "digital clock" against either a
+   colored or plain section background, instead of the previous thin
+   bordered boxes -- closer to an AliExpress-style flash-sale timer. */
+.focalStorefront .focalCountdownUnit{background:#15120f;border-color:transparent;border-radius:10px;padding:10px 14px}
+.focalStorefront .focalCountdownUnit strong{font-size:26px;line-height:1;color:#fff}
+.focalStorefront .focalCountdownUnit span{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.7)}
+
+/* When the section itself is on a colored/dark background (the new
+   default for this section), invert its CTA button the same way the
+   newsletter's Subscribe button was fixed -- otherwise a red button on
+   a red section background is invisible. */
+.focalStorefront .focalType-countdown.onDark .focalButton.primary{background:#fff!important;border-color:#fff!important;color:var(--store-primary,#d42a2a)!important}
+.focalStorefront .focalType-countdown.onDark .focalButton.primary:hover{background:rgba(255,255,255,.9)!important}
+.focalStorefront .focalType-countdown.onDark .focalCountdownUnit{background:rgba(0,0,0,.28)}
+/* Same blanket-heading-color clobber documented above for
+   .focalHeroContent/.focalNewsletter.primary -- this section needs the
+   identical color:inherit carve-out or its heading/text are invisible
+   against a colored background. */
+.focalStorefront .focalType-countdown.onDark .focalCountdownCopy h2{color:#fff}
+.focalStorefront .focalType-countdown.onDark .focalCountdownCopy p{color:hsla(0,0%,100%,.85)}
+
+/* Optional real-product "deal strip" under the timer: a horizontal
+   scroll row of the same ProductCard used everywhere else (discount
+   badge, rating, price, wishlist heart), sized for a compact deal
+   listing rather than a full grid. */
+.focalDealStrip{display:flex;gap:14px;overflow-x:auto;margin-top:28px;padding-bottom:4px;scrollbar-width:thin}
+.focalDealCard{flex:0 0 auto;width:200px}
+.focalDealCard .focalProductMedia{background:#fff}
+@media(max-width:760px){
+  .focalDealCard{width:150px}
+}
