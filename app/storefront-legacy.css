@@ -3834,3 +3834,18 @@ body > .footer {
 .aliLegalPage li{margin-bottom:6px}
 .aliLegalPage a{color:var(--focal-primary);text-decoration:underline}
 .aliLegalPlaceholder{background:var(--focal-soft);color:var(--focal-primary);padding:1px 5px;border-radius:5px;font-weight:700}
+
+/* Coming soon / under construction gate */
+.aliComingSoon{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--focal-bg);padding:24px}
+.aliComingSoonInner{max-width:560px;text-align:center}
+.aliComingSoonBrand{font-size:14px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--focal-primary);margin-bottom:18px}
+.aliComingSoonInner h1{font-size:clamp(28px,5vw,42px);letter-spacing:-.02em;margin:0 0 14px;color:var(--focal-ink)}
+.aliComingSoonInner p{font-size:16px;line-height:1.6;color:var(--focal-muted);margin:0 0 32px}
+.aliComingSoonTimer{display:flex;justify-content:center;gap:14px;margin-bottom:32px}
+.aliComingSoonTimerUnit{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:64px;background:var(--focal-surface);border:1px solid var(--focal-line);border-radius:14px;padding:14px 8px}
+.aliComingSoonTimerUnit strong{font-size:28px;letter-spacing:-.02em;color:var(--focal-ink)}
+.aliComingSoonTimerUnit span{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--focal-muted)}
+.aliComingSoonLive{font-size:17px;font-weight:700;color:var(--focal-primary);margin-bottom:32px}
+.aliComingSoonContact{display:inline-flex;align-items:center;gap:8px;background:var(--focal-primary);color:#fff;padding:12px 22px;border-radius:999px;font-weight:700;font-size:14px}
+.aliComingSoonContact:hover{opacity:.9}
+@media(max-width:480px){.aliComingSoonTimer{gap:8px}.aliComingSoonTimerUnit{min-width:56px;padding:10px 6px}.aliComingSoonTimerUnit strong{font-size:22px}}
