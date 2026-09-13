@@ -46,10 +46,12 @@ import {
   Undo2,
   Video,
   X,
+  ImagePlus,
 } from 'lucide-react'
 import ShopifyThemeInspector from '@/components/shopify-theme-inspector'
 import ThemeInspectorStyles from '@/components/theme-inspector-styles'
 import ThemePublishBar from '@/components/theme-publish-bar'
+import MediaPicker from '@/components/media-picker'
 import { FONT_OPTIONS } from '@/lib/font-options'
 import styles from './admin-theme-editor.module.css'
 
@@ -175,6 +177,28 @@ function Field({ label, value, onChange, type = 'text' }: { label: string; value
     <label className={styles.field}>
       <span>{label}</span>
       <input className={styles.input} type={type} value={value ?? ''} onChange={event => onChange(type === 'number' ? Number(event.target.value) : event.target.value)} />
+    </label>
+  )
+}
+
+function ImageField({ label, value, onChange }: { label: string; value: any; onChange: (value: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const url = value ? String(value) : ''
+  return (
+    <label className="themeInspectorField themeImageField">
+      <span>{label}</span>
+      {url ? (
+        <div className="themeImagePreview">
+          <img className="themeImageThumb" src={url} alt="" />
+          <div className="themeImageActions">
+            <button type="button" onClick={() => setOpen(true)}>Change</button>
+            <button type="button" className="themeImageRemove" onClick={() => onChange('')} aria-label={`Remove ${label.toLowerCase()}`}><X size={13} /></button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" className="themeImageEmpty" onClick={() => setOpen(true)}><ImagePlus size={16} /> Upload image</button>
+      )}
+      <MediaPicker open={open} onClose={() => setOpen(false)} onAdd={images => { if (images[0]) onChange(images[0].url); setOpen(false) }} />
     </label>
   )
 }
@@ -610,8 +634,8 @@ export default function FocalThemeEditor({ initial }: Props) {
             <div className={styles.sideThemeTab}>
               <Panel title="Brand">
                 <Field label="Brand name" value={theme.brandName || ''} onChange={value => commit(templates, { ...theme, brandName: value })} />
-                <Field label="Logo URL" value={theme.logoUrl || ''} onChange={value => commit(templates, { ...theme, logoUrl: value })} />
-                <Field label="Favicon URL" value={theme.faviconUrl || ''} onChange={value => commit(templates, { ...theme, faviconUrl: value })} />
+                <ImageField label="Logo" value={theme.logoUrl || ''} onChange={value => commit(templates, { ...theme, logoUrl: value })} />
+                <ImageField label="Favicon" value={theme.faviconUrl || ''} onChange={value => commit(templates, { ...theme, faviconUrl: value })} />
               </Panel>
               <Panel title="Social links">
                 <Field label="Instagram URL" value={theme.social?.instagram || ''} onChange={value => patchTheme('social', { instagram: value })} />
