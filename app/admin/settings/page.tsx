@@ -24,6 +24,9 @@ const CLIENT_SETTING_KEYS = new Set([
   'email.customerOrder',
   'email.fulfillment',
   'email.abandonedCheckout',
+  'tracking.metaPixelId',
+  'tracking.gaMeasurementId',
+  'tracking.tiktokPixelId',
 ])
 
 export default async function Settings() {

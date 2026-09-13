@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Save, Store, CreditCard, Truck, Globe2, Mail, ShieldCheck, Search, Bell, Code2, ChevronRight } from 'lucide-react'
+import { Save, Store, CreditCard, Truck, Globe2, Mail, ShieldCheck, Search, Bell, Code2, ChevronRight, BarChart3 } from 'lucide-react'
 import styles from './admin-settings-center.module.css'
 import ui from './admin-ui.module.css'
 
@@ -13,6 +13,7 @@ const groups = [
   { key: 'Notifications', label: 'Notifications', icon: Bell, desc: 'Order and operational alerts' },
   { key: 'Email', label: 'Email & messaging', icon: Mail, desc: 'Customer communication preferences' },
   { key: 'Security', label: 'Security & access', icon: ShieldCheck, desc: 'Staff access and account protection' },
+  { key: 'Tracking', label: 'Tracking & pixels', icon: BarChart3, desc: 'Facebook/Meta, Google Analytics, and TikTok pixels' },
   { key: 'Custom data', label: 'Custom data', icon: Code2, desc: 'Metafields and structured data' },
 ]
 
@@ -57,6 +58,9 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
     'checkout.taxRatePercent': map.get('checkout.taxRatePercent') || '0',
     'seo.title': map.get('seo.title') || '',
     'seo.description': map.get('seo.description') || '',
+    'tracking.metaPixelId': map.get('tracking.metaPixelId') || '',
+    'tracking.gaMeasurementId': map.get('tracking.gaMeasurementId') || '',
+    'tracking.tiktokPixelId': map.get('tracking.tiktokPixelId') || '',
   })
   const [flags, setFlags] = useState<Record<string, boolean>>(() => Object.fromEntries([
     'payment.cod', 'payment.card', 'payment.bank', 'payment.wallet',
@@ -243,6 +247,16 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
                 </div>
               </div>
               <a className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/users">Manage users &amp; roles</a>
+            </Card>
+          )}
+
+          {tab === 'Tracking' && (
+            <Card title="Tracking & pixels" desc="Fires PageView automatically on every page, plus AddToCart and Purchase (with real order value) once configured. Leave blank to disable a platform.">
+              <div className={ui.twoCol}>
+                <Field label="Meta (Facebook) Pixel ID" value={values['tracking.metaPixelId']} onChange={v => set('tracking.metaPixelId', v)} />
+                <Field label="Google Analytics measurement ID" value={values['tracking.gaMeasurementId']} onChange={v => set('tracking.gaMeasurementId', v)} />
+                <Field label="TikTok Pixel ID" value={values['tracking.tiktokPixelId']} onChange={v => set('tracking.tiktokPixelId', v)} />
+              </div>
             </Card>
           )}
 

@@ -378,6 +378,14 @@ function getMockHandler(model: string) {
       if (model === 'webhookEndpoint' && where.id) return mockWebhookEndpoints.find((x) => x.id === where.id) || null
       if (model === 'apiCredential' && where.id) return mockApiCredentials.find((x) => x.id === where.id) || null
       if (model === 'taxRate' && where.id) return mockTaxRates.find((x) => x.id === where.id) || null
+      if (model === 'order') {
+        const found = where.orderNumber
+          ? mockOrders.find((o) => o.orderNumber === where.orderNumber)
+          : where.id
+            ? mockOrders.find((o) => o.id === where.id)
+            : undefined
+        return found ? { events: [], notesHistory: [], paymentTransactions: [], ...found } : null
+      }
       return null
     },
     findFirst: async (args?: any) => {
