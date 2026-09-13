@@ -68,6 +68,7 @@ export default function ProductEditorV2({ initial, creating, categories, definit
   const [error, setError] = useState('')
   const [dirty, setDirty] = useState(false)
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false)
+  const [seoMediaPickerOpen, setSeoMediaPickerOpen] = useState(false)
 
   const initialNames = (() => {
     const set = new Set<string>()
@@ -304,7 +305,13 @@ export default function ProductEditorV2({ initial, creating, categories, definit
           <Field label="URL handle"><input className={ui.input} value={product.slug} onChange={e => update({ slug: e.target.value })} /></Field>
           <Field label="SEO title"><input className={ui.input} value={product.seoTitle || ''} onChange={e => update({ seoTitle: e.target.value })} /></Field>
           <Field label="SEO description"><textarea className={ui.textarea} rows={5} value={product.seoDescription || ''} onChange={e => update({ seoDescription: e.target.value })} /></Field>
-          <Field label="SEO image URL"><input className={ui.input} value={product.seoImageUrl || ''} onChange={e => update({ seoImageUrl: e.target.value })} /></Field>
+          <Field label="SEO image">
+            <div className="inline" style={{ gap: 10 }}>
+              {product.seoImageUrl && <img src={product.seoImageUrl} alt="" style={{ width: 56, height: 56, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--admin-border)' }} />}
+              <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setSeoMediaPickerOpen(true)}>{product.seoImageUrl ? 'Change image' : 'Upload image'}</button>
+              {product.seoImageUrl && <button type="button" className={ui.iconBtn} aria-label="Remove SEO image" onClick={() => update({ seoImageUrl: '' })}><X size={16} /></button>}
+            </div>
+          </Field>
           <div className={s.notice} style={{ display: 'block' }}><strong>{product.seoTitle || product.name}</strong><span style={{ display: 'block', marginTop: 4 }}>/product/{product.slug || 'product-handle'}</span><span style={{ display: 'block', marginTop: 4 }}>{product.seoDescription || product.shortDescription || 'Add an SEO description.'}</span></div>
         </Card>}
       </main>
@@ -324,5 +331,6 @@ export default function ProductEditorV2({ initial, creating, categories, definit
     </div>
 
     <MediaPicker open={mediaPickerOpen} onClose={() => setMediaPickerOpen(false)} onAdd={images => update({ images: [...(product.images || []), ...images] })} />
+    <MediaPicker open={seoMediaPickerOpen} onClose={() => setSeoMediaPickerOpen(false)} onAdd={images => { if (images[0]) update({ seoImageUrl: images[0].url }); setSeoMediaPickerOpen(false) }} />
   </div>
 }
