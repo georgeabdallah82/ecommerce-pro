@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowRight, Check, ChevronDown, Clock, Gift, Heart, Megaphone, Menu, Minus, Plus, Search, ShoppingBag, Sparkles, Tag, Trash2, Truck, UserRound, X } from 'lucide-react'
+import { ArrowRight, Check, ChevronDown, Clock, Gift, Grid3x3, Heart, Megaphone, Menu, Minus, Plus, Search, ShoppingBag, Sparkles, Tag, Trash2, Truck, UserRound, X } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
@@ -8,6 +8,7 @@ import { keyOf, useCart } from './cart-provider'
 
 type NavItem = { id: string; label: string; url?: string | null; parentId?: string | null }
 type TreeItem = NavItem & { children: TreeItem[] }
+type CategoryItem = { id: string; name: string; slug: string }
 
 const ANNOUNCEMENT_ICONS: Record<string, typeof Sparkles> = { spark: Sparkles, truck: Truck, tag: Tag, gift: Gift, clock: Clock, megaphone: Megaphone }
 
@@ -150,6 +151,35 @@ const css = `
 .focalMobileChild{padding:8px 0;font-size:13px;color:var(--focal-muted);text-decoration:none}
 .focalMobileChild.level2{padding-left:12px;font-size:12px}
 
+/* ALIEXPRESS-STYLE INLINE SEARCH BAR (desktop) */
+.aliNavSearchWrap{flex:1;max-width:640px;margin:0 24px;position:relative}
+.aliNavSearchBar{display:flex;align-items:stretch;height:42px;border:2px solid var(--focal-primary);border-radius:999px;overflow:hidden;background:#fff}
+.aliNavSearchBar input{flex:1;min-width:0;border:0;outline:0;padding:0 16px;font-size:13.5px;font-weight:600;background:transparent;color:var(--focal-ink)}
+.aliNavSearchSubmit{border:0;background:var(--focal-primary);color:#fff;padding:0 22px;display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:800;cursor:pointer;flex:none}
+.aliNavSearchDropdown{position:absolute;top:calc(100% + 10px);left:0;right:0;background:#fff;border:1px solid var(--focal-line);border-radius:16px;box-shadow:0 20px 50px rgba(25,21,18,.14);max-height:420px;overflow-y:auto;padding:10px;z-index:70;animation:focalMenuPop .18s cubic-bezier(.16,1,.3,1)}
+.aliNavSearchIconMobile{display:none}
+@media(max-width:900px){.aliNavSearchWrap{display:none}.aliNavSearchIconMobile{display:grid}}
+
+/* ALIEXPRESS-STYLE "ALL CATEGORIES" MEGA-MENU */
+.focalNavSecondary{border-top:1px solid var(--focal-line)}
+.focalNavSecondaryInner{height:46px;display:flex;align-items:center;gap:18px;overflow-x:auto;scrollbar-width:none}
+.focalNavSecondaryInner::-webkit-scrollbar{display:none}
+.aliNavCatWrap{position:relative;height:100%;display:flex;align-items:center;flex:none}
+.aliNavCatBtn{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 14px;border-radius:9px;background:var(--focal-primary);color:#fff;font-size:12.5px;font-weight:800;border:0;cursor:pointer;white-space:nowrap}
+.aliNavCatPanel{position:absolute;top:calc(100% + 8px);left:0;min-width:230px;background:#fff;border:1px solid var(--focal-line);border-radius:14px;box-shadow:0 20px 50px rgba(25,21,18,.14);padding:8px;z-index:60;animation:focalMenuPop .2s cubic-bezier(.16,1,.3,1)}
+.aliNavCatLink{display:block;padding:10px 12px;border-radius:9px;color:var(--focal-ink);text-decoration:none;font-size:12.5px;font-weight:750;white-space:nowrap}
+.aliNavCatLink:hover{background:var(--focal-soft);color:var(--focal-primary)}
+.aliNavCatEmpty{padding:12px;font-size:12px;color:var(--focal-muted);max-width:220px;line-height:1.5}
+.focalNavSecondary .focalNavLinks{display:flex;height:100%;gap:22px}
+.focalNavSecondary .focalNavItem{height:100%}
+.focalNavSecondary .focalNavLink{font-size:12.5px;font-weight:750}
+@media(max-width:900px){.focalNavSecondary{display:none}}
+
+/* MOBILE DRAWER CATEGORIES */
+.focalMobileCategories{margin-bottom:8px;padding-bottom:12px;border-bottom:1px solid var(--focal-line)}
+.focalMobileCategories h4{margin:0 0 8px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--focal-muted)}
+.focalMobileCategoryLink{display:block;padding:8px 0;font-size:14px;font-weight:750;color:var(--focal-ink);text-decoration:none}
+
 @media(max-width:900px){.focalNavInner{grid-template-columns:auto 1fr auto;gap:12px}.focalNavMobile{display:grid}.focalNavLinks{display:none}.focalLogo{justify-content:center}.focalNavActions .focalNavIcon:nth-child(2){display:none}}
 @media(max-width:600px){.focalNavInner{height:66px}.focalNavIcon{width:38px;height:38px}.focalLogo{font-size:18px}.focalAnnouncementGlobalInner{font-size:11px;min-height:38px}}
 `
@@ -195,7 +225,7 @@ function DesktopNode({ item, openId, setOpenId, nested = false }: { item: TreeIt
   )
 }
 
-export default function StoreNavFixed({ theme, navigation }: { theme: any; navigation: NavItem[] }) {
+export default function StoreNavFixed({ theme, navigation, categories = [] }: { theme: any; navigation: NavItem[]; categories?: CategoryItem[] }) {
   const pathname = usePathname() || '/'
   const templateKey = templateForPath(pathname)
   const template = Array.isArray(theme.editorTemplates?.[templateKey]) ? theme.editorTemplates[templateKey] : null
@@ -214,6 +244,9 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
   const [openId, setOpenId] = useState<string | null>(null)
   const [mobileOpen, setMobileOpen] = useState<Set<string>>(new Set())
   const [announcementClosed, setAnnouncementClosed] = useState(false)
+  const [catOpen, setCatOpen] = useState(false)
+  const [desktopSearchOpen, setDesktopSearchOpen] = useState(false)
+  const desktopSearchBlurTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Free shipping threshold logic ($50 = 5000 cents)
   const FREE_SHIPPING_THRESHOLD = 5000
@@ -234,15 +267,25 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
         closeCart()
         setSearch(false)
         setMenu(false)
+        setCatOpen(false)
+        setDesktopSearchOpen(false)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [closeCart])
 
+  const openDesktopSearch = () => {
+    if (desktopSearchBlurTimer.current) clearTimeout(desktopSearchBlurTimer.current)
+    setDesktopSearchOpen(true)
+  }
+  const closeDesktopSearchDeferred = () => {
+    desktopSearchBlurTimer.current = setTimeout(() => setDesktopSearchOpen(false), 150)
+  }
+
   // Live predictive search debounce
   useEffect(() => {
-    if (!search || !searchQuery.trim()) {
+    if ((!search && !desktopSearchOpen) || !searchQuery.trim()) {
       setSearchResults([])
       setSearchLoading(false)
       return
@@ -262,7 +305,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
       }
     }, 200)
     return () => clearTimeout(timer)
-  }, [search, searchQuery])
+  }, [search, desktopSearchOpen, searchQuery])
 
   const tree = useMemo(() => buildTree(navigation || []), [navigation])
   const money = (v: number) => `${theme.currency || 'USD'} ${(v / 100).toFixed(2)}`
@@ -282,14 +325,74 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
       <div className="focalNavInner focalContainer">
         <button className="focalNavMobile" aria-label="Menu" onClick={() => setMenu(true)}><Menu size={19}/></button>
         <Link href="/" className="focalLogo" style={{ fontFamily: theme.typography.heading }}>{theme.logoUrl ? <img src={theme.logoUrl} alt={theme.brandName} style={{ maxWidth: headerSettings.logoWidth || 160 }} /> : <span>{theme.brandName}</span>}</Link>
-        <nav className="focalNavLinks" aria-label="Main navigation">
-          {tree.map(item => <DesktopNode key={item.id} item={item} openId={openId} setOpenId={setOpenId} />)}
-        </nav>
+        {headerSettings.showSearch !== false && (
+          <form className="aliNavSearchWrap" action="/shop" method="GET" onSubmit={() => setDesktopSearchOpen(false)}>
+            <div className="aliNavSearchBar">
+              <input
+                name="q"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onFocus={openDesktopSearch}
+                onBlur={closeDesktopSearchDeferred}
+                placeholder="Search products, collections, or materials..."
+                aria-label="Search store"
+              />
+              <button type="submit" className="aliNavSearchSubmit"><Search size={15}/> Search</button>
+            </div>
+            {desktopSearchOpen && (
+              <div className="aliNavSearchDropdown" onMouseDown={e => e.preventDefault()}>
+                {searchLoading && <div style={{ padding: '18px 8px', textAlign: 'center', fontSize: 13, color: 'var(--focal-muted)' }}>Searching catalog…</div>}
+                {!searchLoading && searchQuery.trim() && searchResults.length === 0 && (
+                  <div style={{ padding: '18px 8px', textAlign: 'center', fontSize: 13, color: 'var(--focal-muted)' }}>No products found for &ldquo;{searchQuery}&rdquo;.</div>
+                )}
+                {!searchLoading && searchResults.map(p => (
+                  <Link key={p.id} href={`/product/${p.slug}`} className="focalSearchItem" onClick={() => setDesktopSearchOpen(false)}>
+                    <img src={p.images?.[0]?.url || '/placeholder-product.svg'} alt={p.name} />
+                    <div className="focalSearchItemInfo">
+                      <strong>{p.name}</strong>
+                      <small>{p.category?.name || p.vendor || 'In stock'}</small>
+                    </div>
+                    <div className="focalSearchItemPrice">{money(p.basePrice || 0)}</div>
+                  </Link>
+                ))}
+                {!searchQuery.trim() && (
+                  <div style={{ padding: '18px 8px', textAlign: 'center', fontSize: 13, color: 'var(--focal-muted)' }}>
+                    Type a product name or keyword above to find items instantly.
+                  </div>
+                )}
+              </div>
+            )}
+          </form>
+        )}
         <div className="focalNavActions">
-          {headerSettings.showSearch !== false && <button className="focalNavIcon" onClick={() => { setSearch(true); setSearchQuery('') }} aria-label="Search"><Search size={18}/></button>}
+          {headerSettings.showSearch !== false && <button className="focalNavIcon aliNavSearchIconMobile" onClick={() => { setSearch(true); setSearchQuery('') }} aria-label="Search"><Search size={18}/></button>}
           {headerSettings.showAccount !== false && <Link className="focalNavIcon" href="/account" aria-label="Account"><UserRound size={18}/></Link>}
           {headerSettings.showWishlist && <Link className="focalNavIcon" href="/wishlist" aria-label="Wishlist"><Heart size={18}/></Link>}
           {headerSettings.showCart !== false && <button className="focalNavIcon" onClick={openCart} aria-label={`Cart with ${count} items`}><ShoppingBag size={18}/>{count > 0 && <span className="focalCartCount">{count > 99 ? '99+' : count}</span>}</button>}
+        </div>
+      </div>
+      <div className="focalNavSecondary focalContainer">
+        <div className="focalNavSecondaryInner">
+          <div className="aliNavCatWrap" onMouseEnter={() => setCatOpen(true)} onMouseLeave={() => setCatOpen(false)}>
+            <button className="aliNavCatBtn" aria-haspopup="true" aria-expanded={catOpen} onClick={() => setCatOpen(o => !o)}>
+              <Grid3x3 size={14}/> All Categories <ChevronDown size={12}/>
+            </button>
+            {catOpen && (
+              <div className="aliNavCatPanel">
+                {categories.length === 0 ? (
+                  <div className="aliNavCatEmpty">Categories will appear here once they&apos;re added in the admin.</div>
+                ) : (
+                  <>
+                    <Link className="aliNavCatLink" href="/shop">All products</Link>
+                    {categories.map(c => <Link key={c.id} className="aliNavCatLink" href={`/shop?category=${c.slug}`}>{c.name}</Link>)}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+          <nav className="focalNavLinks" aria-label="Main navigation">
+            {tree.map(item => <DesktopNode key={item.id} item={item} openId={openId} setOpenId={setOpenId} />)}
+          </nav>
         </div>
       </div>
     </header>
@@ -429,6 +532,13 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
           <strong>{theme.brandName}</strong>
           <button className="focalNavIcon" onClick={() => setMenu(false)} aria-label="Close menu"><X size={17}/></button>
         </div>
+        {categories.length > 0 && (
+          <div className="focalMobileCategories">
+            <h4>Shop by category</h4>
+            <Link className="focalMobileCategoryLink" href="/shop" onClick={() => setMenu(false)}>All products</Link>
+            {categories.map(c => <Link key={c.id} className="focalMobileCategoryLink" href={`/shop?category=${c.slug}`} onClick={() => setMenu(false)}>{c.name}</Link>)}
+          </div>
+        )}
         {tree.map(item => <MobileNode key={item.id} item={item} mobileOpen={mobileOpen} toggle={toggleMobile} close={() => setMenu(false)}/>)}
       </div>
     </div>}

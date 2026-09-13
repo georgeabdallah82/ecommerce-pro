@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import StoreNavFixed from './store-nav-fixed'
 
-export default function StoreNavRuntime({ theme, navigation }: { theme: any; navigation: any[] }) {
+export default function StoreNavRuntime({ theme, navigation, categories }: { theme: any; navigation: any[]; categories?: any[] }) {
   const pathname = usePathname() || '/'
   const [currentTheme, setCurrentTheme] = useState(theme)
   const [currentNavigation, setCurrentNavigation] = useState(navigation || [])
@@ -35,5 +35,5 @@ export default function StoreNavRuntime({ theme, navigation }: { theme: any; nav
   }, [pathname])
 
   if (pathname.startsWith('/admin')) return null
-  return <StoreNavFixed theme={currentTheme} navigation={currentNavigation} />
+  return <StoreNavFixed theme={currentTheme} navigation={currentNavigation} categories={categories || []} />
 }
