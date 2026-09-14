@@ -29,12 +29,29 @@ function HeroMedia({desktop,mobile,alt,fit,focalX,focalY,hasMobileImage}:{deskto
   const [failed,setFailed]=useState(false)
   if(failed)return <div className="focalHeroPlaceholder"/>
   const objectPosition=`${focalX}% ${focalY}%`
+  // object-fit:contain never crops, so on its own it can leave the section's
+  // plain background peeking through as dead space above/below (or beside)
+  // the image. Whenever "contain" is the chosen fit, pair it with a blurred,
+  // darkened duplicate of the same image as a full-bleed backdrop -- the
+  // same "no dead space" treatment already used below for the mobile
+  // fallback when no distinct mobile image is uploaded, just applied
+  // consistently at every viewport instead of only that one case.
+  const contain=fit==='contain'
+  // Only needed when neither of those two already-safe cases applies: a
+  // distinct mobile image means each viewport gets its own correctly-fit
+  // image anyway, and "contain" already avoids cropping on its own.
+  const desktopOnly=!hasMobileImage&&!contain
+  const picClass=desktopOnly?'focalHeroPic focalHeroDesktopOnly':'focalHeroPic'
   return <div className="focalHeroMedia">
-    <picture className={hasMobileImage?'focalHeroPic':'focalHeroPic focalHeroDesktopOnly'}>
+    {contain&&<picture className={picClass}>
       <source media="(max-width:749px)" srcSet={mobile||desktop}/>
-      <img className="focalHeroImage" style={{objectFit:fit as any,objectPosition}} src={desktop} alt={alt} loading="eager" decoding="async" onError={()=>setFailed(true)}/>
+      <img className="focalHeroBackdrop" src={desktop} alt="" aria-hidden="true" loading="eager"/>
+    </picture>}
+    <picture className={picClass}>
+      <source media="(max-width:749px)" srcSet={mobile||desktop}/>
+      <img className={contain?'focalHeroImage focalHeroContain':'focalHeroImage'} style={contain?{objectPosition}:{objectFit:fit as any,objectPosition}} src={desktop} alt={alt} loading="eager" decoding="async" onError={()=>setFailed(true)}/>
     </picture>
-    {!hasMobileImage&&<div className="focalHeroMobileFallback">
+    {desktopOnly&&<div className="focalHeroMobileFallback">
       <img className="focalHeroBackdrop" src={desktop} alt="" aria-hidden="true" loading="eager"/>
       <img className="focalHeroImage focalHeroContain" src={desktop} alt={alt} loading="eager" decoding="async" onError={()=>setFailed(true)}/>
     </div>}
@@ -61,12 +78,13 @@ export function HeroSection({theme,section,preview=false,selected=false,onSelect
   const op=Math.max(0,Math.min(1,Number(s.overlay??.24)))
   const overlay=s.overlayStyle==='bottom-gradient'?`linear-gradient(to top,rgba(${r},${g},${b},${op}),transparent 72%)`:s.overlayStyle==='full-gradient'?`linear-gradient(135deg,rgba(${r},${g},${b},${op}),rgba(${r},${g},${b},${op*.35}))`:s.overlayStyle==='none'?'none':`rgba(${r},${g},${b},${op})`
   const adapt=s.imageHeightMode!=='fixed'&&s.heightMode!=='fixed'
+  const showContent=s.showContent!==false
   const click=(e:React.MouseEvent)=>{if(preview){e.preventDefault();e.stopPropagation();onSelect?.(section.id)}}
   return <section className={`focalSection focalType-hero heroSection ${selected?'isSelected':''}`} style={{...sectionStyle(theme,s),padding:0}} onClick={click}>
     <div className={`focalHero ${s.fullBleed===false?'heroContained':''}`} style={{minHeight:adapt?undefined:Number(s.minHeight||s.customHeight||640),aspectRatio:adapt&&desktop?'16/7':undefined,borderRadius:Number(s.borderRadius||0)}}>
-      {desktop&&<><HeroMedia desktop={desktop} mobile={mobile} alt={s.imageAlt||s.heading||theme.brandName} fit={fit} focalX={focalX} focalY={focalY} hasMobileImage={hasMobileImage}/><div className="focalHeroOverlay" style={{background:overlay}}/></>}
+      {desktop&&<><HeroMedia desktop={desktop} mobile={mobile} alt={s.imageAlt||s.heading||theme.brandName} fit={fit} focalX={focalX} focalY={focalY} hasMobileImage={hasMobileImage}/>{showContent&&<div className="focalHeroOverlay" style={{background:overlay}}/>}</>}
       {!desktop&&<div className="focalHeroPlaceholder"/>}
-      <div className={`focalHeroContent ${s.contentBox?'boxed':''} pos-${s.contentPosition||'center-left'}`} style={{textAlign:s.textAlign||'left',maxWidth:Number(s.contentWidth||620)}}>
+      {showContent&&<div className={`focalHeroContent ${s.contentBox?'boxed':''} pos-${s.contentPosition||'center-left'}`} style={{textAlign:s.textAlign||'left',maxWidth:Number(s.contentWidth||620)}}>
         <span className="focalPill"><span className="heroDot"/> {s.eyebrow||'NEW COLLECTION'}</span>
         <h1>{s.heading||'Make your store impossible to ignore.'}</h1>
         <p>{s.text||''}</p>
@@ -74,7 +92,7 @@ export function HeroSection({theme,section,preview=false,selected=false,onSelect
           <Link href={s.buttonUrl||'/shop'} className="focalButton primary" onClick={preview?e=>e.stopPropagation():undefined}>{s.buttonLabel||'Shop now'} <ArrowRight size={16}/></Link>
           {s.secondaryLabel&&<Link href={s.secondaryUrl||'/collections'} className="focalButton secondary" onClick={preview?e=>e.stopPropagation():undefined}>{s.secondaryLabel}</Link>}
         </div>
-      </div>
+      </div>}
     </div>
   </section>
 }
