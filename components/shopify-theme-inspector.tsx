@@ -226,8 +226,14 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
         range('Content width', 'contentWidth', 320, 900, 620),
         range('Height', 'minHeight', 360, 900, 640),
       ],
+      // heightMode and imageHeightMode both default to "adapt" (the section sizes
+      // itself to the image's own proportions) -- the Height field above only has
+      // an effect once both are switched to "fixed", so expose that as one toggle
+      // instead of two separate, easy-to-mismatch raw fields.
+      { kind: 'toggle', label: 'Fixed height', get: s => s.heightMode === 'fixed', set: value => ({ heightMode: value ? 'fixed' : 'adapt', imageHeightMode: value ? 'fixed' : 'adapt' }) },
       toggle('Full bleed', 'fullBleed', true),
       toggle('Content box', 'contentBox', false),
+      range('Corner radius', 'borderRadius', 0, 60, 0),
     ] },
   ],
   product_grid: () => productTypePanels(false),
