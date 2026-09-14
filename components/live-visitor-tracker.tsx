@@ -199,7 +199,14 @@ export default function LiveVisitorTracker() {
         .lv-consent-btn.primary:hover{background:#2b2b29}
         .lv-consent-error{margin:0 16px 8px;padding:6px 10px;border:1px solid #ffd1cd;border-radius:8px;background:#fff5f4;color:#98261b;font-size:10px}
         @keyframes lv-rise{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
-        @media(max-width:600px){.lv-consent-root{bottom:16px;left:16px;right:16px}.lv-consent-card{width:100%}}
+        /* Anchored to the bottom on desktop, where that corner is reliably
+           free. On mobile, product pages routinely put their primary Add to
+           Cart / Buy Now buttons in that same bottom strip -- a fixed,
+           pointer-events:auto card sitting on top of them silently blocks
+           the single most important tap on the storefront. Anchoring to the
+           top on narrow viewports instead avoids that collision structurally
+           rather than trying to detect it. */
+        @media(max-width:600px){.lv-consent-root{top:110px;bottom:auto;left:16px;right:16px}.lv-consent-card{width:100%}}
       `}</style>
 
       <div className="lv-consent-card">

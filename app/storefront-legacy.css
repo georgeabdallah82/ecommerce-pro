@@ -538,7 +538,7 @@ body:not(:has(.adminShell)) .cartTrustUX>div{border-top:1px solid var(--focal-li
 
 
 @media(max-width:900px){
-  body:not(:has(.adminShell)) .focalStorefront .focalSection{padding-top:52px!important;padding-bottom:52px!important}
+  body:not(:has(.adminShell)) .focalStorefront .focalSection:not(.focalType-hero){padding-top:52px!important;padding-bottom:52px!important}
   body:not(:has(.adminShell)) .focalStorefront .focalProductGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:22px 12px!important}
   body:not(:has(.adminShell)) .focalStorefront .focalProductDetail{grid-template-columns:1fr!important;gap:24px!important}
   body:not(:has(.adminShell)) .focalStorefront .focalProductGallery{position:static!important}
@@ -558,7 +558,7 @@ body:not(:has(.adminShell)) .cartTrustUX>div{border-top:1px solid var(--focal-li
 }
 @media(max-width:600px){
   body:not(:has(.adminShell)) .focalStorefront .focalContainer{width:calc(100% - 24px)!important}
-  body:not(:has(.adminShell)) .focalStorefront .focalSection{padding-top:42px!important;padding-bottom:42px!important}
+  body:not(:has(.adminShell)) .focalStorefront .focalSection:not(.focalType-hero){padding-top:42px!important;padding-bottom:42px!important}
   body:not(:has(.adminShell)) .focalStorefront .focalProductGrid{gap:20px 10px!important}
   body:not(:has(.adminShell)) .focalStorefront .focalProductBody{padding-top:10px!important}
   body:not(:has(.adminShell)) .focalStorefront .focalProductBody h3{font-size:14px!important}
@@ -2062,7 +2062,7 @@ body > .footer {
   
   .focalStorefront .focalType-hero {
     min-height: 0 !important;
-    padding-block: 18px 28px !important;
+    padding-block: 0 !important;
   }
   .focalStorefront .focalType-hero .focalHeroInner,
   .focalStorefront .focalType-hero > .focalContainer {
@@ -2508,7 +2508,7 @@ body > .footer {
   }
   .focalType-hero {
     min-height: 0 !important;
-    padding: 10px 0 0 !important;
+    padding: 0 !important;
   }
   .focalType-hero .focalContainer,
   .focalType-hero .focalHeroInner {
