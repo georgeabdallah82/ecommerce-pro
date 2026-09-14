@@ -201,6 +201,7 @@ function mainCollectionGridPanel(): PanelSchema[] {
 const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
   hero: () => [
     { title: 'Content', fields: [
+      toggle('Show text overlay', 'showContent', true),
       text('Eyebrow', 'eyebrow'),
       text('Heading', 'heading'),
       textarea('Text', 'text'),
