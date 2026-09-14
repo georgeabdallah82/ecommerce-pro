@@ -3722,7 +3722,7 @@ body > .footer {
   .aliCartStickyInfo span{font-size:11px;color:var(--focal-muted)}
   .aliCartStickyInfo strong{font-size:17px}
   .aliCartStickyBar .focalButton{min-width:150px}
-  body:has(.aliCartStickyBar) .lv-consent-root{bottom:88px}
+  body:has(.aliCartStickyBar) .lv-consent-root{top:110px;bottom:auto}
 }
 
 /* ============================================================
