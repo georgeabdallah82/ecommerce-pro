@@ -585,6 +585,7 @@ body:not(:has(.adminShell)) .focalNavLinks>a,body:not(:has(.adminShell)) .focalN
 body:not(:has(.adminShell)) .focalNavLinks .focalNavLinkButton{width:auto!important;min-width:0!important}
 body:not(:has(.adminShell)) .focalNavLinks a::before,body:not(:has(.adminShell)) .focalNavLinks button::before{display:none!important}
 body:not(:has(.adminShell)) .focalNav input{flex:0 1 320px!important;width:min(320px,100%)!important}
+body:not(:has(.adminShell)) .aliNavSearchBar input{flex:1!important;width:auto!important}
 
 
 body:not(:has(.adminShell)) .focalType-hero .focalHeroContent{display:flex!important;visibility:visible!important;opacity:1!important}
@@ -2364,7 +2365,8 @@ body > .footer {
     display: block !important;
   }
   .focalNavActions > .focalNavIcon { display: none !important; }
-  .focalNavActions > .focalNavIcon:last-child {
+  .focalNavActions > .focalNavIcon:last-child,
+  .focalNavActions > .focalNavIcon.aliNavSearchIconMobile {
     display: grid !important;
     width: 40px !important;
     height: 40px !important;
@@ -2842,7 +2844,8 @@ body > .footer {
     grid-template-columns: 40px minmax(0,1fr) 40px !important;
   }
   .focalNavMobile,
-  .focalNavActions > .focalNavIcon:last-child {
+  .focalNavActions > .focalNavIcon:last-child,
+  .focalNavActions > .focalNavIcon.aliNavSearchIconMobile {
     width: 38px !important;
     height: 38px !important;
     min-width: 38px !important;
