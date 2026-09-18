@@ -3,6 +3,8 @@ export const config = {
   currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD',
   whatsapp: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '',
   country: process.env.NEXT_PUBLIC_COUNTRY || 'Lebanon',
+  supportEmail: process.env.NEXT_PUBLIC_SUPPORT_EMAIL || '',
+  businessAddress: process.env.NEXT_PUBLIC_BUSINESS_ADDRESS || '',
   locale: process.env.NEXT_PUBLIC_LOCALE || 'en-US'
 }
 
