@@ -44,14 +44,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // whole page), so an uncaught rejection here previously surfaced as a raw
   // Cloudflare "Worker threw exception" page instead of the storefront.
   // Falling back to sane defaults keeps the site rendering through it.
-  const [{ theme, navigation }, categories, tracking] = await Promise.all([
+  const [{ theme, navigation }, tracking] = await Promise.all([
     getThemeState().catch(error => {
       console.error('[layout] getThemeState failed, using defaults', error)
       return { theme: defaultTheme, navigation: defaultNavigation }
-    }),
-    db.category.findMany({ where: { isActive: true }, orderBy: { sortOrder: 'asc' } }).catch(error => {
-      console.error('[layout] category fetch failed, using empty list', error)
-      return []
     }),
     getTrackingConfig().catch(error => {
       console.error('[layout] getTrackingConfig failed, tracking disabled', error)
@@ -87,5 +83,5 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   if (isMaintenancePage) {
     return <html lang="en" className={FONT_VARIABLE_CLASSES}><head><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/>{theme.faviconUrl ? <link rel="icon" href={theme.faviconUrl}/> : null}</head><body>{children}</body></html>
   }
-  return <html lang="en" className={FONT_VARIABLE_CLASSES}><head><script dangerouslySetInnerHTML={{__html:adminThemeScript}}/><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/>{theme.faviconUrl ? <link rel="icon" href={theme.faviconUrl}/> : null}{theme.customCss ? <style dangerouslySetInnerHTML={{ __html: theme.customCss }}/> : null}</head><body className={theme.animations?.enabled ? 'animations-enabled' : ''}><TrackingScripts config={tracking}/><CartProvider><LiveVisitorTracker/><StoreNavRuntime theme={theme} navigation={navigation} categories={categories}/><StoreNavScroll/>{children}</CartProvider></body></html>
+  return <html lang="en" className={FONT_VARIABLE_CLASSES}><head><script dangerouslySetInnerHTML={{__html:adminThemeScript}}/><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/>{theme.faviconUrl ? <link rel="icon" href={theme.faviconUrl}/> : null}{theme.customCss ? <style dangerouslySetInnerHTML={{ __html: theme.customCss }}/> : null}</head><body className={theme.animations?.enabled ? 'animations-enabled' : ''}><TrackingScripts config={tracking}/><CartProvider><LiveVisitorTracker/><StoreNavRuntime theme={theme} navigation={navigation}/><StoreNavScroll/>{children}</CartProvider></body></html>
 }
