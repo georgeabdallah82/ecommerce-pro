@@ -3775,6 +3775,15 @@ body > .footer {
 .aliReviewHead strong{color:var(--store-text,#191512)}
 .aliReviewHead span{color:var(--store-muted,#746b64);font-size:12px;margin-left:auto}
 .aliReviewTitle{font-weight:700;margin-bottom:4px;color:var(--store-text,#191512)}
+.aliReviewForm{display:flex;flex-direction:column;gap:10px;max-width:480px;padding:18px;border:1px solid var(--store-border,#eaded4);border-radius:12px;margin-bottom:28px;background:var(--store-secondary,#fff0e8)}
+.aliReviewFormLabel{font-size:12px;font-weight:700;color:var(--store-muted,#746b64)}
+.aliReviewStarPicker{display:flex;gap:4px;color:var(--store-primary,#d42a2a)}
+.aliReviewStarPicker button{background:none;border:0;padding:2px;cursor:pointer;line-height:0}
+.aliReviewFormInput{width:100%;border:1px solid var(--store-border,#eaded4);border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;background:#fff;resize:vertical}
+.aliReviewFormError{color:#c0392b;font-size:13px;margin:0}
+.aliReviewFormDone{display:flex;align-items:center;gap:8px;padding:14px 18px;border-radius:12px;background:var(--store-secondary,#fff0e8);color:var(--store-text,#191512);font-weight:600;margin-bottom:28px;max-width:480px}
+.aliReviewFormNote{color:var(--store-muted,#746b64);font-size:14px;margin-bottom:28px}
+.aliReviewFormNote a{color:var(--store-primary,#d42a2a);font-weight:700}
 .aliReviewItem p{margin:0;color:var(--store-muted,#746b64);line-height:1.6}
 
 @media(max-width:900px){

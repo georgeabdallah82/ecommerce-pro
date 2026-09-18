@@ -2,14 +2,67 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, ChevronDown, Heart, Minus, Plus, ShoppingBag } from 'lucide-react'
+import Link from 'next/link'
+import { Check, ChevronDown, Heart, Minus, Plus, ShoppingBag, Star } from 'lucide-react'
 import { useCart } from '@/components/cart-provider'
 import { useWishlist } from '@/components/use-wishlist'
 import { ProductCard, QuickView, StarRow, StoreImage, formatSold, img, money } from '@/components/storefront-sections'
 
 type AnyMap = Record<string, any>
 
-export default function AliExpressProduct({ theme, product, related, variantAvailability, productAvailable, trackInventory, continueSellingWhenOutOfStock }: { theme: AnyMap; product: AnyMap; related: AnyMap[]; variantAvailability: Array<{ name: string; sku: string; available: number }>; productAvailable: number; trackInventory: boolean; continueSellingWhenOutOfStock: boolean }) {
+type ReviewEligibility = 'guest' | 'not_purchased' | 'already_reviewed' | 'can_review'
+
+function ReviewForm({ productId }: { productId: string }) {
+  const [rating, setRating] = useState(0)
+  const [hoverRating, setHoverRating] = useState(0)
+  const [title, setTitle] = useState('')
+  const [body, setBody] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const [submitted, setSubmitted] = useState(false)
+
+  if (submitted) {
+    return <div className="aliReviewFormDone"><Check size={18} /> Thanks — your review was submitted and will appear once it's approved.</div>
+  }
+
+  const submit = async () => {
+    if (!rating) { setError('Pick a star rating first.'); return }
+    setSubmitting(true)
+    setError('')
+    try {
+      const res = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId, rating, title, body }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { setError(data.error || 'Unable to submit review right now'); setSubmitting(false); return }
+      setSubmitted(true)
+    } catch {
+      setError('Unable to submit review right now')
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="aliReviewForm">
+      <span className="aliReviewFormLabel">Your rating</span>
+      <div className="aliReviewStarPicker" onMouseLeave={() => setHoverRating(0)}>
+        {[1, 2, 3, 4, 5].map(n => (
+          <button key={n} type="button" aria-label={`${n} star${n === 1 ? '' : 's'}`} onMouseEnter={() => setHoverRating(n)} onClick={() => setRating(n)}>
+            <Star size={22} fill="currentColor" opacity={n <= (hoverRating || rating) ? 1 : 0.22} />
+          </button>
+        ))}
+      </div>
+      <input className="aliReviewFormInput" type="text" placeholder="Review title (optional)" maxLength={140} value={title} onChange={e => setTitle(e.target.value)} />
+      <textarea className="aliReviewFormInput" placeholder="Share details about your experience (optional)" maxLength={2000} rows={4} value={body} onChange={e => setBody(e.target.value)} />
+      {error && <p className="aliReviewFormError">{error}</p>}
+      <button type="button" className="focalButton primary" disabled={submitting} onClick={submit}>{submitting ? 'Submitting…' : 'Submit review'}</button>
+    </div>
+  )
+}
+
+export default function AliExpressProduct({ theme, product, related, variantAvailability, productAvailable, trackInventory, continueSellingWhenOutOfStock, reviewEligibility }: { theme: AnyMap; product: AnyMap; related: AnyMap[]; variantAvailability: Array<{ name: string; sku: string; available: number }>; productAvailable: number; trackInventory: boolean; continueSellingWhenOutOfStock: boolean; reviewEligibility: ReviewEligibility }) {
   const { addItem } = useCart()
   const { wishlist, toggleWish } = useWishlist()
   const router = useRouter()
@@ -141,6 +194,9 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
 
       <div className="aliContainer aliReviewsSection">
         <h2>Customer Reviews {reviews.length > 0 && <span className="aliReviewAvg"><StarRow rating={avgRating} size={16} /> {avgRating.toFixed(1)} ({reviews.length})</span>}</h2>
+        {reviewEligibility === 'can_review' && <ReviewForm productId={product.id} />}
+        {reviewEligibility === 'already_reviewed' && <p className="aliReviewFormNote">You've already reviewed this product — thanks for the feedback.</p>}
+        {reviewEligibility === 'guest' && <p className="aliReviewFormNote"><Link href="/account/login">Sign in</Link> to write a review after your order is delivered.</p>}
         {reviews.length > 0 ? (
           <div className="aliReviewList">
             {reviews.map((r: AnyMap) => (

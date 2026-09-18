@@ -1,5 +1,6 @@
 import { db } from '@/lib/prisma'
 import { getThemeState } from '@/lib/theme'
+import { getCurrentUser } from '@/lib/auth'
 import { getProductStats, withProductStats } from '@/lib/product-stats'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
@@ -91,10 +92,25 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         take: 24,
       })
     : []
-  const [related, [ownStats]] = await Promise.all([
+  const currentUser = await getCurrentUser()
+  const [related, [ownStats], purchase, existingReview] = await Promise.all([
     withProductStats(relatedRaw),
     getProductStats([product.id]).then(stats => [stats[product.id]]),
+    currentUser
+      ? db.orderItem.findFirst({
+          where: { productId: product.id, order: { userId: currentUser.id, status: { in: ['CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED'] } } },
+          select: { id: true },
+        })
+      : null,
+    currentUser ? db.review.findFirst({ where: { productId: product.id, userId: currentUser.id }, select: { id: true } }) : null,
   ])
+  const reviewEligibility: 'guest' | 'not_purchased' | 'already_reviewed' | 'can_review' = !currentUser
+    ? 'guest'
+    : existingReview
+    ? 'already_reviewed'
+    : purchase
+    ? 'can_review'
+    : 'not_purchased'
 
   const sharedRows = product.inventory.filter((inventory) => !inventory.variantId)
   const sharedAvailable = sharedRows.reduce((sum, inventory) => sum + inventory.quantity - inventory.reserved, 0)
@@ -205,6 +221,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         productAvailable={productAvailable}
         trackInventory={product.trackInventory}
         continueSellingWhenOutOfStock={product.continueSellingWhenOutOfStock}
+        reviewEligibility={reviewEligibility}
       />
       <Footer theme={theme} />
     </>
