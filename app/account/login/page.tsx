@@ -11,7 +11,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
       <div className="container" style={{ maxWidth: 520 }}>
         <span className="muted">ACCOUNT</span>
         <h1 className="h2" style={{ fontSize: 46, marginTop: 10 }}>Sign in</h1>
-        <p className="muted">Access your account and, for authorized staff, the Control Center.</p>
+        <p className="muted">Access your account to track orders, manage addresses, and more.</p>
         {invalid && <div className="alert danger" style={{ marginTop: 18 }}>Invalid email or password. Please try again.</div>}
         {rateLimited && <div className="alert danger" style={{ marginTop: 18 }}>Too many sign-in attempts. Please wait a few minutes and try again.</div>}
         <form action={login} className="card" style={{ padding: 24, marginTop: 20 }}>

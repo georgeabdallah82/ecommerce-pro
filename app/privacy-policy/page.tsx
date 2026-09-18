@@ -1,7 +1,7 @@
 import { getThemeState } from '@/lib/theme'
 import { config } from '@/lib/config'
 import { Footer } from '@/components/footer'
-import { LegalPage, Placeholder } from '@/components/legal-page'
+import { LegalPage, Placeholder, ConfiguredField } from '@/components/legal-page'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -47,8 +47,8 @@ export default async function PrivacyPolicy() {
       <h2>Contact us</h2>
       <p>
         {brand}<br/>
-        <Placeholder>[registered business address]</Placeholder><br/>
-        <Placeholder>[support email address]</Placeholder>
+        <ConfiguredField value={config.businessAddress} placeholder="[registered business address]"/><br/>
+        <ConfiguredField value={config.supportEmail} placeholder="[support email address]"/>
         {config.whatsapp && <> · WhatsApp: {config.whatsapp}</>}
       </p>
       <p>This policy is governed by the laws of <Placeholder>[{config.country}, or your actual jurisdiction]</Placeholder>.</p>
