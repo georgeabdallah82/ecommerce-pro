@@ -16,6 +16,15 @@ export function redeemedGiftCard(paymentTransactions: Array<{ provider: string; 
   }
 }
 
+// Gift cards have no scheduled sweep (unlike inventory reservations), so status is
+// synced lazily on read: called before every admin list/detail query, this flips any
+// ACTIVE card whose expiresAt has passed to EXPIRED so the admin UI doesn't show a
+// stale "Active" pill indefinitely. Redemption at checkout stays money-safe regardless,
+// since it already checks expiresAt directly rather than relying on this field.
+export async function expireGiftCards(db: any) {
+  await db.giftCard.updateMany({ where: { status: 'ACTIVE', expiresAt: { lt: new Date() } }, data: { status: 'EXPIRED' } })
+}
+
 export async function restoreGiftCardBalance(tx: any, orderId: string, redeemed: { giftCardId: string; giftCardAmount: number }) {
   await tx.giftCard.update({ where: { id: redeemed.giftCardId }, data: { balance: { increment: redeemed.giftCardAmount } } })
   const checkoutTx = await tx.paymentTransaction.findFirst({ where: { orderId, provider: 'checkout' } })
