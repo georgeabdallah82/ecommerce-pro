@@ -104,7 +104,7 @@ body:has(.adminShell) .input:focus, body:has(.adminShell) .textarea:focus { outl
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser()
-  if (!user) redirect('/login?next=/admin')
+  if (!user) redirect('/admin/login')
   const visibleGroups = groups.map(group => ({ ...group, items: group.items.filter(item => hasPermission(user.role, item.permission as Permission)) })).filter(group => group.items.length)
 
   return <>

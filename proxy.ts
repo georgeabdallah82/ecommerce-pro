@@ -5,6 +5,7 @@ import { db } from '@/lib/prisma'
 
 const MAINTENANCE_BYPASS_PREFIXES = ['/admin', '/api', '/coming-soon', '/_next']
 const MAINTENANCE_BYPASS_EXACT = new Set(['/favicon.ico', '/robots.txt', '/sitemap.xml'])
+const REDIRECT_BYPASS_PREFIXES = ['/admin', '/api', '/_next']
 
 function isStaticAsset(pathname: string) {
   return /\.[a-zA-Z0-9]+$/.test(pathname)
@@ -56,6 +57,16 @@ export async function proxy(request: NextRequest) {
     const rewriteUrl = request.nextUrl.clone()
     rewriteUrl.pathname = '/admin-login'
     return NextResponse.rewrite(rewriteUrl)
+  }
+
+  const needsRedirectCheck = !REDIRECT_BYPASS_PREFIXES.some(p => pathname.startsWith(p)) && !isStaticAsset(pathname)
+  if (needsRedirectCheck) {
+    const redirect = await db.redirect.findUnique({ where: { fromPath: pathname } })
+    if (redirect) {
+      void db.redirect.update({ where: { id: redirect.id }, data: { hits: { increment: 1 } } }).catch(() => undefined)
+      const destination = /^https?:\/\//i.test(redirect.toPath) ? redirect.toPath : new URL(redirect.toPath, request.url)
+      return NextResponse.redirect(destination, 308)
+    }
   }
 
   const needsMaintenanceCheck =
