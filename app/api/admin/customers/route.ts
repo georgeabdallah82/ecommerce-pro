@@ -13,6 +13,7 @@ export async function GET(req: Request) {
     const params = new URL(req.url).searchParams
     const q = params.get('q')?.trim() || ''
     const status = params.get('status') || 'ALL'
+    const tagValue = params.get('tag')?.trim() || ''
     const page = Math.max(1, Number(params.get('page') || 1))
     const pageSize = Math.min(100, Math.max(10, Number(params.get('pageSize') || 25)))
     const searchClause: any = q ? { OR: [
@@ -20,18 +21,27 @@ export async function GET(req: Request) {
       { email: { contains: q, mode: 'insensitive' } },
       { phone: { contains: q, mode: 'insensitive' } },
     ] } : {}
+
+    let tagClause: any = {}
+    if (tagValue) {
+      const tag = await db.customerTag.findUnique({ where: { value: tagValue } })
+      const members = tag ? await db.customerTagMember.findMany({ where: { tagId: tag.id } }) : []
+      tagClause = { id: { in: members.map(m => m.customerId) } }
+    }
+
     const where: any = {
       role: Role.CUSTOMER,
       ...(status === 'ACTIVE' ? { isActive: true } : status === 'DISABLED' ? { isActive: false } : {}),
       ...searchClause,
+      ...tagClause,
     }
     // Active/disabled counts match the current search but ignore the status filter itself,
     // so the "Active"/"Disabled" tiles always reflect the true totals a click would land on
     // instead of just whichever page of rows happens to be loaded.
-    const [total, active, disabled, rows] = await Promise.all([
+    const [total, active, disabled, rows, availableTags] = await Promise.all([
       db.user.count({ where }),
-      db.user.count({ where: { role: Role.CUSTOMER, isActive: true, ...searchClause } }),
-      db.user.count({ where: { role: Role.CUSTOMER, isActive: false, ...searchClause } }),
+      db.user.count({ where: { role: Role.CUSTOMER, isActive: true, ...searchClause, ...tagClause } }),
+      db.user.count({ where: { role: Role.CUSTOMER, isActive: false, ...searchClause, ...tagClause } }),
       db.user.findMany({
         where,
         select: { id: true, name: true, email: true, phone: true, isActive: true, createdAt: true, lastLoginAt: true, _count: { select: { orders: true, reviews: true } } },
@@ -39,16 +49,27 @@ export async function GET(req: Request) {
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
+      db.customerTag.findMany({ orderBy: { value: 'asc' } }),
     ])
 
     const ids = rows.map(row => row.id)
     const spendRows = (ids.length
       ? await db.order.groupBy({ by: ['userId'], where: { userId: { in: ids }, status: { not: OrderStatus.CANCELLED } }, _sum: { grandTotal: true } })
       : []) as { userId: string | null; _sum: { grandTotal: number | null } }[]
+    const tagMembers = ids.length
+      ? await db.customerTagMember.findMany({ where: { customerId: { in: ids } }, include: { tag: true } })
+      : []
     const spendByCustomer = new Map(spendRows.map(row => [row.userId, row._sum.grandTotal || 0]))
-    const hydratedRows = rows.map(row => ({ ...row, totalSpent: spendByCustomer.get(row.id) || 0 }))
+    const tagsByCustomer = new Map<string, { id: string; value: string }[]>()
+    for (const member of tagMembers as any[]) {
+      if (!member.tag) continue
+      const list = tagsByCustomer.get(member.customerId) || []
+      list.push(member.tag)
+      tagsByCustomer.set(member.customerId, list)
+    }
+    const hydratedRows = rows.map(row => ({ ...row, totalSpent: spendByCustomer.get(row.id) || 0, tags: tagsByCustomer.get(row.id) || [] }))
 
-    return json({ rows: hydratedRows, total, active, disabled, page, pageSize, pages: Math.max(1, Math.ceil(total / pageSize)) })
+    return json({ rows: hydratedRows, total, active, disabled, page, pageSize, pages: Math.max(1, Math.ceil(total / pageSize)), availableTags })
   } catch (e) {
     console.error('[admin/customers] GET failed', e)
     return json({ error: 'Unable to load customers' }, { status: 500 })

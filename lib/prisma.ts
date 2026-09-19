@@ -244,6 +244,8 @@ const mockApiCredentials: any[] = []
 const mockTaxRates: any[] = []
 const mockFulfillments: any[] = []
 const mockFulfillmentLines: any[] = []
+const mockCustomerTags: any[] = []
+const mockCustomerTagMembers: any[] = []
 
 // Matches the storefront's product text-search field filters -- {contains, mode?} --
 // against a single mock product field. Real Prisma/Mongo does this server-side;
@@ -339,6 +341,17 @@ function getMockHandler(model: string) {
         if (args?.where?.isActive !== undefined) list = list.filter((x) => x.isActive === args.where.isActive)
         return list.sort((a, b) => a.name.localeCompare(b.name))
       }
+      if (model === 'customerTag') return [...mockCustomerTags].sort((a, b) => a.value.localeCompare(b.value))
+      if (model === 'customerTagMember') {
+        let list = [...mockCustomerTagMembers]
+        const w = args?.where || {}
+        if (w.tagId) list = list.filter((x) => x.tagId === w.tagId)
+        if (typeof w.customerId === 'string') list = list.filter((x) => x.customerId === w.customerId)
+        if (w.customerId?.in) { const ids = new Set(w.customerId.in); list = list.filter((x) => ids.has(x.customerId)) }
+        list = list.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        if (args?.include?.tag) list = list.map((x) => ({ ...x, tag: mockCustomerTags.find((t) => t.id === x.tagId) || null }))
+        return list
+      }
       if (model === 'liveVisitorSession') {
         let list = Array.from(mockLiveVisitorSessions.values())
         if (args?.where?.lastSeenAt?.gte) list = list.filter((v) => v.lastSeenAt >= new Date(args.where.lastSeenAt.gte))
@@ -387,6 +400,11 @@ function getMockHandler(model: string) {
       if (model === 'webhookEndpoint' && where.id) return mockWebhookEndpoints.find((x) => x.id === where.id) || null
       if (model === 'apiCredential' && where.id) return mockApiCredentials.find((x) => x.id === where.id) || null
       if (model === 'taxRate' && where.id) return mockTaxRates.find((x) => x.id === where.id) || null
+      if (model === 'customerTag') return (where.id ? mockCustomerTags.find((x) => x.id === where.id) : where.value ? mockCustomerTags.find((x) => x.value === where.value) : null) || null
+      if (model === 'customerTagMember' && where.tagId_customerId) {
+        const { tagId, customerId } = where.tagId_customerId
+        return mockCustomerTagMembers.find((x) => x.tagId === tagId && x.customerId === customerId) || null
+      }
       if (model === 'fulfillment' && where.id) {
         const f = mockFulfillments.find((x) => x.id === where.id)
         return f ? { ...f, lines: mockFulfillmentLines.filter((l) => l.fulfillmentId === f.id) } : null
@@ -454,6 +472,21 @@ function getMockHandler(model: string) {
         mockLiveVisitorSessions.set(args.where.sessionId, record)
         return record
       }
+      if (model === 'customerTag' && args.where?.value) {
+        const existing = mockCustomerTags.find((x) => x.value === args.where.value)
+        if (existing) { Object.assign(existing, args.update || {}); return existing }
+        const created = { id: `tag-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, value: args.where.value, createdAt: new Date(), ...(args.create || {}) }
+        mockCustomerTags.push(created)
+        return created
+      }
+      if (model === 'customerTagMember' && args.where?.tagId_customerId) {
+        const { tagId, customerId } = args.where.tagId_customerId
+        const existing = mockCustomerTagMembers.find((x) => x.tagId === tagId && x.customerId === customerId)
+        if (existing) { Object.assign(existing, args.update || {}); return existing }
+        const created = { tagId, customerId, createdAt: new Date(), ...(args.create || {}) }
+        mockCustomerTagMembers.push(created)
+        return created
+      }
       return args?.create || args?.update || {}
     },
     create: async (args: any) => {
@@ -506,6 +539,12 @@ function getMockHandler(model: string) {
       return args?.data || {}
     },
     delete: async (args?: any) => {
+      if (model === 'customerTagMember' && args?.where?.tagId_customerId) {
+        const { tagId, customerId } = args.where.tagId_customerId
+        const i = mockCustomerTagMembers.findIndex((x) => x.tagId === tagId && x.customerId === customerId)
+        if (i >= 0) return mockCustomerTagMembers.splice(i, 1)[0]
+        return {}
+      }
       const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, user: mockUsers }
       const list = byId[model]
       if (list && args?.where?.id) { const i = list.findIndex((x) => x.id === args.where.id); if (i >= 0) return list.splice(i, 1)[0] }
@@ -515,10 +554,16 @@ function getMockHandler(model: string) {
       if (model === 'product') return mockProducts.length
       if (model === 'order') return mockOrders.length
       if (model === 'fulfillment') return mockFulfillments.length
+      if (model === 'customerTagMember') {
+        let list = mockCustomerTagMembers
+        if (args?.where?.tagId) list = list.filter((x) => x.tagId === args.where.tagId)
+        return list.length
+      }
       if (model === 'user') {
         let list = mockUsers
         if (args?.where?.role !== undefined) list = list.filter((u) => u.role === args.where.role)
         if (args?.where?.isActive !== undefined) list = list.filter((u) => u.isActive === args.where.isActive)
+        if (args?.where?.id?.in) { const ids = new Set(args.where.id.in); list = list.filter((u) => ids.has(u.id)) }
         return list.length
       }
       return 0
