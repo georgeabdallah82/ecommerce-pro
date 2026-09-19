@@ -232,7 +232,7 @@ function ApiCredentialsPanel({ credentials, onChange }: { credentials: any[]; on
 
   return <div className={`${ui.card} ${styles.panel}`}>
     <h3>API credentials</h3>
-    <p className={ui.muted}>Keys for external systems to call the store API.</p>
+    <p className={ui.muted}>Generate and manage keys for external systems. Not yet enforced: no API route currently authenticates requests against these keys, so issuing one doesn't grant access to anything today.</p>
     <div className={styles.list}>
       {credentials.map((x: any) => (
         <div className={styles.entityRow} key={x.id}>
@@ -256,6 +256,7 @@ function ApiCredentialsPanel({ credentials, onChange }: { credentials: any[]; on
         <input className={ui.input} placeholder="Credential name (e.g. Inventory sync)" value={name} onChange={e => setName(e.target.value)} autoFocus/>
         <div>
           <span className={ui.fieldLabel}>Scopes</span>
+          <p className={ui.fieldHelp}>Recorded for when API access is wired up -- not enforced yet.</p>
           <div className={styles.scopeGrid}>{CREDENTIAL_SCOPES.map(scope => (
             <label className={styles.checkboxField} key={scope}><input type="checkbox" checked={scopes.includes(scope)} onChange={() => toggleScope(scope)}/> {scope}</label>
           ))}</div>
