@@ -5,6 +5,7 @@ import { canTransitionOrder, canTransitionPayment, fulfillmentForStatus } from '
 import { fulfillOrderStock, releaseOrderReservations } from '@/lib/inventory'
 import { json } from '@/lib/utils'
 import { dispatchWebhookEvent, dispatchInventoryUpdated } from '@/lib/webhooks'
+import { sendFulfillmentEmail } from '@/lib/email'
 import { OrderStatus, PaymentStatus } from '@prisma/client'
 
 const ORDER_STATUSES = new Set(Object.values(OrderStatus))
@@ -94,9 +95,10 @@ export async function PATCH(req: Request) {
         ...(paymentChanged ? { paymentStatus: requestedPayment } : {}),
       }
       const updated = await tx.order.update({ where: { id: order.id }, data: { ...data, ...(statusChanged ? { events: { create: { status: requestedStatus!, message: `Order moved from ${order.status} to ${requestedStatus}.` } } } : {}) } })
-      return { order, updated, statusChanged, paymentChanged, hasOnlyDetails, fulfilledInventoryIds }
+      return { order, updated, statusChanged, paymentChanged, hasOnlyDetails, fulfilledInventoryIds, fulfilling }
     })
     if (result.order.userId && result.statusChanged) await db.notification.create({ data: { userId: result.order.userId, title: `Order ${result.order.orderNumber} updated`, body: `Your order is now ${result.updated.status.toLowerCase().replaceAll('_', ' ')}.`, type: 'ORDER_STATUS' } })
+    if (result.fulfilling) void sendFulfillmentEmail(result.order.id).catch(error => console.error('[email] fulfillment notification failed', error))
     await audit(actor.id, 'order.updated', 'Order', result.order.id, { from: result.order.status, to: result.updated.status, paymentFrom: result.order.paymentStatus, paymentTo: result.updated.paymentStatus, statusChanged: result.statusChanged, paymentChanged: result.paymentChanged, detailsEdited: Object.keys(detailsPatch) })
     if (result.statusChanged || result.paymentChanged) {
       const eventPayload = { id: result.updated.id, orderNumber: result.updated.orderNumber, status: result.updated.status, paymentStatus: result.updated.paymentStatus, fulfillmentStatus: result.updated.fulfillmentStatus }
