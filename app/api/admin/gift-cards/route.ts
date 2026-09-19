@@ -4,12 +4,14 @@ import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { sendGiftCardIssuedEmail } from '@/lib/email'
+import { expireGiftCards } from '@/lib/gift-cards'
 
 function generateCode() { return randomBytes(10).toString('hex').toUpperCase().match(/.{1,5}/g)!.join('-') }
 
 export async function GET(req: Request) {
   try {
     await requirePermission('giftCards.view')
+    await expireGiftCards(db)
     const q = new URL(req.url).searchParams.get('q')?.trim() || ''
     return json(await db.giftCard.findMany({ where: q ? { OR: [{ code: { contains: q.toUpperCase() } }, { last4: { contains: q.slice(-4) } }] } : undefined, orderBy: { createdAt: 'desc' }, take: 200 }))
   } catch (e) { return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 }) }
