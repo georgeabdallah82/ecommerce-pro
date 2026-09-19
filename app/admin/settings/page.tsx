@@ -24,6 +24,7 @@ const CLIENT_SETTING_KEYS = new Set([
   'email.customerOrder',
   'email.fulfillment',
   'email.abandonedCheckout',
+  'email.giftCard',
   'tracking.metaPixelId',
   'tracking.gaMeasurementId',
   'tracking.tiktokPixelId',

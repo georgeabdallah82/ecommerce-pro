@@ -78,7 +78,7 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
     ...Object.fromEntries([
       'payment.cod', 'payment.card', 'payment.bank', 'payment.wallet',
       'checkout.guestCheckout', 'notifications.orderEmail', 'notifications.lowStock',
-      'notifications.reviews', 'email.customerOrder', 'email.fulfillment', 'email.abandonedCheckout',
+      'notifications.reviews', 'email.customerOrder', 'email.fulfillment', 'email.abandonedCheckout', 'email.giftCard',
     ].map(k => [k, map.get(k) !== 'false'])),
     'maintenance.enabled': map.get('maintenance.enabled') === 'true',
   }))
@@ -263,6 +263,7 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
               <Toggle label="Order confirmation" keyName="email.customerOrder" value={flags['email.customerOrder']} onChange={() => toggle('email.customerOrder')} />
               <Toggle label="Fulfillment / tracking" keyName="email.fulfillment" value={flags['email.fulfillment']} onChange={() => toggle('email.fulfillment')} />
               <Toggle label="Abandoned checkout recovery" keyName="email.abandonedCheckout" value={flags['email.abandonedCheckout']} onChange={() => toggle('email.abandonedCheckout')} />
+              <Toggle label="Gift card issued" keyName="email.giftCard" value={flags['email.giftCard']} onChange={() => toggle('email.giftCard')} />
             </Card>
           )}
 

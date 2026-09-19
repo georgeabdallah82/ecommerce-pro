@@ -148,6 +148,25 @@ export async function sendDraftOrderInvoiceEmail(draftOrderId: string, payUrl: s
   return sendEmail(draft.email, `Invoice for your order — ${draft.orderNumber}`, html, text)
 }
 
+export async function sendGiftCardIssuedEmail(giftCardId: string) {
+  if (!(await settingEnabled('email.giftCard'))) return { sent: false, skipped: true }
+  const card = await db.giftCard.findUnique({ where: { id: giftCardId } })
+  if (!card || !card.customerId) return { sent: false, skipped: true }
+  const customer = await db.user.findUnique({ where: { id: card.customerId } })
+  if (!customer) return { sent: false, skipped: true }
+
+  const url = siteUrl() ? `${siteUrl()}/account` : null
+  const html = layout(`
+    <h1 style="font-size:20px;margin:0 0 4px">You've received a gift card</h1>
+    <p style="font-size:14px;color:#4a473d;margin:0 0 20px">${escapeHtml(brandName())} has issued you a gift card worth ${money(card.initialAmount, card.currency)}.</p>
+    <table role="presentation" width="100%" style="border-collapse:collapse;background:#f4efe9;border-radius:8px"><tr><td style="padding:16px 20px;font-size:18px;font-weight:800;letter-spacing:.04em;text-align:center">${escapeHtml(card.code)}</td></tr></table>
+    ${card.expiresAt ? `<p style="font-size:12px;color:#8a8578;margin:12px 0 0">Expires ${new Date(card.expiresAt).toLocaleDateString()}.</p>` : ''}
+    ${url ? `<p style="margin:24px 0 0"><a href="${url}" style="display:inline-block;background:#6b7a4f;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:700">Use it at checkout</a></p>` : ''}
+  `)
+  const text = `You've received a gift card worth ${money(card.initialAmount, card.currency)}. Code: ${card.code}.${card.expiresAt ? ` Expires ${new Date(card.expiresAt).toLocaleDateString()}.` : ''}`
+  return sendEmail(customer.email, `You've received a ${money(card.initialAmount, card.currency)} gift card`, html, text)
+}
+
 export async function sendAbandonedCheckoutEmail(abandonedCheckoutId: string) {
   if (!(await settingEnabled('email.abandonedCheckout'))) return { sent: false, skipped: true }
   const checkout = await db.abandonedCheckout.findUnique({ where: { id: abandonedCheckoutId } })
