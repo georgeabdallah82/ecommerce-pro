@@ -33,7 +33,6 @@ export default function CustomerSegmentsAdmin({ initial, canManage }: { initial:
   const [modalOpen, setModalOpen] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [ruleJson, setRuleJson] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [modalError, setModalError] = useState('')
 
@@ -51,23 +50,18 @@ export default function CustomerSegmentsAdmin({ initial, canManage }: { initial:
   }
 
   function openModal() {
-    setModalOpen(true); setName(''); setDescription(''); setRuleJson(''); setModalError('')
+    setModalOpen(true); setName(''); setDescription(''); setModalError('')
   }
   function closeModal() { setModalOpen(false) }
 
   async function createSegment() {
     const trimmedName = name.trim()
     if (!trimmedName) { setModalError('Segment name is required.'); return }
-    let ruleJsonValue: string | undefined
-    if (ruleJson.trim()) {
-      try { JSON.parse(ruleJson.trim()); ruleJsonValue = ruleJson.trim() }
-      catch { setModalError('Segment rule must be valid JSON.'); return }
-    }
     setSubmitting(true); setModalError('')
     try {
       const data = await api('/api/admin/customers/segments', {
         method: 'POST',
-        body: JSON.stringify({ name: trimmedName, description: description.trim() || undefined, ...(ruleJsonValue ? { ruleJson: ruleJsonValue } : {}) }),
+        body: JSON.stringify({ name: trimmedName, description: description.trim() || undefined }),
       })
       const created: CustomerSegment = { ...data.segment, _count: { members: 0 } }
       setRows(current => [created, ...current])
@@ -124,7 +118,6 @@ export default function CustomerSegmentsAdmin({ initial, canManage }: { initial:
           {modalError && <div className={`${ui.alert} ${ui.alertDanger}`}>{modalError}</div>}
           <label className={ui.fieldLabel}>Name<input className={ui.input} value={name} onChange={e => setName(e.target.value)} placeholder="VIP customers" autoFocus /></label>
           <label className={ui.fieldLabel}>Description<textarea className={ui.textarea} rows={2} value={description} onChange={e => setDescription(e.target.value)} placeholder="What this segment represents" /></label>
-          <label className={ui.fieldLabel}>Rule definition (JSON, optional)<textarea className={ui.textarea} rows={4} value={ruleJson} onChange={e => setRuleJson(e.target.value)} placeholder='{"minOrders": 5}' /></label>
           <div className={styles.modalFooter}>
             <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={closeModal} disabled={submitting}>Cancel</button>
             <button className={ui.btn} onClick={createSegment} disabled={submitting}>{submitting ? 'Creating…' : 'Create segment'}</button>
