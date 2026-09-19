@@ -242,6 +242,8 @@ const mockSalesChannels: any[] = []
 const mockWebhookEndpoints: any[] = []
 const mockApiCredentials: any[] = []
 const mockTaxRates: any[] = []
+const mockFulfillments: any[] = []
+const mockFulfillmentLines: any[] = []
 
 // Matches the storefront's product text-search field filters -- {contains, mode?} --
 // against a single mock product field. Real Prisma/Mongo does this server-side;
@@ -325,6 +327,13 @@ function getMockHandler(model: string) {
         return list.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       }
       if (model === 'apiCredential') return [...mockApiCredentials].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      if (model === 'fulfillment') {
+        let list = [...mockFulfillments]
+        if (args?.where?.orderId) list = list.filter((x) => x.orderId === args.where.orderId)
+        list = list.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        if (args?.include?.lines) list = list.map((f) => ({ ...f, lines: mockFulfillmentLines.filter((l) => l.fulfillmentId === f.id) }))
+        return list
+      }
       if (model === 'taxRate') {
         let list = [...mockTaxRates]
         if (args?.where?.isActive !== undefined) list = list.filter((x) => x.isActive === args.where.isActive)
@@ -378,6 +387,10 @@ function getMockHandler(model: string) {
       if (model === 'webhookEndpoint' && where.id) return mockWebhookEndpoints.find((x) => x.id === where.id) || null
       if (model === 'apiCredential' && where.id) return mockApiCredentials.find((x) => x.id === where.id) || null
       if (model === 'taxRate' && where.id) return mockTaxRates.find((x) => x.id === where.id) || null
+      if (model === 'fulfillment' && where.id) {
+        const f = mockFulfillments.find((x) => x.id === where.id)
+        return f ? { ...f, lines: mockFulfillmentLines.filter((l) => l.fulfillmentId === f.id) } : null
+      }
       if (model === 'order') {
         const found = where.orderNumber
           ? mockOrders.find((o) => o.orderNumber === where.orderNumber)
@@ -471,6 +484,8 @@ function getMockHandler(model: string) {
       if (model === 'apiCredential') { if (item.status === undefined) item.status = 'ACTIVE'; mockApiCredentials.push(item) }
       if (model === 'taxRate') mockTaxRates.push(item)
       if (model === 'coupon') { item.usedCount ??= 0; mockCoupons.push(item) }
+      if (model === 'fulfillment') mockFulfillments.unshift(item)
+      if (model === 'fulfillmentLine') mockFulfillmentLines.push(item)
       return item
     },
     update: async (args: any) => {
@@ -479,12 +494,13 @@ function getMockHandler(model: string) {
         if (u) Object.assign(u, args.data || {})
         return u || args.data
       }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments }
       if (byId[model] && args.where?.id) {
         const row = byId[model].find((x) => x.id === args.where.id)
         if (!row) throw new Error('Record to update not found')
         if (model === 'storeLocation' && args.data?.isDefault === true) for (const x of mockStoreLocations) x.isDefault = false
         Object.assign(row, args.data || {}, { updatedAt: new Date() })
+        if (model === 'fulfillment' && args?.include?.lines) return { ...row, lines: mockFulfillmentLines.filter((l) => l.fulfillmentId === row.id) }
         return row
       }
       return args?.data || {}
@@ -498,6 +514,7 @@ function getMockHandler(model: string) {
     count: async (args?: any) => {
       if (model === 'product') return mockProducts.length
       if (model === 'order') return mockOrders.length
+      if (model === 'fulfillment') return mockFulfillments.length
       if (model === 'user') {
         let list = mockUsers
         if (args?.where?.role !== undefined) list = list.filter((u) => u.role === args.where.role)
