@@ -51,6 +51,10 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit }: { initi
   const [status, setStatus] = useState(o.status)
   const [paymentStatus, setPaymentStatus] = useState(o.paymentStatus)
   const [tracking, setTracking] = useState(o.trackingNumber || '')
+  const [trackingCompany, setTrackingCompany] = useState('')
+  const [trackingUrl, setTrackingUrl] = useState('')
+  const [fulfillments, setFulfillments] = useState<any[]>(o.fulfillments || [])
+  const [markingDelivered, setMarkingDelivered] = useState<string | null>(null)
   const [email, setEmail] = useState(o.email || '')
   const [phone, setPhone] = useState(o.phone || '')
   const [shipping, setShipping] = useState(parseAddress(o.shippingAddressJson))
@@ -77,15 +81,16 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit }: { initi
   const paymentLocked = availablePaymentStatuses.length <= 1
 
   function addressPayload(a:any) { return JSON.stringify({ ...a, firstName:a.firstName.trim(), lastName:a.lastName.trim(), line1:a.line1.trim(), line2:a.line2.trim()||undefined, city:a.city.trim(), region:a.region.trim()||undefined, postalCode:a.postalCode.trim()||undefined, country:a.country.trim(), phone:a.phone.trim()||undefined }) }
-  function beginEdit(){ setEmail(o.email||''); setPhone(o.phone||''); setShipping(parseAddress(o.shippingAddressJson)); setBilling(parseAddress(o.billingAddressJson)); setNotesValue(o.notes||''); setTracking(o.trackingNumber||''); setEditing(true); setMsg('') }
+  function beginEdit(){ setEmail(o.email||''); setPhone(o.phone||''); setShipping(parseAddress(o.shippingAddressJson)); setBilling(parseAddress(o.billingAddressJson)); setNotesValue(o.notes||''); setTracking(o.trackingNumber||''); setTrackingCompany(''); setTrackingUrl(''); setEditing(true); setMsg('') }
   function cancelEdit(){ setEditing(false); setMsg('') }
   async function save(){
     setSaving(true); setMsg('')
     try {
-      const body = { id:o.id, status, paymentStatus, trackingNumber:tracking, email, phone, shippingAddressJson:addressPayload(shipping), billingAddressJson:(billing.line1||billing.city||billing.country)?addressPayload(billing):null, notes:notesValue }
+      const body = { id:o.id, status, paymentStatus, trackingNumber:tracking, trackingCompany, trackingUrl, email, phone, shippingAddressJson:addressPayload(shipping), billingAddressJson:(billing.line1||billing.city||billing.country)?addressPayload(billing):null, notes:notesValue }
       const d=await api('/api/admin/orders',{method:'PATCH',body:JSON.stringify(body)})
       const next={...o,...(d.order||{}),status,paymentStatus,trackingNumber:tracking,email,phone,shippingAddressJson:body.shippingAddressJson,billingAddressJson:body.billingAddressJson,notes:notesValue}
       setO(next); setEditing(false); setMsg('Order updated successfully.')
+      if (status === 'SHIPPED' && o.status !== 'SHIPPED') { try { const f = await api(`/api/admin/fulfillments?orderId=${o.id}`); setFulfillments(f.fulfillments || []) } catch {} }
     } catch(e){
       // The status/payment dropdowns can't fully prevent an invalid pick (the
       // valid set can only be computed from the last-saved order), so on a
@@ -97,6 +102,14 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit }: { initi
   }
   async function addNote(){const value=note.trim();if(!value)return;setAddingNote(true);setMsg('');try{const d=await api('/api/admin/orders',{method:'PATCH',body:JSON.stringify({id:o.id,addNote:value})});setO((c:any)=>({...c,notesHistory:[d.note,...(c.notesHistory||[])]}));setNote('');setMsg('Internal note added.')}catch(e){setMsg(e instanceof Error?e.message:'Unable to add note')}finally{setAddingNote(false)}}
   async function copyOrderNumber(){try{await navigator.clipboard.writeText(String(o.orderNumber));setCopied(true);window.setTimeout(()=>setCopied(false),1500)}catch{}}
+  async function markDelivered(fulfillmentId:string){
+    setMarkingDelivered(fulfillmentId); setMsg('')
+    try {
+      const d = await api(`/api/admin/fulfillments/${fulfillmentId}`,{method:'PATCH',body:JSON.stringify({status:'DELIVERED'})})
+      setFulfillments((current:any[])=>current.map(f=>f.id===fulfillmentId?d.fulfillment:f))
+    } catch(e){ setMsg(e instanceof Error?e.message:'Unable to update shipment') }
+    finally { setMarkingDelivered(null) }
+  }
 
   return <div>
     <div className={ui.sectionHead}>
@@ -144,6 +157,19 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit }: { initi
 
         {!editing&&<section className={ui.card}><div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Internal notes</h3></div><div className="inline" style={{alignItems:'stretch'}}><textarea className={ui.textarea} rows={3} value={note} onChange={e=>setNote(e.target.value)} placeholder="Add a private note for staff…"/><button className={ui.btn} onClick={addNote} disabled={addingNote||!note.trim()}><Plus size={15}/>{addingNote?'Adding…':'Add note'}</button></div><div className={s.timeline} style={{marginTop:18}}>{(o.notesHistory||[]).map((n:any)=><div className={s.timelineItem} key={n.id}><div className={s.dot}/><div><strong>{n.user?.name||'Staff'}</strong><p>{n.body}</p><small className={ui.muted}>{new Date(n.createdAt).toLocaleString()}</small></div></div>)}{!o.notesHistory?.length&&<p className={ui.muted}>No internal notes yet.</p>}</div></section>}
 
+        {fulfillments.length>0&&<section className={ui.card}>
+          <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Shipments</h3><span className={ui.muted}>{fulfillments.length} shipment{fulfillments.length===1?'':'s'}</span></div>
+          <div className={s.timeline}>{fulfillments.map((f:any)=><div className={s.timelineItem} key={f.id}>
+            <div className={s.dot}/>
+            <div>
+              <strong>{f.status}</strong>{f.trackingCompany?` · ${f.trackingCompany}`:''}
+              <p className={ui.muted}>{f.trackingNumber?`Tracking: ${f.trackingNumber}`:'No tracking number'}{f.trackingUrl?<> · <a className={ui.textLink} href={f.trackingUrl} target="_blank" rel="noopener noreferrer">Track shipment</a></>:''}</p>
+              <p className={ui.muted}>{f.lines?.length||0} item{f.lines?.length===1?'':'s'} · {f.shippedAt?`Shipped ${new Date(f.shippedAt).toLocaleDateString()}`:'Not yet shipped'}{f.deliveredAt?` · Delivered ${new Date(f.deliveredAt).toLocaleDateString()}`:''}</p>
+              {f.status!=='DELIVERED'&&f.status!=='CANCELLED'&&<button className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} onClick={()=>markDelivered(f.id)} disabled={markingDelivered===f.id}>{markingDelivered===f.id?'Updating…':'Mark delivered'}</button>}
+            </div>
+          </div>)}</div>
+        </section>}
+
         <section className={ui.card}><div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Order timeline</h3></div><div className={s.timeline}>{(o.events||[]).map((e:any)=><div className={s.timelineItem} key={e.id}><div className={s.dot}/><div><strong>{e.status}</strong><p className={ui.muted}>{e.message||'Order updated'}</p><small className={ui.muted}>{new Date(e.createdAt).toLocaleString()}</small></div></div>)}{!o.events?.length&&<p className={ui.muted}>No status events yet.</p>}</div></section>
 
         <DeliveryTrackingAdmin orderId={o.id} orderStatus={o.status}/>
@@ -161,6 +187,10 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit }: { initi
           </label>
           {paymentLocked && <p className={s.lockedNote}>Refunded payments are managed from the refund workflow, not here.</p>}
           <label className={ui.fieldLabel}>Tracking number<input className={ui.input} value={tracking} onChange={e=>setTracking(e.target.value)} placeholder="Enter tracking number"/></label>
+          {editing&&status==='SHIPPED'&&o.status!=='SHIPPED'&&<>
+            <label className={ui.fieldLabel}>Carrier<input className={ui.input} value={trackingCompany} onChange={e=>setTrackingCompany(e.target.value)} placeholder="e.g. Aramex, DHL"/></label>
+            <label className={ui.fieldLabel}>Tracking URL<input className={ui.input} value={trackingUrl} onChange={e=>setTrackingUrl(e.target.value)} placeholder="https://…"/></label>
+          </>}
           {!editing&&<button className={ui.btn} onClick={save} disabled={saving}><Save size={15}/>{saving?'Saving…':'Save changes'}</button>}
         </section>
         <section className={ui.card}><div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Customer</h3></div><strong>{o.user?.name||o.email}</strong><p className={ui.muted}><Mail size={13}/> {o.email}</p>{o.phone&&<p className={ui.muted}><Phone size={13}/> {o.phone}</p>}{o.user?.id&&<Link className={ui.textLink} href={`/admin/customers/${o.user.id}`}>Open customer</Link>}</section>

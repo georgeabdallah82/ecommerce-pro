@@ -77,10 +77,15 @@ export async function PATCH(req: Request) {
     }
     if (body.notes !== undefined) detailsPatch.notes = String(body.notes || '').trim().slice(0, 5000) || null
     if (body.trackingNumber !== undefined) detailsPatch.trackingNumber = String(body.trackingNumber || '').trim().slice(0, 120) || null
+    // Carrier name and tracking URL aren't Order columns -- they're only meaningful attached to
+    // the Fulfillment record a SHIPPED transition creates below, so they're read from the body
+    // here but applied there, not folded into detailsPatch.
+    const trackingCompany = body.trackingCompany !== undefined ? String(body.trackingCompany || '').trim().slice(0, 120) || null : null
+    const trackingUrl = body.trackingUrl !== undefined ? String(body.trackingUrl || '').trim().slice(0, 500) || null : null
 
     const hasOnlyDetails = Object.keys(detailsPatch).length > 0 && !requestedStatus && !requestedPayment
     const result = await db.$transaction(async tx => {
-      const order = await tx.order.findUnique({ where: { id: orderId } })
+      const order = await tx.order.findUnique({ where: { id: orderId }, include: { items: true } })
       if (!order) throw new Error('Order not found')
       if (requestedStatus && !canTransitionOrder(order.status, requestedStatus)) throw new Error(`Cannot change ${order.status} to ${requestedStatus}`)
       if (requestedPayment && !canTransitionPayment(order.paymentStatus, requestedPayment)) throw new Error(`Cannot change payment status ${order.paymentStatus} to ${requestedPayment}`)
@@ -96,11 +101,29 @@ export async function PATCH(req: Request) {
         ...(paymentChanged ? { paymentStatus: requestedPayment } : {}),
       }
       const updated = await tx.order.update({ where: { id: order.id }, data: { ...data, ...(statusChanged ? { events: { create: { status: requestedStatus!, message: `Order moved from ${order.status} to ${requestedStatus}.` } } } : {}) } })
-      return { order, updated, statusChanged, paymentChanged, hasOnlyDetails, fulfilledInventoryIds, fulfilling }
+      // Recording a Fulfillment (with one line per order item) is how this "ship the whole
+      // order" action leaves a real shipment record behind -- carrier/tracking-URL metadata a
+      // customer-facing tracking page or a future partial-shipment flow can read, rather than
+      // only ever living in Order.trackingNumber. Scoped to what this single-shipment action
+      // already knows: it always covers every item on the order in one shipment.
+      let fulfillment: { id: string } | null = null
+      if (fulfilling) {
+        fulfillment = await tx.fulfillment.create({
+          data: {
+            orderId: order.id, status: 'SHIPPED', shippedAt: new Date(),
+            trackingNumber: (data.trackingNumber ?? order.trackingNumber) || null,
+            trackingCompany, trackingUrl,
+          },
+        })
+        for (const item of order.items) {
+          await tx.fulfillmentLine.create({ data: { fulfillmentId: fulfillment.id, orderItemId: item.id, productId: item.productId, variantId: item.variantId, quantity: item.quantity } })
+        }
+      }
+      return { order, updated, statusChanged, paymentChanged, hasOnlyDetails, fulfilledInventoryIds, fulfilling, fulfillmentId: fulfillment?.id }
     })
     if (result.order.userId && result.statusChanged) await db.notification.create({ data: { userId: result.order.userId, title: `Order ${result.order.orderNumber} updated`, body: `Your order is now ${result.updated.status.toLowerCase().replaceAll('_', ' ')}.`, type: 'ORDER_STATUS' } })
     if (result.fulfilling) void sendFulfillmentEmail(result.order.id).catch(error => console.error('[email] fulfillment notification failed', error))
-    await audit(actor.id, 'order.updated', 'Order', result.order.id, { from: result.order.status, to: result.updated.status, paymentFrom: result.order.paymentStatus, paymentTo: result.updated.paymentStatus, statusChanged: result.statusChanged, paymentChanged: result.paymentChanged, detailsEdited: Object.keys(detailsPatch) })
+    await audit(actor.id, 'order.updated', 'Order', result.order.id, { from: result.order.status, to: result.updated.status, paymentFrom: result.order.paymentStatus, paymentTo: result.updated.paymentStatus, statusChanged: result.statusChanged, paymentChanged: result.paymentChanged, detailsEdited: Object.keys(detailsPatch), fulfillmentId: result.fulfillmentId })
     if (result.statusChanged || result.paymentChanged) {
       const eventPayload = { id: result.updated.id, orderNumber: result.updated.orderNumber, status: result.updated.status, paymentStatus: result.updated.paymentStatus, fulfillmentStatus: result.updated.fulfillmentStatus }
       void dispatchWebhookEvent('order.updated', eventPayload).catch(error => console.error('[webhook] order.updated dispatch failed', error))

@@ -19,5 +19,8 @@ export default async function OrderDetail({params}:{params:Promise<{id:string}>}
   })
   if(!order)return <div className={ui.empty}>Order not found.</div>
   const canStartOrderEdit = hasPermission(user.role, 'orderEdits.manage') && !['CANCELLED','REFUNDED'].includes(order.status)
-  return <OrderDetailAdmin initial={JSON.parse(JSON.stringify(order))} canStartOrderEdit={canStartOrderEdit}/>
+  // Fulfillment has no navigable relation back to Order (only a scalar orderId), same reasoning
+  // as ReturnRequest's order lookup elsewhere in this app -- fetched separately and stitched on.
+  const fulfillments = await db.fulfillment.findMany({ where: { orderId: order.id }, include: { lines: true }, orderBy: { createdAt: 'desc' } })
+  return <OrderDetailAdmin initial={JSON.parse(JSON.stringify({ ...order, fulfillments }))} canStartOrderEdit={canStartOrderEdit}/>
 }
