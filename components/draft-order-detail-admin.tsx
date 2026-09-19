@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Check, MapPin, Pencil, Save, ShoppingBag, X } from 'lucide-react'
+import { ArrowLeft, Check, Mail, MapPin, Pencil, Save, ShoppingBag, X } from 'lucide-react'
 import { money } from '@/lib/config'
 import styles from './admin-draft-orders.module.css'
 import s from './admin-order-detail.module.css'
@@ -14,7 +14,7 @@ type DraftOrder = {
   id: string; orderNumber: string; email: string; phone: string | null; status: string
   subtotal: number; discountTotal: number; shippingTotal: number; taxTotal: number; grandTotal: number; currency: string
   shippingAddressJson: string | null; billingAddressJson: string | null; notes: string | null
-  completedOrderId: string | null; createdAt: string; updatedAt: string; items: DraftOrderItem[]
+  invoiceSentAt: string | null; completedOrderId: string | null; createdAt: string; updatedAt: string; items: DraftOrderItem[]
 }
 
 const EDITABLE_STATUSES = ['DRAFT', 'OPEN', 'CANCELLED'] as const
@@ -79,6 +79,16 @@ export default function DraftOrderDetailAdmin({ initial, canManage }: { initial:
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to complete draft order'); setBusy(false) }
   }
 
+  async function sendInvoice() {
+    if (!confirm(`Email an invoice to ${d.email}? They'll be able to pay it online.`)) return
+    setBusy(true); setError(''); setMsg('')
+    try {
+      const data = await api(`/api/admin/draft-orders/${d.id}/send-invoice`, { method: 'POST' })
+      setD(data.draftOrder); setMsg('Invoice sent.')
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to send invoice') }
+    finally { setBusy(false) }
+  }
+
   async function cancelDraft() {
     if (!confirm('Cancel this draft order? This cannot be undone.')) return
     setBusy(true); setError(''); setMsg('')
@@ -100,6 +110,7 @@ export default function DraftOrderDetailAdmin({ initial, canManage }: { initial:
       <div className="inline">
         <span className={`${ui.statusPill} ${STATUS_TONE[d.status] || ''}`}>{d.status}</span>
         {canManage && !isFinal && <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={beginEdit}><Pencil size={15} /> Edit</button>}
+        {canManage && !isFinal && <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={sendInvoice} disabled={busy}><Mail size={15} /> {d.invoiceSentAt ? 'Resend invoice' : 'Send invoice'}</button>}
         {canManage && !isFinal && <button className={ui.btn} onClick={complete} disabled={busy}><Check size={15} /> {busy ? 'Working…' : 'Complete order'}</button>}
         {canManage && !isFinal && <button className={styles.dangerBtn} onClick={cancelDraft} disabled={busy}><X size={15} /> Cancel</button>}
       </div>
@@ -169,6 +180,7 @@ export default function DraftOrderDetailAdmin({ initial, canManage }: { initial:
           <div className={s.summaryLine}><span>Currency</span><strong>{d.currency}</strong></div>
           <div className={s.summaryLine}><span>Created</span><strong>{new Date(d.createdAt).toLocaleDateString()}</strong></div>
           <div className={s.summaryLine}><span>Updated</span><strong>{new Date(d.updatedAt).toLocaleString()}</strong></div>
+          {d.invoiceSentAt && <div className={s.summaryLine}><span>Invoice sent</span><strong>{new Date(d.invoiceSentAt).toLocaleString()}</strong></div>}
         </section>
         {d.status === 'COMPLETED' && d.completedOrderId && <section className={ui.card}><div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Resulting order</h3></div><Link className={`${ui.btn} ${ui.btnSecondary}`} style={{ width: '100%' }} href={`/admin/orders/${d.completedOrderId}`}><ShoppingBag size={15} /> View order</Link></section>}
       </aside>

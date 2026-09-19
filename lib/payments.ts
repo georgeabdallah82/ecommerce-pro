@@ -12,6 +12,7 @@ function setting(map: Map<string, string>, key: string, fallback = '') { return 
 function authDerivedToken(prefix: string, value: string) { const secret = process.env.AUTH_SECRET; if (!secret) throw new Error('AUTH_SECRET is required'); return createHash('sha256').update(`${prefix}:${secret}:${value}`).digest('hex') }
 export function areebaWebhookToken() { return authDerivedToken('areeba-webhook', '') }
 export function paymentReturnToken(orderNumber: string) { return authDerivedToken('areeba-return', orderNumber) }
+export function draftInvoiceToken(draftOrderId: string) { return authDerivedToken('draft-invoice', draftOrderId) }
 export function safeTokenEqual(a: string, b: string) { try { const left=Buffer.from(a,'utf8'); const right=Buffer.from(b,'utf8'); return left.length===right.length && timingSafeEqual(left,right) } catch { return false } }
 
 async function getAreebaConfig() {
