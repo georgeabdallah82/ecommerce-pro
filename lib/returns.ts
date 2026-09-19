@@ -1,6 +1,7 @@
 import { db } from '@/lib/prisma'
 import { getPaymentProvider } from '@/lib/payments'
 import { audit } from '@/lib/audit'
+import { sendReturnStatusEmail } from '@/lib/email'
 
 // Extended (Accelerate) client payload inference doesn't always widen nested `include`
 // relations correctly, so query results are asserted to the shape actually queried.
@@ -100,7 +101,11 @@ export function pickRefundSource(order: ReturnableOrder) {
 export async function settleReturnRefund(actorId: string, params: { returnId?: string; orderId: string; refundId: string; refundProvider: string; refundExternalId: string | null; amount: number; currency: string; auditAction?: string }) {
   const { returnId, orderId, refundId, refundProvider, refundExternalId, amount, currency } = params
   const auditAction = params.auditAction || 'order.return_refund'
-  if (refundProvider === 'manual') return { ok: true as const }
+  // `completed` tells the caller whether this call already sent the return-status email for a
+  // REFUNDED transition (the synchronous "refunded" branch below), so it knows not to send its
+  // own follow-up email for a transition that already happened -- only the "pending" branch
+  // leaves the return's status (and thus the email for it) up to the caller.
+  if (refundProvider === 'manual') return { ok: true as const, completed: false as const }
   try {
     if (!refundExternalId) throw new Error('Paid gateway transaction is missing its external reference')
     const provider = await getPaymentProvider(refundProvider)
@@ -117,13 +122,14 @@ export async function settleReturnRefund(actorId: string, params: { returnId?: s
         await tx.order.update({ where: { id: orderRow.id }, data: { paymentStatus, status: paymentStatus === 'REFUNDED' ? 'REFUNDED' : orderRow.status } })
         await tx.auditLog.create({ data: { actorId, action: `${auditAction}_completed`, entity: 'Order', entityId: orderRow.id, metadataJson: JSON.stringify({ returnId, refundId, amount, provider: refundProvider }) } })
       })
-      return { ok: true as const }
+      if (returnId) void sendReturnStatusEmail(returnId, orderId).catch(error => console.error('[email] return status email failed', error))
+      return { ok: true as const, completed: true as const }
     }
     await audit(actorId, `${auditAction}_pending`, 'Order', orderId, { returnId, refundId, amount, provider: refundProvider })
-    return { ok: true as const }
+    return { ok: true as const, completed: false as const }
   } catch (error) {
     await db.paymentTransaction.update({ where: { id: refundId }, data: { status: 'refund_failed', rawJson: JSON.stringify({ returnId, error: error instanceof Error ? error.message : 'Gateway refund failed' }).slice(0, 5000) } })
     await audit(actorId, `${auditAction}_failed`, 'Order', orderId, { returnId, refundId, provider: refundProvider })
-    return { ok: false as const }
+    return { ok: false as const, completed: false as const }
   }
 }

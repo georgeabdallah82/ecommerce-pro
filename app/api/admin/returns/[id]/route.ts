@@ -5,6 +5,7 @@ import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { dispatchWebhookEvent, dispatchInventoryUpdated } from '@/lib/webhooks'
 import { restockReturnEntries, remainingRefundable, pickRefundSource, settleReturnRefund, type ReturnableOrder, type ReturnOrderItem } from '@/lib/returns'
+import { sendReturnStatusEmail } from '@/lib/email'
 import { Prisma } from '@prisma/client'
 
 const RETURN_CONFLICT_MESSAGE = 'This order was just modified — please retry.'
@@ -46,6 +47,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         return tx.returnRequest.update({ where: { id }, data: { status: 'APPROVED' } })
       })
       await notifyCustomer(updated.orderId, `Your return request was approved`, `Your return request ${updated.id} was approved. Please ship the items back and we'll process it once received.`)
+      void sendReturnStatusEmail(updated.id, updated.orderId).catch(error => console.error('[email] return status email failed', error))
       await audit(actor.id, 'return.approved', 'ReturnRequest', id, {})
       return json({ returnRequest: updated })
     }
@@ -59,6 +61,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         return tx.returnRequest.update({ where: { id }, data: { status: 'REJECTED', notes: note } })
       })
       await notifyCustomer(updated.orderId, `Your return request was declined`, `Your return request ${updated.id} was declined.${note ? ` ${note}` : ''}`)
+      void sendReturnStatusEmail(updated.id, updated.orderId).catch(error => console.error('[email] return status email failed', error))
       await audit(actor.id, 'return.rejected', 'ReturnRequest', id, { note })
       return json({ returnRequest: updated })
     }
@@ -112,12 +115,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       void dispatchWebhookEvent('order.updated', { id: result.order.id, orderNumber: result.order.orderNumber, status: result.order.status, paymentStatus: result.order.paymentStatus }).catch(error => console.error('[webhook] order.updated dispatch failed', error))
       dispatchInventoryUpdated(result.restockedInventoryIds)
 
+      let refundEmailSent = false
       if (result.refund && result.refundProvider !== 'manual') {
         const settled = await settleReturnRefund(actor.id, { returnId: result.returnRequest.id, orderId: result.order.id, refundId: result.refund.id, refundProvider: result.refundProvider, refundExternalId: result.refundExternalId, amount: result.refund.amount, currency: result.refund.currency })
         if (!settled.ok) return json({ ...result, error: 'Return received, but the gateway refund failed. The refund remains marked failed for admin retry.' }, { status: 502 })
+        refundEmailSent = settled.completed
       }
 
       await notifyCustomer(result.order.id, `Your return was received`, `We received your return ${result.returnRequest.id}.${result.refund ? ` A ${(result.refund.amount / 100).toFixed(2)} ${result.order.currency} refund is on its way.` : ''}`)
+      // Skip when settleReturnRefund above already sent the REFUNDED email for us -- otherwise
+      // (manual/no refund, or a still-pending gateway refund) this return's status is RECEIVED
+      // and hasn't been emailed yet.
+      if (!refundEmailSent) void sendReturnStatusEmail(result.returnRequest.id, result.order.id).catch(error => console.error('[email] return status email failed', error))
 
       return json(result, { status: result.refund && result.refundProvider !== 'manual' && result.refund.status === 'refund_pending' ? 202 : 200 })
     }
