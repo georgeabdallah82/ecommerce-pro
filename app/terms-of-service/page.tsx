@@ -1,5 +1,6 @@
 import { getThemeState } from '@/lib/theme'
 import { config } from '@/lib/config'
+import { getContactInfo } from '@/lib/store-contact'
 import { Footer } from '@/components/footer'
 import { LegalPage, Placeholder, ConfiguredField } from '@/components/legal-page'
 
@@ -7,7 +8,7 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 export default async function TermsOfService() {
-  const { theme } = await getThemeState()
+  const [{ theme }, contact] = await Promise.all([getThemeState(), getContactInfo()])
   const brand = theme.brandName || config.brand
   const updated = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
 
@@ -47,8 +48,8 @@ export default async function TermsOfService() {
       <p>
         {brand}<br/>
         <ConfiguredField value={config.businessAddress} placeholder="[registered business address]"/><br/>
-        <ConfiguredField value={config.supportEmail} placeholder="[support email address]"/>
-        {config.whatsapp && <> · WhatsApp: {config.whatsapp}</>}
+        <ConfiguredField value={contact.email} placeholder="[support email address]"/>
+        {contact.phone && <> · WhatsApp: {contact.phone}</>}
       </p>
       <p>These terms are governed by the laws of <Placeholder>[{config.country}, or your actual jurisdiction]</Placeholder>.</p>
     </LegalPage>

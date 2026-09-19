@@ -1,5 +1,6 @@
 import { getThemeState } from '@/lib/theme'
 import { config } from '@/lib/config'
+import { getContactInfo } from '@/lib/store-contact'
 import { Footer } from '@/components/footer'
 import { LegalPage, Placeholder, ConfiguredField } from '@/components/legal-page'
 
@@ -7,7 +8,7 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 export default async function RefundPolicy() {
-  const { theme } = await getThemeState()
+  const [{ theme }, contact] = await Promise.all([getThemeState(), getContactInfo()])
   const brand = theme.brandName || config.brand
   const updated = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
 
@@ -20,7 +21,7 @@ export default async function RefundPolicy() {
 
       <h2>How to start a return</h2>
       <p>
-        Contact us with your order number and the reason for the return{config.whatsapp && <> — the fastest way is WhatsApp: {config.whatsapp}</>}, or use <a href="/orders/lookup">order tracking</a> to find your order and request support. We'll confirm whether the item is eligible and provide return instructions.
+        Contact us with your order number and the reason for the return{contact.phone && <> — the fastest way is WhatsApp: {contact.phone}</>}, or use <a href="/orders/lookup">order tracking</a> to find your order and request support. We'll confirm whether the item is eligible and provide return instructions.
       </p>
 
       <h2>Refunds</h2>
@@ -40,8 +41,8 @@ export default async function RefundPolicy() {
       <p>
         {brand}<br/>
         <ConfiguredField value={config.businessAddress} placeholder="[registered business address]"/><br/>
-        <ConfiguredField value={config.supportEmail} placeholder="[support email address]"/>
-        {config.whatsapp && <> · WhatsApp: {config.whatsapp}</>}
+        <ConfiguredField value={contact.email} placeholder="[support email address]"/>
+        {contact.phone && <> · WhatsApp: {contact.phone}</>}
       </p>
     </LegalPage>
     <Footer theme={theme}/>
