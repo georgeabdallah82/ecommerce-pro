@@ -2,6 +2,7 @@ import { db } from '@/lib/prisma'
 import { getThemeState } from '@/lib/theme'
 import { getCurrentUser } from '@/lib/auth'
 import { getProductStats, withProductStats } from '@/lib/product-stats'
+import { isProductPublished, getUnpublishedProductIds } from '@/lib/sales-channels'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { Footer } from '@/components/footer'
@@ -63,10 +64,12 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   })
 
   if (!product || product.status !== 'ACTIVE') return notFound()
+  if (!(await isProductPublished(product.id))) return notFound()
 
+  const unpublishedIds = await getUnpublishedProductIds()
   const relatedRaw = product.category
     ? await db.product.findMany({
-        where: { status: 'ACTIVE', categoryId: product.categoryId, id: { not: product.id } },
+        where: { status: 'ACTIVE', categoryId: product.categoryId, id: { not: product.id, notIn: unpublishedIds } },
         select: {
           id: true,
           name: true,

@@ -23,7 +23,7 @@ type Product = {
   sharedInventory?: boolean; quantity?: number; lowStockThreshold?: number; locationId?: string | null
 }
 
-const tabs = ['General', 'Inventory', 'Variants', 'Shipping', 'Metafields', 'Search & SEO'] as const
+const tabs = ['General', 'Inventory', 'Variants', 'Shipping', 'Channels', 'Metafields', 'Search & SEO'] as const
 
 async function api(path: string, init?: RequestInit) {
   const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
@@ -60,7 +60,7 @@ function Check({ checked, onChange, title, text }: { checked: boolean; onChange:
   return <label className={s.checkCard}><input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} /><span><strong>{title}</strong><small>{text}</small></span></label>
 }
 
-export default function ProductEditorV2({ initial, creating, categories, definitions, locations }: { initial: Product; creating: boolean; categories: any[]; definitions: any[]; locations?: StoreLocationOption[] }) {
+export default function ProductEditorV2({ initial, creating, categories, definitions, locations, channels, publications }: { initial: Product; creating: boolean; categories: any[]; definitions: any[]; locations?: StoreLocationOption[]; channels?: any[]; publications?: any[] }) {
   const [product, setProduct] = useState<Product>(initial)
   const [tab, setTab] = useState<typeof tabs[number]>('General')
   const [busy, setBusy] = useState(false)
@@ -68,6 +68,7 @@ export default function ProductEditorV2({ initial, creating, categories, definit
   const [error, setError] = useState('')
   const [dirty, setDirty] = useState(false)
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false)
+  const [productPublications, setProductPublications] = useState<any[]>(publications || [])
   const [seoMediaPickerOpen, setSeoMediaPickerOpen] = useState(false)
 
   const initialNames = (() => {
@@ -146,6 +147,15 @@ export default function ProductEditorV2({ initial, creating, categories, definit
     const next = c.map((x, i) => old.get(JSON.stringify(x.options)) || ({ name: x.name, sku: `${product.sku}-${i + 1}`, barcode: null, optionJson: JSON.stringify(x.options), price: product.basePrice, compareAtPrice: product.compareAtPrice, quantity: 0, lowStockThreshold: 5, locationId: product.locationId ?? null } as Variant))
     update({ variants: next })
     setMessage(`${next.length} variants ready to save`)
+  }
+
+  async function togglePublication(channelId: string, available: boolean) {
+    if (!product.id) return
+    setError('')
+    try {
+      const data = await api('/api/admin/sales-channels/publications', { method: 'POST', body: JSON.stringify({ productId: product.id, channelId, available }) })
+      setProductPublications(prev => [...prev.filter((p: any) => p.channelId !== channelId), data.publication])
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to update channel availability') }
   }
 
   function moveImage(i: number, d: -1 | 1) {
@@ -289,6 +299,20 @@ export default function ProductEditorV2({ initial, creating, categories, definit
             <Field label="Weight unit"><select className={ui.select} value={product.weightUnit || 'kg'} onChange={e => update({ weightUnit: e.target.value })}><option>kg</option><option>g</option><option>lb</option><option>oz</option></select></Field>
             <Field label="Template"><select className={ui.select} value={product.productTemplate || 'product'} onChange={e => update({ productTemplate: e.target.value })}><option value="product">Default product</option><option value="product.featured">Featured product</option><option value="product.minimal">Minimal product</option></select></Field>
           </div>
+        </Card>}
+
+        {tab === 'Channels' && <Card title="Sales channels" sub="Where this product can be seen and bought">
+          {creating ? <p className={ui.fieldHelp}>Save this product first to manage channel availability.</p> : (channels || []).length ? (channels || []).map((c: any) => {
+            const pub = productPublications.find((p: any) => p.channelId === c.id)
+            const isAvailable = pub ? pub.available : true
+            return <Check
+              key={c.id}
+              checked={isAvailable}
+              onChange={v => togglePublication(c.id, v)}
+              title={c.name}
+              text={isAvailable ? 'Visible and purchasable on this channel.' : 'Hidden from this channel.'}
+            />
+          }) : <p className={ui.fieldHelp}>No active sales channels yet.</p>}
         </Card>}
 
         {tab === 'Metafields' && <Card title="Metafields" sub="Structured custom data">

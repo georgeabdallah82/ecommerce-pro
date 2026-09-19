@@ -1,12 +1,14 @@
 import type { MetadataRoute } from 'next'
 import { db } from '@/lib/prisma'
+import { getUnpublishedProductIds } from '@/lib/sales-channels'
 
 export const dynamic = 'force-dynamic'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '')
+  const unpublishedIds = await getUnpublishedProductIds()
   const [products, collections, pages, posts] = await Promise.all([
-    db.product.findMany({ where: { status: 'ACTIVE' }, select: { slug: true, updatedAt: true } }),
+    db.product.findMany({ where: { status: 'ACTIVE', id: { notIn: unpublishedIds } }, select: { slug: true, updatedAt: true } }),
     db.collection.findMany({ where: { isActive: true }, select: { slug: true, updatedAt: true } }),
     db.page.findMany({ where: { status: 'PUBLISHED' }, select: { handle: true, updatedAt: true } }),
     db.blogPost.findMany({ where: { status: 'PUBLISHED' }, select: { handle: true, updatedAt: true } }),

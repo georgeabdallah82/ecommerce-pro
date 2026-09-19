@@ -2,6 +2,7 @@ import { db } from '@/lib/prisma'
 import { consumeRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { json } from '@/lib/utils'
+import { getUnpublishedProductIds } from '@/lib/sales-channels'
 
 const publicProductSelect = {
   id: true,
@@ -60,7 +61,10 @@ const publicProductSelect = {
 } as const
 
 async function findPublicProduct(where: Record<string, unknown>) {
-  return db.product.findFirst({ where: { ...where, status: 'ACTIVE' }, select: publicProductSelect })
+  const product = await db.product.findFirst({ where: { ...where, status: 'ACTIVE' }, select: publicProductSelect })
+  if (!product) return null
+  const unpublishedIds = await getUnpublishedProductIds()
+  return unpublishedIds.includes(product.id) ? null : product
 }
 
 export async function GET(req: Request) {
@@ -90,8 +94,10 @@ export async function GET(req: Request) {
       return json(product, { headers: { 'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=600' } })
     }
 
+    const unpublishedIds = await getUnpublishedProductIds()
     const where = {
       status: 'ACTIVE' as const,
+      id: { notIn: unpublishedIds },
       ...(category ? { category: { slug: category } } : {}),
       ...(q
         ? {
