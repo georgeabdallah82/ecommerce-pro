@@ -167,6 +167,53 @@ export async function sendGiftCardIssuedEmail(giftCardId: string) {
   return sendEmail(customer.email, `You've received a ${money(card.initialAmount, card.currency)} gift card`, html, text)
 }
 
+const RETURN_STATUS_COPY: Record<string, (returnRequest: { id: string; refundAmount: number; notes: string | null }, orderNumber: string, currency: string) => { subject: string; heading: string; message: string }> = {
+  APPROVED: (_returnRequest, orderNumber) => ({
+    subject: `Your return was approved — ${orderNumber}`,
+    heading: 'Your return was approved',
+    message: 'Please ship the items back to us. We\'ll process your return as soon as they arrive.',
+  }),
+  REJECTED: (returnRequest, orderNumber) => ({
+    subject: `Update on your return — ${orderNumber}`,
+    heading: 'Your return request was declined',
+    message: returnRequest.notes ? `We're unable to process this return. ${returnRequest.notes}` : 'We\'re unable to process this return. Contact us if you have questions.',
+  }),
+  RECEIVED: (returnRequest, orderNumber) => ({
+    subject: `We received your return — ${orderNumber}`,
+    heading: 'We received your return',
+    message: returnRequest.refundAmount > 0 ? 'Your items have arrived and your refund is being processed.' : 'Your items have arrived and your return has been processed.',
+  }),
+  REFUNDED: (returnRequest, orderNumber, currency) => ({
+    subject: `Your refund has been issued — ${orderNumber}`,
+    heading: 'Your refund has been issued',
+    message: `A refund of ${money(returnRequest.refundAmount, currency)} has been issued for order ${orderNumber}.`,
+  }),
+}
+
+// Mirrors the in-app Notification already sent by app/api/admin/returns/[id]/route.ts on each
+// ReturnRequest transition -- ReturnRequest has no navigable order relation (only a scalar
+// orderId), so the order's email/orderNumber/currency are looked up separately, same reasoning
+// as that route's own order lookups.
+export async function sendReturnStatusEmail(returnId: string, orderId: string) {
+  if (!(await settingEnabled('email.returnStatus'))) return { sent: false, skipped: true }
+  const returnRequest = await db.returnRequest.findUnique({ where: { id: returnId } })
+  if (!returnRequest) return { sent: false, skipped: true }
+  const copy = RETURN_STATUS_COPY[returnRequest.status]
+  if (!copy) return { sent: false, skipped: true }
+  const order = await db.order.findUnique({ where: { id: orderId }, select: { email: true, orderNumber: true, currency: true } })
+  if (!order) return { sent: false, skipped: true }
+
+  const { subject, heading, message } = copy(returnRequest, order.orderNumber, order.currency)
+  const url = siteUrl() ? `${siteUrl()}/account/orders/${order.orderNumber}` : null
+  const html = layout(`
+    <h1 style="font-size:20px;margin:0 0 4px">${escapeHtml(heading)}</h1>
+    <p style="font-size:14px;color:#4a473d;margin:0 0 20px">${escapeHtml(message)}</p>
+    ${url ? `<p style="margin:24px 0 0"><a href="${url}" style="display:inline-block;background:#6b7a4f;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:700">View your order</a></p>` : ''}
+  `)
+  const text = `${heading}. ${message}${url ? ` View your order: ${url}` : ''}`
+  return sendEmail(order.email, subject, html, text)
+}
+
 export async function sendAbandonedCheckoutEmail(abandonedCheckoutId: string) {
   if (!(await settingEnabled('email.abandonedCheckout'))) return { sent: false, skipped: true }
   const checkout = await db.abandonedCheckout.findUnique({ where: { id: abandonedCheckoutId } })
