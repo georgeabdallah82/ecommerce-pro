@@ -105,3 +105,47 @@ export async function sendOrderConfirmationEmail(orderId: string) {
   const text = `Thanks for your order ${order.orderNumber}. Total: ${money(order.grandTotal, order.currency)}.${url ? ` View your order: ${url}` : ''}`
   return sendEmail(order.email, `Order confirmed — ${order.orderNumber}`, html, text)
 }
+
+export async function sendFulfillmentEmail(orderId: string) {
+  if (!(await settingEnabled('email.fulfillment'))) return { sent: false, skipped: true }
+  const order = await db.order.findUnique({ where: { id: orderId } })
+  if (!order) return { sent: false, skipped: true }
+
+  const url = siteUrl() ? `${siteUrl()}/account/orders/${order.orderNumber}` : null
+  const html = layout(`
+    <h1 style="font-size:20px;margin:0 0 4px">Your order is on its way</h1>
+    <p style="font-size:14px;color:#4a473d;margin:0 0 20px">Order ${escapeHtml(order.orderNumber)} has shipped.</p>
+    ${order.shippingMethod ? `<p style="font-size:13px;color:#8a8578;margin:0 0 6px">Shipping method: ${escapeHtml(order.shippingMethod)}</p>` : ''}
+    ${order.trackingNumber ? `<p style="font-size:13px;color:#8a8578;margin:0 0 6px">Tracking number: ${escapeHtml(order.trackingNumber)}</p>` : ''}
+    ${url ? `<p style="margin:24px 0 0"><a href="${url}" style="display:inline-block;background:#6b7a4f;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:700">Track your order</a></p>` : ''}
+  `)
+  const text = `Order ${order.orderNumber} has shipped.${order.trackingNumber ? ` Tracking number: ${order.trackingNumber}.` : ''}${url ? ` Track your order: ${url}` : ''}`
+  return sendEmail(order.email, `Your order has shipped — ${order.orderNumber}`, html, text)
+}
+
+export async function sendAbandonedCheckoutEmail(abandonedCheckoutId: string) {
+  if (!(await settingEnabled('email.abandonedCheckout'))) return { sent: false, skipped: true }
+  const checkout = await db.abandonedCheckout.findUnique({ where: { id: abandonedCheckoutId } })
+  if (!checkout || !checkout.email) return { sent: false, skipped: true }
+
+  let items: Array<{ name?: string; quantity?: number; unitPrice?: number }> = []
+  try { items = JSON.parse(checkout.cartJson) } catch { items = [] }
+  const rows = items
+    .map(
+      (item) => `<tr>
+      <td style="padding:8px 0;font-size:13px;color:#242219">${escapeHtml(String(item.name || 'Item'))} <span style="color:#8a8578">&times; ${Number(item.quantity) || 1}</span></td>
+      <td style="padding:8px 0;font-size:13px;text-align:right;color:#242219">${money((Number(item.unitPrice) || 0) * (Number(item.quantity) || 1), checkout.currency)}</td>
+    </tr>`
+    )
+    .join('')
+  const url = checkout.recoveryUrl || (siteUrl() ? `${siteUrl()}/checkout` : null)
+  const html = layout(`
+    <h1 style="font-size:20px;margin:0 0 4px">You left something in your cart</h1>
+    <p style="font-size:14px;color:#4a473d;margin:0 0 20px">Pick up right where you left off.</p>
+    <table role="presentation" width="100%" style="border-collapse:collapse">${rows}</table>
+    ${checkout.subtotal ? `<table role="presentation" width="100%" style="border-collapse:collapse;border-top:1px solid #eee;margin-top:8px"><tr><td style="padding-top:12px;font-size:15px;font-weight:800">Subtotal</td><td style="padding-top:12px;text-align:right;font-size:15px;font-weight:800">${money(checkout.subtotal, checkout.currency)}</td></tr></table>` : ''}
+    ${url ? `<p style="margin:24px 0 0"><a href="${escapeHtml(url)}" style="display:inline-block;background:#6b7a4f;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:700">Complete your order</a></p>` : ''}
+  `)
+  const text = `You left items in your cart.${url ? ` Complete your order: ${url}` : ''}`
+  return sendEmail(checkout.email, 'You left something in your cart', html, text)
+}

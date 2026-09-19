@@ -269,6 +269,37 @@ function ApiCredentialsPanel({ credentials, onChange }: { credentials: any[]; on
   </div>
 }
 
+function AbandonedCheckoutsPanel({ checkouts, onChange }: { checkouts: any[]; onChange: () => void }) {
+  const [sendingId, setSendingId] = useState<string | null>(null)
+  const [error, setError] = useState('')
+
+  async function sendRecovery(id: string) {
+    setSendingId(id); setError('')
+    try { await api('/api/admin/abandoned-checkouts/send-email', { method: 'POST', body: JSON.stringify({ id }) }); onChange() }
+    catch (e) { setError(e instanceof Error ? e.message : 'Unable to send recovery email') }
+    finally { setSendingId(null) }
+  }
+
+  return <div className={`${ui.card} ${styles.panel}`}>
+    <h3>Abandoned checkouts</h3>
+    <p className={ui.muted}>Recovery opportunities from incomplete carts.</p>
+    {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
+    <div className={styles.list}>
+      {checkouts.slice(0, 12).map((x: any) => (
+        <div className={styles.entityRow} key={x.id}>
+          <strong>{x.email || 'Guest checkout'}</strong>
+          <span className={`${ui.statusPill} ${x.status === 'OPEN' ? ui.statusPillWarning : ui.statusPillSuccess}`}>{x.status}</span>
+          <span className={styles.rowMeta}>{x.currency} {((x.subtotal || 0) / 100).toFixed(2)}</span>
+          <div className={styles.rowActions}>
+            {x.status === 'OPEN' && x.email && <button type="button" className={ui.textButton} disabled={sendingId === x.id} onClick={() => sendRecovery(x.id)}>{sendingId === x.id ? 'Sending…' : 'Send recovery email'}</button>}
+          </div>
+        </div>
+      ))}
+    </div>
+    {!checkouts.length && <div className="empty">No abandoned checkouts found.</div>}
+  </div>
+}
+
 export default function AdminOperationsHub() {
   const [data, setData] = useState<Record<string, any[]>>({})
   const [loading, setLoading] = useState(true)
@@ -356,7 +387,7 @@ export default function AdminOperationsHub() {
 
       {tab === 'inventory' && <div className={`${styles.grid} ${styles.wide}`}><LocationsPanel locations={data.locations || []} onChange={load}/><div className={`${ui.card} ${styles.panel}`}><h3>Transfers</h3><p className={ui.muted}>Movement queue between locations.</p><div className={styles.list}>{data.transfers.slice(0, 12).map((x:any)=><div className={styles.row} key={x.id}><strong>{x.reference || x.id.slice(0,8)}</strong><span>{x.status}</span></div>)}{!data.transfers.length && <div className="empty">No transfers found.</div>}</div></div></div>}
 
-      {tab === 'orders' && <div className={`${styles.grid} ${styles.wide}`}><div className={`${ui.card} ${styles.panel}`}><div className="inline" style={{justifyContent:'space-between'}}><h3>Draft orders</h3><Link className={ui.textLink} href="/admin/draft-orders">Open drafts</Link></div><p className={ui.muted}>Orders created in the admin before becoming completed orders.</p><div className={styles.list}>{data.drafts.slice(0, 12).map((x:any)=><Link className={styles.row} href={`/admin/draft-orders/${x.id}`} key={x.id}><strong>{x.orderNumber || x.id.slice(0,8)}</strong><span>{x.status}</span><span>{x.currency} {((x.grandTotal || 0)/100).toFixed(2)}</span></Link>)}{!data.drafts.length && <div className="empty">No draft orders found.</div>}</div></div><div className={`${ui.card} ${styles.panel}`}><div className="inline" style={{justifyContent:'space-between'}}><h3>Returns</h3><Link className={ui.textLink} href="/admin/returns">Open returns</Link></div><p className={ui.muted}>Return requests initiated against shipped or delivered orders.</p><div className={styles.list}>{data.returns.slice(0, 12).map((x:any)=><div className={styles.row} key={x.id}><strong>{x.order?.orderNumber || x.orderId.slice(0,8)}</strong><span>{x.status}</span><span>{x.order?.currency || ''} {((x.refundAmount || 0)/100).toFixed(2)}</span></div>)}{!data.returns.length && <div className="empty">No return requests found.</div>}</div></div><div className={`${ui.card} ${styles.panel}`}><h3>Abandoned checkouts</h3><p className={ui.muted}>Recovery opportunities from incomplete carts.</p><div className={styles.list}>{data.abandoned.slice(0, 12).map((x:any)=><div className={styles.row} key={x.id}><strong>{x.email || 'Guest checkout'}</strong><span>{x.status}</span><span>{x.currency} {((x.subtotal || 0)/100).toFixed(2)}</span></div>)}{!data.abandoned.length && <div className="empty">No abandoned checkouts found.</div>}</div></div></div>}
+      {tab === 'orders' && <div className={`${styles.grid} ${styles.wide}`}><div className={`${ui.card} ${styles.panel}`}><div className="inline" style={{justifyContent:'space-between'}}><h3>Draft orders</h3><Link className={ui.textLink} href="/admin/draft-orders">Open drafts</Link></div><p className={ui.muted}>Orders created in the admin before becoming completed orders.</p><div className={styles.list}>{data.drafts.slice(0, 12).map((x:any)=><Link className={styles.row} href={`/admin/draft-orders/${x.id}`} key={x.id}><strong>{x.orderNumber || x.id.slice(0,8)}</strong><span>{x.status}</span><span>{x.currency} {((x.grandTotal || 0)/100).toFixed(2)}</span></Link>)}{!data.drafts.length && <div className="empty">No draft orders found.</div>}</div></div><div className={`${ui.card} ${styles.panel}`}><div className="inline" style={{justifyContent:'space-between'}}><h3>Returns</h3><Link className={ui.textLink} href="/admin/returns">Open returns</Link></div><p className={ui.muted}>Return requests initiated against shipped or delivered orders.</p><div className={styles.list}>{data.returns.slice(0, 12).map((x:any)=><div className={styles.row} key={x.id}><strong>{x.order?.orderNumber || x.orderId.slice(0,8)}</strong><span>{x.status}</span><span>{x.order?.currency || ''} {((x.refundAmount || 0)/100).toFixed(2)}</span></div>)}{!data.returns.length && <div className="empty">No return requests found.</div>}</div></div><AbandonedCheckoutsPanel checkouts={data.abandoned || []} onChange={load}/></div>}
 
       {tab === 'customers' && <div className={`${styles.grid} ${styles.wide}`}><div className={`${ui.card} ${styles.panel}`}><div className="inline" style={{justifyContent:'space-between'}}><h3>Gift cards</h3><Link className={ui.textLink} href="/admin/gift-cards">Open gift cards</Link></div><p className={ui.muted}>Balance and status overview.</p><div className={styles.list}>{data.giftCards.slice(0, 12).map((x:any)=><div className={styles.row} key={x.id}><strong>•••• {x.last4 || ''}</strong><span>{x.status}</span><span>{x.currency} {((x.balance || 0)/100).toFixed(2)}</span></div>)}{!data.giftCards.length && <div className="empty">No gift cards found.</div>}</div></div><div className={`${ui.card} ${styles.panel}`}><h3>Customer operations</h3><p className={ui.muted}>Tags, segments and store credit are available through the customer area.</p><div className={styles.actions}><a className={ui.btn} href="/admin/customers">Customers</a><a className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/customer-segments">Segments</a><a className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/gift-cards">Gift cards</a></div></div></div>}
 
