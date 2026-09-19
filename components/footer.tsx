@@ -1,4 +1,5 @@
 'use client'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { MessageCircle } from 'lucide-react'
 import { config } from '@/lib/config'
@@ -24,8 +25,22 @@ const SOCIAL_LINKS: Array<{ key: string; label: string; Icon: () => React.JSX.El
 export function Footer({ theme }: { theme?: any }) {
   const social: Record<string, string> = theme?.social || {}
   const activeSocial = SOCIAL_LINKS.filter(item => social[item.key])
-  const whatsappDigits = config.whatsapp.replace(/[^\d+]/g, '')
   const brand = theme?.brandName || config.brand
+
+  // Admin Settings' "Phone / WhatsApp" field (contact.phone) lets a merchant override the
+  // build-time NEXT_PUBLIC_WHATSAPP_NUMBER without a redeploy -- fetched client-side (like the
+  // free-shipping-threshold banner in aliexpress-cart.tsx) so this component, used across ~30
+  // pages, doesn't need a new prop threaded through every call site.
+  const [whatsapp, setWhatsapp] = useState(config.whatsapp)
+  useEffect(() => {
+    let active = true
+    fetch('/api/store/settings', { cache: 'no-store' })
+      .then(res => res.json())
+      .then(data => { if (active && data?.settings?.contact?.phone) setWhatsapp(data.settings.contact.phone) })
+      .catch(() => {})
+    return () => { active = false }
+  }, [])
+  const whatsappDigits = whatsapp.replace(/[^\d+]/g, '')
 
   return <>
     <style dangerouslySetInnerHTML={{ __html: `
@@ -53,7 +68,7 @@ export function Footer({ theme }: { theme?: any }) {
   .focalFooterBottom{justify-content:center;text-align:center}
 }
 ` }} />
-    {config.whatsapp && (
+    {whatsapp && (
       <div className="focalFooterHelp">
         <div className="focalContainer focalFooterHelpInner">
           <span>Need help with your order?</span>
