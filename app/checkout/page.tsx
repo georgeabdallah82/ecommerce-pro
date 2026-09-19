@@ -20,13 +20,26 @@ export default function Checkout() {
   const { selectedItems: items, selectedSubtotal: subtotal, clearSelected } = useCart()
   const router = useRouter()
   const [savedCoupon, setSavedCoupon] = useState('')
+  const checkoutToken = useRef('')
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem('ecom-coupon-code')
       if (saved) setSavedCoupon(saved)
     } catch {}
+    try {
+      let token = localStorage.getItem('ecom-checkout-token')
+      if (!token) { token = crypto.randomUUID(); localStorage.setItem('ecom-checkout-token', token) }
+      checkoutToken.current = token
+    } catch { checkoutToken.current = crypto.randomUUID() }
   }, [])
+
+  function captureCheckoutProgress(email: string) {
+    if (!checkoutToken.current || !email.includes('@') || !items.length) return
+    const payload = { token: checkoutToken.current, email, items: items.map(item => ({ productId: item.productId, variantId: item.variantId || null, name: item.name, quantity: item.quantity, unitPrice: item.price })) }
+    fetch('/api/checkout/progress', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload), keepalive: true }).catch(() => {})
+  }
+
   const idempotencyKey = useRef(crypto.randomUUID())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -87,6 +100,10 @@ export default function Checkout() {
       const output=await response.json(); if(!response.ok)throw new Error(output.error||'Unable to place order')
       clearSelected()
       try { localStorage.removeItem('ecom-coupon-code') } catch {}
+      if (checkoutToken.current) {
+        fetch('/api/checkout/progress', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: checkoutToken.current }), keepalive: true }).catch(() => {})
+        try { localStorage.removeItem('ecom-checkout-token') } catch {}
+      }
       if(output.payment?.type==='mpgs'){setClientCheckout(output.payment as ClientCheckout);setLoading(false);return}
       const successUrl = authenticated ? `/order/success?order=${encodeURIComponent(output.order.orderNumber)}` : `/order/success?order=${encodeURIComponent(output.order.orderNumber)}&email=${encodeURIComponent(data.email)}`
       router.push(successUrl)
@@ -103,7 +120,7 @@ export default function Checkout() {
     {!settings && <div className="alert">Loading checkout settings…</div>}
     {guestBlocked && <div className="alert danger">Guest checkout is disabled. <Link className="textLink" href="/account/login">Sign in</Link> to continue.</div>}
     {settingsError && <div className="alert danger">{settingsError}</div>}
-    <h3>Contact</h3><label className="fieldLabel">Email<input className="input" required name="email" type="email" autoComplete="email" inputMode="email" placeholder="you@example.com" /></label><label className="fieldLabel">Phone<input className="input" name="phone" autoComplete="tel" inputMode="tel" placeholder="Phone" /></label>
+    <h3>Contact</h3><label className="fieldLabel">Email<input className="input" required name="email" type="email" autoComplete="email" inputMode="email" placeholder="you@example.com" onBlur={e => captureCheckoutProgress(e.target.value.trim())} /></label><label className="fieldLabel">Phone<input className="input" name="phone" autoComplete="tel" inputMode="tel" placeholder="Phone" /></label>
     <h3>Delivery</h3><div className="grid two"><label className="fieldLabel">First name<input className="input" required name="firstName" autoComplete="given-name" placeholder="First name" /></label><label className="fieldLabel">Last name<input className="input" required name="lastName" autoComplete="family-name" placeholder="Last name" /></label></div>
     <label className="fieldLabel">Address<input className="input" required name="line1" autoComplete="address-line1" placeholder="Street address" /></label><label className="fieldLabel">Apartment, floor, etc. <span className="muted">(optional)</span><input className="input" name="line2" autoComplete="address-line2" placeholder="Apartment, floor, etc." /></label>
     <div className="grid two"><label className="fieldLabel">City<input className="input" required name="city" autoComplete="address-level2" placeholder="City" /></label><label className="fieldLabel">Region<input className="input" name="region" autoComplete="address-level1" placeholder="Region" /></label></div><div className="grid two"><label className="fieldLabel">Postal code<input className="input" name="postalCode" autoComplete="postal-code" inputMode="numeric" placeholder="Postal code" /></label><label className="fieldLabel">Country<input className="input" required name="country" autoComplete="country-name" placeholder="Country" defaultValue="Lebanon" /></label></div>
