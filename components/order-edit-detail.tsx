@@ -31,7 +31,8 @@ export default function OrderEditDetail({ initial, canManage }: { initial: any; 
     try {
       const d = await api(`/api/admin/order-edits/${edit.id}`, { method: 'POST' })
       setEdit((c: any) => ({ ...c, status: 'COMMITTED', committedAt: new Date().toISOString() }))
-      setMsg(`Order edit applied. Order total is now ${money(d.order?.grandTotal ?? edit.order?.grandTotal, edit.order?.currency)}.`)
+      const adjustment = d.paymentAdjustment?.type === 'refund' ? ` A refund of ${money(d.paymentAdjustment.amount, edit.order?.currency)} is owed on this order.` : d.paymentAdjustment?.type === 'charge' ? ` An additional ${money(d.paymentAdjustment.amount, edit.order?.currency)} is now due -- collect it from the customer.` : ''
+      setMsg(`Order edit applied. Order total is now ${money(d.order?.grandTotal ?? edit.order?.grandTotal, edit.order?.currency)}.${adjustment}`)
     } catch (e) { setMsg(e instanceof Error ? e.message : 'Unable to apply order edit') } finally { setBusy(false) }
   }
 
