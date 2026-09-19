@@ -107,6 +107,7 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit }: { initi
     try {
       const d = await api(`/api/admin/fulfillments/${fulfillmentId}`,{method:'PATCH',body:JSON.stringify({status:'DELIVERED'})})
       setFulfillments((current:any[])=>current.map(f=>f.id===fulfillmentId?d.fulfillment:f))
+      if (d.order) { setO((c:any)=>({...c,status:d.order.status,fulfillmentStatus:d.order.fulfillmentStatus})); setStatus(d.order.status); setMsg('Shipment delivered — order marked delivered.') }
     } catch(e){ setMsg(e instanceof Error?e.message:'Unable to update shipment') }
     finally { setMarkingDelivered(null) }
   }
