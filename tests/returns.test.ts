@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { normalizeReturnItems, remainingRefundable, pickRefundSource, type ReturnableOrder } from '@/lib/returns'
+import { normalizeReturnItems, remainingRefundable, pickRefundSource, classifyOrderEditPaymentAdjustment, type ReturnableOrder } from '@/lib/returns'
 
 function order(overrides: Partial<ReturnableOrder> = {}): ReturnableOrder {
   return {
@@ -85,5 +85,30 @@ describe('lib/returns pickRefundSource', () => {
       { id: 't2', status: 'captured', amount: 10000, provider: 'areeba_mpgs', externalId: 'ext_new', createdAt: newer },
     ] }))
     assert.deepEqual(result, { refundProvider: 'areeba_mpgs', refundExternalId: 'ext_new' })
+  })
+})
+
+describe('lib/returns classifyOrderEditPaymentAdjustment', () => {
+  it('returns null when the total did not change', () => {
+    assert.equal(classifyOrderEditPaymentAdjustment('PAID', 0), null)
+  })
+
+  it('returns null when the order was never actually paid', () => {
+    assert.equal(classifyOrderEditPaymentAdjustment('PENDING', -500), null)
+    assert.equal(classifyOrderEditPaymentAdjustment('UNPAID', 500), null)
+    assert.equal(classifyOrderEditPaymentAdjustment('FAILED', 500), null)
+  })
+
+  it('classifies a total decrease on a paid order as a refund owed', () => {
+    assert.deepEqual(classifyOrderEditPaymentAdjustment('PAID', -1200), { type: 'refund', amount: 1200 })
+  })
+
+  it('classifies a total increase on a paid order as a charge due', () => {
+    assert.deepEqual(classifyOrderEditPaymentAdjustment('PAID', 800), { type: 'charge', amount: 800 })
+  })
+
+  it('also reconciles on an order that has already been partially refunded', () => {
+    assert.deepEqual(classifyOrderEditPaymentAdjustment('PARTIALLY_REFUNDED', -300), { type: 'refund', amount: 300 })
+    assert.deepEqual(classifyOrderEditPaymentAdjustment('PARTIALLY_REFUNDED', 300), { type: 'charge', amount: 300 })
   })
 })

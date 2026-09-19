@@ -3,6 +3,9 @@ import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { reserveStock, releaseReservedQuantity } from '@/lib/inventory'
+import { dispatchWebhookEvent } from '@/lib/webhooks'
+import { remainingRefundable, pickRefundSource, settleReturnRefund, classifyOrderEditPaymentAdjustment, type ReturnableOrder } from '@/lib/returns'
+import { OrderStatus, PaymentStatus } from '@prisma/client'
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -14,7 +17,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       if (!edit) throw new Error('Order edit not found')
       if (edit.status !== 'OPEN') throw new Error('Order edit is no longer open')
 
-      const current = await tx.order.findUnique({ where: { id: edit.orderId }, include: { items: true } })
+      const current = await tx.order.findUnique({ where: { id: edit.orderId }, include: { items: true, paymentTransactions: true } })
       if (!current) throw new Error('Order not found')
       if (['CANCELLED', 'REFUNDED'].includes(current.status)) throw new Error('Cancelled or refunded orders cannot be edited')
 
@@ -62,17 +65,56 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       const nextSubtotal = Math.max(0, subtotal._sum.totalPrice || 0)
       const delta = nextSubtotal - current.subtotal
       const nextGrand = Math.max(0, current.grandTotal + delta)
-      const updated = await tx.order.update({ where: { id: current.id }, data: { subtotal: nextSubtotal, grandTotal: nextGrand } })
-      await tx.orderEvent.create({ data: { orderId: current.id, status: current.status, message: `Order edited by ${actor.name}.` } })
+      const grandDelta = nextGrand - current.grandTotal
+
+      // An edit that changes the total on an order that's already been paid leaves money out
+      // of sync unless it's recorded here -- mirrors how app/api/admin/returns/route.ts handles
+      // the same "order total just changed on a paid order" situation. A decrease creates a
+      // refund (settled through the gateway the same way a return's refund is); an increase has
+      // no automatic re-charge mechanism, so it's recorded as a pending PaymentTransaction the
+      // Payment section on the order detail page will surface for staff to collect manually.
+      const paymentAdjustment = classifyOrderEditPaymentAdjustment(current.paymentStatus, grandDelta)
+      let paymentUpdate: { paymentStatus?: PaymentStatus; status?: OrderStatus } = {}
+      let refundToSettle: { refundId: string; refundProvider: string; refundExternalId: string | null; amount: number } | null = null
+      if (paymentAdjustment?.type === 'refund') {
+        const refundableOrder = current as unknown as ReturnableOrder
+        const refundable = remainingRefundable(refundableOrder)
+        if (paymentAdjustment.amount > refundable) throw new Error('Order total after this edit would be less than the amount already refunded')
+        const { refundProvider, refundExternalId } = pickRefundSource(refundableOrder)
+        const refundStatus = refundProvider === 'manual' ? 'refunded' : 'refund_pending'
+        const refund = await tx.paymentTransaction.create({ data: { orderId: current.id, provider: refundProvider, externalId: refundExternalId, status: refundStatus, amount: paymentAdjustment.amount, currency: current.currency, rawJson: JSON.stringify({ orderEditId: id, reason: 'Order edit reduced total', actorId: actor.id }) } })
+        if (refundStatus === 'refunded') {
+          const refundedTotal = refundableOrder.grandTotal - refundable + paymentAdjustment.amount
+          paymentUpdate.paymentStatus = refundedTotal >= nextGrand ? 'REFUNDED' : 'PARTIALLY_REFUNDED'
+          paymentUpdate.status = paymentUpdate.paymentStatus === 'REFUNDED' ? 'REFUNDED' : current.status
+        } else {
+          refundToSettle = { refundId: refund.id, refundProvider, refundExternalId, amount: paymentAdjustment.amount }
+        }
+      } else if (paymentAdjustment?.type === 'charge') {
+        await tx.paymentTransaction.create({ data: { orderId: current.id, provider: 'manual', externalId: null, status: 'pending', amount: paymentAdjustment.amount, currency: current.currency, rawJson: JSON.stringify({ orderEditId: id, reason: 'Order edit increased total; additional payment required', actorId: actor.id }) } })
+      }
+
+      const updated = await tx.order.update({ where: { id: current.id }, data: { subtotal: nextSubtotal, grandTotal: nextGrand, ...paymentUpdate } })
+      await tx.orderEvent.create({ data: { orderId: current.id, status: current.status, message: `Order edited by ${actor.name}.${paymentAdjustment?.type === 'refund' ? ` A refund of ${paymentAdjustment.amount} ${current.currency} is owed.` : paymentAdjustment?.type === 'charge' ? ` An additional ${paymentAdjustment.amount} ${current.currency} is due.` : ''}` } })
       await tx.orderEdit.update({ where: { id }, data: { status: 'COMMITTED', committedAt: new Date(), subtotalAfter: nextSubtotal, deltaTotal: delta } })
-      return updated
+      return { updated, refundToSettle, paymentAdjustment }
     })
 
-    await audit(actor.id, 'order_edit.committed', 'OrderEdit', id, { orderId: order.id, newSubtotal: order.subtotal, newTotal: order.grandTotal })
-    return json({ order })
+    void dispatchWebhookEvent('order.updated', { id: order.updated.id, orderNumber: order.updated.orderNumber, status: order.updated.status, paymentStatus: order.updated.paymentStatus }).catch(error => console.error('[webhook] order.updated dispatch failed', error))
+
+    if (order.refundToSettle && order.refundToSettle.refundProvider !== 'manual') {
+      const settled = await settleReturnRefund(actor.id, { orderId: order.updated.id, refundId: order.refundToSettle.refundId, refundProvider: order.refundToSettle.refundProvider, refundExternalId: order.refundToSettle.refundExternalId, amount: order.refundToSettle.amount, currency: order.updated.currency, auditAction: 'order.edit_refund' })
+      if (!settled.ok) {
+        await audit(actor.id, 'order_edit.committed', 'OrderEdit', id, { orderId: order.updated.id, newSubtotal: order.updated.subtotal, newTotal: order.updated.grandTotal })
+        return json({ order: order.updated, error: 'Order edit committed, but the gateway refund failed. The refund remains marked failed for admin retry.' }, { status: 502 })
+      }
+    }
+
+    await audit(actor.id, 'order_edit.committed', 'OrderEdit', id, { orderId: order.updated.id, newSubtotal: order.updated.subtotal, newTotal: order.updated.grandTotal })
+    return json({ order: order.updated, paymentAdjustment: order.paymentAdjustment })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unable to commit order edit'
-    const status = message === 'Order edit not found' || message === 'Order not found' ? 404 : message === 'Order edit is no longer open' ? 409 : message === 'UNAUTHORIZED' ? 401 : message === 'FORBIDDEN' ? 403 : message.includes('cannot be edited') ? 409 : 400
+    const status = message === 'Order edit not found' || message === 'Order not found' ? 404 : message === 'Order edit is no longer open' ? 409 : message === 'UNAUTHORIZED' ? 401 : message === 'FORBIDDEN' ? 403 : message.includes('cannot be edited') ? 409 : message.includes('already been refunded') ? 409 : 400
     if (status >= 500) console.error('order edit commit failed', e)
     return json({ error: message }, { status })
   }

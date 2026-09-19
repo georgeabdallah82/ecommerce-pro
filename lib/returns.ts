@@ -74,6 +74,17 @@ export async function restockReturnEntries(tx: any, entries: Array<{ orderItemId
   return restockedInventoryIds
 }
 
+// An order edit that changes the grand total on an order that's already been paid needs the
+// same "money just moved out of sync" handling a return's refund gets. This classifies which
+// direction it goes in (and how much) so the caller -- app/api/admin/order-edits/[id]/route.ts
+// -- knows whether to create a refund or a pending-charge PaymentTransaction. A decrease can be
+// refunded through the gateway; an increase has no re-charge mechanism, so it's surfaced as a
+// charge the customer owes rather than acted on automatically.
+export function classifyOrderEditPaymentAdjustment(paymentStatus: string, grandDelta: number): { type: 'refund' | 'charge'; amount: number } | null {
+  if (grandDelta === 0 || !['PAID', 'PARTIALLY_REFUNDED'].includes(paymentStatus)) return null
+  return grandDelta < 0 ? { type: 'refund', amount: -grandDelta } : { type: 'charge', amount: grandDelta }
+}
+
 // Picks the most recent non-manual captured/authorized/paid transaction to refund against,
 // mirroring how the original direct-return flow chose a refund target.
 export function pickRefundSource(order: ReturnableOrder) {
@@ -81,11 +92,14 @@ export function pickRefundSource(order: ReturnableOrder) {
   return { refundProvider: original?.provider || 'manual', refundExternalId: original?.externalId || null }
 }
 
-// Post-commit gateway refund step, shared by every path that can issue a return refund. Never
-// throws -- on gateway failure it marks the refund transaction failed and returns ok: false so
-// the caller can report a 502 without rolling back the already-committed restock/return record.
-export async function settleReturnRefund(actorId: string, params: { returnId: string; orderId: string; refundId: string; refundProvider: string; refundExternalId: string | null; amount: number; currency: string }) {
+// Post-commit gateway refund step, shared by every path that can issue a refund tied to an
+// order (return receipt, order-edit price reduction). Never throws -- on gateway failure it
+// marks the refund transaction failed and returns ok: false so the caller can report a 502
+// without rolling back whatever was already committed. `returnId` is optional: when a return
+// isn't involved (e.g. an order-edit refund), that update is simply skipped.
+export async function settleReturnRefund(actorId: string, params: { returnId?: string; orderId: string; refundId: string; refundProvider: string; refundExternalId: string | null; amount: number; currency: string; auditAction?: string }) {
   const { returnId, orderId, refundId, refundProvider, refundExternalId, amount, currency } = params
+  const auditAction = params.auditAction || 'order.return_refund'
   if (refundProvider === 'manual') return { ok: true as const }
   try {
     if (!refundExternalId) throw new Error('Paid gateway transaction is missing its external reference')
@@ -95,21 +109,21 @@ export async function settleReturnRefund(actorId: string, params: { returnId: st
     if (gatewayResult === 'refunded') {
       await db.$transaction(async tx => {
         await tx.paymentTransaction.update({ where: { id: refundId }, data: { status: 'refunded' } })
-        await tx.returnRequest.update({ where: { id: returnId }, data: { status: 'REFUNDED', refundedAt: new Date() } })
+        if (returnId) await tx.returnRequest.update({ where: { id: returnId }, data: { status: 'REFUNDED', refundedAt: new Date() } })
         const orderRow = await tx.order.findUnique({ where: { id: orderId }, include: { paymentTransactions: true } })
         if (!orderRow) throw new Error('Order not found')
         const successfulRefunds = orderRow.paymentTransactions.filter(t => ['refunded', 'partially_refunded'].includes(t.status)).reduce((sum, t) => sum + t.amount, 0)
         const paymentStatus = successfulRefunds >= orderRow.grandTotal ? 'REFUNDED' : 'PARTIALLY_REFUNDED'
         await tx.order.update({ where: { id: orderRow.id }, data: { paymentStatus, status: paymentStatus === 'REFUNDED' ? 'REFUNDED' : orderRow.status } })
-        await tx.auditLog.create({ data: { actorId, action: 'order.return_refund_completed', entity: 'Order', entityId: orderRow.id, metadataJson: JSON.stringify({ returnId, refundId, amount, provider: refundProvider }) } })
+        await tx.auditLog.create({ data: { actorId, action: `${auditAction}_completed`, entity: 'Order', entityId: orderRow.id, metadataJson: JSON.stringify({ returnId, refundId, amount, provider: refundProvider }) } })
       })
       return { ok: true as const }
     }
-    await audit(actorId, 'order.return_refund_pending', 'Order', orderId, { returnId, refundId, amount, provider: refundProvider })
+    await audit(actorId, `${auditAction}_pending`, 'Order', orderId, { returnId, refundId, amount, provider: refundProvider })
     return { ok: true as const }
   } catch (error) {
     await db.paymentTransaction.update({ where: { id: refundId }, data: { status: 'refund_failed', rawJson: JSON.stringify({ returnId, error: error instanceof Error ? error.message : 'Gateway refund failed' }).slice(0, 5000) } })
-    await audit(actorId, 'order.return_refund_failed', 'Order', orderId, { returnId, refundId, provider: refundProvider })
+    await audit(actorId, `${auditAction}_failed`, 'Order', orderId, { returnId, refundId, provider: refundProvider })
     return { ok: false as const }
   }
 }
