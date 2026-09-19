@@ -14,6 +14,7 @@ import { consumeRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { getUnpublishedProductIds } from '@/lib/sales-channels'
+import { discountAmount, misconfigured, taxableAmountAfterRewards, zeroSplit, type DiscountSplit, type LineItem } from '@/lib/discounts'
 import { PaymentMethod } from '@prisma/client'
 import { ZodError } from 'zod'
 
@@ -38,79 +39,8 @@ function checkoutFingerprint(userId: string | null, input: any, merged: Map<stri
   })).digest('hex')
 }
 
-type LineItem = { productId: string; quantity: number; unitPrice: number; totalPrice: number }
-
-/**
- * Resolves a discount's target scope (the whole cart, a specific product
- * list, or a specific collection list) down to the concrete set of eligible
- * product ids. Collection membership lives on the Collection side of the
- * relation (Collection.products), not Product.collections, so it's resolved
- * with its own lookup rather than assuming the product records already carry
- * their collection ids.
- */
-async function resolveEligibleProductIds(scope: string | undefined, productIds: string[] | undefined, collectionIds: string[] | undefined): Promise<Set<string> | 'ALL'> {
-  if (scope === 'SPECIFIC_PRODUCTS') return new Set(productIds || [])
-  if (scope === 'SPECIFIC_COLLECTIONS') {
-    if (!collectionIds?.length) return new Set()
-    const collections = await db.collection.findMany({ where: { id: { in: collectionIds } }, include: { products: { select: { productId: true } } } })
-    const ids = new Set<string>()
-    for (const collection of collections) for (const link of collection.products) ids.add(link.productId)
-    return ids
-  }
-  return 'ALL'
-}
-
-function eligibleLineItems(items: LineItem[], eligible: Set<string> | 'ALL') {
-  return eligible === 'ALL' ? items : items.filter(item => eligible.has(item.productId))
-}
-
-/**
- * Buy X, get Y: for every `buyQuantity` eligible units in the cart, `getQuantity`
- * units from the (separately configurable) "get" scope are discounted by
- * `getDiscountPercent` (100 = free). Matches Shopify's own behavior of
- * discounting the cheapest eligible "get" units first, so the customer never
- * ends up with less value than the offer promises regardless of cart order.
- */
-async function buyXGetYDiscount(coupon: any, items: LineItem[]) {
-  const buyEligible = await resolveEligibleProductIds(coupon.appliesTo, coupon.productIds, coupon.collectionIds)
-  const buyQuantityInCart = eligibleLineItems(items, buyEligible).reduce((sum, item) => sum + item.quantity, 0)
-  const buyQuantity = Math.max(1, coupon.buyQuantity || 1)
-  const getQuantity = Math.max(1, coupon.getQuantity || 1)
-  const timesEarned = Math.floor(buyQuantityInCart / buyQuantity)
-  if (timesEarned <= 0) return 0
-
-  const getScope = coupon.getAppliesTo || coupon.appliesTo
-  const getProductIds = coupon.getProductIds?.length ? coupon.getProductIds : coupon.productIds
-  const getCollectionIds = coupon.getCollectionIds?.length ? coupon.getCollectionIds : coupon.collectionIds
-  const getEligible = await resolveEligibleProductIds(getScope, getProductIds, getCollectionIds)
-  const unitPrices = eligibleLineItems(items, getEligible)
-    .flatMap(item => Array(item.quantity).fill(item.unitPrice))
-    .sort((a, b) => a - b)
-
-  const discountedCount = Math.min(unitPrices.length, timesEarned * getQuantity)
-  const percent = Math.min(100, Math.max(0, coupon.getDiscountPercent ?? 100))
-  return unitPrices.slice(0, discountedCount).reduce((sum, price) => sum + Math.floor(price * percent / 100), 0)
-}
-
-async function discountAmount(coupon: any, items: LineItem[]) {
-  if (coupon.type === 'BUY_X_GET_Y') return buyXGetYDiscount(coupon, items)
-  const eligible = await resolveEligibleProductIds(coupon.appliesTo, coupon.productIds, coupon.collectionIds)
-  const eligibleSubtotal = eligibleLineItems(items, eligible).reduce((sum, item) => sum + item.totalPrice, 0)
-  return coupon.type === 'PERCENTAGE'
-    ? Math.min(eligibleSubtotal, Math.floor(eligibleSubtotal * coupon.value / 100))
-    : coupon.type === 'FIXED'
-      ? Math.min(eligibleSubtotal, coupon.value)
-      : 0
-}
-
-function misconfigured(coupon: { type: string; value: number; buyQuantity: number | null; getQuantity: number | null }) {
-  if (coupon.type === 'PERCENTAGE' && (coupon.value < 1 || coupon.value > 100)) return true
-  if (coupon.type === 'BUY_X_GET_Y' && (!coupon.buyQuantity || coupon.buyQuantity < 1 || !coupon.getQuantity || coupon.getQuantity < 1)) return true
-  return false
-}
-
 async function applyCoupon(code: string, subtotal: number, items: LineItem[]) {
-  if (!code) return { discount: 0, coupon: null as any }
+  if (!code) return { discount: zeroSplit(), coupon: null as any }
   const coupon = await db.coupon.findUnique({ where: { code: code.toUpperCase() } })
   const now = new Date()
   if (!coupon || !coupon.isActive) throw new Error('Invalid coupon code')
@@ -120,7 +50,7 @@ async function applyCoupon(code: string, subtotal: number, items: LineItem[]) {
   if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) throw new Error('This coupon has reached its usage limit')
   if (coupon.minSubtotal !== null && subtotal < coupon.minSubtotal) throw new Error('Minimum order is required for this coupon')
   const discount = await discountAmount(coupon, items)
-  if (discount === 0 && coupon.type !== 'FREE_SHIPPING') throw new Error('This discount does not apply to the items in your cart')
+  if (discount.total === 0 && coupon.type !== 'FREE_SHIPPING') throw new Error('This discount does not apply to the items in your cart')
   return { discount, coupon }
 }
 
@@ -137,7 +67,7 @@ async function applyCoupon(code: string, subtotal: number, items: LineItem[]) {
 async function findAutomaticDiscount(subtotal: number, userId: string | null, items: LineItem[]) {
   const now = new Date()
   const candidates = await db.coupon.findMany({ where: { isActive: true, isAutomatic: true } })
-  let best: { discount: number; coupon: any } | null = null
+  let best: { discount: DiscountSplit; coupon: any } | null = null
   for (const coupon of candidates) {
     if (misconfigured(coupon)) continue
     if (coupon.startsAt && coupon.startsAt > now) continue
@@ -150,10 +80,10 @@ async function findAutomaticDiscount(subtotal: number, userId: string | null, it
       if (existingOrder) continue
     }
     const discount = await discountAmount(coupon, items)
-    if (discount === 0 && coupon.type !== 'FREE_SHIPPING') continue
-    if (!best || discount > best.discount) best = { discount, coupon }
+    if (discount.total === 0 && coupon.type !== 'FREE_SHIPPING') continue
+    if (!best || discount.total > best.discount.total) best = { discount, coupon }
   }
-  return best ?? { discount: 0, coupon: null as any }
+  return best ?? { discount: zeroSplit(), coupon: null as any }
 }
 
 function providerCheckout(rawJson: string | null) {
@@ -290,6 +220,7 @@ export async function POST(req: Request) {
 
     const normalized: any[] = []
     let subtotal = 0
+    let taxableSubtotal = 0
     for (const raw of merged.values()) {
       const p = byId.get(raw.productId)!
       const variant = raw.variantId ? p.variants.find(v => v.id === raw.variantId) : undefined
@@ -301,22 +232,25 @@ export async function POST(req: Request) {
         if (available < raw.quantity) return json({ error: 'One or more requested quantities are no longer available.' }, { status: 409 })
       }
       const unitPrice = variant?.price ?? p.basePrice
-      subtotal += unitPrice * raw.quantity
-      normalized.push({ productId: p.id, variantId: variant?.id ?? null, name: p.name + (variant ? ` — ${variant.name}` : ''), sku: variant?.sku ?? p.sku, quantity: raw.quantity, unitPrice, totalPrice: unitPrice * raw.quantity })
+      const totalPrice = unitPrice * raw.quantity
+      subtotal += totalPrice
+      if (p.taxable) taxableSubtotal += totalPrice
+      normalized.push({ productId: p.id, variantId: variant?.id ?? null, name: p.name + (variant ? ` — ${variant.name}` : ''), sku: variant?.sku ?? p.sku, quantity: raw.quantity, unitPrice, totalPrice, taxable: p.taxable })
     }
 
     const { discount, coupon } = input.couponCode
       ? await applyCoupon(input.couponCode, subtotal, normalized)
       : await findAutomaticDiscount(subtotal, user?.id ?? null, normalized)
     if (coupon?.firstOrderOnly && !user?.id) throw new Error('This coupon requires a customer account')
-    const discountedSubtotal = Math.max(0, subtotal - discount)
+    const discountedSubtotal = Math.max(0, subtotal - discount.total)
     const requestedCoins = Math.max(0, Number(input.coinsToUse || 0))
     const coinDiscount = Math.min(discountedSubtotal, requestedCoins)
     if (requestedCoins > discountedSubtotal && requestedCoins > 0) throw new Error('Coin redemption exceeds the merchandise total.')
+    const taxableAmount = taxableAmountAfterRewards(taxableSubtotal, discount.taxable, discountedSubtotal, coinDiscount)
     const rewardAdjustedSubtotal = Math.max(0, discountedSubtotal - coinDiscount)
     const shipping = await calculateShipping(input.shippingAddress.country, rewardAdjustedSubtotal)
     const taxRate = await getTaxRatePercent(input.shippingAddress.country)
-    const taxTotal = Math.round(rewardAdjustedSubtotal * taxRate / 100)
+    const taxTotal = Math.round(taxableAmount * taxRate / 100)
     const shippingTotal = coupon?.type === 'FREE_SHIPPING' ? 0 : shipping.total
     const preGiftCardTotal = Math.max(0, rewardAdjustedSubtotal + shippingTotal + taxTotal)
 
@@ -403,7 +337,7 @@ export async function POST(req: Request) {
           email: input.email,
           phone: input.phone || null,
           subtotal,
-          discountTotal: discount + coinDiscount + giftCardDiscount,
+          discountTotal: discount.total + coinDiscount + giftCardDiscount,
           shippingTotal,
           taxTotal,
           grandTotal,
@@ -414,7 +348,7 @@ export async function POST(req: Request) {
           shippingAddressJson: JSON.stringify(input.shippingAddress),
           couponCode: coupon?.code ?? null,
           shippingMethod: shipping.method,
-          items: { create: normalized },
+          items: { create: normalized.map(({ taxable: _taxable, ...item }) => item) },
           events: { create: { status: orderStatus, message: paidByWallet ? `Order placed using wallet${coinDiscount ? ` and ${requestedCoins} coins` : ''}.` : paidUpfront ? 'Order placed successfully using a gift card.' : 'Order placed successfully.' } },
           paymentTransactions: { create: { provider: 'checkout', externalId: idempotencyKey, status: paidUpfront ? 'paid' : 'created', amount: grandTotal, currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD', rawJson: JSON.stringify(checkoutTxRaw) } },
         },
