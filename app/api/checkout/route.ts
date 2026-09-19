@@ -13,6 +13,7 @@ import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { consumeRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
+import { getUnpublishedProductIds } from '@/lib/sales-channels'
 import { PaymentMethod } from '@prisma/client'
 import { ZodError } from 'zod'
 
@@ -282,7 +283,8 @@ export async function POST(req: Request) {
     if (merged.size === 0) return json({ error: 'Your cart is empty.' }, { status: 400 })
 
     const ids = [...new Set([...merged.values()].map(i => i.productId))]
-    const products = await db.product.findMany({ where: { id: { in: ids }, status: 'ACTIVE' }, include: { variants: true, inventory: true, images: true } })
+    const unpublishedIds = await getUnpublishedProductIds()
+    const products = await db.product.findMany({ where: { id: { in: ids, notIn: unpublishedIds }, status: 'ACTIVE' }, include: { variants: true, inventory: true, images: true } })
     const byId = new Map(products.map(p => [p.id, p]))
     if (products.length !== ids.length) return json({ error: 'One or more products are unavailable' }, { status: 400 })
 
