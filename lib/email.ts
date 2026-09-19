@@ -123,6 +123,31 @@ export async function sendFulfillmentEmail(orderId: string) {
   return sendEmail(order.email, `Your order has shipped — ${order.orderNumber}`, html, text)
 }
 
+export async function sendDraftOrderInvoiceEmail(draftOrderId: string, payUrl: string) {
+  const draft = await db.draftOrder.findUnique({ where: { id: draftOrderId }, include: { items: true } })
+  if (!draft) return { sent: false, skipped: true }
+
+  const rows = draft.items
+    .map(
+      (item) => `<tr>
+      <td style="padding:8px 0;font-size:13px;color:#242219">${escapeHtml(item.name)} <span style="color:#8a8578">&times; ${item.quantity}</span></td>
+      <td style="padding:8px 0;font-size:13px;text-align:right;color:#242219">${money(item.totalPrice, draft.currency)}</td>
+    </tr>`
+    )
+    .join('')
+  const html = layout(`
+    <h1 style="font-size:20px;margin:0 0 4px">Invoice ${escapeHtml(draft.orderNumber)}</h1>
+    <p style="font-size:14px;color:#4a473d;margin:0 0 20px">Please review and pay to complete your order.</p>
+    <table role="presentation" width="100%" style="border-collapse:collapse">${rows}</table>
+    <table role="presentation" width="100%" style="border-collapse:collapse;border-top:1px solid #eee;margin-top:8px">
+      <tr><td style="padding-top:12px;font-size:15px;font-weight:800">Total due</td><td style="padding-top:12px;text-align:right;font-size:15px;font-weight:800">${money(draft.grandTotal, draft.currency)}</td></tr>
+    </table>
+    <p style="margin:24px 0 0"><a href="${escapeHtml(payUrl)}" style="display:inline-block;background:#6b7a4f;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:700">Review and pay</a></p>
+  `)
+  const text = `Invoice ${draft.orderNumber}. Total due: ${money(draft.grandTotal, draft.currency)}. Pay online: ${payUrl}`
+  return sendEmail(draft.email, `Invoice for your order — ${draft.orderNumber}`, html, text)
+}
+
 export async function sendAbandonedCheckoutEmail(abandonedCheckoutId: string) {
   if (!(await settingEnabled('email.abandonedCheckout'))) return { sent: false, skipped: true }
   const checkout = await db.abandonedCheckout.findUnique({ where: { id: abandonedCheckoutId } })
