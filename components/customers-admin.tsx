@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, ChevronRight, Eye, Plus, Search, ShieldOff, Trash2, UserCheck, UserX, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Eye, Plus, Search, ShieldOff, Tag, Trash2, UserCheck, UserX, X } from 'lucide-react'
 import { money } from '@/lib/config'
 import ui from './admin-ui.module.css'
 import { useToast } from './admin-toast'
@@ -62,6 +62,19 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
     finally { setBulkBusy(false) }
   }
 
+  async function bulkTag() {
+    if (!selected.length) return
+    const value = window.prompt(`Tag ${selected.length} customer${selected.length === 1 ? '' : 's'} with:`)?.trim()
+    if (!value) return
+    const count = selected.length
+    setBulkBusy(true)
+    try {
+      await api('/api/admin/customers/tags', { method: 'POST', body: JSON.stringify({ value, customerIds: selected }) })
+      toast(`Tagged ${count} customer${count === 1 ? '' : 's'} "${value}"`)
+    } catch (e) { toast(e instanceof Error ? e.message : 'Unable to tag customers', 'error') }
+    finally { setBulkBusy(false) }
+  }
+
   useEffect(() => { void load(1) }, [status, pageSize])
 
   // Active/disabled come straight from the server so the tiles always reflect the true
@@ -115,6 +128,7 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
       <div className={ui.bulkBar}>
         <div className={ui.bulkCount}><strong>{selected.length}</strong><span> selected</span></div>
         <div className={ui.bulkActions}>
+          <button className={`${ui.btn} ${ui.btnSecondary}`} disabled={bulkBusy} onClick={() => bulkTag()}><Tag size={15} /> Tag</button>
           <button className={`${ui.btn} ${ui.btnSecondary}`} disabled={bulkBusy} onClick={() => bulk('ACTIVATE')}><UserCheck size={15} /> Activate</button>
           <button className={`${ui.btn} ${ui.btnSecondary}`} disabled={bulkBusy} onClick={() => bulk('DISABLE')}><ShieldOff size={15} /> Disable</button>
           <button className={`${ui.btn} ${ui.btnSecondary}`} disabled={bulkBusy} onClick={() => bulk('DELETE')}><Trash2 size={15} /> Delete</button>
