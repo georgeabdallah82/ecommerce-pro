@@ -12,6 +12,7 @@ import { sendOrderConfirmationEmail } from '@/lib/email'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { consumeRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
+import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { PaymentMethod } from '@prisma/client'
 import { ZodError } from 'zod'
 
@@ -29,6 +30,7 @@ function checkoutFingerprint(userId: string | null, input: any, merged: Map<stri
     phone: input.phone || null,
     items,
     couponCode: input.couponCode || null,
+    giftCardCode: input.giftCardCode || null,
     paymentMethod: input.paymentMethod,
     coinsToUse: input.coinsToUse || 0,
     shippingAddress: input.shippingAddress,
@@ -182,6 +184,12 @@ const SAFE_CHECKOUT_MESSAGES = new Set([
   'Insufficient wallet balance.',
   'Insufficient coin balance.',
   'Coin redemption exceeds the merchandise total.',
+  'Invalid gift card code',
+  'This gift card is no longer active',
+  'This gift card has expired',
+  'This gift card has no remaining balance',
+  'This gift card cannot be used for this order currency',
+  'This gift card is no longer available',
 ])
 
 function checkoutFailure(error: unknown) {
@@ -201,6 +209,15 @@ function parseCoinsUsed(rawJson: string | null) {
     const parsed = JSON.parse(rawJson) as { coinsUsed?: unknown }
     return Number.isSafeInteger(parsed.coinsUsed) ? Math.max(0, Number(parsed.coinsUsed)) : 0
   } catch { return 0 }
+}
+
+async function restoreCheckoutGiftCard(orderId: string) {
+  await db.$transaction(async tx => {
+    const checkoutTx = await tx.paymentTransaction.findFirst({ where: { orderId, provider: 'checkout' }, select: { rawJson: true } })
+    const redeemed = redeemedGiftCard([{ provider: 'checkout', rawJson: checkoutTx?.rawJson || null }])
+    if (!redeemed) return
+    await restoreGiftCardBalance(tx, orderId, redeemed)
+  })
 }
 
 async function restoreCheckoutCoins(orderId: string, userId: string | null) {
@@ -299,7 +316,25 @@ export async function POST(req: Request) {
     const taxRate = await getTaxRatePercent(input.shippingAddress.country)
     const taxTotal = Math.round(rewardAdjustedSubtotal * taxRate / 100)
     const shippingTotal = coupon?.type === 'FREE_SHIPPING' ? 0 : shipping.total
-    const grandTotal = Math.max(0, rewardAdjustedSubtotal + shippingTotal + taxTotal)
+    const preGiftCardTotal = Math.max(0, rewardAdjustedSubtotal + shippingTotal + taxTotal)
+
+    const orderCurrency = process.env.NEXT_PUBLIC_CURRENCY || 'USD'
+    let giftCard: { id: string; balance: number } | null = null
+    let giftCardDiscount = 0
+    if (input.giftCardCode) {
+      const found = await db.giftCard.findUnique({ where: { code: input.giftCardCode.toUpperCase() } })
+      if (!found) throw new Error('Invalid gift card code')
+      if (found.status !== 'ACTIVE') throw new Error('This gift card is no longer active')
+      if (found.expiresAt && found.expiresAt < new Date()) throw new Error('This gift card has expired')
+      if (found.balance <= 0) throw new Error('This gift card has no remaining balance')
+      if (found.currency !== orderCurrency) throw new Error('This gift card cannot be used for this order currency')
+      giftCard = found
+      giftCardDiscount = Math.min(found.balance, preGiftCardTotal)
+    }
+    // Gift cards pay off the final total (post shipping/tax), unlike coin
+    // redemption above which only ever discounts the merchandise subtotal --
+    // matching how a real gift card is applied at the register.
+    const grandTotal = Math.max(0, preGiftCardTotal - giftCardDiscount)
     const orderNumber = `ORD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(0, 6).toUpperCase()}`
     const fingerprint = checkoutFingerprint(user?.id ?? null, input, merged)
 
@@ -344,10 +379,21 @@ export async function POST(req: Request) {
         const couponUpdate = await tx.coupon.updateMany({ where: { id: coupon.id, isActive: true, ...(coupon.maxUses !== null ? { usedCount: { lt: coupon.maxUses } } : {}) }, data: { usedCount: { increment: 1 } } })
         if (couponUpdate.count !== 1) throw new Error('This coupon is no longer available')
       }
+      if (giftCard && giftCardDiscount > 0) {
+        const giftCardUpdate = await tx.giftCard.updateMany({ where: { id: giftCard.id, status: 'ACTIVE', balance: { gte: giftCardDiscount } }, data: { balance: { decrement: giftCardDiscount } } })
+        if (giftCardUpdate.count !== 1) throw new Error('This gift card is no longer available')
+      }
 
       const paidByWallet = paymentMethod === PaymentMethod.WALLET
-      const orderStatus = paidByWallet ? 'CONFIRMED' : 'PENDING'
-      const paymentStatus = paidByWallet ? 'PAID' : 'UNPAID'
+      // A gift card can cover the entire total on its own -- in that case there's
+      // nothing left for CARD to charge, so the order is treated as paid upfront
+      // just like WALLET, and the CARD provider round-trip is skipped below.
+      const paidUpfront = paidByWallet || grandTotal === 0
+      const orderStatus = paidUpfront ? 'CONFIRMED' : 'PENDING'
+      const paymentStatus = paidUpfront ? 'PAID' : 'UNPAID'
+      const checkoutTxRaw: Record<string, unknown> = { coinDiscount, coinsUsed: requestedCoins }
+      if (idempotencyKey) checkoutTxRaw.fingerprint = fingerprint
+      if (giftCard && giftCardDiscount > 0) { checkoutTxRaw.giftCardId = giftCard.id; checkoutTxRaw.giftCardAmount = giftCardDiscount }
       const order = await tx.order.create({
         data: {
           orderNumber,
@@ -355,7 +401,7 @@ export async function POST(req: Request) {
           email: input.email,
           phone: input.phone || null,
           subtotal,
-          discountTotal: discount + coinDiscount,
+          discountTotal: discount + coinDiscount + giftCardDiscount,
           shippingTotal,
           taxTotal,
           grandTotal,
@@ -367,8 +413,8 @@ export async function POST(req: Request) {
           couponCode: coupon?.code ?? null,
           shippingMethod: shipping.method,
           items: { create: normalized },
-          events: { create: { status: orderStatus, message: paidByWallet ? `Order placed using wallet${coinDiscount ? ` and ${requestedCoins} coins` : ''}.` : 'Order placed successfully.' } },
-          paymentTransactions: { create: { provider: 'checkout', externalId: idempotencyKey, status: paidByWallet ? 'paid' : 'created', amount: grandTotal, currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD', rawJson: idempotencyKey ? JSON.stringify({ fingerprint, coinDiscount, coinsUsed: requestedCoins }) : JSON.stringify({ coinDiscount, coinsUsed: requestedCoins }) } },
+          events: { create: { status: orderStatus, message: paidByWallet ? `Order placed using wallet${coinDiscount ? ` and ${requestedCoins} coins` : ''}.` : paidUpfront ? 'Order placed successfully using a gift card.' : 'Order placed successfully.' } },
+          paymentTransactions: { create: { provider: 'checkout', externalId: idempotencyKey, status: paidUpfront ? 'paid' : 'created', amount: grandTotal, currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD', rawJson: JSON.stringify(checkoutTxRaw) } },
         },
       })
       return { existing: false as const, order }
@@ -383,7 +429,7 @@ export async function POST(req: Request) {
 
     const order = result.order
     let clientCheckout: any = null
-    if (paymentMethod === PaymentMethod.CARD) {
+    if (paymentMethod === PaymentMethod.CARD && order.grandTotal > 0) {
       try {
         const payment = await paymentProvider.createPayment({ orderId: order.orderNumber, amount: order.grandTotal, currency: order.currency, email: order.email })
         if (payment.externalId) {
@@ -397,6 +443,7 @@ export async function POST(req: Request) {
           await tx.order.update({ where: { id: order.id }, data: { status: 'CANCELLED', fulfillmentStatus: 'UNFULFILLED', events: { create: { status: 'CANCELLED', message: 'Online payment initialization failed.' } } } })
         })
         await restoreCheckoutCoins(order.id, order.userId)
+        await restoreCheckoutGiftCard(order.id)
         throw paymentError
       }
     }
@@ -409,12 +456,12 @@ export async function POST(req: Request) {
       }
     }
     void sendNewOrderPush({ id: order.id, orderNumber: order.orderNumber, grandTotal: order.grandTotal, currency: order.currency }).catch(error => console.error('[push] new-order notification failed', error))
-    if (paymentMethod !== PaymentMethod.CARD) {
+    if (paymentMethod !== PaymentMethod.CARD || order.grandTotal === 0) {
       void sendOrderConfirmationEmail(order.id).catch(error => console.error('[email] order confirmation failed', error))
     }
     void dispatchWebhookEvent('order.created', { id: order.id, orderNumber: order.orderNumber, email: order.email, grandTotal: order.grandTotal, currency: order.currency, status: order.status, paymentStatus: order.paymentStatus }).catch(error => console.error('[webhook] order.created dispatch failed', error))
-    await audit(user?.id, 'order.created', 'Order', order.id, { orderNumber: order.orderNumber, total: grandTotal, paymentMethod, paymentProvider: paymentMethod === PaymentMethod.CARD ? paymentProvider.name : paymentMethod.toLowerCase(), coinsUsed: requestedCoins, coinDiscount })
-    return json({ order: { id: order.id, orderNumber: order.orderNumber, total: order.grandTotal }, payment: clientCheckout, rewards: { coinsUsed: requestedCoins, coinDiscount } }, { status: 201, headers: { 'Cache-Control': 'no-store' } })
+    await audit(user?.id, 'order.created', 'Order', order.id, { orderNumber: order.orderNumber, total: grandTotal, paymentMethod, paymentProvider: paymentMethod === PaymentMethod.CARD ? paymentProvider.name : paymentMethod.toLowerCase(), coinsUsed: requestedCoins, coinDiscount, giftCardAmount: giftCardDiscount })
+    return json({ order: { id: order.id, orderNumber: order.orderNumber, total: order.grandTotal }, payment: clientCheckout, rewards: { coinsUsed: requestedCoins, coinDiscount, giftCardAmount: giftCardDiscount } }, { status: 201, headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {
     const failure = checkoutFailure(error)
     return json({ error: failure.message }, { status: failure.status, headers: { 'Cache-Control': 'no-store' } })
