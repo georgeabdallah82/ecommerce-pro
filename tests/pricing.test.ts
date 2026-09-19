@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { describe, it, beforeEach } from 'node:test'
 import { db } from '@/lib/prisma'
-import { getTaxRatePercent } from '@/lib/pricing'
+import { getTaxRatePercent, resolveFreeShippingThresholdCents } from '@/lib/pricing'
 
 // The mock DB backing db.taxRate is a module-level array shared by every test
 // in this file (there's no real per-test database to isolate against), so a
@@ -87,5 +87,26 @@ describe('lib/pricing getTaxRatePercent', () => {
     await makeTaxRate({ name: 'Bad rate', countries: code, rate: 250 })
     const rate = await getTaxRatePercent(code)
     assert.equal(rate, 100)
+  })
+})
+
+describe('lib/pricing resolveFreeShippingThresholdCents', () => {
+  it('converts a configured dollar threshold to cents', () => {
+    assert.equal(resolveFreeShippingThresholdCents('75'), 7500)
+  })
+
+  it('rounds a fractional dollar threshold to the nearest cent', () => {
+    assert.equal(resolveFreeShippingThresholdCents('49.99'), 4999)
+  })
+
+  it('falls back to the $100 default when unset', () => {
+    assert.equal(resolveFreeShippingThresholdCents(undefined), 10000)
+    assert.equal(resolveFreeShippingThresholdCents(null), 10000)
+  })
+
+  it('falls back to the $100 default for a non-numeric or non-positive value', () => {
+    assert.equal(resolveFreeShippingThresholdCents('not-a-number'), 10000)
+    assert.equal(resolveFreeShippingThresholdCents('0'), 10000)
+    assert.equal(resolveFreeShippingThresholdCents('-5'), 10000)
   })
 })

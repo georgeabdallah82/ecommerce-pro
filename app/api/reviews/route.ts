@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { consumeRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { json } from '@/lib/utils'
+import { sendNewReviewAlert } from '@/lib/push'
 
 const NO_STORE = { 'Cache-Control': 'private, no-store' }
 
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
     const title = titleText || null
     const body = bodyText || null
 
-    const product = await db.product.findFirst({ where: { id: productId, status: 'ACTIVE' }, select: { id: true } })
+    const product = await db.product.findFirst({ where: { id: productId, status: 'ACTIVE' }, select: { id: true, name: true } })
     if (!product) return json({ error: 'Product not found' }, { status: 404, headers: NO_STORE })
     const purchase = await db.orderItem.findFirst({ where: { productId, order: { userId: user.id, status: { in: ['CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED'] } } }, select: { id: true } })
     if (!purchase) return json({ error: 'You can review products you purchased' }, { status: 403, headers: NO_STORE })
@@ -45,6 +46,7 @@ export async function POST(req: Request) {
         throw error
       }
     })
+    void sendNewReviewAlert({ id: review.id, productName: product.name, rating: review.rating }).catch(error => console.error('[push] new review alert failed', error))
     return json({ review }, { status: 201, headers: NO_STORE })
   } catch (e) {
     const message = e instanceof Error ? e.message : ''
