@@ -58,6 +58,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       },
       tags: true,
       collections: { include: { collection: true } },
+      metafields: { include: { definition: true } },
     },
   })
 
@@ -189,6 +190,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         imageUrl: item.collection.imageUrl,
       },
     })),
+    metafields: product.metafields
+      .filter((m) => m.value)
+      .map((m) => ({ name: m.definition.name, type: m.definition.type, value: m.value })),
   }
 
   const structuredData = {
