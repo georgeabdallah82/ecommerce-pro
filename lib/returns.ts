@@ -86,6 +86,24 @@ export function classifyOrderEditPaymentAdjustment(paymentStatus: string, grandD
   return grandDelta < 0 ? { type: 'refund', amount: -grandDelta } : { type: 'charge', amount: grandDelta }
 }
 
+// An order edit changes item quantities/prices, so the tax owed must be recalculated against
+// the new subtotal -- otherwise an item added by the edit is silently untaxed (or a removed
+// item keeps being taxed). Discount and shipping are left as originally granted (an edit
+// doesn't renegotiate a coupon or shipping tier), but the discount is still prorated across
+// taxable/non-taxable items by their share of the new subtotal, so tax isn't charged on a
+// share of the order the discount already covered -- same reasoning as
+// taxableAmountAfterRewards in lib/discounts.ts. grandTotal is then derived from these parts
+// (rather than carried forward as `current.grandTotal + delta`) so the invoice/email breakdown
+// -- subtotal, discount, shipping, tax -- always sums to the displayed total.
+export function recomputeOrderEditTotals(params: { nextSubtotal: number; nextTaxableSubtotal: number; discountTotal: number; shippingTotal: number; taxRatePercent: number }): { taxTotal: number; grandTotal: number } {
+  const { nextSubtotal, nextTaxableSubtotal, discountTotal, shippingTotal, taxRatePercent } = params
+  const discountTaxableShare = nextSubtotal > 0 ? Math.round(discountTotal * nextTaxableSubtotal / nextSubtotal) : 0
+  const taxableAfterDiscount = Math.max(0, nextTaxableSubtotal - discountTaxableShare)
+  const taxTotal = Math.round(taxableAfterDiscount * taxRatePercent / 100)
+  const grandTotal = Math.max(0, nextSubtotal - discountTotal + shippingTotal + taxTotal)
+  return { taxTotal, grandTotal }
+}
+
 // Picks the most recent non-manual captured/authorized/paid transaction to refund against,
 // mirroring how the original direct-return flow chose a refund target.
 export function pickRefundSource(order: ReturnableOrder) {

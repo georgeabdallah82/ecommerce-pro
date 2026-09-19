@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { normalizeReturnItems, remainingRefundable, pickRefundSource, classifyOrderEditPaymentAdjustment, type ReturnableOrder } from '@/lib/returns'
+import { normalizeReturnItems, remainingRefundable, pickRefundSource, classifyOrderEditPaymentAdjustment, recomputeOrderEditTotals, type ReturnableOrder } from '@/lib/returns'
 
 function order(overrides: Partial<ReturnableOrder> = {}): ReturnableOrder {
   return {
@@ -110,5 +110,39 @@ describe('lib/returns classifyOrderEditPaymentAdjustment', () => {
   it('also reconciles on an order that has already been partially refunded', () => {
     assert.deepEqual(classifyOrderEditPaymentAdjustment('PARTIALLY_REFUNDED', -300), { type: 'refund', amount: 300 })
     assert.deepEqual(classifyOrderEditPaymentAdjustment('PARTIALLY_REFUNDED', 300), { type: 'charge', amount: 300 })
+  })
+})
+
+describe('lib/returns recomputeOrderEditTotals', () => {
+  it('applies tax to the full new subtotal when every item is taxable and there is no discount', () => {
+    const result = recomputeOrderEditTotals({ nextSubtotal: 10000, nextTaxableSubtotal: 10000, discountTotal: 0, shippingTotal: 500, taxRatePercent: 10 })
+    assert.deepEqual(result, { taxTotal: 1000, grandTotal: 11500 })
+  })
+
+  it('charges zero tax on a fully tax-exempt subtotal', () => {
+    const result = recomputeOrderEditTotals({ nextSubtotal: 10000, nextTaxableSubtotal: 0, discountTotal: 0, shippingTotal: 0, taxRatePercent: 20 })
+    assert.deepEqual(result, { taxTotal: 0, grandTotal: 10000 })
+  })
+
+  it('prorates the discount across taxable/non-taxable items before taxing the remainder', () => {
+    // Half the subtotal is taxable ($50 of $100); a flat $20 discount is split proportionally,
+    // leaving $40 of taxable amount, taxed at 10% = $4.
+    const result = recomputeOrderEditTotals({ nextSubtotal: 10000, nextTaxableSubtotal: 5000, discountTotal: 2000, shippingTotal: 0, taxRatePercent: 10 })
+    assert.deepEqual(result, { taxTotal: 400, grandTotal: 8400 })
+  })
+
+  it('clamps the taxable-after-discount amount at zero when the discount exceeds it', () => {
+    const result = recomputeOrderEditTotals({ nextSubtotal: 10000, nextTaxableSubtotal: 1000, discountTotal: 10000, shippingTotal: 0, taxRatePercent: 10 })
+    assert.deepEqual(result, { taxTotal: 0, grandTotal: 0 })
+  })
+
+  it('returns a zero taxable share when the new subtotal is zero (every item removed)', () => {
+    const result = recomputeOrderEditTotals({ nextSubtotal: 0, nextTaxableSubtotal: 0, discountTotal: 500, shippingTotal: 500, taxRatePercent: 10 })
+    assert.deepEqual(result, { taxTotal: 0, grandTotal: 0 })
+  })
+
+  it('keeps discount and shipping as fixed absolute amounts, unaffected by the tax rate', () => {
+    const result = recomputeOrderEditTotals({ nextSubtotal: 20000, nextTaxableSubtotal: 20000, discountTotal: 3000, shippingTotal: 700, taxRatePercent: 0 })
+    assert.deepEqual(result, { taxTotal: 0, grandTotal: 17700 })
   })
 })
