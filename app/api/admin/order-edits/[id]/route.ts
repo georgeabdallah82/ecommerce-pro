@@ -6,6 +6,7 @@ import { reserveStock, releaseReservedQuantity } from '@/lib/inventory'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { remainingRefundable, pickRefundSource, settleReturnRefund, classifyOrderEditPaymentAdjustment, recomputeOrderEditTotals, type ReturnableOrder } from '@/lib/returns'
 import { getTaxRatePercent } from '@/lib/pricing'
+import { sendOrderEditEmail } from '@/lib/email'
 import { OrderStatus, PaymentStatus } from '@prisma/client'
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -106,10 +107,28 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       const updated = await tx.order.update({ where: { id: current.id }, data: { subtotal: nextSubtotal, taxTotal: nextTaxTotal, grandTotal: nextGrand, ...paymentUpdate } })
       await tx.orderEvent.create({ data: { orderId: current.id, status: current.status, message: `Order edited by ${actor.name}.${paymentAdjustment?.type === 'refund' ? ` A refund of ${paymentAdjustment.amount} ${current.currency} is owed.` : paymentAdjustment?.type === 'charge' ? ` An additional ${paymentAdjustment.amount} ${current.currency} is due.` : ''}` } })
       await tx.orderEdit.update({ where: { id }, data: { status: 'COMMITTED', committedAt: new Date(), subtotalAfter: nextSubtotal, deltaTotal: delta } })
-      return { updated, refundToSettle, paymentAdjustment }
+      return { updated, refundToSettle, paymentAdjustment, userId: current.userId }
     })
 
     void dispatchWebhookEvent('order.updated', { id: order.updated.id, orderNumber: order.updated.orderNumber, status: order.updated.status, paymentStatus: order.updated.paymentStatus }).catch(error => console.error('[webhook] order.updated dispatch failed', error))
+
+    // Every other flow that moves money on a paid order (returns, gift cards, fulfillment)
+    // notifies the customer -- an order edit that just issued a refund or created a charge the
+    // customer now owes was silently skipping that, leaving them to find out only by checking
+    // their account later.
+    if (order.userId) {
+      try {
+        const body = order.paymentAdjustment?.type === 'refund'
+          ? `A refund of ${(order.paymentAdjustment.amount / 100).toFixed(2)} ${order.updated.currency} was issued for your order ${order.updated.orderNumber}.`
+          : order.paymentAdjustment?.type === 'charge'
+            ? `Your order ${order.updated.orderNumber} was updated and now requires an additional payment of ${(order.paymentAdjustment.amount / 100).toFixed(2)} ${order.updated.currency}.`
+            : `Your order ${order.updated.orderNumber} was updated by our team.`
+        await db.notification.create({ data: { userId: order.userId, title: `Order ${order.updated.orderNumber} updated`, body, type: order.paymentAdjustment?.type === 'refund' ? 'ORDER_REFUND' : 'ORDER_STATUS' } })
+      } catch {
+        // Notification delivery must never make a committed order edit retryable.
+      }
+    }
+    void sendOrderEditEmail(order.updated.id, order.paymentAdjustment).catch(error => console.error('[email] order edit email failed', error))
 
     if (order.refundToSettle && order.refundToSettle.refundProvider !== 'manual') {
       const settled = await settleReturnRefund(actor.id, { orderId: order.updated.id, refundId: order.refundToSettle.refundId, refundProvider: order.refundToSettle.refundProvider, refundExternalId: order.refundToSettle.refundExternalId, amount: order.refundToSettle.amount, currency: order.updated.currency, auditAction: 'order.edit_refund' })

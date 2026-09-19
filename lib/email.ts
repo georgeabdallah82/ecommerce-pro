@@ -214,6 +214,33 @@ export async function sendReturnStatusEmail(returnId: string, orderId: string) {
   return sendEmail(order.email, subject, html, text)
 }
 
+// Committing an order edit can move money on an already-paid order (a refund issued, or an
+// additional charge now owed) the same way a return does, but unlike returns/gift cards/
+// fulfillment there was no customer-facing side effect at all -- only a staff-only OrderEvent.
+// `adjustment` mirrors classifyOrderEditPaymentAdjustment's return shape; null covers an edit
+// that changed items/total without moving money on a paid order (still worth telling the
+// customer their order changed).
+export async function sendOrderEditEmail(orderId: string, adjustment: { type: 'refund' | 'charge'; amount: number } | null) {
+  if (!(await settingEnabled('email.orderEdit'))) return { sent: false, skipped: true }
+  const order = await db.order.findUnique({ where: { id: orderId }, select: { email: true, orderNumber: true, currency: true } })
+  if (!order) return { sent: false, skipped: true }
+
+  const heading = adjustment?.type === 'refund' ? 'Your order was updated — a refund is on its way'
+    : adjustment?.type === 'charge' ? 'Your order was updated — additional payment required'
+    : 'Your order was updated'
+  const message = adjustment?.type === 'refund' ? `Your order ${order.orderNumber} was updated by our team. A refund of ${money(adjustment.amount, order.currency)} has been issued.`
+    : adjustment?.type === 'charge' ? `Your order ${order.orderNumber} was updated by our team and now requires an additional payment of ${money(adjustment.amount, order.currency)}. We'll be in touch about how to complete it.`
+    : `Your order ${order.orderNumber} was updated by our team.`
+  const url = siteUrl() ? `${siteUrl()}/account/orders/${order.orderNumber}` : null
+  const html = layout(`
+    <h1 style="font-size:20px;margin:0 0 4px">${escapeHtml(heading)}</h1>
+    <p style="font-size:14px;color:#4a473d;margin:0 0 20px">${escapeHtml(message)}</p>
+    ${url ? `<p style="margin:24px 0 0"><a href="${url}" style="display:inline-block;background:#6b7a4f;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:700">View your order</a></p>` : ''}
+  `)
+  const text = `${heading}. ${message}${url ? ` View your order: ${url}` : ''}`
+  return sendEmail(order.email, `Your order was updated — ${order.orderNumber}`, html, text)
+}
+
 export async function sendAbandonedCheckoutEmail(abandonedCheckoutId: string) {
   if (!(await settingEnabled('email.abandonedCheckout'))) return { sent: false, skipped: true }
   const checkout = await db.abandonedCheckout.findUnique({ where: { id: abandonedCheckoutId } })
