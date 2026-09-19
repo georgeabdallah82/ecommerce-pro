@@ -6,6 +6,7 @@ import { clientIp } from '@/lib/request-ip'
 import { areebaMpgsPaymentProvider, areebaWebhookToken, safeTokenEqual } from '@/lib/payments'
 import { sendOrderConfirmationEmail } from '@/lib/email'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
+import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 
 function parseCoinsUsed(rawJson: string | null) {
   if (!rawJson) return 0
@@ -89,7 +90,7 @@ async function processPaymentNotification(orderNumber: string, body: Record<stri
           userId: true,
           orderNumber: true,
           grandTotal: true,
-          paymentTransactions: { where: { provider: 'checkout' }, select: { rawJson: true }, orderBy: { createdAt: 'asc' }, take: 1 },
+          paymentTransactions: { where: { provider: 'checkout' }, select: { provider: true, rawJson: true }, orderBy: { createdAt: 'asc' }, take: 1 },
         },
       })
       if (!current || ['PAID', 'FAILED', 'REFUNDED', 'PARTIALLY_REFUNDED'].includes(current.paymentStatus)) return
@@ -100,6 +101,8 @@ async function processPaymentNotification(orderNumber: string, body: Record<stri
         const reversalId = `coin_${current.orderNumber}_payment_failed_reversal`
         await tx.coinTransaction.upsert({ where: { id: reversalId }, create: { id: reversalId, userId: current.userId, amount: coinsUsed, type: 'REVERSAL', reason: 'Failed payment coin restoration', referenceId: `coin-reversal:${current.orderNumber}:payment-failed` }, update: {} })
       }
+      const redeemedGc = redeemedGiftCard(current.paymentTransactions)
+      if (redeemedGc) await restoreGiftCardBalance(tx, order.id, redeemedGc)
       await tx.order.update({ where: { id: order.id }, data: { paymentStatus: 'FAILED', status: 'CANCELLED', events: { create: { status: 'CANCELLED', message: 'Online payment failed.' } } } })
       await tx.paymentTransaction.update({ where: { id: transaction.id }, data: { status: 'failed' } })
       transitioned = true

@@ -2,6 +2,7 @@ import { db } from '@/lib/prisma'
 import { requireUser } from '@/lib/auth'
 import { canCustomerCancel } from '@/lib/orders'
 import { releaseOrderReservations } from '@/lib/inventory'
+import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { json } from '@/lib/utils'
 
 const CUSTOMER_CANCEL_MESSAGES = new Set([
@@ -58,6 +59,9 @@ export async function POST(_req: Request, { params }: { params: Promise<{ orderN
           update: {},
         })
       }
+
+      const redeemed = redeemedGiftCard(order.paymentTransactions)
+      if (redeemed) await restoreGiftCardBalance(tx, order.id, redeemed)
 
       const updated = await tx.order.update({
         where: { id: order.id },
