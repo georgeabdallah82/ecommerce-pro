@@ -6,6 +6,7 @@ import { fulfillOrderStock, releaseOrderReservations } from '@/lib/inventory'
 import { json } from '@/lib/utils'
 import { dispatchWebhookEvent, dispatchInventoryUpdated } from '@/lib/webhooks'
 import { sendFulfillmentEmail } from '@/lib/email'
+import { checkLowStockAlerts } from '@/lib/push'
 import { OrderStatus, PaymentStatus } from '@prisma/client'
 
 const ORDER_STATUSES = new Set(Object.values(OrderStatus))
@@ -108,6 +109,7 @@ export async function PATCH(req: Request) {
       }
     }
     dispatchInventoryUpdated(result.fulfilledInventoryIds)
+    if (result.fulfilledInventoryIds.length) void checkLowStockAlerts(result.fulfilledInventoryIds).catch(error => console.error('[push] low stock alert failed', error))
     return json({ order: result.updated })
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : 'Unable to update order' }, { status: 400 })

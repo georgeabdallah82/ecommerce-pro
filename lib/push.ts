@@ -93,3 +93,27 @@ export async function sendNewOrderPush(order: { id: string; orderNumber: string;
 export async function sendCustomerPushCampaign(payload: { title: string; body: string; url?: string; icon?: string }, userIds?: string[]) {
   return sendToSubscriptions({ ...payload, url: payload.url || '/', marketing: true }, undefined, 'customer', userIds)
 }
+
+// Called with the inventory item ids touched by a stock-reducing action (a manual adjustment,
+// an order fulfillment) to alert staff about any that are now at or below their threshold.
+// Re-reads current state rather than trusting the caller's snapshot, same reasoning as
+// dispatchInventoryUpdated in lib/webhooks.ts. Fires on every qualifying change rather than
+// only the first crossing -- simple and stateless, matching every other push helper here, at
+// the cost of a repeat alert if stock stays low across multiple further adjustments.
+export async function checkLowStockAlerts(inventoryIds: Iterable<string>) {
+  const ids = [...new Set(inventoryIds)]
+  if (!ids.length) return { sent: 0, skipped: true, failed: 0 }
+  const setting = await db.setting.findUnique({ where: { key: 'notifications.lowStock' } })
+  if (setting?.value === 'false') return { sent: 0, skipped: true, failed: 0 }
+
+  const items = await db.inventoryItem.findMany({
+    where: { id: { in: ids } },
+    include: { product: { select: { name: true } }, variant: { select: { name: true } } },
+  })
+  const low = items.filter(item => item.lowStockThreshold > 0 && item.quantity - item.reserved <= item.lowStockThreshold)
+  if (!low.length) return { sent: 0, skipped: true, failed: 0 }
+
+  const names = low.map(item => item.variant ? `${item.product.name} — ${item.variant.name}` : item.product.name)
+  const body = names.length <= 3 ? names.join(', ') : `${names.slice(0, 3).join(', ')} and ${names.length - 3} more`
+  return sendToSubscriptions({ title: `Low stock: ${low.length} item${low.length === 1 ? '' : 's'}`, body, url: '/admin/inventory', lowStock: true })
+}
