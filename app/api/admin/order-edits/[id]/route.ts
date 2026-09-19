@@ -4,7 +4,8 @@ import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { reserveStock, releaseReservedQuantity } from '@/lib/inventory'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
-import { remainingRefundable, pickRefundSource, settleReturnRefund, classifyOrderEditPaymentAdjustment, type ReturnableOrder } from '@/lib/returns'
+import { remainingRefundable, pickRefundSource, settleReturnRefund, classifyOrderEditPaymentAdjustment, recomputeOrderEditTotals, type ReturnableOrder } from '@/lib/returns'
+import { getTaxRatePercent } from '@/lib/pricing'
 import { OrderStatus, PaymentStatus } from '@prisma/client'
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -61,10 +62,18 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
         }
       }
 
-      const subtotal = await tx.orderItem.aggregate({ _sum: { totalPrice: true }, where: { orderId: current.id } })
-      const nextSubtotal = Math.max(0, subtotal._sum.totalPrice || 0)
+      const allItems = await tx.orderItem.findMany({ where: { orderId: current.id }, select: { productId: true, totalPrice: true } })
+      const nextSubtotal = Math.max(0, allItems.reduce((sum, item) => sum + item.totalPrice, 0))
       const delta = nextSubtotal - current.subtotal
-      const nextGrand = Math.max(0, current.grandTotal + delta)
+
+      const productIds = Array.from(new Set(allItems.map(item => item.productId)))
+      const products = productIds.length ? await tx.product.findMany({ where: { id: { in: productIds } }, select: { id: true, taxable: true } }) : []
+      const taxableById = new Map(products.map(p => [p.id, p.taxable]))
+      const nextTaxableSubtotal = allItems.reduce((sum, item) => sum + (taxableById.get(item.productId) !== false ? item.totalPrice : 0), 0)
+      let shippingCountry: string | undefined
+      try { shippingCountry = (JSON.parse(current.shippingAddressJson) as { country?: string })?.country } catch { shippingCountry = undefined }
+      const taxRate = await getTaxRatePercent(shippingCountry)
+      const { taxTotal: nextTaxTotal, grandTotal: nextGrand } = recomputeOrderEditTotals({ nextSubtotal, nextTaxableSubtotal, discountTotal: current.discountTotal, shippingTotal: current.shippingTotal, taxRatePercent: taxRate })
       const grandDelta = nextGrand - current.grandTotal
 
       // An edit that changes the total on an order that's already been paid leaves money out
@@ -94,7 +103,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
         await tx.paymentTransaction.create({ data: { orderId: current.id, provider: 'manual', externalId: null, status: 'pending', amount: paymentAdjustment.amount, currency: current.currency, rawJson: JSON.stringify({ orderEditId: id, reason: 'Order edit increased total; additional payment required', actorId: actor.id }) } })
       }
 
-      const updated = await tx.order.update({ where: { id: current.id }, data: { subtotal: nextSubtotal, grandTotal: nextGrand, ...paymentUpdate } })
+      const updated = await tx.order.update({ where: { id: current.id }, data: { subtotal: nextSubtotal, taxTotal: nextTaxTotal, grandTotal: nextGrand, ...paymentUpdate } })
       await tx.orderEvent.create({ data: { orderId: current.id, status: current.status, message: `Order edited by ${actor.name}.${paymentAdjustment?.type === 'refund' ? ` A refund of ${paymentAdjustment.amount} ${current.currency} is owed.` : paymentAdjustment?.type === 'charge' ? ` An additional ${paymentAdjustment.amount} ${current.currency} is due.` : ''}` } })
       await tx.orderEdit.update({ where: { id }, data: { status: 'COMMITTED', committedAt: new Date(), subtotalAfter: nextSubtotal, deltaTotal: delta } })
       return { updated, refundToSettle, paymentAdjustment }
