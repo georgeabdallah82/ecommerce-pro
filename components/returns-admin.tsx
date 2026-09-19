@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Plus, RefreshCw, RotateCcw, Search, X } from 'lucide-react'
+import { Check, Plus, RefreshCw, RotateCcw, Search, X, XCircle } from 'lucide-react'
 import { money } from '@/lib/config'
 import styles from './admin-returns.module.css'
 import ui from './admin-ui.module.css'
@@ -45,6 +45,12 @@ export default function ReturnsAdmin({ initial, canManage, canRefund }: { initia
   const [reason, setReason] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [wizardError, setWizardError] = useState('')
+
+  const [receiving, setReceiving] = useState<ReturnRequest | null>(null)
+  const [receiveRefund, setReceiveRefund] = useState('')
+  const [receiveRestock, setReceiveRestock] = useState(true)
+  const [receiveError, setReceiveError] = useState('')
+  const [actingId, setActingId] = useState<string | null>(null)
 
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase()
@@ -104,6 +110,54 @@ export default function ReturnsAdmin({ initial, canManage, canRefund }: { initia
     finally { setSubmitting(false) }
   }
 
+  function applyUpdate(returnRequest: ReturnRequest) {
+    setRows(current => current.map(r => (r.id === returnRequest.id ? { ...returnRequest, order: r.order } : r)))
+  }
+
+  async function approve(r: ReturnRequest) {
+    setActingId(r.id); setError('')
+    try {
+      const data = await api(`/api/admin/returns/${encodeURIComponent(r.id)}`, { method: 'PATCH', body: JSON.stringify({ action: 'approve' }) })
+      applyUpdate(data.returnRequest)
+      setNotice(`Return ${r.id.slice(0, 10)}… approved.`)
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to approve this return') }
+    finally { setActingId(null) }
+  }
+
+  async function reject(r: ReturnRequest) {
+    const note = window.prompt('Reason for declining this return (optional):') ?? undefined
+    if (note === undefined) return
+    setActingId(r.id); setError('')
+    try {
+      const data = await api(`/api/admin/returns/${encodeURIComponent(r.id)}`, { method: 'PATCH', body: JSON.stringify({ action: 'reject', note }) })
+      applyUpdate(data.returnRequest)
+      setNotice(`Return ${r.id.slice(0, 10)}… declined.`)
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to decline this return') }
+    finally { setActingId(null) }
+  }
+
+  function openReceive(r: ReturnRequest) {
+    setReceiving(r); setReceiveRefund(''); setReceiveRestock(r.restock); setReceiveError('')
+  }
+  function closeReceive() { setReceiving(null) }
+
+  async function submitReceive() {
+    if (!receiving) return
+    const refundCents = receiveRefund.trim() ? Math.round(Number(receiveRefund) * 100) : 0
+    if (!Number.isInteger(refundCents) || refundCents < 0) { setReceiveError('Refund amount must be a valid, non-negative number.'); return }
+    setSubmitting(true); setReceiveError('')
+    try {
+      const data = await api(`/api/admin/returns/${encodeURIComponent(receiving.id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ action: 'receive', refundAmount: refundCents, restock: receiveRestock }),
+      })
+      applyUpdate(data.returnRequest)
+      setNotice(`Return ${receiving.id.slice(0, 10)}… received.`)
+      setReceiving(null)
+    } catch (e) { setReceiveError(e instanceof Error ? e.message : 'Unable to receive this return') }
+    finally { setSubmitting(false) }
+  }
+
   return <div className={styles.page}>
     <div className={styles.header}>
       <div><span className={`${ui.muted} ${ui.tiny}`}>COMMERCE</span><h1 className={ui.heading}>Returns</h1><p className={ui.muted}>Review return requests and initiate a return on a shipped or delivered order.</p></div>
@@ -122,7 +176,7 @@ export default function ReturnsAdmin({ initial, canManage, canRefund }: { initia
     <div className={ui.card}>
       <div className={ui.tableWrap}>
         <table className={ui.table}>
-          <thead><tr><th>Return</th><th>Order</th><th>Status</th><th>Items</th><th>Refund</th><th>Restock</th><th>Created</th></tr></thead>
+          <thead><tr><th>Return</th><th>Order</th><th>Status</th><th>Items</th><th>Refund</th><th>Restock</th><th>Created</th>{canManage && <th>Actions</th>}</tr></thead>
           <tbody>
             {shown.map(r => <tr key={r.id}>
               <td><strong>{r.id.slice(0, 10)}…</strong></td>
@@ -132,6 +186,14 @@ export default function ReturnsAdmin({ initial, canManage, canRefund }: { initia
               <td><strong>{money(r.refundAmount, r.order?.currency)}</strong></td>
               <td>{r.restock ? <span className={`${ui.statusPill} ${ui.statusPillSuccess}`}>Restocked</span> : <span className={ui.statusPill}>Not restocked</span>}</td>
               <td className={ui.muted}>{new Date(r.createdAt).toLocaleString()}</td>
+              {canManage && <td>
+                <div className="inline" style={{ gap: 6, flexWrap: 'wrap' }}>
+                  {r.status === 'REQUESTED' && <button className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} disabled={actingId === r.id} onClick={() => approve(r)}><Check size={13} /> Approve</button>}
+                  {(r.status === 'REQUESTED' || r.status === 'APPROVED') && <button className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} disabled={actingId === r.id} onClick={() => reject(r)}><XCircle size={13} /> Decline</button>}
+                  {(r.status === 'REQUESTED' || r.status === 'APPROVED') && <button className={`${ui.btn} ${ui.btnSmall}`} disabled={actingId === r.id} onClick={() => openReceive(r)}>Receive</button>}
+                  {!['REQUESTED', 'APPROVED'].includes(r.status) && <span className={ui.muted}>—</span>}
+                </div>
+              </td>}
             </tr>)}
           </tbody>
         </table>
@@ -198,6 +260,42 @@ export default function ReturnsAdmin({ initial, canManage, canRefund }: { initia
               <button className={ui.btn} onClick={submitReturn} disabled={submitting}>{submitting ? 'Processing…' : 'Create return'}</button>
             </div>
           </>}
+        </div>
+      </div>
+    </div>}
+
+    {receiving && <div className={ui.modalOverlay} onClick={closeReceive}>
+      <div className={`${ui.card} ${styles.modal}`} onClick={e => e.stopPropagation()}>
+        <div className={ui.modalHead}>
+          <div><span className={`${ui.muted} ${ui.tiny}`}>RECEIVE RETURN</span><h2>Receive return {receiving.id.slice(0, 10)}…</h2><p className={ui.muted}>Confirm what came back for order {receiving.order ? `#${receiving.order.orderNumber}` : ''} and optionally issue a refund.</p></div>
+          <button className={ui.iconBtn} onClick={closeReceive}><X size={17} /></button>
+        </div>
+
+        <div className={styles.modalBody}>
+          {receiveError && <div className={`${ui.alert} ${ui.alertDanger}`}>{receiveError}</div>}
+
+          <div className={ui.tableWrap}>
+            <table className={styles.returnItemsTable}>
+              <thead><tr><th>Item</th><th>Requested qty</th></tr></thead>
+              <tbody>{receiving.items.map(i => <tr key={i.id}>
+                <td><strong>{receiving.order?.items?.find(x => x.id === i.orderItemId)?.name || 'Item'}</strong></td>
+                <td>{i.quantity}</td>
+              </tr>)}</tbody>
+            </table>
+          </div>
+          <p className={ui.muted} style={{ fontSize: 11 }}>Reason given: {receiving.reason}</p>
+
+          {canRefund ? <>
+            <label className={ui.fieldLabel}>Refund amount<input className={ui.input} type="number" min="0" step="0.01" value={receiveRefund} onChange={e => setReceiveRefund(e.target.value)} placeholder="0.00" /></label>
+            <p className={ui.muted} style={{ fontSize: 11 }}>Order total: {money(receiving.order?.grandTotal || 0, receiving.order?.currency)}. The refund can't exceed what's still refundable on this order. Leave blank for no refund.</p>
+          </> : <p className={ui.muted} style={{ fontSize: 11 }}>You don't have permission to issue refunds. This return will restock inventory only; ask someone with refund access to process any money back.</p>}
+
+          <label className={styles.restockRow}><input type="checkbox" checked={receiveRestock} onChange={e => setReceiveRestock(e.target.checked)} /> Restock returned items into inventory</label>
+
+          <div className={styles.modalFooter}>
+            <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={closeReceive} disabled={submitting}>Cancel</button>
+            <button className={ui.btn} onClick={submitReceive} disabled={submitting}>{submitting ? 'Processing…' : 'Mark received'}</button>
+          </div>
         </div>
       </div>
     </div>}
