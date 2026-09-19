@@ -3861,3 +3861,8 @@ body > .footer {
 .aliComingSoonContact{display:inline-flex;align-items:center;gap:8px;background:var(--focal-primary);color:#fff;padding:12px 22px;border-radius:999px;font-weight:700;font-size:14px}
 .aliComingSoonContact:hover{opacity:.9}
 @media(max-width:480px){.aliComingSoonTimer{gap:8px}.aliComingSoonTimerUnit{min-width:56px;padding:10px 6px}.aliComingSoonTimerUnit strong{font-size:22px}}
+.aliSpecTable{width:100%;border-collapse:collapse;font-size:14px}
+.aliSpecTable tr{border-top:1px solid var(--focal-line)}
+.aliSpecTable tr:first-child{border-top:none}
+.aliSpecTable th,.aliSpecTable td{padding:10px 12px 10px 0;text-align:left;vertical-align:top;font-weight:400}
+.aliSpecTable th{color:var(--focal-muted);width:40%;font-weight:600}
