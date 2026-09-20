@@ -248,6 +248,8 @@ const mockCustomerTags: any[] = []
 const mockCustomerTagMembers: any[] = []
 const mockWalletTransactions: any[] = []
 const mockAbandonedCheckouts: any[] = []
+const mockCoinTransactions: any[] = []
+const mockGiftCards: any[] = []
 
 // Matches the storefront's product text-search field filters -- {contains, mode?} --
 // against a single mock product field. Real Prisma/Mongo does this server-side;
@@ -361,6 +363,14 @@ function getMockHandler(model: string) {
         if (args?.take) list = list.slice(0, args.take)
         return list
       }
+      if (model === 'coinTransaction') {
+        let list = [...mockCoinTransactions]
+        if (args?.where?.userId) list = list.filter((x) => x.userId === args.where.userId)
+        list = list.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        if (args?.take) list = list.slice(0, args.take)
+        return list
+      }
+      if (model === 'giftCard') return [...mockGiftCards]
       if (model === 'customerTag') return [...mockCustomerTags].sort((a, b) => a.value.localeCompare(b.value))
       if (model === 'customerTagMember') {
         let list = [...mockCustomerTagMembers]
@@ -421,6 +431,8 @@ function getMockHandler(model: string) {
       if (model === 'apiCredential' && where.id) return mockApiCredentials.find((x) => x.id === where.id) || null
       if (model === 'taxRate' && where.id) return mockTaxRates.find((x) => x.id === where.id) || null
       if (model === 'abandonedCheckout') return (where.id ? mockAbandonedCheckouts.find((x) => x.id === where.id) : where.token ? mockAbandonedCheckouts.find((x) => x.token === where.token) : null) || null
+      if (model === 'coinTransaction' && where.id) return mockCoinTransactions.find((x) => x.id === where.id) || null
+      if (model === 'giftCard') return (where.id ? mockGiftCards.find((x) => x.id === where.id) : where.code ? mockGiftCards.find((x) => x.code.toUpperCase() === String(where.code).toUpperCase()) : null) || null
       if (model === 'customerTag') return (where.id ? mockCustomerTags.find((x) => x.id === where.id) : where.value ? mockCustomerTags.find((x) => x.value === where.value) : null) || null
       if (model === 'customerTagMember' && where.tagId_customerId) {
         const { tagId, customerId } = where.tagId_customerId
@@ -510,6 +522,13 @@ function getMockHandler(model: string) {
         mockAbandonedCheckouts.push(created)
         return created
       }
+      if (model === 'coinTransaction' && args.where?.id) {
+        const existing = mockCoinTransactions.find((x) => x.id === args.where.id)
+        if (existing) return existing
+        const created = { id: args.where.id, createdAt: new Date(), ...(args.create || {}) }
+        mockCoinTransactions.push(created)
+        return created
+      }
       if (model === 'customerTag' && args.where?.value) {
         const existing = mockCustomerTags.find((x) => x.value === args.where.value)
         if (existing) { Object.assign(existing, args.update || {}); return existing }
@@ -558,6 +577,8 @@ function getMockHandler(model: string) {
       if (model === 'fulfillment') mockFulfillments.unshift(item)
       if (model === 'fulfillmentLine') mockFulfillmentLines.push(item)
       if (model === 'walletTransaction') mockWalletTransactions.unshift(item)
+      if (model === 'coinTransaction') mockCoinTransactions.unshift(item)
+      if (model === 'giftCard') { item.balance ??= item.initialAmount ?? 0; mockGiftCards.push(item) }
       return item
     },
     update: async (args: any) => {
@@ -566,12 +587,20 @@ function getMockHandler(model: string) {
         if (u) Object.assign(u, args.data || {})
         return u || args.data
       }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards }
       if (byId[model] && args.where?.id) {
         const row = byId[model].find((x) => x.id === args.where.id)
         if (!row) throw new Error('Record to update not found')
         if (model === 'storeLocation' && args.data?.isDefault === true) for (const x of mockStoreLocations) x.isDefault = false
-        Object.assign(row, args.data || {}, { updatedAt: new Date() })
+        for (const [key, value] of Object.entries(args.data || {})) {
+          if (value && typeof value === 'object' && ('increment' in value || 'decrement' in value)) {
+            const delta = (value as any).increment ?? -(value as any).decrement
+            row[key] = (row[key] || 0) + delta
+          } else {
+            row[key] = value
+          }
+        }
+        row.updatedAt = new Date()
         if (model === 'fulfillment' && args?.include?.lines) return { ...row, lines: mockFulfillmentLines.filter((l) => l.fulfillmentId === row.id) }
         return row
       }
@@ -661,6 +690,13 @@ function getMockHandler(model: string) {
         const w = args?.where || {}
         if (w.userId) list = list.filter((x) => x.userId === w.userId)
         if (w.currency) list = list.filter((x) => x.currency === w.currency)
+        const sum = list.reduce((s, x) => s + (x.amount || 0), 0)
+        return { _sum: { amount: sum }, _count: { _all: list.length }, _avg: {}, _min: {}, _max: {} }
+      }
+      if (model === 'coinTransaction') {
+        let list = mockCoinTransactions
+        const w = args?.where || {}
+        if (w.userId) list = list.filter((x) => x.userId === w.userId)
         const sum = list.reduce((s, x) => s + (x.amount || 0), 0)
         return { _sum: { amount: sum }, _count: { _all: list.length }, _avg: {}, _min: {}, _max: {} }
       }

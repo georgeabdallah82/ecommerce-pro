@@ -129,12 +129,15 @@ export async function creditWalletRefund(tx: any, params: { userId: string | nul
 }
 
 // Post-commit gateway refund step, shared by every path that can issue a refund tied to an
-// order (return receipt, order-edit price reduction). Never throws -- on gateway failure it
-// marks the refund transaction failed and returns ok: false so the caller can report a 502
-// without rolling back whatever was already committed. `returnId` is optional: when a return
-// isn't involved (e.g. an order-edit refund), that update is simply skipped.
-export async function settleReturnRefund(actorId: string, params: { returnId?: string; orderId: string; refundId: string; refundProvider: string; refundExternalId: string | null; amount: number; currency: string; auditAction?: string }) {
-  const { returnId, orderId, refundId, refundProvider, refundExternalId, amount, currency } = params
+// order (return receipt, order-edit price reduction, order cancellation). Never throws -- on
+// gateway failure it marks the refund transaction failed and returns ok: false so the caller
+// can report a 502 without rolling back whatever was already committed. `returnId` is
+// optional: when a return isn't involved (e.g. an order-edit refund), that update is simply
+// skipped. `keepOrderStatus` is for a caller (order cancellation) that already moved the order
+// to its own terminal status before calling this -- without it, a fully-settled refund here
+// would force status back to 'REFUNDED', clobbering an order the caller just set to CANCELLED.
+export async function settleReturnRefund(actorId: string, params: { returnId?: string; orderId: string; refundId: string; refundProvider: string; refundExternalId: string | null; amount: number; currency: string; auditAction?: string; keepOrderStatus?: boolean }) {
+  const { returnId, orderId, refundId, refundProvider, refundExternalId, amount, currency, keepOrderStatus } = params
   const auditAction = params.auditAction || 'order.return_refund'
   // `completed` tells the caller whether this call already sent the return-status email for a
   // REFUNDED transition (the synchronous "refunded" branch below), so it knows not to send its
@@ -156,7 +159,7 @@ export async function settleReturnRefund(actorId: string, params: { returnId?: s
         if (!orderRow) throw new Error('Order not found')
         const successfulRefunds = orderRow.paymentTransactions.filter(t => ['refunded', 'partially_refunded'].includes(t.status)).reduce((sum, t) => sum + t.amount, 0)
         const paymentStatus = successfulRefunds >= orderRow.grandTotal ? 'REFUNDED' : 'PARTIALLY_REFUNDED'
-        await tx.order.update({ where: { id: orderRow.id }, data: { paymentStatus, status: paymentStatus === 'REFUNDED' ? 'REFUNDED' : orderRow.status } })
+        await tx.order.update({ where: { id: orderRow.id }, data: { paymentStatus, status: keepOrderStatus ? orderRow.status : (paymentStatus === 'REFUNDED' ? 'REFUNDED' : orderRow.status) } })
         await tx.auditLog.create({ data: { actorId, action: `${auditAction}_completed`, entity: 'Order', entityId: orderRow.id, metadataJson: JSON.stringify({ returnId, refundId, amount, provider: refundProvider }) } })
       })
       if (returnId) void sendReturnStatusEmail(returnId, orderId).catch(error => console.error('[email] return status email failed', error))

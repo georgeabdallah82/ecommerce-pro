@@ -3,11 +3,25 @@ import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { canTransitionOrder, canTransitionPayment, fulfillmentForStatus } from '@/lib/orders'
 import { fulfillOrderStock, releaseOrderReservations } from '@/lib/inventory'
+import { remainingRefundable, pickRefundSource, creditWalletRefund, settleReturnRefund, type ReturnableOrder } from '@/lib/returns'
+import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { json } from '@/lib/utils'
 import { dispatchWebhookEvent, dispatchInventoryUpdated } from '@/lib/webhooks'
 import { sendFulfillmentEmail } from '@/lib/email'
 import { checkLowStockAlerts } from '@/lib/push'
 import { OrderStatus, PaymentStatus } from '@prisma/client'
+
+// Mirrors the identically-shaped helper in app/api/account/orders/[orderNumber]/cancel/route.ts --
+// coins redeemed at checkout are only ever recorded inline on the checkout PaymentTransaction's
+// rawJson (no separate ledger to query), so reading them back means parsing that same blob.
+function redeemedCancelCoins(paymentTransactions: Array<{ provider: string; rawJson: string | null }>) {
+  const checkout = paymentTransactions.find(t => t.provider === 'checkout' && t.rawJson)
+  if (!checkout?.rawJson) return 0
+  try {
+    const parsed = JSON.parse(checkout.rawJson) as { coinsUsed?: unknown }
+    return Number.isSafeInteger(parsed.coinsUsed) ? Math.max(0, Number(parsed.coinsUsed)) : 0
+  } catch { return 0 }
+}
 
 const ORDER_STATUSES = new Set(Object.values(OrderStatus))
 const PAYMENT_STATUSES = new Set(Object.values(PaymentStatus))
@@ -85,7 +99,7 @@ export async function PATCH(req: Request) {
 
     const hasOnlyDetails = Object.keys(detailsPatch).length > 0 && !requestedStatus && !requestedPayment
     const result = await db.$transaction(async tx => {
-      const order = await tx.order.findUnique({ where: { id: orderId }, include: { items: true } })
+      const order = await tx.order.findUnique({ where: { id: orderId }, include: { items: true, paymentTransactions: true } })
       if (!order) throw new Error('Order not found')
       if (requestedStatus && !canTransitionOrder(order.status, requestedStatus)) throw new Error(`Cannot change ${order.status} to ${requestedStatus}`)
       if (requestedPayment && !canTransitionPayment(order.paymentStatus, requestedPayment)) throw new Error(`Cannot change payment status ${order.paymentStatus} to ${requestedPayment}`)
@@ -95,12 +109,58 @@ export async function PATCH(req: Request) {
       const fulfilling = requestedStatus === OrderStatus.SHIPPED && order.fulfillmentStatus !== 'FULFILLED'
       if (cancelling) await releaseOrderReservations(tx, order.id, 'Order cancelled')
       const fulfilledInventoryIds = fulfilling ? await fulfillOrderStock(tx, order.id) : []
+
+      // Cancelling a PAID (or partially-refunded) order leaves that money out of sync unless
+      // it's reversed here -- mirrors how returns/order-edits handle a paid order's total
+      // changing, except the whole remaining balance is refunded since the order is void.
+      // Gift card / coin / coupon usage is unwound unconditionally on any cancellation (not
+      // just paid ones), matching how the customer's own cancel route already restores them.
+      let refundToSettle: { refundId: string; refundProvider: string; refundExternalId: string | null; amount: number } | null = null
+      let cancelRefundAmount = 0
+      let cancelRefundProvider: string | null = null
+      if (cancelling) {
+        const refundableOrder = order as unknown as ReturnableOrder
+        if (order.paymentStatus === PaymentStatus.PAID || order.paymentStatus === PaymentStatus.PARTIALLY_REFUNDED) {
+          const refundable = remainingRefundable(refundableOrder)
+          if (refundable > 0) {
+            const { refundProvider, refundExternalId } = pickRefundSource(refundableOrder)
+            const refundStatus = refundProvider === 'manual' || refundProvider === 'wallet' ? 'refunded' : 'refund_pending'
+            const refund = await tx.paymentTransaction.create({ data: { orderId: order.id, provider: refundProvider, externalId: refundExternalId, status: refundStatus, amount: refundable, currency: order.currency, rawJson: JSON.stringify({ reason: 'Order cancelled by staff', actorId: actor.id }) } })
+            if (refundStatus === 'refunded') {
+              cancelRefundAmount = refundable
+              cancelRefundProvider = refundProvider
+              if (refundProvider === 'wallet') await creditWalletRefund(tx, { userId: order.userId, refundId: refund.id, amount: refundable, currency: order.currency })
+            } else {
+              refundToSettle = { refundId: refund.id, refundProvider, refundExternalId, amount: refundable }
+            }
+          }
+        }
+
+        const redeemedGift = redeemedGiftCard(order.paymentTransactions)
+        if (redeemedGift) await restoreGiftCardBalance(tx, order.id, redeemedGift)
+
+        const coinsUsed = redeemedCancelCoins(order.paymentTransactions)
+        if (coinsUsed > 0 && order.userId) {
+          const reversalId = `coin_${order.id}_cancel_reversal`
+          await tx.coinTransaction.upsert({ where: { id: reversalId }, create: { id: reversalId, userId: order.userId, amount: coinsUsed, type: 'REVERSAL', reason: 'Cancelled order coin restoration', referenceId: `coin-reversal:${order.orderNumber}` }, update: {} })
+        }
+
+        if (order.couponCode) {
+          const coupon = await tx.coupon.findUnique({ where: { code: order.couponCode } })
+          if (coupon) await tx.coupon.updateMany({ where: { id: coupon.id, usedCount: { gt: 0 } }, data: { usedCount: { decrement: 1 } } })
+        }
+      }
+
       const data: any = {
         ...detailsPatch,
         ...(statusChanged ? { status: requestedStatus, fulfillmentStatus: fulfillmentForStatus(requestedStatus!) } : {}),
         ...(paymentChanged ? { paymentStatus: requestedPayment } : {}),
+        ...(cancelRefundAmount > 0 ? { paymentStatus: PaymentStatus.REFUNDED } : {}),
       }
-      const updated = await tx.order.update({ where: { id: order.id }, data: { ...data, ...(statusChanged ? { events: { create: { status: requestedStatus!, message: `Order moved from ${order.status} to ${requestedStatus}.` } } } : {}) } })
+      const cancelMessage = cancelRefundAmount > 0
+        ? ` A ${(cancelRefundAmount / 100).toFixed(2)} ${order.currency} refund was issued${cancelRefundProvider === 'wallet' ? ' to the customer’s wallet' : ''}.`
+        : refundToSettle ? ` A ${(refundToSettle.amount / 100).toFixed(2)} ${order.currency} refund is being processed.` : ''
+      const updated = await tx.order.update({ where: { id: order.id }, data: { ...data, ...(statusChanged ? { events: { create: { status: requestedStatus!, message: `Order moved from ${order.status} to ${requestedStatus}.${cancelMessage}` } } } : {}) } })
       // Recording a Fulfillment (with one line per order item) is how this "ship the whole
       // order" action leaves a real shipment record behind -- carrier/tracking-URL metadata a
       // customer-facing tracking page or a future partial-shipment flow can read, rather than
@@ -119,11 +179,18 @@ export async function PATCH(req: Request) {
           await tx.fulfillmentLine.create({ data: { fulfillmentId: fulfillment.id, orderItemId: item.id, productId: item.productId, variantId: item.variantId, quantity: item.quantity } })
         }
       }
-      return { order, updated, statusChanged, paymentChanged, hasOnlyDetails, fulfilledInventoryIds, fulfilling, fulfillmentId: fulfillment?.id }
+      return { order, updated, statusChanged, paymentChanged, hasOnlyDetails, fulfilledInventoryIds, fulfilling, fulfillmentId: fulfillment?.id, refundToSettle, cancelRefundAmount }
     })
-    if (result.order.userId && result.statusChanged) await db.notification.create({ data: { userId: result.order.userId, title: `Order ${result.order.orderNumber} updated`, body: `Your order is now ${result.updated.status.toLowerCase().replaceAll('_', ' ')}.`, type: 'ORDER_STATUS' } })
+    if (result.order.userId && result.statusChanged) {
+      const body = result.cancelRefundAmount > 0
+        ? `Your order is now cancelled. A ${(result.cancelRefundAmount / 100).toFixed(2)} ${result.updated.currency} refund has been issued.`
+        : result.refundToSettle
+          ? `Your order is now cancelled. A ${(result.refundToSettle.amount / 100).toFixed(2)} ${result.updated.currency} refund is being processed.`
+          : `Your order is now ${result.updated.status.toLowerCase().replaceAll('_', ' ')}.`
+      await db.notification.create({ data: { userId: result.order.userId, title: `Order ${result.order.orderNumber} updated`, body, type: result.cancelRefundAmount > 0 || result.refundToSettle ? 'ORDER_REFUND' : 'ORDER_STATUS' } })
+    }
     if (result.fulfilling) void sendFulfillmentEmail(result.order.id).catch(error => console.error('[email] fulfillment notification failed', error))
-    await audit(actor.id, 'order.updated', 'Order', result.order.id, { from: result.order.status, to: result.updated.status, paymentFrom: result.order.paymentStatus, paymentTo: result.updated.paymentStatus, statusChanged: result.statusChanged, paymentChanged: result.paymentChanged, detailsEdited: Object.keys(detailsPatch), fulfillmentId: result.fulfillmentId })
+    await audit(actor.id, 'order.updated', 'Order', result.order.id, { from: result.order.status, to: result.updated.status, paymentFrom: result.order.paymentStatus, paymentTo: result.updated.paymentStatus, statusChanged: result.statusChanged, paymentChanged: result.paymentChanged, detailsEdited: Object.keys(detailsPatch), fulfillmentId: result.fulfillmentId, cancelRefundAmount: result.cancelRefundAmount || undefined, cancelRefundPending: result.refundToSettle?.amount })
     if (result.statusChanged || result.paymentChanged) {
       const eventPayload = { id: result.updated.id, orderNumber: result.updated.orderNumber, status: result.updated.status, paymentStatus: result.updated.paymentStatus, fulfillmentStatus: result.updated.fulfillmentStatus }
       void dispatchWebhookEvent('order.updated', eventPayload).catch(error => console.error('[webhook] order.updated dispatch failed', error))
@@ -133,7 +200,15 @@ export async function PATCH(req: Request) {
     }
     dispatchInventoryUpdated(result.fulfilledInventoryIds)
     if (result.fulfilledInventoryIds.length) void checkLowStockAlerts(result.fulfilledInventoryIds).catch(error => console.error('[push] low stock alert failed', error))
-    return json({ order: result.updated })
+
+    if (result.refundToSettle && result.refundToSettle.refundProvider !== 'manual' && result.refundToSettle.refundProvider !== 'wallet') {
+      const settled = await settleReturnRefund(actor.id, { orderId: result.updated.id, refundId: result.refundToSettle.refundId, refundProvider: result.refundToSettle.refundProvider, refundExternalId: result.refundToSettle.refundExternalId, amount: result.refundToSettle.amount, currency: result.updated.currency, auditAction: 'order.cancel_refund', keepOrderStatus: true })
+      if (!settled.ok) return json({ order: result.updated, error: 'Order cancelled, but the gateway refund failed. The refund remains marked failed for admin retry.' }, { status: 502 })
+    }
+    const cancelRefund = result.cancelRefundAmount > 0
+      ? { amount: result.cancelRefundAmount, pending: false }
+      : result.refundToSettle ? { amount: result.refundToSettle.amount, pending: true } : null
+    return json({ order: result.updated, cancelRefund })
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : 'Unable to update order' }, { status: 400 })
   }

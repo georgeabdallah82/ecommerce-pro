@@ -89,8 +89,13 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
     try {
       const body = { id:o.id, status, paymentStatus, trackingNumber:tracking, trackingCompany, trackingUrl, email, phone, shippingAddressJson:addressPayload(shipping), billingAddressJson:(billing.line1||billing.city||billing.country)?addressPayload(billing):null, notes:notesValue }
       const d=await api('/api/admin/orders',{method:'PATCH',body:JSON.stringify(body)})
-      const next={...o,...(d.order||{}),status,paymentStatus,trackingNumber:tracking,email,phone,shippingAddressJson:body.shippingAddressJson,billingAddressJson:body.billingAddressJson,notes:notesValue}
-      setO(next); setEditing(false); setMsg('Order updated successfully.')
+      // d.order wins over these client-optimistic values wherever it has an opinion -- a
+      // cancellation can compute a paymentStatus (e.g. REFUNDED) that differs from whatever
+      // was left selected in the dropdown, and the server's answer is the authoritative one.
+      const next={...o,status,paymentStatus,trackingNumber:tracking,email,phone,shippingAddressJson:body.shippingAddressJson,billingAddressJson:body.billingAddressJson,notes:notesValue,...(d.order||{})}
+      setO(next); setEditing(false)
+      setStatus(next.status); setPaymentStatus(next.paymentStatus)
+      setMsg(d.cancelRefund ? `Order updated successfully. A ${money(d.cancelRefund.amount, next.currency)} refund ${d.cancelRefund.pending ? 'is being processed' : 'was issued'}.` : 'Order updated successfully.')
       if (status === 'SHIPPED' && o.status !== 'SHIPPED') { try { const f = await api(`/api/admin/fulfillments?orderId=${o.id}`); setFulfillments(f.fulfillments || []) } catch {} }
     } catch(e){
       // The status/payment dropdowns can't fully prevent an invalid pick (the
