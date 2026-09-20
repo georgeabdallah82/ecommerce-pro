@@ -38,14 +38,38 @@ export async function POST(req: Request) {
     const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/$/, '')
     const user = await getCurrentUser()
 
+    // The recovery link has to carry this token, or the recovery email's "pick up where you
+    // left off" is a lie -- app/checkout/page.tsx reads ?recover=<token> to fetch this exact
+    // cart back via the GET handler below and re-add it, which a bare /checkout link can't do.
+    const recoveryUrl = siteUrl ? `${siteUrl}/checkout?recover=${encodeURIComponent(token)}` : null
     await db.abandonedCheckout.upsert({
       where: { token },
-      update: { customerId: user?.id ?? null, email, cartJson: JSON.stringify(cartItems), subtotal, currency, recoveryUrl: siteUrl ? `${siteUrl}/checkout` : null, status: 'OPEN', lastActivity: new Date() },
-      create: { token, customerId: user?.id ?? null, email, cartJson: JSON.stringify(cartItems), subtotal, currency, recoveryUrl: siteUrl ? `${siteUrl}/checkout` : null },
+      update: { customerId: user?.id ?? null, email, cartJson: JSON.stringify(cartItems), subtotal, currency, recoveryUrl, status: 'OPEN', lastActivity: new Date() },
+      create: { token, customerId: user?.id ?? null, email, cartJson: JSON.stringify(cartItems), subtotal, currency, recoveryUrl },
     })
     return json({ ok: true })
   } catch {
     return json({ ok: false }, { status: 400 })
+  }
+}
+
+// Public, unauthenticated lookup by token -- powers the recovery link's cart rehydration on
+// the checkout page. Only ever returns the cart for a still-OPEN capture (never a RECOVERED
+// or otherwise stale one), and returns a null cart rather than an error for any not-found/
+// expired/malformed token so a stale or already-used recovery link just degrades to a normal
+// empty checkout instead of erroring.
+export async function GET(req: Request) {
+  try {
+    const token = new URL(req.url).searchParams.get('token')?.trim().slice(0, 100) || ''
+    if (!token || token.length < 8) return json({ cart: null })
+    const row = await db.abandonedCheckout.findUnique({ where: { token } })
+    if (!row || row.status !== 'OPEN') return json({ cart: null })
+    let items: unknown[] = []
+    try { items = JSON.parse(row.cartJson || '[]') } catch { items = [] }
+    if (!Array.isArray(items) || !items.length) return json({ cart: null })
+    return json({ cart: { items, subtotal: row.subtotal, currency: row.currency, email: row.email } })
+  } catch {
+    return json({ cart: null })
   }
 }
 
