@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { History, Search, X } from 'lucide-react'
+import { formatAdminDateTime } from '@/lib/admin-datetime'
 import styles from './admin-activity.module.css'
 import ui from './admin-ui.module.css'
 
@@ -35,7 +36,7 @@ function formatMetadata(raw: string | null) {
   try { return JSON.stringify(JSON.parse(raw), null, 2) } catch { return raw }
 }
 
-export default function ActivityLogAdmin({ initial, total, entities, pageSize }: { initial: Row[]; total: number; entities: string[]; pageSize: number }) {
+export default function ActivityLogAdmin({ initial, total, entities, pageSize, storeTimezone }: { initial: Row[]; total: number; entities: string[]; pageSize: number; storeTimezone?: string }) {
   const [rows, setRows] = useState(initial)
   const [count, setCount] = useState(total)
   const [q, setQ] = useState('')
@@ -105,7 +106,7 @@ export default function ActivityLogAdmin({ initial, total, entities, pageSize }:
               const meta = formatMetadata(r.metadataJson)
               const isOpen = Boolean(expanded[r.id])
               return <tr key={r.id}>
-                <td className={styles.timeCell}>{new Date(r.createdAt).toLocaleString()}</td>
+                <td className={styles.timeCell}>{formatAdminDateTime(r.createdAt, storeTimezone)}</td>
                 <td>{r.actor ? <><div className={styles.actorName}>{r.actor.name}</div><div className={styles.actorEmail}>{r.actor.email}</div></> : <span className={ui.muted}>System</span>}</td>
                 <td><span className={`${styles.actionPill} ${actionTone(r.action)}`}>{r.action}</span></td>
                 <td>{r.entity}</td>

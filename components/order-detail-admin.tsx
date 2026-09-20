@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, PackageCheck, Mail, Phone, MapPin, Save, Plus, Copy, Check, Pencil, X, FileEdit } from 'lucide-react'
 import { money } from '@/lib/config'
+import { formatAdminDate, formatAdminDateTime } from '@/lib/admin-datetime'
 import { canTransitionOrder, canTransitionPayment } from '@/lib/orders'
 import s from './admin-order-detail.module.css'
 import ui from './admin-ui.module.css'
@@ -46,7 +47,7 @@ function fulfillmentPillClass(status: string) {
   return s.pillNeutral
 }
 
-export default function OrderDetailAdmin({ initial, canStartOrderEdit }: { initial: any; canStartOrderEdit?: boolean }) {
+export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTimezone }: { initial: any; canStartOrderEdit?: boolean; storeTimezone?: string }) {
   const [o, setO] = useState(initial)
   const [status, setStatus] = useState(o.status)
   const [paymentStatus, setPaymentStatus] = useState(o.paymentStatus)
@@ -118,7 +119,7 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit }: { initi
         <Link className={ui.textLink} href="/admin/orders"><ArrowLeft size={15}/> Back to orders</Link>
         <span className={`${ui.muted} ${ui.tiny}`} style={{display:'block',marginTop:12}}>ORDER</span>
         <div className="inline" style={{gap:8}}><h1 className={ui.title}>#{o.orderNumber}</h1><button className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} onClick={copyOrderNumber}>{copied?<Check size={14}/>:<Copy size={14}/>}</button></div>
-        <p className={ui.muted}>Placed {new Date(o.createdAt).toLocaleString()}</p>
+        <p className={ui.muted}>Placed {formatAdminDateTime(o.createdAt, storeTimezone)}</p>
       </div>
       <div className="inline">
         <Link className={`${ui.btn} ${ui.btnSecondary}`} href={`/admin/orders/${o.id}/invoice`}>Invoice / Print</Link>
@@ -156,7 +157,7 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit }: { initi
 
         {editing&&<section className={ui.card}><div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><div><h3>Order note</h3><span className={ui.muted}>Visible to staff only</span></div></div><textarea className={ui.textarea} rows={5} value={notesValue} onChange={e=>setNotesValue(e.target.value)} placeholder="Add an internal order note…"/></section>}
 
-        {!editing&&<section className={ui.card}><div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Internal notes</h3></div><div className="inline" style={{alignItems:'stretch'}}><textarea className={ui.textarea} rows={3} value={note} onChange={e=>setNote(e.target.value)} placeholder="Add a private note for staff…"/><button className={ui.btn} onClick={addNote} disabled={addingNote||!note.trim()}><Plus size={15}/>{addingNote?'Adding…':'Add note'}</button></div><div className={s.timeline} style={{marginTop:18}}>{(o.notesHistory||[]).map((n:any)=><div className={s.timelineItem} key={n.id}><div className={s.dot}/><div><strong>{n.user?.name||'Staff'}</strong><p>{n.body}</p><small className={ui.muted}>{new Date(n.createdAt).toLocaleString()}</small></div></div>)}{!o.notesHistory?.length&&<p className={ui.muted}>No internal notes yet.</p>}</div></section>}
+        {!editing&&<section className={ui.card}><div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Internal notes</h3></div><div className="inline" style={{alignItems:'stretch'}}><textarea className={ui.textarea} rows={3} value={note} onChange={e=>setNote(e.target.value)} placeholder="Add a private note for staff…"/><button className={ui.btn} onClick={addNote} disabled={addingNote||!note.trim()}><Plus size={15}/>{addingNote?'Adding…':'Add note'}</button></div><div className={s.timeline} style={{marginTop:18}}>{(o.notesHistory||[]).map((n:any)=><div className={s.timelineItem} key={n.id}><div className={s.dot}/><div><strong>{n.user?.name||'Staff'}</strong><p>{n.body}</p><small className={ui.muted}>{formatAdminDateTime(n.createdAt, storeTimezone)}</small></div></div>)}{!o.notesHistory?.length&&<p className={ui.muted}>No internal notes yet.</p>}</div></section>}
 
         {fulfillments.length>0&&<section className={ui.card}>
           <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Shipments</h3><span className={ui.muted}>{fulfillments.length} shipment{fulfillments.length===1?'':'s'}</span></div>
@@ -165,13 +166,13 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit }: { initi
             <div>
               <strong>{f.status}</strong>{f.trackingCompany?` · ${f.trackingCompany}`:''}
               <p className={ui.muted}>{f.trackingNumber?`Tracking: ${f.trackingNumber}`:'No tracking number'}{f.trackingUrl?<> · <a className={ui.textLink} href={f.trackingUrl} target="_blank" rel="noopener noreferrer">Track shipment</a></>:''}</p>
-              <p className={ui.muted}>{f.lines?.length||0} item{f.lines?.length===1?'':'s'} · {f.shippedAt?`Shipped ${new Date(f.shippedAt).toLocaleDateString()}`:'Not yet shipped'}{f.deliveredAt?` · Delivered ${new Date(f.deliveredAt).toLocaleDateString()}`:''}</p>
+              <p className={ui.muted}>{f.lines?.length||0} item{f.lines?.length===1?'':'s'} · {f.shippedAt?`Shipped ${formatAdminDate(f.shippedAt, storeTimezone)}`:'Not yet shipped'}{f.deliveredAt?` · Delivered ${formatAdminDate(f.deliveredAt, storeTimezone)}`:''}</p>
               {f.status!=='DELIVERED'&&f.status!=='CANCELLED'&&<button className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} onClick={()=>markDelivered(f.id)} disabled={markingDelivered===f.id}>{markingDelivered===f.id?'Updating…':'Mark delivered'}</button>}
             </div>
           </div>)}</div>
         </section>}
 
-        <section className={ui.card}><div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Order timeline</h3></div><div className={s.timeline}>{(o.events||[]).map((e:any)=><div className={s.timelineItem} key={e.id}><div className={s.dot}/><div><strong>{e.status}</strong><p className={ui.muted}>{e.message||'Order updated'}</p><small className={ui.muted}>{new Date(e.createdAt).toLocaleString()}</small></div></div>)}{!o.events?.length&&<p className={ui.muted}>No status events yet.</p>}</div></section>
+        <section className={ui.card}><div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Order timeline</h3></div><div className={s.timeline}>{(o.events||[]).map((e:any)=><div className={s.timelineItem} key={e.id}><div className={s.dot}/><div><strong>{e.status}</strong><p className={ui.muted}>{e.message||'Order updated'}</p><small className={ui.muted}>{formatAdminDateTime(e.createdAt, storeTimezone)}</small></div></div>)}{!o.events?.length&&<p className={ui.muted}>No status events yet.</p>}</div></section>
 
         <DeliveryTrackingAdmin orderId={o.id} orderStatus={o.status}/>
       </main>
@@ -198,7 +199,7 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit }: { initi
         {!editing&&<section className={ui.card}><div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Shipping address</h3></div><div className={ui.muted} style={{whiteSpace:'pre-wrap'}}><MapPin size={13}/> {addressText(o.shippingAddressJson)}</div>{o.shippingMethod&&<p className={ui.muted}>Method: {o.shippingMethod}</p>}{o.trackingNumber&&<p className={ui.muted}>Tracking: <strong>{o.trackingNumber}</strong></p>}</section>}
         {!editing&&<section className={ui.card}><div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Billing address</h3></div><div className={ui.muted} style={{whiteSpace:'pre-wrap'}}>{addressText(o.billingAddressJson)}</div></section>}
         <section className={ui.card}><div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Payment</h3></div><div className={s.summaryLine}><span>Method</span><strong>{o.paymentMethod}</strong></div><div className={s.summaryLine}><span>Status</span><span className={`${s.statusPill} ${paymentPillClass(o.paymentStatus)}`}>{o.paymentStatus}</span></div>{(o.paymentTransactions||[]).map((t:any)=><div key={t.id} className={s.summaryLine}><span>{t.provider}{t.externalId?` • ${t.externalId}`:''}</span><span>{t.status} · {money(t.amount,t.currency)}</span></div>)}</section>
-        <section className={ui.card}><div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Order information</h3></div><div className={s.summaryLine}><span>Currency</span><strong>{o.currency}</strong></div><div className={s.summaryLine}><span>Coupon</span><strong>{o.couponCode||'—'}</strong></div><div className={s.summaryLine}><span>Created</span><strong>{new Date(o.createdAt).toLocaleDateString()}</strong></div><div className={s.summaryLine}><span>Updated</span><strong>{new Date(o.updatedAt).toLocaleString()}</strong></div></section>
+        <section className={ui.card}><div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Order information</h3></div><div className={s.summaryLine}><span>Currency</span><strong>{o.currency}</strong></div><div className={s.summaryLine}><span>Coupon</span><strong>{o.couponCode||'—'}</strong></div><div className={s.summaryLine}><span>Created</span><strong>{formatAdminDate(o.createdAt, storeTimezone)}</strong></div><div className={s.summaryLine}><span>Updated</span><strong>{formatAdminDateTime(o.updatedAt, storeTimezone)}</strong></div></section>
       </aside>
     </div>
   </div>
