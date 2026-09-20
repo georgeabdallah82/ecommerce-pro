@@ -4,7 +4,7 @@ import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { reserveStock, releaseReservedQuantity } from '@/lib/inventory'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
-import { remainingRefundable, pickRefundSource, settleReturnRefund, classifyOrderEditPaymentAdjustment, recomputeOrderEditTotals, type ReturnableOrder } from '@/lib/returns'
+import { remainingRefundable, pickRefundSource, settleReturnRefund, creditWalletRefund, classifyOrderEditPaymentAdjustment, recomputeOrderEditTotals, type ReturnableOrder } from '@/lib/returns'
 import { getTaxRatePercent } from '@/lib/pricing'
 import { sendOrderEditEmail } from '@/lib/email'
 import { OrderStatus, PaymentStatus } from '@prisma/client'
@@ -91,9 +91,10 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
         const refundable = remainingRefundable(refundableOrder)
         if (paymentAdjustment.amount > refundable) throw new Error('Order total after this edit would be less than the amount already refunded')
         const { refundProvider, refundExternalId } = pickRefundSource(refundableOrder)
-        const refundStatus = refundProvider === 'manual' ? 'refunded' : 'refund_pending'
+        const refundStatus = refundProvider === 'manual' || refundProvider === 'wallet' ? 'refunded' : 'refund_pending'
         const refund = await tx.paymentTransaction.create({ data: { orderId: current.id, provider: refundProvider, externalId: refundExternalId, status: refundStatus, amount: paymentAdjustment.amount, currency: current.currency, rawJson: JSON.stringify({ orderEditId: id, reason: 'Order edit reduced total', actorId: actor.id }) } })
         if (refundStatus === 'refunded') {
+          if (refundProvider === 'wallet') await creditWalletRefund(tx, { userId: current.userId, refundId: refund.id, amount: paymentAdjustment.amount, currency: current.currency })
           const refundedTotal = refundableOrder.grandTotal - refundable + paymentAdjustment.amount
           paymentUpdate.paymentStatus = refundedTotal >= nextGrand ? 'REFUNDED' : 'PARTIALLY_REFUNDED'
           paymentUpdate.status = paymentUpdate.paymentStatus === 'REFUNDED' ? 'REFUNDED' : current.status
@@ -130,7 +131,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     }
     void sendOrderEditEmail(order.updated.id, order.paymentAdjustment).catch(error => console.error('[email] order edit email failed', error))
 
-    if (order.refundToSettle && order.refundToSettle.refundProvider !== 'manual') {
+    if (order.refundToSettle && order.refundToSettle.refundProvider !== 'manual' && order.refundToSettle.refundProvider !== 'wallet') {
       const settled = await settleReturnRefund(actor.id, { orderId: order.updated.id, refundId: order.refundToSettle.refundId, refundProvider: order.refundToSettle.refundProvider, refundExternalId: order.refundToSettle.refundExternalId, amount: order.refundToSettle.amount, currency: order.updated.currency, auditAction: 'order.edit_refund' })
       if (!settled.ok) {
         await audit(actor.id, 'order_edit.committed', 'OrderEdit', id, { orderId: order.updated.id, newSubtotal: order.updated.subtotal, newTotal: order.updated.grandTotal })

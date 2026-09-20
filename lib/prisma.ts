@@ -246,6 +246,7 @@ const mockFulfillments: any[] = []
 const mockFulfillmentLines: any[] = []
 const mockCustomerTags: any[] = []
 const mockCustomerTagMembers: any[] = []
+const mockWalletTransactions: any[] = []
 
 // Matches the storefront's product text-search field filters -- {contains, mode?} --
 // against a single mock product field. Real Prisma/Mongo does this server-side;
@@ -340,6 +341,17 @@ function getMockHandler(model: string) {
         let list = [...mockTaxRates]
         if (args?.where?.isActive !== undefined) list = list.filter((x) => x.isActive === args.where.isActive)
         return list.sort((a, b) => a.name.localeCompare(b.name))
+      }
+      if (model === 'walletTransaction') {
+        let list = [...mockWalletTransactions]
+        const w = args?.where || {}
+        if (w.userId) list = list.filter((x) => x.userId === w.userId)
+        if (w.currency) list = list.filter((x) => x.currency === w.currency)
+        if (w.type) list = list.filter((x) => x.type === w.type)
+        if (w.referenceId) list = list.filter((x) => x.referenceId === w.referenceId)
+        list = list.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        if (args?.take) list = list.slice(0, args.take)
+        return list
       }
       if (model === 'customerTag') return [...mockCustomerTags].sort((a, b) => a.value.localeCompare(b.value))
       if (model === 'customerTagMember') {
@@ -438,6 +450,16 @@ function getMockHandler(model: string) {
         // rows, so the mock needs to as well even though it doesn't actually join anything here.
         return { orders: [], addresses: [], reviews: [], orderNotes: [], _count: { orders: 0, reviews: 0 }, ...user }
       }
+      if (model === 'walletTransaction') {
+        let list = [...mockWalletTransactions]
+        const w = args?.where || {}
+        if (w.userId) list = list.filter((x) => x.userId === w.userId)
+        if (w.currency) list = list.filter((x) => x.currency === w.currency)
+        if (w.type) list = list.filter((x) => x.type === w.type)
+        if (w.referenceId) list = list.filter((x) => x.referenceId === w.referenceId)
+        if (args?.orderBy?.createdAt === 'desc') list = list.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        return list[0] || null
+      }
       if (model === 'shippingZone') return mockShippingZones[0] || null
       if (model === 'product') return mockProducts[0] || null
       return null
@@ -519,6 +541,7 @@ function getMockHandler(model: string) {
       if (model === 'coupon') { item.usedCount ??= 0; mockCoupons.push(item) }
       if (model === 'fulfillment') mockFulfillments.unshift(item)
       if (model === 'fulfillmentLine') mockFulfillmentLines.push(item)
+      if (model === 'walletTransaction') mockWalletTransactions.unshift(item)
       return item
     },
     update: async (args: any) => {
@@ -604,8 +627,23 @@ function getMockHandler(model: string) {
     // aggregate is always a safe shape for callers that only ever consume
     // real data when a database is actually connected (dashboards, reports).
     groupBy: async () => [],
-    aggregate: async () => ({ _sum: {}, _count: {}, _avg: {}, _min: {}, _max: {} }),
+    aggregate: async (args?: any) => {
+      if (model === 'walletTransaction') {
+        let list = mockWalletTransactions
+        const w = args?.where || {}
+        if (w.userId) list = list.filter((x) => x.userId === w.userId)
+        if (w.currency) list = list.filter((x) => x.currency === w.currency)
+        const sum = list.reduce((s, x) => s + (x.amount || 0), 0)
+        return { _sum: { amount: sum }, _count: { _all: list.length }, _avg: {}, _min: {}, _max: {} }
+      }
+      return { _sum: {}, _count: {}, _avg: {}, _min: {}, _max: {} }
+    },
     deleteMany: async (args?: any) => {
+      if (model === 'walletTransaction' && args?.where?.userId) {
+        const before = mockWalletTransactions.length
+        for (let i = mockWalletTransactions.length - 1; i >= 0; i--) if (mockWalletTransactions[i].userId === args.where.userId) mockWalletTransactions.splice(i, 1)
+        return { count: before - mockWalletTransactions.length }
+      }
       if (model === 'themeVersion' && args?.where?.id?.in) {
         const ids = new Set<string>(args.where.id.in)
         const before = mockThemeVersions.length

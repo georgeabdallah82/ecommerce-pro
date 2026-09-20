@@ -9,7 +9,7 @@ export type ReturnOrderItem = { id: string; name: string; productId: string; var
 export type ReturnOrderPaymentTransaction = { id: string; status: string; amount: number; provider: string; externalId: string | null; createdAt: Date }
 export type ReturnableOrder = {
   id: string; orderNumber: string; userId: string | null; status: string; paymentStatus: string
-  grandTotal: number; currency: string; updatedAt: Date
+  grandTotal: number; currency: string; updatedAt: Date; paymentMethod: string
   items: ReturnOrderItem[]; paymentTransactions: ReturnOrderPaymentTransaction[]
 }
 
@@ -105,10 +105,27 @@ export function recomputeOrderEditTotals(params: { nextSubtotal: number; nextTax
 }
 
 // Picks the most recent non-manual captured/authorized/paid transaction to refund against,
-// mirroring how the original direct-return flow chose a refund target.
+// mirroring how the original direct-return flow chose a refund target. A wallet-paid order's
+// only PaymentTransaction row is the 'checkout' bookkeeping row checkout itself creates (see
+// app/api/checkout/route.ts) -- that's never a real gateway, so it must never be picked here;
+// wallet orders are refunded by crediting the customer's wallet instead, exactly like the
+// standalone refund endpoint (app/api/admin/refunds/route.ts) already does.
 export function pickRefundSource(order: ReturnableOrder) {
+  if (order.paymentMethod === 'WALLET') return { refundProvider: 'wallet' as const, refundExternalId: null as string | null }
   const original = order.paymentTransactions.filter(t => t.provider !== 'manual' && ['paid', 'captured', 'authorized'].includes(t.status) && t.externalId).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
   return { refundProvider: original?.provider || 'manual', refundExternalId: original?.externalId || null }
+}
+
+// Credits a refund back to the customer's wallet, mirroring the WalletTransaction the
+// standalone refund endpoint creates. Idempotent on refundId (a referenceId collision is a
+// no-op) so it's safe to call unconditionally wherever a wallet refund is settled.
+export async function creditWalletRefund(tx: any, params: { userId: string | null; refundId: string; amount: number; currency: string }) {
+  const { userId, refundId, amount, currency } = params
+  if (!userId || amount <= 0) return
+  const referenceId = `wallet-refund:${refundId}`
+  const duplicate = await tx.walletTransaction.findFirst({ where: { userId, referenceId, type: 'REFUND' }, select: { id: true } })
+  if (duplicate) return
+  await tx.walletTransaction.create({ data: { id: `wal_refund_${refundId}`, userId, amount, currency, type: 'REFUND', reason: 'Order refund credited to wallet', referenceId } })
 }
 
 // Post-commit gateway refund step, shared by every path that can issue a refund tied to an
@@ -122,8 +139,10 @@ export async function settleReturnRefund(actorId: string, params: { returnId?: s
   // `completed` tells the caller whether this call already sent the return-status email for a
   // REFUNDED transition (the synchronous "refunded" branch below), so it knows not to send its
   // own follow-up email for a transition that already happened -- only the "pending" branch
-  // leaves the return's status (and thus the email for it) up to the caller.
-  if (refundProvider === 'manual') return { ok: true as const, completed: false as const }
+  // leaves the return's status (and thus the email for it) up to the caller. A wallet refund is
+  // also settled synchronously (the wallet credit, not a gateway call) by the caller, so it's
+  // skipped here exactly like manual.
+  if (refundProvider === 'manual' || refundProvider === 'wallet') return { ok: true as const, completed: false as const }
   try {
     if (!refundExternalId) throw new Error('Paid gateway transaction is missing its external reference')
     const provider = await getPaymentProvider(refundProvider)
