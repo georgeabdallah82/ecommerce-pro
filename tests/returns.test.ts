@@ -5,7 +5,7 @@ import { normalizeReturnItems, remainingRefundable, pickRefundSource, classifyOr
 function order(overrides: Partial<ReturnableOrder> = {}): ReturnableOrder {
   return {
     id: 'order_1', orderNumber: 'ORD-1', userId: 'user_1', status: 'DELIVERED', paymentStatus: 'PAID',
-    grandTotal: 10000, currency: 'USD', updatedAt: new Date(),
+    grandTotal: 10000, currency: 'USD', updatedAt: new Date(), paymentMethod: 'CARD',
     items: [{ id: 'item_1', name: 'Widget', productId: 'prod_1', variantId: null, quantity: 3 }],
     paymentTransactions: [],
     ...overrides,
@@ -85,6 +85,16 @@ describe('lib/returns pickRefundSource', () => {
       { id: 't2', status: 'captured', amount: 10000, provider: 'areeba_mpgs', externalId: 'ext_new', createdAt: newer },
     ] }))
     assert.deepEqual(result, { refundProvider: 'areeba_mpgs', refundExternalId: 'ext_new' })
+  })
+
+  it('routes a wallet-paid order to the wallet, never the checkout bookkeeping transaction', () => {
+    // Wallet checkouts only ever have the internal `provider: 'checkout'` row (see
+    // app/api/checkout/route.ts) -- treating that as a real gateway is exactly the bug this
+    // guards against (it isn't a provider getPaymentProvider() recognizes for refunds).
+    const result = pickRefundSource(order({ paymentMethod: 'WALLET', paymentTransactions: [
+      { id: 't1', status: 'paid', amount: 10000, provider: 'checkout', externalId: 'idem_1', createdAt: new Date() },
+    ] }))
+    assert.deepEqual(result, { refundProvider: 'wallet', refundExternalId: null })
   })
 })
 

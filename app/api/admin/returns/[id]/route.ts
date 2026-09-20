@@ -4,7 +4,7 @@ import { hasPermission } from '@/lib/permissions'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { dispatchWebhookEvent, dispatchInventoryUpdated } from '@/lib/webhooks'
-import { restockReturnEntries, remainingRefundable, pickRefundSource, settleReturnRefund, type ReturnableOrder, type ReturnOrderItem } from '@/lib/returns'
+import { restockReturnEntries, remainingRefundable, pickRefundSource, settleReturnRefund, creditWalletRefund, type ReturnableOrder, type ReturnOrderItem } from '@/lib/returns'
 import { sendReturnStatusEmail } from '@/lib/email'
 import { Prisma } from '@prisma/client'
 
@@ -100,10 +100,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         const restockedInventoryIds = restock ? await restockReturnEntries(tx, entries, order.orderNumber, existing.reason) : new Set<string>()
 
         const { refundProvider, refundExternalId } = pickRefundSource(order)
-        const refundStatus = requestedRefund > 0 ? (refundProvider === 'manual' ? 'refunded' : 'refund_pending') : null
+        const refundStatus = requestedRefund > 0 ? (refundProvider === 'manual' || refundProvider === 'wallet' ? 'refunded' : 'refund_pending') : null
         const returnRequest = await tx.returnRequest.update({ where: { id }, data: { status: 'RECEIVED', restock, refundAmount: requestedRefund, receivedAt: new Date() }, include: { items: true } })
 
         const refund = requestedRefund > 0 ? await tx.paymentTransaction.create({ data: { orderId: order.id, provider: refundProvider, externalId: refundExternalId, status: refundStatus!, amount: requestedRefund, currency: order.currency, rawJson: JSON.stringify({ returnId: returnRequest.id, actorId: actor.id }) } }) : null
+        if (refund && refundProvider === 'wallet') await creditWalletRefund(tx, { userId: order.userId, refundId: refund.id, amount: requestedRefund, currency: order.currency })
         const newRefundedTotal = refunded + (requestedRefund > 0 && refundStatus === 'refunded' ? requestedRefund : 0)
         const paymentStatus = refundStatus === 'refunded' ? (newRefundedTotal >= order.grandTotal ? 'REFUNDED' : 'PARTIALLY_REFUNDED') : orderRow.paymentStatus
         const updatedOrder = await tx.order.update({ where: { id: order.id }, data: { paymentStatus, status: paymentStatus === 'REFUNDED' ? 'REFUNDED' : orderRow.status, events: { create: { status: paymentStatus, message: `${returnRequest.id} received: ${entries.map(x => `${x.item.name} × ${x.quantity}`).join(', ')}${restock ? ' — restocked' : ' — not restocked'}${requestedRefund ? ` — ${refundStatus === 'refunded' ? `refunded ${requestedRefund} ${order.currency}` : `refund pending ${requestedRefund} ${order.currency}`}` : ''}` } } } })
@@ -116,7 +117,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       dispatchInventoryUpdated(result.restockedInventoryIds)
 
       let refundEmailSent = false
-      if (result.refund && result.refundProvider !== 'manual') {
+      if (result.refund && result.refundProvider !== 'manual' && result.refundProvider !== 'wallet') {
         const settled = await settleReturnRefund(actor.id, { returnId: result.returnRequest.id, orderId: result.order.id, refundId: result.refund.id, refundProvider: result.refundProvider, refundExternalId: result.refundExternalId, amount: result.refund.amount, currency: result.refund.currency })
         if (!settled.ok) return json({ ...result, error: 'Return received, but the gateway refund failed. The refund remains marked failed for admin retry.' }, { status: 502 })
         refundEmailSent = settled.completed
