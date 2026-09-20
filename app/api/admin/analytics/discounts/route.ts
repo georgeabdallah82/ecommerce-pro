@@ -14,6 +14,23 @@ function parseDateParam(value: string | null) {
   return Number.isNaN(d.getTime()) ? null : d
 }
 
+// order.discountTotal bundles the coupon discount together with any coin/gift-card
+// reward redeemed in the same checkout (see app/api/checkout/route.ts's
+// `discountTotal: discount.total + coinDiscount + giftCardDiscount`), so attributing
+// the whole column to the coupon overstates it. The reward portion, when present, is
+// recorded inline on the checkout PaymentTransaction's rawJson -- subtract it back out.
+function parseRewardDiscount(rawJson: string | null | undefined) {
+  if (!rawJson) return 0
+  try {
+    const parsed = JSON.parse(rawJson) as { coinDiscount?: unknown; giftCardAmount?: unknown }
+    const coinDiscount = Number.isSafeInteger(parsed.coinDiscount) ? Math.max(0, Number(parsed.coinDiscount)) : 0
+    const giftCardAmount = Number.isSafeInteger(parsed.giftCardAmount) ? Math.max(0, Number(parsed.giftCardAmount)) : 0
+    return coinDiscount + giftCardAmount
+  } catch {
+    return 0
+  }
+}
+
 /** Mirrors the day-count resolution in ../route.ts so this report scopes to the same period the dashboard shows. */
 function resolveRange(searchParams: URLSearchParams, now: Date) {
   const startParam = parseDateParam(searchParams.get('start'))
@@ -35,15 +52,22 @@ export async function GET(req: Request) {
 
     const orders = await db.order.findMany({
       where: { createdAt: { gte: since, lt: until }, status: { not: OrderStatus.CANCELLED }, couponCode: { not: null } },
-      select: { couponCode: true, discountTotal: true, grandTotal: true },
+      select: {
+        couponCode: true,
+        discountTotal: true,
+        grandTotal: true,
+        paymentTransactions: { where: { provider: 'checkout' }, select: { rawJson: true } },
+      },
     })
 
     const byCode = new Map<string, { code: string; timesUsed: number; discountGiven: number; revenue: number }>()
     for (const o of orders) {
       if (!o.couponCode) continue
+      const rewardDiscount = parseRewardDiscount(o.paymentTransactions?.[0]?.rawJson)
+      const couponDiscount = Math.max(0, (o.discountTotal || 0) - rewardDiscount)
       const existing = byCode.get(o.couponCode) || { code: o.couponCode, timesUsed: 0, discountGiven: 0, revenue: 0 }
       existing.timesUsed += 1
-      existing.discountGiven += o.discountTotal || 0
+      existing.discountGiven += couponDiscount
       existing.revenue += o.grandTotal || 0
       byCode.set(o.couponCode, existing)
     }
