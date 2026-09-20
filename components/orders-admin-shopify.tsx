@@ -106,11 +106,13 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone }
   async function update(id: string, data: any, message = 'Order updated.') {
     setBusy(id); setError(''); setNotice('')
     try {
-      await api('/api/admin/orders', { method: 'PATCH', body: JSON.stringify({ id, ...data }) })
+      const response = await api('/api/admin/orders', { method: 'PATCH', body: JSON.stringify({ id, ...data }) })
       await load(page)
       setNotice(message)
+      return response
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unable to update order')
+      return null
     } finally {
       setBusy(null)
     }
@@ -134,7 +136,11 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone }
 
   async function cancelOrder() {
     if (!modal || modal.type !== 'cancel') return
-    await update(modal.order.id, { status: 'CANCELLED' }, 'Order cancelled. Any remaining reservation was released.')
+    const response = await update(modal.order.id, { status: 'CANCELLED' }, 'Order cancelled. Any remaining reservation was released.')
+    if (response?.cancelRefund) {
+      const amount = money(response.cancelRefund.amount, modal.order.currency)
+      setNotice(response.cancelRefund.pending ? `Order cancelled. A ${amount} refund is being processed.` : `Order cancelled. A ${amount} refund was issued.`)
+    }
     setModal(null)
   }
   async function refundOrder() {
