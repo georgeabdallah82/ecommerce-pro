@@ -1,12 +1,14 @@
 import { requirePermission } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
 import { db } from '@/lib/prisma'
+import { getStoreTimezone } from '@/lib/store-timezone'
 import OrderDetailAdmin from '@/components/order-detail-admin'
 import ui from '@/components/admin-ui.module.css'
 
 export default async function OrderDetail({params}:{params:Promise<{id:string}>}){
   const user = await requirePermission('orders.view')
   const {id}=await params
+  const storeTimezone = await getStoreTimezone()
   const order=await db.order.findUnique({
     where:{id},
     include:{
@@ -22,5 +24,5 @@ export default async function OrderDetail({params}:{params:Promise<{id:string}>}
   // Fulfillment has no navigable relation back to Order (only a scalar orderId), same reasoning
   // as ReturnRequest's order lookup elsewhere in this app -- fetched separately and stitched on.
   const fulfillments = await db.fulfillment.findMany({ where: { orderId: order.id }, include: { lines: true }, orderBy: { createdAt: 'desc' } })
-  return <OrderDetailAdmin initial={JSON.parse(JSON.stringify({ ...order, fulfillments }))} canStartOrderEdit={canStartOrderEdit}/>
+  return <OrderDetailAdmin initial={JSON.parse(JSON.stringify({ ...order, fulfillments }))} canStartOrderEdit={canStartOrderEdit} storeTimezone={storeTimezone}/>
 }

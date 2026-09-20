@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowUpRight, ChevronLeft, ChevronRight, FileText, PackageCheck, Plus, RefreshCw, Search, Truck, X } from 'lucide-react'
 import { money } from '@/lib/config'
+import { formatAdminDateTime } from '@/lib/admin-datetime'
 import { canTransitionOrder } from '@/lib/orders'
 import styles from './admin-orders-list.module.css'
 import ui from './admin-ui.module.css'
@@ -50,7 +51,7 @@ function paymentPillClass(status: string) {
   return styles.pillWarning
 }
 
-export function OrdersAdminShopify({ initial, canRefund = false }: { initial: Initial; canRefund?: boolean }) {
+export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone }: { initial: Initial; canRefund?: boolean; storeTimezone?: string }) {
   const [rows, setRows] = useState<Order[]>(initial?.rows || [])
   const [total, setTotal] = useState(Number(initial?.total ?? initial?.rows?.length ?? 0))
   const [page, setPage] = useState(Number(initial?.page || 1))
@@ -256,7 +257,7 @@ export function OrdersAdminShopify({ initial, canRefund = false }: { initial: In
                     <td><input aria-label={`Select order ${o.orderNumber}`} type="checkbox" checked={isSelected} onChange={() => setSelected(current => current.includes(o.id) ? current.filter(id => id !== o.id) : [...current, o.id])} /></td>
                     <td>
                       <Link className={ui.textLink} href={`/admin/orders/${o.id}`}><span className={styles.orderNumber}>#{o.orderNumber}</span></Link>
-                      <div className={styles.rowMeta}>{new Date(o.createdAt).toLocaleString()}</div>
+                      <div className={styles.rowMeta}>{formatAdminDateTime(o.createdAt, storeTimezone)}</div>
                     </td>
                     <td><strong>{o.user?.name || 'Guest'}</strong><div className={styles.rowMeta}>{o.email}</div></td>
                     <td>{(o.items || []).reduce((a: number, x: any) => a + x.quantity, 0)}</td>
