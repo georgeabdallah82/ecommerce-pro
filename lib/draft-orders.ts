@@ -1,5 +1,7 @@
 import { db } from '@/lib/prisma'
 import { reserveStock } from '@/lib/inventory'
+import { sendOrderConfirmationEmail } from '@/lib/email'
+import { dispatchWebhookEvent } from '@/lib/webhooks'
 import type { PaymentMethod } from '@prisma/client'
 
 // Shared by the admin "Complete order" action (force-completes as COD, staff
@@ -18,7 +20,7 @@ export async function completeDraftOrder(draftId: string, paymentMethod: Payment
   const products = await db.product.findMany({ where: { id: { in: productIds }, status: 'ACTIVE' }, include: { variants: true, inventory: true } })
   const byId = new Map(products.map(p => [p.id, p]))
 
-  return db.$transaction(async tx => {
+  const order = await db.$transaction(async tx => {
     for (const item of draft.items) {
       const product = byId.get(item.productId)
       if (!product) throw new Error(`Product ${item.productId} is not available`)
@@ -51,4 +53,11 @@ export async function completeDraftOrder(draftId: string, paymentMethod: Payment
     await tx.draftOrder.update({ where: { id: draftId }, data: { status: 'COMPLETED', completedOrderId: order.id } })
     return order
   })
+
+  if (paymentMethod !== 'CARD' || order.grandTotal === 0) {
+    void sendOrderConfirmationEmail(order.id).catch(error => console.error('[email] order confirmation failed', error))
+  }
+  void dispatchWebhookEvent('order.created', { id: order.id, orderNumber: order.orderNumber, email: order.email, grandTotal: order.grandTotal, currency: order.currency, status: order.status, paymentStatus: order.paymentStatus }).catch(error => console.error('[webhook] order.created dispatch failed', error))
+
+  return order
 }
