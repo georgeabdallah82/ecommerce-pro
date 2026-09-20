@@ -17,10 +17,12 @@ const defaultSettings:StoreSettings={payment:{cod:true,card:false,bank:false,wal
 declare global { interface Window { Checkout?: { configure: (options: unknown) => void; showPaymentPage: () => void } } }
 
 export default function Checkout() {
-  const { selectedItems: items, selectedSubtotal: subtotal, clearSelected } = useCart()
+  const { selectedItems: items, selectedSubtotal: subtotal, clearSelected, addItem } = useCart()
   const router = useRouter()
   const [savedCoupon, setSavedCoupon] = useState('')
+  const [recoveredEmail, setRecoveredEmail] = useState('')
   const checkoutToken = useRef('')
+  const recoveryStarted = useRef(false)
 
   useEffect(() => {
     try {
@@ -32,6 +34,48 @@ export default function Checkout() {
       if (!token) { token = crypto.randomUUID(); localStorage.setItem('ecom-checkout-token', token) }
       checkoutToken.current = token
     } catch { checkoutToken.current = crypto.randomUUID() }
+  }, [])
+
+  // Rehydrates the cart pictured in an abandoned-checkout recovery email: that link carries
+  // ?recover=<token>, and /api/checkout/progress?token= looks up the exact cart captured for
+  // it. Without this, "pick up where you left off" only worked by coincidence when the local
+  // cart on this browser happened to still hold the same items. Merges into whatever's already
+  // in the cart (never clobbers it) and is guarded against re-applying the same token twice
+  // (double-adding quantities) both within this load and on a repeat visit to the same link.
+  useEffect(() => {
+    // Guards synchronously, before the fetch below even starts -- React's development-mode
+    // double-invoke of effects (Strict Mode) would otherwise fire this twice for the same
+    // mount, and since the localStorage guard is only written once the fetch resolves, both
+    // invocations would start before either could see it and each add the recovered items,
+    // silently doubling every quantity.
+    if (recoveryStarted.current) return
+    let token = ''
+    try { token = new URLSearchParams(window.location.search).get('recover') || '' } catch { return }
+    if (!token) return
+    try { if (localStorage.getItem('ecom-recovered-token') === token) return } catch {}
+    recoveryStarted.current = true
+    fetch(`/api/checkout/progress?token=${encodeURIComponent(token)}`, { cache: 'no-store' })
+      .then(r => r.json())
+      .then(data => {
+        const cart = data?.cart
+        if (!cart || !Array.isArray(cart.items) || !cart.items.length) return
+        for (const item of cart.items) {
+          const productId = String(item?.productId || '').trim()
+          if (!productId) continue
+          addItem({
+            productId,
+            variantId: item.variantId ? String(item.variantId) : null,
+            name: String(item.name || 'Product'),
+            sku: productId,
+            price: Math.max(0, Number(item.unitPrice) || 0),
+            quantity: Math.max(1, Math.trunc(Number(item.quantity) || 1)),
+          }, false)
+        }
+        if (typeof cart.email === 'string' && cart.email.includes('@')) setRecoveredEmail(cart.email)
+        try { localStorage.setItem('ecom-recovered-token', token) } catch {}
+      })
+      .catch(() => {})
+      .finally(() => { router.replace('/checkout', { scroll: false }) })
   }, [])
 
   function captureCheckoutProgress(email: string) {
@@ -104,6 +148,16 @@ export default function Checkout() {
         fetch('/api/checkout/progress', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: checkoutToken.current }), keepalive: true }).catch(() => {})
         try { localStorage.removeItem('ecom-checkout-token') } catch {}
       }
+      try {
+        // A recovered cart may have come from a different browser/device's own capture token
+        // than this one's -- mark that original capture recovered too, or it lingers OPEN in
+        // the admin abandoned-checkouts list forever even though the order actually completed.
+        const recoveredToken = localStorage.getItem('ecom-recovered-token')
+        if (recoveredToken && recoveredToken !== checkoutToken.current) {
+          fetch('/api/checkout/progress', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: recoveredToken }), keepalive: true }).catch(() => {})
+        }
+        localStorage.removeItem('ecom-recovered-token')
+      } catch {}
       if(output.payment?.type==='mpgs'){setClientCheckout(output.payment as ClientCheckout);setLoading(false);return}
       const successUrl = authenticated ? `/order/success?order=${encodeURIComponent(output.order.orderNumber)}` : `/order/success?order=${encodeURIComponent(output.order.orderNumber)}&email=${encodeURIComponent(data.email)}`
       router.push(successUrl)
@@ -120,7 +174,7 @@ export default function Checkout() {
     {!settings && <div className="alert">Loading checkout settings…</div>}
     {guestBlocked && <div className="alert danger">Guest checkout is disabled. <Link className="textLink" href="/account/login">Sign in</Link> to continue.</div>}
     {settingsError && <div className="alert danger">{settingsError}</div>}
-    <h3>Contact</h3><label className="fieldLabel">Email<input className="input" required name="email" type="email" autoComplete="email" inputMode="email" placeholder="you@example.com" onBlur={e => captureCheckoutProgress(e.target.value.trim())} /></label><label className="fieldLabel">Phone<input className="input" name="phone" autoComplete="tel" inputMode="tel" placeholder="Phone" /></label>
+    <h3>Contact</h3><label className="fieldLabel">Email<input className="input" required name="email" type="email" autoComplete="email" inputMode="email" placeholder="you@example.com" defaultValue={recoveredEmail} key={recoveredEmail} onBlur={e => captureCheckoutProgress(e.target.value.trim())} /></label><label className="fieldLabel">Phone<input className="input" name="phone" autoComplete="tel" inputMode="tel" placeholder="Phone" /></label>
     <h3>Delivery</h3><div className="grid two"><label className="fieldLabel">First name<input className="input" required name="firstName" autoComplete="given-name" placeholder="First name" /></label><label className="fieldLabel">Last name<input className="input" required name="lastName" autoComplete="family-name" placeholder="Last name" /></label></div>
     <label className="fieldLabel">Address<input className="input" required name="line1" autoComplete="address-line1" placeholder="Street address" /></label><label className="fieldLabel">Apartment, floor, etc. <span className="muted">(optional)</span><input className="input" name="line2" autoComplete="address-line2" placeholder="Apartment, floor, etc." /></label>
     <div className="grid two"><label className="fieldLabel">City<input className="input" required name="city" autoComplete="address-level2" placeholder="City" /></label><label className="fieldLabel">Region<input className="input" name="region" autoComplete="address-level1" placeholder="Region" /></label></div><div className="grid two"><label className="fieldLabel">Postal code<input className="input" name="postalCode" autoComplete="postal-code" inputMode="numeric" placeholder="Postal code" /></label><label className="fieldLabel">Country<input className="input" required name="country" autoComplete="country-name" placeholder="Country" defaultValue="Lebanon" /></label></div>

@@ -247,6 +247,7 @@ const mockFulfillmentLines: any[] = []
 const mockCustomerTags: any[] = []
 const mockCustomerTagMembers: any[] = []
 const mockWalletTransactions: any[] = []
+const mockAbandonedCheckouts: any[] = []
 
 // Matches the storefront's product text-search field filters -- {contains, mode?} --
 // against a single mock product field. Real Prisma/Mongo does this server-side;
@@ -353,6 +354,13 @@ function getMockHandler(model: string) {
         if (args?.take) list = list.slice(0, args.take)
         return list
       }
+      if (model === 'abandonedCheckout') {
+        let list = [...mockAbandonedCheckouts]
+        if (args?.where?.status) list = list.filter((x) => x.status === args.where.status)
+        list = list.sort((a, b) => b.lastActivity.getTime() - a.lastActivity.getTime())
+        if (args?.take) list = list.slice(0, args.take)
+        return list
+      }
       if (model === 'customerTag') return [...mockCustomerTags].sort((a, b) => a.value.localeCompare(b.value))
       if (model === 'customerTagMember') {
         let list = [...mockCustomerTagMembers]
@@ -412,6 +420,7 @@ function getMockHandler(model: string) {
       if (model === 'webhookEndpoint' && where.id) return mockWebhookEndpoints.find((x) => x.id === where.id) || null
       if (model === 'apiCredential' && where.id) return mockApiCredentials.find((x) => x.id === where.id) || null
       if (model === 'taxRate' && where.id) return mockTaxRates.find((x) => x.id === where.id) || null
+      if (model === 'abandonedCheckout') return (where.id ? mockAbandonedCheckouts.find((x) => x.id === where.id) : where.token ? mockAbandonedCheckouts.find((x) => x.token === where.token) : null) || null
       if (model === 'customerTag') return (where.id ? mockCustomerTags.find((x) => x.id === where.id) : where.value ? mockCustomerTags.find((x) => x.value === where.value) : null) || null
       if (model === 'customerTagMember' && where.tagId_customerId) {
         const { tagId, customerId } = where.tagId_customerId
@@ -493,6 +502,13 @@ function getMockHandler(model: string) {
         const record = existing ? { ...existing, ...(args.update || {}) } : { id: `livevisitor-${Date.now()}`, ...(args.create || {}) }
         mockLiveVisitorSessions.set(args.where.sessionId, record)
         return record
+      }
+      if (model === 'abandonedCheckout' && args.where?.token) {
+        const existing = mockAbandonedCheckouts.find((x) => x.token === args.where.token)
+        if (existing) { Object.assign(existing, args.update || {}, { updatedAt: new Date() }); return existing }
+        const created = { id: `abandoned-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, token: args.where.token, status: 'OPEN', lastActivity: new Date(), createdAt: new Date(), updatedAt: new Date(), ...(args.create || {}) }
+        mockAbandonedCheckouts.push(created)
+        return created
       }
       if (model === 'customerTag' && args.where?.value) {
         const existing = mockCustomerTags.find((x) => x.value === args.where.value)
@@ -582,6 +598,11 @@ function getMockHandler(model: string) {
         if (args?.where?.tagId) list = list.filter((x) => x.tagId === args.where.tagId)
         return list.length
       }
+      if (model === 'abandonedCheckout') {
+        let list = mockAbandonedCheckouts
+        if (args?.where?.status) list = list.filter((x) => x.status === args.where.status)
+        return list.length
+      }
       if (model === 'user') {
         let list = mockUsers
         if (args?.where?.role !== undefined) list = list.filter((u) => u.role === args.where.role)
@@ -593,6 +614,13 @@ function getMockHandler(model: string) {
     },
     createMany: async (args: any) => ({ count: args?.data?.length || 0 }),
     updateMany: async (args?: any) => {
+      if (model === 'abandonedCheckout') {
+        let targets = mockAbandonedCheckouts
+        if (args?.where?.token) targets = targets.filter((x) => x.token === args.where.token)
+        if (args?.where?.status) targets = targets.filter((x) => x.status === args.where.status)
+        for (const target of targets) Object.assign(target, args?.data || {}, { updatedAt: new Date() })
+        return { count: targets.length }
+      }
       if (model === 'storeLocation') {
         const excludeId = args?.where?.id?.not
         let count = 0
