@@ -5,6 +5,7 @@ import { json } from '@/lib/utils'
 import { reserveStock, releaseReservedQuantity } from '@/lib/inventory'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { remainingRefundable, pickRefundSource, settleReturnRefund, creditWalletRefund, restoreCoinsForRefund, classifyOrderEditPaymentAdjustment, recomputeOrderEditTotals, type ReturnableOrder } from '@/lib/returns'
+import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { getTaxRatePercent } from '@/lib/pricing'
 import { sendOrderEditEmail } from '@/lib/email'
 import { OrderStatus, PaymentStatus } from '@prisma/client'
@@ -102,6 +103,8 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
           // total, matching the paymentStatus check just above -- the edit already changed
           // what "fully refunded" means for this order.
           await restoreCoinsForRefund(tx, { order: { ...refundableOrder, grandTotal: nextGrand }, successfulRefunds: refundedTotal, refundId: refund.id })
+          const redeemedGift = redeemedGiftCard(refundableOrder.paymentTransactions)
+          if (redeemedGift) await restoreGiftCardBalance(tx, current.id, redeemedGift, refundedTotal, nextGrand)
         } else {
           refundToSettle = { refundId: refund.id, refundProvider, refundExternalId, amount: paymentAdjustment.amount }
         }

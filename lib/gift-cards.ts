@@ -68,16 +68,28 @@ export async function expireGiftCards(db: any) {
   await db.giftCard.updateMany({ where: { status: 'ACTIVE', expiresAt: { lt: new Date() } }, data: { status: 'EXPIRED' } })
 }
 
-export async function restoreGiftCardBalance(tx: any, orderId: string, redeemed: { giftCardId: string; giftCardAmount: number }) {
-  await tx.giftCard.update({ where: { id: redeemed.giftCardId }, data: { balance: { increment: redeemed.giftCardAmount } } })
+// Restores the gift-card-redeemed portion of an order proportionally to how much of the
+// order has now been refunded (successfulRefunds/grandTotal) -- the same math
+// restoreCoinsForRefund (lib/returns.ts) uses for coins, so cancellation, a return, an
+// order-edit refund, and a standalone refund all agree on how much comes back to the gift
+// card. A full cancellation is just the successfulRefunds === grandTotal case.
+//
+// GiftCard has no separate redemption ledger the way coins/CoinTransaction do, so how much
+// has already been restored is tracked in a `giftCardRestored` key alongside the original
+// giftCardId/giftCardAmount in the checkout transaction's rawJson -- never deleted, so
+// calling this again (from cancellation after a partial refund already restored some, or
+// from a second later partial refund) only ever tops up the remaining delta instead of
+// double-crediting or losing track of the original redemption.
+export async function restoreGiftCardBalance(tx: any, orderId: string, redeemed: { giftCardId: string; giftCardAmount: number }, successfulRefunds: number, grandTotal: number) {
   const checkoutTx = await tx.paymentTransaction.findFirst({ where: { orderId, provider: 'checkout' } })
   if (!checkoutTx?.rawJson) return
-  try {
-    const parsed = JSON.parse(checkoutTx.rawJson)
-    delete parsed.giftCardId
-    delete parsed.giftCardAmount
-    await tx.paymentTransaction.update({ where: { id: checkoutTx.id }, data: { rawJson: JSON.stringify(parsed) } })
-  } catch {
-    // rawJson wasn't valid JSON -- nothing to clear, balance is already restored.
-  }
+  let parsed: any
+  try { parsed = JSON.parse(checkoutTx.rawJson) } catch { return }
+  const alreadyRestored = Number.isSafeInteger(parsed.giftCardRestored) ? Math.max(0, parsed.giftCardRestored) : 0
+  const target = grandTotal > 0 ? Math.min(redeemed.giftCardAmount, Math.floor(redeemed.giftCardAmount * successfulRefunds / grandTotal)) : redeemed.giftCardAmount
+  const delta = target - alreadyRestored
+  if (delta <= 0) return
+  await tx.giftCard.update({ where: { id: redeemed.giftCardId }, data: { balance: { increment: delta } } })
+  parsed.giftCardRestored = alreadyRestored + delta
+  await tx.paymentTransaction.update({ where: { id: checkoutTx.id }, data: { rawJson: JSON.stringify(parsed) } })
 }

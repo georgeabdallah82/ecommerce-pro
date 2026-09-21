@@ -5,6 +5,7 @@ import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { dispatchWebhookEvent, dispatchInventoryUpdated } from '@/lib/webhooks'
 import { restockReturnEntries, remainingRefundable, pickRefundSource, settleReturnRefund, creditWalletRefund, restoreCoinsForRefund, type ReturnableOrder, type ReturnOrderItem } from '@/lib/returns'
+import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { sendReturnStatusEmail } from '@/lib/email'
 import { Prisma } from '@prisma/client'
 
@@ -107,7 +108,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         if (refund && refundProvider === 'wallet') await creditWalletRefund(tx, { userId: order.userId, refundId: refund.id, amount: requestedRefund, currency: order.currency })
         const newRefundedTotal = refunded + (requestedRefund > 0 && refundStatus === 'refunded' ? requestedRefund : 0)
         const paymentStatus = refundStatus === 'refunded' ? (newRefundedTotal >= order.grandTotal ? 'REFUNDED' : 'PARTIALLY_REFUNDED') : orderRow.paymentStatus
-        if (refund && refundStatus === 'refunded') await restoreCoinsForRefund(tx, { order, successfulRefunds: newRefundedTotal, refundId: refund.id })
+        if (refund && refundStatus === 'refunded') {
+          await restoreCoinsForRefund(tx, { order, successfulRefunds: newRefundedTotal, refundId: refund.id })
+          const redeemedGift = redeemedGiftCard(order.paymentTransactions)
+          if (redeemedGift) await restoreGiftCardBalance(tx, order.id, redeemedGift, newRefundedTotal, order.grandTotal)
+        }
         const updatedOrder = await tx.order.update({ where: { id: order.id }, data: { paymentStatus, status: paymentStatus === 'REFUNDED' ? 'REFUNDED' : orderRow.status, events: { create: { status: paymentStatus, message: `${returnRequest.id} received: ${entries.map(x => `${x.item.name} × ${x.quantity}`).join(', ')}${restock ? ' — restocked' : ' — not restocked'}${requestedRefund ? ` — ${refundStatus === 'refunded' ? `refunded ${requestedRefund} ${order.currency}` : `refund pending ${requestedRefund} ${order.currency}`}` : ''}` } } } })
 
         await audit(actor.id, 'return.received', 'ReturnRequest', id, { orderId: order.id, restocked: restock, refundId: refund?.id || null, refundAmount: requestedRefund, refundProvider })
