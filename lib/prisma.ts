@@ -250,6 +250,7 @@ const mockWalletTransactions: any[] = []
 const mockAbandonedCheckouts: any[] = []
 const mockCoinTransactions: any[] = []
 const mockGiftCards: any[] = []
+const mockInventoryItems: any[] = []
 
 // Matches the storefront's product text-search field filters -- {contains, mode?} --
 // against a single mock product field. Real Prisma/Mongo does this server-side;
@@ -376,6 +377,13 @@ function getMockHandler(model: string) {
         if (args?.where?.note) list = list.filter((x) => x.note === args.where.note)
         return list
       }
+      if (model === 'inventoryItem') {
+        let list = [...mockInventoryItems]
+        const w = args?.where || {}
+        if (w.productId) list = list.filter((x) => x.productId === w.productId)
+        if (w.id?.in) { const ids = new Set(w.id.in); list = list.filter((x) => ids.has(x.id)) }
+        return list
+      }
       if (model === 'customerTag') return [...mockCustomerTags].sort((a, b) => a.value.localeCompare(b.value))
       if (model === 'customerTagMember') {
         let list = [...mockCustomerTagMembers]
@@ -488,6 +496,10 @@ function getMockHandler(model: string) {
       }
       if (model === 'shippingZone') return mockShippingZones[0] || null
       if (model === 'product') return mockProducts[0] || null
+      if (model === 'inventoryItem') {
+        const w = args?.where || {}
+        return mockInventoryItems.find((x) => x.productId === w.productId && (w.variantId === undefined || x.variantId === w.variantId)) || null
+      }
       return null
     },
     upsert: async (args: any) => {
@@ -592,6 +604,7 @@ function getMockHandler(model: string) {
       if (model === 'walletTransaction') mockWalletTransactions.unshift(item)
       if (model === 'coinTransaction') mockCoinTransactions.unshift(item)
       if (model === 'giftCard') { item.balance ??= item.initialAmount ?? 0; mockGiftCards.push(item) }
+      if (model === 'inventoryItem') { item.variantId ??= null; item.reserved ??= 0; item.lowStockThreshold ??= 5; mockInventoryItems.push(item) }
       return item
     },
     update: async (args: any) => {

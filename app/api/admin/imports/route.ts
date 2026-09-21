@@ -27,10 +27,13 @@ function parseCsv(text: string): Row[] {
   return rows.filter(r => r.some(Boolean)).map(r => Object.fromEntries(headers.map((h, i) => [h, r[i] ?? ''])))
 }
 
-const bool = (v: string, fallback = false) => v === '' ? fallback : ['true', '1', 'yes'].includes(v.toLowerCase())
-const num = (v: string, fallback = 0) => { const n = Number(v); return Number.isFinite(n) ? n : fallback }
-const slugify = (v: string) => v.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 120)
-const cleanSlug = (v: string, fallback: string) => slugify(v) || slugify(fallback) || `item-${Date.now()}`
+// v is `undefined` whenever the CSV simply doesn't include that (optional) column at all --
+// parseCsv only ever sets keys for headers actually present in the file -- as opposed to `''`
+// for a column that's there but left blank on this row. Both mean "use the fallback."
+const bool = (v: string | undefined, fallback = false) => !v ? fallback : ['true', '1', 'yes'].includes(v.toLowerCase())
+const num = (v: string | undefined, fallback = 0) => { const n = Number(v); return Number.isFinite(n) ? n : fallback }
+const slugify = (v: string | undefined) => (v || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 120)
+const cleanSlug = (v: string | undefined, fallback: string) => slugify(v) || slugify(fallback) || `item-${Date.now()}`
 const split = (v?: string) => (v || '').split('|').map(x => x.trim()).filter(Boolean)
 
 export async function POST(request: Request) {
@@ -48,7 +51,7 @@ export async function POST(request: Request) {
     const errors: string[] = []; const preview = rows.map((r, i) => ({ row: i + 2, action: 'validated', name: r.name || '', sku: r.sku || '' })); const addError = (m: string) => { if (errors.length < 100) errors.push(m) }
     if (type === 'products') {
       const seen = new Set<string>()
-      rows.forEach((r, i) => { if (!r.sku || !r.name) addError(`Row ${i + 2}: sku and name are required`); if (r.sku && seen.has(r.sku)) addError(`Row ${i + 2}: duplicate SKU ${r.sku} in import`); if (r.sku) seen.add(r.sku); if (r.status && !PRODUCT_STATUSES.has(r.status)) addError(`Row ${i + 2}: invalid status ${r.status}`); if (r.basePrice && !Number.isFinite(Number(r.basePrice))) addError(`Row ${i + 2}: basePrice must be numeric`) })
+      rows.forEach((r, i) => { if (!r.sku || !r.name) addError(`Row ${i + 2}: sku and name are required`); if (r.sku && seen.has(r.sku)) addError(`Row ${i + 2}: duplicate SKU ${r.sku} in import`); if (r.sku) seen.add(r.sku); if (r.status && !PRODUCT_STATUSES.has(r.status)) addError(`Row ${i + 2}: invalid status ${r.status}`); if (r.basePrice && !Number.isFinite(Number(r.basePrice))) addError(`Row ${i + 2}: basePrice must be numeric`); if (r.quantity && !Number.isFinite(Number(r.quantity))) addError(`Row ${i + 2}: quantity must be numeric`) })
     } else rows.forEach((r, i) => { if (!r.name) addError(`Row ${i + 2}: name is required`) })
     if (mode === 'preview') return NextResponse.json({ ok: !errors.length, rows: preview, errors })
     if (errors.length) return NextResponse.json({ error: 'Import validation failed', errors }, { status: 422 })
@@ -68,6 +71,17 @@ export async function POST(request: Request) {
           const category = r.categorySlug ? await tx.category.findUnique({ where: { slug: r.categorySlug } }) : null
           const data = { name: r.name, slug, description: r.description || null, shortDescription: r.shortDescription || null, brand: r.brand || null, vendor: r.vendor || null, productType: r.productType || null, basePrice: num(r.basePrice), compareAtPrice: r.compareAtPrice ? num(r.compareAtPrice) : null, costPrice: r.costPrice ? num(r.costPrice) : null, barcode, status: (r.status || 'DRAFT') as 'DRAFT' | 'ACTIVE' | 'ARCHIVED', featured: bool(r.featured), seoTitle: r.seoTitle || null, seoDescription: r.seoDescription || null, seoImageUrl: r.seoImageUrl || null, weight: r.weight ? num(r.weight) : null, weightUnit: r.weightUnit || null, requiresShipping: bool(r.requiresShipping, true), taxable: bool(r.taxable, true), trackInventory: bool(r.trackInventory, true), continueSellingWhenOutOfStock: bool(r.continueSellingWhenOutOfStock), giftCard: bool(r.giftCard), categoryId: category?.id || null }
           let product; if (existing) { product = await tx.product.update({ where: { id: existing.id }, data }); updated++ } else { product = await tx.product.create({ data: { ...data, sku: r.sku } }); created++ }
+          // Every product needs at least one InventoryItem row for its trackInventory-gated
+          // availability checks (checkout, the storefront PDP) to see anything but 0 in
+          // stock -- the manual admin "New product" flow always creates one (see
+          // app/api/admin/products/route.ts), but CSV import skipped it entirely, silently
+          // making every imported product unsellable until someone opened it in Inventory
+          // and added stock by hand. Only backfills a *missing* row, so re-importing never
+          // resets stock an admin already adjusted here.
+          const hasInventoryRow = await tx.inventoryItem.findFirst({ where: { productId: product.id, variantId: null } })
+          if (!hasInventoryRow) {
+            await tx.inventoryItem.create({ data: { productId: product.id, variantId: null, quantity: r.quantity ? Math.max(0, Math.trunc(num(r.quantity))) : 0, reserved: 0, lowStockThreshold: r.lowStockThreshold ? Math.max(0, Math.trunc(num(r.lowStockThreshold))) : 5 } })
+          }
           await tx.productTag.deleteMany({ where: { productId: product.id } }); const tags = split(r.tags); for (const value of tags) { const exists = await tx.productTag.findFirst({ where: { productId: product.id, value } }); if (!exists) await tx.productTag.create({ data: { productId: product.id, value } }) }
           await tx.collectionProduct.deleteMany({ where: { productId: product.id } }); for (const collectionSlug of split(r.collectionSlugs)) { const collection = await tx.collection.findUnique({ where: { slug: collectionSlug } }); if (collection) await tx.collectionProduct.create({ data: { collectionId: collection.id, productId: product.id } }) }
         }
