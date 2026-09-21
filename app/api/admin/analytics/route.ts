@@ -94,8 +94,16 @@ async function loadPeriod(range: Range) {
     db.user.findMany({ where: { role: 'CUSTOMER', createdAt: { gte: range.since, lt: range.until } }, select: { createdAt: true } }),
   ])
 
+  // Product.costPrice has no snapshot on OrderItem, so margin is computed against each
+  // product's current cost rather than what it cost at the time of sale -- the same
+  // limitation the rest of this report already lives with (e.g. a product's current
+  // taxable/name fields, not what they were historically).
+  const productIds = [...new Set(orders.flatMap(o => o.items.map(i => i.productId)))]
+  const costRows = productIds.length ? await db.product.findMany({ where: { id: { in: productIds } }, select: { id: true, costPrice: true } }) : []
+  const costByProduct = new Map(costRows.map(p => [p.id, p.costPrice ?? 0]))
+
   const buckets = buildBuckets(range)
-  let revenue = 0, itemsSold = 0, discountGiven = 0
+  let revenue = 0, itemsSold = 0, discountGiven = 0, itemsSalesValue = 0, costOfGoodsSold = 0
   const orderingCustomers = new Set<string>()
   for (const o of orders) {
     const net = netRevenueForOrder(o)
@@ -103,11 +111,16 @@ async function loadPeriod(range: Range) {
     discountGiven += o.discountTotal || 0
     const items = o.items.reduce((s, i) => s + i.quantity, 0)
     itemsSold += items
+    for (const i of o.items) {
+      itemsSalesValue += i.totalPrice
+      costOfGoodsSold += (costByProduct.get(i.productId) || 0) * i.quantity
+    }
     if (o.userId) orderingCustomers.add(o.userId)
     const key = bucketKey(new Date(o.createdAt), range.days)
     const point = buckets.get(key)
     if (point) { point.orders += 1; point.revenue += net; point.items += items }
   }
+  const grossProfit = itemsSalesValue - costOfGoodsSold
   for (const c of newCustomerRows) {
     const key = bucketKey(new Date(c.createdAt), range.days)
     const point = buckets.get(key)
@@ -135,6 +148,9 @@ async function loadPeriod(range: Range) {
     revenue,
     itemsSold,
     discountGiven,
+    itemsSalesValue,
+    costOfGoodsSold,
+    grossProfit,
     newCustomers: newCustomerRows.length,
     orderingCustomerCount: orderingCustomers.size,
     returningCustomers,
@@ -163,6 +179,8 @@ export async function GET(req: Request) {
     const previousAverageOrderValue = previousPeriod?.orderCount ? Math.round(previousPeriod.revenue / previousPeriod.orderCount) : 0
     const returningCustomerRate = currentPeriod.orderingCustomerCount ? Math.round((currentPeriod.returningCustomers / currentPeriod.orderingCustomerCount) * 100) : 0
     const previousReturningCustomerRate = previousPeriod?.orderingCustomerCount ? Math.round((previousPeriod.returningCustomers / previousPeriod.orderingCustomerCount) * 100) : 0
+    const marginPercent = currentPeriod.itemsSalesValue ? Math.round((currentPeriod.grossProfit / currentPeriod.itemsSalesValue) * 100) : 0
+    const previousMarginPercent = previousPeriod?.itemsSalesValue ? Math.round((previousPeriod.grossProfit / previousPeriod.itemsSalesValue) * 100) : 0
 
     const lowStock = inventory
       .filter(i => i.quantity - i.reserved <= i.lowStockThreshold)
@@ -190,6 +208,10 @@ export async function GET(req: Request) {
         returningCustomerRate,
         returningCustomerRateChange: previousPeriod ? pct(returningCustomerRate, previousReturningCustomerRate) : null,
         discountGiven: currentPeriod.discountGiven,
+        grossProfit: currentPeriod.grossProfit,
+        grossProfitChange: previousPeriod ? pct(currentPeriod.grossProfit, previousPeriod.grossProfit) : null,
+        marginPercent,
+        marginPercentChange: previousPeriod ? pct(marginPercent, previousMarginPercent) : null,
         products,
       },
       series: currentPeriod.series,
