@@ -61,7 +61,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ orderN
       }
 
       const redeemed = redeemedGiftCard(order.paymentTransactions)
-      if (redeemed) await restoreGiftCardBalance(tx, order.id, redeemed)
+      if (redeemed) await restoreGiftCardBalance(tx, order.id, redeemed, order.grandTotal, order.grandTotal)
 
       const updated = await tx.order.update({
         where: { id: order.id },

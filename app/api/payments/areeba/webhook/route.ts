@@ -102,7 +102,7 @@ async function processPaymentNotification(orderNumber: string, body: Record<stri
         await tx.coinTransaction.upsert({ where: { id: reversalId }, create: { id: reversalId, userId: current.userId, amount: coinsUsed, type: 'REVERSAL', reason: 'Failed payment coin restoration', referenceId: `coin-reversal:${current.orderNumber}:payment-failed` }, update: {} })
       }
       const redeemedGc = redeemedGiftCard(current.paymentTransactions)
-      if (redeemedGc) await restoreGiftCardBalance(tx, order.id, redeemedGc)
+      if (redeemedGc) await restoreGiftCardBalance(tx, order.id, redeemedGc, current.grandTotal, current.grandTotal)
       await tx.order.update({ where: { id: order.id }, data: { paymentStatus: 'FAILED', status: 'CANCELLED', events: { create: { status: 'CANCELLED', message: 'Online payment failed.' } } } })
       await tx.paymentTransaction.update({ where: { id: transaction.id }, data: { status: 'failed' } })
       transitioned = true

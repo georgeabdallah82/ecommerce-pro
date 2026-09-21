@@ -142,12 +142,12 @@ function parseCoinsUsed(rawJson: string | null) {
   } catch { return 0 }
 }
 
-async function restoreCheckoutGiftCard(orderId: string) {
+async function restoreCheckoutGiftCard(orderId: string, grandTotal: number) {
   await db.$transaction(async tx => {
     const checkoutTx = await tx.paymentTransaction.findFirst({ where: { orderId, provider: 'checkout' }, select: { rawJson: true } })
     const redeemed = redeemedGiftCard([{ provider: 'checkout', rawJson: checkoutTx?.rawJson || null }])
     if (!redeemed) return
-    await restoreGiftCardBalance(tx, orderId, redeemed)
+    await restoreGiftCardBalance(tx, orderId, redeemed, grandTotal, grandTotal)
   })
 }
 
@@ -379,7 +379,7 @@ export async function POST(req: Request) {
           await tx.order.update({ where: { id: order.id }, data: { status: 'CANCELLED', fulfillmentStatus: 'UNFULFILLED', events: { create: { status: 'CANCELLED', message: 'Online payment initialization failed.' } } } })
         })
         await restoreCheckoutCoins(order.id, order.userId)
-        await restoreCheckoutGiftCard(order.id)
+        await restoreCheckoutGiftCard(order.id, order.grandTotal)
         throw paymentError
       }
     }

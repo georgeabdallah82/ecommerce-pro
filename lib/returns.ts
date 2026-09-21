@@ -2,6 +2,7 @@ import { db } from '@/lib/prisma'
 import { getPaymentProvider } from '@/lib/payments'
 import { audit } from '@/lib/audit'
 import { sendReturnStatusEmail } from '@/lib/email'
+import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 
 // Extended (Accelerate) client payload inference doesn't always widen nested `include`
 // relations correctly, so query results are asserted to the shape actually queried.
@@ -198,6 +199,8 @@ export async function settleReturnRefund(actorId: string, params: { returnId?: s
         const paymentStatus = successfulRefunds >= orderRow.grandTotal ? 'REFUNDED' : 'PARTIALLY_REFUNDED'
         await tx.order.update({ where: { id: orderRow.id }, data: { paymentStatus, status: keepOrderStatus ? orderRow.status : (paymentStatus === 'REFUNDED' ? 'REFUNDED' : orderRow.status) } })
         await restoreCoinsForRefund(tx, { order: orderRow, successfulRefunds, refundId })
+        const redeemedGift = redeemedGiftCard(orderRow.paymentTransactions)
+        if (redeemedGift) await restoreGiftCardBalance(tx, orderRow.id, redeemedGift, successfulRefunds, orderRow.grandTotal)
         await tx.auditLog.create({ data: { actorId, action: `${auditAction}_completed`, entity: 'Order', entityId: orderRow.id, metadataJson: JSON.stringify({ returnId, refundId, amount, provider: refundProvider }) } })
       })
       if (returnId) void sendReturnStatusEmail(returnId, orderId).catch(error => console.error('[email] return status email failed', error))

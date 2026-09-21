@@ -204,6 +204,42 @@ const mockSettings = new Map<string, string>([
 ])
 
 const mockOrders: any[] = []
+// PaymentTransaction has no standalone backing array -- every real row lives nested on its
+// parent order's `.paymentTransactions` (the same array `order.findUnique({include:
+// {paymentTransactions:true}})` already reads), matching how the order-nested `create`
+// shorthand expands them at order-creation time. A standalone `tx.paymentTransaction.create/
+// findFirst/findUnique/update()` -- used throughout checkout, refunds, returns, order-edits,
+// cancellation and the areeba gateway integration -- searches/mutates that same array rather
+// than a second, easily-desynced source of truth.
+function findMockPaymentTransaction(where: any) {
+  for (const order of mockOrders) {
+    const list: any[] = order.paymentTransactions || []
+    for (const t of list) {
+      if (where.id !== undefined && t.id !== where.id) continue
+      if (where.orderId !== undefined && t.orderId !== where.orderId) continue
+      if (where.provider !== undefined && t.provider !== where.provider) continue
+      if (where.externalId !== undefined && t.externalId !== where.externalId) continue
+      if (where.status?.in && !where.status.in.includes(t.status)) continue
+      return { order, transaction: t }
+    }
+  }
+  return null
+}
+function findMockPaymentTransactions(where: any) {
+  const results: { order: any; transaction: any }[] = []
+  for (const order of mockOrders) {
+    const list: any[] = order.paymentTransactions || []
+    for (const t of list) {
+      if (where.id !== undefined && t.id !== where.id) continue
+      if (where.orderId !== undefined && t.orderId !== where.orderId) continue
+      if (where.provider !== undefined && t.provider !== where.provider) continue
+      if (where.externalId !== undefined && t.externalId !== where.externalId) continue
+      if (where.status?.in && !where.status.in.includes(t.status)) continue
+      results.push({ order, transaction: t })
+    }
+  }
+  return results
+}
 const mockCoupons = [
   {
     id: 'cp-welcome10',
@@ -416,6 +452,9 @@ function getMockHandler(model: string) {
     },
     findUnique: async (args: any) => {
       const where = args?.where || {}
+      if (model === 'paymentTransaction' && where.id) {
+        return findMockPaymentTransaction(where)?.transaction || null
+      }
       if (model === 'setting' && where.key) {
         const val = mockSettings.get(where.key)
         return val ? { id: `set-${where.key}`, key: where.key, value: val } : null
@@ -481,6 +520,15 @@ function getMockHandler(model: string) {
     },
     findFirst: async (args?: any) => {
       const where = args?.where || {}
+      if (model === 'paymentTransaction') {
+        let matches = findMockPaymentTransactions(where)
+        if (args?.orderBy?.createdAt === 'desc') matches = matches.sort((a, b) => b.transaction.createdAt.getTime() - a.transaction.createdAt.getTime())
+        else if (args?.orderBy?.createdAt === 'asc') matches = matches.sort((a, b) => a.transaction.createdAt.getTime() - b.transaction.createdAt.getTime())
+        const match = matches[0]
+        if (!match) return null
+        if (args?.include?.order) return { ...match.transaction, order: match.order }
+        return match.transaction
+      }
       if (model === 'setting' && where.key) {
         const val = mockSettings.get(where.key)
         return val ? { id: `set-${where.key}`, key: where.key, value: val } : null
@@ -620,9 +668,19 @@ function getMockHandler(model: string) {
       if (model === 'giftCard') { item.balance ??= item.initialAmount ?? 0; mockGiftCards.push(item) }
       if (model === 'inventoryItem') { item.variantId ??= null; item.reserved ??= 0; item.lowStockThreshold ??= 5; mockInventoryItems.push(item) }
       if (model === 'productVariant') mockProductVariants.push(item)
+      if (model === 'paymentTransaction' && item.orderId) {
+        const order = mockOrders.find((o) => o.id === item.orderId)
+        if (order) { order.paymentTransactions ??= []; order.paymentTransactions.push(item) }
+      }
       return item
     },
     update: async (args: any) => {
+      if (model === 'paymentTransaction' && args.where?.id) {
+        const found = findMockPaymentTransaction({ id: args.where.id })
+        if (!found) throw new Error('Record to update not found')
+        Object.assign(found.transaction, args.data || {})
+        return found.transaction
+      }
       if (model === 'user' && args.where?.id) {
         const u = mockUsers.find((x) => x.id === args.where.id)
         if (u) Object.assign(u, args.data || {})

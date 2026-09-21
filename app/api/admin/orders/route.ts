@@ -137,7 +137,7 @@ export async function PATCH(req: Request) {
         }
 
         const redeemedGift = redeemedGiftCard(order.paymentTransactions)
-        if (redeemedGift) await restoreGiftCardBalance(tx, order.id, redeemedGift)
+        if (redeemedGift) await restoreGiftCardBalance(tx, order.id, redeemedGift, order.grandTotal, order.grandTotal)
 
         const coinsUsed = redeemedCancelCoins(order.paymentTransactions)
         if (coinsUsed > 0 && order.userId) {
