@@ -35,6 +35,9 @@ const num = (v: string | undefined, fallback = 0) => { const n = Number(v); retu
 const slugify = (v: string | undefined) => (v || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 120)
 const cleanSlug = (v: string | undefined, fallback: string) => slugify(v) || slugify(fallback) || `item-${Date.now()}`
 const split = (v?: string) => (v || '').split('|').map(x => x.trim()).filter(Boolean)
+// "Color:Red|Size:M" -> {Color: "Red", Size: "M"}, matching how the manual admin product
+// editor already stores variant options (JSON.stringify(v.options) in app/api/admin/products/route.ts).
+const parseVariantOptions = (v?: string) => Object.fromEntries(split(v).map(pair => { const i = pair.indexOf(':'); return i === -1 ? [pair, ''] : [pair.slice(0, i).trim(), pair.slice(i + 1).trim()] }))
 
 export async function POST(request: Request) {
   try {
@@ -48,10 +51,22 @@ export async function POST(request: Request) {
     const rows = parseCsv(await file.text())
     if (rows.length > MAX_ROWS) return NextResponse.json({ error: `Maximum ${MAX_ROWS} rows per import` }, { status: 413 })
 
-    const errors: string[] = []; const preview = rows.map((r, i) => ({ row: i + 2, action: 'validated', name: r.name || '', sku: r.sku || '' })); const addError = (m: string) => { if (errors.length < 100) errors.push(m) }
+    const errors: string[] = []; const preview = rows.map((r, i) => ({ row: i + 2, action: 'validated', name: r.variantOf ? `${r.variantName || r.variantSku || ''} (variant)` : (r.name || ''), sku: r.variantOf ? (r.variantSku || '') : (r.sku || '') })); const addError = (m: string) => { if (errors.length < 100) errors.push(m) }
     if (type === 'products') {
-      const seen = new Set<string>()
-      rows.forEach((r, i) => { if (!r.sku || !r.name) addError(`Row ${i + 2}: sku and name are required`); if (r.sku && seen.has(r.sku)) addError(`Row ${i + 2}: duplicate SKU ${r.sku} in import`); if (r.sku) seen.add(r.sku); if (r.status && !PRODUCT_STATUSES.has(r.status)) addError(`Row ${i + 2}: invalid status ${r.status}`); if (r.basePrice && !Number.isFinite(Number(r.basePrice))) addError(`Row ${i + 2}: basePrice must be numeric`); if (r.quantity && !Number.isFinite(Number(r.quantity))) addError(`Row ${i + 2}: quantity must be numeric`) })
+      // A row with variantOf set is a variant of another row's product, not a standalone
+      // product -- it's validated against ProductVariant's own required fields instead.
+      const seen = new Set<string>(); const seenVariantSku = new Set<string>()
+      rows.forEach((r, i) => {
+        if (r.variantOf) {
+          if (!r.variantSku) addError(`Row ${i + 2}: variantSku is required when variantOf is set`)
+          if (r.variantSku && seenVariantSku.has(r.variantSku)) addError(`Row ${i + 2}: duplicate variantSku ${r.variantSku} in import`)
+          if (r.variantSku) seenVariantSku.add(r.variantSku)
+          if (r.variantPrice && !Number.isFinite(Number(r.variantPrice))) addError(`Row ${i + 2}: variantPrice must be numeric`)
+          if (r.variantQuantity && !Number.isFinite(Number(r.variantQuantity))) addError(`Row ${i + 2}: variantQuantity must be numeric`)
+          return
+        }
+        if (!r.sku || !r.name) addError(`Row ${i + 2}: sku and name are required`); if (r.sku && seen.has(r.sku)) addError(`Row ${i + 2}: duplicate SKU ${r.sku} in import`); if (r.sku) seen.add(r.sku); if (r.status && !PRODUCT_STATUSES.has(r.status)) addError(`Row ${i + 2}: invalid status ${r.status}`); if (r.basePrice && !Number.isFinite(Number(r.basePrice))) addError(`Row ${i + 2}: basePrice must be numeric`); if (r.quantity && !Number.isFinite(Number(r.quantity))) addError(`Row ${i + 2}: quantity must be numeric`)
+      })
     } else rows.forEach((r, i) => { if (!r.name) addError(`Row ${i + 2}: name is required`) })
     if (mode === 'preview') return NextResponse.json({ ok: !errors.length, rows: preview, errors })
     if (errors.length) return NextResponse.json({ error: 'Import validation failed', errors }, { status: 422 })
@@ -65,7 +80,11 @@ export async function POST(request: Request) {
         for (const r of rows) { const slug = cleanSlug(r.slug, r.name); const existing = await tx.collection.findUnique({ where: { slug } }); const data = { name: r.name, slug, description: r.description || null, imageUrl: r.imageUrl || null, isActive: bool(r.isActive, true), sortOrder: num(r.sortOrder) }; if (existing) { await tx.collection.update({ where: { id: existing.id }, data }); updated++ } else { await tx.collection.create({ data }); created++ } }
         for (const r of rows) { const collection = await tx.collection.findUnique({ where: { slug: cleanSlug(r.slug, r.name) } }); if (!collection) continue; await tx.collectionProduct.deleteMany({ where: { collectionId: collection.id } }); for (const sku of split(r.productSkus)) { const product = await tx.product.findUnique({ where: { sku } }); if (product) await tx.collectionProduct.create({ data: { collectionId: collection.id, productId: product.id } }) } }
       } else {
+        // Rows with variantOf set are processed in a second pass below, once every row's own
+        // product (this pass) is guaranteed to exist -- a variant can reference a product
+        // defined earlier in the very same file.
         for (const r of rows) {
+          if (r.variantOf) continue
           const existing = await tx.product.findUnique({ where: { sku: r.sku } }); const slug = cleanSlug(r.slug, r.name); const slugOwner = await tx.product.findUnique({ where: { slug } }); if (slugOwner && slugOwner.id !== existing?.id) throw new Error(`Slug already belongs to another product: ${slug}`)
           const barcode = r.barcode || null; if (barcode) { const barcodeOwner = await tx.product.findUnique({ where: { barcode } }); if (barcodeOwner && barcodeOwner.id !== existing?.id) throw new Error(`Barcode already belongs to another product: ${barcode}`) }
           const category = r.categorySlug ? await tx.category.findUnique({ where: { slug: r.categorySlug } }) : null
@@ -84,6 +103,23 @@ export async function POST(request: Request) {
           }
           await tx.productTag.deleteMany({ where: { productId: product.id } }); const tags = split(r.tags); for (const value of tags) { const exists = await tx.productTag.findFirst({ where: { productId: product.id, value } }); if (!exists) await tx.productTag.create({ data: { productId: product.id, value } }) }
           await tx.collectionProduct.deleteMany({ where: { productId: product.id } }); for (const collectionSlug of split(r.collectionSlugs)) { const collection = await tx.collection.findUnique({ where: { slug: collectionSlug } }); if (collection) await tx.collectionProduct.create({ data: { collectionId: collection.id, productId: product.id } }) }
+        }
+        for (const r of rows) {
+          if (!r.variantOf) continue
+          const parent = await tx.product.findUnique({ where: { sku: r.variantOf } })
+          if (!parent) throw new Error(`Variant ${r.variantSku} references unknown product SKU: ${r.variantOf}`)
+          const existingVariant = await tx.productVariant.findUnique({ where: { sku: r.variantSku } })
+          if (existingVariant && existingVariant.productId !== parent.id) throw new Error(`Variant SKU already belongs to a different product: ${r.variantSku}`)
+          const variantBarcode = r.variantBarcode || null
+          if (variantBarcode) { const barcodeOwner = await tx.productVariant.findUnique({ where: { barcode: variantBarcode } }); if (barcodeOwner && barcodeOwner.id !== existingVariant?.id) throw new Error(`Variant barcode already belongs to another variant: ${variantBarcode}`) }
+          const variantData = { productId: parent.id, name: r.variantName || r.variantSku!, sku: r.variantSku!, barcode: variantBarcode, optionJson: JSON.stringify(parseVariantOptions(r.variantOptions)), price: r.variantPrice ? num(r.variantPrice) : null, compareAtPrice: r.variantCompareAtPrice ? num(r.variantCompareAtPrice) : null }
+          let variant; if (existingVariant) { variant = await tx.productVariant.update({ where: { id: existingVariant.id }, data: variantData }); updated++ } else { variant = await tx.productVariant.create({ data: variantData }); created++ }
+          // Mirrors the base-product backfill above: only creates a row when the variant has
+          // none yet, so re-importing never resets stock an admin already adjusted by hand.
+          const hasVariantInventoryRow = await tx.inventoryItem.findFirst({ where: { productId: parent.id, variantId: variant.id } })
+          if (!hasVariantInventoryRow) {
+            await tx.inventoryItem.create({ data: { productId: parent.id, variantId: variant.id, quantity: r.variantQuantity ? Math.max(0, Math.trunc(num(r.variantQuantity))) : 0, reserved: 0, lowStockThreshold: r.variantLowStockThreshold ? Math.max(0, Math.trunc(num(r.variantLowStockThreshold))) : 5 } })
+          }
         }
       }
     })
