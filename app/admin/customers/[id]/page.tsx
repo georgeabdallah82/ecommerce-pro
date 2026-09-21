@@ -44,7 +44,7 @@ export default async function CustomerDetail({ params }: { params: Promise<{ id:
     where: { id, role: 'CUSTOMER' },
     include: {
       addresses: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }] },
-      orders: { orderBy: { createdAt: 'desc' }, include: { items: true } },
+      orders: { orderBy: { createdAt: 'desc' }, include: { items: true, paymentTransactions: { select: { status: true, amount: true } } } },
       reviews: { orderBy: { createdAt: 'desc' }, include: { product: { select: { id: true, name: true, slug: true } } } },
       _count: { select: { orders: true, reviews: true } },
     },
@@ -61,7 +61,7 @@ export default async function CustomerDetail({ params }: { params: Promise<{ id:
 
   // Extended (Accelerate) client payload inference doesn't always widen nested `include`
   // relations correctly, so this access is asserted to the shape actually queried.
-  const orderTotal = sumCustomerSpend((customer as unknown as { orders: { status: OrderStatus; grandTotal: number }[] }).orders)
+  const orderTotal = sumCustomerSpend((customer as unknown as { orders: { status: OrderStatus; grandTotal: number; paymentTransactions: { status: string; amount: number }[] }[] }).orders)
   const walletBalance = loyalty.walletTransactions.reduce((sum: number, tx: WalletTransaction) => sum + tx.amount, 0)
   const coinBalance = Math.max(0, loyalty.coinTransactions.reduce((sum: number, tx: CoinTransaction) => sum + tx.amount, 0))
   const serialized = JSON.parse(JSON.stringify({

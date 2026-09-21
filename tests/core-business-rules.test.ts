@@ -87,6 +87,35 @@ describe('core ecommerce business rules', () => {
       ]
       assert.equal(sumCustomerSpend(orders), 0)
     })
+
+    it('excludes a fully-refunded order (its refund transactions cover the full grandTotal)', () => {
+      const orders = [
+        { status: 'DELIVERED' as const, grandTotal: 5000 },
+        { status: 'REFUNDED' as const, grandTotal: 4000, paymentTransactions: [{ status: 'refunded', amount: 4000 }] },
+      ]
+      assert.equal(sumCustomerSpend(orders), 5000)
+    })
+
+    it('nets out a partial refund instead of counting the full grandTotal', () => {
+      const orders = [
+        { status: 'DELIVERED' as const, grandTotal: 5000, paymentTransactions: [{ status: 'partially_refunded', amount: 1200 }] },
+      ]
+      assert.equal(sumCustomerSpend(orders), 3800)
+    })
+
+    it('sums multiple partial refunds on the same order', () => {
+      const orders = [
+        { status: 'DELIVERED' as const, grandTotal: 5000, paymentTransactions: [{ status: 'partially_refunded', amount: 1000 }, { status: 'partially_refunded', amount: 500 }] },
+      ]
+      assert.equal(sumCustomerSpend(orders), 3500)
+    })
+
+    it('ignores payment transactions that are not refunds', () => {
+      const orders = [
+        { status: 'DELIVERED' as const, grandTotal: 5000, paymentTransactions: [{ status: 'paid', amount: 5000 }, { status: 'created', amount: 0 }] },
+      ]
+      assert.equal(sumCustomerSpend(orders), 5000)
+    })
   })
 
   describe('payment transitions', () => {
