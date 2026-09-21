@@ -282,6 +282,8 @@ const mockFulfillments: any[] = []
 const mockFulfillmentLines: any[] = []
 const mockCustomerTags: any[] = []
 const mockCustomerTagMembers: any[] = []
+const mockCustomerSegments: any[] = []
+const mockCustomerSegmentMembers: any[] = []
 const mockWalletTransactions: any[] = []
 const mockAbandonedCheckouts: any[] = []
 const mockCoinTransactions: any[] = []
@@ -439,6 +441,15 @@ function getMockHandler(model: string) {
         if (args?.include?.tag) list = list.map((x) => ({ ...x, tag: mockCustomerTags.find((t) => t.id === x.tagId) || null }))
         return list
       }
+      if (model === 'customerSegment') return [...mockCustomerSegments].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+      if (model === 'customerSegmentMember') {
+        let list = [...mockCustomerSegmentMembers]
+        const w = args?.where || {}
+        if (w.segmentId) list = list.filter((x) => x.segmentId === w.segmentId)
+        if (typeof w.customerId === 'string') list = list.filter((x) => x.customerId === w.customerId)
+        if (w.customerId?.in) { const ids = new Set(w.customerId.in); list = list.filter((x) => ids.has(x.customerId)) }
+        return list
+      }
       if (model === 'liveVisitorSession') {
         let list = Array.from(mockLiveVisitorSessions.values())
         if (args?.where?.lastSeenAt?.gte) list = list.filter((v) => v.lastSeenAt >= new Date(args.where.lastSeenAt.gte))
@@ -503,6 +514,11 @@ function getMockHandler(model: string) {
       if (model === 'customerTagMember' && where.tagId_customerId) {
         const { tagId, customerId } = where.tagId_customerId
         return mockCustomerTagMembers.find((x) => x.tagId === tagId && x.customerId === customerId) || null
+      }
+      if (model === 'customerSegment' && where.id) return mockCustomerSegments.find((x) => x.id === where.id) || null
+      if (model === 'customerSegmentMember' && where.segmentId_customerId) {
+        const { segmentId, customerId } = where.segmentId_customerId
+        return mockCustomerSegmentMembers.find((x) => x.segmentId === segmentId && x.customerId === customerId) || null
       }
       if (model === 'fulfillment' && where.id) {
         const f = mockFulfillments.find((x) => x.id === where.id)
@@ -608,6 +624,14 @@ function getMockHandler(model: string) {
         mockCoinTransactions.push(created)
         return created
       }
+      if (model === 'customerSegmentMember' && args.where?.segmentId_customerId) {
+        const { segmentId, customerId } = args.where.segmentId_customerId
+        const existing = mockCustomerSegmentMembers.find((x) => x.segmentId === segmentId && x.customerId === customerId)
+        if (existing) { Object.assign(existing, args.update || {}); return existing }
+        const created = { id: `csm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, segmentId, customerId, createdAt: new Date(), ...(args.create || {}) }
+        mockCustomerSegmentMembers.push(created)
+        return created
+      }
       if (model === 'giftCard' && args.where?.id) {
         const existing = mockGiftCards.find((x) => x.id === args.where.id)
         if (existing) return existing
@@ -668,6 +692,9 @@ function getMockHandler(model: string) {
       if (model === 'giftCard') { item.balance ??= item.initialAmount ?? 0; mockGiftCards.push(item) }
       if (model === 'inventoryItem') { item.variantId ??= null; item.reserved ??= 0; item.lowStockThreshold ??= 5; mockInventoryItems.push(item) }
       if (model === 'productVariant') mockProductVariants.push(item)
+      if (model === 'user') { item.role ??= 'CUSTOMER'; item.isActive ??= true; mockUsers.push(item) }
+      if (model === 'customerSegment') mockCustomerSegments.push(item)
+      if (model === 'customerSegmentMember') mockCustomerSegmentMembers.push(item)
       if (model === 'paymentTransaction' && item.orderId) {
         const order = mockOrders.find((o) => o.id === item.orderId)
         if (order) { order.paymentTransactions ??= []; order.paymentTransactions.push(item) }
@@ -783,7 +810,16 @@ function getMockHandler(model: string) {
     // Generic aggregation fallbacks -- an empty group list / all-zero
     // aggregate is always a safe shape for callers that only ever consume
     // real data when a database is actually connected (dashboards, reports).
-    groupBy: async () => [],
+    groupBy: async (args?: any) => {
+      if (model === 'customerSegmentMember' && args?.by?.includes('segmentId')) {
+        let list = [...mockCustomerSegmentMembers]
+        if (args?.where?.segmentId?.in) { const ids = new Set(args.where.segmentId.in); list = list.filter((x) => ids.has(x.segmentId)) }
+        const counts = new Map<string, number>()
+        for (const x of list) counts.set(x.segmentId, (counts.get(x.segmentId) || 0) + 1)
+        return Array.from(counts, ([segmentId, count]) => ({ segmentId, _count: { _all: count } }))
+      }
+      return []
+    },
     aggregate: async (args?: any) => {
       if (model === 'walletTransaction') {
         let list = mockWalletTransactions
