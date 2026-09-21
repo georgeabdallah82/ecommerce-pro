@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { BarChart3, Calendar, Check, Download, Package, RefreshCw, TrendingDown, TrendingUp, Users, ShoppingBag, DollarSign, Repeat, Tag } from 'lucide-react'
+import { BarChart3, Calendar, Check, Download, Package, RefreshCw, TrendingDown, TrendingUp, Users, ShoppingBag, DollarSign, Repeat, Tag, Percent } from 'lucide-react'
 import { money } from '@/lib/config'
 import styles from './admin-analytics.module.css'
 import ui from './admin-ui.module.css'
@@ -217,6 +217,8 @@ export default function AnalyticsAdmin() {
             <Metric icon={<ShoppingBag size={18} />} label="Orders" value={data.kpis.orders} change={data.kpis.ordersChange} compareLabel={compareLabel} sparkline={data.series.map(x => x.orders)} />
             <Metric icon={<BarChart3 size={18} />} label="Average order" value={money0(data.kpis.averageOrderValue)} change={data.kpis.averageOrderValueChange} compareLabel={compareLabel} />
             <Metric icon={<Package size={18} />} label="Items sold" value={data.kpis.itemsSold} change={data.kpis.itemsSoldChange} compareLabel={compareLabel} sparkline={data.series.map(x => x.items)} />
+            <Metric icon={<DollarSign size={18} />} label="Gross profit" value={money0(data.kpis.grossProfit)} change={data.kpis.grossProfitChange} compareLabel={compareLabel} />
+            <Metric icon={<Percent size={18} />} label="Gross margin" value={`${data.kpis.marginPercent}%`} change={data.kpis.marginPercentChange} compareLabel={compareLabel} />
             <Metric icon={<Users size={18} />} label="New customers" value={data.kpis.newCustomers} change={data.kpis.newCustomersChange} compareLabel={compareLabel} sparkline={data.series.map(x => x.newCustomers)} />
             <Metric icon={<Repeat size={18} />} label="Returning customers" value={`${data.kpis.returningCustomerRate}%`} change={data.kpis.returningCustomerRateChange} compareLabel={compareLabel} />
           </div>
