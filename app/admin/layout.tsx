@@ -41,8 +41,9 @@ const groups: AdminSidebarGroup[] = [
     { href: '/admin/online-store/theme-editor', label: 'Theme editor', permission: 'content.view', icon: 'theme' },
     { href: '/admin/online-store/navigation', label: 'Navigation', permission: 'content.view', icon: 'navigation' },
   ]},
-  { id: 'marketing', label: 'Discounts', items: [
+  { id: 'marketing', label: 'Marketing', items: [
     { href: '/admin/coupons', label: 'Discounts', permission: 'coupons.view', icon: 'discounts' },
+    { href: '/admin/push-campaigns', label: 'Push campaigns', permission: 'customers.manage', icon: 'pushCampaigns' },
   ]},
   { id: 'analytics', label: 'Analytics', items: [
     { href: '/admin/reports', label: 'Analytics & reports', permission: 'reports.view', icon: 'analytics' },

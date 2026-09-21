@@ -12,8 +12,22 @@ export async function GET(request: Request) {
     const ids = url.searchParams.getAll('id').slice(0, 10000); const categoryId = url.searchParams.get('categoryId') || undefined; const collectionId = url.searchParams.get('collectionId') || undefined
     let body = ''; let filename = ''
     if (type === 'products') {
-      const products = await db.product.findMany({ where: { ...(ids.length ? { id: { in: ids } } : {}), ...(categoryId ? { categoryId } : {}), ...(collectionId ? { collections: { some: { collectionId } } } : {}) }, include: { category: true, collections: { include: { collection: true }, orderBy: { sortOrder: 'asc' } }, tags: true, inventory: true }, orderBy: { name: 'asc' }, take: 10000 })
-      body = csv(['id','sku','name','slug','description','shortDescription','brand','vendor','productType','basePrice','compareAtPrice','costPrice','barcode','status','featured','seoTitle','seoDescription','seoImageUrl','weight','weightUnit','requiresShipping','taxable','trackInventory','continueSellingWhenOutOfStock','giftCard','categorySlug','collectionSlugs','tags','quantity','lowStockThreshold'], products.map(p => [p.id,p.sku,p.name,p.slug,p.description,p.shortDescription,p.brand,p.vendor,p.productType,p.basePrice,p.compareAtPrice,p.costPrice,p.barcode,p.status,p.featured,p.seoTitle,p.seoDescription,p.seoImageUrl,p.weight,p.weightUnit,p.requiresShipping,p.taxable,p.trackInventory,p.continueSellingWhenOutOfStock,p.giftCard,p.category?.slug,p.collections.map(c=>c.collection.slug).join('|'),p.tags.map(t=>t.value).join('|'),p.inventory.reduce((s,i)=>s+i.quantity,0),p.inventory[0]?.lowStockThreshold ?? 5])); filename = 'products.csv'
+      const products = await db.product.findMany({ where: { ...(ids.length ? { id: { in: ids } } : {}), ...(categoryId ? { categoryId } : {}), ...(collectionId ? { collections: { some: { collectionId } } } : {}) }, include: { category: true, collections: { include: { collection: true }, orderBy: { sortOrder: 'asc' } }, tags: true, inventory: true, variants: { include: { inventory: true } } }, orderBy: { name: 'asc' }, take: 10000 })
+      // Every row carries the full product record (whether it's the product's own row or one of
+      // its variants' rows) so each line is independently readable -- import only ever treats a
+      // row's product-level fields as authoritative when variantOf is blank (see imports/route.ts).
+      const productFields = (p: (typeof products)[number]) => [p.id, p.sku, p.name, p.slug, p.description, p.shortDescription, p.brand, p.vendor, p.productType, p.basePrice, p.compareAtPrice, p.costPrice, p.barcode, p.status, p.featured, p.seoTitle, p.seoDescription, p.seoImageUrl, p.weight, p.weightUnit, p.requiresShipping, p.taxable, p.trackInventory, p.continueSellingWhenOutOfStock, p.giftCard, p.category?.slug, p.collections.map(c => c.collection.slug).join('|'), p.tags.map(t => t.value).join('|')]
+      const variantOptionsString = (optionJson: string) => { try { const opts = JSON.parse(optionJson || '{}') as Record<string, unknown>; return Object.entries(opts).map(([k, v]) => `${k}:${v}`).join('|') } catch { return '' } }
+      const rows: unknown[][] = []
+      for (const p of products) {
+        const sharedInventory = p.inventory.filter(i => !i.variantId)
+        rows.push([...productFields(p), sharedInventory.reduce((s, i) => s + i.quantity, 0), sharedInventory[0]?.lowStockThreshold ?? 5, '', '', '', '', '', '', '', '', ''])
+        for (const v of p.variants) {
+          const vQty = v.inventory.reduce((s, i) => s + i.quantity, 0)
+          rows.push([...productFields(p), '', '', p.sku, v.sku, v.name, v.barcode, variantOptionsString(v.optionJson), v.price, v.compareAtPrice, vQty, v.inventory[0]?.lowStockThreshold ?? 5])
+        }
+      }
+      body = csv(['id','sku','name','slug','description','shortDescription','brand','vendor','productType','basePrice','compareAtPrice','costPrice','barcode','status','featured','seoTitle','seoDescription','seoImageUrl','weight','weightUnit','requiresShipping','taxable','trackInventory','continueSellingWhenOutOfStock','giftCard','categorySlug','collectionSlugs','tags','quantity','lowStockThreshold','variantOf','variantSku','variantName','variantBarcode','variantOptions','variantPrice','variantCompareAtPrice','variantQuantity','variantLowStockThreshold'], rows); filename = 'products.csv'
     } else if (type === 'categories') {
       const categories = await db.category.findMany({ where: ids.length ? { id: { in: ids } } : {}, include: { parent: true }, orderBy: { name: 'asc' }, take: 5000 })
       body = csv(['id','name','slug','description','imageUrl','isActive','sortOrder','parentSlug'], categories.map(c => [c.id,c.name,c.slug,c.description,c.imageUrl,c.isActive,c.sortOrder,c.parent?.slug])); filename = 'categories.csv'

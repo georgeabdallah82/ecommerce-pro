@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { db } from '@/lib/prisma'
 import { Footer } from '@/components/footer'
 import { MarkAllReadButton, MarkReadButton } from '@/components/notification-actions'
+import CustomerPushToggle from '@/components/customer-push-toggle'
 
 const PAGE_SIZE = 20
 
@@ -29,6 +30,9 @@ export default async function Notifications({ searchParams }: { searchParams: Pr
   return <><main className="section"><div className="container">
     <Link className="textLink" href="/account">← Back to account</Link>
     <div className="sectionHead"><div><span className="muted">ACCOUNT</span><h1 className="h2">Notifications</h1></div>{unreadCount > 0 && <MarkAllReadButton />}</div>
+    <div style={{ marginBottom: 16 }}>
+      <CustomerPushToggle vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} />
+    </div>
     {!notifications.length ? (
       <div className="card empty"><p className="muted">No notifications yet.</p></div>
     ) : (

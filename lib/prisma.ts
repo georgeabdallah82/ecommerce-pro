@@ -251,6 +251,7 @@ const mockAbandonedCheckouts: any[] = []
 const mockCoinTransactions: any[] = []
 const mockGiftCards: any[] = []
 const mockInventoryItems: any[] = []
+const mockProductVariants: any[] = []
 
 // Matches the storefront's product text-search field filters -- {contains, mode?} --
 // against a single mock product field. Real Prisma/Mongo does this server-side;
@@ -382,6 +383,13 @@ function getMockHandler(model: string) {
         const w = args?.where || {}
         if (w.productId) list = list.filter((x) => x.productId === w.productId)
         if (w.id?.in) { const ids = new Set(w.id.in); list = list.filter((x) => ids.has(x.id)) }
+        // Every real caller (admin inventory list, low-stock push alerts, the analytics
+        // report's valuation/lowStock cards) asks for product/variant via include or select
+        // -- resolve them from the other mock arrays the same loose way customerTagMember's
+        // `tag` include already does above, rather than leaving `.product`/`.variant` undefined
+        // and crashing every one of those callers the moment mock inventory data exists.
+        if (args?.include?.product || args?.select?.product) list = list.map((x) => ({ ...x, product: mockProducts.find((p) => p.id === x.productId) || null }))
+        if (args?.include?.variant || args?.select?.variant) list = list.map((x) => ({ ...x, variant: x.variantId ? mockProductVariants.find((v) => v.id === x.variantId) || null : null }))
         return list
       }
       if (model === 'customerTag') return [...mockCustomerTags].sort((a, b) => a.value.localeCompare(b.value))
@@ -417,7 +425,11 @@ function getMockHandler(model: string) {
           ? mockProducts.find((p) => p.id === where.id)
           : where.slug
             ? mockProducts.find((p) => p.slug === where.slug)
-            : undefined
+            : where.sku
+              ? mockProducts.find((p) => p.sku === where.sku)
+              : where.barcode
+                ? mockProducts.find((p) => (p as any).barcode === where.barcode)
+                : undefined
         // mockProducts entries don't carry every relation Prisma's `include` can ask
         // for (e.g. reviews, tags) -- default those to empty arrays so callers that
         // assume Prisma's always-an-array shape (never undefined) don't crash.
@@ -446,6 +458,8 @@ function getMockHandler(model: string) {
       if (model === 'abandonedCheckout') return (where.id ? mockAbandonedCheckouts.find((x) => x.id === where.id) : where.token ? mockAbandonedCheckouts.find((x) => x.token === where.token) : null) || null
       if (model === 'coinTransaction' && where.id) return mockCoinTransactions.find((x) => x.id === where.id) || null
       if (model === 'giftCard') return (where.id ? mockGiftCards.find((x) => x.id === where.id) : where.code ? mockGiftCards.find((x) => x.code.toUpperCase() === String(where.code).toUpperCase()) : null) || null
+      if (model === 'productVariant') return (where.id ? mockProductVariants.find((x) => x.id === where.id) : where.sku ? mockProductVariants.find((x) => x.sku === where.sku) : where.barcode ? mockProductVariants.find((x) => x.barcode === where.barcode) : null) || null
+      if (model === 'inventoryItem' && where.id) return mockInventoryItems.find((x) => x.id === where.id) || null
       if (model === 'customerTag') return (where.id ? mockCustomerTags.find((x) => x.id === where.id) : where.value ? mockCustomerTags.find((x) => x.value === where.value) : null) || null
       if (model === 'customerTagMember' && where.tagId_customerId) {
         const { tagId, customerId } = where.tagId_customerId
@@ -605,6 +619,7 @@ function getMockHandler(model: string) {
       if (model === 'coinTransaction') mockCoinTransactions.unshift(item)
       if (model === 'giftCard') { item.balance ??= item.initialAmount ?? 0; mockGiftCards.push(item) }
       if (model === 'inventoryItem') { item.variantId ??= null; item.reserved ??= 0; item.lowStockThreshold ??= 5; mockInventoryItems.push(item) }
+      if (model === 'productVariant') mockProductVariants.push(item)
       return item
     },
     update: async (args: any) => {
@@ -613,7 +628,7 @@ function getMockHandler(model: string) {
         if (u) Object.assign(u, args.data || {})
         return u || args.data
       }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems }
       if (byId[model] && args.where?.id) {
         const row = byId[model].find((x) => x.id === args.where.id)
         if (!row) throw new Error('Record to update not found')
@@ -729,6 +744,9 @@ function getMockHandler(model: string) {
       return { _sum: {}, _count: {}, _avg: {}, _min: {}, _max: {} }
     },
     deleteMany: async (args?: any) => {
+      if (model === 'setting' && args?.where?.key) {
+        return { count: mockSettings.delete(args.where.key) ? 1 : 0 }
+      }
       if (model === 'walletTransaction' && args?.where?.userId) {
         const before = mockWalletTransactions.length
         for (let i = mockWalletTransactions.length - 1; i >= 0; i--) if (mockWalletTransactions[i].userId === args.where.userId) mockWalletTransactions.splice(i, 1)

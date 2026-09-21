@@ -19,7 +19,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   Activity, ArrowLeftRight, BarChart3, Boxes, ClipboardList, CreditCard, FileEdit, FileSpreadsheet, FileText, FolderTree, Image as ImageIcon, Layers3,
-  LayoutDashboard, LogOut, Menu, MessageSquare, PackageCheck, Palette, Percent, Radio, RotateCcw, Search, Settings2,
+  LayoutDashboard, LogOut, Megaphone, Menu, MessageSquare, PackageCheck, Palette, Percent, Radio, RotateCcw, Search, Settings2,
   ShieldCheck, ShoppingBag, Store, Tag, Truck, UserCog, Users, UsersRound, Workflow, X, type LucideIcon,
 } from 'lucide-react'
 import AdminThemeToggle from '@/components/admin-theme-toggle'
@@ -38,7 +38,7 @@ const iconMap: Record<string, LucideIcon> = {
   orderEdits: FileEdit, purchaseOrders: ClipboardList, transfers: ArrowLeftRight,
   draftOrders: ClipboardList, returns: RotateCcw,
   segments: UsersRound, giftCards: CreditCard,
-  liveVisitors: Radio, dataTransfer: FileSpreadsheet,
+  liveVisitors: Radio, dataTransfer: FileSpreadsheet, pushCampaigns: Megaphone,
 }
 
 function normalizePath(pathname: string) { return pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname }
