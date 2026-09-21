@@ -5,6 +5,7 @@ import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { restoreCoinsForRefund } from '@/lib/returns'
+import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { Prisma } from '@prisma/client'
 
 const REFUND_MESSAGES = new Set([
@@ -112,6 +113,9 @@ export async function POST(req: Request) {
       }
 
       await restoreCoinsForRefund(tx, { order, successfulRefunds, refundId: prepared.transaction.id })
+
+      const redeemedGift = redeemedGiftCard(order.paymentTransactions)
+      if (redeemedGift) await restoreGiftCardBalance(tx, order.id, redeemedGift, successfulRefunds, order.grandTotal)
 
       const updated = await tx.order.update({ where: { id: order.id }, data: { paymentStatus, status, events: { create: { status, message: paymentStatus === 'REFUNDED' ? `Order fully refunded (${requestedAmount} ${order.currency}).` : `Order partially refunded (${requestedAmount} ${order.currency}).` } } } })
       await audit(actor.id, 'order.refunded', 'Order', order.id, { amount: requestedAmount, transactionId: prepared.transaction.id, provider: prepared.provider, refundedTotal: successfulRefunds })
