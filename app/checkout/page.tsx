@@ -12,6 +12,7 @@ type PaymentDetails = {
 }
 type StoreSettings = { payment: { cod:boolean; card:boolean; bank:boolean; wallet:boolean; details:PaymentDetails }; checkout:{ guestCheckout:boolean } }
 type ClientCheckout = { type:'mpgs'; merchantId:string; sessionId:string; scriptUrl:string }
+type ShippingRate = { id: string | null; name: string; price: number; freeAbove: number | null; estimatedDays: number | null }
 const defaultSettings:StoreSettings={payment:{cod:true,card:false,bank:false,wallet:false,details:{bank:null,wallet:null}},checkout:{guestCheckout:true}}
 
 declare global { interface Window { Checkout?: { configure: (options: unknown) => void; showPaymentPage: () => void } } }
@@ -97,6 +98,29 @@ export default function Checkout() {
   const [walletCurrency, setWalletCurrency] = useState('USD')
   const [coinBalance, setCoinBalance] = useState(0)
   const [coinsToUse, setCoinsToUse] = useState(0)
+  const [shippingRates, setShippingRates] = useState<ShippingRate[]>([])
+  const [selectedRateId, setSelectedRateId] = useState<string>('')
+  const [shippingLoading, setShippingLoading] = useState(false)
+  const shippingRequestId = useRef(0)
+
+  function loadShippingRates(country: string) {
+    const trimmed = country.trim()
+    if (!trimmed) { setShippingRates([]); setSelectedRateId(''); return }
+    const requestId = ++shippingRequestId.current
+    setShippingLoading(true)
+    fetch(`/api/checkout/shipping-rates?country=${encodeURIComponent(trimmed)}`, { cache: 'no-store' })
+      .then(r => r.json())
+      .then(data => {
+        if (requestId !== shippingRequestId.current) return
+        const rates: ShippingRate[] = Array.isArray(data?.rates) ? data.rates : []
+        setShippingRates(rates)
+        setSelectedRateId(current => rates.some(r => (r.id || '') === current) ? current : (rates[0]?.id || ''))
+      })
+      .catch(() => { if (requestId === shippingRequestId.current) setShippingRates([]) })
+      .finally(() => { if (requestId === shippingRequestId.current) setShippingLoading(false) })
+  }
+
+  useEffect(() => { loadShippingRates('Lebanon') }, [])
 
   useEffect(()=>{
     let active=true
@@ -138,7 +162,7 @@ export default function Checkout() {
     if (coinsToUse > coinBalance) { setError('You do not have enough coins for this redemption.'); return }
     setLoading(true)
     const form = event.currentTarget; const fd = new FormData(form)
-    const data = { email: String(fd.get('email') || ''), phone: String(fd.get('phone') || ''), paymentMethod, couponCode: String(fd.get('couponCode') || ''), giftCardCode: String(fd.get('giftCardCode') || ''), coinsToUse, shippingAddress: { firstName: String(fd.get('firstName') || ''), lastName: String(fd.get('lastName') || ''), line1: String(fd.get('line1') || ''), line2: String(fd.get('line2') || ''), city: String(fd.get('city') || ''), region: String(fd.get('region') || ''), postalCode: String(fd.get('postalCode') || ''), country: String(fd.get('country') || ''), phone: String(fd.get('phone') || '') }, items: items.map(item => ({ productId: item.productId, variantId: item.variantId || null, quantity: item.quantity })) }
+    const data = { email: String(fd.get('email') || ''), phone: String(fd.get('phone') || ''), paymentMethod, couponCode: String(fd.get('couponCode') || ''), giftCardCode: String(fd.get('giftCardCode') || ''), coinsToUse, shippingRateId: selectedRateId, shippingAddress: { firstName: String(fd.get('firstName') || ''), lastName: String(fd.get('lastName') || ''), line1: String(fd.get('line1') || ''), line2: String(fd.get('line2') || ''), city: String(fd.get('city') || ''), region: String(fd.get('region') || ''), postalCode: String(fd.get('postalCode') || ''), country: String(fd.get('country') || ''), phone: String(fd.get('phone') || '') }, items: items.map(item => ({ productId: item.productId, variantId: item.variantId || null, quantity: item.quantity })) }
     try {
       const response=await fetch('/api/checkout',{method:'POST',headers:{'content-type':'application/json','x-idempotency-key':idempotencyKey.current},body:JSON.stringify(data)})
       const output=await response.json(); if(!response.ok)throw new Error(output.error||'Unable to place order')
@@ -177,7 +201,8 @@ export default function Checkout() {
     <h3>Contact</h3><label className="fieldLabel">Email<input className="input" required name="email" type="email" autoComplete="email" inputMode="email" placeholder="you@example.com" defaultValue={recoveredEmail} key={recoveredEmail} onBlur={e => captureCheckoutProgress(e.target.value.trim())} /></label><label className="fieldLabel">Phone<input className="input" name="phone" autoComplete="tel" inputMode="tel" placeholder="Phone" /></label>
     <h3>Delivery</h3><div className="grid two"><label className="fieldLabel">First name<input className="input" required name="firstName" autoComplete="given-name" placeholder="First name" /></label><label className="fieldLabel">Last name<input className="input" required name="lastName" autoComplete="family-name" placeholder="Last name" /></label></div>
     <label className="fieldLabel">Address<input className="input" required name="line1" autoComplete="address-line1" placeholder="Street address" /></label><label className="fieldLabel">Apartment, floor, etc. <span className="muted">(optional)</span><input className="input" name="line2" autoComplete="address-line2" placeholder="Apartment, floor, etc." /></label>
-    <div className="grid two"><label className="fieldLabel">City<input className="input" required name="city" autoComplete="address-level2" placeholder="City" /></label><label className="fieldLabel">Region<input className="input" name="region" autoComplete="address-level1" placeholder="Region" /></label></div><div className="grid two"><label className="fieldLabel">Postal code<input className="input" name="postalCode" autoComplete="postal-code" inputMode="numeric" placeholder="Postal code" /></label><label className="fieldLabel">Country<input className="input" required name="country" autoComplete="country-name" placeholder="Country" defaultValue="Lebanon" /></label></div>
+    <div className="grid two"><label className="fieldLabel">City<input className="input" required name="city" autoComplete="address-level2" placeholder="City" /></label><label className="fieldLabel">Region<input className="input" name="region" autoComplete="address-level1" placeholder="Region" /></label></div><div className="grid two"><label className="fieldLabel">Postal code<input className="input" name="postalCode" autoComplete="postal-code" inputMode="numeric" placeholder="Postal code" /></label><label className="fieldLabel">Country<input className="input" required name="country" autoComplete="country-name" placeholder="Country" defaultValue="Lebanon" onBlur={e => loadShippingRates(e.target.value)} /></label></div>
+    <h3>Delivery method</h3>{shippingLoading && !shippingRates.length ? <div className="alert">Loading delivery options…</div> : shippingRates.length > 1 ? <div className="grid" style={{gap:8}}>{shippingRates.map(rate => <label className="fieldLabel" key={rate.id || 'standard'} style={{flexDirection:'row',alignItems:'center',gap:10,cursor:'pointer'}}><input type="radio" name="shippingRateOption" checked={selectedRateId===(rate.id||'')} onChange={()=>setSelectedRateId(rate.id||'')} /><span style={{flex:1}}>{rate.name}{rate.estimatedDays?` · ${rate.estimatedDays} day${rate.estimatedDays===1?'':'s'}`:''}</span><strong>{rate.freeAbove!==null && subtotal>=rate.freeAbove ? 'Free' : money(rate.price)}</strong></label>)}</div> : shippingRates[0] ? <p className="muted">{shippingRates[0].name}{shippingRates[0].estimatedDays?` · ${shippingRates[0].estimatedDays} day${shippingRates[0].estimatedDays===1?'':'s'}`:''} — {shippingRates[0].freeAbove!==null && subtotal>=shippingRates[0].freeAbove ? 'Free' : money(shippingRates[0].price)}</p> : null}
     <h3>Payment</h3>{settings&&enabledMethods.length>0?<label className="fieldLabel">Payment method<select className="input" name="paymentMethod" value={paymentMethod} onChange={e=>setPaymentMethod(e.target.value)}>{enabledMethods.map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></label>:settings?<div className="alert danger">No payment methods are currently enabled. Please contact the store.</div>:null}
     {paymentMethod==='WALLET' && authenticated && <div className={walletBalance>0?'alert':'alert danger'}><strong>Store wallet</strong><div>{money(walletBalance,walletCurrency)} available for this order.</div></div>}
     {authenticated && coinBalance>0 && <div className="card" style={{padding:16,marginTop:12}}><strong>Use loyalty coins</strong><p className="muted" style={{marginTop:4}}>1 coin = 0.01 in store currency.</p><div className="inline" style={{marginTop:10,gap:10}}><input className="input" type="number" min="0" max={coinBalance} step="1" inputMode="numeric" value={coinsToUse||''} onChange={e=>setCoinsToUse(Math.max(0,Math.min(coinBalance,Number(e.target.value)||0)))} placeholder="Coins to use" /><button className="btn secondary" type="button" onClick={()=>setCoinsToUse(coinBalance)}>Use all</button></div>{coinsToUse>0&&<div className="muted" style={{marginTop:8}}>Discount: {money(coinsToUse)}</div>}</div>}
@@ -186,5 +211,5 @@ export default function Checkout() {
     <label className="fieldLabel">Gift card <span className="muted">(optional)</span><input className="input" name="giftCardCode" autoCapitalize="characters" placeholder="Gift card code" /></label>
     {error&&<div className="alert danger" role="alert" aria-live="polite">{error}</div>}
     <button className="btn" type="submit" disabled={loading||!items.length||!settings||!sessionLoaded||enabledMethods.length===0||guestBlocked} aria-busy={loading}>{loading?'Placing order…':'Place order'}</button><Link className="textLink" href="/cart">Back to cart</Link>
-  </form><aside className="card summaryCard"><span className="muted">ORDER SUMMARY</span>{items.map(item=><div className="summaryLine" key={item.productId+String(item.variantId)}><span>{item.name} × {item.quantity}</span><strong>{money(item.price*item.quantity)}</strong></div>)}<div className="summaryLine total"><span>Total before shipping</span><strong>{money(subtotal)}</strong></div><p className="muted">Shipping and tax are calculated securely at checkout from your delivery area and store rules.</p></aside></div></main>
+  </form><aside className="card summaryCard"><span className="muted">ORDER SUMMARY</span>{items.map(item=><div className="summaryLine" key={item.productId+String(item.variantId)}><span>{item.name} × {item.quantity}</span><strong>{money(item.price*item.quantity)}</strong></div>)}<div className="summaryLine total"><span>Total before shipping</span><strong>{money(subtotal)}</strong></div><p className="muted">Tax is calculated securely at checkout from your delivery area and store rules.</p></aside></div></main>
 }

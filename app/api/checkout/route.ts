@@ -35,6 +35,7 @@ function checkoutFingerprint(userId: string | null, input: any, merged: Map<stri
     giftCardCode: input.giftCardCode || null,
     paymentMethod: input.paymentMethod,
     coinsToUse: input.coinsToUse || 0,
+    shippingRateId: input.shippingRateId || null,
     shippingAddress: input.shippingAddress,
   })).digest('hex')
 }
@@ -121,6 +122,7 @@ const SAFE_CHECKOUT_MESSAGES = new Set([
   'This gift card has no remaining balance',
   'This gift card cannot be used for this order currency',
   'This gift card is no longer available',
+  'Selected shipping method is no longer available',
 ])
 
 function checkoutFailure(error: unknown) {
@@ -248,7 +250,7 @@ export async function POST(req: Request) {
     if (requestedCoins > discountedSubtotal && requestedCoins > 0) throw new Error('Coin redemption exceeds the merchandise total.')
     const taxableAmount = taxableAmountAfterRewards(taxableSubtotal, discount.taxable, discountedSubtotal, coinDiscount)
     const rewardAdjustedSubtotal = Math.max(0, discountedSubtotal - coinDiscount)
-    const shipping = await calculateShipping(input.shippingAddress.country, rewardAdjustedSubtotal)
+    const shipping = await calculateShipping(input.shippingAddress.country, rewardAdjustedSubtotal, input.shippingRateId || null)
     const taxRate = await getTaxRatePercent(input.shippingAddress.country)
     const taxTotal = Math.round(taxableAmount * taxRate / 100)
     const shippingTotal = coupon?.type === 'FREE_SHIPPING' ? 0 : shipping.total
