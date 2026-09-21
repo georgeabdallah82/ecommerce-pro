@@ -148,6 +148,7 @@ function WebhooksPanel({ webhooks, onChange }: { webhooks: any[]; onChange: () =
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [revealedSecret, setRevealedSecret] = useState('')
+  const [retryingId, setRetryingId] = useState('')
 
   async function create(close: () => void) {
     if (!endpointUrl.trim()) return
@@ -166,6 +167,13 @@ function WebhooksPanel({ webhooks, onChange }: { webhooks: any[]; onChange: () =
     catch (e) { setError(e instanceof Error ? e.message : 'Unable to update webhook') }
   }
 
+  async function retry(hook: any) {
+    setError(''); setRetryingId(hook.id)
+    try { await api(`/api/admin/webhooks/${hook.id}/redeliver`, { method: 'POST' }); onChange() }
+    catch (e) { setError(e instanceof Error ? e.message : 'Unable to redeliver webhook') }
+    finally { setRetryingId('') }
+  }
+
   return <div className={`${ui.card} ${styles.panel}`}>
     <h3>Webhooks</h3>
     <p className={ui.muted}>HTTPS endpoints notified when store events happen.</p>
@@ -175,7 +183,15 @@ function WebhooksPanel({ webhooks, onChange }: { webhooks: any[]; onChange: () =
           <strong>{x.topic}</strong>
           <span className={`${ui.statusPill} ${x.status === 'ACTIVE' ? ui.statusPillSuccess : ui.statusPillWarning}`}>{x.status}</span>
           <span className={styles.rowMeta} title={x.endpointUrl}>{x.endpointUrl}</span>
-          <div className={styles.rowActions}><button type="button" className={ui.textButton} onClick={() => toggleStatus(x)}>{x.status === 'ACTIVE' ? 'Disable' : 'Enable'}</button></div>
+          {x.lastSentAt && (
+            <span className={`${ui.statusPill} ${x.lastError ? ui.statusPillDanger : ui.statusPillSuccess}`} title={x.lastError || `Last delivered ${new Date(x.lastSentAt).toLocaleString()}`}>
+              {x.lastError ? `Failed: ${x.lastError}` : `Delivered ${new Date(x.lastSentAt).toLocaleString()}`}
+            </span>
+          )}
+          <div className={styles.rowActions}>
+            {x.hasFailedDelivery && <button type="button" className={ui.textButton} disabled={retryingId === x.id} onClick={() => retry(x)}>{retryingId === x.id ? 'Retrying…' : 'Retry delivery'}</button>}
+            <button type="button" className={ui.textButton} onClick={() => toggleStatus(x)}>{x.status === 'ACTIVE' ? 'Disable' : 'Enable'}</button>
+          </div>
         </div>
       ))}
       {!webhooks.length && <div className="empty">No webhooks configured.</div>}

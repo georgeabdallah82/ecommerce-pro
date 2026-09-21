@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { createHmac, randomUUID } from 'node:crypto'
 import { describe, it, beforeEach, afterEach } from 'node:test'
 import { db } from '@/lib/prisma'
-import { dispatchWebhookEvent } from '@/lib/webhooks'
+import { dispatchWebhookEvent, redeliverWebhook } from '@/lib/webhooks'
 
 let savedFetch: typeof fetch
 
@@ -57,16 +57,21 @@ describe('lib/webhooks dispatchWebhookEvent', () => {
     assert.ok(updated?.lastSentAt)
   })
 
-  it('records a delivery failure without throwing when the endpoint rejects the request', async () => {
+  it('records a delivery failure without throwing when the endpoint rejects the request, retrying first', async () => {
     const topic = `order.updated.${randomUUID()}`
     const endpoint = await makeEndpoint({ topic })
-    global.fetch = (async () => new Response('nope', { status: 500 })) as typeof fetch
+    let callCount = 0
+    global.fetch = (async () => { callCount++; return new Response('nope', { status: 500 }) }) as typeof fetch
 
     await dispatchWebhookEvent(topic, { orderId: 'order_2' })
 
+    assert.equal(callCount, 3, 'should retry twice after the initial attempt before giving up')
     const updated = await db.webhookEndpoint.findUnique({ where: { id: endpoint.id } })
     assert.equal(updated?.lastStatus, 500)
     assert.equal(updated?.lastError, 'HTTP 500')
+    // the failed body is kept so it can be redelivered later
+    assert.ok(updated?.lastPayload)
+    assert.equal(JSON.parse(updated!.lastPayload!).payload.orderId, 'order_2')
   })
 
   it('records a delivery failure without throwing when the network call itself throws', async () => {
@@ -79,6 +84,7 @@ describe('lib/webhooks dispatchWebhookEvent', () => {
     const updated = await db.webhookEndpoint.findUnique({ where: { id: endpoint.id } })
     assert.equal(updated?.lastStatus, null)
     assert.equal(updated?.lastError, 'fetch failed')
+    assert.ok(updated?.lastPayload)
   })
 
   it('does not deliver to a DISABLED endpoint', async () => {
@@ -89,5 +95,58 @@ describe('lib/webhooks dispatchWebhookEvent', () => {
 
     await dispatchWebhookEvent(topic, { orderId: 'order_4' })
     assert.equal(fetchCalled, false)
+  })
+
+  it('recovers on a later attempt without exhausting all retries', async () => {
+    const topic = `order.updated.${randomUUID()}`
+    const endpoint = await makeEndpoint({ topic })
+    let callCount = 0
+    global.fetch = (async () => {
+      callCount++
+      if (callCount < 2) return new Response('nope', { status: 503 })
+      return new Response(JSON.stringify({ ok: true }), { status: 200 })
+    }) as typeof fetch
+
+    await dispatchWebhookEvent(topic, { orderId: 'order_5' })
+
+    assert.equal(callCount, 2)
+    const updated = await db.webhookEndpoint.findUnique({ where: { id: endpoint.id } })
+    assert.equal(updated?.lastStatus, 200)
+    assert.equal(updated?.lastError, null)
+    assert.equal(updated?.lastPayload, null, 'a successful delivery clears any previously-stored failed payload')
+  })
+})
+
+describe('lib/webhooks redeliverWebhook', () => {
+  it('throws when the endpoint does not exist', async () => {
+    await assert.rejects(() => redeliverWebhook('missing-endpoint'), /not found/)
+  })
+
+  it('throws when the endpoint has no failed delivery to retry', async () => {
+    const endpoint = await makeEndpoint()
+    await assert.rejects(() => redeliverWebhook(endpoint.id), /no failed delivery/)
+  })
+
+  it('re-sends the exact body from the last failed delivery, and clears it on success', async () => {
+    const topic = `order.updated.${randomUUID()}`
+    const endpoint = await makeEndpoint({ topic })
+    global.fetch = (async () => new Response('nope', { status: 500 })) as typeof fetch
+    await dispatchWebhookEvent(topic, { orderId: 'order_6' })
+
+    const failed = await db.webhookEndpoint.findUnique({ where: { id: endpoint.id } })
+    assert.ok(failed?.lastPayload)
+    // The mock DB (unlike a real Prisma client) hands back live object references
+    // rather than snapshots, so `failed` would otherwise get mutated in place the
+    // moment the redelivery below succeeds -- snapshot the string now.
+    const failedPayload = failed!.lastPayload as string
+
+    let redeliveredBody: string | undefined
+    global.fetch = (async (_url: string, init?: RequestInit) => { redeliveredBody = String(init?.body); return new Response(JSON.stringify({ ok: true }), { status: 200 }) }) as typeof fetch
+    await redeliverWebhook(endpoint.id)
+
+    assert.equal(redeliveredBody, failedPayload)
+    const recovered = await db.webhookEndpoint.findUnique({ where: { id: endpoint.id } })
+    assert.equal(recovered?.lastStatus, 200)
+    assert.equal(recovered?.lastPayload, null)
   })
 })
