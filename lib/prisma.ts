@@ -763,6 +763,7 @@ function getMockHandler(model: string) {
         if (args?.where?.id !== undefined && typeof args.where.id === 'string') targets = targets.filter((x) => x.id === args.where.id)
         if (args?.where?.role !== undefined) targets = targets.filter((x) => x.role === args.where.role)
         if (args?.where?.isActive !== undefined) targets = targets.filter((x) => x.isActive === args.where.isActive)
+        if (args?.where?.code !== undefined) targets = targets.filter((x) => x.code === args.where.code)
         if (args?.where?.usedCount?.lt !== undefined) targets = targets.filter((x) => (x.usedCount || 0) < args.where.usedCount.lt)
         if (args?.where?.usedCount?.gt !== undefined) targets = targets.filter((x) => (x.usedCount || 0) > args.where.usedCount.gt)
         for (const target of targets) {
