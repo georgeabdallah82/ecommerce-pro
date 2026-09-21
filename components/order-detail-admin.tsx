@@ -147,6 +147,11 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
           <div className={s.summaryBox}><div><span>Subtotal</span><strong>{money(o.subtotal,o.currency)}</strong></div><div><span>Discount</span><strong>- {money(o.discountTotal,o.currency)}</strong></div><div><span>Shipping</span><strong>{money(o.shippingTotal,o.currency)}</strong></div><div><span>Tax</span><strong>{money(o.taxTotal,o.currency)}</strong></div><div className={s.total}><span>Total</span><strong>{money(o.grandTotal,o.currency)}</strong></div></div>
         </section>
 
+        {(o.issuedGiftCards||[]).length>0&&<section className={ui.card}>
+          <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Issued gift cards</h3><span className={ui.muted}>Minted from this order's gift-card line item{o.issuedGiftCards.length===1?'':'s'}</span></div>
+          {o.issuedGiftCards.map((c:any)=><div key={c.id} className={s.summaryLine}><span>{c.code}</span><span>{c.status} · {money(c.balance,c.currency)} of {money(c.initialAmount,c.currency)}</span></div>)}
+        </section>}
+
         <section className={ui.card}>
           <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><div><h3>Customer</h3><span className={ui.muted}>Order contact details</span></div></div>
           {editing ? <div className={s.twoCol}><label className={ui.fieldLabel}>Email<input className={ui.input} value={email} onChange={e=>setEmail(e.target.value)} /></label><label className={ui.fieldLabel}>Phone<input className={ui.input} value={phone} onChange={e=>setPhone(e.target.value)} /></label></div> : <><strong>{o.user?.name||o.email}</strong><p className={ui.muted}><Mail size={13}/> {o.email}</p>{o.phone&&<p className={ui.muted}><Phone size={13}/> {o.phone}</p>}</>}
