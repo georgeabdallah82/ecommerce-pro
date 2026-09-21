@@ -63,6 +63,13 @@ export async function POST(_req: Request, { params }: { params: Promise<{ orderN
       const redeemed = redeemedGiftCard(order.paymentTransactions)
       if (redeemed) await restoreGiftCardBalance(tx, order.id, redeemed, order.grandTotal, order.grandTotal)
 
+      // Matches the admin-cancel path (app/api/admin/orders/route.ts) and checkout's own
+      // failure/expiry cleanup (checkout.ts, the areeba webhook) -- a coupon's usedCount is
+      // released the same way regardless of who or what cancelled the order, so a customer
+      // self-cancelling doesn't permanently burn a use of a limited-use coupon that a staff
+      // cancellation or a failed payment would have correctly given back.
+      if (order.couponCode) await tx.coupon.updateMany({ where: { code: order.couponCode, usedCount: { gt: 0 } }, data: { usedCount: { decrement: 1 } } })
+
       const updated = await tx.order.update({
         where: { id: order.id },
         data: {
