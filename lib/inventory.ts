@@ -20,15 +20,31 @@ export function availableQuantity(row: { quantity: number; reserved: number }) {
   return Math.max(0, row.quantity - row.reserved)
 }
 
+// Used to pick which StoreLocation a Fulfillment should be recorded against, from the set of
+// InventoryItem rows a shipment's stock actually came out of. Ties (equally-common locations)
+// keep whichever was seen first, matching reserveStock's own largest-available-first ordering.
+export function pickMajorityLocation(rows: Array<{ locationId: string | null }>): string | null {
+  const counts = new Map<string, number>()
+  for (const row of rows) if (row.locationId) counts.set(row.locationId, (counts.get(row.locationId) ?? 0) + 1)
+  let best: string | null = null
+  for (const [locationId, count] of counts) if (!best || count > (counts.get(best) ?? 0)) best = locationId
+  return best
+}
+
 export async function reserveStock(tx: any, product: any, variantId: string | null | undefined, quantity: number, referenceId: string) {
   if (quantity <= 0) throw new Error('Quantity must be greater than zero')
   if (!product.trackInventory || product.continueSellingWhenOutOfStock) return []
 
   const variantRows = variantId ? product.inventory.filter((x: any) => x.variantId === variantId) : []
-  const rows = variantRows.length > 0 ? variantRows : product.inventory.filter((x: any) => !x.variantId)
+  const unsortedRows = variantRows.length > 0 ? variantRows : product.inventory.filter((x: any) => !x.variantId)
+  // Reserving from whatever order the DB happens to return would silently split one order's
+  // stock across multiple physical locations even when a single warehouse could cover the
+  // whole line item. Trying the location with the most available stock first means an order
+  // only ever splits across locations when it genuinely has to (no single location has enough).
+  const rows = [...unsortedRows].sort((a: any, b: any) => availableQuantity(b) - availableQuantity(a))
 
   let remaining = quantity
-  const reservations: Array<{ inventoryId: string; quantity: number }> = []
+  const reservations: Array<{ inventoryId: string; quantity: number; locationId: string | null }> = []
   for (const row of rows) {
     if (remaining <= 0) break
     const canReserve = Math.min(remaining, availableQuantity(row))
@@ -49,7 +65,7 @@ export async function reserveStock(tx: any, product: any, variantId: string | nu
         referenceId,
       },
     })
-    reservations.push({ inventoryId: row.id, quantity: canReserve })
+    reservations.push({ inventoryId: row.id, quantity: canReserve, locationId: row.locationId ?? null })
     remaining -= canReserve
   }
 

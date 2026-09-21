@@ -2,7 +2,7 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { canTransitionOrder, canTransitionPayment, fulfillmentForStatus } from '@/lib/orders'
-import { fulfillOrderStock, releaseOrderReservations } from '@/lib/inventory'
+import { fulfillOrderStock, releaseOrderReservations, pickMajorityLocation } from '@/lib/inventory'
 import { remainingRefundable, pickRefundSource, creditWalletRefund, settleReturnRefund, type ReturnableOrder } from '@/lib/returns'
 import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { json } from '@/lib/utils'
@@ -168,11 +168,20 @@ export async function PATCH(req: Request) {
       // already knows: it always covers every item on the order in one shipment.
       let fulfillment: { id: string } | null = null
       if (fulfilling) {
+        // fulfillOrderStock (above) already picked which physical InventoryItem rows this
+        // shipment's stock actually came out of -- reuse that instead of guessing, so the
+        // shipment records which warehouse it must ship from rather than leaving Fulfillment's
+        // locationId permanently null. Majority location wins when a line item's stock had to
+        // be split across more than one (reserveStock now prefers a single location where
+        // possible, so a split only happens when no one location had enough).
+        const fulfillmentLocationId = fulfilledInventoryIds.length
+          ? pickMajorityLocation(await tx.inventoryItem.findMany({ where: { id: { in: fulfilledInventoryIds } }, select: { locationId: true } }))
+          : null
         fulfillment = await tx.fulfillment.create({
           data: {
             orderId: order.id, status: 'SHIPPED', shippedAt: new Date(),
             trackingNumber: (data.trackingNumber ?? order.trackingNumber) || null,
-            trackingCompany, trackingUrl,
+            trackingCompany, trackingUrl, locationId: fulfillmentLocationId,
           },
         })
         for (const item of order.items) {
