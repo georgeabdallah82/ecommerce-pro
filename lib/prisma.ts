@@ -383,6 +383,13 @@ function getMockHandler(model: string) {
         const w = args?.where || {}
         if (w.productId) list = list.filter((x) => x.productId === w.productId)
         if (w.id?.in) { const ids = new Set(w.id.in); list = list.filter((x) => ids.has(x.id)) }
+        // Every real caller (admin inventory list, low-stock push alerts, the analytics
+        // report's valuation/lowStock cards) asks for product/variant via include or select
+        // -- resolve them from the other mock arrays the same loose way customerTagMember's
+        // `tag` include already does above, rather than leaving `.product`/`.variant` undefined
+        // and crashing every one of those callers the moment mock inventory data exists.
+        if (args?.include?.product || args?.select?.product) list = list.map((x) => ({ ...x, product: mockProducts.find((p) => p.id === x.productId) || null }))
+        if (args?.include?.variant || args?.select?.variant) list = list.map((x) => ({ ...x, variant: x.variantId ? mockProductVariants.find((v) => v.id === x.variantId) || null : null }))
         return list
       }
       if (model === 'customerTag') return [...mockCustomerTags].sort((a, b) => a.value.localeCompare(b.value))

@@ -219,6 +219,7 @@ export default function AnalyticsAdmin() {
             <Metric icon={<Package size={18} />} label="Items sold" value={data.kpis.itemsSold} change={data.kpis.itemsSoldChange} compareLabel={compareLabel} sparkline={data.series.map(x => x.items)} />
             <Metric icon={<DollarSign size={18} />} label="Gross profit" value={money0(data.kpis.grossProfit)} change={data.kpis.grossProfitChange} compareLabel={compareLabel} />
             <Metric icon={<Percent size={18} />} label="Gross margin" value={`${data.kpis.marginPercent}%`} change={data.kpis.marginPercentChange} compareLabel={compareLabel} />
+            <Metric icon={<Package size={18} />} label="Inventory value" value={money0(data.kpis.inventoryValue)} />
             <Metric icon={<Users size={18} />} label="New customers" value={data.kpis.newCustomers} change={data.kpis.newCustomersChange} compareLabel={compareLabel} sparkline={data.series.map(x => x.newCustomers)} />
             <Metric icon={<Repeat size={18} />} label="Returning customers" value={`${data.kpis.returningCustomerRate}%`} change={data.kpis.returningCustomerRateChange} compareLabel={compareLabel} />
           </div>

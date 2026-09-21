@@ -170,7 +170,7 @@ export async function GET(req: Request) {
       loadPeriod(current),
       previous ? loadPeriod(previous) : null,
       db.inventoryItem.findMany({
-        select: { id: true, quantity: true, reserved: true, lowStockThreshold: true, product: { select: { name: true, sku: true } }, variant: { select: { name: true, sku: true } } },
+        select: { id: true, quantity: true, reserved: true, lowStockThreshold: true, product: { select: { name: true, sku: true, costPrice: true } }, variant: { select: { name: true, sku: true } } },
       }),
       db.product.count({}),
     ])
@@ -187,6 +187,13 @@ export async function GET(req: Request) {
       .map(i => ({ id: i.id, product: i.product.name, sku: i.variant?.sku ?? i.product.sku, variant: i.variant?.name ?? null, available: Math.max(0, i.quantity - i.reserved), threshold: i.lowStockThreshold }))
       .sort((a, b) => a.available - b.available)
       .slice(0, 12)
+
+    // Point-in-time stock-on-hand valuation, not scoped to the selected date range (like
+    // lowStock above) -- a ProductVariant has no costPrice of its own, so every unit of a
+    // product (shared inventory or any of its variants) is valued at the parent Product's
+    // current costPrice, the only per-unit cost the schema tracks.
+    const inventoryValue = inventory.reduce((sum, i) => sum + i.quantity * (i.product.costPrice ?? 0), 0)
+    const inventoryUnits = inventory.reduce((sum, i) => sum + i.quantity, 0)
 
     return json({
       periodDays: current.days,
@@ -213,6 +220,8 @@ export async function GET(req: Request) {
         marginPercent,
         marginPercentChange: previousPeriod ? pct(marginPercent, previousMarginPercent) : null,
         products,
+        inventoryValue,
+        inventoryUnits,
       },
       series: currentPeriod.series,
       previousSeries: previousPeriod?.series ?? null,
