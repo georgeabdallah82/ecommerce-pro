@@ -129,7 +129,11 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
         // Notification delivery must never make a committed order edit retryable.
       }
     }
-    void sendOrderEditEmail(order.updated.id, order.paymentAdjustment).catch(error => console.error('[email] order edit email failed', error))
+    // A gift-card product this edit added should only be issued once it's actually been paid
+    // for -- an edit that leaves the order owing more money (a pending manual charge with no
+    // automatic confirmation) defers issuance until that payment is later confirmed (see
+    // issueAndNotifyGiftCardsForOrder, called from the order PATCH route when staff mark it PAID).
+    void sendOrderEditEmail(order.updated.id, order.paymentAdjustment, order.paymentAdjustment?.type !== 'charge').catch(error => console.error('[email] order edit email failed', error))
 
     if (order.refundToSettle && order.refundToSettle.refundProvider !== 'manual' && order.refundToSettle.refundProvider !== 'wallet') {
       const settled = await settleReturnRefund(actor.id, { orderId: order.updated.id, refundId: order.refundToSettle.refundId, refundProvider: order.refundToSettle.refundProvider, refundExternalId: order.refundToSettle.refundExternalId, amount: order.refundToSettle.amount, currency: order.updated.currency, auditAction: 'order.edit_refund' })

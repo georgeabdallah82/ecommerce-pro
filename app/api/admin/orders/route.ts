@@ -7,7 +7,7 @@ import { remainingRefundable, pickRefundSource, creditWalletRefund, settleReturn
 import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { json } from '@/lib/utils'
 import { dispatchWebhookEvent, dispatchInventoryUpdated } from '@/lib/webhooks'
-import { sendFulfillmentEmail } from '@/lib/email'
+import { sendFulfillmentEmail, issueAndNotifyGiftCardsForOrder } from '@/lib/email'
 import { checkLowStockAlerts } from '@/lib/push'
 import { OrderStatus, PaymentStatus } from '@prisma/client'
 
@@ -199,6 +199,13 @@ export async function PATCH(req: Request) {
       await db.notification.create({ data: { userId: result.order.userId, title: `Order ${result.order.orderNumber} updated`, body, type: result.cancelRefundAmount > 0 || result.refundToSettle ? 'ORDER_REFUND' : 'ORDER_STATUS' } })
     }
     if (result.fulfilling) void sendFulfillmentEmail(result.order.id).catch(error => console.error('[email] fulfillment notification failed', error))
+    // A gift-card product added via an order edit that increased the order's total is
+    // deliberately never issued at edit-commit time (see app/api/admin/order-edits/[id]/route.ts)
+    // since that additional amount is only a pending manual charge with no automatic payment
+    // confirmation -- staff marking the order PAID here is that confirmation.
+    if (result.paymentChanged && requestedPayment === PaymentStatus.PAID) {
+      void issueAndNotifyGiftCardsForOrder(result.order.id).catch(error => console.error('[email] gift card issuance on payment confirmation failed', error))
+    }
     await audit(actor.id, 'order.updated', 'Order', result.order.id, { from: result.order.status, to: result.updated.status, paymentFrom: result.order.paymentStatus, paymentTo: result.updated.paymentStatus, statusChanged: result.statusChanged, paymentChanged: result.paymentChanged, detailsEdited: Object.keys(detailsPatch), fulfillmentId: result.fulfillmentId, cancelRefundAmount: result.cancelRefundAmount || undefined, cancelRefundPending: result.refundToSettle?.amount })
     if (result.statusChanged || result.paymentChanged) {
       const eventPayload = { id: result.updated.id, orderNumber: result.updated.orderNumber, status: result.updated.status, paymentStatus: result.updated.paymentStatus, fulfillmentStatus: result.updated.fulfillmentStatus }
