@@ -4,7 +4,7 @@ import { hasPermission } from '@/lib/permissions'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { dispatchWebhookEvent, dispatchInventoryUpdated } from '@/lib/webhooks'
-import { alreadyReturnedQuantities, normalizeReturnItems, remainingRefundable, restockReturnEntries, pickRefundSource, settleReturnRefund, creditWalletRefund, type ReturnableOrder } from '@/lib/returns'
+import { alreadyReturnedQuantities, normalizeReturnItems, remainingRefundable, restockReturnEntries, pickRefundSource, settleReturnRefund, creditWalletRefund, restoreCoinsForRefund, type ReturnableOrder } from '@/lib/returns'
 import { sendReturnStatusEmail } from '@/lib/email'
 import { Prisma } from '@prisma/client'
 
@@ -114,6 +114,7 @@ export async function POST(req: Request) {
       if (refund && refundProvider === 'wallet') await creditWalletRefund(tx, { userId: order.userId, refundId: refund.id, amount: requestedRefund, currency: order.currency })
       const newRefundedTotal = refunded + (requestedRefund > 0 && refundStatus === 'refunded' ? requestedRefund : 0)
       const paymentStatus = refundStatus === 'refunded' ? (newRefundedTotal >= order.grandTotal ? 'REFUNDED' : 'PARTIALLY_REFUNDED') : orderRow.paymentStatus
+      if (refund && refundStatus === 'refunded') await restoreCoinsForRefund(tx, { order, successfulRefunds: newRefundedTotal, refundId: refund.id })
       const updated = await tx.order.update({ where: { id: order.id }, data: { paymentStatus, status: paymentStatus === 'REFUNDED' ? 'REFUNDED' : orderRow.status, events: { create: { status: paymentStatus, message: `${returnRequest.id}: ${normalized.map(x => `${x.item.name} × ${x.quantity}`).join(', ')}${restock ? ' — restocked' : ' — not restocked'}${requestedRefund ? ` — ${refundStatus === 'refunded' ? `refunded ${requestedRefund} ${order.currency}` : `refund pending ${requestedRefund} ${order.currency}`}` : ''}` } } } })
 
       await audit(actor.id, 'order.returned', 'Order', order.id, { returnId: returnRequest.id, items: normalized.map(x => ({ orderItemId: x.orderItemId, quantity: x.quantity })), restocked: restock, refundId: refund?.id || null, refundAmount: requestedRefund, refundProvider })

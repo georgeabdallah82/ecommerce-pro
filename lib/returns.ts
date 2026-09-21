@@ -6,7 +6,7 @@ import { sendReturnStatusEmail } from '@/lib/email'
 // Extended (Accelerate) client payload inference doesn't always widen nested `include`
 // relations correctly, so query results are asserted to the shape actually queried.
 export type ReturnOrderItem = { id: string; name: string; productId: string; variantId: string | null; quantity: number }
-export type ReturnOrderPaymentTransaction = { id: string; status: string; amount: number; provider: string; externalId: string | null; createdAt: Date }
+export type ReturnOrderPaymentTransaction = { id: string; status: string; amount: number; provider: string; externalId: string | null; createdAt: Date; rawJson: string | null }
 export type ReturnableOrder = {
   id: string; orderNumber: string; userId: string | null; status: string; paymentStatus: string
   grandTotal: number; currency: string; updatedAt: Date; paymentMethod: string
@@ -116,6 +116,43 @@ export function pickRefundSource(order: ReturnableOrder) {
   return { refundProvider: original?.provider || 'manual', refundExternalId: original?.externalId || null }
 }
 
+// v is `undefined` whenever the field simply isn't a safe integer -- mirrors the identical
+// helper duplicated in checkout/route.ts and the areeba webhook, which read a payment
+// transaction's rawJson for a different purpose (checkout-time bookkeeping) and are left
+// alone; this copy is the one shared by every path that can *refund* an order.
+function parseCoinsUsed(rawJson: string | null) {
+  if (!rawJson) return 0
+  try {
+    const parsed = JSON.parse(rawJson) as { coinsUsed?: unknown }
+    return Number.isSafeInteger(parsed.coinsUsed) ? Math.max(0, Number(parsed.coinsUsed)) : 0
+  } catch { return 0 }
+}
+
+// Restores coins spent on an order proportionally to how much of the order has now been
+// refunded -- the same math the standalone refund endpoint (app/api/admin/refunds/route.ts)
+// already used, now shared so every refund path (direct refund, return, order-edit) agrees on
+// how many coins a customer gets back instead of only the standalone endpoint restoring them
+// while a return or order-edit refund silently lost the customer's coins. Order cancellation
+// is deliberately not routed through this: it already fully reverses coins via its own
+// type:'REVERSAL' entry (app/api/admin/orders/route.ts), a different business event (voiding
+// the whole order) from a partial refund.
+// Idempotent: sums what's already been restored for this order and only tops up the delta, so
+// calling it again after a second partial refund doesn't double-credit the first portion.
+export async function restoreCoinsForRefund(tx: any, params: { order: { id: string; userId: string | null; grandTotal: number; paymentTransactions: Array<{ provider: string; rawJson: string | null }> }; successfulRefunds: number; refundId: string }) {
+  const { order, successfulRefunds, refundId } = params
+  const checkoutTx = order.paymentTransactions.find(t => t.provider === 'checkout' && t.rawJson)
+  const coinsUsed = parseCoinsUsed(checkoutTx?.rawJson || null)
+  if (!order.userId || coinsUsed <= 0 || order.grandTotal <= 0) return
+  const prefix = `coin-refund:${order.id}:`
+  const restoredAggregate = await tx.coinTransaction.aggregate({ where: { userId: order.userId, type: 'REFUND', referenceId: { startsWith: prefix } }, _sum: { amount: true } })
+  const restored = Math.max(0, Number(restoredAggregate._sum.amount || 0))
+  const target = Math.min(coinsUsed, Math.floor(coinsUsed * successfulRefunds / order.grandTotal))
+  const delta = target - restored
+  if (delta > 0) {
+    await tx.coinTransaction.create({ data: { id: `coin_refund_${refundId}`, userId: order.userId, amount: delta, type: 'REFUND', reason: 'Order refund coin restoration', referenceId: `${prefix}${refundId}` } })
+  }
+}
+
 // Credits a refund back to the customer's wallet, mirroring the WalletTransaction the
 // standalone refund endpoint creates. Idempotent on refundId (a referenceId collision is a
 // no-op) so it's safe to call unconditionally wherever a wallet refund is settled.
@@ -160,6 +197,7 @@ export async function settleReturnRefund(actorId: string, params: { returnId?: s
         const successfulRefunds = orderRow.paymentTransactions.filter(t => ['refunded', 'partially_refunded'].includes(t.status)).reduce((sum, t) => sum + t.amount, 0)
         const paymentStatus = successfulRefunds >= orderRow.grandTotal ? 'REFUNDED' : 'PARTIALLY_REFUNDED'
         await tx.order.update({ where: { id: orderRow.id }, data: { paymentStatus, status: keepOrderStatus ? orderRow.status : (paymentStatus === 'REFUNDED' ? 'REFUNDED' : orderRow.status) } })
+        await restoreCoinsForRefund(tx, { order: orderRow, successfulRefunds, refundId })
         await tx.auditLog.create({ data: { actorId, action: `${auditAction}_completed`, entity: 'Order', entityId: orderRow.id, metadataJson: JSON.stringify({ returnId, refundId, amount, provider: refundProvider }) } })
       })
       if (returnId) void sendReturnStatusEmail(returnId, orderId).catch(error => console.error('[email] return status email failed', error))

@@ -738,6 +738,8 @@ function getMockHandler(model: string) {
         let list = mockCoinTransactions
         const w = args?.where || {}
         if (w.userId) list = list.filter((x) => x.userId === w.userId)
+        if (w.type) list = list.filter((x) => x.type === w.type)
+        if (w.referenceId?.startsWith) list = list.filter((x) => typeof x.referenceId === 'string' && x.referenceId.startsWith(w.referenceId.startsWith))
         const sum = list.reduce((s, x) => s + (x.amount || 0), 0)
         return { _sum: { amount: sum }, _count: { _all: list.length }, _avg: {}, _min: {}, _max: {} }
       }
