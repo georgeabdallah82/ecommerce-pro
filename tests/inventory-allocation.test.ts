@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { reserveStock, releaseReservedQuantity } from '@/lib/inventory'
+import { reserveStock, releaseReservedQuantity, pickMajorityLocation } from '@/lib/inventory'
 
 // A minimal in-memory stand-in for the slice of the Prisma transaction client
 // that reserveStock/releaseReservedQuantity actually use. It mirrors Prisma's
@@ -67,10 +67,10 @@ describe('lib/inventory stock allocation', () => {
     })
 
     it('reserves against a single row with enough available stock', async () => {
-      const invRows = [{ id: 'inv-1', variantId: null, quantity: 10, reserved: 2 }]
+      const invRows = [{ id: 'inv-1', variantId: null, quantity: 10, reserved: 2, locationId: 'loc-1' }]
       const tx = makeFakeTx(invRows)
       const result = await reserveStock(tx, product(invRows), null, 5, 'ref-1')
-      assert.deepEqual(result, [{ inventoryId: 'inv-1', quantity: 5 }])
+      assert.deepEqual(result, [{ inventoryId: 'inv-1', quantity: 5, locationId: 'loc-1' }])
       assert.equal(tx.state.get('inv-1')!.reserved, 7)
       assert.equal(tx.movements.length, 1)
       assert.equal(tx.movements[0].type, 'SALE_RESERVATION')
@@ -83,7 +83,7 @@ describe('lib/inventory stock allocation', () => {
       ]
       const tx = makeFakeTx(invRows)
       const result = await reserveStock(tx, product(invRows), 'v-a', 2, 'ref-1')
-      assert.deepEqual(result, [{ inventoryId: 'variant-a', quantity: 2 }])
+      assert.deepEqual(result, [{ inventoryId: 'variant-a', quantity: 2, locationId: null }])
       assert.equal(tx.state.get('shared')!.reserved, 0, 'the shared pool must not be touched when a dedicated variant row exists')
     })
 
@@ -91,10 +91,25 @@ describe('lib/inventory stock allocation', () => {
       const invRows = [{ id: 'shared', variantId: null, quantity: 10, reserved: 0 }]
       const tx = makeFakeTx(invRows)
       const result = await reserveStock(tx, product(invRows), 'v-missing', 4, 'ref-1')
-      assert.deepEqual(result, [{ inventoryId: 'shared', quantity: 4 }])
+      assert.deepEqual(result, [{ inventoryId: 'shared', quantity: 4, locationId: null }])
     })
 
-    it('splits a reservation across multiple rows when one row is not enough', async () => {
+    it('prefers a single location that alone can cover the full quantity over splitting, even when a smaller row is listed first', async () => {
+      // Without preferring the largest-available row first, the old (DB-order) behavior would
+      // have reserved 2 from 'small' then the remaining 3 from 'big' -- silently splitting one
+      // line item across two physical locations even though 'big' alone could have covered it.
+      const invRows = [
+        { id: 'small', variantId: null, quantity: 2, reserved: 0, locationId: 'loc-small' },
+        { id: 'big', variantId: null, quantity: 20, reserved: 0, locationId: 'loc-big' },
+      ]
+      const tx = makeFakeTx(invRows)
+      const result = await reserveStock(tx, product(invRows), null, 5, 'ref-1')
+      assert.deepEqual(result, [{ inventoryId: 'big', quantity: 5, locationId: 'loc-big' }])
+      assert.equal(tx.state.get('big')!.reserved, 5)
+      assert.equal(tx.state.get('small')!.reserved, 0, 'the smaller row should be untouched when the larger one alone covers the order')
+    })
+
+    it('splits a reservation across multiple rows when no single row has enough, largest-available first', async () => {
       const invRows = [
         { id: 'inv-1', variantId: null, quantity: 3, reserved: 0 },
         { id: 'inv-2', variantId: null, quantity: 5, reserved: 0 },
@@ -102,11 +117,11 @@ describe('lib/inventory stock allocation', () => {
       const tx = makeFakeTx(invRows)
       const result = await reserveStock(tx, product(invRows), null, 6, 'ref-1')
       assert.deepEqual(result, [
-        { inventoryId: 'inv-1', quantity: 3 },
-        { inventoryId: 'inv-2', quantity: 3 },
+        { inventoryId: 'inv-2', quantity: 5, locationId: null },
+        { inventoryId: 'inv-1', quantity: 1, locationId: null },
       ])
-      assert.equal(tx.state.get('inv-1')!.reserved, 3)
-      assert.equal(tx.state.get('inv-2')!.reserved, 3)
+      assert.equal(tx.state.get('inv-1')!.reserved, 1)
+      assert.equal(tx.state.get('inv-2')!.reserved, 5)
     })
 
     it('throws and reserves nothing further once stock across all rows is exhausted', async () => {
@@ -140,8 +155,24 @@ describe('lib/inventory stock allocation', () => {
         return realUpdateMany(args)
       }
       const result = await reserveStock(tx, product(invRows), null, 5, 'ref-1')
-      assert.deepEqual(result, [{ inventoryId: 'inv-2', quantity: 5 }])
+      assert.deepEqual(result, [{ inventoryId: 'inv-2', quantity: 5, locationId: null }])
       assert.equal(tx.state.get('inv-2')!.reserved, 5)
+    })
+  })
+
+  describe('pickMajorityLocation', () => {
+    it('returns null for an empty or all-null list', () => {
+      assert.equal(pickMajorityLocation([]), null)
+      assert.equal(pickMajorityLocation([{ locationId: null }, { locationId: null }]), null)
+    })
+
+    it('returns the only location when every row shares it', () => {
+      assert.equal(pickMajorityLocation([{ locationId: 'loc-a' }, { locationId: 'loc-a' }]), 'loc-a')
+    })
+
+    it('returns whichever location appears most often when a shipment had to split across locations', () => {
+      const rows = [{ locationId: 'loc-a' }, { locationId: 'loc-b' }, { locationId: 'loc-b' }, { locationId: null }]
+      assert.equal(pickMajorityLocation(rows), 'loc-b')
     })
   })
 
