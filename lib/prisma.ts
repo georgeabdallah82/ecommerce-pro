@@ -744,6 +744,9 @@ function getMockHandler(model: string) {
       return { _sum: {}, _count: {}, _avg: {}, _min: {}, _max: {} }
     },
     deleteMany: async (args?: any) => {
+      if (model === 'setting' && args?.where?.key) {
+        return { count: mockSettings.delete(args.where.key) ? 1 : 0 }
+      }
       if (model === 'walletTransaction' && args?.where?.userId) {
         const before = mockWalletTransactions.length
         for (let i = mockWalletTransactions.length - 1; i >= 0; i--) if (mockWalletTransactions[i].userId === args.where.userId) mockWalletTransactions.splice(i, 1)
