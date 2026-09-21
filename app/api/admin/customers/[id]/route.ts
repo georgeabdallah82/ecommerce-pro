@@ -49,6 +49,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
             shippingAddressJson: true, billingAddressJson: true, notes: true, trackingNumber: true,
             shippingMethod: true, createdAt: true, updatedAt: true,
             items: { select: { id: true, productId: true, variantId: true, name: true, sku: true, quantity: true, unitPrice: true, totalPrice: true } },
+            paymentTransactions: { select: { status: true, amount: true } },
           },
         },
         reviews: {
@@ -71,7 +72,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     if (!customer) return json({ error: 'Customer not found' }, { status: 404, headers: { 'Cache-Control': 'private, no-store' } })
     // Extended (Accelerate) client payload inference doesn't always widen nested `select`
     // relations correctly, so this access is asserted to the shape actually queried.
-    const orderTotal = sumCustomerSpend((customer as unknown as { orders: { status: OrderStatus; grandTotal: number }[] }).orders)
+    const orderTotal = sumCustomerSpend((customer as unknown as { orders: { status: OrderStatus; grandTotal: number; paymentTransactions: { status: string; amount: number }[] }[] }).orders)
     return json({ customer: { ...customer, orderTotal } }, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (e) {
     const failure = sanitizeFailure(e)

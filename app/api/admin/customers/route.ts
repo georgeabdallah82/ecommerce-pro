@@ -6,6 +6,7 @@ import { Role, OrderStatus } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { deleteCustomerCascade } from '@/lib/customers'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
+import { sumCustomerSpend } from '@/lib/orders'
 
 export async function GET(req: Request) {
   try {
@@ -53,13 +54,23 @@ export async function GET(req: Request) {
     ])
 
     const ids = rows.map(row => row.id)
-    const spendRows = (ids.length
-      ? await db.order.groupBy({ by: ['userId'], where: { userId: { in: ids }, status: { not: OrderStatus.CANCELLED } }, _sum: { grandTotal: true } })
-      : []) as { userId: string | null; _sum: { grandTotal: number | null } }[]
+    // A plain SQL sum can't net out refunds (sumCustomerSpend needs each order's
+    // paymentTransactions to do that -- see lib/orders.ts), so this fetches the orders
+    // themselves rather than aggregating in the database.
+    const spendOrders = (ids.length
+      ? await db.order.findMany({ where: { userId: { in: ids }, status: { not: OrderStatus.CANCELLED } }, select: { userId: true, status: true, grandTotal: true, paymentTransactions: { select: { status: true, amount: true } } } })
+      : []) as { userId: string | null; status: OrderStatus; grandTotal: number; paymentTransactions: { status: string; amount: number }[] }[]
+    const ordersByCustomer = new Map<string, typeof spendOrders>()
+    for (const order of spendOrders) {
+      if (!order.userId) continue
+      const list = ordersByCustomer.get(order.userId) || []
+      list.push(order)
+      ordersByCustomer.set(order.userId, list)
+    }
     const tagMembers = ids.length
       ? await db.customerTagMember.findMany({ where: { customerId: { in: ids } }, include: { tag: true } })
       : []
-    const spendByCustomer = new Map(spendRows.map(row => [row.userId, row._sum.grandTotal || 0]))
+    const spendByCustomer = new Map(ids.map(id => [id, sumCustomerSpend(ordersByCustomer.get(id) || [])]))
     const tagsByCustomer = new Map<string, { id: string; value: string }[]>()
     for (const member of tagMembers as any[]) {
       if (!member.tag) continue
