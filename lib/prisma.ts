@@ -420,6 +420,10 @@ function getMockHandler(model: string) {
         let list = [...mockInventoryItems]
         const w = args?.where || {}
         if (w.productId) list = list.filter((x) => x.productId === w.productId)
+        // variantId is used both ways here -- a specific id (this variant's own rows) and
+        // null (the product-level pool, explicitly excluding every variant's rows) -- so
+        // `undefined` (not filtering on it at all) has to stay distinguishable from `null`.
+        if (w.variantId !== undefined) list = list.filter((x) => x.variantId === w.variantId)
         if (w.id?.in) { const ids = new Set(w.id.in); list = list.filter((x) => ids.has(x.id)) }
         // Every real caller (admin inventory list, low-stock push alerts, the analytics
         // report's valuation/lowStock cards) asks for product/variant via include or select
