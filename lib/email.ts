@@ -1,4 +1,5 @@
 import { db } from '@/lib/prisma'
+import { issueGiftCardsForOrder } from '@/lib/gift-cards'
 
 function credentials() {
   const apiKey = process.env.RESEND_API_KEY
@@ -80,6 +81,8 @@ export async function sendOrderConfirmationEmail(orderId: string) {
   const order = await db.order.findUnique({ where: { id: orderId }, include: { items: true } })
   if (!order) return { sent: false, skipped: true }
 
+  const issuedGiftCards = await issueGiftCardsForOrder(db, orderId)
+
   const url = siteUrl() ? `${siteUrl()}/account/orders/${order.orderNumber}` : null
   const rows = order.items
     .map(
@@ -100,9 +103,13 @@ export async function sendOrderConfirmationEmail(orderId: string) {
       <tr><td style="font-size:13px;color:#8a8578">Tax</td><td style="text-align:right;font-size:13px">${money(order.taxTotal, order.currency)}</td></tr>
       <tr><td style="padding-top:8px;font-size:15px;font-weight:800">Total</td><td style="padding-top:8px;text-align:right;font-size:15px;font-weight:800">${money(order.grandTotal, order.currency)}</td></tr>
     </table>
+    ${issuedGiftCards.length ? `<table role="presentation" width="100%" style="border-collapse:collapse;background:#f4efe9;border-radius:8px;margin-top:20px"><tr><td style="padding:16px 20px">
+      <p style="font-size:13px;font-weight:700;margin:0 0 8px">Your gift card${issuedGiftCards.length > 1 ? 's' : ''}</p>
+      ${issuedGiftCards.map((c: any) => `<p style="font-size:16px;font-weight:800;letter-spacing:.04em;margin:0 0 4px">${escapeHtml(c.code)} <span style="font-weight:400;color:#8a8578;font-size:12px">(${money(c.balance, order.currency)})</span></p>`).join('')}
+    </td></tr></table>` : ''}
     ${url ? `<p style="margin:28px 0 0"><a href="${url}" style="display:inline-block;background:#6b7a4f;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:700">View your order</a></p>` : ''}
   `)
-  const text = `Thanks for your order ${order.orderNumber}. Total: ${money(order.grandTotal, order.currency)}.${url ? ` View your order: ${url}` : ''}`
+  const text = `Thanks for your order ${order.orderNumber}. Total: ${money(order.grandTotal, order.currency)}.${issuedGiftCards.length ? ` Gift card code${issuedGiftCards.length > 1 ? 's' : ''}: ${issuedGiftCards.map((c: any) => `${c.code} (${money(c.balance, order.currency)})`).join(', ')}.` : ''}${url ? ` View your order: ${url}` : ''}`
   return sendEmail(order.email, `Order confirmed — ${order.orderNumber}`, html, text)
 }
 

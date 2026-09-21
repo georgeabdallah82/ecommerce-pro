@@ -1,8 +1,51 @@
+import { randomBytes } from 'node:crypto'
+
 // GiftCard has no separate redemption ledger (unlike coins/CoinTransaction), so a
 // redeemed amount is recorded inline on the checkout PaymentTransaction's rawJson
 // (giftCardId/giftCardAmount) and reversed by crediting the balance back and
 // clearing those two keys in the same transaction -- making a re-run against the
 // same order a no-op instead of double-crediting.
+
+function generateGiftCardCode() {
+  return randomBytes(10).toString('hex').toUpperCase().match(/.{1,5}/g)!.join('-')
+}
+
+// A `Product.giftCard` line item charges the customer like any other product,
+// but nothing else about it is special-cased -- selling one has to actually
+// mint a redeemable GiftCard, not just take the payment. Called once payment
+// is confirmed (from the same place order-confirmation emails go out), so an
+// order that never gets paid never issues a card. Idempotent per order item
+// via a deterministic id, so re-sending a confirmation email never re-issues.
+export async function issueGiftCardsForOrder(db: any, orderId: string) {
+  const order = await db.order.findUnique({ where: { id: orderId }, include: { items: true } })
+  if (!order || !order.items.length) return []
+  const productIds = [...new Set(order.items.map((i: any) => i.productId))]
+  const giftProducts = await db.product.findMany({ where: { id: { in: productIds }, giftCard: true }, select: { id: true } })
+  const giftProductIds = new Set(giftProducts.map((p: any) => p.id))
+  const giftItems = order.items.filter((i: any) => giftProductIds.has(i.productId) && i.totalPrice > 0)
+  if (!giftItems.length) return []
+
+  const issued = []
+  for (const item of giftItems) {
+    const code = generateGiftCardCode()
+    const card = await db.giftCard.upsert({
+      where: { id: `giftcard-order-${item.id}` },
+      create: {
+        id: `giftcard-order-${item.id}`,
+        code,
+        last4: code.replace(/[^A-Z0-9]/g, '').slice(-4),
+        customerId: order.userId,
+        initialAmount: item.totalPrice,
+        balance: item.totalPrice,
+        currency: order.currency,
+        note: `Issued from order ${order.orderNumber}`,
+      },
+      update: {},
+    })
+    issued.push(card)
+  }
+  return issued
+}
 
 export function redeemedGiftCard(paymentTransactions: Array<{ provider: string; rawJson: string | null }>) {
   const checkout = paymentTransactions.find(t => t.provider === 'checkout' && t.rawJson)

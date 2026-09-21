@@ -271,6 +271,7 @@ function getMockHandler(model: string) {
         if (args?.where?.featured !== undefined) list = list.filter((p) => p.featured === args.where.featured)
         if (args?.where?.slug) list = list.filter((p) => p.slug === args.where.slug)
         if (args?.where?.id?.in) { const ids = new Set(args.where.id.in); list = list.filter((p) => ids.has(p.id)) }
+        if (args?.where?.giftCard !== undefined) list = list.filter((p) => Boolean((p as any).giftCard) === args.where.giftCard)
         if (args?.where?.category?.slug) list = list.filter((p) => p.category?.slug === args.where.category.slug)
         if (args?.where?.basePrice?.gte !== undefined) list = list.filter((p) => p.basePrice >= args.where.basePrice.gte)
         if (args?.where?.basePrice?.lte !== undefined) list = list.filter((p) => p.basePrice <= args.where.basePrice.lte)
@@ -370,7 +371,11 @@ function getMockHandler(model: string) {
         if (args?.take) list = list.slice(0, args.take)
         return list
       }
-      if (model === 'giftCard') return [...mockGiftCards]
+      if (model === 'giftCard') {
+        let list = [...mockGiftCards]
+        if (args?.where?.note) list = list.filter((x) => x.note === args.where.note)
+        return list
+      }
       if (model === 'customerTag') return [...mockCustomerTags].sort((a, b) => a.value.localeCompare(b.value))
       if (model === 'customerTagMember') {
         let list = [...mockCustomerTagMembers]
@@ -527,6 +532,14 @@ function getMockHandler(model: string) {
         if (existing) return existing
         const created = { id: args.where.id, createdAt: new Date(), ...(args.create || {}) }
         mockCoinTransactions.push(created)
+        return created
+      }
+      if (model === 'giftCard' && args.where?.id) {
+        const existing = mockGiftCards.find((x) => x.id === args.where.id)
+        if (existing) return existing
+        const created = { id: args.where.id, createdAt: new Date(), updatedAt: new Date(), status: 'ACTIVE', ...(args.create || {}) }
+        created.balance ??= created.initialAmount ?? 0
+        mockGiftCards.push(created)
         return created
       }
       if (model === 'customerTag' && args.where?.value) {
