@@ -4,6 +4,7 @@ import { getPaymentProvider } from '@/lib/payments'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
+import { restoreCoinsForRefund } from '@/lib/returns'
 import { Prisma } from '@prisma/client'
 
 const REFUND_MESSAGES = new Set([
@@ -25,14 +26,6 @@ function refundFailure(error: unknown) {
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') return { message: REFUND_CONFLICT_MESSAGE, status: 409 }
   console.error('[admin/refunds] unexpected failure', error)
   return { message: 'Unable to process the refund right now.', status: 500 }
-}
-
-function parseCoinsUsed(rawJson: string | null) {
-  if (!rawJson) return 0
-  try {
-    const parsed = JSON.parse(rawJson) as { coinsUsed?: unknown }
-    return Number.isSafeInteger(parsed.coinsUsed) ? Math.max(0, Number(parsed.coinsUsed)) : 0
-  } catch { return 0 }
 }
 
 export async function POST(req: Request) {
@@ -118,18 +111,7 @@ export async function POST(req: Request) {
         }
       }
 
-      const checkoutTx = order.paymentTransactions.find(t => t.provider === 'checkout' && t.rawJson)
-      const coinsUsed = parseCoinsUsed(checkoutTx?.rawJson || null)
-      if (order.userId && coinsUsed > 0 && order.grandTotal > 0) {
-        const prefix = `coin-refund:${order.id}:`
-        const restoredAggregate = await tx.coinTransaction.aggregate({ where: { userId: order.userId, type: 'REFUND', referenceId: { startsWith: prefix } }, _sum: { amount: true } })
-        const restored = Math.max(0, Number(restoredAggregate._sum.amount || 0))
-        const target = Math.min(coinsUsed, Math.floor(coinsUsed * successfulRefunds / order.grandTotal))
-        const delta = target - restored
-        if (delta > 0) {
-          await tx.coinTransaction.create({ data: { id: `coin_refund_${prepared.transaction.id}`, userId: order.userId, amount: delta, type: 'REFUND', reason: 'Order refund coin restoration', referenceId: `${prefix}${prepared.transaction.id}` } })
-        }
-      }
+      await restoreCoinsForRefund(tx, { order, successfulRefunds, refundId: prepared.transaction.id })
 
       const updated = await tx.order.update({ where: { id: order.id }, data: { paymentStatus, status, events: { create: { status, message: paymentStatus === 'REFUNDED' ? `Order fully refunded (${requestedAmount} ${order.currency}).` : `Order partially refunded (${requestedAmount} ${order.currency}).` } } } })
       await audit(actor.id, 'order.refunded', 'Order', order.id, { amount: requestedAmount, transactionId: prepared.transaction.id, provider: prepared.provider, refundedTotal: successfulRefunds })

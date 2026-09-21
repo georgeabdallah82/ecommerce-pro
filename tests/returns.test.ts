@@ -50,15 +50,15 @@ describe('lib/returns remainingRefundable', () => {
 
   it('subtracts refunded and partially_refunded transactions', () => {
     const refundable = remainingRefundable(order({ paymentTransactions: [
-      { id: 't1', status: 'refunded', amount: 3000, provider: 'areeba_mpgs', externalId: 'ext_1', createdAt: new Date() },
-      { id: 't2', status: 'paid', amount: 10000, provider: 'areeba_mpgs', externalId: 'ext_1', createdAt: new Date() },
+      { id: 't1', status: 'refunded', amount: 3000, provider: 'areeba_mpgs', externalId: 'ext_1', createdAt: new Date(), rawJson: null },
+      { id: 't2', status: 'paid', amount: 10000, provider: 'areeba_mpgs', externalId: 'ext_1', createdAt: new Date(), rawJson: null },
     ] }))
     assert.equal(refundable, 7000)
   })
 
   it('never goes negative', () => {
     const refundable = remainingRefundable(order({ paymentTransactions: [
-      { id: 't1', status: 'refunded', amount: 20000, provider: 'areeba_mpgs', externalId: 'ext_1', createdAt: new Date() },
+      { id: 't1', status: 'refunded', amount: 20000, provider: 'areeba_mpgs', externalId: 'ext_1', createdAt: new Date(), rawJson: null },
     ] }))
     assert.equal(refundable, 0)
   })
@@ -71,8 +71,8 @@ describe('lib/returns pickRefundSource', () => {
 
   it('ignores manual-provider and non-captured transactions', () => {
     const result = pickRefundSource(order({ paymentTransactions: [
-      { id: 't1', status: 'paid', amount: 10000, provider: 'manual', externalId: 'ext_manual', createdAt: new Date() },
-      { id: 't2', status: 'pending', amount: 10000, provider: 'areeba_mpgs', externalId: 'ext_pending', createdAt: new Date() },
+      { id: 't1', status: 'paid', amount: 10000, provider: 'manual', externalId: 'ext_manual', createdAt: new Date(), rawJson: null },
+      { id: 't2', status: 'pending', amount: 10000, provider: 'areeba_mpgs', externalId: 'ext_pending', createdAt: new Date(), rawJson: null },
     ] }))
     assert.deepEqual(result, { refundProvider: 'manual', refundExternalId: null })
   })
@@ -81,8 +81,8 @@ describe('lib/returns pickRefundSource', () => {
     const older = new Date('2024-01-01')
     const newer = new Date('2024-06-01')
     const result = pickRefundSource(order({ paymentTransactions: [
-      { id: 't1', status: 'paid', amount: 10000, provider: 'areeba_mpgs', externalId: 'ext_old', createdAt: older },
-      { id: 't2', status: 'captured', amount: 10000, provider: 'areeba_mpgs', externalId: 'ext_new', createdAt: newer },
+      { id: 't1', status: 'paid', amount: 10000, provider: 'areeba_mpgs', externalId: 'ext_old', createdAt: older, rawJson: null },
+      { id: 't2', status: 'captured', amount: 10000, provider: 'areeba_mpgs', externalId: 'ext_new', createdAt: newer, rawJson: null },
     ] }))
     assert.deepEqual(result, { refundProvider: 'areeba_mpgs', refundExternalId: 'ext_new' })
   })
@@ -92,7 +92,7 @@ describe('lib/returns pickRefundSource', () => {
     // app/api/checkout/route.ts) -- treating that as a real gateway is exactly the bug this
     // guards against (it isn't a provider getPaymentProvider() recognizes for refunds).
     const result = pickRefundSource(order({ paymentMethod: 'WALLET', paymentTransactions: [
-      { id: 't1', status: 'paid', amount: 10000, provider: 'checkout', externalId: 'idem_1', createdAt: new Date() },
+      { id: 't1', status: 'paid', amount: 10000, provider: 'checkout', externalId: 'idem_1', createdAt: new Date(), rawJson: null },
     ] }))
     assert.deepEqual(result, { refundProvider: 'wallet', refundExternalId: null })
   })

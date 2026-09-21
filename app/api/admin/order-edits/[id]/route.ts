@@ -4,7 +4,7 @@ import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { reserveStock, releaseReservedQuantity } from '@/lib/inventory'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
-import { remainingRefundable, pickRefundSource, settleReturnRefund, creditWalletRefund, classifyOrderEditPaymentAdjustment, recomputeOrderEditTotals, type ReturnableOrder } from '@/lib/returns'
+import { remainingRefundable, pickRefundSource, settleReturnRefund, creditWalletRefund, restoreCoinsForRefund, classifyOrderEditPaymentAdjustment, recomputeOrderEditTotals, type ReturnableOrder } from '@/lib/returns'
 import { getTaxRatePercent } from '@/lib/pricing'
 import { sendOrderEditEmail } from '@/lib/email'
 import { OrderStatus, PaymentStatus } from '@prisma/client'
@@ -98,6 +98,10 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
           const refundedTotal = refundableOrder.grandTotal - refundable + paymentAdjustment.amount
           paymentUpdate.paymentStatus = refundedTotal >= nextGrand ? 'REFUNDED' : 'PARTIALLY_REFUNDED'
           paymentUpdate.status = paymentUpdate.paymentStatus === 'REFUNDED' ? 'REFUNDED' : current.status
+          // Proportioned against the order's post-edit total (nextGrand), not its pre-edit
+          // total, matching the paymentStatus check just above -- the edit already changed
+          // what "fully refunded" means for this order.
+          await restoreCoinsForRefund(tx, { order: { ...refundableOrder, grandTotal: nextGrand }, successfulRefunds: refundedTotal, refundId: refund.id })
         } else {
           refundToSettle = { refundId: refund.id, refundProvider, refundExternalId, amount: paymentAdjustment.amount }
         }
