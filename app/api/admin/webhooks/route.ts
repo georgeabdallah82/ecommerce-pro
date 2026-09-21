@@ -19,7 +19,7 @@ export async function GET() {
   try {
     await requirePermission('settings.view')
     const rows = await db.webhookEndpoint.findMany({ orderBy: { createdAt: 'desc' } })
-    return json(rows.map(({ secret: _secret, ...r }) => ({ ...r, secretConfigured: true })))
+    return json(rows.map(({ secret: _secret, lastPayload, ...r }) => ({ ...r, secretConfigured: true, hasFailedDelivery: !!lastPayload })))
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Forbidden'
     return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 401 })
@@ -78,7 +78,7 @@ export async function PATCH(req: Request) {
 
     const webhook = await db.webhookEndpoint.update({ where: { id }, data })
     await audit(actor.id, 'webhook.updated', 'WebhookEndpoint', id, { fields: Object.keys(data) })
-    return json({ webhook: { ...webhook, secret: undefined, secretConfigured: true } })
+    return json({ webhook: { ...webhook, secret: undefined, lastPayload: undefined, secretConfigured: true } })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unable to update webhook endpoint'
     const status = message === 'FORBIDDEN' ? 403 : message.includes('Record to update not found') ? 404 : 400

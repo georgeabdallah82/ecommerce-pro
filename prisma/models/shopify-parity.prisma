@@ -346,6 +346,10 @@ model WebhookEndpoint {
   lastStatus  Int?
   lastError   String?
   lastSentAt  DateTime?
+  // The exact JSON body of the most recent FAILED delivery attempt, kept so a
+  // failure can actually be retried -- cleared back to null on any successful
+  // delivery, since there's then nothing left to redeliver.
+  lastPayload String?
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
   @@index([topic, status])
