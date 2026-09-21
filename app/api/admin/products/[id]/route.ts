@@ -45,7 +45,14 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
       const p=await tx.product.update({where:{id},data})
       if(Array.isArray(b.images)){const images=b.images.slice(0,20);const keptIds=images.filter((x:any)=>x.id).map((x:any)=>String(x.id));if(keptIds.length)await tx.productImage.deleteMany({where:{productId:id,id:{notIn:keptIds}}});else await tx.productImage.deleteMany({where:{productId:id}});const existingImageById=new Map(existing.images.map(img=>[img.id,img]));for(let i=0;i<images.length;i++){const x=images[i];const url=String(x.url||'').trim();if(!url)continue;if(x.id){const alt=x.alt?String(x.alt):null;const cur=existingImageById.get(String(x.id));if(cur&&cur.url===url&&cur.alt===alt&&cur.sortOrder===i)continue;await tx.productImage.update({where:{id:String(x.id)},data:{url,alt,sortOrder:i}})}else await tx.productImage.create({data:{productId:id,url,alt:x.alt?String(x.alt):null,sortOrder:i}})}}
       if(Array.isArray(b.tags)){await tx.productTag.deleteMany({where:{productId:id}});const tags:string[]=Array.from(new Set<string>(b.tags.map((t:unknown)=>String(t).trim()).filter((t:string)=>t.length>0)));if(tags.length)await tx.productTag.createMany({data:tags.map((value:string)=>({productId:id,value}))})}
-      if(b.quantity!==undefined||b.lowStockThreshold!==undefined||b.locationId!==undefined){const row=await tx.inventoryItem.findFirst({where:{productId:id,variantId:null}});const requested=b.quantity!==undefined?Math.max(0,Math.trunc(Number(b.quantity))):row?.quantity??0;if(row)await tx.inventoryItem.update({where:{id:row.id},data:{quantity:Math.max(row.reserved,requested),lowStockThreshold:b.lowStockThreshold!==undefined?Math.max(0,Math.trunc(Number(b.lowStockThreshold))):row.lowStockThreshold,locationId:b.locationId!==undefined?(b.locationId?String(b.locationId):null):row.locationId}});else await tx.inventoryItem.create({data:{productId:id,quantity:requested,lowStockThreshold:Math.max(0,Math.trunc(Number(b.lowStockThreshold)||5)),locationId:b.locationId?String(b.locationId):null}})}
+      // Only ever true auto-write when stock lives at zero or one location -- a real split
+      // across 2+ locations (Purchase Order receiving, an Inventory Transfer) can't be
+      // represented by this editor's single blended quantity/location field, and picking an
+      // arbitrary row here would silently overwrite one location with a number that actually
+      // summed all of them. The product editor UI hides these fields once split, so this only
+      // ever runs when the request could actually mean it; a stale request from before a split
+      // happened elsewhere is a no-op rather than corrupting whichever row is found first.
+      if(b.quantity!==undefined||b.lowStockThreshold!==undefined||b.locationId!==undefined){const rows=await tx.inventoryItem.findMany({where:{productId:id,variantId:null}});if(rows.length<=1){const row=rows[0];const requested=b.quantity!==undefined?Math.max(0,Math.trunc(Number(b.quantity))):row?.quantity??0;if(row)await tx.inventoryItem.update({where:{id:row.id},data:{quantity:Math.max(row.reserved,requested),lowStockThreshold:b.lowStockThreshold!==undefined?Math.max(0,Math.trunc(Number(b.lowStockThreshold))):row.lowStockThreshold,locationId:b.locationId!==undefined?(b.locationId?String(b.locationId):null):row.locationId}});else await tx.inventoryItem.create({data:{productId:id,quantity:requested,lowStockThreshold:Math.max(0,Math.trunc(Number(b.lowStockThreshold)||5)),locationId:b.locationId?String(b.locationId):null}})}}
       if(Array.isArray(b.metafields)){await tx.metafieldValue.deleteMany({where:{ownerType:'PRODUCT',ownerId:id}});const vals=b.metafields.filter((m:any)=>m.definitionId&&m.value!==undefined&&String(m.value)!=='').map((m:any)=>({definitionId:String(m.definitionId),ownerType:'PRODUCT',ownerId:id,value:typeof m.value==='string'?m.value:JSON.stringify(m.value)}));if(vals.length)await tx.metafieldValue.createMany({data:vals})}
       if(Array.isArray(b.variants)){
         const sharedPool=b.sharedInventory===true||(b.sharedInventory===undefined&&existingSharedPool)
@@ -66,9 +73,12 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
           const variant=unchanged?existingVariant!:variantId?await tx.productVariant.update({where:{id:variantId},data:vd}):await tx.productVariant.create({data:{productId:id,...vd}})
           const qty=v.quantity===undefined?null:Math.max(0,Math.trunc(Number(v.quantity)||0))
           if(qty===null&&!sharedPool)continue
-          const inv=await tx.inventoryItem.findFirst({where:{variantId:variant.id}})
-          if(sharedPool){if(inv)await tx.inventoryItem.delete({where:{id:inv.id}})}
-          else if(qty!==null){if(inv)await tx.inventoryItem.update({where:{id:inv.id},data:{quantity:Math.max(inv.reserved,qty),lowStockThreshold:Math.max(0,Math.trunc(Number(v.lowStockThreshold)||inv.lowStockThreshold)),locationId:v.locationId!==undefined?(v.locationId?String(v.locationId):null):inv.locationId}});else await tx.inventoryItem.create({data:{productId:id,variantId:variant.id,quantity:qty,lowStockThreshold:Math.max(0,Math.trunc(Number(v.lowStockThreshold)||5)),locationId:v.locationId?String(v.locationId):null}})}
+          const invRows=await tx.inventoryItem.findMany({where:{variantId:variant.id}})
+          if(sharedPool){for(const row of invRows)await tx.inventoryItem.delete({where:{id:row.id}})}
+          // Same multi-location guard as the product-level write above: a variant split
+          // across 2+ location rows can't be safely collapsed into one quantity/location pair,
+          // so this only writes when there's zero or one row to begin with.
+          else if(qty!==null&&invRows.length<=1){const inv=invRows[0];if(inv)await tx.inventoryItem.update({where:{id:inv.id},data:{quantity:Math.max(inv.reserved,qty),lowStockThreshold:Math.max(0,Math.trunc(Number(v.lowStockThreshold)||inv.lowStockThreshold)),locationId:v.locationId!==undefined?(v.locationId?String(v.locationId):null):inv.locationId}});else await tx.inventoryItem.create({data:{productId:id,variantId:variant.id,quantity:qty,lowStockThreshold:Math.max(0,Math.trunc(Number(v.lowStockThreshold)||5)),locationId:v.locationId?String(v.locationId):null}})}
         }
       }
       return p

@@ -86,6 +86,14 @@ export default function ProductEditorV2({ initial, creating, categories, definit
   )
   function variantStock(v: Variant) { return v.quantity !== undefined ? Number(v.quantity) : (v.inventory || []).reduce((s: number, x: any) => s + Number(x.quantity || 0) - Number(x.reserved || 0), 0) }
   const inventoryTotal = product.sharedInventory ? available : (product.variants || []).reduce((s, v) => s + variantStock(v), 0)
+  // This editor can only ever show/write one blended quantity per product or variant -- safe
+  // when stock lives at zero or one location, but a real split across 2+ locations (from a
+  // Purchase Order or Inventory Transfer) can't be represented by a single number without
+  // losing which location holds what. Rather than silently overwriting an arbitrary location's
+  // row with the blended total on save, those fields go read-only and point at the Inventory
+  // page, which already edits stock per location correctly.
+  const productLocationSplit = (initial.inventory || []).filter((x: any) => !x.variantId).length > 1
+  function variantLocationSplit(v: Variant) { return (v.inventory || []).length > 1 }
 
   useEffect(() => {
     const h = (e: BeforeUnloadEvent) => { if (dirty) { e.preventDefault(); e.returnValue = '' } }
@@ -250,11 +258,11 @@ export default function ProductEditorV2({ initial, creating, categories, definit
             <div className={s.notice}><strong>{product.sharedInventory ? 'Shared inventory pool' : product.variants.length ? 'Variant inventory' : 'Product inventory'}</strong><span>{inventoryTotal} units represented by the current inventory mode.</span></div>
           </Card>
           {(!product.variants.length || product.sharedInventory) && <Card title="Product inventory" sub="Used for non-variant stock or a shared variant pool">
-            <div className={s.threeCol}>
+            {productLocationSplit ? <div className={s.notice}><strong>Stock is split across multiple locations</strong><span>{available} units total. Manage quantities per location from the <Link href="/admin/inventory" className={ui.textLink}>Inventory page</Link> instead of here.</span></div> : <div className={s.threeCol}>
               <Field label="Available"><input className={ui.input} type="number" value={available} onChange={e => update({ quantity: Number(e.target.value) })} /></Field>
               <Field label="Location"><select className={ui.select} value={product.locationId ?? product.inventory?.[0]?.locationId ?? ''} onChange={e => update({ locationId: e.target.value || null })}><option value="">Unassigned</option>{(locations || []).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select></Field>
               <Field label="Low stock"><input className={ui.input} type="number" value={product.lowStockThreshold || product.inventory?.[0]?.lowStockThreshold || 5} onChange={e => update({ lowStockThreshold: Number(e.target.value) })} /></Field>
-            </div>
+            </div>}
           </Card>}
         </>}
 
@@ -281,7 +289,7 @@ export default function ProductEditorV2({ initial, creating, categories, definit
               <input className={`${ui.input} ${s.variantField}`} value={v.name} onChange={e => updateVariant(i, { name: e.target.value })} />
               <input className={`${ui.input} ${s.variantField}`} value={v.sku} onChange={e => updateVariant(i, { sku: e.target.value })} />
               <input className={`${ui.input} ${s.variantField}`} value={moneyValue(v.price)} onChange={e => updateVariant(i, { price: Math.round(Number(e.target.value || 0) * 100) })} />
-              <input className={`${ui.input} ${s.variantField}`} type="number" value={variantStock(v)} disabled={Boolean(product.sharedInventory)} onChange={e => updateVariant(i, { quantity: Number(e.target.value) })} />
+              {variantLocationSplit(v) ? <span className={`${s.variantField} ${ui.muted}`} title="Stock is split across multiple locations -- manage it from the Inventory page">{variantStock(v)} (split)</span> : <input className={`${ui.input} ${s.variantField}`} type="number" value={variantStock(v)} disabled={Boolean(product.sharedInventory)} onChange={e => updateVariant(i, { quantity: Number(e.target.value) })} />}
               <button className={`${ui.iconBtn} ${s.variantDeleteBtn}`} onClick={() => update({ variants: product.variants.filter((_, n) => n !== i) })}><Trash2 size={16} /></button>
             </div>)}
             {!product.variants.length && <div className={s.emptyInline}>No variants yet.</div>}
