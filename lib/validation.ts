@@ -9,6 +9,7 @@ export const checkoutSchema = z.object({
   couponCode: z.string().trim().max(60).optional().or(z.literal('')),
   giftCardCode: z.string().trim().max(60).optional().or(z.literal('')),
   coinsToUse: z.number().int().min(0).max(1000000).default(0),
+  shippingRateId: z.string().trim().max(60).optional().or(z.literal('')),
   shippingAddress: z.object({
     firstName: z.string().trim().min(1).max(80),
     lastName: z.string().trim().min(1).max(80),
