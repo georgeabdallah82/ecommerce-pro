@@ -573,32 +573,6 @@ model BlogPost {
   @@index([blogId, status])
 }
 
-model NavigationMenu {
-  id          String   @id @default(cuid())
-  name        String
-  handle      String   @unique
-  location    String   @default("header")
-  items       NavigationItem[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model NavigationItem {
-  id          String   @id @default(cuid())
-  menuId      String
-  label       String
-  type        String   @default("CUSTOM")
-  url         String?
-  resourceId  String?
-  parentId    String?
-  sortOrder   Int      @default(0)
-  isActive    Boolean  @default(true)
-  menu        NavigationMenu @relation(fields:[menuId], references:[id], onDelete:Cascade)
-  parent      NavigationItem? @relation("NavigationTree", fields:[parentId], references:[id], onDelete:SetNull)
-  children    NavigationItem[] @relation("NavigationTree")
-  @@index([menuId, sortOrder])
-}
-
 model Theme {
   id           String   @id @default(cuid())
   name         String
@@ -609,15 +583,6 @@ model Theme {
   templatesJson String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-}
-
-model ThemeRevision {
-  id           String   @id @default(cuid())
-  themeId      String
-  label        String
-  settingsJson String
-  templatesJson String
-  createdAt    DateTime @default(now())
 }
 
 model Redirect {
