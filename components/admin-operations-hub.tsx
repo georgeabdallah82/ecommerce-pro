@@ -248,7 +248,7 @@ function ApiCredentialsPanel({ credentials, onChange }: { credentials: any[]; on
 
   return <div className={`${ui.card} ${styles.panel}`}>
     <h3>API credentials</h3>
-    <p className={ui.muted}>Generate and manage keys for external systems. Not yet enforced: no API route currently authenticates requests against these keys, so issuing one doesn't grant access to anything today.</p>
+    <p className={ui.muted}>Generate and manage keys for external systems. A key with the <code>products.read</code> scope can call <code>GET /api/v1/products</code> with an <code>Authorization: Bearer</code> header; other scopes are recorded but not yet checked by any route.</p>
     <div className={styles.list}>
       {credentials.map((x: any) => (
         <div className={styles.entityRow} key={x.id}>
