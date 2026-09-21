@@ -227,10 +227,17 @@ export async function sendReturnStatusEmail(returnId: string, orderId: string) {
 // `adjustment` mirrors classifyOrderEditPaymentAdjustment's return shape; null covers an edit
 // that changed items/total without moving money on a paid order (still worth telling the
 // customer their order changed).
-export async function sendOrderEditEmail(orderId: string, adjustment: { type: 'refund' | 'charge'; amount: number } | null) {
+// issueGiftCards controls whether a gift-card product added by this edit gets minted now --
+// callers pass false when the edit left the order owing more money (a pending manual charge
+// with no automatic confirmation), since a gift card shouldn't be issued before it's paid for.
+// The caller is expected to re-issue (via issueAndNotifyGiftCardsForOrder) once that payment is
+// later confirmed, at which point this same function's gift-card rendering is reused there too.
+export async function sendOrderEditEmail(orderId: string, adjustment: { type: 'refund' | 'charge'; amount: number } | null, issueGiftCards = true) {
   if (!(await settingEnabled('email.orderEdit'))) return { sent: false, skipped: true }
   const order = await db.order.findUnique({ where: { id: orderId }, select: { email: true, orderNumber: true, currency: true } })
   if (!order) return { sent: false, skipped: true }
+
+  const issuedGiftCards = issueGiftCards ? await issueGiftCardsForOrder(db, orderId) : []
 
   const heading = adjustment?.type === 'refund' ? 'Your order was updated — a refund is on its way'
     : adjustment?.type === 'charge' ? 'Your order was updated — additional payment required'
@@ -242,10 +249,35 @@ export async function sendOrderEditEmail(orderId: string, adjustment: { type: 'r
   const html = layout(`
     <h1 style="font-size:20px;margin:0 0 4px">${escapeHtml(heading)}</h1>
     <p style="font-size:14px;color:#4a473d;margin:0 0 20px">${escapeHtml(message)}</p>
+    ${issuedGiftCards.length ? `<table role="presentation" width="100%" style="border-collapse:collapse;background:#f4efe9;border-radius:8px;margin-bottom:20px"><tr><td style="padding:16px 20px">
+      <p style="font-size:13px;font-weight:700;margin:0 0 8px">Your gift card${issuedGiftCards.length > 1 ? 's' : ''}</p>
+      ${issuedGiftCards.map((c: any) => `<p style="font-size:16px;font-weight:800;letter-spacing:.04em;margin:0 0 4px">${escapeHtml(c.code)} <span style="font-weight:400;color:#8a8578;font-size:12px">(${money(c.balance, order.currency)})</span></p>`).join('')}
+    </td></tr></table>` : ''}
     ${url ? `<p style="margin:24px 0 0"><a href="${url}" style="display:inline-block;background:#6b7a4f;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:700">View your order</a></p>` : ''}
   `)
-  const text = `${heading}. ${message}${url ? ` View your order: ${url}` : ''}`
+  const text = `${heading}. ${message}${issuedGiftCards.length ? ` Gift card code${issuedGiftCards.length > 1 ? 's' : ''}: ${issuedGiftCards.map((c: any) => `${c.code} (${money(c.balance, order.currency)})`).join(', ')}.` : ''}${url ? ` View your order: ${url}` : ''}`
   return sendEmail(order.email, `Your order was updated — ${order.orderNumber}`, html, text)
+}
+
+// Fired once a pending "additional payment required" charge from an order edit is later
+// confirmed collected (admin marks the order PAID) -- mints any gift-card items that were
+// deliberately withheld at edit-commit time and lets the customer know via the same template.
+export async function issueAndNotifyGiftCardsForOrder(orderId: string) {
+  if (!(await settingEnabled('email.orderEdit'))) return { sent: false, skipped: true }
+  const order = await db.order.findUnique({ where: { id: orderId }, select: { email: true, orderNumber: true, currency: true } })
+  if (!order) return { sent: false, skipped: true }
+  const issuedGiftCards = await issueGiftCardsForOrder(db, orderId)
+  if (!issuedGiftCards.length) return { sent: false, skipped: true }
+
+  const html = layout(`
+    <h1 style="font-size:20px;margin:0 0 4px">Your gift card${issuedGiftCards.length > 1 ? 's are' : ' is'} ready</h1>
+    <p style="font-size:14px;color:#4a473d;margin:0 0 20px">Payment for order ${escapeHtml(order.orderNumber)} has been received.</p>
+    <table role="presentation" width="100%" style="border-collapse:collapse;background:#f4efe9;border-radius:8px"><tr><td style="padding:16px 20px">
+      ${issuedGiftCards.map((c: any) => `<p style="font-size:16px;font-weight:800;letter-spacing:.04em;margin:0 0 4px">${escapeHtml(c.code)} <span style="font-weight:400;color:#8a8578;font-size:12px">(${money(c.balance, order.currency)})</span></p>`).join('')}
+    </td></tr></table>
+  `)
+  const text = `Payment for order ${order.orderNumber} has been received. Gift card code${issuedGiftCards.length > 1 ? 's' : ''}: ${issuedGiftCards.map((c: any) => `${c.code} (${money(c.balance, order.currency)})`).join(', ')}.`
+  return sendEmail(order.email, `Your gift card is ready — ${order.orderNumber}`, html, text)
 }
 
 export async function sendAbandonedCheckoutEmail(abandonedCheckoutId: string) {
