@@ -1,0 +1,5 @@
+.tagRow { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+.tagChip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 10px; border-radius: var(--admin-radius-pill); background: var(--admin-border-soft); color: var(--admin-ink); font-size: 12px; }
+.tagChip button { display: grid; place-items: center; border: 0; background: none; color: var(--admin-muted); cursor: pointer; padding: 2px; }
+.tagChip button:hover { color: var(--admin-danger); }
+.tagRowField { flex: 1 1 190px; }

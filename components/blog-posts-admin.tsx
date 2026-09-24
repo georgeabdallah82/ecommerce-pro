@@ -3,8 +3,16 @@
 import { useMemo, useState } from 'react'
 import { Check, ExternalLink, Newspaper, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react'
 import ui from './admin-ui.module.css'
+import s from './admin-blog-posts.module.css'
 
-type PostRow = { id: string; title: string; handle: string; excerpt: string | null; bodyHtml: string | null; featuredImage: string | null; status: string; seoTitle: string | null; seoDescription: string | null; updatedAt: string }
+type PostRow = { id: string; title: string; handle: string; excerpt: string | null; bodyHtml: string | null; featuredImage: string | null; status: string; tags: string[]; seoTitle: string | null; seoDescription: string | null; updatedAt: string }
+
+function TagEditor({ tags, onChange }: { tags: string[]; onChange: (tags: string[]) => void }) {
+  return <div className={s.tagRow}>
+    {tags.map((t, i) => <span className={s.tagChip} key={i}>{t}<button type="button" onClick={() => onChange(tags.filter((_, n) => n !== i))}><X size={12} /></button></span>)}
+    <input className={`${ui.input} ${s.tagRowField}`} placeholder="Add tag and press Enter" onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); const v = e.currentTarget.value.trim(); if (v && !tags.includes(v)) onChange([...tags, v]); e.currentTarget.value = '' } }} />
+  </div>
+}
 
 async function api(path: string, init?: RequestInit) {
   const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
@@ -13,7 +21,7 @@ async function api(path: string, init?: RequestInit) {
   return data
 }
 
-const initialForm = { title: '', handle: '', excerpt: '', bodyHtml: '', featuredImage: '', status: 'DRAFT', seoTitle: '', seoDescription: '' }
+const initialForm = { title: '', handle: '', excerpt: '', bodyHtml: '', featuredImage: '', status: 'DRAFT', tags: [] as string[], seoTitle: '', seoDescription: '' }
 
 export default function BlogPostsAdmin({ initial }: { initial: PostRow[] }) {
   const [rows, setRows] = useState<PostRow[]>(initial || [])
@@ -56,7 +64,7 @@ export default function BlogPostsAdmin({ initial }: { initial: PostRow[] }) {
 
   function openEdit(row: PostRow) {
     setEditRow(row)
-    setEditForm({ title: row.title, handle: row.handle, excerpt: row.excerpt || '', bodyHtml: row.bodyHtml || '', featuredImage: row.featuredImage || '', status: row.status, seoTitle: row.seoTitle || '', seoDescription: row.seoDescription || '' })
+    setEditForm({ title: row.title, handle: row.handle, excerpt: row.excerpt || '', bodyHtml: row.bodyHtml || '', featuredImage: row.featuredImage || '', status: row.status, tags: row.tags || [], seoTitle: row.seoTitle || '', seoDescription: row.seoDescription || '' })
     setError('')
   }
 
@@ -80,10 +88,11 @@ export default function BlogPostsAdmin({ initial }: { initial: PostRow[] }) {
       <span className={ui.muted}>{filtered.length} post{filtered.length === 1 ? '' : 's'}</span>
     </div>
 
-    <div className={`${ui.card} productTableCard`}><div className={ui.tableWrap}><table className={`${ui.table} productTable`} style={{ minWidth: 720 }}><thead><tr><th>Title</th><th>Handle</th><th>Status</th><th></th></tr></thead><tbody>
+    <div className={`${ui.card} productTableCard`}><div className={ui.tableWrap}><table className={`${ui.table} productTable`} style={{ minWidth: 720 }}><thead><tr><th>Title</th><th>Handle</th><th>Tags</th><th>Status</th><th></th></tr></thead><tbody>
       {filtered.map(row => <tr key={row.id}>
         <td><strong>{row.title}</strong></td>
         <td><code>/blog/{row.handle}</code></td>
+        <td>{row.tags?.length ? row.tags.join(', ') : <span className={ui.muted}>—</span>}</td>
         <td><span className={`${ui.statusPill} ${row.status === 'PUBLISHED' ? ui.statusPillSuccess : ui.statusPillWarning}`}>{row.status === 'PUBLISHED' ? <><Check size={13}/> Published</> : 'Draft'}</span></td>
         <td><div className="inline">{row.status === 'PUBLISHED' && <a className={ui.iconBtn} title="View post" href={`/blog/${row.handle}`} target="_blank" rel="noreferrer"><ExternalLink size={15}/></a>}<button className={ui.iconBtn} title="Edit post" onClick={() => openEdit(row)}><Pencil size={15}/></button><button className={ui.iconBtn} title="Delete post" disabled={busy === row.id} onClick={() => remove(row)}><Trash2 size={15}/></button></div></td>
       </tr>)}
@@ -98,6 +107,7 @@ export default function BlogPostsAdmin({ initial }: { initial: PostRow[] }) {
         <label className={ui.fieldLabel}>Excerpt <span className={ui.muted}>(optional)</span><input className={ui.input} value={form.excerpt} onChange={e => setForm({ ...form, excerpt: e.target.value })} placeholder="Shown on the blog index"/></label>
         <label className={ui.fieldLabel}>Featured image URL <span className={ui.muted}>(optional)</span><input className={ui.input} value={form.featuredImage} onChange={e => setForm({ ...form, featuredImage: e.target.value })} placeholder="https://…"/></label>
         <label className={ui.fieldLabel}>Content<textarea className={ui.textarea} rows={8} value={form.bodyHtml} onChange={e => setForm({ ...form, bodyHtml: e.target.value })} placeholder="<p>Post content, HTML allowed.</p>"/></label>
+        <label className={ui.fieldLabel}>Tags <span className={ui.muted}>(optional)</span><TagEditor tags={form.tags} onChange={tags => setForm({ ...form, tags })} /></label>
         <label className={ui.fieldLabel}>SEO title <span className={ui.muted}>(optional)</span><input className={ui.input} value={form.seoTitle} onChange={e => setForm({ ...form, seoTitle: e.target.value })}/></label>
         <label className={ui.fieldLabel}>SEO description <span className={ui.muted}>(optional)</span><input className={ui.input} value={form.seoDescription} onChange={e => setForm({ ...form, seoDescription: e.target.value })}/></label>
         <label className={ui.fieldLabel}>Status<select className={ui.input} value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}><option value="DRAFT">Draft</option><option value="PUBLISHED">Published</option></select></label>
@@ -112,6 +122,7 @@ export default function BlogPostsAdmin({ initial }: { initial: PostRow[] }) {
         <label className={ui.fieldLabel}>Excerpt<input className={ui.input} value={editForm.excerpt} onChange={e => setEditForm({ ...editForm, excerpt: e.target.value })}/></label>
         <label className={ui.fieldLabel}>Featured image URL<input className={ui.input} value={editForm.featuredImage} onChange={e => setEditForm({ ...editForm, featuredImage: e.target.value })}/></label>
         <label className={ui.fieldLabel}>Content<textarea className={ui.textarea} rows={8} value={editForm.bodyHtml} onChange={e => setEditForm({ ...editForm, bodyHtml: e.target.value })}/></label>
+        <label className={ui.fieldLabel}>Tags<TagEditor tags={editForm.tags} onChange={tags => setEditForm({ ...editForm, tags })} /></label>
         <label className={ui.fieldLabel}>SEO title<input className={ui.input} value={editForm.seoTitle} onChange={e => setEditForm({ ...editForm, seoTitle: e.target.value })}/></label>
         <label className={ui.fieldLabel}>SEO description<input className={ui.input} value={editForm.seoDescription} onChange={e => setEditForm({ ...editForm, seoDescription: e.target.value })}/></label>
         <label className={ui.fieldLabel}>Status<select className={ui.input} value={editForm.status} onChange={e => setEditForm({ ...editForm, status: e.target.value })}><option value="DRAFT">Draft</option><option value="PUBLISHED">Published</option></select></label>
