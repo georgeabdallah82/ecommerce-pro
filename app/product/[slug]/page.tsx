@@ -197,7 +197,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     })),
     metafields: product.metafields
       .filter((m) => m.value)
-      .map((m) => ({ name: m.definition.name, type: m.definition.type, value: m.value })),
+      .map((m) => ({ name: m.definition.name, type: m.definition.type, isList: m.definition.isList, value: m.value })),
   }
 
   const structuredData = {
