@@ -291,6 +291,7 @@ const mockGiftCards: any[] = []
 const mockInventoryItems: any[] = []
 const mockProductVariants: any[] = []
 const mockWishlistItems: any[] = []
+const mockReviews: any[] = []
 // Mirrors the two rows prisma/seed.ts actually seeds -- unlike the operational arrays above,
 // this is real storefront content (the announcement bar / trust strip the homepage renders),
 // so it starts populated instead of empty, matching mockSettings' theme.config/theme.sections.
@@ -470,6 +471,19 @@ function getMockHandler(model: string) {
         list.sort((a, b) => a.sortOrder - b.sortOrder)
         return list
       }
+      if (model === 'review') {
+        let list = [...mockReviews]
+        const w = args?.where || {}
+        if (w.approved !== undefined) list = list.filter((r) => r.approved === w.approved)
+        if (w.productId) list = list.filter((r) => r.productId === w.productId)
+        if (w.userId) list = list.filter((r) => r.userId === w.userId)
+        if (args?.orderBy?.featured === 'desc') list = list.sort((a, b) => Number(b.featured) - Number(a.featured) || b.createdAt.getTime() - a.createdAt.getTime())
+        else list = list.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        if (args?.take) list = list.slice(0, args.take)
+        if (args?.include?.product) list = list.map((r) => ({ ...r, product: mockProducts.find((p) => p.id === r.productId) || null }))
+        if (args?.include?.user) list = list.map((r) => ({ ...r, user: mockUsers.find((u) => u.id === r.userId) || null }))
+        return list
+      }
       if (model === 'wishlistItem') {
         let list = [...mockWishlistItems]
         const w = args?.where || {}
@@ -509,10 +523,22 @@ function getMockHandler(model: string) {
               : where.barcode
                 ? mockProducts.find((p) => (p as any).barcode === where.barcode)
                 : undefined
+        if (!found) return null
         // mockProducts entries don't carry every relation Prisma's `include` can ask
         // for (e.g. reviews, tags) -- default those to empty arrays so callers that
-        // assume Prisma's always-an-array shape (never undefined) don't crash.
-        return found ? { reviews: [], tags: [], ...found } : null
+        // assume Prisma's always-an-array shape (never undefined) don't crash. reviews is a
+        // real lookup against mockReviews (rather than always []) so the PDP's approved/
+        // featured filtering and ordering is actually exercisable in mock/dev mode.
+        let reviews: any[] = []
+        const reviewsArg = args?.include?.reviews
+        if (reviewsArg) {
+          reviews = mockReviews.filter((r) => r.productId === found.id && (reviewsArg.where?.approved === undefined || r.approved === reviewsArg.where.approved))
+          if (reviewsArg.orderBy?.featured === 'desc') reviews = reviews.sort((a, b) => Number(b.featured) - Number(a.featured) || b.createdAt.getTime() - a.createdAt.getTime())
+          else reviews = reviews.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+          if (reviewsArg.take) reviews = reviews.slice(0, reviewsArg.take)
+          if (reviewsArg.include?.user) reviews = reviews.map((r) => ({ ...r, user: mockUsers.find((u) => u.id === r.userId) || null }))
+        }
+        return { reviews, tags: [], ...found }
       }
       if (model === 'user') {
         if (where.email) return mockUsers.find((u) => u.email.toLowerCase() === String(where.email).toLowerCase()) || null
@@ -571,6 +597,10 @@ function getMockHandler(model: string) {
     },
     findFirst: async (args?: any) => {
       const where = args?.where || {}
+      if (model === 'review') {
+        const list = mockReviews.filter((r) => (where.productId === undefined || r.productId === where.productId) && (where.userId === undefined || r.userId === where.userId) && (where.approved === undefined || r.approved === where.approved))
+        return list[0] || null
+      }
       if (model === 'paymentTransaction') {
         let matches = findMockPaymentTransactions(where)
         if (args?.orderBy?.createdAt === 'desc') matches = matches.sort((a, b) => b.transaction.createdAt.getTime() - a.transaction.createdAt.getTime())
@@ -732,6 +762,7 @@ function getMockHandler(model: string) {
       if (model === 'customerSegmentMember') mockCustomerSegmentMembers.push(item)
       if (model === 'homepageBlock') mockHomepageBlocks.push(item)
       if (model === 'wishlistItem') mockWishlistItems.push(item)
+      if (model === 'review') { item.approved ??= false; item.featured ??= false; mockReviews.push(item) }
       if (model === 'paymentTransaction' && item.orderId) {
         const order = mockOrders.find((o) => o.id === item.orderId)
         if (order) { order.paymentTransactions ??= []; order.paymentTransactions.push(item) }
@@ -750,7 +781,7 @@ function getMockHandler(model: string) {
         if (u) Object.assign(u, args.data || {})
         return u || args.data
       }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews }
       if (byId[model] && args.where?.id) {
         const row = byId[model].find((x) => x.id === args.where.id)
         if (!row) throw new Error('Record to update not found')

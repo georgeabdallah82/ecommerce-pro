@@ -55,7 +55,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       reviews: {
         where: { approved: true },
         take: 24,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { featured: 'desc' },
         include: { user: { select: { name: true } } },
       },
       tags: true,
@@ -181,6 +181,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       title: review.title,
       body: review.body,
       createdAt: review.createdAt,
+      featured: review.featured,
       user: review.user ? { name: review.user.name } : null,
     })),
     tags: product.tags.map((tag) => ({ id: tag.id, value: tag.value })),
