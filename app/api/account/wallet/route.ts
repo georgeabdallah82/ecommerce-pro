@@ -1,6 +1,7 @@
 import { db } from '@/lib/prisma'
 import { requireUser } from '@/lib/auth'
 import { json } from '@/lib/utils'
+import { getStoreCurrency } from '@/lib/store-currency'
 
 export async function GET() {
   try {
@@ -17,7 +18,7 @@ export async function GET() {
     ])
     return json({
       balance: Number(aggregate._sum.amount || 0),
-      currency: currencyRow?.currency || process.env.NEXT_PUBLIC_CURRENCY || 'USD',
+      currency: currencyRow?.currency || await getStoreCurrency(),
       transactions,
     }, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error) {

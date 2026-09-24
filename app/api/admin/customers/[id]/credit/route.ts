@@ -2,6 +2,7 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
+import { getStoreCurrency } from '@/lib/store-currency'
 import { Prisma } from '@prisma/client'
 
 const JSON_HEADERS = { 'Cache-Control': 'private, no-store' }
@@ -30,7 +31,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     ])
     return json({
       balance: Number(aggregate._sum.amount || 0),
-      currency: currencyRow?.currency || process.env.NEXT_PUBLIC_CURRENCY || 'USD',
+      currency: currencyRow?.currency || await getStoreCurrency(),
       transactions,
     }, { headers: JSON_HEADERS })
   } catch (error) {
@@ -53,7 +54,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       : typeof rawAmount === 'string' && rawAmount.trim() !== ''
         ? Number(rawAmount)
         : NaN
-    const currency = String(body?.currency || process.env.NEXT_PUBLIC_CURRENCY || 'USD').trim().toUpperCase().slice(0, 10)
+    const currency = String(body?.currency || await getStoreCurrency()).trim().toUpperCase().slice(0, 10)
     const reason = String(body?.reason || 'Admin adjustment').trim().slice(0, 300)
     const referenceId = body?.referenceId ? String(body.referenceId).trim().slice(0, 190) : null
 
