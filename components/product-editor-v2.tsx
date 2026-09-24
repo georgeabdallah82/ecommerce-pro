@@ -327,8 +327,8 @@ export default function ProductEditorV2({ initial, creating, categories, definit
           {definitions.length ? definitions.map((d: any) => {
             const cur = product.metafields?.find((m: any) => m.definitionId === d.id)?.value || ''
             return <Field key={d.id} label={d.name}>
-              <span className={ui.fieldHelp}>{d.namespace}.{d.key} · {d.type}</span>
-              <input className={ui.input} value={cur} onChange={e => { const n = [...(product.metafields || [])].filter((m: any) => m.definitionId !== d.id); if (e.target.value) n.push({ definitionId: d.id, value: e.target.value }); update({ metafields: n }) }} />
+              <span className={ui.fieldHelp}>{d.namespace}.{d.key} · {d.type}{d.isList ? ' · list (comma-separated)' : ''}</span>
+              <input className={ui.input} placeholder={d.isList ? 'Value one, value two, value three' : undefined} value={cur} onChange={e => { const n = [...(product.metafields || [])].filter((m: any) => m.definitionId !== d.id); if (e.target.value) n.push({ definitionId: d.id, value: e.target.value }); update({ metafields: n }) }} />
             </Field>
           }) : <div className={s.emptyInline}>No metafield definitions yet.</div>}
         </Card>}

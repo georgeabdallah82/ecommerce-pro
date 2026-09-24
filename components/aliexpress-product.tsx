@@ -195,7 +195,16 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
                     {product.metafields.map((m: AnyMap) => (
                       <tr key={m.name}>
                         <th>{m.name}</th>
-                        <td>{m.type === 'boolean' ? (m.value === 'true' ? 'Yes' : 'No') : m.value}</td>
+                        <td>
+                          {m.type === 'boolean' ? (m.value === 'true' ? 'Yes' : 'No')
+                            : m.isList ? (
+                              <span className="aliSpecList">
+                                {String(m.value).split(',').map((v: string) => v.trim()).filter(Boolean).map((v: string, i: number) => (
+                                  <span className="aliSpecListItem" key={i}>{v}</span>
+                                ))}
+                              </span>
+                            ) : m.value}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
