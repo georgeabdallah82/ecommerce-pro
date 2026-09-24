@@ -7,7 +7,7 @@ import { money } from '@/lib/config'
 import styles from './admin-returns.module.css'
 import ui from './admin-ui.module.css'
 
-type ReturnItem = { id: string; orderItemId: string; productId: string; variantId: string | null; quantity: number }
+type ReturnItem = { id: string; orderItemId: string; productId: string; variantId: string | null; quantity: number; condition: string | null }
 type OrderSummary = { id: string; orderNumber: string; email: string; grandTotal: number; currency: string; status: string; items?: { id: string; name: string }[] } | null
 type ReturnRequest = {
   id: string; orderId: string; status: string; reason: string; refundAmount: number; restock: boolean
@@ -19,6 +19,17 @@ type Order = { id: string; orderNumber: string; email: string; status: string; p
 const STATUS_TONE: Record<string, string> = {
   REQUESTED: ui.statusPillWarning, APPROVED: ui.statusPillWarning, RECEIVED: ui.statusPillWarning, REFUNDED: ui.statusPillSuccess, REJECTED: ui.statusPillDanger, CANCELLED: ui.statusPillDanger,
 }
+
+// Informational only -- recorded per item when a return is received, doesn't affect
+// the restock/refund decision (which stays a whole-return toggle).
+const CONDITION_OPTIONS: { value: string; label: string }[] = [
+  { value: '', label: 'Not recorded' },
+  { value: 'GOOD', label: 'Good condition' },
+  { value: 'DAMAGED', label: 'Damaged' },
+  { value: 'MISSING_PARTS', label: 'Missing parts' },
+  { value: 'OPENED', label: 'Opened / used' },
+]
+const CONDITION_LABELS: Record<string, string> = Object.fromEntries(CONDITION_OPTIONS.filter(o => o.value).map(o => [o.value, o.label]))
 
 async function api(path: string, init?: RequestInit) {
   const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
@@ -49,6 +60,7 @@ export default function ReturnsAdmin({ initial, canManage, canRefund }: { initia
   const [receiving, setReceiving] = useState<ReturnRequest | null>(null)
   const [receiveRefund, setReceiveRefund] = useState('')
   const [receiveRestock, setReceiveRestock] = useState(true)
+  const [receiveConditions, setReceiveConditions] = useState<Record<string, string>>({})
   const [receiveError, setReceiveError] = useState('')
   const [actingId, setActingId] = useState<string | null>(null)
 
@@ -137,7 +149,7 @@ export default function ReturnsAdmin({ initial, canManage, canRefund }: { initia
   }
 
   function openReceive(r: ReturnRequest) {
-    setReceiving(r); setReceiveRefund(''); setReceiveRestock(r.restock); setReceiveError('')
+    setReceiving(r); setReceiveRefund(''); setReceiveRestock(r.restock); setReceiveConditions({}); setReceiveError('')
   }
   function closeReceive() { setReceiving(null) }
 
@@ -147,9 +159,10 @@ export default function ReturnsAdmin({ initial, canManage, canRefund }: { initia
     if (!Number.isInteger(refundCents) || refundCents < 0) { setReceiveError('Refund amount must be a valid, non-negative number.'); return }
     setSubmitting(true); setReceiveError('')
     try {
+      const itemConditions = Object.fromEntries(Object.entries(receiveConditions).filter(([, v]) => v))
       const data = await api(`/api/admin/returns/${encodeURIComponent(receiving.id)}`, {
         method: 'PATCH',
-        body: JSON.stringify({ action: 'receive', refundAmount: refundCents, restock: receiveRestock }),
+        body: JSON.stringify({ action: 'receive', refundAmount: refundCents, restock: receiveRestock, itemConditions }),
       })
       applyUpdate(data.returnRequest)
       setNotice(`Return ${receiving.id.slice(0, 10)}… received.`)
@@ -182,7 +195,7 @@ export default function ReturnsAdmin({ initial, canManage, canRefund }: { initia
               <td><strong>{r.id.slice(0, 10)}…</strong></td>
               <td>{r.order ? <Link className={ui.textLink} href={`/admin/orders/${r.order.id}`}>#{r.order.orderNumber}</Link> : <span className={ui.muted}>Order removed</span>}<div className={ui.muted}>{r.order?.email}</div></td>
               <td><span className={`${ui.statusPill} ${STATUS_TONE[r.status] || ''}`}>{r.status}</span></td>
-              <td><div className={styles.itemsCell}>{r.items.map(i => <span key={i.id}>{i.quantity} × {r.order?.items?.find(x => x.id === i.orderItemId)?.name || 'Item'}</span>)}{!r.items.length && <span>—</span>}</div></td>
+              <td><div className={styles.itemsCell}>{r.items.map(i => <span key={i.id}>{i.quantity} × {r.order?.items?.find(x => x.id === i.orderItemId)?.name || 'Item'}{i.condition ? ` — ${CONDITION_LABELS[i.condition] || i.condition}` : ''}</span>)}{!r.items.length && <span>—</span>}</div></td>
               <td><strong>{money(r.refundAmount, r.order?.currency)}</strong></td>
               <td>{r.restock ? <span className={`${ui.statusPill} ${ui.statusPillSuccess}`}>Restocked</span> : <span className={ui.statusPill}>Not restocked</span>}</td>
               <td className={ui.muted}>{new Date(r.createdAt).toLocaleString()}</td>
@@ -276,10 +289,13 @@ export default function ReturnsAdmin({ initial, canManage, canRefund }: { initia
 
           <div className={ui.tableWrap}>
             <table className={styles.returnItemsTable}>
-              <thead><tr><th>Item</th><th>Requested qty</th></tr></thead>
+              <thead><tr><th>Item</th><th>Requested qty</th><th>Condition</th></tr></thead>
               <tbody>{receiving.items.map(i => <tr key={i.id}>
                 <td><strong>{receiving.order?.items?.find(x => x.id === i.orderItemId)?.name || 'Item'}</strong></td>
                 <td>{i.quantity}</td>
+                <td><select className={ui.input} value={receiveConditions[i.id] ?? i.condition ?? ''} onChange={e => setReceiveConditions({ ...receiveConditions, [i.id]: e.target.value })}>
+                  {CONDITION_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select></td>
               </tr>)}</tbody>
             </table>
           </div>

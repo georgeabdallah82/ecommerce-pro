@@ -11,6 +11,12 @@ import { Prisma } from '@prisma/client'
 
 const RETURN_CONFLICT_MESSAGE = 'This order was just modified — please retry.'
 
+// Informational only -- doesn't affect the restock/refund decision, which stays a
+// whole-return toggle (existing.restock / body.restock). Lets whoever receives the
+// return record what actually came back, e.g. to flag a damaged item for someone
+// reviewing the return later even though it was (or wasn't) put back into stock.
+const RETURN_ITEM_CONDITIONS = new Set(['GOOD', 'DAMAGED', 'MISSING_PARTS', 'OPENED'])
+
 const RETURN_MESSAGES = new Set([
   'Return request not found',
   'Only a requested return can be approved',
@@ -71,12 +77,22 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       const requestedRefund = Number(body.refundAmount || 0)
       if (!Number.isInteger(requestedRefund) || requestedRefund < 0) return json({ error: 'refundAmount must be a non-negative integer' }, { status: 400 })
       if (requestedRefund > 0 && !hasPermission(actor.role, 'orders.refund')) throw new Error('FORBIDDEN')
+      const itemConditions: Record<string, unknown> = body.itemConditions && typeof body.itemConditions === 'object' ? body.itemConditions : {}
 
       const result = await db.$transaction(async tx => {
         const existing = await tx.returnRequest.findUnique({ where: { id }, include: { items: true } })
         if (!existing) throw new Error('Return request not found')
         if (!['REQUESTED', 'APPROVED'].includes(existing.status)) throw new Error('Only a requested or approved return can be received')
         const restock = body.restock !== undefined ? body.restock !== false : existing.restock
+
+        // Applied before returnRequest.update's `include: { items: true }` below re-reads
+        // the items, so the response reflects the conditions just recorded.
+        for (const item of existing.items) {
+          const condition = itemConditions[item.id]
+          if (typeof condition === 'string' && RETURN_ITEM_CONDITIONS.has(condition)) {
+            await tx.returnItem.update({ where: { id: item.id }, data: { condition } })
+          }
+        }
 
         const orderRow = await tx.order.findUnique({ where: { id: existing.orderId }, include: { items: true, paymentTransactions: true } })
         if (!orderRow) throw new Error('Order not found')
