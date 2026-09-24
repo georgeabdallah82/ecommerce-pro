@@ -1,7 +1,7 @@
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
-import { json, slugify } from '@/lib/utils'
+import { json, parseJson, slugify } from '@/lib/utils'
 
 // This storefront only ever exposes one blog (sitemap.ts and /blog/[handle]
 // address a post purely by its own globally-unique handle, with no blog
@@ -21,10 +21,29 @@ function cleanStatus(value: unknown) {
   return value === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT'
 }
 
+// tagsJson stores a JSON string array (or null) on a plain String column --
+// sanitizeTags normalizes admin input into that shape, readTags parses it back.
+function sanitizeTags(input: unknown): string[] {
+  if (!Array.isArray(input)) return []
+  const seen = new Set<string>()
+  for (const raw of input) {
+    const tag = String(raw ?? '').trim().slice(0, 40)
+    if (tag) seen.add(tag)
+    if (seen.size >= 20) break
+  }
+  return [...seen]
+}
+
+function readTags(tagsJson: string | null): string[] {
+  const parsed = parseJson<unknown>(tagsJson, [])
+  return Array.isArray(parsed) ? parsed.filter((t): t is string => typeof t === 'string') : []
+}
+
 export async function GET() {
   try {
     await requirePermission('content.view')
-    return json(await db.blogPost.findMany({ orderBy: { updatedAt: 'desc' } }))
+    const posts = await db.blogPost.findMany({ orderBy: { updatedAt: 'desc' } })
+    return json(posts.map((p) => ({ ...p, tags: readTags(p.tagsJson) })))
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 })
   }
@@ -41,6 +60,7 @@ export async function POST(req: Request) {
 
     const blog = await ensureDefaultBlog()
     const status = cleanStatus(b.status)
+    const tags = sanitizeTags(b.tags)
     const post = await db.blogPost.create({
       data: {
         blogId: blog.id,
@@ -50,13 +70,14 @@ export async function POST(req: Request) {
         bodyHtml: b.bodyHtml ? String(b.bodyHtml).slice(0, 200000) : null,
         featuredImage: b.featuredImage ? String(b.featuredImage).trim().slice(0, 2000) : null,
         status,
+        tagsJson: tags.length ? JSON.stringify(tags) : null,
         seoTitle: b.seoTitle ? String(b.seoTitle).trim().slice(0, 200) : null,
         seoDescription: b.seoDescription ? String(b.seoDescription).trim().slice(0, 500) : null,
         publishedAt: status === 'PUBLISHED' ? new Date() : null,
       },
     })
     await audit(actor.id, 'blogPost.created', 'BlogPost', post.id, { title, handle, status })
-    return json({ post }, { status: 201 })
+    return json({ post: { ...post, tags } }, { status: 201 })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unable to create post'
     if (message.includes('Unique constraint')) return json({ error: 'A post with this handle already exists.' }, { status: 409 })
@@ -87,6 +108,7 @@ export async function PATCH(req: Request) {
     if (b.excerpt !== undefined) data.excerpt = b.excerpt ? String(b.excerpt).trim().slice(0, 500) : null
     if (b.bodyHtml !== undefined) data.bodyHtml = b.bodyHtml ? String(b.bodyHtml).slice(0, 200000) : null
     if (b.featuredImage !== undefined) data.featuredImage = b.featuredImage ? String(b.featuredImage).trim().slice(0, 2000) : null
+    if (b.tags !== undefined) { const tags = sanitizeTags(b.tags); data.tagsJson = tags.length ? JSON.stringify(tags) : null }
     if (b.seoTitle !== undefined) data.seoTitle = b.seoTitle ? String(b.seoTitle).trim().slice(0, 200) : null
     if (b.seoDescription !== undefined) data.seoDescription = b.seoDescription ? String(b.seoDescription).trim().slice(0, 500) : null
     if (b.status !== undefined) {
@@ -97,7 +119,7 @@ export async function PATCH(req: Request) {
 
     const post = await db.blogPost.update({ where: { id }, data })
     await audit(actor.id, 'blogPost.updated', 'BlogPost', id, { fields: Object.keys(data) })
-    return json({ post })
+    return json({ post: { ...post, tags: readTags(post.tagsJson) } })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unable to update post'
     if (message.includes('Unique constraint')) return json({ error: 'A post with this handle already exists.' }, { status: 409 })

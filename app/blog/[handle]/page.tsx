@@ -3,7 +3,13 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { db } from '@/lib/prisma'
 import { getThemeState } from '@/lib/theme'
+import { parseJson } from '@/lib/utils'
 import { Footer } from '@/components/footer'
+
+function readTags(tagsJson: string | null) {
+  const parsed = parseJson<unknown>(tagsJson, [])
+  return Array.isArray(parsed) ? parsed.filter((t): t is string => typeof t === 'string') : []
+}
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -26,6 +32,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ handl
   const { theme } = await getThemeState()
   const post = await db.blogPost.findUnique({ where: { handle } })
   if (!post || post.status !== 'PUBLISHED') notFound()
+  const tags = readTags(post.tagsJson)
 
   return <>
     <div className="focalStorefront">
@@ -37,6 +44,11 @@ export default async function BlogPostPage({ params }: { params: Promise<{ handl
           <img src={post.featuredImage} alt="" style={{ width: '100%', maxHeight: 420, objectFit: 'cover', borderRadius: 14, margin: '0 0 24px', background: 'var(--focal-soft,#f1ebe6)' }} />
         )}
         {post.bodyHtml && <div dangerouslySetInnerHTML={{ __html: post.bodyHtml }} />}
+        {tags.length > 0 && (
+          <span className="aliSpecList" style={{ marginTop: 24 }}>
+            {tags.map(t => <Link className="aliSpecListItem" href={`/blog?tag=${encodeURIComponent(t)}`} key={t}>{t}</Link>)}
+          </span>
+        )}
       </div>
     </div>
     <Footer theme={theme} />

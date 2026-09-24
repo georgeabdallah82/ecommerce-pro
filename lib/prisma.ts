@@ -292,6 +292,8 @@ const mockInventoryItems: any[] = []
 const mockProductVariants: any[] = []
 const mockWishlistItems: any[] = []
 const mockReviews: any[] = []
+const mockBlogs: any[] = []
+const mockBlogPosts: any[] = []
 // Mirrors the two rows prisma/seed.ts actually seeds -- unlike the operational arrays above,
 // this is real storefront content (the announcement bar / trust strip the homepage renders),
 // so it starts populated instead of empty, matching mockSettings' theme.config/theme.sections.
@@ -493,6 +495,15 @@ function getMockHandler(model: string) {
         if (args?.include?.product || args?.select?.product) list = list.map((x) => ({ ...x, product: mockProducts.find((p) => p.id === x.productId) || null }))
         return list
       }
+      if (model === 'blog') return [...mockBlogs]
+      if (model === 'blogPost') {
+        let list = [...mockBlogPosts]
+        const w = args?.where || {}
+        if (w.status) list = list.filter((x) => x.status === w.status)
+        if (args?.orderBy?.publishedAt === 'desc') list = list.sort((a, b) => (b.publishedAt?.getTime() || 0) - (a.publishedAt?.getTime() || 0))
+        else list = list.sort((a, b) => (b.updatedAt?.getTime() || 0) - (a.updatedAt?.getTime() || 0))
+        return list
+      }
       if (model === 'liveVisitorSession') {
         let list = Array.from(mockLiveVisitorSessions.values())
         if (args?.where?.lastSeenAt?.gte) list = list.filter((v) => v.lastSeenAt >= new Date(args.where.lastSeenAt.gte))
@@ -566,6 +577,7 @@ function getMockHandler(model: string) {
       if (model === 'productVariant') return (where.id ? mockProductVariants.find((x) => x.id === where.id) : where.sku ? mockProductVariants.find((x) => x.sku === where.sku) : where.barcode ? mockProductVariants.find((x) => x.barcode === where.barcode) : null) || null
       if (model === 'inventoryItem' && where.id) return mockInventoryItems.find((x) => x.id === where.id) || null
       if (model === 'homepageBlock' && where.id) return mockHomepageBlocks.find((x) => x.id === where.id) || null
+      if (model === 'blogPost') return (where.id ? mockBlogPosts.find((x) => x.id === where.id) : where.handle ? mockBlogPosts.find((x) => x.handle === where.handle) : null) || null
       if (model === 'wishlistItem') {
         if (where.id) return mockWishlistItems.find((x) => x.id === where.id) || null
         if (where.userId_productId) { const { userId, productId } = where.userId_productId; return mockWishlistItems.find((x) => x.userId === userId && x.productId === productId) || null }
@@ -601,6 +613,7 @@ function getMockHandler(model: string) {
         const list = mockReviews.filter((r) => (where.productId === undefined || r.productId === where.productId) && (where.userId === undefined || r.userId === where.userId) && (where.approved === undefined || r.approved === where.approved))
         return list[0] || null
       }
+      if (model === 'blog') return mockBlogs[0] || null
       if (model === 'paymentTransaction') {
         let matches = findMockPaymentTransactions(where)
         if (args?.orderBy?.createdAt === 'desc') matches = matches.sort((a, b) => b.transaction.createdAt.getTime() - a.transaction.createdAt.getTime())
@@ -763,6 +776,8 @@ function getMockHandler(model: string) {
       if (model === 'homepageBlock') mockHomepageBlocks.push(item)
       if (model === 'wishlistItem') mockWishlistItems.push(item)
       if (model === 'review') { item.approved ??= false; item.featured ??= false; mockReviews.push(item) }
+      if (model === 'blog') mockBlogs.push(item)
+      if (model === 'blogPost') { item.status ??= 'DRAFT'; item.tagsJson ??= null; mockBlogPosts.push(item) }
       if (model === 'paymentTransaction' && item.orderId) {
         const order = mockOrders.find((o) => o.id === item.orderId)
         if (order) { order.paymentTransactions ??= []; order.paymentTransactions.push(item) }
@@ -781,7 +796,7 @@ function getMockHandler(model: string) {
         if (u) Object.assign(u, args.data || {})
         return u || args.data
       }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews, blogPost: mockBlogPosts }
       if (byId[model] && args.where?.id) {
         const row = byId[model].find((x) => x.id === args.where.id)
         if (!row) throw new Error('Record to update not found')
@@ -807,7 +822,7 @@ function getMockHandler(model: string) {
         if (i >= 0) return mockCustomerTagMembers.splice(i, 1)[0]
         return {}
       }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, user: mockUsers, homepageBlock: mockHomepageBlocks, wishlistItem: mockWishlistItems }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, user: mockUsers, homepageBlock: mockHomepageBlocks, wishlistItem: mockWishlistItems, blogPost: mockBlogPosts }
       const list = byId[model]
       if (list && args?.where?.id) { const i = list.findIndex((x) => x.id === args.where.id); if (i >= 0) return list.splice(i, 1)[0] }
       return {}

@@ -3878,4 +3878,5 @@ body > .footer {
 .aliSpecTable th,.aliSpecTable td{padding:10px 12px 10px 0;text-align:left;vertical-align:top;font-weight:400}
 .aliSpecTable th{color:var(--focal-muted);width:40%;font-weight:600}
 .aliSpecList{display:flex;flex-wrap:wrap;gap:6px}
-.aliSpecListItem{background:var(--store-secondary,#fff0e8);color:var(--store-text,#191512);border-radius:999px;padding:3px 10px;font-size:13px}
+.aliSpecListItem{background:var(--store-secondary,#fff0e8);color:var(--store-text,#191512);border-radius:999px;padding:3px 10px;font-size:13px;text-decoration:none}
+a.aliSpecListItem:hover{opacity:.8}
