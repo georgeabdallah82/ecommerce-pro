@@ -14,6 +14,7 @@ import { consumeRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { getUnpublishedProductIds } from '@/lib/sales-channels'
+import { getStoreCurrency } from '@/lib/store-currency'
 import { discountAmount, misconfigured, taxableAmountAfterRewards, zeroSplit, type DiscountSplit, type LineItem } from '@/lib/discounts'
 import { PaymentMethod } from '@prisma/client'
 import { ZodError } from 'zod'
@@ -256,7 +257,7 @@ export async function POST(req: Request) {
     const shippingTotal = coupon?.type === 'FREE_SHIPPING' ? 0 : shipping.total
     const preGiftCardTotal = Math.max(0, rewardAdjustedSubtotal + shippingTotal + taxTotal)
 
-    const orderCurrency = process.env.NEXT_PUBLIC_CURRENCY || 'USD'
+    const orderCurrency = await getStoreCurrency()
     let giftCard: { id: string; balance: number } | null = null
     let giftCardDiscount = 0
     if (input.giftCardCode) {
@@ -305,11 +306,10 @@ export async function POST(req: Request) {
       }
 
       if (paymentMethod === PaymentMethod.WALLET && grandTotal > 0) {
-        const walletCurrency = process.env.NEXT_PUBLIC_CURRENCY || 'USD'
-        const walletAggregate = await tx.walletTransaction.aggregate({ where: { userId: user!.id, currency: walletCurrency }, _sum: { amount: true } })
+        const walletAggregate = await tx.walletTransaction.aggregate({ where: { userId: user!.id, currency: orderCurrency }, _sum: { amount: true } })
         const walletBalance = Number(walletAggregate._sum.amount || 0)
         if (walletBalance < grandTotal) throw new Error('Insufficient wallet balance.')
-        await tx.walletTransaction.create({ data: { id: `wal_${user!.id}_${orderNumber}_payment`, userId: user!.id, amount: -grandTotal, currency: walletCurrency, type: 'PAYMENT', reason: 'Wallet checkout payment', referenceId: orderNumber } })
+        await tx.walletTransaction.create({ data: { id: `wal_${user!.id}_${orderNumber}_payment`, userId: user!.id, amount: -grandTotal, currency: orderCurrency, type: 'PAYMENT', reason: 'Wallet checkout payment', referenceId: orderNumber } })
       }
 
       for (const item of normalized) await reserveStock(tx, byId.get(item.productId)!, item.variantId, item.quantity, orderNumber)
@@ -343,7 +343,7 @@ export async function POST(req: Request) {
           shippingTotal,
           taxTotal,
           grandTotal,
-          currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD',
+          currency: orderCurrency,
           status: orderStatus,
           paymentStatus,
           paymentMethod,
@@ -352,7 +352,7 @@ export async function POST(req: Request) {
           shippingMethod: shipping.method,
           items: { create: normalized.map(({ taxable: _taxable, ...item }) => item) },
           events: { create: { status: orderStatus, message: paidByWallet ? `Order placed using wallet${coinDiscount ? ` and ${requestedCoins} coins` : ''}.` : paidUpfront ? 'Order placed successfully using a gift card.' : 'Order placed successfully.' } },
-          paymentTransactions: { create: { provider: 'checkout', externalId: idempotencyKey, status: paidUpfront ? 'paid' : 'created', amount: grandTotal, currency: process.env.NEXT_PUBLIC_CURRENCY || 'USD', rawJson: JSON.stringify(checkoutTxRaw) } },
+          paymentTransactions: { create: { provider: 'checkout', externalId: idempotencyKey, status: paidUpfront ? 'paid' : 'created', amount: grandTotal, currency: orderCurrency, rawJson: JSON.stringify(checkoutTxRaw) } },
         },
       })
       return { existing: false as const, order }

@@ -3,6 +3,7 @@ import { getThemeState } from '@/lib/theme'
 import { getCurrentUser } from '@/lib/auth'
 import { getProductStats, withProductStats } from '@/lib/product-stats'
 import { isProductPublished, getUnpublishedProductIds } from '@/lib/sales-channels'
+import { getStoreCurrency } from '@/lib/store-currency'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { Footer } from '@/components/footer'
@@ -210,7 +211,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     offers: {
       '@type': 'Offer',
       url: `${siteUrl()}/product/${product.slug}`,
-      priceCurrency: process.env.NEXT_PUBLIC_CURRENCY || 'USD',
+      priceCurrency: await getStoreCurrency(),
       price: (product.basePrice / 100).toFixed(2),
       availability: isAvailable ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
       itemCondition: 'https://schema.org/NewCondition',

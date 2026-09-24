@@ -5,6 +5,7 @@ import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { sendGiftCardIssuedEmail } from '@/lib/email'
 import { expireGiftCards } from '@/lib/gift-cards'
+import { getStoreCurrency } from '@/lib/store-currency'
 
 function generateCode() { return randomBytes(10).toString('hex').toUpperCase().match(/.{1,5}/g)!.join('-') }
 
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
     const amount = Math.max(0, Math.trunc(Number(b.amount) || 0))
     if (!amount) return json({ error: 'Gift card amount must be greater than zero' }, { status: 400 })
     const code = String(b.code || generateCode()).trim().toUpperCase()
-    const card = await db.giftCard.create({ data: { code, last4: code.replace(/[^A-Z0-9]/g, '').slice(-4), customerId: b.customerId ? String(b.customerId) : null, initialAmount: amount, balance: amount, currency: String(b.currency || process.env.NEXT_PUBLIC_CURRENCY || 'USD'), expiresAt: b.expiresAt ? new Date(b.expiresAt) : null, note: b.note ? String(b.note) : null } })
+    const card = await db.giftCard.create({ data: { code, last4: code.replace(/[^A-Z0-9]/g, '').slice(-4), customerId: b.customerId ? String(b.customerId) : null, initialAmount: amount, balance: amount, currency: String(b.currency || await getStoreCurrency()), expiresAt: b.expiresAt ? new Date(b.expiresAt) : null, note: b.note ? String(b.note) : null } })
     await audit(actor.id, 'gift_card.created', 'GiftCard', card.id, { amount, customerId: card.customerId })
     if (card.customerId) {
       void sendGiftCardIssuedEmail(card.id).catch(error => console.error('[email] gift card issued email failed', error))

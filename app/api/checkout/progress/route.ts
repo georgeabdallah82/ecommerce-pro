@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { json } from '@/lib/utils'
 import { consumeRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
+import { getStoreCurrency } from '@/lib/store-currency'
 
 // Public, unauthenticated capture endpoint for the checkout page -- distinct from
 // /api/admin/abandoned-checkouts, which is staff-only and used to browse the
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
     if (!cartItems.length) return json({ ok: true })
 
     const subtotal = cartItems.reduce((sum: number, item: any) => sum + item.unitPrice * item.quantity, 0)
-    const currency = process.env.NEXT_PUBLIC_CURRENCY || 'USD'
+    const currency = await getStoreCurrency()
     const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/$/, '')
     const user = await getCurrentUser()
 

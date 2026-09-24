@@ -2,6 +2,7 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
+import { getStoreCurrency } from '@/lib/store-currency'
 
 export async function GET(req: Request) {
   try {
@@ -48,7 +49,7 @@ export async function POST(req: Request) {
       shippingTotal,
       taxTotal,
       grandTotal,
-      currency: String(b.currency || process.env.NEXT_PUBLIC_CURRENCY || 'USD'),
+      currency: String(b.currency || await getStoreCurrency()),
       shippingAddressJson: b.shippingAddress ? JSON.stringify(b.shippingAddress) : null,
       billingAddressJson: b.billingAddress ? JSON.stringify(b.billingAddress) : null,
       notes: b.notes ? String(b.notes) : null,
