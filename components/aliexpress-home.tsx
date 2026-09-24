@@ -8,7 +8,7 @@ import { useWishlist } from '@/components/use-wishlist'
 
 type AnyMap = Record<string, any>
 
-export default function AliExpressHome({ theme, hero, products, collections, categories }: { theme: AnyMap; hero?: AnyMap | null; products: AnyMap[]; collections: AnyMap[]; categories: AnyMap[] }) {
+export default function AliExpressHome({ theme, hero, products, collections, categories, announcements, trustItems }: { theme: AnyMap; hero?: AnyMap | null; products: AnyMap[]; collections: AnyMap[]; categories: AnyMap[]; announcements?: AnyMap[]; trustItems?: AnyMap[] }) {
   const { wishlist, toggleWish } = useWishlist()
   const [quickProduct, setQuickProduct] = useState<AnyMap | null>(null)
 
@@ -38,6 +38,12 @@ export default function AliExpressHome({ theme, hero, products, collections, cat
 
   return (
     <div className="focalStorefront aliHome">
+      {(announcements || []).map(block => {
+        let text = block.title || ''
+        try { const parsed = JSON.parse(block.contentJson || '{}'); if (parsed?.text) text = String(parsed.text) } catch {}
+        return text ? <div className="aliAnnouncementBar" key={block.id}>{text}</div> : null
+      })}
+
       {hero && <HeroSection theme={theme} section={hero} />}
 
       {categories.length > 0 && (
@@ -102,6 +108,19 @@ export default function AliExpressHome({ theme, hero, products, collections, cat
           <div className="aliContainer aliDenseGrid">
             {bestSellers.filter(p => Number(p.soldCount || 0) > 0).slice(0, 12).map(p => (
               <ProductCard key={p.id} p={p} theme={theme} onQuickView={setQuickProduct} wishlist={wishlist} toggleWish={toggleWish} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {(trustItems || []).length > 0 && (
+        <section className="aliTrustStrip">
+          <div className="aliContainer aliTrustRow">
+            {(trustItems || []).map(block => (
+              <div className="aliTrustItem" key={block.id}>
+                <strong>{block.title || 'Why shop with us'}</strong>
+                {block.subtitle && <span>{block.subtitle}</span>}
+              </div>
             ))}
           </div>
         </section>
