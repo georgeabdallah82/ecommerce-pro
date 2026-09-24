@@ -3657,6 +3657,15 @@ body > .footer {
 .aliCollectionGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
 .aliDenseGrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:14px}
 
+.aliAnnouncementBar{background:var(--store-text,#191512);color:#fff;text-align:center;font-size:13px;font-weight:600;padding:8px 16px}
+.aliAnnouncementBar+.aliAnnouncementBar{border-top:1px solid rgba(255,255,255,.15)}
+
+.aliTrustStrip{background:var(--store-surface,#fff);border-top:1px solid var(--store-border,#eaded4);padding:28px 0}
+.aliTrustRow{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:20px}
+.aliTrustItem{text-align:center}
+.aliTrustItem strong{display:block;font-size:15px;color:var(--store-text,#191512)}
+.aliTrustItem span{display:block;margin-top:4px;font-size:13px;color:var(--store-muted,#847b70)}
+
 @media(max-width:1000px){
   .aliCollectionGrid{grid-template-columns:repeat(3,minmax(0,1fr))}
   .aliDenseGrid{grid-template-columns:repeat(4,minmax(0,1fr))}

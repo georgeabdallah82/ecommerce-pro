@@ -290,6 +290,13 @@ const mockCoinTransactions: any[] = []
 const mockGiftCards: any[] = []
 const mockInventoryItems: any[] = []
 const mockProductVariants: any[] = []
+// Mirrors the two rows prisma/seed.ts actually seeds -- unlike the operational arrays above,
+// this is real storefront content (the announcement bar / trust strip the homepage renders),
+// so it starts populated instead of empty, matching mockSettings' theme.config/theme.sections.
+const mockHomepageBlocks: any[] = [
+  { id: 'block-announcement-1', type: 'announcement', title: 'Free delivery on qualifying orders.', subtitle: null, contentJson: JSON.stringify({ text: 'Free delivery on qualifying orders.' }), isActive: true, sortOrder: 0, createdAt: new Date('2025-01-01'), updatedAt: new Date('2025-01-01') },
+  { id: 'block-trust-1', type: 'trust', title: 'Built for a better everyday', subtitle: 'Fast delivery, simple checkout, helpful support.', contentJson: JSON.stringify({}), isActive: true, sortOrder: 1, createdAt: new Date('2025-01-01'), updatedAt: new Date('2025-01-01') },
+]
 
 // Matches the storefront's product text-search field filters -- {contains, mode?} --
 // against a single mock product field. Real Prisma/Mongo does this server-side;
@@ -454,6 +461,14 @@ function getMockHandler(model: string) {
         if (w.customerId?.in) { const ids = new Set(w.customerId.in); list = list.filter((x) => ids.has(x.customerId)) }
         return list
       }
+      if (model === 'homepageBlock') {
+        let list = [...mockHomepageBlocks]
+        const w = args?.where || {}
+        if (w.isActive !== undefined) list = list.filter((x) => x.isActive === w.isActive)
+        if (w.type?.in) { const types = new Set(w.type.in); list = list.filter((x) => types.has(x.type)) }
+        list.sort((a, b) => a.sortOrder - b.sortOrder)
+        return list
+      }
       if (model === 'liveVisitorSession') {
         let list = Array.from(mockLiveVisitorSessions.values())
         if (args?.where?.lastSeenAt?.gte) list = list.filter((v) => v.lastSeenAt >= new Date(args.where.lastSeenAt.gte))
@@ -514,6 +529,7 @@ function getMockHandler(model: string) {
       if (model === 'giftCard') return (where.id ? mockGiftCards.find((x) => x.id === where.id) : where.code ? mockGiftCards.find((x) => x.code.toUpperCase() === String(where.code).toUpperCase()) : null) || null
       if (model === 'productVariant') return (where.id ? mockProductVariants.find((x) => x.id === where.id) : where.sku ? mockProductVariants.find((x) => x.sku === where.sku) : where.barcode ? mockProductVariants.find((x) => x.barcode === where.barcode) : null) || null
       if (model === 'inventoryItem' && where.id) return mockInventoryItems.find((x) => x.id === where.id) || null
+      if (model === 'homepageBlock' && where.id) return mockHomepageBlocks.find((x) => x.id === where.id) || null
       if (model === 'customerTag') return (where.id ? mockCustomerTags.find((x) => x.id === where.id) : where.value ? mockCustomerTags.find((x) => x.value === where.value) : null) || null
       if (model === 'customerTagMember' && where.tagId_customerId) {
         const { tagId, customerId } = where.tagId_customerId
@@ -699,6 +715,7 @@ function getMockHandler(model: string) {
       if (model === 'user') { item.role ??= 'CUSTOMER'; item.isActive ??= true; mockUsers.push(item) }
       if (model === 'customerSegment') mockCustomerSegments.push(item)
       if (model === 'customerSegmentMember') mockCustomerSegmentMembers.push(item)
+      if (model === 'homepageBlock') mockHomepageBlocks.push(item)
       if (model === 'paymentTransaction' && item.orderId) {
         const order = mockOrders.find((o) => o.id === item.orderId)
         if (order) { order.paymentTransactions ??= []; order.paymentTransactions.push(item) }
@@ -717,7 +734,7 @@ function getMockHandler(model: string) {
         if (u) Object.assign(u, args.data || {})
         return u || args.data
       }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks }
       if (byId[model] && args.where?.id) {
         const row = byId[model].find((x) => x.id === args.where.id)
         if (!row) throw new Error('Record to update not found')
@@ -743,7 +760,7 @@ function getMockHandler(model: string) {
         if (i >= 0) return mockCustomerTagMembers.splice(i, 1)[0]
         return {}
       }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, user: mockUsers }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, user: mockUsers, homepageBlock: mockHomepageBlocks }
       const list = byId[model]
       if (list && args?.where?.id) { const i = list.findIndex((x) => x.id === args.where.id); if (i >= 0) return list.splice(i, 1)[0] }
       return {}
