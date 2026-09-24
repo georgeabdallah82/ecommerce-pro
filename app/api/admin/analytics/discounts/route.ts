@@ -31,6 +31,15 @@ function parseRewardDiscount(rawJson: string | null | undefined) {
   }
 }
 
+// Mirrors netRevenueForOrder in ../route.ts -- the main dashboard already nets refunded/
+// partially_refunded PaymentTransaction amounts out of revenue (task #134, "Total Spent
+// counting refunded orders"), but this sibling report was never given the same treatment, so
+// a coupon whose orders were later fully refunded still showed as having driven that revenue.
+function netRevenueForOrder(order: { grandTotal: number; paymentTransactions: { status: string; amount: number }[] }) {
+  const refunded = order.paymentTransactions.filter(t => ['refunded', 'partially_refunded'].includes(t.status)).reduce((sum, t) => sum + t.amount, 0)
+  return Math.max(0, order.grandTotal - refunded)
+}
+
 /** Mirrors the day-count resolution in ../route.ts so this report scopes to the same period the dashboard shows. */
 function resolveRange(searchParams: URLSearchParams, now: Date) {
   const startParam = parseDateParam(searchParams.get('start'))
@@ -56,19 +65,20 @@ export async function GET(req: Request) {
         couponCode: true,
         discountTotal: true,
         grandTotal: true,
-        paymentTransactions: { where: { provider: 'checkout' }, select: { rawJson: true } },
+        paymentTransactions: { select: { provider: true, status: true, amount: true, rawJson: true } },
       },
     })
 
     const byCode = new Map<string, { code: string; timesUsed: number; discountGiven: number; revenue: number }>()
     for (const o of orders) {
       if (!o.couponCode) continue
-      const rewardDiscount = parseRewardDiscount(o.paymentTransactions?.[0]?.rawJson)
+      const checkoutTx = o.paymentTransactions.find(t => t.provider === 'checkout')
+      const rewardDiscount = parseRewardDiscount(checkoutTx?.rawJson)
       const couponDiscount = Math.max(0, (o.discountTotal || 0) - rewardDiscount)
       const existing = byCode.get(o.couponCode) || { code: o.couponCode, timesUsed: 0, discountGiven: 0, revenue: 0 }
       existing.timesUsed += 1
       existing.discountGiven += couponDiscount
-      existing.revenue += o.grandTotal || 0
+      existing.revenue += netRevenueForOrder(o)
       byCode.set(o.couponCode, existing)
     }
 
