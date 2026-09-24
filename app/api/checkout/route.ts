@@ -254,6 +254,7 @@ export async function POST(req: Request) {
     const shipping = await calculateShipping(input.shippingAddress.country, rewardAdjustedSubtotal, input.shippingRateId || null)
     const taxRate = await getTaxRatePercent(input.shippingAddress.country)
     const taxTotal = Math.round(taxableAmount * taxRate / 100)
+    const freeShippingDiscount = coupon?.type === 'FREE_SHIPPING' ? shipping.total : 0
     const shippingTotal = coupon?.type === 'FREE_SHIPPING' ? 0 : shipping.total
     const preGiftCardTotal = Math.max(0, rewardAdjustedSubtotal + shippingTotal + taxTotal)
 
@@ -339,7 +340,7 @@ export async function POST(req: Request) {
           email: input.email,
           phone: input.phone || null,
           subtotal,
-          discountTotal: discount.total + coinDiscount + giftCardDiscount,
+          discountTotal: discount.total + freeShippingDiscount + coinDiscount + giftCardDiscount,
           shippingTotal,
           taxTotal,
           grandTotal,
