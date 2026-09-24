@@ -214,10 +214,11 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
         {reviews.length > 0 ? (
           <div className="aliReviewList">
             {reviews.map((r: AnyMap) => (
-              <div className="aliReviewItem" key={r.id}>
+              <div className={`aliReviewItem${r.featured ? ' aliReviewFeatured' : ''}`} key={r.id}>
                 <div className="aliReviewHead">
                   <StarRow rating={Number(r.rating || 0)} size={13} />
                   <strong>{r.user?.name || 'Verified buyer'}</strong>
+                  {r.featured && <span className="aliReviewFeaturedBadge">Featured</span>}
                   <span>{new Date(r.createdAt).toLocaleDateString()}</span>
                 </div>
                 {r.title && <div className="aliReviewTitle">{r.title}</div>}
