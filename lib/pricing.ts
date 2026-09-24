@@ -1,4 +1,5 @@
 import { db } from '@/lib/prisma'
+import { normalizeCountry } from '@/lib/countries'
 
 // The store-wide "Free shipping threshold" setting (Settings > Checkout, stored in
 // whole currency units) is the fallback free-shipping cutoff used when no
@@ -13,9 +14,8 @@ export function resolveFreeShippingThresholdCents(settingValue: string | null | 
 
 async function matchingZone(country: string) {
   const zones = await db.shippingZone.findMany({ where: { isActive: true }, include: { rates: { where: { isActive: true }, orderBy: { price: 'asc' } } } })
-  const normalizedCountry = country.trim().toUpperCase()
-  const upper = normalizedCountry === 'LEBANON' ? 'LB' : normalizedCountry
-  return zones.find(z => z.countries === '*' || z.countries.split(',').map(x => x.trim().toUpperCase()).includes(upper))
+  const upper = normalizeCountry(country)
+  return zones.find(z => z.countries === '*' || z.countries.split(',').map(x => normalizeCountry(x)).includes(upper))
 }
 
 export type ShippingRateOption = { id: string | null; name: string; price: number; freeAbove: number | null; estimatedDays: number | null }
@@ -67,10 +67,9 @@ function clampRate(value: number) {
  */
 export async function getTaxRatePercent(country?: string) {
   if (country) {
-    const normalized = country.trim().toUpperCase()
-    const upper = normalized === 'LEBANON' ? 'LB' : normalized
+    const upper = normalizeCountry(country)
     const zones = await db.taxRate.findMany({ where: { isActive: true } })
-    const specific = zones.find(z => z.countries !== '*' && z.countries.split(',').map(x => x.trim().toUpperCase()).includes(upper))
+    const specific = zones.find(z => z.countries !== '*' && z.countries.split(',').map(x => normalizeCountry(x)).includes(upper))
     if (specific) return clampRate(specific.rate)
     const wildcard = zones.find(z => z.countries === '*')
     if (wildcard) return clampRate(wildcard.rate)
