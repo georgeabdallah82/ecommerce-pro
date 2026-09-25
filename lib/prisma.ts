@@ -355,6 +355,7 @@ const mockPages: any[] = []
 const mockRedirects: any[] = []
 const mockOrderEdits: any[] = []
 const mockDeliveryTracking: any[] = []
+const mockProductPublications: any[] = []
 // order.items/.events already generate ids with this prefix (see order.create's/order.update's
 // own nested-write expansion below) -- orderItem/orderEvent, as standalone top-level model
 // accessors used by the order-edit commit flow (and, for orderItem, the sold-count/verified-
@@ -621,6 +622,24 @@ function getMockHandler(model: string) {
         if (w.segmentId) list = list.filter((x) => x.segmentId === w.segmentId)
         if (typeof w.customerId === 'string') list = list.filter((x) => x.customerId === w.customerId)
         if (w.customerId?.in) { const ids = new Set(w.customerId.in); list = list.filter((x) => ids.has(x.customerId)) }
+        return list
+      }
+      // lib/sales-channels.ts's getUnpublishedProductIds() calls this unscoped on every
+      // storefront/checkout/sitemap request with a nested `channel.handle` filter -- without
+      // a real branch here it always returned [], so unpublishing a product from the admin
+      // toggle silently never hid it anywhere despite the toggle reporting success.
+      if (model === 'productPublication') {
+        let list = [...mockProductPublications]
+        const w = args?.where || {}
+        if (w.productId) list = list.filter((x) => x.productId === w.productId)
+        if (w.channelId) list = list.filter((x) => x.channelId === w.channelId)
+        if (w.available !== undefined) list = list.filter((x) => x.available === w.available)
+        if (w.channel?.handle) list = list.filter((x) => mockSalesChannels.find((c) => c.id === x.channelId)?.handle === w.channel.handle)
+        if (args?.include?.channel) list = list.map((x) => ({ ...x, channel: mockSalesChannels.find((c) => c.id === x.channelId) || null }))
+        if (args?.orderBy?.channel?.name) {
+          const dir = args.orderBy.channel.name === 'desc' ? -1 : 1
+          list = list.sort((a, b) => dir * String(mockSalesChannels.find((c) => c.id === a.channelId)?.name || '').localeCompare(String(mockSalesChannels.find((c) => c.id === b.channelId)?.name || '')))
+        }
         return list
       }
       if (model === 'homepageBlock') {
@@ -929,6 +948,13 @@ function getMockHandler(model: string) {
         return list[0] || null
       }
       if (model === 'blog') return mockBlogs[0] || null
+      // lib/sales-channels.ts's isProductPublished() -- the product detail page's own
+      // gate, checked separately from the list-wide getUnpublishedProductIds() above.
+      if (model === 'productPublication') {
+        let list = mockProductPublications.filter((x: any) => (where.productId === undefined || x.productId === where.productId) && (where.available === undefined || x.available === where.available))
+        if (where.channel?.handle) list = list.filter((x: any) => mockSalesChannels.find((c) => c.id === x.channelId)?.handle === where.channel.handle)
+        return list[0] || null
+      }
       if (model === 'order') {
         // No findFirst branch existed for 'order' at all -- every caller (the return-request
         // create/cancel routes' orderNumber+userId ownership lookup, checkout's own
@@ -1113,6 +1139,14 @@ function getMockHandler(model: string) {
         const created = { tagId, customerId, createdAt: new Date(), ...(args.create || {}) }
         mockCustomerTagMembers.push(created)
         return created
+      }
+      if (model === 'productPublication' && args.where?.productId_channelId) {
+        const { productId, channelId } = args.where.productId_channelId
+        const existing = mockProductPublications.find((x) => x.productId === productId && x.channelId === channelId)
+        if (existing) { Object.assign(existing, args.update || {}); return { ...existing, channel: mockSalesChannels.find((c) => c.id === existing.channelId) || null } }
+        const created = { id: `pub-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, productId, channelId, available: true, publishedAt: new Date(), ...(args.create || {}) }
+        mockProductPublications.push(created)
+        return { ...created, channel: mockSalesChannels.find((c) => c.id === created.channelId) || null }
       }
       return args?.create || args?.update || {}
     },
@@ -1391,6 +1425,12 @@ function getMockHandler(model: string) {
         const { tagId, customerId } = args.where.tagId_customerId
         const i = mockCustomerTagMembers.findIndex((x) => x.tagId === tagId && x.customerId === customerId)
         if (i >= 0) return mockCustomerTagMembers.splice(i, 1)[0]
+        return {}
+      }
+      if (model === 'productPublication' && args?.where?.productId_channelId) {
+        const { productId, channelId } = args.where.productId_channelId
+        const i = mockProductPublications.findIndex((x) => x.productId === productId && x.channelId === channelId)
+        if (i >= 0) return mockProductPublications.splice(i, 1)[0]
         return {}
       }
       const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, user: mockUsers, homepageBlock: mockHomepageBlocks, wishlistItem: mockWishlistItems, blogPost: mockBlogPosts, product: mockProducts, productVariant: mockProductVariants, address: mockAddresses, shippingZone: mockShippingZones, page: mockPages, redirect: mockRedirects, collection: mockCollections }
