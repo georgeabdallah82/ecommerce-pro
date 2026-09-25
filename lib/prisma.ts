@@ -359,6 +359,7 @@ const mockProductPublications: any[] = []
 const mockMetafieldDefinitions: any[] = []
 const mockMetafieldValues: any[] = []
 const mockMediaAssets: any[] = []
+const mockInventoryTransfers: any[] = []
 // order.items/.events already generate ids with this prefix (see order.create's/order.update's
 // own nested-write expansion below) -- orderItem/orderEvent, as standalone top-level model
 // accessors used by the order-edit commit flow (and, for orderItem, the sold-count/verified-
@@ -486,6 +487,16 @@ function getMockHandler(model: string) {
         let list = [...mockMediaAssets]
         if (args?.orderBy?.createdAt === 'desc') list = list.sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime())
         else if (args?.orderBy?.createdAt === 'asc') list = list.sort((a: any, b: any) => a.createdAt.getTime() - b.createdAt.getTime())
+        return list
+      }
+      if (model === 'inventoryTransfer') {
+        let list = [...mockInventoryTransfers]
+        if (args?.orderBy?.createdAt === 'desc') list = list.sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime())
+        else if (args?.orderBy?.createdAt === 'asc') list = list.sort((a: any, b: any) => a.createdAt.getTime() - b.createdAt.getTime())
+        if (args?.take) list = list.slice(0, args.take)
+        const includeArg = args?.include
+        if (includeArg?.fromLocation) list = list.map((t: any) => ({ ...t, fromLocation: t.fromLocationId ? mockStoreLocations.find((l: any) => l.id === t.fromLocationId) || null : null }))
+        if (includeArg?.toLocation) list = list.map((t: any) => ({ ...t, toLocation: t.toLocationId ? mockStoreLocations.find((l: any) => l.id === t.toLocationId) || null : null }))
         return list
       }
       if (model === 'collection') {
@@ -947,6 +958,16 @@ function getMockHandler(model: string) {
       }
       if (model === 'returnRequest' && where.id) return mockReturnRequests.find((x: any) => x.id === where.id) || null
       if (model === 'draftOrder' && where.id) return mockDraftOrders.find((x: any) => x.id === where.id) || null
+      if (model === 'inventoryTransfer' && where.id) {
+        const found = mockInventoryTransfers.find((x: any) => x.id === where.id)
+        if (!found) return null
+        const includeArg = args?.include
+        return {
+          ...found,
+          ...(includeArg?.fromLocation ? { fromLocation: found.fromLocationId ? mockStoreLocations.find((l: any) => l.id === found.fromLocationId) || null : null } : {}),
+          ...(includeArg?.toLocation ? { toLocation: found.toLocationId ? mockStoreLocations.find((l: any) => l.id === found.toLocationId) || null : null } : {}),
+        }
+      }
       if (model === 'shippingZone' && where.id) {
         const zone = mockShippingZones.find((x: any) => x.id === where.id)
         if (!zone) return null
@@ -1270,6 +1291,22 @@ function getMockHandler(model: string) {
       if (model === 'collectionProduct' && item.collectionId && item.productId) mockCollectionProducts.push(item)
       if (model === 'metafieldDefinition') { item.description ??= null; item.isList ??= false; mockMetafieldDefinitions.push(item) }
       if (model === 'mediaAsset') { item.alt ??= null; item.mimeType ??= null; item.width ??= null; item.height ??= null; item.sizeBytes ??= null; mockMediaAssets.push(item) }
+      if (model === 'inventoryTransfer') {
+        // Same nested relation-write problem as returnRequest/orderEdit above -- `items:
+        // {create: [...]}}` arrives as a raw wrapper. InventoryTransferItem rows are embedded
+        // directly on the parent row (every real caller only ever reaches them through their
+        // parent transfer), matching returnRequest's own `items` convention.
+        const expandItems = (value: any) => {
+          if (!value || typeof value !== 'object') return []
+          const rows = Array.isArray(value) ? value : value.create ? (Array.isArray(value.create) ? value.create : [value.create]) : []
+          return rows.map((row: any) => ({ id: `transferitem-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, inventoryId: null, variantId: null, received: 0, ...row }))
+        }
+        item.items = expandItems(item.items)
+        item.notes ??= null
+        item.shippedAt ??= null
+        item.receivedAt ??= null
+        mockInventoryTransfers.unshift(item)
+      }
       if (model === 'orderEdit') {
         // Same nested relation-write problem as returnRequest/draftOrder above -- `items:
         // {create: [...]}}` arrives as a raw wrapper. OrderEditItem rows are embedded directly
@@ -1436,7 +1473,17 @@ function getMockHandler(model: string) {
         }
         throw new Error('Record to update not found')
       }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews, blogPost: mockBlogPosts, product: mockProducts, order: mockOrders, address: mockAddresses, returnRequest: mockReturnRequests, notification: mockNotifications, draftOrder: mockDraftOrders, shippingZone: mockShippingZones, purchaseOrder: mockPurchaseOrders, purchaseOrderItem: mockPurchaseOrderItems, page: mockPages, redirect: mockRedirects, collection: mockCollections, orderEdit: mockOrderEdits }
+      // inventoryTransferItem rows are embedded on their parent transfer's `.items` array (same
+      // convention as orderItem/returnItem above) -- the receive-transfer flow's per-item
+      // `received` update (id alone, no transferId in `where`) has to search across every transfer.
+      if (model === 'inventoryTransferItem' && args.where?.id) {
+        for (const t of mockInventoryTransfers) {
+          const it = (t.items || []).find((x: any) => x.id === args.where.id)
+          if (it) { Object.assign(it, args.data || {}); return it }
+        }
+        throw new Error('Record to update not found')
+      }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews, blogPost: mockBlogPosts, product: mockProducts, order: mockOrders, address: mockAddresses, returnRequest: mockReturnRequests, notification: mockNotifications, draftOrder: mockDraftOrders, shippingZone: mockShippingZones, purchaseOrder: mockPurchaseOrders, purchaseOrderItem: mockPurchaseOrderItems, page: mockPages, redirect: mockRedirects, collection: mockCollections, orderEdit: mockOrderEdits, inventoryTransfer: mockInventoryTransfers }
       if (byId[model] && args.where?.id) {
         const row = byId[model].find((x) => x.id === args.where.id)
         if (!row) throw new Error('Record to update not found')
@@ -1506,6 +1553,14 @@ function getMockHandler(model: string) {
         const w = args?.where || {}
         if (w.status?.in) { const statuses = new Set(w.status.in); return mockDraftOrders.filter((x: any) => statuses.has(x.status)).length }
         return mockDraftOrders.length
+      }
+      // The admin location-delete route's referential-integrity guard -- without this, deleting
+      // a StoreLocation that still has active inbound/outbound transfers always silently
+      // reported zero, letting the delete proceed despite in-flight transfers referencing it.
+      if (model === 'inventoryTransfer') {
+        const w = args?.where || {}
+        if (Array.isArray(w.OR)) return mockInventoryTransfers.filter((t: any) => w.OR.some((cond: any) => (cond.fromLocationId !== undefined && t.fromLocationId === cond.fromLocationId) || (cond.toLocationId !== undefined && t.toLocationId === cond.toLocationId))).length
+        return mockInventoryTransfers.length
       }
       if (model === 'purchaseOrder') {
         const w = args?.where || {}
