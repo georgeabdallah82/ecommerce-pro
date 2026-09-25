@@ -75,8 +75,24 @@ async function saveSubscription(userId: string, subscription: { endpoint: string
 
 export async function savePushSubscription(userId: string, subscription: { endpoint: string; keys?: { p256dh?: string; auth?: string } }) { return saveSubscription(userId, subscription, STAFF_PREFIX) }
 export async function saveCustomerPushSubscription(userId: string, subscription: { endpoint: string; keys?: { p256dh?: string; auth?: string } }) { return saveSubscription(userId, subscription, CUSTOMER_PREFIX) }
-export async function removePushSubscription(endpoint: string) { await db.setting.deleteMany({ where: { key: subscriptionKey(endpoint, STAFF_PREFIX) } }) }
-export async function removeCustomerPushSubscription(endpoint: string) { await db.setting.deleteMany({ where: { key: subscriptionKey(endpoint, CUSTOMER_PREFIX) } }) }
+
+// Every read path here (hasPushSubscription/hasCustomerPushSubscription) filters by the
+// caller's own userId -- subscriptionKey has no userId component (it's derived from the
+// endpoint alone), so the delete path has to look the row up and check ownership itself
+// instead of just deleting by key, or any signed-in user could unsubscribe anyone else's
+// device by guessing/leaking their endpoint.
+async function removeSubscription(userId: string, endpoint: string, prefix: string) {
+  const key = subscriptionKey(endpoint, prefix)
+  const setting = await db.setting.findUnique({ where: { key } })
+  if (!setting) return
+  let saved: PushSubscriptionRecord
+  try { saved = JSON.parse(setting.value) } catch { return }
+  if (saved.userId !== userId) return
+  await db.setting.deleteMany({ where: { key } })
+}
+
+export async function removePushSubscription(userId: string, endpoint: string) { return removeSubscription(userId, endpoint, STAFF_PREFIX) }
+export async function removeCustomerPushSubscription(userId: string, endpoint: string) { return removeSubscription(userId, endpoint, CUSTOMER_PREFIX) }
 
 export async function sendTestPush(userId: string) {
   return sendToSubscriptions({ title: 'Order alerts test', body: 'Push notifications are working on this device.', url: '/admin/orders', test: true }, userId)
