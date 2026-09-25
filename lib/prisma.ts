@@ -1412,7 +1412,22 @@ function getMockHandler(model: string) {
       if (model === 'coinTransaction') mockCoinTransactions.unshift(item)
       if (model === 'giftCard') { item.balance ??= item.initialAmount ?? 0; mockGiftCards.push(item) }
       if (model === 'inventoryItem') { item.variantId ??= null; item.reserved ??= 0; item.lowStockThreshold ??= 5; mockInventoryItems.push(item) }
-      if (model === 'productVariant') mockProductVariants.push(item)
+      if (model === 'productVariant') {
+        // The product-duplication route's per-variant inventory write
+        // (app/api/admin/products/[id]/duplicate/route.ts) arrives as a raw
+        // `inventory: { create: {...} } }` wrapper, same nested relation-write shorthand
+        // already expanded for 'product'/'order' above -- without expanding it here too, the
+        // wrapper stayed an inert object on the variant and no row was ever pushed into
+        // mockInventoryItems, leaving the duplicated variant with no inventory row at all
+        // (rather than one present at quantity 0).
+        if (item.inventory && typeof item.inventory === 'object') {
+          const rows = Array.isArray(item.inventory) ? item.inventory : item.inventory.create ? (Array.isArray(item.inventory.create) ? item.inventory.create : [item.inventory.create]) : []
+          const inventoryRows = rows.map((row: any) => ({ id: `inv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, variantId: item.id, reserved: 0, lowStockThreshold: 5, ...row }))
+          item.inventory = inventoryRows
+          for (const inv of inventoryRows) mockInventoryItems.push(inv)
+        }
+        mockProductVariants.push(item)
+      }
       if (model === 'product') {
         // Same nested relation-write problem as 'order' above -- `images`/`inventory`/`tags`
         // arrive as raw {create: ...} wrappers from the admin create route's nested shorthand,
