@@ -452,6 +452,12 @@ function getMockHandler(model: string) {
         if (args?.where?.featured !== undefined) list = list.filter((p) => p.featured === args.where.featured)
         if (args?.where?.slug) list = list.filter((p) => p.slug === args.where.slug)
         if (args?.where?.id?.in) { const ids = new Set(args.where.id.in); list = list.filter((p) => ids.has(p.id)) }
+        // The storefront's unpublished-product exclusion (getUnpublishedProductIds) and checkout's
+        // availability re-check both key off this -- without it, a product hidden from every sales
+        // channel stayed fully purchasable and visible on the homepage/shop/PDP/sitemap/related
+        // products.
+        if (args?.where?.id?.notIn) { const ids = new Set(args.where.id.notIn); list = list.filter((p) => !ids.has(p.id)) }
+        if (args?.where?.id?.not !== undefined) list = list.filter((p) => p.id !== args.where.id.not)
         if (args?.where?.giftCard !== undefined) list = list.filter((p) => Boolean((p as any).giftCard) === args.where.giftCard)
         if (args?.where?.category?.slug) list = list.filter((p) => p.category?.slug === args.where.category.slug)
         // The admin products list's Category dropdown and the CSV export's categoryId param
