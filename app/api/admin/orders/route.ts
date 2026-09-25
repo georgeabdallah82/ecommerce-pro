@@ -1,5 +1,6 @@
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
+import { hasPermission } from '@/lib/permissions'
 import { audit } from '@/lib/audit'
 import { canTransitionOrder, canTransitionPayment, fulfillmentForStatus } from '@/lib/orders'
 import { fulfillOrderStock, releaseOrderReservations, pickMajorityLocation } from '@/lib/inventory'
@@ -123,6 +124,12 @@ export async function PATCH(req: Request) {
         if (order.paymentStatus === PaymentStatus.PAID || order.paymentStatus === PaymentStatus.PARTIALLY_REFUNDED) {
           const refundable = remainingRefundable(refundableOrder)
           if (refundable > 0) {
+            // Cancelling a paid order moves money exactly like the dedicated refund/return
+            // endpoints, which gate that on orders.refund specifically because orders.manage
+            // (SUPPORT holds it without orders.refund) is a lower bar -- without this check,
+            // cancelling a paid order here was a live bypass of that gate for any role with
+            // orders.manage but not orders.refund.
+            if (!hasPermission(actor.role, 'orders.refund')) throw new Error('FORBIDDEN')
             const { refundProvider, refundExternalId } = pickRefundSource(refundableOrder)
             const refundStatus = refundProvider === 'manual' || refundProvider === 'wallet' ? 'refunded' : 'refund_pending'
             const refund = await tx.paymentTransaction.create({ data: { orderId: order.id, provider: refundProvider, externalId: refundExternalId, status: refundStatus, amount: refundable, currency: order.currency, rawJson: JSON.stringify({ reason: 'Order cancelled by staff', actorId: actor.id }) } })
@@ -226,6 +233,7 @@ export async function PATCH(req: Request) {
       : result.refundToSettle ? { amount: result.refundToSettle.amount, pending: true } : null
     return json({ order: result.updated, cancelRefund })
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Unable to update order' }, { status: 400 })
+    const message = e instanceof Error ? e.message : 'Unable to update order'
+    return json({ error: message === 'FORBIDDEN' ? 'Forbidden' : message }, { status: message === 'FORBIDDEN' ? 403 : 400 })
   }
 }
