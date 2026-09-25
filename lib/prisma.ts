@@ -1827,6 +1827,11 @@ function getMockHandler(model: string) {
         else if (args?.where?.role !== undefined) list = list.filter((u) => u.role === args.where.role)
         if (args?.where?.isActive !== undefined) list = list.filter((u) => u.isActive === args.where.isActive)
         if (args?.where?.id?.in) { const ids = new Set(args.where.id.in); list = list.filter((u) => ids.has(u.id)) }
+        // The admin Reports page's "new customers" KPI counts role: 'CUSTOMER' scoped to
+        // createdAt.gte(since) -- without this, the date window was silently dropped and the
+        // stat always equalled the store's total customer count regardless of the selected range.
+        if (args?.where?.createdAt?.gte) list = list.filter((u) => new Date(u.createdAt) >= new Date(args.where.createdAt.gte))
+        if (args?.where?.createdAt?.lt) list = list.filter((u) => new Date(u.createdAt) < new Date(args.where.createdAt.lt))
         return list.length
       }
       // The admin Platform Health dashboard's stat tiles all lean on these being real -- without
