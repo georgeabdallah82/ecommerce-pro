@@ -487,14 +487,23 @@ function getMockHandler(model: string) {
         // page 1 returned the same first `take` products instead of the next slice.
         if (args?.skip) list = list.slice(args.skip)
         if (args?.take) list = list.slice(0, args.take)
-        if (args?.include?.variants || args?.include?.inventory) {
+        // The public /api/products and /api/v1/products routes request these via `select`
+        // (Prisma's other, equally valid way to request a relation) rather than `include` --
+        // without also checking select here, both routes silently got back whatever stale
+        // variants/collections were embedded on the product at creation time instead of a real
+        // join, so the theme editor's collection-filtered sections and the partner product feed
+        // both saw empty collections/variants for every product.
+        const wantsVariants = args?.include?.variants || args?.select?.variants
+        const wantsInventory = args?.include?.inventory || args?.select?.inventory
+        if (wantsVariants || wantsInventory) {
           list = list.map((p: any) => ({
             ...p,
-            variants: args.include.variants ? deriveMockProductVariants(p.id) : p.variants,
-            inventory: args.include.inventory ? deriveMockProductInventory(p.id, false) : p.inventory,
+            variants: wantsVariants ? deriveMockProductVariants(p.id) : p.variants,
+            inventory: wantsInventory ? deriveMockProductInventory(p.id, false) : p.inventory,
           }))
         }
-        if (args?.include?.collections) list = list.map((p: any) => ({ ...p, collections: joinProductCollections(p.id, args.include.collections) }))
+        const collectionsArg = args?.include?.collections || args?.select?.collections
+        if (collectionsArg) list = list.map((p: any) => ({ ...p, collections: joinProductCollections(p.id, collectionsArg) }))
         return list
       }
       if (model === 'category') {
@@ -1299,7 +1308,9 @@ function getMockHandler(model: string) {
         if (where.status) candidates = candidates.filter((p: any) => p.status === where.status)
         const found = candidates[0]
         if (!found) return null
-        const collectionsArg = args?.include?.collections
+        // Same include-vs-select gap as product.findMany above -- the public product API's
+        // findPublicProduct() requests collections via `select`, not `include`.
+        const collectionsArg = args?.include?.collections || args?.select?.collections
         return {
           tags: [], metafields: [], ...found,
           images: [...(found.images || [])].sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)),
