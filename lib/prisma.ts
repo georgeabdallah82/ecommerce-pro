@@ -471,7 +471,24 @@ function getMockHandler(model: string) {
         if (args?.include?.collections) list = list.map((p: any) => ({ ...p, collections: joinProductCollections(p.id, args.include.collections) }))
         return list
       }
-      if (model === 'category') return [...mockCategories]
+      if (model === 'category') {
+        let list = [...mockCategories]
+        const orderBy = Array.isArray(args?.orderBy) ? args.orderBy : args?.orderBy ? [args.orderBy] : []
+        if (orderBy.length) {
+          list = list.sort((a: any, b: any) => {
+            for (const clause of orderBy) {
+              for (const [field, dir] of Object.entries(clause)) {
+                const av = a[field] ?? 0; const bv = b[field] ?? 0
+                if (av < bv) return dir === 'desc' ? 1 : -1
+                if (av > bv) return dir === 'desc' ? -1 : 1
+              }
+            }
+            return 0
+          })
+        }
+        if (args?.include?._count?.select?.products) list = list.map((c: any) => ({ ...c, _count: { products: mockProducts.filter((p: any) => p.categoryId === c.id).length } }))
+        return list
+      }
       if (model === 'metafieldDefinition') {
         let list = [...mockMetafieldDefinitions]
         if (args?.where?.ownerType) list = list.filter((x: any) => x.ownerType === args.where.ownerType)
@@ -894,8 +911,18 @@ function getMockHandler(model: string) {
         if (where.id) return mockUsers.find((u) => u.id === where.id) || null
       }
       if (model === 'category') {
-        if (where.slug) return mockCategories.find((c) => c.slug === where.slug) || null
-        if (where.id) return mockCategories.find((c) => c.id === where.id) || null
+        const found = where.slug ? mockCategories.find((c: any) => c.slug === where.slug) : where.id ? mockCategories.find((c: any) => c.id === where.id) : undefined
+        if (!found) return null
+        // Category delete's cascade check reads _count.products/_count.children before deciding
+        // whether/how to clear orphaned references -- without this, that read threw a TypeError
+        // on the missing _count instead of the intended SetNull-style cleanup ever running.
+        if (args?.include?._count?.select) {
+          const result: any = { ...found, _count: {} }
+          if (args.include._count.select.products) result._count.products = mockProducts.filter((p: any) => p.categoryId === found.id).length
+          if (args.include._count.select.children) result._count.children = mockCategories.filter((c: any) => c.parentId === found.id).length
+          return result
+        }
+        return found
       }
       if (model === 'collection') {
         const found = where.slug ? mockCollections.find((c: any) => c.slug === where.slug) : where.id ? mockCollections.find((c: any) => c.id === where.id) : undefined
@@ -1256,6 +1283,7 @@ function getMockHandler(model: string) {
         item.paymentTransactions = expandCreate(item.paymentTransactions)
         mockOrders.unshift(item)
       }
+      if (model === 'category') mockCategories.push(item)
       if (model === 'themeVersion') mockThemeVersions.unshift(item)
       if (model === 'storeLocation') { if (item.isDefault) for (const x of mockStoreLocations) x.isDefault = false; mockStoreLocations.push(item) }
       if (model === 'salesChannel') mockSalesChannels.push(item)
@@ -1502,7 +1530,7 @@ function getMockHandler(model: string) {
         }
         throw new Error('Record to update not found')
       }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews, blogPost: mockBlogPosts, product: mockProducts, order: mockOrders, address: mockAddresses, returnRequest: mockReturnRequests, notification: mockNotifications, draftOrder: mockDraftOrders, shippingZone: mockShippingZones, purchaseOrder: mockPurchaseOrders, purchaseOrderItem: mockPurchaseOrderItems, page: mockPages, redirect: mockRedirects, collection: mockCollections, orderEdit: mockOrderEdits, inventoryTransfer: mockInventoryTransfers }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews, blogPost: mockBlogPosts, product: mockProducts, order: mockOrders, address: mockAddresses, returnRequest: mockReturnRequests, notification: mockNotifications, draftOrder: mockDraftOrders, shippingZone: mockShippingZones, purchaseOrder: mockPurchaseOrders, purchaseOrderItem: mockPurchaseOrderItems, page: mockPages, redirect: mockRedirects, collection: mockCollections, orderEdit: mockOrderEdits, inventoryTransfer: mockInventoryTransfers, category: mockCategories }
       if (byId[model] && args.where?.id) {
         const row = byId[model].find((x) => x.id === args.where.id)
         if (!row) throw new Error('Record to update not found')
@@ -1574,7 +1602,7 @@ function getMockHandler(model: string) {
         }
         return {}
       }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, user: mockUsers, homepageBlock: mockHomepageBlocks, wishlistItem: mockWishlistItems, blogPost: mockBlogPosts, product: mockProducts, productVariant: mockProductVariants, address: mockAddresses, shippingZone: mockShippingZones, page: mockPages, redirect: mockRedirects, collection: mockCollections, metafieldDefinition: mockMetafieldDefinitions }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, user: mockUsers, homepageBlock: mockHomepageBlocks, wishlistItem: mockWishlistItems, blogPost: mockBlogPosts, product: mockProducts, productVariant: mockProductVariants, address: mockAddresses, shippingZone: mockShippingZones, page: mockPages, redirect: mockRedirects, collection: mockCollections, metafieldDefinition: mockMetafieldDefinitions, category: mockCategories }
       const list = byId[model]
       if (list && args?.where?.id) { const i = list.findIndex((x) => x.id === args.where.id); if (i >= 0) return list.splice(i, 1)[0] }
       return {}
@@ -1823,6 +1851,17 @@ function getMockHandler(model: string) {
           target.updatedAt = new Date()
           if ('categoryId' in (args?.data || {})) target.category = target.categoryId ? mockCategories.find((c: any) => c.id === target.categoryId) || null : null
         }
+        return { count: targets.length }
+      }
+      // Category delete's cascade clear calls this with `where: { parentId: id }, data: {
+      // parentId: null } }` to orphan-safe any child categories before removing their parent --
+      // without a real branch this fell to the generic fallback (count: 1, no mutation applied),
+      // leaving child categories pointing at a since-deleted parentId.
+      if (model === 'category') {
+        const w = args?.where || {}
+        let targets: any[] = mockCategories
+        if (w.parentId !== undefined) targets = targets.filter((x: any) => x.parentId === w.parentId)
+        for (const target of targets) Object.assign(target, args?.data || {})
         return { count: targets.length }
       }
       const byModel: Record<string, any[]> = { user: mockUsers, collection: mockCollections, coupon: mockCoupons }
