@@ -307,6 +307,7 @@ const mockInventoryMovements: any[] = []
 const mockAddresses: any[] = []
 const mockReturnRequests: any[] = []
 const mockNotifications: any[] = []
+const mockDraftOrders: any[] = []
 // Mirrors the two rows prisma/seed.ts actually seeds -- unlike the operational arrays above,
 // this is real storefront content (the announcement bar / trust strip the homepage renders),
 // so it starts populated instead of empty, matching mockSettings' theme.config/theme.sections.
@@ -609,6 +610,18 @@ function getMockHandler(model: string) {
         if (args?.take) list = list.slice(0, args.take)
         return list
       }
+      if (model === 'draftOrder') {
+        let list = [...mockDraftOrders]
+        const w = args?.where || {}
+        if (typeof w.status === 'string') list = list.filter((x: any) => x.status === w.status)
+        if (Array.isArray(w.OR)) {
+          const conditions: any[] = w.OR
+          list = list.filter((x: any) => conditions.some((cond) => Object.entries(cond).some(([field, sub]) => mockFieldContains((x as any)[field], sub))))
+        }
+        list = list.sort((a: any, b: any) => b.updatedAt.getTime() - a.updatedAt.getTime())
+        if (args?.take) list = list.slice(0, args.take)
+        return list
+      }
       if (model === 'liveVisitorSession') {
         let list = Array.from(mockLiveVisitorSessions.values())
         if (args?.where?.lastSeenAt?.gte) list = list.filter((v) => v.lastSeenAt >= new Date(args.where.lastSeenAt.gte))
@@ -728,6 +741,7 @@ function getMockHandler(model: string) {
         return { events: [], notesHistory: [], paymentTransactions: [], ...found, items }
       }
       if (model === 'returnRequest' && where.id) return mockReturnRequests.find((x: any) => x.id === where.id) || null
+      if (model === 'draftOrder' && where.id) return mockDraftOrders.find((x: any) => x.id === where.id) || null
       return null
     },
     findFirst: async (args?: any) => {
@@ -979,6 +993,23 @@ function getMockHandler(model: string) {
         mockReturnRequests.unshift(item)
       }
       if (model === 'notification') { item.readAt ??= null; mockNotifications.unshift(item) }
+      if (model === 'draftOrder') {
+        // Same nested relation-write problem as 'order'/'product'/'returnRequest' above --
+        // `items: {create: [...]}}` arrives as a raw wrapper, not an array. Without expanding
+        // it here, the POST response's `draft.items` comes back as that raw object instead of
+        // an array, which throws the moment the admin UI tries to `.map()`/render it -- an
+        // actual crash, not just silent data loss.
+        const expandItems = (value: any) => {
+          if (!value || typeof value !== 'object') return []
+          const rows = Array.isArray(value) ? value : value.create ? (Array.isArray(value.create) ? value.create : [value.create]) : []
+          return rows.map((row: any) => ({ id: `draftitem-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, ...row }))
+        }
+        item.items = expandItems(item.items)
+        item.status ??= 'DRAFT'
+        item.invoiceSentAt ??= null
+        item.completedOrderId ??= null
+        mockDraftOrders.unshift(item)
+      }
       if (model === 'paymentTransaction' && item.orderId) {
         const order = mockOrders.find((o) => o.id === item.orderId)
         if (order) { order.paymentTransactions ??= []; order.paymentTransactions.push(item) }
@@ -1018,7 +1049,7 @@ function getMockHandler(model: string) {
         }
         throw new Error('Record to update not found')
       }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews, blogPost: mockBlogPosts, product: mockProducts, order: mockOrders, address: mockAddresses, returnRequest: mockReturnRequests, notification: mockNotifications }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews, blogPost: mockBlogPosts, product: mockProducts, order: mockOrders, address: mockAddresses, returnRequest: mockReturnRequests, notification: mockNotifications, draftOrder: mockDraftOrders }
       if (byId[model] && args.where?.id) {
         const row = byId[model].find((x) => x.id === args.where.id)
         if (!row) throw new Error('Record to update not found')
@@ -1070,6 +1101,11 @@ function getMockHandler(model: string) {
       if (model === 'notification') {
         const w = args?.where || {}
         return mockNotifications.filter((x: any) => x.userId === w.userId && (w.readAt !== null || x.readAt === null)).length
+      }
+      if (model === 'draftOrder') {
+        const w = args?.where || {}
+        if (w.status?.in) { const statuses = new Set(w.status.in); return mockDraftOrders.filter((x: any) => statuses.has(x.status)).length }
+        return mockDraftOrders.length
       }
       // Used by fulfillOrderStock to tell a dedicated-variant inventory row apart from the
       // shared product-level pool.
