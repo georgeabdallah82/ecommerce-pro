@@ -1699,6 +1699,20 @@ function getMockHandler(model: string) {
         for (const target of targets) Object.assign(target, args?.data || {}, { updatedAt: new Date() })
         return { count: targets.length }
       }
+      // completeDraftOrder (lib/draft-orders.ts) leans on this being a real optimistic-concurrency
+      // guard the same way order's updateMany above already is -- `where: { id, status: { in: [...] } }`
+      // must return count 0 (not the generic fallback's unconditional count: 1) once a concurrent
+      // completion has already flipped the draft to COMPLETED, or two requests could both pass and
+      // each create a full real Order (double-reserving stock and double-charging) from one draft.
+      if (model === 'draftOrder') {
+        const w = args?.where || {}
+        let targets = mockDraftOrders
+        if (w.id) targets = targets.filter((x: any) => x.id === w.id)
+        if (w.status?.in) { const statuses = new Set(w.status.in); targets = targets.filter((x: any) => statuses.has(x.status)) }
+        else if (typeof w.status === 'string') targets = targets.filter((x: any) => x.status === w.status)
+        for (const target of targets) Object.assign(target, args?.data || {}, { updatedAt: new Date() })
+        return { count: targets.length }
+      }
       const byModel: Record<string, any[]> = { user: mockUsers, collection: mockCollections, coupon: mockCoupons }
       const list = byModel[model]
       if (list) {
