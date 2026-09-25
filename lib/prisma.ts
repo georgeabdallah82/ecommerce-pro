@@ -1738,7 +1738,10 @@ function getMockHandler(model: string) {
         return list.length
       }
       if (model === 'auditLog') return filterMockAuditLogs(args?.where).length
-      if (model === 'fulfillment') return mockFulfillments.length
+      // The admin location-delete route's referential-integrity guard checks this too -- without
+      // it, a location with open fulfillments reported zero references and the delete silently
+      // proceeded, orphaning those fulfillments' locationId.
+      if (model === 'fulfillment') { const w = args?.where || {}; return w.locationId !== undefined ? mockFulfillments.filter((x: any) => x.locationId === w.locationId).length : mockFulfillments.length }
       if (model === 'page') return mockPages.length
       if (model === 'address') return mockAddresses.filter((x: any) => x.userId === args?.where?.userId).length
       if (model === 'notification') {
@@ -1759,9 +1762,14 @@ function getMockHandler(model: string) {
         return mockInventoryTransfers.length
       }
       if (model === 'purchaseOrder') {
+        let list = mockPurchaseOrders
         const w = args?.where || {}
-        if (w.status?.in) { const statuses = new Set(w.status.in); return mockPurchaseOrders.filter((x: any) => statuses.has(x.status)).length }
-        return mockPurchaseOrders.length
+        if (w.status?.in) { const statuses = new Set(w.status.in); list = list.filter((x: any) => statuses.has(x.status)) }
+        // The admin location-delete route's referential-integrity guard checks this too --
+        // without it, a location with open purchase orders reported zero references and the
+        // delete silently proceeded, orphaning those purchase orders' locationId.
+        if (w.locationId !== undefined) list = list.filter((x: any) => x.locationId === w.locationId)
+        return list.length
       }
       if (model === 'shippingZone') {
         const w = args?.where || {}
@@ -1783,6 +1791,10 @@ function getMockHandler(model: string) {
         const w = args?.where || {}
         if (w.productId) list = list.filter((x: any) => x.productId === w.productId)
         if (w.variantId !== undefined) list = list.filter((x: any) => x.variantId === w.variantId)
+        // The admin location-delete route's referential-integrity guard checks this too --
+        // without it, a location with real stock rows reported zero references and the delete
+        // silently proceeded, orphaning those inventory items' locationId.
+        if (w.locationId !== undefined) list = list.filter((x: any) => x.locationId === w.locationId)
         return list.length
       }
       if (model === 'customerTagMember') {
