@@ -682,7 +682,12 @@ function getMockHandler(model: string) {
         if (args?.where?.status !== undefined) list = list.filter((l: any) => l.status === args.where.status)
         return list.sort((a, b) => Number(b.isDefault) - Number(a.isDefault) || a.name.localeCompare(b.name))
       }
-      if (model === 'salesChannel') return [...mockSalesChannels].map(c => ({ ...c, _count: { publications: 0 } }))
+      // The admin sales-channels list and the Operations Hub's "N products" summary both read
+      // _count.publications off each row -- without deriving it from the real
+      // mockProductPublications array (already filtered by channelId a few branches below for
+      // productPublication.findMany), every channel showed 0 products even after a merchant
+      // published products to it.
+      if (model === 'salesChannel') return [...mockSalesChannels].map(c => ({ ...c, _count: { publications: mockProductPublications.filter((p: any) => p.channelId === c.id).length } }))
       if (model === 'webhookEndpoint') {
         let list = [...mockWebhookEndpoints]
         if (args?.where?.topic !== undefined) list = list.filter((x) => x.topic === args.where.topic)
