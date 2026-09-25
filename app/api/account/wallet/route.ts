@@ -6,9 +6,14 @@ import { getStoreCurrency } from '@/lib/store-currency'
 export async function GET() {
   try {
     const user = await requireUser()
-    const [aggregate, currencyRow, transactions] = await Promise.all([
-      db.walletTransaction.aggregate({where:{userId:user.id},_sum:{amount:true}}),
-      db.walletTransaction.findFirst({where:{userId:user.id},orderBy:{createdAt:'desc'},select:{currency:true}}),
+    // The displayed balance must be scoped to the same currency as the label next to it -- without
+    // that, a wallet with transactions in more than one currency showed a nonsensical cross-currency
+    // sum labeled with just the most recent transaction's currency, matching the admin credit
+    // route's own bug (see app/api/admin/customers/[id]/credit/route.ts).
+    const currencyRow = await db.walletTransaction.findFirst({where:{userId:user.id},orderBy:{createdAt:'desc'},select:{currency:true}})
+    const currency = currencyRow?.currency || await getStoreCurrency()
+    const [aggregate, transactions] = await Promise.all([
+      db.walletTransaction.aggregate({where:{userId:user.id,currency},_sum:{amount:true}}),
       db.walletTransaction.findMany({
         where:{userId:user.id},
         orderBy:{createdAt:'desc'},
@@ -18,7 +23,7 @@ export async function GET() {
     ])
     return json({
       balance: Number(aggregate._sum.amount || 0),
-      currency: currencyRow?.currency || await getStoreCurrency(),
+      currency,
       transactions,
     }, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error) {

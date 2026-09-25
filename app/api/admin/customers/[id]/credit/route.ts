@@ -24,14 +24,20 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const customer = await getCustomer(id)
     if (!customer) return json({ error: 'Customer not found' }, { status: 404, headers: JSON_HEADERS })
 
-    const [transactions, aggregate, currencyRow] = await Promise.all([
+    // The displayed balance must be scoped to the same currency as the label next to it -- without
+    // that, a customer with wallet transactions in more than one currency (an admin typo, or the
+    // store's currency setting changed over time) saw a nonsensical cross-currency sum labeled with
+    // just their most recent transaction's currency, diverging from what checkout's own
+    // currency-scoped balance check treats as actually spendable.
+    const currencyRow = await db.walletTransaction.findFirst({ where: { userId: id }, orderBy: { createdAt: 'desc' }, select: { currency: true } })
+    const currency = currencyRow?.currency || await getStoreCurrency()
+    const [transactions, aggregate] = await Promise.all([
       db.walletTransaction.findMany({ where: { userId: id }, orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, amount: true, currency: true, type: true, reason: true, referenceId: true, createdAt: true } }),
-      db.walletTransaction.aggregate({ where: { userId: id }, _sum: { amount: true } }),
-      db.walletTransaction.findFirst({ where: { userId: id }, orderBy: { createdAt: 'desc' }, select: { currency: true } }),
+      db.walletTransaction.aggregate({ where: { userId: id, currency }, _sum: { amount: true } }),
     ])
     return json({
       balance: Number(aggregate._sum.amount || 0),
-      currency: currencyRow?.currency || await getStoreCurrency(),
+      currency,
       transactions,
     }, { headers: JSON_HEADERS })
   } catch (error) {
