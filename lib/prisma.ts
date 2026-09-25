@@ -306,6 +306,7 @@ const mockAuditLogs: any[] = []
 const mockInventoryMovements: any[] = []
 const mockAddresses: any[] = []
 const mockReturnRequests: any[] = []
+const mockNotifications: any[] = []
 // Mirrors the two rows prisma/seed.ts actually seeds -- unlike the operational arrays above,
 // this is real storefront content (the announcement bar / trust strip the homepage renders),
 // so it starts populated instead of empty, matching mockSettings' theme.config/theme.sections.
@@ -601,6 +602,13 @@ function getMockHandler(model: string) {
         if (args?.take) list = list.slice(0, args.take)
         return list
       }
+      if (model === 'notification') {
+        let list = mockNotifications.filter((x: any) => x.userId === args?.where?.userId)
+        list = list.sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime())
+        if (args?.skip) list = list.slice(args.skip)
+        if (args?.take) list = list.slice(0, args.take)
+        return list
+      }
       if (model === 'liveVisitorSession') {
         let list = Array.from(mockLiveVisitorSessions.values())
         if (args?.where?.lastSeenAt?.gte) list = list.filter((v) => v.lastSeenAt >= new Date(args.where.lastSeenAt.gte))
@@ -749,6 +757,9 @@ function getMockHandler(model: string) {
         let list = mockAddresses.filter((x: any) => (where.id === undefined || x.id === where.id) && (where.userId === undefined || x.userId === where.userId))
         if (args?.orderBy?.createdAt === 'asc') list = list.sort((a: any, b: any) => a.createdAt.getTime() - b.createdAt.getTime())
         return list[0] || null
+      }
+      if (model === 'notification') {
+        return mockNotifications.find((x: any) => (where.id === undefined || x.id === where.id) && (where.userId === undefined || x.userId === where.userId)) || null
       }
       if (model === 'inventoryMovement') {
         let list = mockInventoryMovements.filter((x: any) => (where.type === undefined || x.type === where.type) && (where.referenceId === undefined || x.referenceId === where.referenceId) && (where.inventoryId === undefined || x.inventoryId === where.inventoryId))
@@ -967,6 +978,7 @@ function getMockHandler(model: string) {
         item.refundedAt ??= null
         mockReturnRequests.unshift(item)
       }
+      if (model === 'notification') { item.readAt ??= null; mockNotifications.unshift(item) }
       if (model === 'paymentTransaction' && item.orderId) {
         const order = mockOrders.find((o) => o.id === item.orderId)
         if (order) { order.paymentTransactions ??= []; order.paymentTransactions.push(item) }
@@ -1006,7 +1018,7 @@ function getMockHandler(model: string) {
         }
         throw new Error('Record to update not found')
       }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews, blogPost: mockBlogPosts, product: mockProducts, order: mockOrders, address: mockAddresses, returnRequest: mockReturnRequests }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews, blogPost: mockBlogPosts, product: mockProducts, order: mockOrders, address: mockAddresses, returnRequest: mockReturnRequests, notification: mockNotifications }
       if (byId[model] && args.where?.id) {
         const row = byId[model].find((x) => x.id === args.where.id)
         if (!row) throw new Error('Record to update not found')
@@ -1055,6 +1067,10 @@ function getMockHandler(model: string) {
       if (model === 'auditLog') return filterMockAuditLogs(args?.where).length
       if (model === 'fulfillment') return mockFulfillments.length
       if (model === 'address') return mockAddresses.filter((x: any) => x.userId === args?.where?.userId).length
+      if (model === 'notification') {
+        const w = args?.where || {}
+        return mockNotifications.filter((x: any) => x.userId === w.userId && (w.readAt !== null || x.readAt === null)).length
+      }
       // Used by fulfillOrderStock to tell a dedicated-variant inventory row apart from the
       // shared product-level pool.
       if (model === 'inventoryItem') {
@@ -1125,6 +1141,14 @@ function getMockHandler(model: string) {
         if (args?.where?.token) targets = targets.filter((x) => x.token === args.where.token)
         if (args?.where?.status) targets = targets.filter((x) => x.status === args.where.status)
         for (const target of targets) Object.assign(target, args?.data || {}, { updatedAt: new Date() })
+        return { count: targets.length }
+      }
+      // Powers the notification bell's "mark all read" action.
+      if (model === 'notification') {
+        const w = args?.where || {}
+        let targets = mockNotifications.filter((x: any) => x.userId === w.userId)
+        if (w.readAt === null) targets = targets.filter((x: any) => x.readAt === null)
+        for (const target of targets) Object.assign(target, args?.data || {})
         return { count: targets.length }
       }
       // Clears isDefault on a user's other addresses when a new/edited one becomes the default.
