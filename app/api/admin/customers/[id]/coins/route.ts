@@ -29,7 +29,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const actor = await requirePermission('customers.manage')
+    // Coins are redeemable at checkout at a fixed rate (see lib/checkout), so minting them
+    // moves real money exactly like the wallet/store-credit endpoint -- gate it on the same
+    // storeCredit.manage permission rather than customers.manage, which SUPPORT holds without
+    // storeCredit.manage, making this a live coin-minting bypass otherwise.
+    const actor = await requirePermission('storeCredit.manage')
     const { id } = await params
     const body = await req.json().catch(() => ({}))
     const customer = await db.user.findFirst({ where: { id, role: 'CUSTOMER' }, select: { id: true } })
