@@ -360,6 +360,7 @@ const mockMetafieldDefinitions: any[] = []
 const mockMetafieldValues: any[] = []
 const mockMediaAssets: any[] = []
 const mockInventoryTransfers: any[] = []
+const mockPasswordResetTokens: any[] = []
 // order.items/.events already generate ids with this prefix (see order.create's/order.update's
 // own nested-write expansion below) -- orderItem/orderEvent, as standalone top-level model
 // accessors used by the order-edit commit flow (and, for orderItem, the sold-count/verified-
@@ -984,6 +985,7 @@ function getMockHandler(model: string) {
           ...(includeArg?.toLocation ? { toLocation: found.toLocationId ? mockStoreLocations.find((l: any) => l.id === found.toLocationId) || null : null } : {}),
         }
       }
+      if (model === 'passwordResetToken' && where.tokenHash) return mockPasswordResetTokens.find((x: any) => x.tokenHash === where.tokenHash) || null
       if (model === 'shippingZone' && where.id) {
         const zone = mockShippingZones.find((x: any) => x.id === where.id)
         if (!zone) return null
@@ -1323,6 +1325,7 @@ function getMockHandler(model: string) {
         item.receivedAt ??= null
         mockInventoryTransfers.unshift(item)
       }
+      if (model === 'passwordResetToken') mockPasswordResetTokens.push(item)
       if (model === 'orderEdit') {
         // Same nested relation-write problem as returnRequest/draftOrder above -- `items:
         // {create: [...]}}` arrives as a raw wrapper. OrderEditItem rows are embedded directly
@@ -1881,6 +1884,21 @@ function getMockHandler(model: string) {
         const before = mockWalletTransactions.length
         for (let i = mockWalletTransactions.length - 1; i >= 0; i--) if (mockWalletTransactions[i].userId === args.where.userId) mockWalletTransactions.splice(i, 1)
         return { count: before - mockWalletTransactions.length }
+      }
+      // reset-password's atomic-consume guard leans on this being real: `where: { id,
+      // expiresAt: { gt: now } }` must return count 0 (not the generic fallback's unconditional
+      // count: 1) once the token has expired or was already consumed, or an expired/reused token
+      // could still reset the account's password.
+      if (model === 'passwordResetToken' && args?.where?.id) {
+        const w = args.where
+        const i = mockPasswordResetTokens.findIndex((x: any) => x.id === w.id && (w.expiresAt?.gt === undefined || x.expiresAt > w.expiresAt.gt))
+        if (i >= 0) { mockPasswordResetTokens.splice(i, 1); return { count: 1 } }
+        return { count: 0 }
+      }
+      if (model === 'passwordResetToken' && args?.where?.userId) {
+        const before = mockPasswordResetTokens.length
+        for (let i = mockPasswordResetTokens.length - 1; i >= 0; i--) if (mockPasswordResetTokens[i].userId === args.where.userId) mockPasswordResetTokens.splice(i, 1)
+        return { count: before - mockPasswordResetTokens.length }
       }
       // orderNote rows are embedded per-order (see orderNote.create above), not a single top-level
       // array -- deleteCustomerCascade (lib/customers.ts) needs every note this user authored gone
