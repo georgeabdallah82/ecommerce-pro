@@ -1797,6 +1797,34 @@ function getMockHandler(model: string) {
         for (const target of targets) Object.assign(target, args?.data || {})
         return { count: targets.length }
       }
+      // Backs three real call sites: the admin products list's bulk toolbar (Activate/Draft/
+      // Archive/Feature, `where: { id: { in: ids } } }`), the "Repair Platform State" action
+      // (`where: { status: 'ACTIVE', publishedAt: null } }`), and category delete's cascade
+      // clear (`where: { categoryId } }`). Without a real branch this fell to the generic
+      // fallback below (an unconditional count: 1 with no mutation applied) -- bulk actions
+      // silently changed nothing and always reported count: 1 regardless of selection size.
+      if (model === 'product') {
+        const w = args?.where || {}
+        let targets: any[] = mockProducts
+        if (w.id?.in) { const ids = new Set(w.id.in); targets = targets.filter((x: any) => ids.has(x.id)) }
+        if (typeof w.id === 'string') targets = targets.filter((x: any) => x.id === w.id)
+        if (w.status !== undefined) targets = targets.filter((x: any) => x.status === w.status)
+        if (w.publishedAt === null) targets = targets.filter((x: any) => x.publishedAt == null)
+        if (w.categoryId !== undefined) targets = targets.filter((x: any) => x.categoryId === w.categoryId)
+        for (const target of targets) {
+          for (const [key, value] of Object.entries(args?.data || {})) {
+            if (value && typeof value === 'object' && ('increment' in value || 'decrement' in value)) {
+              const delta = (value as any).increment ?? -(value as any).decrement
+              target[key] = (target[key] || 0) + delta
+            } else {
+              target[key] = value
+            }
+          }
+          target.updatedAt = new Date()
+          if ('categoryId' in (args?.data || {})) target.category = target.categoryId ? mockCategories.find((c: any) => c.id === target.categoryId) || null : null
+        }
+        return { count: targets.length }
+      }
       const byModel: Record<string, any[]> = { user: mockUsers, collection: mockCollections, coupon: mockCoupons }
       const list = byModel[model]
       if (list) {
