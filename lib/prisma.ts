@@ -1764,6 +1764,11 @@ function getMockHandler(model: string) {
         let targets = mockOrders
         if (w.id) targets = targets.filter((x: any) => x.id === w.id)
         if (w.updatedAt) targets = targets.filter((x: any) => x.updatedAt.getTime() === new Date(w.updatedAt).getTime())
+        // deleteCustomerCascade (lib/customers.ts) calls this with only `where: { userId }` to
+        // null out the FK before deleting the user -- without this filter, targets stayed
+        // unfiltered (neither w.id nor w.updatedAt is set) and every order in the store, not just
+        // this customer's, had its userId wiped.
+        if (w.userId !== undefined) targets = targets.filter((x: any) => x.userId === w.userId)
         for (const target of targets) Object.assign(target, args?.data || {}, { updatedAt: new Date() })
         return { count: targets.length }
       }
@@ -1779,6 +1784,17 @@ function getMockHandler(model: string) {
         if (w.status?.in) { const statuses = new Set(w.status.in); targets = targets.filter((x: any) => statuses.has(x.status)) }
         else if (typeof w.status === 'string') targets = targets.filter((x: any) => x.status === w.status)
         for (const target of targets) Object.assign(target, args?.data || {}, { updatedAt: new Date() })
+        return { count: targets.length }
+      }
+      // deleteCustomerCascade (lib/customers.ts) calls this with `where: { actorId }` to null out
+      // the FK before deleting the actor's user row -- without a real branch this fell to the
+      // generic fallback below (an unconditional count: 1 with no mutation applied), leaving audit
+      // log rows pointing at a since-deleted user id.
+      if (model === 'auditLog') {
+        const w = args?.where || {}
+        let targets = mockAuditLogs
+        if (w.actorId !== undefined) targets = targets.filter((x: any) => x.actorId === w.actorId)
+        for (const target of targets) Object.assign(target, args?.data || {})
         return { count: targets.length }
       }
       const byModel: Record<string, any[]> = { user: mockUsers, collection: mockCollections, coupon: mockCoupons }
@@ -1966,6 +1982,47 @@ function getMockHandler(model: string) {
         const before = mockInventoryItems.length
         for (let i = mockInventoryItems.length - 1; i >= 0; i--) if (mockInventoryItems[i].productId === args.where.productId) mockInventoryItems.splice(i, 1)
         return { count: before - mockInventoryItems.length }
+      }
+      // deleteCustomerCascade (lib/customers.ts) leans on each of these being real -- MongoDB has
+      // no native FK support, so scripts/prepare-mongodb-schema.mjs forces every @relation's
+      // onDelete to NoAction at runtime regardless of what prisma/schema.prisma declares, meaning
+      // deleteCustomerCascade is the only thing actually enforcing cascade-delete semantics.
+      // Without these branches, deleting a customer silently left their address book, reviews,
+      // wishlist, notifications, coin ledger, and tag/segment memberships all orphaned in place.
+      if (model === 'address' && args?.where?.userId) {
+        const before = mockAddresses.length
+        for (let i = mockAddresses.length - 1; i >= 0; i--) if (mockAddresses[i].userId === args.where.userId) mockAddresses.splice(i, 1)
+        return { count: before - mockAddresses.length }
+      }
+      if (model === 'review' && args?.where?.userId) {
+        const before = mockReviews.length
+        for (let i = mockReviews.length - 1; i >= 0; i--) if (mockReviews[i].userId === args.where.userId) mockReviews.splice(i, 1)
+        return { count: before - mockReviews.length }
+      }
+      if (model === 'wishlistItem' && args?.where?.userId) {
+        const before = mockWishlistItems.length
+        for (let i = mockWishlistItems.length - 1; i >= 0; i--) if (mockWishlistItems[i].userId === args.where.userId) mockWishlistItems.splice(i, 1)
+        return { count: before - mockWishlistItems.length }
+      }
+      if (model === 'notification' && args?.where?.userId) {
+        const before = mockNotifications.length
+        for (let i = mockNotifications.length - 1; i >= 0; i--) if (mockNotifications[i].userId === args.where.userId) mockNotifications.splice(i, 1)
+        return { count: before - mockNotifications.length }
+      }
+      if (model === 'coinTransaction' && args?.where?.userId) {
+        const before = mockCoinTransactions.length
+        for (let i = mockCoinTransactions.length - 1; i >= 0; i--) if (mockCoinTransactions[i].userId === args.where.userId) mockCoinTransactions.splice(i, 1)
+        return { count: before - mockCoinTransactions.length }
+      }
+      if (model === 'customerTagMember' && args?.where?.customerId) {
+        const before = mockCustomerTagMembers.length
+        for (let i = mockCustomerTagMembers.length - 1; i >= 0; i--) if (mockCustomerTagMembers[i].customerId === args.where.customerId) mockCustomerTagMembers.splice(i, 1)
+        return { count: before - mockCustomerTagMembers.length }
+      }
+      if (model === 'customerSegmentMember' && args?.where?.customerId) {
+        const before = mockCustomerSegmentMembers.length
+        for (let i = mockCustomerSegmentMembers.length - 1; i >= 0; i--) if (mockCustomerSegmentMembers[i].customerId === args.where.customerId) mockCustomerSegmentMembers.splice(i, 1)
+        return { count: before - mockCustomerSegmentMembers.length }
       }
       return { count: 0 }
     },
