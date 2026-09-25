@@ -353,6 +353,14 @@ const mockBlogs: any[] = []
 const mockBlogPosts: any[] = []
 const mockPages: any[] = []
 const mockRedirects: any[] = []
+const mockOrderEdits: any[] = []
+// order.items/.events already generate ids with this prefix (see order.create's/order.update's
+// own nested-write expansion below) -- orderItem/orderEvent, as standalone top-level model
+// accessors used by the order-edit commit flow (and, for orderItem, the sold-count/verified-
+// purchase features), operate on those SAME embedded arrays rather than a separate array, so
+// reads through either path (db.order.findUnique's .items/.events or db.orderItem/orderEvent
+// directly) always agree.
+function genOrderChildId() { return `orderitem-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` }
 const mockAuditLogs: any[] = []
 const mockInventoryMovements: any[] = []
 const mockAddresses: any[] = []
@@ -737,6 +745,18 @@ function getMockHandler(model: string) {
         if (args?.where?.purchaseOrderId) list = list.filter((x: any) => x.purchaseOrderId === args.where.purchaseOrderId)
         return list
       }
+      if (model === 'orderEdit') {
+        let list = [...mockOrderEdits]
+        if (args?.where?.orderId) list = list.filter((x: any) => x.orderId === args.where.orderId)
+        if (args?.orderBy?.createdAt === 'desc') list = list.sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime())
+        if (args?.take) list = list.slice(0, args.take)
+        return list
+      }
+      if (model === 'orderItem') {
+        const w = args?.where || {}
+        if (w.orderId) return [...(mockOrders.find((o: any) => o.id === w.orderId)?.items || [])]
+        return mockOrders.flatMap((o: any) => o.items || [])
+      }
       if (model === 'liveVisitorSession') {
         let list = Array.from(mockLiveVisitorSessions.values())
         if (args?.where?.lastSeenAt?.gte) list = list.filter((v) => v.lastSeenAt >= new Date(args.where.lastSeenAt.gte))
@@ -860,8 +880,12 @@ function getMockHandler(model: string) {
         // rows from order.create's own nested-write expansion, so joining `.product` in only
         // has to happen when actually requested, same idea as product's own derived relations.
         const itemsArg = args?.include?.items
-        const items = itemsArg?.include?.product
-          ? (found.items || []).map((it: any) => ({ ...it, product: mockProducts.find((p: any) => p.id === it.productId) || null }))
+        const items = (itemsArg?.include?.product || itemsArg?.include?.variant)
+          ? (found.items || []).map((it: any) => ({
+              ...it,
+              ...(itemsArg.include.product ? { product: mockProducts.find((p: any) => p.id === it.productId) || null } : {}),
+              ...(itemsArg.include.variant ? { variant: it.variantId ? mockProductVariants.find((v: any) => v.id === it.variantId) || null : null } : {}),
+            }))
           : found.items
         return { events: [], notesHistory: [], paymentTransactions: [], ...found, items }
       }
@@ -885,6 +909,7 @@ function getMockHandler(model: string) {
         if (args?.include?.location) result.location = po.locationId ? mockStoreLocations.find((l: any) => l.id === po.locationId) || null : null
         return result
       }
+      if (model === 'orderEdit' && where.id) return mockOrderEdits.find((x: any) => x.id === where.id) || null
       return null
     },
     findFirst: async (args?: any) => {
@@ -923,6 +948,18 @@ function getMockHandler(model: string) {
         if (args?.orderBy?.createdAt === 'desc') list = list.sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime())
         else if (args?.orderBy?.createdAt === 'asc') list = list.sort((a: any, b: any) => a.createdAt.getTime() - b.createdAt.getTime())
         return list[0] || null
+      }
+      // Used by app/api/reviews/route.ts's verified-purchase check -- without this, every
+      // review submission was silently rejected as "not a verified purchase" regardless of
+      // whether the customer actually bought the product.
+      if (model === 'orderItem') {
+        const w = where || {}
+        const matchingOrders = mockOrders.filter((o: any) => (w.order?.userId === undefined || o.userId === w.order.userId) && (!w.order?.status?.in || w.order.status.in.includes(o.status)))
+        for (const o of matchingOrders) {
+          const item = (o.items || []).find((it: any) => w.productId === undefined || it.productId === w.productId)
+          if (item) return item
+        }
+        return null
       }
       if (model === 'paymentTransaction') {
         let matches = findMockPaymentTransactions(where)
@@ -1131,6 +1168,28 @@ function getMockHandler(model: string) {
       if (model === 'redirect') { item.hits ??= 0; mockRedirects.push(item) }
       if (model === 'collection') { item.isActive ??= true; item.description ??= null; item.imageUrl ??= null; item.sortOrder ??= 0; mockCollections.push(item) }
       if (model === 'collectionProduct' && item.collectionId && item.productId) mockCollectionProducts.push(item)
+      if (model === 'orderEdit') {
+        // Same nested relation-write problem as returnRequest/draftOrder above -- `items:
+        // {create: [...]}}` arrives as a raw wrapper. OrderEditItem rows are embedded directly
+        // on the parent row (same convention as returnItem), since every real caller only ever
+        // reaches them through their parent order edit.
+        const expandItems = (value: any) => {
+          if (!value || typeof value !== 'object') return []
+          const rows = Array.isArray(value) ? value : value.create ? (Array.isArray(value.create) ? value.create : [value.create]) : []
+          return rows.map((row: any) => ({ id: genOrderChildId(), ...row }))
+        }
+        item.items = expandItems(item.items)
+        item.committedAt ??= null
+        mockOrderEdits.unshift(item)
+      }
+      if (model === 'orderItem' && item.orderId) {
+        const order = mockOrders.find((o: any) => o.id === item.orderId)
+        if (order) { order.items = order.items || []; order.items.push(item) }
+      }
+      if (model === 'orderEvent' && item.orderId) {
+        const order = mockOrders.find((o: any) => o.id === item.orderId)
+        if (order) { order.events = order.events || []; order.events.push(item) }
+      }
       if (model === 'auditLog') mockAuditLogs.unshift(item)
       if (model === 'inventoryMovement') mockInventoryMovements.push(item)
       if (model === 'address') mockAddresses.push(item)
@@ -1259,7 +1318,18 @@ function getMockHandler(model: string) {
         }
         throw new Error('Record to update not found')
       }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews, blogPost: mockBlogPosts, product: mockProducts, order: mockOrders, address: mockAddresses, returnRequest: mockReturnRequests, notification: mockNotifications, draftOrder: mockDraftOrders, shippingZone: mockShippingZones, purchaseOrder: mockPurchaseOrders, purchaseOrderItem: mockPurchaseOrderItems, page: mockPages, redirect: mockRedirects, collection: mockCollections }
+      // order.items/.events rows are embedded on their parent order (same convention as
+      // shippingRate/returnItem above), so a singular update (no orderId in `where`, just the
+      // item's own id) has to search across every order for it -- used by the order-edit commit
+      // flow's tx.orderItem.update calls.
+      if (model === 'orderItem' && args.where?.id) {
+        for (const o of mockOrders) {
+          const it = (o.items || []).find((x: any) => x.id === args.where.id)
+          if (it) { Object.assign(it, args.data || {}); return it }
+        }
+        throw new Error('Record to update not found')
+      }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews, blogPost: mockBlogPosts, product: mockProducts, order: mockOrders, address: mockAddresses, returnRequest: mockReturnRequests, notification: mockNotifications, draftOrder: mockDraftOrders, shippingZone: mockShippingZones, purchaseOrder: mockPurchaseOrders, purchaseOrderItem: mockPurchaseOrderItems, page: mockPages, redirect: mockRedirects, collection: mockCollections, orderEdit: mockOrderEdits }
       if (byId[model] && args.where?.id) {
         const row = byId[model].find((x) => x.id === args.where.id)
         if (!row) throw new Error('Record to update not found')
@@ -1493,6 +1563,21 @@ function getMockHandler(model: string) {
         const counts = new Map<string, number>()
         for (const x of list) counts.set(x.segmentId, (counts.get(x.segmentId) || 0) + 1)
         return Array.from(counts, ([segmentId, count]) => ({ segmentId, _count: { _all: count } }))
+      }
+      // Powers the "sold count" badge on product cards (lib/product-stats.ts) -- without this,
+      // every product's sold count was silently 0 regardless of actual sales.
+      if (model === 'orderItem' && args?.by?.includes('productId')) {
+        const w = args?.where || {}
+        const idsFilter: Set<string> | undefined = w.productId?.in ? new Set(w.productId.in) : undefined
+        const sums = new Map<string, number>()
+        for (const o of mockOrders) {
+          if (w.order?.paymentStatus !== undefined && o.paymentStatus !== w.order.paymentStatus) continue
+          for (const it of o.items || []) {
+            if (idsFilter && !idsFilter.has(it.productId)) continue
+            sums.set(it.productId, (sums.get(it.productId) || 0) + it.quantity)
+          }
+        }
+        return Array.from(sums, ([productId, quantity]) => ({ productId, _sum: { quantity } }))
       }
       return []
     },
