@@ -1793,6 +1793,54 @@ function getMockHandler(model: string) {
         if (args?.where?.id?.in) { const ids = new Set(args.where.id.in); list = list.filter((u) => ids.has(u.id)) }
         return list.length
       }
+      // The admin Platform Health dashboard's stat tiles all lean on these being real -- without
+      // them, roughly a third of the tiles (active gift cards, active coupons, webhook
+      // endpoints, API credentials, sales channels, open order edits, blog posts, media assets,
+      // store locations) fell to the generic `return 0` fallback below and showed 0 regardless
+      // of actual data.
+      if (model === 'coupon') {
+        let list = mockCoupons
+        if (args?.where?.isActive !== undefined) list = list.filter((x: any) => x.isActive === args.where.isActive)
+        return list.length
+      }
+      if (model === 'giftCard') {
+        let list = mockGiftCards
+        if (args?.where?.status !== undefined) list = list.filter((x: any) => x.status === args.where.status)
+        return list.length
+      }
+      if (model === 'storeLocation') {
+        let list = mockStoreLocations
+        if (args?.where?.status !== undefined) list = list.filter((x: any) => x.status === args.where.status)
+        return list.length
+      }
+      if (model === 'webhookEndpoint') {
+        let list = mockWebhookEndpoints
+        if (args?.where?.status !== undefined) list = list.filter((x: any) => x.status === args.where.status)
+        return list.length
+      }
+      if (model === 'apiCredential') {
+        let list = mockApiCredentials
+        if (args?.where?.status !== undefined) list = list.filter((x: any) => x.status === args.where.status)
+        return list.length
+      }
+      if (model === 'salesChannel') {
+        let list = mockSalesChannels
+        if (args?.where?.status !== undefined) list = list.filter((x: any) => x.status === args.where.status)
+        return list.length
+      }
+      if (model === 'orderEdit') {
+        let list = mockOrderEdits
+        if (args?.where?.status !== undefined) list = list.filter((x: any) => x.status === args.where.status)
+        return list.length
+      }
+      if (model === 'blogPost') return mockBlogPosts.length
+      if (model === 'mediaAsset') return mockMediaAssets.length
+      if (model === 'setting') {
+        const w = args?.where || {}
+        if (w.key?.in) { const keys = new Set(w.key.in); return Array.from(mockSettings.keys()).filter((k) => keys.has(k)).length }
+        if (typeof w.key === 'string') return mockSettings.has(w.key) ? 1 : 0
+        return mockSettings.size
+      }
       return 0
     },
     createMany: async (args: any) => {
