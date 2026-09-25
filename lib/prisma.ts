@@ -1808,6 +1808,11 @@ function getMockHandler(model: string) {
         if (args?.where?.code !== undefined) targets = targets.filter((x) => x.code === args.where.code)
         if (args?.where?.usedCount?.lt !== undefined) targets = targets.filter((x) => (x.usedCount || 0) < args.where.usedCount.lt)
         if (args?.where?.usedCount?.gt !== undefined) targets = targets.filter((x) => (x.usedCount || 0) > args.where.usedCount.gt)
+        // The admin "repair platform state" action's `where: { isActive: true, expiresAt: {
+        // lt: now } }` leans on this being real -- without it, that expiresAt condition was
+        // silently dropped and the action matched (and deactivated) every active coupon in the
+        // store, not just the expired ones.
+        if (args?.where?.expiresAt?.lt !== undefined) targets = targets.filter((x) => x.expiresAt && new Date(x.expiresAt).getTime() < new Date(args.where.expiresAt.lt).getTime())
         for (const target of targets) {
           for (const [key, value] of Object.entries(args?.data || {})) {
             if (value && typeof value === 'object' && ('increment' in value || 'decrement' in value)) {
