@@ -305,6 +305,7 @@ const mockBlogPosts: any[] = []
 const mockAuditLogs: any[] = []
 const mockInventoryMovements: any[] = []
 const mockAddresses: any[] = []
+const mockReturnRequests: any[] = []
 // Mirrors the two rows prisma/seed.ts actually seeds -- unlike the operational arrays above,
 // this is real storefront content (the announcement bar / trust strip the homepage renders),
 // so it starts populated instead of empty, matching mockSettings' theme.config/theme.sections.
@@ -589,6 +590,17 @@ function getMockHandler(model: string) {
         if (args?.orderBy?.isDefault === 'desc') list = list.sort((a: any, b: any) => Number(b.isDefault) - Number(a.isDefault))
         return list
       }
+      if (model === 'returnRequest') {
+        let list = [...mockReturnRequests]
+        const w = args?.where || {}
+        if (w.orderId) list = list.filter((x: any) => x.orderId === w.orderId)
+        if (typeof w.status === 'string') list = list.filter((x: any) => x.status === w.status)
+        if (w.status?.notIn) { const excluded = new Set(w.status.notIn); list = list.filter((x: any) => !excluded.has(x.status)) }
+        if (args?.orderBy?.createdAt === 'desc') list = list.sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime())
+        else if (args?.orderBy?.createdAt === 'asc') list = list.sort((a: any, b: any) => a.createdAt.getTime() - b.createdAt.getTime())
+        if (args?.take) list = list.slice(0, args.take)
+        return list
+      }
       if (model === 'liveVisitorSession') {
         let list = Array.from(mockLiveVisitorSessions.values())
         if (args?.where?.lastSeenAt?.gte) list = list.filter((v) => v.lastSeenAt >= new Date(args.where.lastSeenAt.gte))
@@ -707,6 +719,7 @@ function getMockHandler(model: string) {
           : found.items
         return { events: [], notesHistory: [], paymentTransactions: [], ...found, items }
       }
+      if (model === 'returnRequest' && where.id) return mockReturnRequests.find((x: any) => x.id === where.id) || null
       return null
     },
     findFirst: async (args?: any) => {
@@ -716,6 +729,22 @@ function getMockHandler(model: string) {
         return list[0] || null
       }
       if (model === 'blog') return mockBlogs[0] || null
+      if (model === 'order') {
+        // No findFirst branch existed for 'order' at all -- every caller (the return-request
+        // create/cancel routes' orderNumber+userId ownership lookup, checkout's own
+        // userId+status.not duplicate-pending-order check, order cancel's ownership lookup)
+        // always got null back, regardless of include, matching this mock's own generic
+        // fallback. items/paymentTransactions are already embedded on the row from
+        // order.create/paymentTransaction.create, same as order.findUnique already returns.
+        let list = [...mockOrders]
+        if (where.orderNumber) list = list.filter((o: any) => o.orderNumber === where.orderNumber)
+        if (where.id) list = list.filter((o: any) => o.id === where.id)
+        if (where.userId) list = list.filter((o: any) => o.userId === where.userId)
+        if (where.status?.not) list = list.filter((o: any) => o.status !== where.status.not)
+        else if (typeof where.status === 'string') list = list.filter((o: any) => o.status === where.status)
+        const found = list[0]
+        return found ? { events: [], notesHistory: [], paymentTransactions: [], ...found } : null
+      }
       if (model === 'address') {
         let list = mockAddresses.filter((x: any) => (where.id === undefined || x.id === where.id) && (where.userId === undefined || x.userId === where.userId))
         if (args?.orderBy?.createdAt === 'asc') list = list.sort((a: any, b: any) => a.createdAt.getTime() - b.createdAt.getTime())
@@ -919,6 +948,25 @@ function getMockHandler(model: string) {
       if (model === 'auditLog') mockAuditLogs.unshift(item)
       if (model === 'inventoryMovement') mockInventoryMovements.push(item)
       if (model === 'address') mockAddresses.push(item)
+      if (model === 'returnRequest') {
+        // Same nested relation-write problem as 'order'/'product' above -- `items: {create: [...]}}`
+        // arrives as a raw wrapper, not an array, and each ReturnItem needs its own generated id.
+        // ReturnItem rows are embedded directly on the parent row (rather than a separate
+        // mockReturnItems array) since every real caller only ever reaches them through their
+        // parent returnRequest -- matching product.images' embedded-relation convention.
+        const expandItems = (value: any) => {
+          if (!value || typeof value !== 'object') return []
+          const rows = Array.isArray(value) ? value : value.create ? (Array.isArray(value.create) ? value.create : [value.create]) : []
+          return rows.map((row: any) => ({ id: `returnitem-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, condition: null, ...row }))
+        }
+        item.items = expandItems(item.items)
+        item.notes ??= null
+        item.refundAmount ??= 0
+        item.restock ??= true
+        item.receivedAt ??= null
+        item.refundedAt ??= null
+        mockReturnRequests.unshift(item)
+      }
       if (model === 'paymentTransaction' && item.orderId) {
         const order = mockOrders.find((o) => o.id === item.orderId)
         if (order) { order.paymentTransactions ??= []; order.paymentTransactions.push(item) }
@@ -948,7 +996,17 @@ function getMockHandler(model: string) {
         }
         throw new Error('Record to update not found')
       }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews, blogPost: mockBlogPosts, product: mockProducts, order: mockOrders, address: mockAddresses }
+      // returnItem rows are embedded on their parent returnRequest's `.items` array (same
+      // convention as productImage above), so the 'receive' admin action's per-item condition
+      // update (id alone, no returnRequestId in `where`) has to search across every return.
+      if (model === 'returnItem' && args.where?.id) {
+        for (const r of mockReturnRequests) {
+          const it = (r.items || []).find((x: any) => x.id === args.where.id)
+          if (it) { Object.assign(it, args.data || {}); return it }
+        }
+        throw new Error('Record to update not found')
+      }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews, blogPost: mockBlogPosts, product: mockProducts, order: mockOrders, address: mockAddresses, returnRequest: mockReturnRequests }
       if (byId[model] && args.where?.id) {
         const row = byId[model].find((x) => x.id === args.where.id)
         if (!row) throw new Error('Record to update not found')
@@ -1082,6 +1140,19 @@ function getMockHandler(model: string) {
         let count = 0
         for (const x of mockStoreLocations) { if (excludeId && x.id === excludeId) continue; Object.assign(x, args?.data || {}); count++ }
         return { count }
+      }
+      // The admin returns POST (direct create) and PATCH 'receive' actions both lean on this
+      // being a real optimistic-concurrency guard -- `where: { id, updatedAt: order.updatedAt }`
+      // must return count 0 (not the generic fallback's unconditional count: 1) when the order
+      // changed since it was read, or both branch on `guarded.count !== 1` to throw
+      // RETURN_CONFLICT_MESSAGE, a check that can never trip against the generic fallback.
+      if (model === 'order') {
+        const w = args?.where || {}
+        let targets = mockOrders
+        if (w.id) targets = targets.filter((x: any) => x.id === w.id)
+        if (w.updatedAt) targets = targets.filter((x: any) => x.updatedAt.getTime() === new Date(w.updatedAt).getTime())
+        for (const target of targets) Object.assign(target, args?.data || {}, { updatedAt: new Date() })
+        return { count: targets.length }
       }
       const byModel: Record<string, any[]> = { user: mockUsers, collection: mockCollections, coupon: mockCoupons }
       const list = byModel[model]
