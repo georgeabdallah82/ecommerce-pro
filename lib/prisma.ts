@@ -492,12 +492,19 @@ function getMockHandler(model: string) {
           const conditions: any[] = args.where.OR
           list = list.filter((p) => conditions.some((cond) => Object.entries(cond).some(([field, sub]) => mockFieldContains((p as any)[field], sub))))
         }
-        // The admin products list's sort dropdown (name/price/created/updated, asc or desc) --
-        // without this, every sort option silently no-opped and rows stayed in seed order.
-        const orderBy = args?.orderBy
-        if (orderBy && typeof orderBy === 'object') {
-          const [field, dir] = Object.entries(orderBy)[0] as [string, string]
-          list = list.sort((a: any, b: any) => {
+        // The admin products list's sort dropdown (name/price/created/updated, asc or desc)
+        // passes a single {field: dir} clause, but the homepage, /api/products, and the
+        // product-detail page's related-products rail all pass Prisma's array-clause shorthand
+        // (e.g. [{featured:'desc'},{createdAt:'desc'}]) -- treating that array as a single
+        // object made `Object.entries(orderBy)[0]` read the index '0' as the field (never a
+        // real property, so always undefined on both sides) and the clause object itself as
+        // `dir` (never `=== 'desc'`), degenerating the whole sort into a no-op. Normalizing to
+        // an array of clauses and applying them least-significant-first (stable sort) is the
+        // same pattern collection/category findMany already use for real multi-key sorts.
+        const orderClauses = Array.isArray(args?.orderBy) ? args.orderBy : args?.orderBy ? [args.orderBy] : []
+        for (const clause of [...orderClauses].reverse()) {
+          const [field, dir] = Object.entries(clause)[0] as [string, string]
+          list = [...list].sort((a: any, b: any) => {
             const av = a[field]; const bv = b[field]
             const cmp = av instanceof Date && bv instanceof Date ? av.getTime() - bv.getTime() : av < bv ? -1 : av > bv ? 1 : 0
             return dir === 'desc' ? -cmp : cmp
