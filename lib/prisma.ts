@@ -311,6 +311,17 @@ const mockAddresses: any[] = []
 const mockReturnRequests: any[] = []
 const mockNotifications: any[] = []
 const mockDraftOrders: any[] = []
+// PurchaseOrderItem rows live in their own top-level array with a `purchaseOrderId` foreign
+// key, joined back onto the parent at read time (see derivePurchaseOrderItems below) -- the
+// same pattern deriveMockProductVariants/deriveMockProductInventory already use, rather than
+// embedding items on the parent -- because purchaseOrderItem.update is called with only the
+// item's own id (never a purchaseOrderId), and purchaseOrderItem.findMany is called directly
+// with a `where.purchaseOrderId` filter, both of which a real top-level array serves naturally.
+const mockPurchaseOrders: any[] = []
+const mockPurchaseOrderItems: any[] = []
+function derivePurchaseOrderItems(purchaseOrderId: string) {
+  return mockPurchaseOrderItems.filter((x: any) => x.purchaseOrderId === purchaseOrderId)
+}
 // Mirrors the two rows prisma/seed.ts actually seeds -- unlike the operational arrays above,
 // this is real storefront content (the announcement bar / trust strip the homepage renders),
 // so it starts populated instead of empty, matching mockSettings' theme.config/theme.sections.
@@ -640,6 +651,21 @@ function getMockHandler(model: string) {
         if (args?.take) list = list.slice(0, args.take)
         return list
       }
+      if (model === 'purchaseOrder') {
+        let list = [...mockPurchaseOrders]
+        const w = args?.where || {}
+        if (typeof w.status === 'string') list = list.filter((x: any) => x.status === w.status)
+        list = list.sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime())
+        if (args?.take) list = list.slice(0, args.take)
+        if (args?.include?.items) list = list.map((po: any) => ({ ...po, items: derivePurchaseOrderItems(po.id) }))
+        if (args?.include?.location) list = list.map((po: any) => ({ ...po, location: po.locationId ? mockStoreLocations.find((l: any) => l.id === po.locationId) || null : null }))
+        return list
+      }
+      if (model === 'purchaseOrderItem') {
+        let list = [...mockPurchaseOrderItems]
+        if (args?.where?.purchaseOrderId) list = list.filter((x: any) => x.purchaseOrderId === args.where.purchaseOrderId)
+        return list
+      }
       if (model === 'liveVisitorSession') {
         let list = Array.from(mockLiveVisitorSessions.values())
         if (args?.where?.lastSeenAt?.gte) list = list.filter((v) => v.lastSeenAt >= new Date(args.where.lastSeenAt.gte))
@@ -770,6 +796,14 @@ function getMockHandler(model: string) {
         if (ratesArg?.orderBy?.price === 'asc') rates = rates.sort((a: any, b: any) => a.price - b.price)
         return { ...zone, rates }
       }
+      if (model === 'purchaseOrder' && where.id) {
+        const po = mockPurchaseOrders.find((x: any) => x.id === where.id)
+        if (!po) return null
+        const result: any = { ...po }
+        if (args?.include?.items) result.items = derivePurchaseOrderItems(po.id)
+        if (args?.include?.location) result.location = po.locationId ? mockStoreLocations.find((l: any) => l.id === po.locationId) || null : null
+        return result
+      }
       return null
     },
     findFirst: async (args?: any) => {
@@ -853,7 +887,10 @@ function getMockHandler(model: string) {
       if (model === 'product') return mockProducts[0] || null
       if (model === 'inventoryItem') {
         const w = args?.where || {}
-        return mockInventoryItems.find((x) => x.productId === w.productId && (w.variantId === undefined || x.variantId === w.variantId)) || null
+        // locationId must be honored, not just productId/variantId -- the purchase-order
+        // receiving flow looks up the row for a specific receiving location, and matching the
+        // wrong location's row here would credit stock to the wrong place.
+        return mockInventoryItems.find((x) => x.productId === w.productId && (w.variantId === undefined || x.variantId === w.variantId) && (w.locationId === undefined || x.locationId === w.locationId)) || null
       }
       return null
     },
@@ -1057,6 +1094,30 @@ function getMockHandler(model: string) {
         item.completedOrderId ??= null
         mockDraftOrders.unshift(item)
       }
+      if (model === 'purchaseOrder') {
+        // Same nested relation-write problem as draftOrder/returnRequest above -- `items:
+        // {create: [...]}}` arrives as a raw wrapper -- but unlike those, items go into the
+        // separate mockPurchaseOrderItems array (see the comment on that array's declaration)
+        // rather than embedded on this row, so `item.items` is deleted rather than kept.
+        const rawItems = item.items
+        delete item.items
+        item.status ??= 'DRAFT'
+        item.locationId ??= null
+        item.supplierName ??= null
+        item.notes ??= null
+        item.orderedAt ??= null
+        item.receivedAt ??= null
+        mockPurchaseOrders.push(item)
+        const rows = Array.isArray(rawItems) ? rawItems : rawItems?.create ? (Array.isArray(rawItems.create) ? rawItems.create : [rawItems.create]) : []
+        for (const row of rows) mockPurchaseOrderItems.push({ id: `poitem-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, purchaseOrderId: item.id, quantityReceived: 0, ...row })
+        // Return a separate object carrying the requested includes -- `item` itself (the row
+        // stored in mockPurchaseOrders above) stays free of an `items`/`location` snapshot that
+        // would go stale the moment an item is received or the PO's location changes.
+        const result: any = { ...item }
+        if (args?.include?.items) result.items = derivePurchaseOrderItems(item.id)
+        if (args?.include?.location) result.location = item.locationId ? mockStoreLocations.find((l: any) => l.id === item.locationId) || null : null
+        return result
+      }
       if (model === 'paymentTransaction' && item.orderId) {
         const order = mockOrders.find((o) => o.id === item.orderId)
         if (order) { order.paymentTransactions ??= []; order.paymentTransactions.push(item) }
@@ -1106,7 +1167,7 @@ function getMockHandler(model: string) {
         }
         throw new Error('Record to update not found')
       }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews, blogPost: mockBlogPosts, product: mockProducts, order: mockOrders, address: mockAddresses, returnRequest: mockReturnRequests, notification: mockNotifications, draftOrder: mockDraftOrders, shippingZone: mockShippingZones }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews, blogPost: mockBlogPosts, product: mockProducts, order: mockOrders, address: mockAddresses, returnRequest: mockReturnRequests, notification: mockNotifications, draftOrder: mockDraftOrders, shippingZone: mockShippingZones, purchaseOrder: mockPurchaseOrders, purchaseOrderItem: mockPurchaseOrderItems }
       if (byId[model] && args.where?.id) {
         const row = byId[model].find((x) => x.id === args.where.id)
         if (!row) throw new Error('Record to update not found')
@@ -1133,6 +1194,12 @@ function getMockHandler(model: string) {
         // in sync whenever categoryId actually changes, the same way `create` embeds it.
         if (model === 'product' && 'categoryId' in (args.data || {})) row.category = row.categoryId ? mockCategories.find((c: any) => c.id === row.categoryId) || null : null
         if (model === 'fulfillment' && args?.include?.lines) return { ...row, lines: mockFulfillmentLines.filter((l) => l.fulfillmentId === row.id) }
+        if (model === 'purchaseOrder' && (args?.include?.items || args?.include?.location)) {
+          const result: any = { ...row }
+          if (args.include.items) result.items = derivePurchaseOrderItems(row.id)
+          if (args.include.location) result.location = row.locationId ? mockStoreLocations.find((l: any) => l.id === row.locationId) || null : null
+          return result
+        }
         return row
       }
       return args?.data || {}
@@ -1163,6 +1230,11 @@ function getMockHandler(model: string) {
         const w = args?.where || {}
         if (w.status?.in) { const statuses = new Set(w.status.in); return mockDraftOrders.filter((x: any) => statuses.has(x.status)).length }
         return mockDraftOrders.length
+      }
+      if (model === 'purchaseOrder') {
+        const w = args?.where || {}
+        if (w.status?.in) { const statuses = new Set(w.status.in); return mockPurchaseOrders.filter((x: any) => statuses.has(x.status)).length }
+        return mockPurchaseOrders.length
       }
       if (model === 'shippingZone') {
         const w = args?.where || {}
