@@ -255,13 +255,16 @@ const mockCoupons = [
   },
 ]
 
-const mockShippingZones = [
+const mockShippingZones: any[] = [
   {
     id: 'zone-standard',
     name: 'Standard Worldwide',
     countries: '*',
+    regions: null,
+    isActive: true,
+    createdAt: new Date('2025-01-01'),
     rates: [
-      { id: 'rate-1', name: 'Standard delivery', price: 500, freeAbove: 5000, estimatedDays: 3, isActive: true },
+      { id: 'rate-1', zoneId: 'zone-standard', name: 'Standard delivery', price: 500, freeAbove: 5000, estimatedDays: 3, isActive: true },
     ],
   },
 ]
@@ -421,7 +424,22 @@ function getMockHandler(model: string) {
         if (args?.where?.code?.in) { const codes = new Set(args.where.code.in); list = list.filter((x) => codes.has(x.code)) }
         return list
       }
-      if (model === 'shippingZone') return [...mockShippingZones]
+      if (model === 'shippingZone') {
+        let list = [...mockShippingZones]
+        const w = args?.where || {}
+        if (w.isActive !== undefined) list = list.filter((x: any) => x.isActive === w.isActive)
+        if (args?.orderBy?.name === 'asc') list = list.sort((a: any, b: any) => a.name.localeCompare(b.name))
+        const ratesArg = args?.include?.rates
+        if (ratesArg) {
+          list = list.map((z: any) => {
+            let rates = [...(z.rates || [])]
+            if (ratesArg?.where?.isActive !== undefined) rates = rates.filter((r: any) => r.isActive === ratesArg.where.isActive)
+            if (ratesArg?.orderBy?.price === 'asc') rates = rates.sort((a: any, b: any) => a.price - b.price)
+            return { ...z, rates }
+          })
+        }
+        return list
+      }
       if (model === 'user') {
         let list = [...mockUsers]
         if (args?.where?.role !== undefined) list = list.filter((u) => u.role === args.where.role)
@@ -742,6 +760,16 @@ function getMockHandler(model: string) {
       }
       if (model === 'returnRequest' && where.id) return mockReturnRequests.find((x: any) => x.id === where.id) || null
       if (model === 'draftOrder' && where.id) return mockDraftOrders.find((x: any) => x.id === where.id) || null
+      if (model === 'shippingZone' && where.id) {
+        const zone = mockShippingZones.find((x: any) => x.id === where.id)
+        if (!zone) return null
+        const ratesArg = args?.include?.rates
+        if (!ratesArg) return zone
+        let rates = [...(zone.rates || [])]
+        if (ratesArg?.where?.isActive !== undefined) rates = rates.filter((r: any) => r.isActive === ratesArg.where.isActive)
+        if (ratesArg?.orderBy?.price === 'asc') rates = rates.sort((a: any, b: any) => a.price - b.price)
+        return { ...zone, rates }
+      }
       return null
     },
     findFirst: async (args?: any) => {
@@ -817,7 +845,11 @@ function getMockHandler(model: string) {
         if (args?.orderBy?.createdAt === 'desc') list = list.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
         return list[0] || null
       }
-      if (model === 'shippingZone') return mockShippingZones[0] || null
+      if (model === 'shippingZone') {
+        if (where.name !== undefined) return mockShippingZones.find((x: any) => x.name === where.name) || null
+        if (where.id !== undefined) return mockShippingZones.find((x: any) => x.id === where.id) || null
+        return mockShippingZones[0] || null
+      }
       if (model === 'product') return mockProducts[0] || null
       if (model === 'inventoryItem') {
         const w = args?.where || {}
@@ -993,6 +1025,21 @@ function getMockHandler(model: string) {
         mockReturnRequests.unshift(item)
       }
       if (model === 'notification') { item.readAt ??= null; mockNotifications.unshift(item) }
+      if (model === 'shippingZone') {
+        // Same nested relation-write problem as 'order'/'product'/'returnRequest'/'draftOrder'
+        // above -- `rates: {create: {...}}}` (a single object here, not an array) arrives as a
+        // raw wrapper and needs its own generated id, with zoneId set for shippingRate.update's
+        // cross-zone lookup below.
+        const expandRates = (value: any) => {
+          if (!value || typeof value !== 'object') return []
+          const rows = Array.isArray(value) ? value : value.create ? (Array.isArray(value.create) ? value.create : [value.create]) : []
+          return rows.map((row: any) => ({ id: `rate-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, zoneId: item.id, isActive: true, ...row }))
+        }
+        item.regions ??= null
+        item.isActive ??= true
+        item.rates = expandRates(item.rates)
+        mockShippingZones.push(item)
+      }
       if (model === 'draftOrder') {
         // Same nested relation-write problem as 'order'/'product'/'returnRequest' above --
         // `items: {create: [...]}}` arrives as a raw wrapper, not an array. Without expanding
@@ -1049,7 +1096,17 @@ function getMockHandler(model: string) {
         }
         throw new Error('Record to update not found')
       }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews, blogPost: mockBlogPosts, product: mockProducts, order: mockOrders, address: mockAddresses, returnRequest: mockReturnRequests, notification: mockNotifications, draftOrder: mockDraftOrders }
+      // shippingRate rows are embedded on their parent zone's `.rates` array (same convention
+      // as productImage/returnItem above), so a singular update (no zoneId in `where`, just the
+      // rate's own id) has to search across every zone for it.
+      if (model === 'shippingRate' && args.where?.id) {
+        for (const z of mockShippingZones) {
+          const r = (z.rates || []).find((x: any) => x.id === args.where.id)
+          if (r) { Object.assign(r, args.data || {}); return r }
+        }
+        throw new Error('Record to update not found')
+      }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews, blogPost: mockBlogPosts, product: mockProducts, order: mockOrders, address: mockAddresses, returnRequest: mockReturnRequests, notification: mockNotifications, draftOrder: mockDraftOrders, shippingZone: mockShippingZones }
       if (byId[model] && args.where?.id) {
         const row = byId[model].find((x) => x.id === args.where.id)
         if (!row) throw new Error('Record to update not found')
@@ -1087,7 +1144,7 @@ function getMockHandler(model: string) {
         if (i >= 0) return mockCustomerTagMembers.splice(i, 1)[0]
         return {}
       }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, user: mockUsers, homepageBlock: mockHomepageBlocks, wishlistItem: mockWishlistItems, blogPost: mockBlogPosts, product: mockProducts, productVariant: mockProductVariants, address: mockAddresses }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, user: mockUsers, homepageBlock: mockHomepageBlocks, wishlistItem: mockWishlistItems, blogPost: mockBlogPosts, product: mockProducts, productVariant: mockProductVariants, address: mockAddresses, shippingZone: mockShippingZones }
       const list = byId[model]
       if (list && args?.where?.id) { const i = list.findIndex((x) => x.id === args.where.id); if (i >= 0) return list.splice(i, 1)[0] }
       return {}
@@ -1106,6 +1163,19 @@ function getMockHandler(model: string) {
         const w = args?.where || {}
         if (w.status?.in) { const statuses = new Set(w.status.in); return mockDraftOrders.filter((x: any) => statuses.has(x.status)).length }
         return mockDraftOrders.length
+      }
+      if (model === 'shippingZone') {
+        const w = args?.where || {}
+        let list = mockShippingZones
+        if (w.isActive !== undefined) list = list.filter((x: any) => x.isActive === w.isActive)
+        if (w.rates?.none?.isActive !== undefined) list = list.filter((x: any) => !(x.rates || []).some((r: any) => r.isActive === w.rates.none.isActive))
+        return list.length
+      }
+      if (model === 'shippingRate') {
+        const w = args?.where || {}
+        let rates = mockShippingZones.flatMap((z: any) => z.rates || [])
+        if (w.isActive !== undefined) rates = rates.filter((r: any) => r.isActive === w.isActive)
+        return rates.length
       }
       // Used by fulfillOrderStock to tell a dedicated-variant inventory row apart from the
       // shared product-level pool.
@@ -1141,6 +1211,12 @@ function getMockHandler(model: string) {
         for (const row of rows) {
           const product = mockProducts.find((p: any) => p.id === row.productId) as any
           if (product) { product.tags = product.tags || []; product.tags.push({ id: `productchild-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, createdAt: new Date(), updatedAt: new Date(), ...row }) }
+        }
+      }
+      if (model === 'shippingRate') {
+        for (const row of rows) {
+          const zone = mockShippingZones.find((z: any) => z.id === row.zoneId)
+          if (zone) { zone.rates = zone.rates || []; zone.rates.push({ id: `rate-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, isActive: true, ...row }) }
         }
       }
       return { count: rows.length }
