@@ -1150,6 +1150,23 @@ function getMockHandler(model: string) {
         if (where.id !== undefined) return mockShippingZones.find((x: any) => x.id === where.id) || null
         return mockShippingZones[0] || null
       }
+      // Both real callers use this as an idempotency guard before crediting/debiting coins --
+      // checkout's restoreCheckoutCoins (userId+referenceId+type: 'REVERSAL') before reversing a
+      // failed payment-init spend, and the admin manual coin-adjustment endpoint
+      // (userId+referenceId+type: CREDIT/DEBIT) before applying a retried request. Without a real
+      // branch this always returned null, so a retried failed payment or a double-click admin
+      // adjustment created a second coinTransaction instead of being deduped -- coins credited or
+      // debited twice for what should have been a single change.
+      if (model === 'coinTransaction') {
+        let list = [...mockCoinTransactions]
+        const w = args?.where || {}
+        if (w.userId) list = list.filter((x) => x.userId === w.userId)
+        if (w.referenceId) list = list.filter((x) => x.referenceId === w.referenceId)
+        if (w.type) list = list.filter((x) => x.type === w.type)
+        if (args?.orderBy?.createdAt === 'asc') list = list.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+        else if (args?.orderBy?.createdAt === 'desc') list = list.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        return list[0] || null
+      }
       if (model === 'product') return mockProducts[0] || null
       if (model === 'inventoryItem') {
         const w = args?.where || {}
