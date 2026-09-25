@@ -358,6 +358,7 @@ const mockDeliveryTracking: any[] = []
 const mockProductPublications: any[] = []
 const mockMetafieldDefinitions: any[] = []
 const mockMetafieldValues: any[] = []
+const mockMediaAssets: any[] = []
 // order.items/.events already generate ids with this prefix (see order.create's/order.update's
 // own nested-write expansion below) -- orderItem/orderEvent, as standalone top-level model
 // accessors used by the order-edit commit flow (and, for orderItem, the sold-count/verified-
@@ -479,6 +480,12 @@ function getMockHandler(model: string) {
           else if (key.namespace === 'asc') list = [...list].sort((a: any, b: any) => a.namespace.localeCompare(b.namespace))
           else if (key.key === 'asc') list = [...list].sort((a: any, b: any) => a.key.localeCompare(b.key))
         }
+        return list
+      }
+      if (model === 'mediaAsset') {
+        let list = [...mockMediaAssets]
+        if (args?.orderBy?.createdAt === 'desc') list = list.sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime())
+        else if (args?.orderBy?.createdAt === 'asc') list = list.sort((a: any, b: any) => a.createdAt.getTime() - b.createdAt.getTime())
         return list
       }
       if (model === 'collection') {
@@ -1262,6 +1269,7 @@ function getMockHandler(model: string) {
       if (model === 'collection') { item.isActive ??= true; item.description ??= null; item.imageUrl ??= null; item.sortOrder ??= 0; mockCollections.push(item) }
       if (model === 'collectionProduct' && item.collectionId && item.productId) mockCollectionProducts.push(item)
       if (model === 'metafieldDefinition') { item.description ??= null; item.isList ??= false; mockMetafieldDefinitions.push(item) }
+      if (model === 'mediaAsset') { item.alt ??= null; item.mimeType ??= null; item.width ??= null; item.height ??= null; item.sizeBytes ??= null; mockMediaAssets.push(item) }
       if (model === 'orderEdit') {
         // Same nested relation-write problem as returnRequest/draftOrder above -- `items:
         // {create: [...]}}` arrives as a raw wrapper. OrderEditItem rows are embedded directly
