@@ -561,7 +561,23 @@ function getMockHandler(model: string) {
         if (args?.where?.createdAt?.lt) list = list.filter((u) => new Date(u.createdAt) < new Date(args.where.createdAt.lt))
         return list
       }
-      if (model === 'setting') return Array.from(mockSettings.entries()).map(([key, value]) => ({ key, value }))
+      // Ignored args.where entirely -- every caller narrows this to a specific whitelist of keys
+      // (payment config, public store settings, tracking pixels, the admin settings page's own
+      // client-safe key list) and trusts that whitelist to keep secrets/other-user data out of
+      // what it hands to the browser, so an unfiltered dump here was a real data-exposure gap in
+      // mock/dev mode, not just a correctness nit.
+      if (model === 'setting') {
+        let list = Array.from(mockSettings.entries()).map(([key, value]) => ({ id: `set-${key}`, key, value }))
+        const w = args?.where || {}
+        if (w.key?.in) { const keys = new Set(w.key.in); list = list.filter((x) => keys.has(x.key)) }
+        if (w.key?.startsWith) list = list.filter((x) => x.key.startsWith(w.key.startsWith))
+        if (Array.isArray(w.NOT?.OR)) {
+          const prefixes = w.NOT.OR.map((cond: any) => cond.key?.startsWith).filter((p: any) => typeof p === 'string')
+          list = list.filter((x) => !prefixes.some((p: string) => x.key.startsWith(p)))
+        }
+        if (args?.orderBy?.key === 'asc') list = [...list].sort((a, b) => a.key.localeCompare(b.key))
+        return list
+      }
       if (model === 'themeVersion') {
         let list = [...mockThemeVersions].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
         if (args?.take) list = list.slice(0, args.take)
@@ -1531,6 +1547,28 @@ function getMockHandler(model: string) {
         const { productId, channelId } = args.where.productId_channelId
         const i = mockProductPublications.findIndex((x) => x.productId === productId && x.channelId === channelId)
         if (i >= 0) return mockProductPublications.splice(i, 1)[0]
+        return {}
+      }
+      // Had a deleteMany branch (keyed by args.where.key) but no branch for singular delete at
+      // all, which this mock's `id` convention (`set-${key}`, see setting.findUnique above) makes
+      // easy to add -- without it, the theme-publish route's `setting.delete({where:{key:
+      // 'theme.draft'}})` calls silently no-op, so the editor's "unpublished changes" flag never
+      // clears after a real publish, and lib/push.ts's dead-subscription cleanup
+      // (`delete({where:{id:saved.settingId}})`) never actually prunes a rejected endpoint.
+      if (model === 'setting' && args?.where?.key) {
+        const value = mockSettings.get(args.where.key)
+        if (value === undefined) return {}
+        mockSettings.delete(args.where.key)
+        return { id: `set-${args.where.key}`, key: args.where.key, value }
+      }
+      if (model === 'setting' && args?.where?.id) {
+        for (const key of mockSettings.keys()) {
+          if (`set-${key}` === args.where.id) {
+            const value = mockSettings.get(key)!
+            mockSettings.delete(key)
+            return { id: args.where.id, key, value }
+          }
+        }
         return {}
       }
       const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, user: mockUsers, homepageBlock: mockHomepageBlocks, wishlistItem: mockWishlistItems, blogPost: mockBlogPosts, product: mockProducts, productVariant: mockProductVariants, address: mockAddresses, shippingZone: mockShippingZones, page: mockPages, redirect: mockRedirects, collection: mockCollections, metafieldDefinition: mockMetafieldDefinitions }
