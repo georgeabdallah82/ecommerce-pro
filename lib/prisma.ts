@@ -615,7 +615,12 @@ function getMockHandler(model: string) {
       }
       if (model === 'user') {
         let list = [...mockUsers]
-        if (args?.where?.role !== undefined) list = list.filter((u) => u.role === args.where.role)
+        // The admin Users page, its API, and lib/push's staff-alert targeting all pass
+        // role: { not: 'CUSTOMER' } to find staff accounts -- without this, the plain-equality
+        // check below always compared a string role to that object and matched nothing, so
+        // every one of those silently returned an empty staff list.
+        if (args?.where?.role?.not !== undefined) list = list.filter((u) => u.role !== args.where.role.not)
+        else if (args?.where?.role !== undefined) list = list.filter((u) => u.role === args.where.role)
         if (args?.where?.isActive !== undefined) list = list.filter((u) => u.isActive === args.where.isActive)
         if (args?.where?.id?.in) { const ids = new Set(args.where.id.in); list = list.filter((u) => ids.has(u.id)) }
         if (args?.where?.createdAt?.gte) list = list.filter((u) => new Date(u.createdAt) >= new Date(args.where.createdAt.gte))
@@ -1815,7 +1820,11 @@ function getMockHandler(model: string) {
       }
       if (model === 'user') {
         let list = mockUsers
-        if (args?.where?.role !== undefined) list = list.filter((u) => u.role === args.where.role)
+        // lib/platform-health.ts's "Staff access" critical check counts role: { not: 'CUSTOMER' }
+        // -- without this, it always fell through to the plain-equality branch below (which never
+        // matches an object), returning 0 and falsely reporting no staff account exists.
+        if (args?.where?.role?.not !== undefined) list = list.filter((u) => u.role !== args.where.role.not)
+        else if (args?.where?.role !== undefined) list = list.filter((u) => u.role === args.where.role)
         if (args?.where?.isActive !== undefined) list = list.filter((u) => u.isActive === args.where.isActive)
         if (args?.where?.id?.in) { const ids = new Set(args.where.id.in); list = list.filter((u) => ids.has(u.id)) }
         return list.length
