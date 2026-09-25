@@ -499,6 +499,14 @@ function getMockHandler(model: string) {
       }
       if (model === 'category') {
         let list = [...mockCategories]
+        const w = args?.where || {}
+        // The homepage's top-level category grid, the shop page's active-category filter, the
+        // admin nav editor's category picker, and the admin CSV export's category-id selector all
+        // pass one of these -- without them, every one of these silently returned/exported the
+        // whole category table regardless of isActive/parentId/id.in.
+        if (w.isActive !== undefined) list = list.filter((c: any) => c.isActive === w.isActive)
+        if (w.parentId !== undefined) list = list.filter((c: any) => c.parentId === w.parentId)
+        if (w.id?.in) { const ids = new Set(w.id.in); list = list.filter((c: any) => ids.has(c.id)) }
         const orderBy = Array.isArray(args?.orderBy) ? args.orderBy : args?.orderBy ? [args.orderBy] : []
         if (orderBy.length) {
           list = list.sort((a: any, b: any) => {
@@ -512,7 +520,9 @@ function getMockHandler(model: string) {
             return 0
           })
         }
+        if (args?.take) list = list.slice(0, args.take)
         if (args?.include?._count?.select?.products) list = list.map((c: any) => ({ ...c, _count: { products: mockProducts.filter((p: any) => p.categoryId === c.id).length } }))
+        if (args?.include?.parent) list = list.map((c: any) => ({ ...c, parent: c.parentId ? mockCategories.find((p: any) => p.id === c.parentId) || null : null }))
         return list
       }
       if (model === 'metafieldDefinition') {
