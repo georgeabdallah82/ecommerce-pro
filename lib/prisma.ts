@@ -880,7 +880,16 @@ function getMockHandler(model: string) {
         if (!row) throw new Error('Record to update not found')
         if (model === 'storeLocation' && args.data?.isDefault === true) for (const x of mockStoreLocations) x.isDefault = false
         for (const [key, value] of Object.entries(args.data || {})) {
-          if (value && typeof value === 'object' && ('increment' in value || 'decrement' in value)) {
+          // order.update is called throughout checkout/refunds/returns/cancellation/webhooks
+          // with a nested `events: { create: {...} } }` alongside plain status fields, to log
+          // what just happened -- same nested-write shorthand as order.create's own `events`,
+          // except here it must APPEND to the order's existing event history, not replace it
+          // (a plain `row[key] = value` would overwrite that array with the raw {create} wrapper).
+          if (model === 'order' && key === 'events' && value && typeof value === 'object') {
+            const rows = Array.isArray(value) ? value : (value as any).create ? (Array.isArray((value as any).create) ? (value as any).create : [(value as any).create]) : []
+            const expanded = rows.map((r: any) => ({ id: `orderitem-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, createdAt: new Date(), ...r }))
+            row.events = [...(row.events || []), ...expanded]
+          } else if (value && typeof value === 'object' && ('increment' in value || 'decrement' in value)) {
             const delta = (value as any).increment ?? -(value as any).decrement
             row[key] = (row[key] || 0) + delta
           } else {
