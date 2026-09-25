@@ -1867,9 +1867,17 @@ function getMockHandler(model: string) {
       if (model === 'setting' && args?.where?.key) {
         return { count: mockSettings.delete(args.where.key) ? 1 : 0 }
       }
-      if (model === 'collectionProduct' && args?.where?.collectionId) {
+      // Product delete's cascade cleanup and the CSV import's reassign-a-product's-collections
+      // path both key this off productId, not collectionId -- without that branch, deleting a
+      // product (or re-importing it with different collectionSlugs) left it stuck joined into
+      // every collection it was ever in, since deriveCollectionProducts/joinCollectionProducts
+      // still filter the (never-cleaned) mockCollectionProducts array by productId.
+      if (model === 'collectionProduct' && (args?.where?.collectionId || args?.where?.productId)) {
         const before = mockCollectionProducts.length
-        for (let i = mockCollectionProducts.length - 1; i >= 0; i--) if (mockCollectionProducts[i].collectionId === args.where.collectionId) mockCollectionProducts.splice(i, 1)
+        for (let i = mockCollectionProducts.length - 1; i >= 0; i--) {
+          const row = mockCollectionProducts[i]
+          if ((args.where.collectionId && row.collectionId === args.where.collectionId) || (args.where.productId && row.productId === args.where.productId)) mockCollectionProducts.splice(i, 1)
+        }
         return { count: before - mockCollectionProducts.length }
       }
       if (model === 'metafieldValue' && args?.where?.ownerId) {
