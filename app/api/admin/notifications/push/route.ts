@@ -37,7 +37,7 @@ export async function DELETE(req: Request) {
     const body = await req.json().catch(() => ({}))
     const endpoint = String(body.endpoint || '').trim()
     if (!endpoint) return json({ error: 'Endpoint is required' }, { status: 400 })
-    await removePushSubscription(endpoint)
+    await removePushSubscription(user.id, endpoint)
     return json({ ok: true })
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : 'Unable to remove push subscription' }, { status: 400 })

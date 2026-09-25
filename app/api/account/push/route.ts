@@ -28,11 +28,11 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    await requireUser()
+    const user = await requireUser()
     const body = await req.json().catch(() => ({}))
     const endpoint = String(body.endpoint || '').trim()
     if (!endpoint) return json({ error: 'Endpoint is required' }, { status: 400 })
-    await removeCustomerPushSubscription(endpoint)
+    await removeCustomerPushSubscription(user.id, endpoint)
     return json({ ok: true })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to remove push subscription'
