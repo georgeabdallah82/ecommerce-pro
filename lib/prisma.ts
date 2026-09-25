@@ -635,6 +635,11 @@ function getMockHandler(model: string) {
         if (args?.where?.id?.in) { const ids = new Set(args.where.id.in); list = list.filter((u) => ids.has(u.id)) }
         if (args?.where?.createdAt?.gte) list = list.filter((u) => new Date(u.createdAt) >= new Date(args.where.createdAt.gte))
         if (args?.where?.createdAt?.lt) list = list.filter((u) => new Date(u.createdAt) < new Date(args.where.createdAt.lt))
+        // The admin customers list's Orders/Reviews columns and its "repeat customers" stat both
+        // read _count off each row -- without deriving it from the real mockOrders/mockReviews
+        // arrays, every customer showed 0 orders and 0 reviews no matter their real history.
+        const countArg = args?.select?._count?.select || args?.include?._count?.select
+        if (countArg) list = list.map((u) => ({ ...u, _count: { orders: mockOrders.filter((o: any) => o.userId === u.id).length, reviews: mockReviews.filter((r: any) => r.userId === u.id).length } }))
         return list
       }
       // Ignored args.where entirely -- every caller narrows this to a specific whitelist of keys
@@ -1211,11 +1216,41 @@ function getMockHandler(model: string) {
         else if (notesArg?.orderBy?.createdAt === 'asc') orderNotes = orderNotes.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
         if (notesArg?.take) orderNotes = orderNotes.slice(0, notesArg.take)
         if (notesArg?.select?.user) orderNotes = orderNotes.map((n) => ({ ...n, user: { name: mockUsers.find((u) => u.id === n.userId)?.name ?? null } }))
+        // The admin customer-detail page joins orders/addresses/reviews/_count in on this exact
+        // call -- without actually deriving them from the real mockOrders/mockAddresses/
+        // mockReviews arrays (items/paymentTransactions are already embedded per-order by
+        // order.create, so no further join is needed there), every customer showed $0 total
+        // spent, no order history, no addresses, and no reviews, and _count always read 0.
+        const ordersArg = args?.select?.orders || args?.include?.orders
+        let orders: any[] = ordersArg ? mockOrders.filter((o: any) => o.userId === user.id) : []
+        if (ordersArg?.orderBy?.createdAt === 'desc') orders = orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        else if (ordersArg?.orderBy?.createdAt === 'asc') orders = orders.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+
+        const addressesArg = args?.select?.addresses || args?.include?.addresses
+        let addresses: any[] = addressesArg ? mockAddresses.filter((a: any) => a.userId === user.id) : []
+        const addressOrderBy = Array.isArray(addressesArg?.orderBy) ? addressesArg.orderBy : addressesArg?.orderBy ? [addressesArg.orderBy] : []
+        for (const key of [...addressOrderBy].reverse()) {
+          if (key.createdAt === 'desc') addresses = [...addresses].sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime())
+          else if (key.createdAt === 'asc') addresses = [...addresses].sort((a: any, b: any) => a.createdAt.getTime() - b.createdAt.getTime())
+          else if (key.isDefault === 'desc') addresses = [...addresses].sort((a: any, b: any) => Number(b.isDefault) - Number(a.isDefault))
+        }
+
+        const reviewsArg = args?.select?.reviews || args?.include?.reviews
+        let reviews: any[] = reviewsArg ? mockReviews.filter((r: any) => r.userId === user.id) : []
+        if (reviewsArg?.orderBy?.createdAt === 'desc') reviews = reviews.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        else if (reviewsArg?.orderBy?.createdAt === 'asc') reviews = reviews.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+        if (reviewsArg?.include?.product || reviewsArg?.select?.product) reviews = reviews.map((r) => ({ ...r, product: mockProducts.find((p: any) => p.id === r.productId) || null }))
+
+        const countArg = args?.select?._count?.select || args?.include?._count?.select
+        const orderCount = mockOrders.filter((o: any) => o.userId === user.id).length
+        const reviewCount = mockReviews.filter((r: any) => r.userId === user.id).length
+        const _count = countArg ? { orders: orderCount, reviews: reviewCount } : { orders: 0, reviews: 0 }
+
         // Included relations must come back as arrays, never undefined, or every caller that
         // reduces/maps over them (e.g. sumCustomerSpend on the customer detail page) crashes --
         // the real Prisma client always returns an empty array for an included relation with no
-        // rows, so the mock needs to as well even though it doesn't actually join anything here.
-        return { orders: [], addresses: [], reviews: [], _count: { orders: 0, reviews: 0 }, ...user, orderNotes }
+        // rows.
+        return { orders, addresses, reviews, _count, ...user, orderNotes }
       }
       if (model === 'walletTransaction') {
         let list = [...mockWalletTransactions]
