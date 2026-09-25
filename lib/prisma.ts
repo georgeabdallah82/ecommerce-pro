@@ -1945,6 +1945,23 @@ function getMockHandler(model: string) {
         for (const x of list) counts.set(x.segmentId, (counts.get(x.segmentId) || 0) + 1)
         return Array.from(counts, ([segmentId, count]) => ({ segmentId, _count: { _all: count } }))
       }
+      // Powers the star-rating + review-count badge on product cards (lib/product-stats.ts's
+      // getProductStats) -- without this, every product's rating/reviewCount was silently 0
+      // regardless of how many approved reviews actually existed for it.
+      if (model === 'review' && args?.by?.includes('productId')) {
+        const w = args?.where || {}
+        const idsFilter: Set<string> | undefined = w.productId?.in ? new Set(w.productId.in) : undefined
+        const sums = new Map<string, { total: number; count: number }>()
+        for (const r of mockReviews) {
+          if (idsFilter && !idsFilter.has(r.productId)) continue
+          if (w.approved !== undefined && r.approved !== w.approved) continue
+          const entry = sums.get(r.productId) || { total: 0, count: 0 }
+          entry.total += r.rating
+          entry.count += 1
+          sums.set(r.productId, entry)
+        }
+        return Array.from(sums, ([productId, { total, count }]) => ({ productId, _avg: { rating: count ? total / count : null }, _count: { rating: count } }))
+      }
       // Powers the "sold count" badge on product cards (lib/product-stats.ts) -- without this,
       // every product's sold count was silently 0 regardless of actual sales.
       if (model === 'orderItem' && args?.by?.includes('productId')) {
