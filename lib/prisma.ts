@@ -412,6 +412,26 @@ function mockFieldContains(value: unknown, condition: any): boolean {
 function withMockLocation(inv: any) {
   return { ...inv, location: inv.locationId ? mockStoreLocations.find((l: any) => l.id === inv.locationId) || null : null }
 }
+// Shared by inventoryItem's findUnique/findUniqueOrThrow/findMany -- the admin Inventory
+// page and the manual-adjustment route's post-write re-read both request product/variant/
+// location/movements the same way, so a single item's relations are joined once here rather
+// than duplicating the logic (and risking it drifting) across each dispatch method.
+function joinMockInventoryItem(item: any, includeOrSelect: any) {
+  const arg = includeOrSelect || {}
+  const result: any = { ...item }
+  if (arg.product) result.product = mockProducts.find((p: any) => p.id === item.productId) || null
+  if (arg.variant) result.variant = item.variantId ? mockProductVariants.find((v: any) => v.id === item.variantId) || null : null
+  if (arg.location) result.location = item.locationId ? mockStoreLocations.find((l: any) => l.id === item.locationId) || null : null
+  if (arg.movements) {
+    let moves = mockInventoryMovements.filter((m: any) => m.inventoryId === item.id)
+    const movementsArg = arg.movements
+    if (movementsArg?.orderBy?.createdAt === 'desc') moves = moves.sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime())
+    else if (movementsArg?.orderBy?.createdAt === 'asc') moves = moves.sort((a: any, b: any) => a.createdAt.getTime() - b.createdAt.getTime())
+    if (movementsArg?.take) moves = moves.slice(0, movementsArg.take)
+    result.movements = moves
+  }
+  return result
+}
 function deriveMockProductVariants(productId: string) {
   return mockProductVariants
     .filter((v: any) => v.productId === productId)
@@ -444,7 +464,7 @@ function filterMockAuditLogs(where: any) {
 }
 
 function getMockHandler(model: string) {
-  return {
+  const handler = {
     findMany: async (args?: any) => {
       if (model === 'product') {
         let list = [...mockProducts]
@@ -746,13 +766,26 @@ function getMockHandler(model: string) {
         // `undefined` (not filtering on it at all) has to stay distinguishable from `null`.
         if (w.variantId !== undefined) list = list.filter((x) => x.variantId === w.variantId)
         if (w.id?.in) { const ids = new Set(w.id.in); list = list.filter((x) => ids.has(x.id)) }
+        // The admin Inventory page's lowest-stock-first triage sort -- without it, rows came
+        // back in raw insertion order regardless of `orderBy`.
+        const orderClauses = Array.isArray(args?.orderBy) ? args.orderBy : args?.orderBy ? [args.orderBy] : []
+        for (const clause of [...orderClauses].reverse()) {
+          const [field, dir] = Object.entries(clause)[0] as [string, string]
+          list = [...list].sort((a: any, b: any) => {
+            const av = (a as any)[field]; const bv = (b as any)[field]
+            const cmp = av < bv ? -1 : av > bv ? 1 : 0
+            return dir === 'desc' ? -cmp : cmp
+          })
+        }
         // Every real caller (admin inventory list, low-stock push alerts, the analytics
-        // report's valuation/lowStock cards) asks for product/variant via include or select
-        // -- resolve them from the other mock arrays the same loose way customerTagMember's
-        // `tag` include already does above, rather than leaving `.product`/`.variant` undefined
-        // and crashing every one of those callers the moment mock inventory data exists.
-        if (args?.include?.product || args?.select?.product) list = list.map((x) => ({ ...x, product: mockProducts.find((p) => p.id === x.productId) || null }))
-        if (args?.include?.variant || args?.select?.variant) list = list.map((x) => ({ ...x, variant: x.variantId ? mockProductVariants.find((v) => v.id === x.variantId) || null : null }))
+        // report's valuation/lowStock cards) asks for product/variant/location/movements via
+        // include or select -- join them the same way findUnique/findUniqueOrThrow now do,
+        // rather than leaving them undefined and showing every row as "Unassigned" with no
+        // movement history.
+        const relationsArg = args?.include || args?.select
+        if (relationsArg?.product || relationsArg?.variant || relationsArg?.location || relationsArg?.movements) {
+          list = list.map((x) => joinMockInventoryItem(x, relationsArg))
+        }
         return list
       }
       if (model === 'customerTag') return [...mockCustomerTags].sort((a, b) => a.value.localeCompare(b.value))
@@ -1043,7 +1076,14 @@ function getMockHandler(model: string) {
       if (model === 'coinTransaction' && where.id) return mockCoinTransactions.find((x) => x.id === where.id) || null
       if (model === 'giftCard') return (where.id ? mockGiftCards.find((x) => x.id === where.id) : where.code ? mockGiftCards.find((x) => x.code.toUpperCase() === String(where.code).toUpperCase()) : null) || null
       if (model === 'productVariant') return (where.id ? mockProductVariants.find((x) => x.id === where.id) : where.sku ? mockProductVariants.find((x) => x.sku === where.sku) : where.barcode ? mockProductVariants.find((x) => x.barcode === where.barcode) : null) || null
-      if (model === 'inventoryItem' && where.id) return mockInventoryItems.find((x) => x.id === where.id) || null
+      if (model === 'inventoryItem' && where.id) {
+        const found = mockInventoryItems.find((x) => x.id === where.id)
+        if (!found) return null
+        // The manual-adjustment route's post-write re-read (and findUniqueOrThrow below) asks
+        // for product/variant/location/movements the same way -- without joining them here,
+        // every field beyond the bare row stayed undefined.
+        return joinMockInventoryItem(found, args?.include || args?.select)
+      }
       if (model === 'homepageBlock' && where.id) return mockHomepageBlocks.find((x) => x.id === where.id) || null
       if (model === 'blogPost') return (where.id ? mockBlogPosts.find((x) => x.id === where.id) : where.handle ? mockBlogPosts.find((x) => x.handle === where.handle) : null) || null
       if (model === 'page') return (where.id ? mockPages.find((x: any) => x.id === where.id) : where.handle ? mockPages.find((x: any) => x.handle === where.handle) : null) || null
@@ -2478,6 +2518,20 @@ function getMockHandler(model: string) {
         return { count: before - mockCustomerSegmentMembers.length }
       }
       return { count: 0 }
+    },
+  }
+  return {
+    ...handler,
+    // The manual inventory-adjustment route calls this inside a $transaction right after
+    // writing the stock change and movement log -- nothing in this mock ever defined it, so
+    // the call threw `TypeError: ... is not a function` after the mutation had already taken
+    // effect, meaning the route reported a 500 while the adjustment (and a retry) silently
+    // double-applied. Real Prisma's own semantics: same as findUnique, but throw instead of
+    // returning null.
+    findUniqueOrThrow: async (args?: any) => {
+      const found = await handler.findUnique(args)
+      if (!found) throw new Error(`No ${model} found for the given where clause.`)
+      return found
     },
   }
 }
