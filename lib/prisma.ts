@@ -1167,7 +1167,30 @@ function getMockHandler(model: string) {
         else if (args?.orderBy?.createdAt === 'desc') list = list.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
         return list[0] || null
       }
-      if (model === 'product') return mockProducts[0] || null
+      // Used by the public product-detail endpoint's findPublicProduct() (id/slug + status:
+      // 'ACTIVE') and by the review/wishlist "product exists and is active" gates (id + status)
+      // -- without real where/status filtering here, every product page resolved to whichever
+      // product happened to be mockProducts[0], and the review/wishlist existence checks always
+      // passed for any productId as long as any product existed, letting reviews/wishlist rows
+      // attach to a nonexistent or inactive productId.
+      if (model === 'product') {
+        let candidates: any[] = mockProducts
+        if (where.id) candidates = candidates.filter((p: any) => p.id === where.id)
+        else if (where.slug) candidates = candidates.filter((p: any) => p.slug === where.slug)
+        else if (where.sku) candidates = candidates.filter((p: any) => p.sku === where.sku)
+        else if (where.barcode) candidates = candidates.filter((p: any) => p.barcode === where.barcode)
+        if (where.status) candidates = candidates.filter((p: any) => p.status === where.status)
+        const found = candidates[0]
+        if (!found) return null
+        const collectionsArg = args?.include?.collections
+        return {
+          tags: [], metafields: [], ...found,
+          images: [...(found.images || [])].sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)),
+          variants: deriveMockProductVariants(found.id),
+          inventory: deriveMockProductInventory(found.id, false),
+          ...(collectionsArg ? { collections: joinProductCollections(found.id, collectionsArg) } : {}),
+        }
+      }
       if (model === 'inventoryItem') {
         const w = args?.where || {}
         // locationId must be honored, not just productId/variantId -- the purchase-order
