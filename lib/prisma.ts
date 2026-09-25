@@ -303,6 +303,7 @@ const mockReviews: any[] = []
 const mockBlogs: any[] = []
 const mockBlogPosts: any[] = []
 const mockAuditLogs: any[] = []
+const mockInventoryMovements: any[] = []
 // Mirrors the two rows prisma/seed.ts actually seeds -- unlike the operational arrays above,
 // this is real storefront content (the announcement bar / trust strip the homepage renders),
 // so it starts populated instead of empty, matching mockSettings' theme.config/theme.sections.
@@ -401,6 +402,7 @@ function getMockHandler(model: string) {
         if (w.createdAt?.gte) list = list.filter((o) => new Date(o.createdAt) >= new Date(w.createdAt.gte))
         if (w.createdAt?.lt) list = list.filter((o) => new Date(o.createdAt) < new Date(w.createdAt.lt))
         if (w.status?.not) list = list.filter((o) => o.status !== w.status.not)
+        else if (typeof w.status === 'string') list = list.filter((o) => o.status === w.status)
         if (w.couponCode?.not === null) list = list.filter((o) => o.couponCode != null)
         if (w.userId?.in) { const ids = new Set(w.userId.in); list = list.filter((o) => ids.has(o.userId)) }
         if (typeof w.userId === 'string') list = list.filter((o) => o.userId === w.userId)
@@ -571,6 +573,16 @@ function getMockHandler(model: string) {
         if (args?.include?.actor) list = list.map((x: any) => ({ ...x, actor: mockUsers.find((u: any) => u.id === x.actorId) || null }))
         return list
       }
+      if (model === 'inventoryMovement') {
+        let list = [...mockInventoryMovements]
+        const w = args?.where || {}
+        if (w.type) list = list.filter((x: any) => x.type === w.type)
+        if (w.referenceId) list = list.filter((x: any) => x.referenceId === w.referenceId)
+        if (w.inventoryId) list = list.filter((x: any) => x.inventoryId === w.inventoryId)
+        if (args?.orderBy?.createdAt === 'asc') list = list.sort((a: any, b: any) => a.createdAt.getTime() - b.createdAt.getTime())
+        else if (args?.orderBy?.createdAt === 'desc') list = list.sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime())
+        return list
+      }
       if (model === 'liveVisitorSession') {
         let list = Array.from(mockLiveVisitorSessions.values())
         if (args?.where?.lastSeenAt?.gte) list = list.filter((v) => v.lastSeenAt >= new Date(args.where.lastSeenAt.gte))
@@ -678,7 +690,16 @@ function getMockHandler(model: string) {
           : where.id
             ? mockOrders.find((o) => o.id === where.id)
             : undefined
-        return found ? { events: [], notesHistory: [], paymentTransactions: [], ...found } : null
+        if (!found) return null
+        // fulfillOrderStock (lib/inventory.ts) needs each item's own product (for
+        // trackInventory/continueSellingWhenOutOfStock) -- order.items are embedded plain
+        // rows from order.create's own nested-write expansion, so joining `.product` in only
+        // has to happen when actually requested, same idea as product's own derived relations.
+        const itemsArg = args?.include?.items
+        const items = itemsArg?.include?.product
+          ? (found.items || []).map((it: any) => ({ ...it, product: mockProducts.find((p: any) => p.id === it.productId) || null }))
+          : found.items
+        return { events: [], notesHistory: [], paymentTransactions: [], ...found, items }
       }
       return null
     },
@@ -689,6 +710,12 @@ function getMockHandler(model: string) {
         return list[0] || null
       }
       if (model === 'blog') return mockBlogs[0] || null
+      if (model === 'inventoryMovement') {
+        let list = mockInventoryMovements.filter((x: any) => (where.type === undefined || x.type === where.type) && (where.referenceId === undefined || x.referenceId === where.referenceId) && (where.inventoryId === undefined || x.inventoryId === where.inventoryId))
+        if (args?.orderBy?.createdAt === 'desc') list = list.sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime())
+        else if (args?.orderBy?.createdAt === 'asc') list = list.sort((a: any, b: any) => a.createdAt.getTime() - b.createdAt.getTime())
+        return list[0] || null
+      }
       if (model === 'paymentTransaction') {
         let matches = findMockPaymentTransactions(where)
         if (args?.orderBy?.createdAt === 'desc') matches = matches.sort((a, b) => b.transaction.createdAt.getTime() - a.transaction.createdAt.getTime())
@@ -879,6 +906,7 @@ function getMockHandler(model: string) {
       if (model === 'blog') mockBlogs.push(item)
       if (model === 'blogPost') { item.status ??= 'DRAFT'; item.tagsJson ??= null; mockBlogPosts.push(item) }
       if (model === 'auditLog') mockAuditLogs.unshift(item)
+      if (model === 'inventoryMovement') mockInventoryMovements.push(item)
       if (model === 'paymentTransaction' && item.orderId) {
         const order = mockOrders.find((o) => o.id === item.orderId)
         if (order) { order.paymentTransactions ??= []; order.paymentTransactions.push(item) }
@@ -956,6 +984,15 @@ function getMockHandler(model: string) {
       if (model === 'order') return mockOrders.length
       if (model === 'auditLog') return filterMockAuditLogs(args?.where).length
       if (model === 'fulfillment') return mockFulfillments.length
+      // Used by fulfillOrderStock to tell a dedicated-variant inventory row apart from the
+      // shared product-level pool.
+      if (model === 'inventoryItem') {
+        let list = mockInventoryItems
+        const w = args?.where || {}
+        if (w.productId) list = list.filter((x: any) => x.productId === w.productId)
+        if (w.variantId !== undefined) list = list.filter((x: any) => x.variantId === w.variantId)
+        return list.length
+      }
       if (model === 'customerTagMember') {
         let list = mockCustomerTagMembers
         if (args?.where?.tagId) list = list.filter((x) => x.tagId === args.where.tagId)
@@ -986,6 +1023,32 @@ function getMockHandler(model: string) {
       return { count: rows.length }
     },
     updateMany: async (args?: any) => {
+      // lib/inventory.ts's whole reservation/release/fulfillment ledger leans on this being a
+      // real optimistic-concurrency guard: e.g. reserveStock's
+      // `where: { id, reserved: { lte: quantity - canReserve } }` must return count 0 (not the
+      // generic fallback's unconditional count: 1) when another reservation already ate the
+      // headroom, or reserved would silently over-commit past actual quantity.
+      if (model === 'inventoryItem') {
+        const w = args?.where || {}
+        let targets = mockInventoryItems
+        if (typeof w.id === 'string') targets = targets.filter((x: any) => x.id === w.id)
+        if (w.id?.in) { const ids = new Set(w.id.in); targets = targets.filter((x: any) => ids.has(x.id)) }
+        if (w.reserved?.lte !== undefined) targets = targets.filter((x: any) => x.reserved <= w.reserved.lte)
+        if (w.reserved?.gte !== undefined) targets = targets.filter((x: any) => x.reserved >= w.reserved.gte)
+        if (w.quantity?.gte !== undefined) targets = targets.filter((x: any) => x.quantity >= w.quantity.gte)
+        for (const target of targets) {
+          for (const [key, value] of Object.entries(args?.data || {})) {
+            if (value && typeof value === 'object' && ('increment' in value || 'decrement' in value)) {
+              const delta = (value as any).increment ?? -(value as any).decrement
+              target[key] = (target[key] || 0) + delta
+            } else {
+              target[key] = value
+            }
+          }
+          target.updatedAt = new Date()
+        }
+        return { count: targets.length }
+      }
       if (model === 'abandonedCheckout') {
         let targets = mockAbandonedCheckouts
         if (args?.where?.token) targets = targets.filter((x) => x.token === args.where.token)
@@ -1038,6 +1101,15 @@ function getMockHandler(model: string) {
       return []
     },
     aggregate: async (args?: any) => {
+      if (model === 'inventoryMovement') {
+        const w = args?.where || {}
+        let list = mockInventoryMovements
+        if (w.type) list = list.filter((x: any) => x.type === w.type)
+        if (w.referenceId) list = list.filter((x: any) => x.referenceId === w.referenceId)
+        if (w.inventoryId) list = list.filter((x: any) => x.inventoryId === w.inventoryId)
+        const sum = list.reduce((s: number, x: any) => s + (x.quantity || 0), 0)
+        return { _sum: { quantity: sum }, _count: { _all: list.length }, _avg: {}, _min: {}, _max: {} }
+      }
       if (model === 'walletTransaction') {
         let list = mockWalletTransactions
         const w = args?.where || {}
