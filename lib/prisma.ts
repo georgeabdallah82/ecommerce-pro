@@ -289,6 +289,14 @@ const mockAbandonedCheckouts: any[] = []
 const mockCoinTransactions: any[] = []
 const mockGiftCards: any[] = []
 const mockInventoryItems: any[] = []
+// product.create/update/delete now derive `inventory`/`variants` dynamically from
+// mockInventoryItems/mockProductVariants (source of truth, same as mockReviews already
+// was for `reviews`) instead of a static array embedded on the product row -- seed this
+// from the seed products' own embedded `inventory` so their stock numbers don't regress
+// to empty the moment that derivation replaces the old always-stale embedded field.
+for (const seedProduct of mockProducts) {
+  for (const inv of seedProduct.inventory || []) mockInventoryItems.push({ ...inv, productId: seedProduct.id, variantId: (inv as any).variantId ?? null, reserved: (inv as any).reserved ?? 0 })
+}
 const mockProductVariants: any[] = []
 const mockWishlistItems: any[] = []
 const mockReviews: any[] = []
@@ -313,6 +321,25 @@ function mockFieldContains(value: unknown, condition: any): boolean {
     : value.includes(contains)
 }
 
+// Shared by product findMany/findUnique -- inventoryItem.create/update already have real
+// mock backing (mockInventoryItems), but nothing joined them back onto a product's own
+// `.inventory`/`.variants` fields, which stayed whatever was embedded at seed time and
+// never changed. Deriving them fresh on every read is what actually makes a newly created
+// or edited product's stock/variants show up again, mirroring how `reviews` already works.
+function withMockLocation(inv: any) {
+  return { ...inv, location: inv.locationId ? mockStoreLocations.find((l: any) => l.id === inv.locationId) || null : null }
+}
+function deriveMockProductVariants(productId: string) {
+  return mockProductVariants
+    .filter((v: any) => v.productId === productId)
+    .map((v: any) => ({ ...v, inventory: mockInventoryItems.filter((i: any) => i.variantId === v.id).map(withMockLocation) }))
+}
+function deriveMockProductInventory(productId: string, sharedOnly: boolean) {
+  let rows = mockInventoryItems.filter((i: any) => i.productId === productId)
+  if (sharedOnly) rows = rows.filter((i: any) => i.variantId == null)
+  return rows.map(withMockLocation)
+}
+
 function getMockHandler(model: string) {
   return {
     findMany: async (args?: any) => {
@@ -331,6 +358,13 @@ function getMockHandler(model: string) {
           list = list.filter((p) => conditions.some((cond) => Object.entries(cond).some(([field, sub]) => mockFieldContains((p as any)[field], sub))))
         }
         if (args?.take) list = list.slice(0, args.take)
+        if (args?.include?.variants || args?.include?.inventory) {
+          list = list.map((p: any) => ({
+            ...p,
+            variants: args.include.variants ? deriveMockProductVariants(p.id) : p.variants,
+            inventory: args.include.inventory ? deriveMockProductInventory(p.id, false) : p.inventory,
+          }))
+        }
         return list
       }
       if (model === 'category') return [...mockCategories]
@@ -536,10 +570,11 @@ function getMockHandler(model: string) {
                 : undefined
         if (!found) return null
         // mockProducts entries don't carry every relation Prisma's `include` can ask
-        // for (e.g. reviews, tags) -- default those to empty arrays so callers that
-        // assume Prisma's always-an-array shape (never undefined) don't crash. reviews is a
-        // real lookup against mockReviews (rather than always []) so the PDP's approved/
-        // featured filtering and ordering is actually exercisable in mock/dev mode.
+        // for (e.g. reviews, tags, metafields) -- default those to empty arrays so callers
+        // that assume Prisma's always-an-array shape (never undefined) don't crash (the PDP's
+        // `product.metafields.filter(...)` has no optional chaining and would throw outright).
+        // reviews/variants/inventory are real lookups against their own mock arrays (rather
+        // than a stale embedded stub) so create/update actually round-trip in mock/dev mode.
         let reviews: any[] = []
         const reviewsArg = args?.include?.reviews
         if (reviewsArg) {
@@ -549,7 +584,14 @@ function getMockHandler(model: string) {
           if (reviewsArg.take) reviews = reviews.slice(0, reviewsArg.take)
           if (reviewsArg.include?.user) reviews = reviews.map((r) => ({ ...r, user: mockUsers.find((u) => u.id === r.userId) || null }))
         }
-        return { reviews, tags: [], ...found }
+        const inventoryArg = args?.include?.inventory
+        const sharedOnly = Boolean(inventoryArg && typeof inventoryArg === 'object' && inventoryArg.where?.variantId === null)
+        return {
+          reviews, tags: [], metafields: [], ...found,
+          images: [...(found.images || [])].sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)),
+          variants: deriveMockProductVariants(found.id),
+          inventory: deriveMockProductInventory(found.id, sharedOnly),
+        }
       }
       if (model === 'user') {
         if (where.email) return mockUsers.find((u) => u.email.toLowerCase() === String(where.email).toLowerCase()) || null
@@ -770,12 +812,37 @@ function getMockHandler(model: string) {
       if (model === 'giftCard') { item.balance ??= item.initialAmount ?? 0; mockGiftCards.push(item) }
       if (model === 'inventoryItem') { item.variantId ??= null; item.reserved ??= 0; item.lowStockThreshold ??= 5; mockInventoryItems.push(item) }
       if (model === 'productVariant') mockProductVariants.push(item)
+      if (model === 'product') {
+        // Same nested relation-write problem as 'order' above -- `images`/`inventory`/`tags`
+        // arrive as raw {create: ...} wrappers from the admin create route's nested shorthand,
+        // not plain arrays, and need their own generated ids. inventory (the product-level,
+        // non-variant row) is pushed into mockInventoryItems -- the same array inventoryItem.create
+        // already uses -- rather than embedded directly, so it's picked up by the dynamic
+        // derivation every product read now uses (see deriveMockProductInventory above).
+        const expandNested = (value: any) => {
+          if (!value || typeof value !== 'object') return []
+          const rows = Array.isArray(value) ? value : value.create ? (Array.isArray(value.create) ? value.create : [value.create]) : []
+          return rows.map((row: any) => ({ id: `productchild-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, createdAt: new Date(), updatedAt: new Date(), ...row }))
+        }
+        item.images = expandNested(item.images)
+        item.tags = expandNested(item.tags).map((row: any) => ({ ...row, productId: item.id }))
+        const inventoryRows = expandNested(item.inventory).map((row: any) => ({ productId: item.id, variantId: null, reserved: 0, ...row }))
+        item.inventory = inventoryRows
+        item.variants = []
+        item.category = item.categoryId ? mockCategories.find((c: any) => c.id === item.categoryId) || null : null
+        mockProducts.push(item)
+        for (const inv of inventoryRows) mockInventoryItems.push(inv)
+      }
       if (model === 'user') { item.role ??= 'CUSTOMER'; item.isActive ??= true; mockUsers.push(item) }
       if (model === 'customerSegment') mockCustomerSegments.push(item)
       if (model === 'customerSegmentMember') mockCustomerSegmentMembers.push(item)
       if (model === 'homepageBlock') mockHomepageBlocks.push(item)
       if (model === 'wishlistItem') mockWishlistItems.push(item)
       if (model === 'review') { item.approved ??= false; item.featured ??= false; mockReviews.push(item) }
+      if (model === 'productImage' && item.productId) {
+        const product = mockProducts.find((p: any) => p.id === item.productId)
+        if (product) { product.images = product.images || []; product.images.push(item) }
+      }
       if (model === 'blog') mockBlogs.push(item)
       if (model === 'blogPost') { item.status ??= 'DRAFT'; item.tagsJson ??= null; mockBlogPosts.push(item) }
       if (model === 'paymentTransaction' && item.orderId) {
@@ -796,13 +863,33 @@ function getMockHandler(model: string) {
         if (u) Object.assign(u, args.data || {})
         return u || args.data
       }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews, blogPost: mockBlogPosts }
+      // productImage rows are embedded on their parent product's `.images` array rather than
+      // their own top-level mock array (matching mockProducts' existing seed-data shape), so a
+      // singular update (no productId in `where`, just the image's own id) has to search across
+      // every product for it -- same idea as findMockPaymentTransaction above.
+      if (model === 'productImage' && args.where?.id) {
+        for (const p of mockProducts) {
+          const img = (p.images || []).find((x: any) => x.id === args.where.id)
+          if (img) { Object.assign(img, args.data || {}); return img }
+        }
+        throw new Error('Record to update not found')
+      }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews, blogPost: mockBlogPosts, product: mockProducts, order: mockOrders }
       if (byId[model] && args.where?.id) {
         const row = byId[model].find((x) => x.id === args.where.id)
         if (!row) throw new Error('Record to update not found')
         if (model === 'storeLocation' && args.data?.isDefault === true) for (const x of mockStoreLocations) x.isDefault = false
         for (const [key, value] of Object.entries(args.data || {})) {
-          if (value && typeof value === 'object' && ('increment' in value || 'decrement' in value)) {
+          // order.update is called throughout checkout/refunds/returns/cancellation/webhooks
+          // with a nested `events: { create: {...} } }` alongside plain status fields, to log
+          // what just happened -- same nested-write shorthand as order.create's own `events`,
+          // except here it must APPEND to the order's existing event history, not replace it
+          // (a plain `row[key] = value` would overwrite that array with the raw {create} wrapper).
+          if (model === 'order' && key === 'events' && value && typeof value === 'object') {
+            const rows = Array.isArray(value) ? value : (value as any).create ? (Array.isArray((value as any).create) ? (value as any).create : [(value as any).create]) : []
+            const expanded = rows.map((r: any) => ({ id: `orderitem-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, createdAt: new Date(), ...r }))
+            row.events = [...(row.events || []), ...expanded]
+          } else if (value && typeof value === 'object' && ('increment' in value || 'decrement' in value)) {
             const delta = (value as any).increment ?? -(value as any).decrement
             row[key] = (row[key] || 0) + delta
           } else {
@@ -810,6 +897,9 @@ function getMockHandler(model: string) {
           }
         }
         row.updatedAt = new Date()
+        // Keep the embedded `category` object (findMany/findUnique don't do a live join for it)
+        // in sync whenever categoryId actually changes, the same way `create` embeds it.
+        if (model === 'product' && 'categoryId' in (args.data || {})) row.category = row.categoryId ? mockCategories.find((c: any) => c.id === row.categoryId) || null : null
         if (model === 'fulfillment' && args?.include?.lines) return { ...row, lines: mockFulfillmentLines.filter((l) => l.fulfillmentId === row.id) }
         return row
       }
@@ -822,7 +912,7 @@ function getMockHandler(model: string) {
         if (i >= 0) return mockCustomerTagMembers.splice(i, 1)[0]
         return {}
       }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, user: mockUsers, homepageBlock: mockHomepageBlocks, wishlistItem: mockWishlistItems, blogPost: mockBlogPosts }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, user: mockUsers, homepageBlock: mockHomepageBlocks, wishlistItem: mockWishlistItems, blogPost: mockBlogPosts, product: mockProducts, productVariant: mockProductVariants }
       const list = byId[model]
       if (list && args?.where?.id) { const i = list.findIndex((x) => x.id === args.where.id); if (i >= 0) return list.splice(i, 1)[0] }
       return {}
@@ -850,7 +940,16 @@ function getMockHandler(model: string) {
       }
       return 0
     },
-    createMany: async (args: any) => ({ count: args?.data?.length || 0 }),
+    createMany: async (args: any) => {
+      const rows: any[] = args?.data || []
+      if (model === 'productTag') {
+        for (const row of rows) {
+          const product = mockProducts.find((p: any) => p.id === row.productId) as any
+          if (product) { product.tags = product.tags || []; product.tags.push({ id: `productchild-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, createdAt: new Date(), updatedAt: new Date(), ...row }) }
+        }
+      }
+      return { count: rows.length }
+    },
     updateMany: async (args?: any) => {
       if (model === 'abandonedCheckout') {
         let targets = mockAbandonedCheckouts
@@ -947,6 +1046,36 @@ function getMockHandler(model: string) {
           for (const [id, v] of mockLiveVisitorSessions) if (v.lastSeenAt < cutoff) mockLiveVisitorSessions.delete(id)
         }
         return { count: before - mockLiveVisitorSessions.size }
+      }
+      // images/tags are embedded on the parent product row, so deleting them means mutating
+      // that product's own array rather than splicing a top-level mock array.
+      if (model === 'productImage' && args?.where?.productId) {
+        const product = mockProducts.find((p: any) => p.id === args.where.productId)
+        if (!product) return { count: 0 }
+        const before = (product.images || []).length
+        const notIn: string[] | undefined = args.where.id?.notIn
+        product.images = notIn ? (product.images || []).filter((x: any) => notIn.includes(x.id)) : []
+        return { count: before - product.images.length }
+      }
+      if (model === 'productTag' && args?.where?.productId) {
+        const product = mockProducts.find((p: any) => p.id === args.where.productId) as any
+        if (!product) return { count: 0 }
+        const before = (product.tags || []).length
+        product.tags = []
+        return { count: before }
+      }
+      if (model === 'productVariant' && args?.where?.productId) {
+        const before = mockProductVariants.length
+        for (let i = mockProductVariants.length - 1; i >= 0; i--) if (mockProductVariants[i].productId === args.where.productId) mockProductVariants.splice(i, 1)
+        return { count: before - mockProductVariants.length }
+      }
+      // Cleans up mockInventoryItems after a product delete so a since-derived (rather than
+      // embedded) `product.inventory` doesn't leave orphaned rows visible on an admin-wide
+      // inventory listing that queries inventoryItem directly by a now-deleted productId.
+      if (model === 'inventoryItem' && args?.where?.productId) {
+        const before = mockInventoryItems.length
+        for (let i = mockInventoryItems.length - 1; i >= 0; i--) if (mockInventoryItems[i].productId === args.where.productId) mockInventoryItems.splice(i, 1)
+        return { count: before - mockInventoryItems.length }
       }
       return { count: 0 }
     },
