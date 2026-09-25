@@ -356,6 +356,8 @@ const mockRedirects: any[] = []
 const mockOrderEdits: any[] = []
 const mockDeliveryTracking: any[] = []
 const mockProductPublications: any[] = []
+const mockMetafieldDefinitions: any[] = []
+const mockMetafieldValues: any[] = []
 // order.items/.events already generate ids with this prefix (see order.create's/order.update's
 // own nested-write expansion below) -- orderItem/orderEvent, as standalone top-level model
 // accessors used by the order-edit commit flow (and, for orderItem, the sold-count/verified-
@@ -467,6 +469,18 @@ function getMockHandler(model: string) {
         return list
       }
       if (model === 'category') return [...mockCategories]
+      if (model === 'metafieldDefinition') {
+        let list = [...mockMetafieldDefinitions]
+        if (args?.where?.ownerType) list = list.filter((x: any) => x.ownerType === args.where.ownerType)
+        const orderBy = args?.orderBy
+        const orderKeys = Array.isArray(orderBy) ? orderBy : orderBy ? [orderBy] : []
+        for (const key of [...orderKeys].reverse()) {
+          if (key.ownerType === 'asc') list = [...list].sort((a: any, b: any) => a.ownerType.localeCompare(b.ownerType))
+          else if (key.namespace === 'asc') list = [...list].sort((a: any, b: any) => a.namespace.localeCompare(b.namespace))
+          else if (key.key === 'asc') list = [...list].sort((a: any, b: any) => a.key.localeCompare(b.key))
+        }
+        return list
+      }
       if (model === 'collection') {
         let list = [...mockCollections]
         const w = args?.where || {}
@@ -826,8 +840,14 @@ function getMockHandler(model: string) {
         const inventoryArg = args?.include?.inventory
         const sharedOnly = Boolean(inventoryArg && typeof inventoryArg === 'object' && inventoryArg.where?.variantId === null)
         const collectionsArg = args?.include?.collections
+        const metafieldsArg = args?.include?.metafields
+        let metafields: any[] = []
+        if (metafieldsArg) {
+          metafields = mockMetafieldValues.filter((v: any) => v.ownerType === 'PRODUCT' && v.ownerId === found.id)
+          if (metafieldsArg.include?.definition) metafields = metafields.map((v: any) => ({ ...v, definition: mockMetafieldDefinitions.find((d: any) => d.id === v.definitionId) || null }))
+        }
         return {
-          reviews, tags: [], metafields: [], ...found,
+          reviews, tags: [], metafields, ...found,
           images: [...(found.images || [])].sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)),
           variants: deriveMockProductVariants(found.id),
           inventory: deriveMockProductInventory(found.id, sharedOnly),
@@ -1241,6 +1261,7 @@ function getMockHandler(model: string) {
       if (model === 'redirect') { item.hits ??= 0; mockRedirects.push(item) }
       if (model === 'collection') { item.isActive ??= true; item.description ??= null; item.imageUrl ??= null; item.sortOrder ??= 0; mockCollections.push(item) }
       if (model === 'collectionProduct' && item.collectionId && item.productId) mockCollectionProducts.push(item)
+      if (model === 'metafieldDefinition') { item.description ??= null; item.isList ??= false; mockMetafieldDefinitions.push(item) }
       if (model === 'orderEdit') {
         // Same nested relation-write problem as returnRequest/draftOrder above -- `items:
         // {create: [...]}}` arrives as a raw wrapper. OrderEditItem rows are embedded directly
@@ -1457,7 +1478,7 @@ function getMockHandler(model: string) {
         if (i >= 0) return mockProductPublications.splice(i, 1)[0]
         return {}
       }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, user: mockUsers, homepageBlock: mockHomepageBlocks, wishlistItem: mockWishlistItems, blogPost: mockBlogPosts, product: mockProducts, productVariant: mockProductVariants, address: mockAddresses, shippingZone: mockShippingZones, page: mockPages, redirect: mockRedirects, collection: mockCollections }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, user: mockUsers, homepageBlock: mockHomepageBlocks, wishlistItem: mockWishlistItems, blogPost: mockBlogPosts, product: mockProducts, productVariant: mockProductVariants, address: mockAddresses, shippingZone: mockShippingZones, page: mockPages, redirect: mockRedirects, collection: mockCollections, metafieldDefinition: mockMetafieldDefinitions }
       const list = byId[model]
       if (list && args?.where?.id) { const i = list.findIndex((x) => x.id === args.where.id); if (i >= 0) return list.splice(i, 1)[0] }
       return {}
@@ -1540,6 +1561,9 @@ function getMockHandler(model: string) {
       }
       if (model === 'collectionProduct') {
         for (const row of rows) mockCollectionProducts.push({ id: `colprod-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, ...row })
+      }
+      if (model === 'metafieldValue') {
+        for (const row of rows) mockMetafieldValues.push({ id: `metafieldvalue-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, ...row })
       }
       return { count: rows.length }
     },
@@ -1702,6 +1726,14 @@ function getMockHandler(model: string) {
         const before = mockCollectionProducts.length
         for (let i = mockCollectionProducts.length - 1; i >= 0; i--) if (mockCollectionProducts[i].collectionId === args.where.collectionId) mockCollectionProducts.splice(i, 1)
         return { count: before - mockCollectionProducts.length }
+      }
+      if (model === 'metafieldValue' && args?.where?.ownerId) {
+        const before = mockMetafieldValues.length
+        for (let i = mockMetafieldValues.length - 1; i >= 0; i--) {
+          const v = mockMetafieldValues[i]
+          if (v.ownerId === args.where.ownerId && (args.where.ownerType === undefined || v.ownerType === args.where.ownerType)) mockMetafieldValues.splice(i, 1)
+        }
+        return { count: before - mockMetafieldValues.length }
       }
       if (model === 'walletTransaction' && args?.where?.userId) {
         const before = mockWalletTransactions.length
