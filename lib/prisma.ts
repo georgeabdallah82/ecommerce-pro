@@ -880,6 +880,15 @@ function getMockHandler(model: string) {
         if (w.orderId) return [...(mockOrders.find((o: any) => o.id === w.orderId)?.items || [])]
         return mockOrders.flatMap((o: any) => o.items || [])
       }
+      if (model === 'productVariant') {
+        let list = [...mockProductVariants]
+        const w = args?.where || {}
+        if (w.id?.in) { const ids = new Set(w.id.in); list = list.filter((v: any) => ids.has(v.id)) }
+        else if (typeof w.id === 'string') list = list.filter((v: any) => v.id === w.id)
+        if (w.productId?.in) { const ids = new Set(w.productId.in); list = list.filter((v: any) => ids.has(v.productId)) }
+        else if (typeof w.productId === 'string') list = list.filter((v: any) => v.productId === w.productId)
+        return list
+      }
       if (model === 'liveVisitorSession') {
         let list = Array.from(mockLiveVisitorSessions.values())
         if (args?.where?.lastSeenAt?.gte) list = list.filter((v) => v.lastSeenAt >= new Date(args.where.lastSeenAt.gte))
