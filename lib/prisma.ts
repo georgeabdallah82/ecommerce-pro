@@ -754,6 +754,13 @@ function getMockHandler(model: string) {
         if (w.segmentId) list = list.filter((x) => x.segmentId === w.segmentId)
         if (typeof w.customerId === 'string') list = list.filter((x) => x.customerId === w.customerId)
         if (w.customerId?.in) { const ids = new Set(w.customerId.in); list = list.filter((x) => ids.has(x.customerId)) }
+        if (args?.orderBy?.addedAt === 'desc') list = list.sort((a, b) => (b.addedAt ?? b.createdAt).getTime() - (a.addedAt ?? a.createdAt).getTime())
+        // The admin customer-detail page's `segments: segmentMembers.map(x => x.segment)` relies
+        // on this include, the same way customerTagMember's `include.tag` already does above --
+        // without it, every row's `.segment` was undefined, which serialized to `null` in the
+        // response array and crashed the client component the moment it called `.id` on that null
+        // entry, for any customer belonging to at least one segment.
+        if (args?.include?.segment) list = list.map((x) => ({ ...x, segment: mockCustomerSegments.find((s) => s.id === x.segmentId) || null }))
         return list
       }
       // lib/sales-channels.ts's getUnpublishedProductIds() calls this unscoped on every
@@ -1340,7 +1347,7 @@ function getMockHandler(model: string) {
         const { segmentId, customerId } = args.where.segmentId_customerId
         const existing = mockCustomerSegmentMembers.find((x) => x.segmentId === segmentId && x.customerId === customerId)
         if (existing) { Object.assign(existing, args.update || {}); return existing }
-        const created = { id: `csm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, segmentId, customerId, createdAt: new Date(), ...(args.create || {}) }
+        const created = { id: `csm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, segmentId, customerId, createdAt: new Date(), addedAt: new Date(), ...(args.create || {}) }
         mockCustomerSegmentMembers.push(created)
         return created
       }
@@ -1714,6 +1721,12 @@ function getMockHandler(model: string) {
         const { tagId, customerId } = args.where.tagId_customerId
         const i = mockCustomerTagMembers.findIndex((x) => x.tagId === tagId && x.customerId === customerId)
         if (i >= 0) return mockCustomerTagMembers.splice(i, 1)[0]
+        return {}
+      }
+      if (model === 'customerSegmentMember' && args?.where?.segmentId_customerId) {
+        const { segmentId, customerId } = args.where.segmentId_customerId
+        const i = mockCustomerSegmentMembers.findIndex((x) => x.segmentId === segmentId && x.customerId === customerId)
+        if (i >= 0) return mockCustomerSegmentMembers.splice(i, 1)[0]
         return {}
       }
       if (model === 'productPublication' && args?.where?.productId_channelId) {
