@@ -907,7 +907,16 @@ function getMockHandler(model: string) {
               ...(itemsArg.include.variant ? { variant: it.variantId ? mockProductVariants.find((v: any) => v.id === it.variantId) || null : null } : {}),
             }))
           : found.items
-        return { events: [], notesHistory: [], paymentTransactions: [], ...found, items }
+        // notesHistory is embedded on the order row by orderNote.create (see below) -- join
+        // `.user` in and honor createdAt orderBy only when actually requested, same as items above.
+        const notesArg = args?.include?.notesHistory
+        let notesHistory = found.notesHistory || []
+        if (notesArg) {
+          if (notesArg.include?.user) notesHistory = notesHistory.map((n: any) => ({ ...n, user: mockUsers.find((u: any) => u.id === n.userId) || null }))
+          if (notesArg.orderBy?.createdAt === 'desc') notesHistory = [...notesHistory].sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime())
+          else if (notesArg.orderBy?.createdAt === 'asc') notesHistory = [...notesHistory].sort((a: any, b: any) => a.createdAt.getTime() - b.createdAt.getTime())
+        }
+        return { events: [], paymentTransactions: [], ...found, items, notesHistory }
       }
       if (model === 'returnRequest' && where.id) return mockReturnRequests.find((x: any) => x.id === where.id) || null
       if (model === 'draftOrder' && where.id) return mockDraftOrders.find((x: any) => x.id === where.id) || null
@@ -1017,11 +1026,21 @@ function getMockHandler(model: string) {
             ? mockUsers.find((u) => u.id === where.id)
             : mockUsers[0]
         if (!user) return null
+        // OrderNote.userId is the staff author, not the order's customer -- notes are embedded
+        // per-order (see orderNote.create above), so "notes this user authored" means scanning
+        // every order's notesHistory for rows with this userId, same reverse-lookup shape as
+        // orderItem.groupBy scanning every order's items below.
+        const notesArg = args?.select?.orderNotes || args?.include?.orderNotes
+        let orderNotes: any[] = notesArg ? mockOrders.flatMap((o: any) => (o.notesHistory || []).filter((n: any) => n.userId === user.id)) : []
+        if (notesArg?.orderBy?.createdAt === 'desc') orderNotes = orderNotes.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        else if (notesArg?.orderBy?.createdAt === 'asc') orderNotes = orderNotes.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+        if (notesArg?.take) orderNotes = orderNotes.slice(0, notesArg.take)
+        if (notesArg?.select?.user) orderNotes = orderNotes.map((n) => ({ ...n, user: { name: mockUsers.find((u) => u.id === n.userId)?.name ?? null } }))
         // Included relations must come back as arrays, never undefined, or every caller that
         // reduces/maps over them (e.g. sumCustomerSpend on the customer detail page) crashes --
         // the real Prisma client always returns an empty array for an included relation with no
         // rows, so the mock needs to as well even though it doesn't actually join anything here.
-        return { orders: [], addresses: [], reviews: [], orderNotes: [], _count: { orders: 0, reviews: 0 }, ...user }
+        return { orders: [], addresses: [], reviews: [], _count: { orders: 0, reviews: 0 }, ...user, orderNotes }
       }
       if (model === 'walletTransaction') {
         let list = [...mockWalletTransactions]
@@ -1244,6 +1263,10 @@ function getMockHandler(model: string) {
         const order = mockOrders.find((o: any) => o.id === item.orderId)
         if (order) { order.events = order.events || []; order.events.push(item) }
       }
+      if (model === 'orderNote' && item.orderId) {
+        const order = mockOrders.find((o: any) => o.id === item.orderId)
+        if (order) { order.notesHistory = order.notesHistory || []; order.notesHistory.push(item) }
+      }
       if (model === 'auditLog') mockAuditLogs.unshift(item)
       if (model === 'inventoryMovement') mockInventoryMovements.push(item)
       if (model === 'address') mockAddresses.push(item)
@@ -1327,6 +1350,7 @@ function getMockHandler(model: string) {
         const order = mockOrders.find((o) => o.id === item.orderId)
         if (order) { order.paymentTransactions ??= []; order.paymentTransactions.push(item) }
       }
+      if (model === 'orderNote' && args?.include?.user) return { ...item, user: mockUsers.find((u: any) => u.id === item.userId) || null }
       return item
     },
     update: async (args: any) => {
@@ -1683,6 +1707,19 @@ function getMockHandler(model: string) {
         const before = mockWalletTransactions.length
         for (let i = mockWalletTransactions.length - 1; i >= 0; i--) if (mockWalletTransactions[i].userId === args.where.userId) mockWalletTransactions.splice(i, 1)
         return { count: before - mockWalletTransactions.length }
+      }
+      // orderNote rows are embedded per-order (see orderNote.create above), not a single top-level
+      // array -- deleteCustomerCascade (lib/customers.ts) needs every note this user authored gone
+      // across every order, not just one.
+      if (model === 'orderNote' && args?.where?.userId) {
+        let count = 0
+        for (const o of mockOrders) {
+          if (!o.notesHistory?.length) continue
+          const before = o.notesHistory.length
+          o.notesHistory = o.notesHistory.filter((n: any) => n.userId !== args.where.userId)
+          count += before - o.notesHistory.length
+        }
+        return { count }
       }
       if (model === 'themeVersion' && args?.where?.id?.in) {
         const ids = new Set<string>(args.where.id.in)
