@@ -354,6 +354,7 @@ const mockBlogPosts: any[] = []
 const mockPages: any[] = []
 const mockRedirects: any[] = []
 const mockOrderEdits: any[] = []
+const mockDeliveryTracking: any[] = []
 // order.items/.events already generate ids with this prefix (see order.create's/order.update's
 // own nested-write expansion below) -- orderItem/orderEvent, as standalone top-level model
 // accessors used by the order-edit commit flow (and, for orderItem, the sold-count/verified-
@@ -910,6 +911,15 @@ function getMockHandler(model: string) {
         return result
       }
       if (model === 'orderEdit' && where.id) return mockOrderEdits.find((x: any) => x.id === where.id) || null
+      // The single highest-traffic lookup on this model: the customer-facing /track/[token]
+      // page and its polling API call this by trackingToken on every page load/poll to decide
+      // whether to show live position -- without a real branch here it always returned null,
+      // so the public tracking link staff shared with a customer always 404'd.
+      if (model === 'deliveryTracking') {
+        if (where.trackingToken) return mockDeliveryTracking.find((x: any) => x.trackingToken === where.trackingToken) || null
+        if (where.orderId) return mockDeliveryTracking.find((x: any) => x.orderId === where.orderId) || null
+        return null
+      }
       return null
     },
     findFirst: async (args?: any) => {
@@ -1023,6 +1033,16 @@ function getMockHandler(model: string) {
         if (existing) { Object.assign(existing, args.update || {}); return existing }
         const created = { id: `col-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, isActive: true, description: null, imageUrl: null, sortOrder: 0, createdAt: new Date(), updatedAt: new Date(), ...(args.create || {}) }
         mockCollections.push(created)
+        return created
+      }
+      if (model === 'deliveryTracking' && args.where?.orderId) {
+        const existing = mockDeliveryTracking.find((x: any) => x.orderId === args.where.orderId)
+        if (existing) { Object.assign(existing, args.update || {}, { updatedAt: new Date() }); return existing }
+        // The route always supplies its own id/trackingToken in `create` -- respect those
+        // rather than generating new ones, since the tracking token is what the customer-facing
+        // /track/[token] URL is built from.
+        const created = { active: false, latitude: null, longitude: null, etaMinutes: null, lastLocationUpdatedAt: null, createdAt: new Date(), updatedAt: new Date(), ...(args.create || {}) }
+        mockDeliveryTracking.push(created)
         return created
       }
       if (model === 'user' && args.where?.email) {
