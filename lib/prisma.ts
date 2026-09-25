@@ -306,6 +306,7 @@ const mockReviews: any[] = []
 const mockBlogs: any[] = []
 const mockBlogPosts: any[] = []
 const mockPages: any[] = []
+const mockRedirects: any[] = []
 const mockAuditLogs: any[] = []
 const mockInventoryMovements: any[] = []
 const mockAddresses: any[] = []
@@ -602,6 +603,11 @@ function getMockHandler(model: string) {
         if (args?.orderBy?.updatedAt === 'desc') list = list.sort((a: any, b: any) => b.updatedAt.getTime() - a.updatedAt.getTime())
         return list
       }
+      if (model === 'redirect') {
+        let list = [...mockRedirects]
+        if (args?.orderBy?.createdAt === 'desc') list = list.sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime())
+        return list
+      }
       if (model === 'auditLog') {
         let list = filterMockAuditLogs(args?.where).sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime())
         if (args?.distinct?.includes('entity')) {
@@ -757,6 +763,11 @@ function getMockHandler(model: string) {
       if (model === 'homepageBlock' && where.id) return mockHomepageBlocks.find((x) => x.id === where.id) || null
       if (model === 'blogPost') return (where.id ? mockBlogPosts.find((x) => x.id === where.id) : where.handle ? mockBlogPosts.find((x) => x.handle === where.handle) : null) || null
       if (model === 'page') return (where.id ? mockPages.find((x: any) => x.id === where.id) : where.handle ? mockPages.find((x: any) => x.handle === where.handle) : null) || null
+      // The single highest-traffic lookup on this model: proxy.ts's request-routing middleware
+      // calls this by fromPath on every single storefront request to decide whether to 308
+      // redirect -- without a real branch here it always returned null, so no merchant-configured
+      // redirect ever actually fired on the live site.
+      if (model === 'redirect') return (where.id ? mockRedirects.find((x: any) => x.id === where.id) : where.fromPath ? mockRedirects.find((x: any) => x.fromPath === where.fromPath) : null) || null
       if (model === 'wishlistItem') {
         if (where.id) return mockWishlistItems.find((x) => x.id === where.id) || null
         if (where.userId_productId) { const { userId, productId } = where.userId_productId; return mockWishlistItems.find((x) => x.userId === userId && x.productId === productId) || null }
@@ -1049,6 +1060,7 @@ function getMockHandler(model: string) {
       if (model === 'blog') mockBlogs.push(item)
       if (model === 'blogPost') { item.status ??= 'DRAFT'; item.tagsJson ??= null; mockBlogPosts.push(item) }
       if (model === 'page') { item.status ??= 'DRAFT'; item.template ??= 'page'; item.bodyHtml ??= null; item.seoTitle ??= null; item.seoDescription ??= null; item.publishedAt ??= null; mockPages.push(item) }
+      if (model === 'redirect') { item.hits ??= 0; mockRedirects.push(item) }
       if (model === 'auditLog') mockAuditLogs.unshift(item)
       if (model === 'inventoryMovement') mockInventoryMovements.push(item)
       if (model === 'address') mockAddresses.push(item)
@@ -1177,7 +1189,7 @@ function getMockHandler(model: string) {
         }
         throw new Error('Record to update not found')
       }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews, blogPost: mockBlogPosts, product: mockProducts, order: mockOrders, address: mockAddresses, returnRequest: mockReturnRequests, notification: mockNotifications, draftOrder: mockDraftOrders, shippingZone: mockShippingZones, purchaseOrder: mockPurchaseOrders, purchaseOrderItem: mockPurchaseOrderItems, page: mockPages }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews, blogPost: mockBlogPosts, product: mockProducts, order: mockOrders, address: mockAddresses, returnRequest: mockReturnRequests, notification: mockNotifications, draftOrder: mockDraftOrders, shippingZone: mockShippingZones, purchaseOrder: mockPurchaseOrders, purchaseOrderItem: mockPurchaseOrderItems, page: mockPages, redirect: mockRedirects }
       if (byId[model] && args.where?.id) {
         const row = byId[model].find((x) => x.id === args.where.id)
         if (!row) throw new Error('Record to update not found')
@@ -1221,7 +1233,7 @@ function getMockHandler(model: string) {
         if (i >= 0) return mockCustomerTagMembers.splice(i, 1)[0]
         return {}
       }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, user: mockUsers, homepageBlock: mockHomepageBlocks, wishlistItem: mockWishlistItems, blogPost: mockBlogPosts, product: mockProducts, productVariant: mockProductVariants, address: mockAddresses, shippingZone: mockShippingZones, page: mockPages }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, user: mockUsers, homepageBlock: mockHomepageBlocks, wishlistItem: mockWishlistItems, blogPost: mockBlogPosts, product: mockProducts, productVariant: mockProductVariants, address: mockAddresses, shippingZone: mockShippingZones, page: mockPages, redirect: mockRedirects }
       const list = byId[model]
       if (list && args?.where?.id) { const i = list.findIndex((x) => x.id === args.where.id); if (i >= 0) return list.splice(i, 1)[0] }
       return {}
