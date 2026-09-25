@@ -1637,6 +1637,18 @@ function getMockHandler(model: string) {
         }
         throw new Error('Record to update not found')
       }
+      // The categories CSV import's second pass (app/api/admin/imports/route.ts) wires up
+      // parent/child hierarchy via tx.category.update({ where: { slug }, data: { parentId } })
+      // once every row exists -- the generic byId dispatch below only ever matches args.where.id,
+      // so a where.slug update silently fell through to the no-op `return args?.data || {}`
+      // fallback, reporting success while never actually setting parentId.
+      if (model === 'category' && args.where?.slug && !args.where?.id) {
+        const row: any = mockCategories.find((c: any) => c.slug === args.where.slug)
+        if (!row) throw new Error('Record to update not found')
+        Object.assign(row, args.data || {})
+        row.updatedAt = new Date()
+        return row
+      }
       const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews, blogPost: mockBlogPosts, product: mockProducts, order: mockOrders, address: mockAddresses, returnRequest: mockReturnRequests, notification: mockNotifications, draftOrder: mockDraftOrders, shippingZone: mockShippingZones, purchaseOrder: mockPurchaseOrders, purchaseOrderItem: mockPurchaseOrderItems, page: mockPages, redirect: mockRedirects, collection: mockCollections, orderEdit: mockOrderEdits, inventoryTransfer: mockInventoryTransfers, category: mockCategories }
       if (byId[model] && args.where?.id) {
         const row = byId[model].find((x) => x.id === args.where.id)
