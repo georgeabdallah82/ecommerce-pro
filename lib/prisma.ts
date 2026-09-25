@@ -563,8 +563,25 @@ function getMockHandler(model: string) {
         if (w.couponCode?.not === null) list = list.filter((o) => o.couponCode != null)
         if (w.userId?.in) { const ids = new Set(w.userId.in); list = list.filter((o) => ids.has(o.userId)) }
         if (typeof w.userId === 'string') list = list.filter((o) => o.userId === w.userId)
+        // The admin orders list's search box builds where.OR over orderNumber/email/phone plus
+        // a nested user.is.name relation filter -- without this, typing anything into the
+        // search box returned the full unfiltered order list instead of matches.
+        if (Array.isArray(w.OR)) {
+          list = list.filter((o: any) => w.OR.some((cond: any) => {
+            if (cond.user?.is?.name) {
+              const user = mockUsers.find((u: any) => u.id === o.userId)
+              return mockFieldContains(user?.name, cond.user.is.name)
+            }
+            return Object.entries(cond).some(([field, sub]) => mockFieldContains(o[field], sub))
+          }))
+        }
         if (args?.distinct?.includes('userId')) { const seen = new Set(); list = list.filter((o) => { if (seen.has(o.userId)) return false; seen.add(o.userId); return true }) }
         if (args?.orderBy?.createdAt === 'asc') list = list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+        else if (args?.orderBy?.createdAt === 'desc') list = list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        // The admin orders list's pagination relies on this -- without it, every page past
+        // page 1 returned the same first `take` orders instead of the next slice.
+        if (args?.skip) list = list.slice(args.skip)
+        if (args?.take) list = list.slice(0, args.take)
         return list
       }
       if (model === 'coupon') {
@@ -1685,7 +1702,32 @@ function getMockHandler(model: string) {
         if (Array.isArray(w.OR)) list = list.filter((p: any) => w.OR.some((cond: any) => Object.entries(cond).some(([field, sub]) => mockFieldContains(p[field], sub))))
         return list.length
       }
-      if (model === 'order') return mockOrders.length
+      // Real callers span the admin orders list (status + search OR), the admin dashboard
+      // ("orders today", "pending orders"), and account pages ("my orders" count, all scoped
+      // to where.userId) -- without where filtering here, every one of these always got back
+      // the full unfiltered order count regardless of what was actually asked for (a customer's
+      // "my orders" count showed the whole store's order total, admin's filtered order list
+      // showed a pagination total for the unfiltered set, etc).
+      if (model === 'order') {
+        const w = args?.where || {}
+        let list = mockOrders
+        if (w.userId) list = list.filter((o: any) => o.userId === w.userId)
+        if (w.createdAt?.gte) list = list.filter((o: any) => new Date(o.createdAt) >= new Date(w.createdAt.gte))
+        if (w.createdAt?.lt) list = list.filter((o: any) => new Date(o.createdAt) < new Date(w.createdAt.lt))
+        if (w.status?.notIn) { const statuses = new Set(w.status.notIn); list = list.filter((o: any) => !statuses.has(o.status)) }
+        else if (w.status?.in) { const statuses = new Set(w.status.in); list = list.filter((o: any) => statuses.has(o.status)) }
+        else if (typeof w.status === 'string') list = list.filter((o: any) => o.status === w.status)
+        if (Array.isArray(w.OR)) {
+          list = list.filter((o: any) => w.OR.some((cond: any) => {
+            if (cond.user?.is?.name) {
+              const user = mockUsers.find((u: any) => u.id === o.userId)
+              return mockFieldContains(user?.name, cond.user.is.name)
+            }
+            return Object.entries(cond).some(([field, sub]) => mockFieldContains(o[field], sub))
+          }))
+        }
+        return list.length
+      }
       if (model === 'auditLog') return filterMockAuditLogs(args?.where).length
       if (model === 'fulfillment') return mockFulfillments.length
       if (model === 'page') return mockPages.length
