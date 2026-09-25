@@ -21,6 +21,15 @@ export async function completeDraftOrder(draftId: string, paymentMethod: Payment
   const byId = new Map(products.map(p => [p.id, p]))
 
   const order = await db.$transaction(async tx => {
+    // Atomic conditional write, same pattern as every other money-moving mutation in this
+    // codebase (refunds, inventory reservations): only one concurrent completion of this draft
+    // can flip DRAFT/OPEN -> COMPLETED. Without this, two concurrent requests (a double-click,
+    // or a slow request retried after a client-side timeout -- this endpoint has no idempotency
+    // key) both pass the pre-transaction status check above and each reserve stock and create a
+    // full real Order for the same draft.
+    const guarded = await tx.draftOrder.updateMany({ where: { id: draftId, status: { in: ['DRAFT', 'OPEN'] } }, data: { status: 'COMPLETED' } })
+    if (guarded.count !== 1) throw new Error('Draft order is already completed or cancelled')
+
     for (const item of draft.items) {
       const product = byId.get(item.productId)
       if (!product) throw new Error(`Product ${item.productId} is not available`)
@@ -50,7 +59,7 @@ export async function completeDraftOrder(draftId: string, paymentMethod: Payment
         paymentTransactions: { create: { provider: 'manual', status: 'created', amount: draft.grandTotal, currency: draft.currency } },
       },
     })
-    await tx.draftOrder.update({ where: { id: draftId }, data: { status: 'COMPLETED', completedOrderId: order.id } })
+    await tx.draftOrder.update({ where: { id: draftId }, data: { completedOrderId: order.id } })
     return order
   })
 
