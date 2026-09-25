@@ -302,6 +302,7 @@ const mockWishlistItems: any[] = []
 const mockReviews: any[] = []
 const mockBlogs: any[] = []
 const mockBlogPosts: any[] = []
+const mockAuditLogs: any[] = []
 // Mirrors the two rows prisma/seed.ts actually seeds -- unlike the operational arrays above,
 // this is real storefront content (the announcement bar / trust strip the homepage renders),
 // so it starts populated instead of empty, matching mockSettings' theme.config/theme.sections.
@@ -338,6 +339,26 @@ function deriveMockProductInventory(productId: string, sharedOnly: boolean) {
   let rows = mockInventoryItems.filter((i: any) => i.productId === productId)
   if (sharedOnly) rows = rows.filter((i: any) => i.variantId == null)
   return rows.map(withMockLocation)
+}
+
+// Shared by auditLog findMany/count so the activity log's search box and its total count
+// (used for pagination) always agree on what matches. `actor: { is: { email/name: ... } } }`
+// is a nested-relation filter -- there's no separate mockAuditLogs.actor field to filter on
+// directly, so it has to resolve the actor from mockUsers first, same idea as the inventoryItem
+// findMany branch already does for its own `include.product`/`include.variant`.
+function filterMockAuditLogs(where: any) {
+  let list = [...mockAuditLogs]
+  if (where?.entity) list = list.filter((x: any) => x.entity === where.entity)
+  if (Array.isArray(where?.OR)) {
+    list = list.filter((x: any) => where.OR.some((cond: any) => {
+      if (cond.actor?.is) {
+        const actor = mockUsers.find((u: any) => u.id === x.actorId)
+        return Object.entries(cond.actor.is).some(([field, sub]) => mockFieldContains((actor as any)?.[field], sub))
+      }
+      return Object.entries(cond).some(([field, sub]) => mockFieldContains((x as any)[field], sub))
+    }))
+  }
+  return list
 }
 
 function getMockHandler(model: string) {
@@ -536,6 +557,18 @@ function getMockHandler(model: string) {
         if (w.status) list = list.filter((x) => x.status === w.status)
         if (args?.orderBy?.publishedAt === 'desc') list = list.sort((a, b) => (b.publishedAt?.getTime() || 0) - (a.publishedAt?.getTime() || 0))
         else list = list.sort((a, b) => (b.updatedAt?.getTime() || 0) - (a.updatedAt?.getTime() || 0))
+        return list
+      }
+      if (model === 'auditLog') {
+        let list = filterMockAuditLogs(args?.where).sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime())
+        if (args?.distinct?.includes('entity')) {
+          const seen = new Set<string>()
+          list = list.filter((x: any) => { if (seen.has(x.entity)) return false; seen.add(x.entity); return true }).sort((a: any, b: any) => a.entity.localeCompare(b.entity))
+          return list.map((x: any) => ({ entity: x.entity }))
+        }
+        if (args?.skip) list = list.slice(args.skip)
+        if (args?.take) list = list.slice(0, args.take)
+        if (args?.include?.actor) list = list.map((x: any) => ({ ...x, actor: mockUsers.find((u: any) => u.id === x.actorId) || null }))
         return list
       }
       if (model === 'liveVisitorSession') {
@@ -845,6 +878,7 @@ function getMockHandler(model: string) {
       }
       if (model === 'blog') mockBlogs.push(item)
       if (model === 'blogPost') { item.status ??= 'DRAFT'; item.tagsJson ??= null; mockBlogPosts.push(item) }
+      if (model === 'auditLog') mockAuditLogs.unshift(item)
       if (model === 'paymentTransaction' && item.orderId) {
         const order = mockOrders.find((o) => o.id === item.orderId)
         if (order) { order.paymentTransactions ??= []; order.paymentTransactions.push(item) }
@@ -920,6 +954,7 @@ function getMockHandler(model: string) {
     count: async (args?: any) => {
       if (model === 'product') return mockProducts.length
       if (model === 'order') return mockOrders.length
+      if (model === 'auditLog') return filterMockAuditLogs(args?.where).length
       if (model === 'fulfillment') return mockFulfillments.length
       if (model === 'customerTagMember') {
         let list = mockCustomerTagMembers
