@@ -659,7 +659,15 @@ function getMockHandler(model: string) {
         if (args?.take) list = list.slice(0, args.take)
         return list
       }
-      if (model === 'storeLocation') return [...mockStoreLocations].sort((a, b) => Number(b.isDefault) - Number(a.isDefault) || a.name.localeCompare(b.name))
+      // The 'New Purchase Order' and 'New Inventory Transfer' location pickers both scope this to
+      // where: { status: 'ACTIVE' } -- without it, a location an admin disabled (the location-
+      // delete flow's own "disable it instead" guidance) kept showing up as selectable on new POs
+      // and transfers.
+      if (model === 'storeLocation') {
+        let list = [...mockStoreLocations]
+        if (args?.where?.status !== undefined) list = list.filter((l: any) => l.status === args.where.status)
+        return list.sort((a, b) => Number(b.isDefault) - Number(a.isDefault) || a.name.localeCompare(b.name))
+      }
       if (model === 'salesChannel') return [...mockSalesChannels].map(c => ({ ...c, _count: { publications: 0 } }))
       if (model === 'webhookEndpoint') {
         let list = [...mockWebhookEndpoints]
