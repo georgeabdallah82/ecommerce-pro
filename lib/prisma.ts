@@ -1702,6 +1702,33 @@ function getMockHandler(model: string) {
         for (const target of targets) Object.assign(target, args?.data || {}, { updatedAt: new Date() })
         return { count: targets.length }
       }
+      // Checkout's gift-card redemption leans on this being a real optimistic-concurrency guard
+      // the same way inventoryItem's above already is: `where: { id, status: 'ACTIVE',
+      // balance: { gte: amount } }` must return count 0 (not the generic fallback's unconditional
+      // count: 1) once the balance can't cover the redemption, or the same gift card could be
+      // spent for its full value an unlimited number of times without ever actually decrementing.
+      // expireGiftCards (lib/gift-cards.ts) also depends on this to actually flip stale cards to
+      // EXPIRED rather than leaving them ACTIVE forever.
+      if (model === 'giftCard') {
+        const w = args?.where || {}
+        let targets = mockGiftCards
+        if (typeof w.id === 'string') targets = targets.filter((x: any) => x.id === w.id)
+        if (w.status) targets = targets.filter((x: any) => x.status === w.status)
+        if (w.balance?.gte !== undefined) targets = targets.filter((x: any) => x.balance >= w.balance.gte)
+        if (w.expiresAt?.lt !== undefined) targets = targets.filter((x: any) => x.expiresAt && new Date(x.expiresAt) < new Date(w.expiresAt.lt))
+        for (const target of targets) {
+          for (const [key, value] of Object.entries(args?.data || {})) {
+            if (value && typeof value === 'object' && ('increment' in value || 'decrement' in value)) {
+              const delta = (value as any).increment ?? -(value as any).decrement
+              target[key] = (target[key] || 0) + delta
+            } else {
+              target[key] = value
+            }
+          }
+          target.updatedAt = new Date()
+        }
+        return { count: targets.length }
+      }
       // Powers the notification bell's "mark all read" action.
       if (model === 'notification') {
         const w = args?.where || {}
