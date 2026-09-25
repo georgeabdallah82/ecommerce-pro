@@ -671,6 +671,18 @@ function getMockHandler(model: string) {
         if (args?.where?.id?.in) { const ids = new Set(args.where.id.in); list = list.filter((u) => ids.has(u.id)) }
         if (args?.where?.createdAt?.gte) list = list.filter((u) => new Date(u.createdAt) >= new Date(args.where.createdAt.gte))
         if (args?.where?.createdAt?.lt) list = list.filter((u) => new Date(u.createdAt) < new Date(args.where.createdAt.lt))
+        // The admin Customers list's search box builds where.OR over name/email/phone --
+        // without this, typing anything into the search box returned the full unfiltered
+        // customer list instead of matches, same gap order's own findMany already had to fix.
+        if (Array.isArray(args?.where?.OR)) {
+          list = list.filter((u: any) => args.where.OR.some((cond: any) => Object.entries(cond).some(([field, sub]) => mockFieldContains(u[field], sub))))
+        }
+        if (args?.orderBy?.createdAt === 'desc') list = list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        else if (args?.orderBy?.createdAt === 'asc') list = list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+        // The admin customers list's pagination relies on this -- without it, every page past
+        // page 1 returned the same first `take` customers instead of the next slice.
+        if (args?.skip) list = list.slice(args.skip)
+        if (args?.take) list = list.slice(0, args.take)
         // The admin customers list's Orders/Reviews columns and its "repeat customers" stat both
         // read _count off each row -- without deriving it from the real mockOrders/mockReviews
         // arrays, every customer showed 0 orders and 0 reviews no matter their real history.
@@ -1992,6 +2004,12 @@ function getMockHandler(model: string) {
         // stat always equalled the store's total customer count regardless of the selected range.
         if (args?.where?.createdAt?.gte) list = list.filter((u) => new Date(u.createdAt) >= new Date(args.where.createdAt.gte))
         if (args?.where?.createdAt?.lt) list = list.filter((u) => new Date(u.createdAt) < new Date(args.where.createdAt.lt))
+        // Must match findMany's where.OR handling above -- the admin Customers list's pagination
+        // total and its Active/Disabled tiles all call count() with the same search clause, and
+        // without this they disagreed with (or ignored) whatever the search box actually matched.
+        if (Array.isArray(args?.where?.OR)) {
+          list = list.filter((u: any) => args.where.OR.some((cond: any) => Object.entries(cond).some(([field, sub]) => mockFieldContains(u[field], sub))))
+        }
         return list.length
       }
       // The admin Platform Health dashboard's stat tiles all lean on these being real -- without
