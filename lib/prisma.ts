@@ -1856,6 +1856,17 @@ function getMockHandler(model: string) {
       }
       if (model === 'blogPost') return mockBlogPosts.length
       if (model === 'mediaAsset') return mockMediaAssets.length
+      // The admin dashboard's "pending reviews" stat tile relies on this -- without where
+      // filtering it fell to the generic return 0 below and always showed 0 regardless of how
+      // many reviews were actually awaiting moderation.
+      if (model === 'review') {
+        let list = mockReviews
+        if (args?.where?.approved !== undefined) list = list.filter((x: any) => x.approved === args.where.approved)
+        return list.length
+      }
+      // lib/platform-health.ts's variant-count tile calls this bare (no where) -- it fell to the
+      // generic return 0 below and always showed 0 regardless of how many variants existed.
+      if (model === 'productVariant') return mockProductVariants.length
       if (model === 'setting') {
         const w = args?.where || {}
         if (w.key?.in) { const keys = new Set(w.key.in); return Array.from(mockSettings.keys()).filter((k) => keys.has(k)).length }
