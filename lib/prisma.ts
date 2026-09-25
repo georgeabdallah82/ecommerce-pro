@@ -454,12 +454,32 @@ function getMockHandler(model: string) {
         if (args?.where?.id?.in) { const ids = new Set(args.where.id.in); list = list.filter((p) => ids.has(p.id)) }
         if (args?.where?.giftCard !== undefined) list = list.filter((p) => Boolean((p as any).giftCard) === args.where.giftCard)
         if (args?.where?.category?.slug) list = list.filter((p) => p.category?.slug === args.where.category.slug)
+        // The admin products list's Category dropdown and the CSV export's categoryId param
+        // both key off this plain scalar field, not the nested category.slug shape above --
+        // without it, both silently returned the whole catalog regardless of the selected
+        // category.
+        if (args?.where?.categoryId !== undefined) list = list.filter((p: any) => p.categoryId === args.where.categoryId)
+        if (args?.where?.publishedAt === null) list = list.filter((p: any) => p.publishedAt == null)
         if (args?.where?.basePrice?.gte !== undefined) list = list.filter((p) => p.basePrice >= args.where.basePrice.gte)
         if (args?.where?.basePrice?.lte !== undefined) list = list.filter((p) => p.basePrice <= args.where.basePrice.lte)
         if (Array.isArray(args?.where?.OR)) {
           const conditions: any[] = args.where.OR
           list = list.filter((p) => conditions.some((cond) => Object.entries(cond).some(([field, sub]) => mockFieldContains((p as any)[field], sub))))
         }
+        // The admin products list's sort dropdown (name/price/created/updated, asc or desc) --
+        // without this, every sort option silently no-opped and rows stayed in seed order.
+        const orderBy = args?.orderBy
+        if (orderBy && typeof orderBy === 'object') {
+          const [field, dir] = Object.entries(orderBy)[0] as [string, string]
+          list = list.sort((a: any, b: any) => {
+            const av = a[field]; const bv = b[field]
+            const cmp = av instanceof Date && bv instanceof Date ? av.getTime() - bv.getTime() : av < bv ? -1 : av > bv ? 1 : 0
+            return dir === 'desc' ? -cmp : cmp
+          })
+        }
+        // The admin products list's pagination relies on this -- without it, every page past
+        // page 1 returned the same first `take` products instead of the next slice.
+        if (args?.skip) list = list.slice(args.skip)
         if (args?.take) list = list.slice(0, args.take)
         if (args?.include?.variants || args?.include?.inventory) {
           list = list.map((p: any) => ({
@@ -1648,7 +1668,23 @@ function getMockHandler(model: string) {
       return {}
     },
     count: async (args?: any) => {
-      if (model === 'product') return mockProducts.length
+      // The admin products list's pagination total and the platform-health dashboard's
+      // "active products missing a publish date" metric both rely on this being real --
+      // without where filtering, count() always returned the full unfiltered catalog size,
+      // so a filtered list of 3 results still reported pages worth of the full 500-product
+      // table, and the health metric never matched the actual repairable set.
+      if (model === 'product') {
+        const w = args?.where || {}
+        let list = mockProducts
+        if (w.status) list = list.filter((p: any) => p.status === w.status)
+        if (w.featured !== undefined) list = list.filter((p: any) => p.featured === w.featured)
+        if (w.categoryId !== undefined) list = list.filter((p: any) => p.categoryId === w.categoryId)
+        if (w.category?.slug) list = list.filter((p: any) => p.category?.slug === w.category.slug)
+        if (w.publishedAt === null) list = list.filter((p: any) => p.publishedAt == null)
+        if (w.giftCard !== undefined) list = list.filter((p: any) => Boolean(p.giftCard) === w.giftCard)
+        if (Array.isArray(w.OR)) list = list.filter((p: any) => w.OR.some((cond: any) => Object.entries(cond).some(([field, sub]) => mockFieldContains(p[field], sub))))
+        return list.length
+      }
       if (model === 'order') return mockOrders.length
       if (model === 'auditLog') return filterMockAuditLogs(args?.where).length
       if (model === 'fulfillment') return mockFulfillments.length
