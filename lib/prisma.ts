@@ -2066,14 +2066,24 @@ function getMockHandler(model: string) {
         for (let i = mockAddresses.length - 1; i >= 0; i--) if (mockAddresses[i].userId === args.where.userId) mockAddresses.splice(i, 1)
         return { count: before - mockAddresses.length }
       }
-      if (model === 'review' && args?.where?.userId) {
+      // Product delete's cascade cleanup (app/api/admin/products/[id]/route.ts) also calls both
+      // of these by productId, not userId -- without that branch, deleting a product left its
+      // reviews and wishlist entries stranded in mockReviews/mockWishlistItems pointing at a
+      // productId that no longer resolves to anything.
+      if (model === 'review' && (args?.where?.userId || args?.where?.productId)) {
         const before = mockReviews.length
-        for (let i = mockReviews.length - 1; i >= 0; i--) if (mockReviews[i].userId === args.where.userId) mockReviews.splice(i, 1)
+        for (let i = mockReviews.length - 1; i >= 0; i--) {
+          const row = mockReviews[i]
+          if ((args.where.userId && row.userId === args.where.userId) || (args.where.productId && row.productId === args.where.productId)) mockReviews.splice(i, 1)
+        }
         return { count: before - mockReviews.length }
       }
-      if (model === 'wishlistItem' && args?.where?.userId) {
+      if (model === 'wishlistItem' && (args?.where?.userId || args?.where?.productId)) {
         const before = mockWishlistItems.length
-        for (let i = mockWishlistItems.length - 1; i >= 0; i--) if (mockWishlistItems[i].userId === args.where.userId) mockWishlistItems.splice(i, 1)
+        for (let i = mockWishlistItems.length - 1; i >= 0; i--) {
+          const row = mockWishlistItems[i]
+          if ((args.where.userId && row.userId === args.where.userId) || (args.where.productId && row.productId === args.where.productId)) mockWishlistItems.splice(i, 1)
+        }
         return { count: before - mockWishlistItems.length }
       }
       if (model === 'notification' && args?.where?.userId) {
