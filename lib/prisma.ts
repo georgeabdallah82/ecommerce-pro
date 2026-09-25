@@ -2135,20 +2135,32 @@ function getMockHandler(model: string) {
         }
         return Array.from(sums, ([productId, { total, count }]) => ({ productId, _avg: { rating: count ? total / count : null }, _count: { rating: count } }))
       }
-      // Powers the "sold count" badge on product cards (lib/product-stats.ts) -- without this,
-      // every product's sold count was silently 0 regardless of actual sales.
+      // Powers the "sold count" badge on product cards (lib/product-stats.ts) and the admin
+      // dashboard's "Top products" panel (app/admin/page.tsx). The latter also passes
+      // where.order.status.notIn/createdAt.gte plus orderBy/take -- without honoring those, the
+      // panel silently included cancelled/refunded orders and all-time (not this-month) sales,
+      // unsorted and uncapped, instead of this month's actual top 5 sellers.
       if (model === 'orderItem' && args?.by?.includes('productId')) {
         const w = args?.where || {}
         const idsFilter: Set<string> | undefined = w.productId?.in ? new Set(w.productId.in) : undefined
+        const excludedStatuses: Set<string> | undefined = w.order?.status?.notIn ? new Set(w.order.status.notIn) : undefined
         const sums = new Map<string, number>()
         for (const o of mockOrders) {
           if (w.order?.paymentStatus !== undefined && o.paymentStatus !== w.order.paymentStatus) continue
+          if (excludedStatuses && excludedStatuses.has(o.status)) continue
+          if (w.order?.createdAt?.gte && new Date(o.createdAt) < new Date(w.order.createdAt.gte)) continue
           for (const it of o.items || []) {
             if (idsFilter && !idsFilter.has(it.productId)) continue
             sums.set(it.productId, (sums.get(it.productId) || 0) + it.quantity)
           }
         }
-        return Array.from(sums, ([productId, quantity]) => ({ productId, _sum: { quantity } }))
+        let rows = Array.from(sums, ([productId, quantity]) => ({ productId, _sum: { quantity } }))
+        const sumDir = args?.orderBy?._sum?.quantity
+        if (sumDir === 'asc' || sumDir === 'desc') {
+          rows = rows.sort((a, b) => sumDir === 'desc' ? b._sum.quantity - a._sum.quantity : a._sum.quantity - b._sum.quantity)
+        }
+        if (args?.take) rows = rows.slice(0, args.take)
+        return rows
       }
       return []
     },
