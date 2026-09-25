@@ -1966,6 +1966,17 @@ function getMockHandler(model: string) {
         const sum = list.reduce((s, x) => s + (x.amount || 0), 0)
         return { _sum: { amount: sum }, _count: { _all: list.length }, _avg: {}, _min: {}, _max: {} }
       }
+      // The payment-status webhook's refund-limit check leans on this to compute how much of an
+      // order has already been refunded (`where: { orderId, status: { in: ['refunded',
+      // 'partially_refunded'] } }`) before validating a new partial/final refund against the
+      // remaining balance -- without a real branch this fell to the generic fallback below,
+      // whose _sum.amount is undefined (not 0), so refundedSoFar was always computed as 0 and a
+      // second refund webhook could push total refunds past the order's grand total.
+      if (model === 'paymentTransaction') {
+        const matches = findMockPaymentTransactions(args?.where || {})
+        const sum = matches.reduce((s, m) => s + (m.transaction.amount || 0), 0)
+        return { _sum: { amount: sum }, _count: { _all: matches.length }, _avg: {}, _min: {}, _max: {} }
+      }
       return { _sum: {}, _count: {}, _avg: {}, _min: {}, _max: {} }
     },
     deleteMany: async (args?: any) => {
