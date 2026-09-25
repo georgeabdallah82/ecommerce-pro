@@ -146,7 +146,7 @@ const mockProducts = [
   },
 ]
 
-const mockCollections = [
+const mockCollections: any[] = [
   {
     id: 'col-best-sellers',
     name: 'Best Sellers',
@@ -155,11 +155,57 @@ const mockCollections = [
     sortOrder: 0,
     imageUrl: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=800&q=80',
     isActive: true,
-    products: mockProducts.filter((p) => p.featured).map((p) => ({ productId: p.id, collectionId: 'col-best-sellers', product: p })),
     createdAt: new Date('2025-01-01'),
     updatedAt: new Date('2025-01-01'),
   },
 ]
+// CollectionProduct join rows live in their own top-level array with collectionId/productId
+// foreign keys, joined back onto whichever side asked for it at read time (see
+// deriveCollectionProducts/deriveProductCollections below) -- the same pattern
+// deriveMockProductVariants/derivePurchaseOrderItems already use -- rather than the
+// previous static, once-computed `products` array embedded on the seed collection, which
+// never changed when a product's `featured` flag changed or a collectionProduct row was
+// written (it never was, since collectionProduct itself had zero mock backing before this).
+const mockCollectionProducts: any[] = mockProducts.filter((p: any) => p.featured).map((p: any, i: number) => ({ id: `colprod-seed-${i}`, collectionId: 'col-best-sellers', productId: p.id, sortOrder: i }))
+function deriveCollectionProducts(collectionId: string) {
+  return mockCollectionProducts.filter((cp: any) => cp.collectionId === collectionId).sort((a: any, b: any) => a.sortOrder - b.sortOrder)
+}
+function deriveProductCollections(productId: string) {
+  return mockCollectionProducts.filter((cp: any) => cp.productId === productId)
+}
+function withMockProductJoin(product: any) {
+  return {
+    ...product,
+    images: [...(product.images || [])].sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)),
+    category: product.categoryId ? mockCategories.find((c: any) => c.id === product.categoryId) || null : product.category ?? null,
+    variants: deriveMockProductVariants(product.id),
+    inventory: deriveMockProductInventory(product.id, false),
+    collections: joinProductCollections(product.id, { include: { collection: true } }),
+  }
+}
+// Shared by collection.findMany/findUnique's `include.products` -- joins each CollectionProduct
+// row's `.product` (the full product, same shape product.findUnique already returns) only when
+// actually requested, and honors the `where.productId.notIn` filter the storefront collection
+// page uses to hide unpublished products from a collection listing.
+function joinCollectionProducts(collectionId: string, productsArg: any) {
+  let rows = deriveCollectionProducts(collectionId)
+  const notIn: string[] | undefined = productsArg?.where?.productId?.notIn
+  if (notIn) { const excluded = new Set(notIn); rows = rows.filter((r: any) => !excluded.has(r.productId)) }
+  const wantsProduct = productsArg && typeof productsArg === 'object' && (productsArg.include?.product || productsArg.select?.product)
+  if (!wantsProduct) return rows.map((r: any) => ({ ...r }))
+  return rows.map((r: any) => {
+    const product = mockProducts.find((p: any) => p.id === r.productId)
+    return { ...r, product: product ? withMockProductJoin(product) : null }
+  })
+}
+// Shared by product.findMany/findUnique's `include.collections` -- the reverse join, used by
+// the theme editor's collection-filtered product_grid/product_carousel sections.
+function joinProductCollections(productId: string, collectionsArg: any) {
+  const rows = deriveProductCollections(productId)
+  const wantsCollection = collectionsArg && typeof collectionsArg === 'object' && (collectionsArg.include?.collection || collectionsArg.select?.collection)
+  if (!wantsCollection) return rows.map((r: any) => ({ ...r }))
+  return rows.map((r: any) => ({ ...r, collection: mockCollections.find((c: any) => c.id === r.collectionId) || null }))
+}
 
 // Hash for the README-documented default seed password 'ChangeMe123!'. The
 // previous hash here didn't actually match either candidate password it
@@ -407,13 +453,24 @@ function getMockHandler(model: string) {
             inventory: args.include.inventory ? deriveMockProductInventory(p.id, false) : p.inventory,
           }))
         }
+        if (args?.include?.collections) list = list.map((p: any) => ({ ...p, collections: joinProductCollections(p.id, args.include.collections) }))
         return list
       }
       if (model === 'category') return [...mockCategories]
       if (model === 'collection') {
         let list = [...mockCollections]
-        if (args?.where?.isActive !== undefined) list = list.filter((c) => c.isActive === args.where.isActive)
-        if (args?.where?.id?.in) { const ids = new Set(args.where.id.in); list = list.filter((c) => ids.has(c.id)) }
+        const w = args?.where || {}
+        if (w.isActive !== undefined) list = list.filter((c: any) => c.isActive === w.isActive)
+        if (w.id?.in) { const ids = new Set(w.id.in); list = list.filter((c: any) => ids.has(c.id)) }
+        const orderBy = args?.orderBy
+        const orderKeys = Array.isArray(orderBy) ? orderBy : orderBy ? [orderBy] : []
+        for (const key of [...orderKeys].reverse()) {
+          if (key.sortOrder === 'asc') list = [...list].sort((a: any, b: any) => a.sortOrder - b.sortOrder)
+          else if (key.updatedAt === 'desc') list = [...list].sort((a: any, b: any) => b.updatedAt.getTime() - a.updatedAt.getTime())
+          else if (key.name === 'asc') list = [...list].sort((a: any, b: any) => a.name.localeCompare(b.name))
+        }
+        if (args?.include?._count?.select?.products) list = list.map((c: any) => ({ ...c, _count: { ...(c._count || {}), products: deriveCollectionProducts(c.id).length } }))
+        if (args?.include?.products) list = list.map((c: any) => ({ ...c, products: joinCollectionProducts(c.id, args.include.products) }))
         return list
       }
       if (model === 'order') {
@@ -728,11 +785,13 @@ function getMockHandler(model: string) {
         }
         const inventoryArg = args?.include?.inventory
         const sharedOnly = Boolean(inventoryArg && typeof inventoryArg === 'object' && inventoryArg.where?.variantId === null)
+        const collectionsArg = args?.include?.collections
         return {
           reviews, tags: [], metafields: [], ...found,
           images: [...(found.images || [])].sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)),
           variants: deriveMockProductVariants(found.id),
           inventory: deriveMockProductInventory(found.id, sharedOnly),
+          ...(collectionsArg ? { collections: joinProductCollections(found.id, collectionsArg) } : {}),
         }
       }
       if (model === 'user') {
@@ -744,8 +803,10 @@ function getMockHandler(model: string) {
         if (where.id) return mockCategories.find((c) => c.id === where.id) || null
       }
       if (model === 'collection') {
-        if (where.slug) return mockCollections.find((c) => c.slug === where.slug) || null
-        if (where.id) return mockCollections.find((c) => c.id === where.id) || null
+        const found = where.slug ? mockCollections.find((c: any) => c.slug === where.slug) : where.id ? mockCollections.find((c: any) => c.id === where.id) : undefined
+        if (!found) return null
+        if (args?.include?.products) return { ...found, products: joinCollectionProducts(found.id, args.include.products) }
+        return found
       }
       if (model === 'coupon' && where.code) return mockCoupons.find((c) => c.code.toUpperCase() === String(where.code).toUpperCase()) || null
       if (model === 'adminLoginLockout' && where.email) return mockAdminLoginLockouts.get(where.email) || null
@@ -920,6 +981,13 @@ function getMockHandler(model: string) {
         mockSettings.set(args.where.key, val)
         return { key: args.where.key, value: val }
       }
+      if (model === 'collection' && args.where?.slug) {
+        const existing = mockCollections.find((c: any) => c.slug === args.where.slug)
+        if (existing) { Object.assign(existing, args.update || {}); return existing }
+        const created = { id: `col-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, isActive: true, description: null, imageUrl: null, sortOrder: 0, createdAt: new Date(), updatedAt: new Date(), ...(args.create || {}) }
+        mockCollections.push(created)
+        return created
+      }
       if (model === 'user' && args.where?.email) {
         const existing = mockUsers.find((u) => u.email === args.where.email)
         if (existing) {
@@ -1061,6 +1129,8 @@ function getMockHandler(model: string) {
       if (model === 'blogPost') { item.status ??= 'DRAFT'; item.tagsJson ??= null; mockBlogPosts.push(item) }
       if (model === 'page') { item.status ??= 'DRAFT'; item.template ??= 'page'; item.bodyHtml ??= null; item.seoTitle ??= null; item.seoDescription ??= null; item.publishedAt ??= null; mockPages.push(item) }
       if (model === 'redirect') { item.hits ??= 0; mockRedirects.push(item) }
+      if (model === 'collection') { item.isActive ??= true; item.description ??= null; item.imageUrl ??= null; item.sortOrder ??= 0; mockCollections.push(item) }
+      if (model === 'collectionProduct' && item.collectionId && item.productId) mockCollectionProducts.push(item)
       if (model === 'auditLog') mockAuditLogs.unshift(item)
       if (model === 'inventoryMovement') mockInventoryMovements.push(item)
       if (model === 'address') mockAddresses.push(item)
@@ -1189,7 +1259,7 @@ function getMockHandler(model: string) {
         }
         throw new Error('Record to update not found')
       }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews, blogPost: mockBlogPosts, product: mockProducts, order: mockOrders, address: mockAddresses, returnRequest: mockReturnRequests, notification: mockNotifications, draftOrder: mockDraftOrders, shippingZone: mockShippingZones, purchaseOrder: mockPurchaseOrders, purchaseOrderItem: mockPurchaseOrderItems, page: mockPages, redirect: mockRedirects }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews, blogPost: mockBlogPosts, product: mockProducts, order: mockOrders, address: mockAddresses, returnRequest: mockReturnRequests, notification: mockNotifications, draftOrder: mockDraftOrders, shippingZone: mockShippingZones, purchaseOrder: mockPurchaseOrders, purchaseOrderItem: mockPurchaseOrderItems, page: mockPages, redirect: mockRedirects, collection: mockCollections }
       if (byId[model] && args.where?.id) {
         const row = byId[model].find((x) => x.id === args.where.id)
         if (!row) throw new Error('Record to update not found')
@@ -1233,7 +1303,7 @@ function getMockHandler(model: string) {
         if (i >= 0) return mockCustomerTagMembers.splice(i, 1)[0]
         return {}
       }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, user: mockUsers, homepageBlock: mockHomepageBlocks, wishlistItem: mockWishlistItems, blogPost: mockBlogPosts, product: mockProducts, productVariant: mockProductVariants, address: mockAddresses, shippingZone: mockShippingZones, page: mockPages, redirect: mockRedirects }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, user: mockUsers, homepageBlock: mockHomepageBlocks, wishlistItem: mockWishlistItems, blogPost: mockBlogPosts, product: mockProducts, productVariant: mockProductVariants, address: mockAddresses, shippingZone: mockShippingZones, page: mockPages, redirect: mockRedirects, collection: mockCollections }
       const list = byId[model]
       if (list && args?.where?.id) { const i = list.findIndex((x) => x.id === args.where.id); if (i >= 0) return list.splice(i, 1)[0] }
       return {}
@@ -1313,6 +1383,9 @@ function getMockHandler(model: string) {
           const zone = mockShippingZones.find((z: any) => z.id === row.zoneId)
           if (zone) { zone.rates = zone.rates || []; zone.rates.push({ id: `rate-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, isActive: true, ...row }) }
         }
+      }
+      if (model === 'collectionProduct') {
+        for (const row of rows) mockCollectionProducts.push({ id: `colprod-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, ...row })
       }
       return { count: rows.length }
     },
@@ -1455,6 +1528,11 @@ function getMockHandler(model: string) {
     deleteMany: async (args?: any) => {
       if (model === 'setting' && args?.where?.key) {
         return { count: mockSettings.delete(args.where.key) ? 1 : 0 }
+      }
+      if (model === 'collectionProduct' && args?.where?.collectionId) {
+        const before = mockCollectionProducts.length
+        for (let i = mockCollectionProducts.length - 1; i >= 0; i--) if (mockCollectionProducts[i].collectionId === args.where.collectionId) mockCollectionProducts.splice(i, 1)
+        return { count: before - mockCollectionProducts.length }
       }
       if (model === 'walletTransaction' && args?.where?.userId) {
         const before = mockWalletTransactions.length
