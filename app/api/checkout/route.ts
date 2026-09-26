@@ -124,6 +124,7 @@ const SAFE_CHECKOUT_MESSAGES = new Set([
   'This gift card cannot be used for this order currency',
   'This gift card is no longer available',
   'Selected shipping method is no longer available',
+  'A shipping address is required for this order.',
 ])
 
 function checkoutFailure(error: unknown) {
@@ -241,6 +242,18 @@ export async function POST(req: Request) {
       normalized.push({ productId: p.id, variantId: variant?.id ?? null, name: p.name + (variant ? ` — ${variant.name}` : ''), sku: variant?.sku ?? p.sku, quantity: raw.quantity, unitPrice, totalPrice, taxable: p.taxable })
     }
 
+    // requiresShipping defaults to true (a merchant's admin toggle for "Physical product --
+    // collect shipping details"), so this is true whenever any item in the cart is a normal
+    // physical product; only a cart made entirely of non-physical products (a digital download,
+    // a service, etc.) skips both the delivery-address requirement and the shipping charge below.
+    const requiresPhysicalShipping = [...merged.values()].some(raw => byId.get(raw.productId)!.requiresShipping !== false)
+    if (requiresPhysicalShipping) {
+      const addr = input.shippingAddress
+      if (!addr.firstName?.trim() || !addr.lastName?.trim() || !addr.line1?.trim() || !addr.city?.trim()) {
+        throw new Error('A shipping address is required for this order.')
+      }
+    }
+
     const { discount, coupon } = input.couponCode
       ? await applyCoupon(input.couponCode, subtotal, normalized)
       : await findAutomaticDiscount(subtotal, user?.id ?? null, normalized)
@@ -251,7 +264,9 @@ export async function POST(req: Request) {
     if (requestedCoins > discountedSubtotal && requestedCoins > 0) throw new Error('Coin redemption exceeds the merchandise total.')
     const taxableAmount = taxableAmountAfterRewards(taxableSubtotal, discount.taxable, discountedSubtotal, coinDiscount)
     const rewardAdjustedSubtotal = Math.max(0, discountedSubtotal - coinDiscount)
-    const shipping = await calculateShipping(input.shippingAddress.country, rewardAdjustedSubtotal, input.shippingRateId || null)
+    const shipping = requiresPhysicalShipping
+      ? await calculateShipping(input.shippingAddress.country, rewardAdjustedSubtotal, input.shippingRateId || null)
+      : { total: 0, method: 'No shipping required', estimatedDays: null }
     const taxRate = await getTaxRatePercent(input.shippingAddress.country)
     const taxTotal = Math.round(taxableAmount * taxRate / 100)
     const freeShippingDiscount = coupon?.type === 'FREE_SHIPPING' ? shipping.total : 0

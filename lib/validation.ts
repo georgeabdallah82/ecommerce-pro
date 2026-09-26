@@ -10,12 +10,16 @@ export const checkoutSchema = z.object({
   giftCardCode: z.string().trim().max(60).optional().or(z.literal('')),
   coinsToUse: z.number().int().min(0).max(1000000).default(0),
   shippingRateId: z.string().trim().max(60).optional().or(z.literal('')),
+  // firstName/lastName/line1/city are only required for a cart that actually needs physical
+  // delivery -- checked in app/api/checkout/route.ts once it knows whether every item's product
+  // has requiresShipping: false, since that depends on a DB lookup this schema can't do. country
+  // stays required unconditionally: tax/currency zone matching needs it regardless of shipping.
   shippingAddress: z.object({
-    firstName: z.string().trim().min(1).max(80),
-    lastName: z.string().trim().min(1).max(80),
-    line1: z.string().trim().min(1).max(200),
+    firstName: z.string().trim().max(80).optional().or(z.literal('')),
+    lastName: z.string().trim().max(80).optional().or(z.literal('')),
+    line1: z.string().trim().max(200).optional().or(z.literal('')),
     line2: z.string().trim().max(200).optional().or(z.literal('')),
-    city: z.string().trim().min(1).max(100),
+    city: z.string().trim().max(100).optional().or(z.literal('')),
     region: z.string().trim().max(100).optional().or(z.literal('')),
     postalCode: z.string().trim().max(30).optional().or(z.literal('')),
     country: z.string().trim().min(2).max(80),

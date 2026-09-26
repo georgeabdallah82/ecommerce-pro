@@ -87,14 +87,19 @@ describe('lib/validation', () => {
       assert.equal(result.success, false)
     })
 
-    it('rejects a shipping address missing required fields', () => {
-      const { firstName, ...incomplete } = validAddress
+    it('rejects a shipping address missing country', () => {
+      const { country, ...incomplete } = validAddress
       const result = checkoutSchema.safeParse({ ...validCheckout, shippingAddress: incomplete })
       assert.equal(result.success, false)
     })
 
-    it('allows the optional address fields to be omitted entirely', () => {
-      const result = checkoutSchema.safeParse({ ...validCheckout, shippingAddress: validAddress })
+    // firstName/lastName/line1/city are enforced at the route level instead (see
+    // app/api/checkout/route.ts), only when the cart actually contains a product that
+    // requires physical shipping -- the schema itself can't know that, since it has no
+    // access to the products' requiresShipping flag.
+    it('allows firstName/lastName/line1/city to be omitted at the schema level', () => {
+      const { firstName, lastName, line1, city, ...digitalAddress } = validAddress
+      const result = checkoutSchema.safeParse({ ...validCheckout, shippingAddress: digitalAddress })
       assert.equal(result.success, true)
     })
 
