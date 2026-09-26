@@ -81,7 +81,14 @@ export async function sendOrderConfirmationEmail(orderId: string) {
   const order = await db.order.findUnique({ where: { id: orderId }, include: { items: true } })
   if (!order) return { sent: false, skipped: true }
 
-  const issuedGiftCards = await issueGiftCardsForOrder(db, orderId)
+  // This confirmation fires right at order placement for every non-CARD (and $0) order,
+  // including COD/BANK_TRANSFER ones that are still UNPAID at this point -- issuing a gift
+  // card here regardless would hand the customer a real, spendable code before they've
+  // actually paid, which they could redeem or resell and then simply refuse delivery / never
+  // complete the transfer. Deferring issuance until the order is actually PAID (staff marking
+  // it paid already re-issues via issueAndNotifyGiftCardsForOrder below) keeps this the same
+  // "issued once payment is confirmed" guarantee issueGiftCardsForOrder itself documents.
+  const issuedGiftCards = order.paymentStatus === 'PAID' ? await issueGiftCardsForOrder(db, orderId) : []
 
   const url = siteUrl() ? `${siteUrl()}/account/orders/${order.orderNumber}` : null
   const rows = order.items
