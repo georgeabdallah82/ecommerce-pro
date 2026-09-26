@@ -4,7 +4,7 @@ import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { reserveStock, releaseReservedQuantity } from '@/lib/inventory'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
-import { remainingRefundable, pickRefundSource, settleReturnRefund, creditWalletRefund, restoreCoinsForRefund, classifyOrderEditPaymentAdjustment, recomputeOrderEditTotals, type ReturnableOrder } from '@/lib/returns'
+import { remainingRefundable, hasPendingRefund, pickRefundSource, settleReturnRefund, creditWalletRefund, restoreCoinsForRefund, classifyOrderEditPaymentAdjustment, recomputeOrderEditTotals, type ReturnableOrder } from '@/lib/returns'
 import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { getTaxRatePercent } from '@/lib/pricing'
 import { sendOrderEditEmail } from '@/lib/email'
@@ -99,6 +99,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       let refundToSettle: { refundId: string; refundProvider: string; refundExternalId: string | null; amount: number } | null = null
       if (paymentAdjustment?.type === 'refund') {
         const refundableOrder = current as unknown as ReturnableOrder
+        if (hasPendingRefund(refundableOrder)) throw new Error('A refund is already in progress for this order')
         const refundable = remainingRefundable(refundableOrder)
         if (paymentAdjustment.amount > refundable) throw new Error('Order total after this edit would be less than the amount already refunded')
         const { refundProvider, refundExternalId } = pickRefundSource(refundableOrder)

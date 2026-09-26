@@ -4,7 +4,7 @@ import { hasPermission } from '@/lib/permissions'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { dispatchWebhookEvent, dispatchInventoryUpdated } from '@/lib/webhooks'
-import { restockReturnEntries, remainingRefundable, pickRefundSource, settleReturnRefund, creditWalletRefund, restoreCoinsForRefund, type ReturnableOrder, type ReturnOrderItem } from '@/lib/returns'
+import { restockReturnEntries, remainingRefundable, hasPendingRefund, pickRefundSource, settleReturnRefund, creditWalletRefund, restoreCoinsForRefund, type ReturnableOrder, type ReturnOrderItem } from '@/lib/returns'
 import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { sendReturnStatusEmail } from '@/lib/email'
 import { Prisma } from '@prisma/client'
@@ -23,6 +23,7 @@ const RETURN_MESSAGES = new Set([
   'Only a requested or approved return can be rejected',
   'Only a requested or approved return can be received',
   'A return refund can only be issued for a paid order',
+  'A refund is already in progress for this order',
   'Unknown action',
 ])
 
@@ -106,6 +107,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           return { orderItemId: x.orderItemId, quantity: x.quantity, item }
         })
 
+        if (requestedRefund > 0 && hasPendingRefund(order)) throw new Error('A refund is already in progress for this order')
         const refundable = remainingRefundable(order)
         if (requestedRefund > refundable) throw new Error(`Refund cannot exceed the remaining refundable amount of ${refundable}`)
         const refunded = order.grandTotal - refundable
