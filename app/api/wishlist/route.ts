@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { consumeRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { json } from '@/lib/utils'
+import { getUnpublishedProductIds, isProductPublished } from '@/lib/sales-channels'
 
 export async function GET(req: Request) {
   const user = await getCurrentUser()
@@ -11,8 +12,13 @@ export async function GET(req: Request) {
   const limit = consumeRateLimit(`wishlist-read:${user.id}:${clientIp(req.headers)}`, 60, 60 * 1000)
   if (!limit.allowed) return json({ error: 'Too many requests. Please try again later.' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds), 'Cache-Control': 'private, no-store' } })
 
+  // Every other storefront listing (homepage, /shop, the product detail page, the public
+  // products API) already hides a product an admin has unpublished from this sales channel --
+  // without this, an unpublished product still showed with full name/price/images in a
+  // customer's wishlist as if still live on the storefront.
+  const unpublishedIds = await getUnpublishedProductIds()
   const items = await db.wishlistItem.findMany({
-    where: { userId: user.id, product: { status: 'ACTIVE' } },
+    where: { userId: user.id, product: { status: 'ACTIVE' }, ...(unpublishedIds.length ? { productId: { notIn: unpublishedIds } } : {}) },
     select: {
       id: true,
       productId: true,
@@ -53,6 +59,9 @@ export async function POST(req: Request) {
 
     const product = await db.product.findFirst({ where: { id: productId, status: 'ACTIVE' }, select: { id: true } })
     if (!product) return json({ error: 'Product not found' }, { status: 404 })
+    // Otherwise a customer could add a product an admin has unpublished from the storefront
+    // sales channel to their wishlist by id, even though it's already hidden everywhere else.
+    if (!(await isProductPublished(productId))) return json({ error: 'Product not found' }, { status: 404 })
 
     const result = await db.$transaction(async tx => {
       const existing = await tx.wishlistItem.findUnique({ where: { userId_productId: { userId: user.id, productId } } })
