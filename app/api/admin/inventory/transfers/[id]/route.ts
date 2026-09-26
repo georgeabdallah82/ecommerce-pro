@@ -4,6 +4,8 @@ import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { dispatchInventoryUpdated } from '@/lib/webhooks'
 
+const TRANSFER_CONFLICT_MESSAGE = 'This transfer was just updated — please retry.'
+
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const actor = await requirePermission('transfers.manage')
@@ -22,16 +24,28 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       if (!transfer.toLocation) return json({ error: 'A destination location is required before shipping a transfer' }, { status: 400 })
       const shippedInventoryIds = new Set<string>()
       await db.$transaction(async tx => {
+        // transfer.status was read before this transaction started, so a concurrent PATCH
+        // shipping the same transfer (a double-submit, or two staff acting on it at once) could
+        // both observe the same pre-ship status and both decrement source stock -- shipping the
+        // same transfer twice. Binding this write to the exact status just read (mirroring
+        // completeDraftOrder's own status-guarded updateMany) makes the second concurrent
+        // request fail the whole transaction instead of re-applying the shipment.
+        const guardedTransfer = await tx.inventoryTransfer.updateMany({ where: { id, status: transfer.status }, data: { status: 'IN_TRANSIT', shippedAt: new Date() } })
+        if (guardedTransfer.count !== 1) throw new Error(TRANSFER_CONFLICT_MESSAGE)
         for (const item of transfer.items) {
           const source = await tx.inventoryItem.findFirst({ where: { productId: item.productId, variantId: item.variantId, locationId: transfer.fromLocationId } })
           if (!source) throw new Error(`No source inventory exists for product ${item.productId} at ${transfer.fromLocation!.name}`)
           const available = source.quantity - source.reserved
           if (available < item.quantity) throw new Error(`Not enough available stock to ship ${item.quantity} units from ${transfer.fromLocation!.name}`)
-          await tx.inventoryItem.update({ where: { id: source.id }, data: { quantity: { decrement: item.quantity } } })
+          // Guards the decrement itself against a concurrent write to this same inventory row
+          // (a sale reservation, another transfer, a manual adjustment) landing between the read
+          // above and this write, the same way reserveStock/fulfillOrderStock (lib/inventory.ts)
+          // already guard their own decrements against exactly this.
+          const decremented = await tx.inventoryItem.updateMany({ where: { id: source.id, quantity: { gte: item.quantity + source.reserved } }, data: { quantity: { decrement: item.quantity } } })
+          if (decremented.count !== 1) throw new Error(`Not enough available stock to ship ${item.quantity} units from ${transfer.fromLocation!.name}`)
           await tx.inventoryMovement.create({ data: { inventoryId: source.id, type: 'TRANSFER', quantity: -item.quantity, reason: `Shipped transfer ${transfer.reference} to ${transfer.toLocation!.name}`, referenceId: transfer.id } })
           shippedInventoryIds.add(source.id)
         }
-        await tx.inventoryTransfer.update({ where: { id }, data: { status: 'IN_TRANSIT', shippedAt: new Date() } })
       })
       dispatchInventoryUpdated(shippedInventoryIds)
     } else if (nextStatus === 'RECEIVED') {
@@ -39,6 +53,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       if (transfer.status !== 'IN_TRANSIT') return json({ error: 'Transfer must be in transit before it can be received' }, { status: 409 })
       const receivedInventoryIds = new Set<string>()
       await db.$transaction(async tx => {
+        // Same double-submit race as shipping above, guarded the same way: bind the status
+        // transition to the exact 'IN_TRANSIT' state this request observed, so a concurrent
+        // receive on the same transfer fails the whole transaction instead of both crediting
+        // the destination location.
+        const guardedTransfer = await tx.inventoryTransfer.updateMany({ where: { id, status: 'IN_TRANSIT' }, data: { status: 'RECEIVED', receivedAt: new Date() } })
+        if (guardedTransfer.count !== 1) throw new Error(TRANSFER_CONFLICT_MESSAGE)
         for (const item of transfer.items) {
           const qty = Math.max(0, item.quantity - item.received)
           if (!qty) continue
@@ -54,7 +74,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           }
           await tx.inventoryTransferItem.update({ where: { id: item.id }, data: { received: item.quantity } })
         }
-        await tx.inventoryTransfer.update({ where: { id }, data: { status: 'RECEIVED', receivedAt: new Date() } })
       })
       dispatchInventoryUpdated(receivedInventoryIds)
     } else if (nextStatus === 'PENDING' || nextStatus === 'DRAFT') {
@@ -68,6 +87,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     await audit(actor.id, 'inventory.transfer.updated', 'InventoryTransfer', id, { from: transfer.status, to: nextStatus })
     return json({ transfer: await db.inventoryTransfer.findUnique({ where: { id }, include: { items: true, fromLocation: true, toLocation: true } }) })
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Unable to update transfer' }, { status: 400 })
+    const message = e instanceof Error ? e.message : 'Unable to update transfer'
+    return json({ error: message }, { status: message === TRANSFER_CONFLICT_MESSAGE ? 409 : 400 })
   }
 }

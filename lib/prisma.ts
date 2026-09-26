@@ -2281,6 +2281,19 @@ function getMockHandler(model: string) {
         for (const target of targets) Object.assign(target, args?.data || {})
         return { count: targets.length }
       }
+      // Inventory transfer ship/receive both lean on this being a real optimistic-concurrency
+      // guard the same way purchaseOrderItem/order's updateMany above already are -- `where: {
+      // id, status }` (the status read before the transaction started) must return count 0 once
+      // a concurrent ship or receive already advanced the transfer's status, or two concurrent
+      // requests could both pass and both decrement/increment inventory for the same transfer.
+      if (model === 'inventoryTransfer') {
+        const w = args?.where || {}
+        let targets = mockInventoryTransfers
+        if (typeof w.id === 'string') targets = targets.filter((x: any) => x.id === w.id)
+        if (typeof w.status === 'string') targets = targets.filter((x: any) => x.status === w.status)
+        for (const target of targets) Object.assign(target, args?.data || {})
+        return { count: targets.length }
+      }
       const byModel: Record<string, any[]> = { user: mockUsers, collection: mockCollections, coupon: mockCoupons }
       const list = byModel[model]
       if (list) {
