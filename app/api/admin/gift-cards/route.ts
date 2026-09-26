@@ -49,12 +49,25 @@ export async function PATCH(req: Request) {
       const delta = Math.trunc(Number(b.adjustment) || 0)
       const next = card.balance + delta
       if (next < 0 || next > card.initialAmount) return json({ error: 'Gift card balance adjustment is outside the allowed range' }, { status: 400 })
-      const updated = await db.giftCard.update({ where: { id }, data: { balance: next } })
+      // A plain check-then-overwrite here is a lost-update race: two concurrent adjustments on
+      // the same card (e.g. a double-submitted correction) both read the same starting balance,
+      // both compute an independent `next`, and the second update clobbers the first's effect --
+      // silently leaving the stored balance wrong in either direction. Binding the write to the
+      // exact balance just read (mirroring checkout's own atomic giftCard.updateMany) makes the
+      // second concurrent adjustment fail instead of overwriting the first.
+      const updated = await db.$transaction(async tx => {
+        const guarded = await tx.giftCard.updateMany({ where: { id, balance: card.balance }, data: { balance: next } })
+        if (guarded.count !== 1) throw new Error('This gift card was just modified — please retry.')
+        return tx.giftCard.findUnique({ where: { id } })
+      })
       await audit(actor.id, 'gift_card.adjusted', 'GiftCard', id, { delta, balance: next })
       return json({ giftCard: updated })
     }
     const updated = await db.giftCard.update({ where: { id }, data: { ...(b.status ? { status: b.status } : {}), ...(b.expiresAt !== undefined ? { expiresAt: b.expiresAt ? new Date(b.expiresAt) : null } : {}), ...(b.note !== undefined ? { note: b.note ? String(b.note) : null } : {}) } })
     await audit(actor.id, 'gift_card.updated', 'GiftCard', id, { fields: Object.keys(b) })
     return json({ giftCard: updated })
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to update gift card' }, { status: 400 }) }
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'Unable to update gift card'
+    return json({ error: message }, { status: message === 'This gift card was just modified — please retry.' ? 409 : 400 })
+  }
 }
