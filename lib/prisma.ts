@@ -878,6 +878,7 @@ function getMockHandler(model: string) {
         const w = args?.where || {}
         if (w.userId) list = list.filter((x) => x.userId === w.userId)
         if (w.product?.status) list = list.filter((x) => mockProducts.find((p) => p.id === x.productId)?.status === w.product.status)
+        if (w.productId?.notIn) { const excluded = new Set(w.productId.notIn); list = list.filter((x) => !excluded.has(x.productId)) }
         list = list.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
         if (args?.include?.product || args?.select?.product) list = list.map((x) => ({ ...x, product: mockProducts.find((p) => p.id === x.productId) || null }))
         return list
