@@ -4,6 +4,8 @@ import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { dispatchInventoryUpdated } from '@/lib/webhooks'
 
+const PO_RECEIVE_CONFLICT_MESSAGE = 'This purchase order was just updated — please retry.'
+
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const actor = await requirePermission('purchaseOrders.manage')
@@ -39,7 +41,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           const nextReceived = Math.min(item.quantityOrdered, received.received)
           const increment = Math.max(0, nextReceived - item.quantityReceived)
           if (!increment) continue
-          await tx.purchaseOrderItem.update({ where: { id: item.id }, data: { quantityReceived: nextReceived } })
+          // item.quantityReceived was read from `po` before this transaction started, so a
+          // concurrent PATCH on the same PO (a double-submit, or two staff receiving the same
+          // shipment) could compute the same increment from the same stale value and both apply
+          // it, double-crediting inventory for a single physical receipt. Binding the write to
+          // the exact quantityReceived just read (mirroring the admin inventory PATCH's own
+          // updateMany guard) makes the second concurrent request fail instead of re-applying it.
+          const guarded = await tx.purchaseOrderItem.updateMany({ where: { id: item.id, quantityReceived: item.quantityReceived }, data: { quantityReceived: nextReceived } })
+          if (guarded.count !== 1) throw new Error(PO_RECEIVE_CONFLICT_MESSAGE)
           if (po.location) {
             const inventory = await tx.inventoryItem.findFirst({ where: { productId: item.productId, variantId: item.variantId, locationId: po.locationId } })
             if (inventory) {
@@ -63,5 +72,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     await audit(actor.id, 'purchase_order.updated', 'PurchaseOrder', id, { from: po.status, to: updated.status, receivedItems: receivedItems.length })
     dispatchInventoryUpdated(receivedInventoryIds)
     return json({ purchaseOrder: updated })
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to update purchase order' }, { status: 400 }) }
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'Unable to update purchase order'
+    return json({ error: message }, { status: message === PO_RECEIVE_CONFLICT_MESSAGE ? 409 : 400 })
+  }
 }
