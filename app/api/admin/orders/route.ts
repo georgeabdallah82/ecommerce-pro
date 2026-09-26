@@ -10,7 +10,9 @@ import { json } from '@/lib/utils'
 import { dispatchWebhookEvent, dispatchInventoryUpdated } from '@/lib/webhooks'
 import { sendFulfillmentEmail, issueAndNotifyGiftCardsForOrder } from '@/lib/email'
 import { checkLowStockAlerts } from '@/lib/push'
-import { OrderStatus, PaymentStatus } from '@prisma/client'
+import { OrderStatus, PaymentStatus, Prisma } from '@prisma/client'
+
+const ORDER_UPDATE_CONFLICT_MESSAGE = 'This order was just modified — please retry.'
 
 // Mirrors the identically-shaped helper in app/api/account/orders/[orderNumber]/cancel/route.ts --
 // coins redeemed at checkout are only ever recorded inline on the checkout PaymentTransaction's
@@ -130,6 +132,14 @@ export async function PATCH(req: Request) {
             // cancelling a paid order here was a live bypass of that gate for any role with
             // orders.manage but not orders.refund.
             if (!hasPermission(actor.role, 'orders.refund')) throw new Error('FORBIDDEN')
+            // The remaining-refundable check above is only a snapshot of paymentTransaction rows.
+            // Tie it to an atomic conditional write on the order itself (bounded on the updatedAt
+            // we just read) so a concurrent cancel/refund/return request that read the same
+            // snapshot loses the race here instead of both requests succeeding and together
+            // double-refunding -- mirrors the same guard in app/api/admin/refunds/route.ts and
+            // the returns routes, which this cancel-with-refund path never got.
+            const guardedOrder = await tx.order.updateMany({ where: { id: order.id, updatedAt: order.updatedAt }, data: { updatedAt: new Date() } })
+            if (guardedOrder.count !== 1) throw new Error(ORDER_UPDATE_CONFLICT_MESSAGE)
             const { refundProvider, refundExternalId } = pickRefundSource(refundableOrder)
             const refundStatus = refundProvider === 'manual' || refundProvider === 'wallet' ? 'refunded' : 'refund_pending'
             const refund = await tx.paymentTransaction.create({ data: { orderId: order.id, provider: refundProvider, externalId: refundExternalId, status: refundStatus, amount: refundable, currency: order.currency, rawJson: JSON.stringify({ reason: 'Order cancelled by staff', actorId: actor.id }) } })
@@ -257,6 +267,9 @@ export async function PATCH(req: Request) {
     return json({ order: result.updated, cancelRefund })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unable to update order'
+    if (message === ORDER_UPDATE_CONFLICT_MESSAGE || (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2034')) {
+      return json({ error: ORDER_UPDATE_CONFLICT_MESSAGE }, { status: 409 })
+    }
     return json({ error: message === 'FORBIDDEN' ? 'Forbidden' : message }, { status: message === 'FORBIDDEN' ? 403 : 400 })
   }
 }
