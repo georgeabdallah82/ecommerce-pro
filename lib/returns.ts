@@ -55,6 +55,17 @@ export function remainingRefundable(order: ReturnableOrder) {
   return Math.max(0, order.grandTotal - refunded)
 }
 
+// Shared by every route that can issue a new refund on top of an order's existing
+// paymentTransactions (returns create/receive, order-edit commit) -- mirrors the guard
+// app/api/admin/refunds/route.ts already has. A transaction sitting at 'refund_pending'
+// hasn't settled yet, so the order's paymentStatus hasn't moved to reflect it and
+// remainingRefundable() still counts it as available. Without this, a second refund issued
+// here while the first is still settling can push the combined refunded total past
+// grandTotal once both complete.
+export function hasPendingRefund(order: ReturnableOrder) {
+  return order.paymentTransactions.some(t => t.status === 'refund_pending')
+}
+
 export async function restockReturnEntries(tx: any, entries: Array<{ orderItemId: string; quantity: number; item: ReturnOrderItem }>, orderNumber: string, reasonText: string) {
   const restockedInventoryIds = new Set<string>()
   for (const entry of entries) {
