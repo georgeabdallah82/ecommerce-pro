@@ -3,7 +3,11 @@ import type { NextRequest } from 'next/server'
 import { jwtVerify } from 'jose'
 import { db } from '@/lib/prisma'
 
-const MAINTENANCE_BYPASS_PREFIXES = ['/admin', '/api', '/coming-soon', '/_next']
+// '/api' is deliberately NOT in this list (see the maintenance check below) -- API requests get
+// their own, narrower bypass so mutations to non-admin/auth/internal/webhook endpoints are
+// actually blocked during maintenance instead of silently exempted wholesale.
+const MAINTENANCE_BYPASS_PREFIXES = ['/admin', '/coming-soon', '/_next']
+const MAINTENANCE_API_BYPASS_PREFIXES = ['/api/admin', '/api/auth', '/api/internal', '/api/payments', '/api/health']
 const MAINTENANCE_BYPASS_EXACT = new Set(['/favicon.ico', '/robots.txt', '/sitemap.xml'])
 const REDIRECT_BYPASS_PREFIXES = ['/admin', '/api', '/_next']
 
@@ -76,9 +80,23 @@ export async function proxy(request: NextRequest) {
   if (needsMaintenanceCheck) {
     const maintenanceSetting = await db.setting.findUnique({ where: { key: 'maintenance.enabled' } })
     if (maintenanceSetting?.value === 'true' && !(await isStaffSession(request.cookies.get('session')?.value))) {
-      const requestHeaders = new Headers(request.headers)
-      requestHeaders.set('x-maintenance-active', '1')
-      return NextResponse.rewrite(new URL('/coming-soon', request.url), { request: { headers: requestHeaders } })
+      // Rewriting to /coming-soon is meaningless to an API client, and simply exempting the
+      // whole '/api' prefix (as this used to) left checkout/orders/wishlist/reviews fully
+      // reachable for non-staff visitors while every storefront page claimed the site wasn't
+      // launched yet -- a real order could still be placed, with inventory reserved and a
+      // confirmation email sent, during the exact window maintenance mode exists to prevent.
+      // Reads stay open (nothing to block there); only state-changing requests to endpoints
+      // outside admin/auth/internal-cron/payment-webhook traffic are blocked outright.
+      if (pathname.startsWith('/api/')) {
+        const isBlockedMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method) && !MAINTENANCE_API_BYPASS_PREFIXES.some(p => pathname.startsWith(p))
+        if (isBlockedMutation) {
+          return NextResponse.json({ error: 'The store is temporarily unavailable.' }, { status: 503, headers: { 'Cache-Control': 'no-store' } })
+        }
+      } else {
+        const requestHeaders = new Headers(request.headers)
+        requestHeaders.set('x-maintenance-active', '1')
+        return NextResponse.rewrite(new URL('/coming-soon', request.url), { request: { headers: requestHeaders } })
+      }
     }
   }
 
