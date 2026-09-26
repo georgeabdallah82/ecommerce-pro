@@ -47,6 +47,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (referenceId === '') return json({ error: 'Reference id must not be empty.' }, { status: 400 })
 
     const result = await db.$transaction(async tx => {
+      // Coin balance is a running sum over an append-only ledger, not a single mutable row, so
+      // there's no field a WHERE-bounded guard could bind to the way coupon.usedCount/
+      // giftCard.balance elsewhere in this codebase do. Without this, two concurrent adjustments
+      // (two admins, or one double-submitting) could both read the same starting balance here,
+      // both pass the "cannot become negative" check below, and both commit -- driving the
+      // balance negative despite the guard, the exact race checkout's own coin/wallet debit had
+      // (see app/api/checkout/route.ts). Writing to the customer's own User document first turns
+      // that into a real MongoDB write conflict: two transactions touching the same document
+      // can't both commit, so the loser aborts with the P2034 this route already catches below,
+      // instead of silently letting both debits through.
+      await tx.user.update({ where: { id }, data: { updatedAt: new Date() } })
+
       const aggregate = await tx.coinTransaction.aggregate({ where: { userId: id }, _sum: { amount: true } })
       const balance = Math.max(0, Number(aggregate._sum.amount || 0))
       if (balance + amount < 0) throw new Error('Coin balance cannot become negative')
