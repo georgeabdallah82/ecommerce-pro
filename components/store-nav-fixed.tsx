@@ -233,11 +233,27 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
   const [desktopSearchOpen, setDesktopSearchOpen] = useState(false)
   const desktopSearchBlurTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Free shipping threshold logic ($50 = 5000 cents)
-  const FREE_SHIPPING_THRESHOLD = 5000
-  const remainingForFreeShipping = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal)
-  const shippingProgress = Math.min(100, Math.round((subtotal / FREE_SHIPPING_THRESHOLD) * 100))
-  const freeShippingUnlocked = subtotal >= FREE_SHIPPING_THRESHOLD
+  // Reads the store's actual configured threshold (checkout.freeShippingThreshold, in dollars)
+  // the same way components/aliexpress-cart.tsx already does, rather than a hardcoded value --
+  // this drawer previously always used $50 regardless of what the merchant actually configured
+  // (seeded default is $100), so it could tell a customer they'd unlocked free shipping only
+  // for checkout to still charge them, or vice versa.
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState<number | null>(null)
+  useEffect(() => {
+    let active = true
+    fetch('/api/store/settings', { cache: 'no-store' })
+      .then(res => res.json())
+      .then(data => {
+        if (!active) return
+        const threshold = Number(data?.settings?.checkout?.freeShippingThreshold)
+        if (Number.isFinite(threshold) && threshold > 0) setFreeShippingThreshold(Math.round(threshold * 100))
+      })
+      .catch(() => {})
+    return () => { active = false }
+  }, [])
+  const remainingForFreeShipping = freeShippingThreshold ? Math.max(0, freeShippingThreshold - subtotal) : 0
+  const shippingProgress = freeShippingThreshold ? Math.min(100, Math.round((subtotal / freeShippingThreshold) * 100)) : 0
+  const freeShippingUnlocked = freeShippingThreshold !== null && subtotal >= freeShippingThreshold
 
   const announcementDismissible = announcementSection?.settings?.dismissible ?? theme.announcement?.dismissible ?? true
   useEffect(() => {
@@ -428,19 +444,22 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
           <button className="focalNavIcon" onClick={closeCart} aria-label="Close cart"><X size={17}/></button>
         </div>
 
-        {/* FREE SHIPPING PROGRESS BAR */}
-        <div className={`focalShippingMeter ${freeShippingUnlocked ? 'isUnlocked' : ''}`}>
-          <div className={`focalShippingText ${freeShippingUnlocked ? 'isUnlocked' : ''}`}>
-            {freeShippingUnlocked ? (
-              <><Sparkles size={15} color="#16a34a"/> <span>You&apos;ve unlocked <strong>FREE standard shipping!</strong></span></>
-            ) : (
-              <><Truck size={15} color="var(--focal-primary)"/> <span>Add <strong>{money(remainingForFreeShipping)}</strong> more to unlock <strong>FREE Shipping</strong></span></>
-            )}
+        {/* FREE SHIPPING PROGRESS BAR -- hidden until the real threshold has loaded, so it
+            never flashes a wrong (hardcoded) state before the actual setting is known. */}
+        {freeShippingThreshold !== null && (
+          <div className={`focalShippingMeter ${freeShippingUnlocked ? 'isUnlocked' : ''}`}>
+            <div className={`focalShippingText ${freeShippingUnlocked ? 'isUnlocked' : ''}`}>
+              {freeShippingUnlocked ? (
+                <><Sparkles size={15} color="#16a34a"/> <span>You&apos;ve unlocked <strong>FREE standard shipping!</strong></span></>
+              ) : (
+                <><Truck size={15} color="var(--focal-primary)"/> <span>Add <strong>{money(remainingForFreeShipping)}</strong> more to unlock <strong>FREE Shipping</strong></span></>
+              )}
+            </div>
+            <div className="focalShippingTrack" role="progressbar" aria-valuenow={shippingProgress} aria-valuemin={0} aria-valuemax={100}>
+              <div className={`focalShippingBar ${freeShippingUnlocked ? 'isUnlocked' : ''}`} style={{ width: `${shippingProgress}%` }} />
+            </div>
           </div>
-          <div className="focalShippingTrack" role="progressbar" aria-valuenow={shippingProgress} aria-valuemin={0} aria-valuemax={100}>
-            <div className={`focalShippingBar ${freeShippingUnlocked ? 'isUnlocked' : ''}`} style={{ width: `${shippingProgress}%` }} />
-          </div>
-        </div>
+        )}
 
         {items.length ? <>
           <div className="focalCartItems">
