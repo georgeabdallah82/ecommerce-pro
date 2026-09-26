@@ -2142,6 +2142,13 @@ function getMockHandler(model: string) {
         if (typeof w.id === 'string') targets = targets.filter((x: any) => x.id === w.id)
         if (w.status) targets = targets.filter((x: any) => x.status === w.status)
         if (w.balance?.gte !== undefined) targets = targets.filter((x: any) => x.balance >= w.balance.gte)
+        // The admin balance-adjustment route leans on this being a real optimistic-concurrency
+        // guard the same way order's own updatedAt-bounded updateMany already is: an exact-value
+        // `balance` (not the {gte: ...} threshold above) must return count 0 once a concurrent
+        // adjustment already changed the balance since it was read, or two concurrent adjustments
+        // could both read the same starting balance and the second would silently clobber the
+        // first's effect (a lost update) instead of being rejected.
+        if (typeof w.balance === 'number') targets = targets.filter((x: any) => x.balance === w.balance)
         if (w.expiresAt?.lt !== undefined) targets = targets.filter((x: any) => x.expiresAt && new Date(x.expiresAt) < new Date(w.expiresAt.lt))
         for (const target of targets) {
           for (const [key, value] of Object.entries(args?.data || {})) {
