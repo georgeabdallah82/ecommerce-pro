@@ -2267,6 +2267,20 @@ function getMockHandler(model: string) {
         for (const target of targets) Object.assign(target, args?.data || {})
         return { count: targets.length }
       }
+      // Purchase-order receiving leans on this being a real optimistic-concurrency guard the same
+      // way order/giftCard's updateMany above already are -- `where: { id, quantityReceived }`
+      // (the value read before the transaction started) must return count 0 once a concurrent
+      // receive already advanced quantityReceived, or two concurrent receives could both compute
+      // the same increment from the same stale value and both apply it, double-crediting
+      // inventory for a single physical receipt.
+      if (model === 'purchaseOrderItem') {
+        const w = args?.where || {}
+        let targets = mockPurchaseOrderItems
+        if (typeof w.id === 'string') targets = targets.filter((x: any) => x.id === w.id)
+        if (typeof w.quantityReceived === 'number') targets = targets.filter((x: any) => x.quantityReceived === w.quantityReceived)
+        for (const target of targets) Object.assign(target, args?.data || {})
+        return { count: targets.length }
+      }
       const byModel: Record<string, any[]> = { user: mockUsers, collection: mockCollections, coupon: mockCoupons }
       const list = byModel[model]
       if (list) {
