@@ -2,6 +2,7 @@ import { db } from '@/lib/prisma'
 import { requireUser } from '@/lib/auth'
 import { alreadyReturnedQuantities, normalizeReturnItems, type ReturnableOrder } from '@/lib/returns'
 import { json } from '@/lib/utils'
+import { Prisma } from '@prisma/client'
 
 const RETURN_MESSAGES = new Set([
   'Order not found',
@@ -9,11 +10,15 @@ const RETURN_MESSAGES = new Set([
   'At least one return item is required',
 ])
 
+const RETURN_CONFLICT_MESSAGE = 'This order was just modified — please retry.'
+
 function returnFailure(error: unknown) {
   const message = error instanceof Error ? error.message : ''
   if (message === 'UNAUTHORIZED') return { status: 401, error: 'Unauthorized' }
+  if (message === RETURN_CONFLICT_MESSAGE) return { status: 409, error: RETURN_CONFLICT_MESSAGE }
   if (RETURN_MESSAGES.has(message)) return { status: message === 'Order not found' ? 404 : 400, error: message }
   if (message.startsWith('Invalid return quantity for ') || message.startsWith('Return quantity for ') || message.startsWith('Order item ')) return { status: 400, error: message }
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') return { status: 409, error: RETURN_CONFLICT_MESSAGE }
   console.error('[account/orders/return] unexpected failure', error)
   return { status: 500, error: 'Unable to submit your return request right now' }
 }
@@ -39,6 +44,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderNu
       const order = orderRow as unknown as ReturnableOrder
       const alreadyReturned = await alreadyReturnedQuantities(tx, order.id, order.orderNumber)
       const normalized = normalizeReturnItems(order, inputItems, alreadyReturned)
+
+      // Same optimistic-concurrency guard as the admin return flows (POST /api/admin/returns,
+      // the receive action in /api/admin/returns/[id]) -- without it, two concurrent submissions
+      // for the same order (a double-click, two tabs) both read the same already-returned
+      // snapshot and both pass validation, over-claiming a purchased quantity that's supposed to
+      // be a shared limit.
+      const guarded = await tx.order.updateMany({ where: { id: order.id, updatedAt: order.updatedAt }, data: { updatedAt: new Date() } })
+      if (guarded.count !== 1) throw new Error(RETURN_CONFLICT_MESSAGE)
 
       return tx.returnRequest.create({
         data: {
