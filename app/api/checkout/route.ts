@@ -299,6 +299,20 @@ export async function POST(req: Request) {
         if (existingOrder) throw new Error('This coupon is for first orders only')
       }
 
+      const spendsWalletOrCoins = (user?.id && requestedCoins > 0) || (paymentMethod === PaymentMethod.WALLET && grandTotal > 0)
+      if (user?.id && spendsWalletOrCoins) {
+        // Wallet/coin balances are a running sum over an append-only ledger, not a single
+        // mutable row like coupon.usedCount or giftCard.balance below -- there's no field to
+        // put a WHERE-bounded guard on, so a plain "read the sum, then create a debit row" is a
+        // check-then-act race: two concurrent checkouts (double-click, two tabs, a retry) can
+        // both read the balance before either commits its debit and both pass, double-spending
+        // the same balance. Writing to the user's own document first turns that race into a
+        // real MongoDB write conflict -- two transactions touching the same document can't both
+        // commit, so the loser aborts (surfaced as the generic "please try again" 500 below)
+        // instead of silently letting both debits through.
+        await tx.user.update({ where: { id: user.id }, data: { updatedAt: new Date() } })
+      }
+
       if (user?.id && requestedCoins > 0) {
         const coinAggregate = await tx.coinTransaction.aggregate({ where: { userId: user.id }, _sum: { amount: true } })
         const coinBalance = Math.max(0, Number(coinAggregate._sum.amount || 0))
