@@ -20,6 +20,16 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       if (!edit) throw new Error('Order edit not found')
       if (edit.status !== 'OPEN') throw new Error('Order edit is no longer open')
 
+      // Atomic conditional write, same pattern as completeDraftOrder (lib/draft-orders.ts) and
+      // every other money-moving mutation in this codebase: only one concurrent commit of this
+      // edit can flip OPEN -> COMMITTED. Without this, a double-click or a client retry both
+      // pass the plain status check above and each reconcile inventory reservations and create a
+      // refund/charge PaymentTransaction for the same edit. Done as the very first write, before
+      // any inventory or payment side effect below, so a losing request aborts here instead of
+      // partway through them.
+      const guardedEdit = await tx.orderEdit.updateMany({ where: { id, status: 'OPEN' }, data: { status: 'COMMITTED', committedAt: new Date() } })
+      if (guardedEdit.count !== 1) throw new Error('Order edit is no longer open')
+
       const current = await tx.order.findUnique({ where: { id: edit.orderId }, include: { items: true, paymentTransactions: true } })
       if (!current) throw new Error('Order not found')
       if (['CANCELLED', 'REFUNDED'].includes(current.status)) throw new Error('Cancelled or refunded orders cannot be edited')
@@ -114,7 +124,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
       const updated = await tx.order.update({ where: { id: current.id }, data: { subtotal: nextSubtotal, taxTotal: nextTaxTotal, grandTotal: nextGrand, ...paymentUpdate } })
       await tx.orderEvent.create({ data: { orderId: current.id, status: current.status, message: `Order edited by ${actor.name}.${paymentAdjustment?.type === 'refund' ? ` A refund of ${paymentAdjustment.amount} ${current.currency} is owed.` : paymentAdjustment?.type === 'charge' ? ` An additional ${paymentAdjustment.amount} ${current.currency} is due.` : ''}` } })
-      await tx.orderEdit.update({ where: { id }, data: { status: 'COMMITTED', committedAt: new Date(), subtotalAfter: nextSubtotal, deltaTotal: delta } })
+      await tx.orderEdit.update({ where: { id }, data: { subtotalAfter: nextSubtotal, deltaTotal: delta } })
       return { updated, refundToSettle, paymentAdjustment, userId: current.userId }
     })
 
