@@ -2218,6 +2218,22 @@ function getMockHandler(model: string) {
         for (const target of targets) Object.assign(target, args?.data || {}, { updatedAt: new Date() })
         return { count: targets.length }
       }
+      // app/api/admin/order-edits/[id]/route.ts leans on this being a real optimistic-concurrency
+      // guard the same way draftOrder's updateMany above already is -- `where: { id, status:
+      // 'OPEN' }` (the status read before the transaction started) must return count 0 once a
+      // concurrent commit has already flipped the edit to COMMITTED, or two requests could both
+      // pass and each reconcile inventory reservations and create a refund/charge transaction for
+      // the same edit. Without a real branch this fell to the generic fallback (an unconditional
+      // count: 1 with no mutation applied), so status never actually flipped and the guard could
+      // never trip.
+      if (model === 'orderEdit') {
+        const w = args?.where || {}
+        let targets = mockOrderEdits
+        if (w.id) targets = targets.filter((x: any) => x.id === w.id)
+        if (typeof w.status === 'string') targets = targets.filter((x: any) => x.status === w.status)
+        for (const target of targets) Object.assign(target, args?.data || {}, { updatedAt: new Date() })
+        return { count: targets.length }
+      }
       // deleteCustomerCascade (lib/customers.ts) calls this with `where: { actorId }` to null out
       // the FK before deleting the actor's user row -- without a real branch this fell to the
       // generic fallback below (an unconditional count: 1 with no mutation applied), leaving audit
