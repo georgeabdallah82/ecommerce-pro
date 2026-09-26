@@ -12,10 +12,18 @@ export function resolveFreeShippingThresholdCents(settingValue: string | null | 
   return Number.isFinite(dollars) && dollars > 0 ? Math.round(dollars * 100) : 10000
 }
 
+// Mirrors getTaxRatePercent's own two-pass resolution below: a specific-country zone must
+// always win over a catch-all '*' zone, regardless of which one the DB happens to return
+// first (shippingZone.findMany has no orderBy, so with no explicit priority a store running
+// both a global zone and a few country-specific zones -- an entirely normal setup -- got
+// whichever zone was created/stored first, silently charging the wrong rate/threshold for
+// customers in the country-specific zone's country whenever the wildcard zone sorted ahead of it.
 async function matchingZone(country: string) {
   const zones = await db.shippingZone.findMany({ where: { isActive: true }, include: { rates: { where: { isActive: true }, orderBy: { price: 'asc' } } } })
   const upper = normalizeCountry(country)
-  return zones.find(z => z.countries === '*' || z.countries.split(',').map(x => normalizeCountry(x)).includes(upper))
+  const specific = zones.find(z => z.countries !== '*' && z.countries.split(',').map(x => normalizeCountry(x)).includes(upper))
+  if (specific) return specific
+  return zones.find(z => z.countries === '*')
 }
 
 export type ShippingRateOption = { id: string | null; name: string; price: number; freeAbove: number | null; estimatedDays: number | null }
