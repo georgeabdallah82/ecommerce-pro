@@ -24,7 +24,14 @@ export default async function CollectionPage({ params }: { params: Promise<{ slu
     },
   })
   if (!collection || !collection.isActive) notFound()
-  const products = await withProductStats(collection.products.map(x => x.product))
+  // The admin collection editor lets staff attach any product with no status check, so a
+  // DRAFT/ARCHIVED product left in a collection (staged "New Arrivals" before going live, or
+  // an old seasonal item never removed) must still be filtered out here -- every other
+  // storefront listing (homepage, /shop, the product detail page) already excludes non-ACTIVE
+  // products; without this, a collection tile links straight to a 404 (or a checkout rejection
+  // if it somehow reaches the cart) that those other pages never expose customers to.
+  const activeItems = collection.products.filter(x => x.product.status === 'ACTIVE')
+  const products = await withProductStats(activeItems.map(x => x.product))
   return (
     <>
       <AliExpressCollectionDetail theme={theme} collection={collection} products={products} />
