@@ -195,7 +195,24 @@ export async function PATCH(req: Request) {
           await tx.fulfillmentLine.create({ data: { fulfillmentId: fulfillment.id, orderItemId: item.id, productId: item.productId, variantId: item.variantId, quantity: item.quantity } })
         }
       }
-      return { order, updated, statusChanged, paymentChanged, hasOnlyDetails, fulfilledInventoryIds, fulfilling, fulfillmentId: fulfillment?.id, refundToSettle, cancelRefundAmount }
+      // Correcting a tracking number after the order has already shipped (a typo fix, or
+      // adding a number that wasn't available at ship time) must also update the Fulfillment
+      // record the "Shipments" panel and any tracking page actually read from, and tell the
+      // customer -- the initial SHIPPED transition above already does both (Fulfillment.create
+      // + sendFulfillmentEmail below). Without this, only Order.trackingNumber silently changed
+      // and diverged from the Fulfillment row shown elsewhere on the same admin page. Scoped to
+      // trackingNumber only (not carrier/URL): the admin UI's carrier/tracking-URL inputs are
+      // only ever shown during the initial ship transition, so outside it those fields always
+      // arrive blank and must not overwrite what was recorded at ship time.
+      let trackingCorrection: { orderNumber: string; trackingNumber: string | null } | null = null
+      if (!fulfilling && detailsPatch.trackingNumber !== undefined && detailsPatch.trackingNumber !== order.trackingNumber) {
+        const [latestFulfillment] = await tx.fulfillment.findMany({ where: { orderId: order.id }, orderBy: { createdAt: 'desc' }, take: 1 })
+        if (latestFulfillment) {
+          await tx.fulfillment.update({ where: { id: latestFulfillment.id }, data: { trackingNumber: detailsPatch.trackingNumber as string | null } })
+          trackingCorrection = { orderNumber: order.orderNumber, trackingNumber: detailsPatch.trackingNumber as string | null }
+        }
+      }
+      return { order, updated, statusChanged, paymentChanged, hasOnlyDetails, fulfilledInventoryIds, fulfilling, fulfillmentId: fulfillment?.id, refundToSettle, cancelRefundAmount, trackingCorrection }
     })
     if (result.order.userId && result.statusChanged) {
       const body = result.cancelRefundAmount > 0
@@ -206,6 +223,12 @@ export async function PATCH(req: Request) {
       await db.notification.create({ data: { userId: result.order.userId, title: `Order ${result.order.orderNumber} updated`, body, type: result.cancelRefundAmount > 0 || result.refundToSettle ? 'ORDER_REFUND' : 'ORDER_STATUS' } })
     }
     if (result.fulfilling) void sendFulfillmentEmail(result.order.id).catch(error => console.error('[email] fulfillment notification failed', error))
+    if (result.trackingCorrection && result.order.userId) {
+      const body = result.trackingCorrection.trackingNumber
+        ? `The tracking number for order ${result.trackingCorrection.orderNumber} was updated to ${result.trackingCorrection.trackingNumber}.`
+        : `The tracking number for order ${result.trackingCorrection.orderNumber} was removed.`
+      await db.notification.create({ data: { userId: result.order.userId, title: `Order ${result.trackingCorrection.orderNumber} tracking updated`, body, type: 'ORDER_STATUS' } })
+    }
     // A gift-card product added via an order edit that increased the order's total is
     // deliberately never issued at edit-commit time (see app/api/admin/order-edits/[id]/route.ts)
     // since that additional amount is only a pending manual charge with no automatic payment
