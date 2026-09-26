@@ -8,7 +8,9 @@ import { remainingRefundable, hasPendingRefund, pickRefundSource, settleReturnRe
 import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { getTaxRatePercent } from '@/lib/pricing'
 import { sendOrderEditEmail } from '@/lib/email'
-import { OrderStatus, PaymentStatus } from '@prisma/client'
+import { OrderStatus, PaymentStatus, Prisma } from '@prisma/client'
+
+const ORDER_EDIT_ORDER_CONFLICT_MESSAGE = 'This order was just modified — please retry.'
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -33,6 +35,17 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       const current = await tx.order.findUnique({ where: { id: edit.orderId }, include: { items: true, paymentTransactions: true } })
       if (!current) throw new Error('Order not found')
       if (['CANCELLED', 'REFUNDED'].includes(current.status)) throw new Error('Cancelled or refunded orders cannot be edited')
+
+      // Two separate OPEN OrderEdit drafts can exist for the same order (nothing prevents it at
+      // creation time), so committing them concurrently both pass the checks above off the same
+      // order snapshot. Tie that snapshot to an atomic conditional write (bounded on the
+      // updatedAt just read) so the second commit loses the race here instead of overwriting the
+      // first edit's subtotal/tax/total (a lost update) or issuing its own refund off a stale
+      // grandTotal -- mirrors the same guard already used in app/api/admin/refunds/route.ts,
+      // app/api/admin/returns/route.ts, app/api/admin/returns/[id]/route.ts, and the order
+      // cancel path in app/api/admin/orders/route.ts.
+      const guardedOrder = await tx.order.updateMany({ where: { id: current.id, updatedAt: current.updatedAt }, data: { updatedAt: new Date() } })
+      if (guardedOrder.count !== 1) throw new Error(ORDER_EDIT_ORDER_CONFLICT_MESSAGE)
 
       const oldMap = new Map(current.items.map(i => [i.id, i]))
 
@@ -165,6 +178,9 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     return json({ order: order.updated, paymentAdjustment: order.paymentAdjustment })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unable to commit order edit'
+    if (message === ORDER_EDIT_ORDER_CONFLICT_MESSAGE || (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2034')) {
+      return json({ error: ORDER_EDIT_ORDER_CONFLICT_MESSAGE }, { status: 409 })
+    }
     const status = message === 'Order edit not found' || message === 'Order not found' ? 404 : message === 'Order edit is no longer open' ? 409 : message === 'UNAUTHORIZED' ? 401 : message === 'FORBIDDEN' ? 403 : message.includes('cannot be edited') ? 409 : message.includes('already been refunded') ? 409 : 400
     if (status >= 500) console.error('order edit commit failed', e)
     return json({ error: message }, { status })
