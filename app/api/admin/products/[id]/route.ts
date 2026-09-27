@@ -5,7 +5,7 @@ import { json, slugify } from '@/lib/utils'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
 
 async function getProduct(id:string){
-  const product=await db.product.findUnique({where:{id},include:{category:true,images:{orderBy:{sortOrder:'asc'}},variants:{include:{inventory:{include:{location:true}}}},inventory:{where:{variantId:null},include:{location:true}},tags:true,collections:{include:{collection:true}},metafields:{include:{definition:true}}}})
+  const product=await db.product.findUnique({where:{id},include:{images:{orderBy:{sortOrder:'asc'}},variants:{include:{inventory:{include:{location:true}}}},inventory:{where:{variantId:null},include:{location:true}},tags:true,collections:{include:{collection:true}},metafields:{include:{definition:true}}}})
   if(!product)return null
   const sharedInventory=product.variants.length>0&&product.variants.every(v=>v.inventory.length===0)&&product.inventory.some(x=>x.quantity>0||x.reserved>0)
   return {...product,sharedInventory}
@@ -26,7 +26,7 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
     for(const k of ['basePrice','compareAtPrice','costPrice'])if(b[k]!==undefined)data[k]=b[k]===null||b[k]===''?null:Math.max(0,Math.trunc(Number(b[k])))
     if(b.weight!==undefined)data.weight=b.weight===null||b.weight===''?null:Number(b.weight)
     for(const k of ['featured','requiresShipping','taxable','trackInventory','continueSellingWhenOutOfStock','giftCard'])if(b[k]!==undefined)data[k]=Boolean(b[k])
-    if(b.status!==undefined)data.status=b.status;if(b.categoryId!==undefined)data.categoryId=b.categoryId||null;if(b.publishedAt!==undefined)data.publishedAt=b.publishedAt?new Date(b.publishedAt):null
+    if(b.status!==undefined)data.status=b.status;if(b.publishedAt!==undefined)data.publishedAt=b.publishedAt?new Date(b.publishedAt):null
 
     if(Array.isArray(b.variants)){
       const incomingIds=new Set(b.variants.filter((v:any)=>v.id).map((v:any)=>String(v.id)))

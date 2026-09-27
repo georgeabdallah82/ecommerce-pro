@@ -57,7 +57,6 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
           salesChannelsJson: source.salesChannelsJson,
           productTemplate: source.productTemplate,
           publishedAt: null,
-          categoryId: source.categoryId,
           images: { create: source.images.map(image => ({ url: image.url, alt: image.alt, sortOrder: image.sortOrder })) },
           tags: { create: source.tags.map(tag => ({ value: tag.value })) },
           inventory: !hasVariantInventory ? { create: { quantity: 0, reserved: 0, lowStockThreshold: directInventory?.lowStockThreshold ?? 5, locationId: directInventory?.locationId ?? null } } : undefined,

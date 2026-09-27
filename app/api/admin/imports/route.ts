@@ -43,7 +43,7 @@ export async function POST(request: Request) {
   try {
     const actor = await requirePermission('products.manage')
     const url = new URL(request.url); const type = url.searchParams.get('type') || 'products'; const mode = url.searchParams.get('mode') || 'apply'
-    if (!['products', 'categories', 'collections'].includes(type)) return NextResponse.json({ error: 'Unsupported import type' }, { status: 400 })
+    if (!['products', 'collections'].includes(type)) return NextResponse.json({ error: 'Unsupported import type' }, { status: 400 })
     if (!['preview', 'apply'].includes(mode)) return NextResponse.json({ error: 'Unsupported import mode' }, { status: 400 })
     const form = await request.formData(); const file = form.get('file')
     if (!(file instanceof File)) return NextResponse.json({ error: 'CSV file is required' }, { status: 400 })
@@ -73,10 +73,7 @@ export async function POST(request: Request) {
 
     let created = 0, updated = 0
     await db.$transaction(async tx => {
-      if (type === 'categories') {
-        for (const r of rows) { const slug = cleanSlug(r.slug, r.name); const existing = await tx.category.findUnique({ where: { slug } }); const data = { name: r.name, slug, description: r.description || null, imageUrl: r.imageUrl || null, isActive: bool(r.isActive, true), sortOrder: num(r.sortOrder) }; if (existing) { await tx.category.update({ where: { id: existing.id }, data }); updated++ } else { await tx.category.create({ data }); created++ } }
-        for (const r of rows) { const slug = cleanSlug(r.slug, r.name); const parentId = r.parentSlug ? (await tx.category.findUnique({ where: { slug: r.parentSlug } }))?.id || null : null; await tx.category.update({ where: { slug }, data: { parentId } }) }
-      } else if (type === 'collections') {
+      if (type === 'collections') {
         for (const r of rows) { const slug = cleanSlug(r.slug, r.name); const existing = await tx.collection.findUnique({ where: { slug } }); const data = { name: r.name, slug, description: r.description || null, imageUrl: r.imageUrl || null, isActive: bool(r.isActive, true), sortOrder: num(r.sortOrder) }; if (existing) { await tx.collection.update({ where: { id: existing.id }, data }); updated++ } else { await tx.collection.create({ data }); created++ } }
         for (const r of rows) { const collection = await tx.collection.findUnique({ where: { slug: cleanSlug(r.slug, r.name) } }); if (!collection) continue; await tx.collectionProduct.deleteMany({ where: { collectionId: collection.id } }); for (const sku of split(r.productSkus)) { const product = await tx.product.findUnique({ where: { sku } }); if (product) await tx.collectionProduct.create({ data: { collectionId: collection.id, productId: product.id } }) } }
       } else {
@@ -87,8 +84,7 @@ export async function POST(request: Request) {
           if (r.variantOf) continue
           const existing = await tx.product.findUnique({ where: { sku: r.sku } }); const slug = cleanSlug(r.slug, r.name); const slugOwner = await tx.product.findUnique({ where: { slug } }); if (slugOwner && slugOwner.id !== existing?.id) throw new Error(`Slug already belongs to another product: ${slug}`)
           const barcode = r.barcode || null; if (barcode) { const barcodeOwner = await tx.product.findUnique({ where: { barcode } }); if (barcodeOwner && barcodeOwner.id !== existing?.id) throw new Error(`Barcode already belongs to another product: ${barcode}`) }
-          const category = r.categorySlug ? await tx.category.findUnique({ where: { slug: r.categorySlug } }) : null
-          const data = { name: r.name, slug, description: r.description || null, shortDescription: r.shortDescription || null, brand: r.brand || null, vendor: r.vendor || null, productType: r.productType || null, basePrice: num(r.basePrice), compareAtPrice: r.compareAtPrice ? num(r.compareAtPrice) : null, costPrice: r.costPrice ? num(r.costPrice) : null, barcode, status: (r.status || 'DRAFT') as 'DRAFT' | 'ACTIVE' | 'ARCHIVED', featured: bool(r.featured), seoTitle: r.seoTitle || null, seoDescription: r.seoDescription || null, seoImageUrl: r.seoImageUrl || null, weight: r.weight ? num(r.weight) : null, weightUnit: r.weightUnit || null, requiresShipping: bool(r.requiresShipping, true), taxable: bool(r.taxable, true), trackInventory: bool(r.trackInventory, true), continueSellingWhenOutOfStock: bool(r.continueSellingWhenOutOfStock), giftCard: bool(r.giftCard), categoryId: category?.id || null }
+          const data = { name: r.name, slug, description: r.description || null, shortDescription: r.shortDescription || null, brand: r.brand || null, vendor: r.vendor || null, productType: r.productType || null, basePrice: num(r.basePrice), compareAtPrice: r.compareAtPrice ? num(r.compareAtPrice) : null, costPrice: r.costPrice ? num(r.costPrice) : null, barcode, status: (r.status || 'DRAFT') as 'DRAFT' | 'ACTIVE' | 'ARCHIVED', featured: bool(r.featured), seoTitle: r.seoTitle || null, seoDescription: r.seoDescription || null, seoImageUrl: r.seoImageUrl || null, weight: r.weight ? num(r.weight) : null, weightUnit: r.weightUnit || null, requiresShipping: bool(r.requiresShipping, true), taxable: bool(r.taxable, true), trackInventory: bool(r.trackInventory, true), continueSellingWhenOutOfStock: bool(r.continueSellingWhenOutOfStock), giftCard: bool(r.giftCard) }
           let product; if (existing) { product = await tx.product.update({ where: { id: existing.id }, data }); updated++ } else { product = await tx.product.create({ data: { ...data, sku: r.sku } }); created++ }
           // Every product needs at least one InventoryItem row for its trackInventory-gated
           // availability checks (checkout, the storefront PDP) to see anything but 0 in

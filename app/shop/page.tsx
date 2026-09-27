@@ -18,15 +18,15 @@ function effectivePriceCents(p:{basePrice:number;variants:{price:number|null}[]}
   return p.variants.length?Math.min(...p.variants.map(v=>v.price??p.basePrice)):p.basePrice
 }
 
-export default async function Shop({searchParams}:{searchParams:Promise<{q?:string;category?:string;min?:string;max?:string;sort?:string}>}){
+export default async function Shop({searchParams}:{searchParams:Promise<{q?:string;collection?:string;min?:string;max?:string;sort?:string}>}){
   const sp=await searchParams
   const q=sp.q?.trim();const min=Number(sp.min);const max=Number(sp.max);const sort=sp.sort||'newest'
   const searchFilter=q?{OR:[{name:{contains:q,mode:'insensitive' as const}},{sku:{contains:q,mode:'insensitive' as const}},{description:{contains:q,mode:'insensitive' as const}}]}:{}
   const unpublishedIds=await getUnpublishedProductIds()
-  const [{theme},rawProducts,categories]=await Promise.all([
+  const [{theme},rawProducts,collections]=await Promise.all([
     getThemeState(),
-    db.product.findMany({where:{status:ProductStatus.ACTIVE,id:{notIn:unpublishedIds},...searchFilter,...(sp.category?{category:{slug:sp.category}}:{})},include:{images:true,category:true,collections:{include:{collection:true}},variants:{select:{price:true}}}}),
-    db.category.findMany({where:{isActive:true},orderBy:{sortOrder:'asc'}})
+    db.product.findMany({where:{status:ProductStatus.ACTIVE,id:{notIn:unpublishedIds},...searchFilter,...(sp.collection?{collections:{some:{collection:{slug:sp.collection}}}}:{})},include:{images:true,collections:{include:{collection:true}},variants:{select:{price:true}}}}),
+    db.collection.findMany({where:{isActive:true},orderBy:{sortOrder:'asc'}})
   ])
   const hasMin=Number.isFinite(min)&&min>0;const hasMax=Number.isFinite(max)&&max>0
   const minCents=hasMin?Math.trunc(min*100):null;const maxCents=hasMax?Math.trunc(max*100):null
@@ -37,5 +37,5 @@ export default async function Shop({searchParams}:{searchParams:Promise<{q?:stri
     :sort==='price_desc'?scoped.sort((a,b)=>b.effectivePrice-a.effectivePrice)
     :scoped.sort((a,b)=>new Date(b.createdAt).getTime()-new Date(a.createdAt).getTime())
   const products=await withProductStats(scoped)
-  return <><AliExpressShop theme={theme} products={products} categories={categories} query={sp}/><Footer theme={theme}/></>
+  return <><AliExpressShop theme={theme} products={products} collections={collections} query={sp}/><Footer theme={theme}/></>
 }

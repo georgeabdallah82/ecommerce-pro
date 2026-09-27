@@ -216,11 +216,14 @@ function hasChildren(item: TreeItem) { return item.children.length > 0 }
 // Clusters a department's children by their optional `group` heading (e.g. "New In",
 // "Special Prices"), preserving first-appearance order for the auto-numbered headings.
 // Children with no group fall into a trailing, heading-less bucket so existing nav
-// items (saved before this field existed) keep rendering exactly as before.
+// items (saved before this field existed) keep rendering exactly as before. Image-tile
+// children are skipped here -- they already render in the tile row above, and without
+// this they'd also show up a second time as a plain link whenever a tile has no group.
 function groupChildren(children: TreeItem[]) {
   const groups: { name: string; items: TreeItem[] }[] = []
   const ungrouped: TreeItem[] = []
   for (const child of children) {
+    if (child.imageUrl) continue
     const name = child.group?.trim()
     if (!name) { ungrouped.push(child); continue }
     let bucket = groups.find(g => g.name === name)
@@ -430,7 +433,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
                     <img src={p.images?.[0]?.url || '/placeholder-product.svg'} alt={p.name} />
                     <div className="focalSearchItemInfo">
                       <strong>{p.name}</strong>
-                      <small>{p.category?.name || p.vendor || 'In stock'}</small>
+                      <small>{p.vendor || 'In stock'}</small>
                     </div>
                     <div className="focalSearchItemPrice">{money(p.basePrice || 0)}</div>
                   </Link>
@@ -499,7 +502,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
               <img src={p.images?.[0]?.url || '/placeholder-product.svg'} alt={p.name} />
               <div className="focalSearchItemInfo">
                 <strong>{p.name}</strong>
-                <small>{p.category?.name || p.vendor || 'In stock'}</small>
+                <small>{p.vendor || 'In stock'}</small>
               </div>
               <div className="focalSearchItemPrice">{money(p.basePrice || 0)}</div>
             </Link>

@@ -24,7 +24,6 @@ const groups: AdminSidebarGroup[] = [
   ]},
   { id: 'collections', label: 'Collections', items: [
     { href: '/admin/collections', label: 'Collections', permission: 'collections.view', icon: 'collections' },
-    { href: '/admin/categories', label: 'Categories', permission: 'categories.view', icon: 'categories' },
   ]},
   { id: 'customers', label: 'Customers', items: [
     { href: '/admin/customers', label: 'Customers', permission: 'customers.view', icon: 'customers' },

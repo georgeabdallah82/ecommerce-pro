@@ -9,7 +9,7 @@ import s from './admin-collection-editor.module.css'
 import UnsavedBar from './admin-unsaved-bar'
 import MediaPicker from './media-picker'
 
-type Product = { id: string; name: string; slug: string; sku?: string | null; status: string; basePrice: number; images?: { url: string }[]; category?: { name: string } | null }
+type Product = { id: string; name: string; slug: string; sku?: string | null; status: string; basePrice: number; images?: { url: string }[] }
 type Collection = { id: string; name: string; slug: string; description?: string | null; imageUrl?: string | null; isActive: boolean; products: { product: Product }[] }
 
 async function api(path: string, init?: RequestInit) {
@@ -149,7 +149,7 @@ export default function CollectionEditorShopify({ id }: { id: string }) {
           {assigned.length ? <div className={s.assignedList}>{assigned.map(p => <div className={s.assignedRow} key={p.id}>
             <GripVertical size={16} />
             <div className={s.assignedThumb}>{p.images?.[0]?.url ? <img src={p.images[0].url} alt="" /> : <span>◎</span>}</div>
-            <div className={s.assignedInfo}><Link href={`/admin/products/${p.id}`}><strong>{p.name}</strong></Link><span>{p.sku || 'No SKU'}{p.category?.name ? ` · ${p.category.name}` : ''}</span></div>
+            <div className={s.assignedInfo}><Link href={`/admin/products/${p.id}`}><strong>{p.name}</strong></Link><span>{p.sku || 'No SKU'}</span></div>
             <div className={s.assignedPrice}>{(Number(p.basePrice || 0) / 100).toFixed(2)}</div>
             <button className={ui.iconBtn} title="Remove" onClick={() => removeAssigned(p.id)}><Trash2 size={16} /></button>
           </div>)}</div> : <div className="emptyInline">No products yet. Add products to build this collection.</div>}

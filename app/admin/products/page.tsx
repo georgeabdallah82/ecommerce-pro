@@ -8,7 +8,7 @@ export default async function Products() {
   const [total, rows] = await Promise.all([
     db.product.count(),
     db.product.findMany({
-      include: { category: true, inventory: true, variants: { include: { inventory: true } }, images: true },
+      include: { inventory: true, variants: { include: { inventory: true } }, images: true },
       orderBy: { updatedAt: 'desc' },
       take: pageSize,
     }),

@@ -3,7 +3,6 @@ import { json } from '@/lib/utils'
 
 const capabilities = [
   { key: 'catalog.products', name: 'Products', state: 'ready', scope: ['products', 'variants', 'media', 'SEO', 'metafields', 'duplicate', 'bulk actions'] },
-  { key: 'catalog.categories', name: 'Categories', state: 'ready', scope: ['hierarchy', 'slugs', 'product assignment'] },
   { key: 'catalog.collections', name: 'Collections', state: 'ready', scope: ['CRUD', 'product ordering', 'storefront'] },
   { key: 'inventory.core', name: 'Inventory', state: 'ready', scope: ['on-hand', 'reserved', 'available', 'adjustments', 'movement history', 'low-stock'] },
   { key: 'inventory.locations', name: 'Locations', state: 'ready', scope: ['locations', 'default location', 'enable/disable', 'reference protection'] },

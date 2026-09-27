@@ -18,7 +18,7 @@ type Product = {
   seoTitle?: string | null; seoDescription?: string | null; seoImageUrl?: string | null
   weight?: number | null; weightUnit?: string | null
   requiresShipping: boolean; taxable: boolean; trackInventory: boolean; continueSellingWhenOutOfStock: boolean; giftCard: boolean
-  productTemplate?: string | null; categoryId?: string | null; publishedAt?: string | null
+  productTemplate?: string | null; publishedAt?: string | null
   images: ImageItem[]; variants: Variant[]; inventory: any[]; tags: any[]; metafields?: any[]
   sharedInventory?: boolean; quantity?: number; lowStockThreshold?: number; locationId?: string | null
 }
@@ -60,7 +60,7 @@ function Check({ checked, onChange, title, text }: { checked: boolean; onChange:
   return <label className={s.checkCard}><input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} /><span><strong>{title}</strong><small>{text}</small></span></label>
 }
 
-export default function ProductEditorV2({ initial, creating, categories, definitions, locations, channels, publications }: { initial: Product; creating: boolean; categories: any[]; definitions: any[]; locations?: StoreLocationOption[]; channels?: any[]; publications?: any[] }) {
+export default function ProductEditorV2({ initial, creating, definitions, locations, channels, publications }: { initial: Product; creating: boolean; definitions: any[]; locations?: StoreLocationOption[]; channels?: any[]; publications?: any[] }) {
   const [product, setProduct] = useState<Product>(initial)
   const [tab, setTab] = useState<typeof tabs[number]>('General')
   const [busy, setBusy] = useState(false)
@@ -223,7 +223,6 @@ export default function ProductEditorV2({ initial, creating, categories, definit
             <div className={s.twoCol}>
               <Field label="Vendor / brand"><input className={ui.input} value={product.vendor || product.brand || ''} onChange={e => update({ vendor: e.target.value, brand: e.target.value })} /></Field>
               <Field label="Product type"><input className={ui.input} value={product.productType || ''} onChange={e => update({ productType: e.target.value })} /></Field>
-              <Field label="Category"><select className={ui.select} value={product.categoryId || ''} onChange={e => update({ categoryId: e.target.value || null })}><option value="">Uncategorized</option>{categories.map(c => <option key={c.id} value={c.id}>{c.parentId ? '↳ ' : ''}{c.name}</option>)}</select></Field>
               <Field label="Status"><select className={ui.select} value={product.status} onChange={e => update({ status: e.target.value, publishedAt: e.target.value === 'ACTIVE' ? new Date().toISOString() : null })}><option value="DRAFT">Draft</option><option value="ACTIVE">Active</option><option value="ARCHIVED">Archived</option></select></Field>
             </div>
             <Field label="Tags">

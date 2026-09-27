@@ -10,11 +10,10 @@ export default async function ProductEdit({ params }: ProductEditPageProps) {
   await requirePermission('products.view')
   const { id } = await params
   await ensureStorefrontChannel()
-  const [product, categories, definitions, locations, channels, publications] = await Promise.all([
+  const [product, definitions, locations, channels, publications] = await Promise.all([
     db.product.findUnique({
       where: { id },
       include: {
-        category: true,
         images: { orderBy: { sortOrder: 'asc' } },
         variants: { include: { inventory: { include: { location: true } } } },
         inventory: { where: { variantId: null }, include: { location: true } },
@@ -22,7 +21,6 @@ export default async function ProductEdit({ params }: ProductEditPageProps) {
         metafields: { include: { definition: true } },
       },
     }),
-    db.category.findMany({ orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] }),
     db.metafieldDefinition.findMany({ where: { ownerType: 'PRODUCT' }, orderBy: [{ namespace: 'asc' }, { key: 'asc' }] }),
     db.storeLocation.findMany({ orderBy: [{ isDefault: 'desc' }, { name: 'asc' }] }),
     db.salesChannel.findMany({ where: { status: 'ACTIVE' }, orderBy: { createdAt: 'asc' } }),
@@ -33,11 +31,10 @@ export default async function ProductEdit({ params }: ProductEditPageProps) {
 
   const sharedInventory = product.variants.length > 0 && product.variants.every(v => v.inventory.length === 0) && product.inventory.length > 0
   const serializedProduct = JSON.parse(JSON.stringify({ ...product, sharedInventory }))
-  const serializedCategories = JSON.parse(JSON.stringify(categories))
   const serializedDefinitions = JSON.parse(JSON.stringify(definitions))
   const serializedLocations = JSON.parse(JSON.stringify(locations))
   const serializedChannels = JSON.parse(JSON.stringify(channels))
   const serializedPublications = JSON.parse(JSON.stringify(publications))
 
-  return <ProductEditorV2 initial={serializedProduct} creating={false} categories={serializedCategories} definitions={serializedDefinitions} locations={serializedLocations} channels={serializedChannels} publications={serializedPublications} />
+  return <ProductEditorV2 initial={serializedProduct} creating={false} definitions={serializedDefinitions} locations={serializedLocations} channels={serializedChannels} publications={serializedPublications} />
 }

@@ -32,13 +32,11 @@ export default function AdminProductsList({ initial }: { initial: any }) {
   const [rows, setRows] = useState<ProductRow[]>(firstRows)
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('ALL')
-  const [categoryId, setCategoryId] = useState('ALL')
   const [sort, setSort] = useState('updated_desc')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(25)
   const [total, setTotal] = useState(Number(initial?.total || firstRows.length || 0))
   const [pages, setPages] = useState(Number(initial?.pages || 1))
-  const [categories, setCategories] = useState<any[]>([])
   const [selected, setSelected] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -46,15 +44,11 @@ export default function AdminProductsList({ initial }: { initial: any }) {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [bulkOpen, setBulkOpen] = useState(false)
 
-  useEffect(() => {
-    api('/api/admin/categories').then(data => setCategories(Array.isArray(data) ? data : data.rows || data.categories || [])).catch(() => undefined)
-  }, [])
-
   async function load(nextPage = page) {
     setLoading(true)
     setError('')
     try {
-      const params = new URLSearchParams({ q, status, categoryId, sort, page: String(nextPage), pageSize: String(pageSize) })
+      const params = new URLSearchParams({ q, status, sort, page: String(nextPage), pageSize: String(pageSize) })
       const data = await api(`/api/admin/products?${params.toString()}`)
       setRows(data.rows || [])
       setTotal(Number(data.total || 0))
@@ -68,7 +62,7 @@ export default function AdminProductsList({ initial }: { initial: any }) {
     }
   }
 
-  useEffect(() => { void load(1) }, [status, categoryId, sort, pageSize])
+  useEffect(() => { void load(1) }, [status, sort, pageSize])
 
   const allSelected = rows.length > 0 && rows.every(product => selected.includes(product.id))
   const draftCount = useMemo(() => rows.filter(product => product.status === 'DRAFT').length, [rows])
@@ -148,13 +142,6 @@ export default function AdminProductsList({ initial }: { initial: any }) {
         {filtersOpen && (
           <div className={styles.filterGrid}>
             <label>
-              <span>Category</span>
-              <select className={ui.input} value={categoryId} onChange={event => setCategoryId(event.target.value)}>
-                <option value="ALL">All categories</option>
-                {categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}
-              </select>
-            </label>
-            <label>
               <span>Sort</span>
               <select className={ui.input} value={sort} onChange={event => setSort(event.target.value)}>
                 <option value="updated_desc">Recently updated</option>
@@ -210,7 +197,6 @@ export default function AdminProductsList({ initial }: { initial: any }) {
                 <th>Product</th>
                 <th>Status</th>
                 <th>Inventory</th>
-                <th>Category</th>
                 <th>Price</th>
                 <th>Sales channels</th>
                 <th>Updated</th>
@@ -237,7 +223,6 @@ export default function AdminProductsList({ initial }: { initial: any }) {
                         </div>
                       ) : <span className={ui.muted}>Not tracked</span>}
                     </td>
-                    <td>{product.category?.name || '—'}</td>
                     <td><strong>{money(product.basePrice)}</strong>{product.compareAtPrice ? <div className={`${ui.muted} strike`}>{money(product.compareAtPrice)}</div> : null}</td>
                     <td><span className={styles.channel}>Online Store</span></td>
                     <td>{new Date(product.updatedAt).toLocaleDateString()}</td>

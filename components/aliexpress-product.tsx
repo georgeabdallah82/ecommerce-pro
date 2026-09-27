@@ -187,7 +187,7 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
 
           <div className="focalAccordions">
             <details open><summary>Description<ChevronDown size={16} /></summary><p>{product.description || product.shortDescription || ''}</p></details>
-            <details><summary>Product information<ChevronDown size={16} /></summary><p>SKU {selectedVariant?.sku || product.sku || '—'}{product.category?.name ? ` · ${product.category.name}` : ''}</p></details>
+            <details><summary>Product information<ChevronDown size={16} /></summary><p>SKU {selectedVariant?.sku || product.sku || '—'}</p></details>
             {product.metafields?.length > 0 && (
               <details><summary>Specifications<ChevronDown size={16} /></summary>
                 <table className="aliSpecTable">

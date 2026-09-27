@@ -11,7 +11,7 @@ export default async function DataTransfer() {
       <div>
         <span className={ui.muted}>OPERATIONS & INSIGHTS</span>
         <h1 className={ui.title}>Data management</h1>
-        <p className={ui.muted}>Safely import and export products, categories, and collections.</p>
+        <p className={ui.muted}>Safely import and export products and collections.</p>
       </div>
     </div>
     <AdminDataTransfer canImport={canImport} />
