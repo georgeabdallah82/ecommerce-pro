@@ -7,6 +7,18 @@
 // Idempotent: safe to re-run. Existing collections (matched by slug) are reused rather than
 // duplicated, and a product already linked to a collection is left alone.
 //
+// IMPORTANT: this script and the removal of the Category model from prisma/schema.prisma
+// landed in the same commit, so by the time this runs against `main` the generated Prisma
+// Client no longer has `db.category` or `Product.categoryId` at all -- there is no commit
+// where both the script and the typed models exist together. Reads of the legacy Category
+// collection and the legacy Product.categoryId field therefore go through db.$runCommandRaw
+// (a raw MongoDB `find`, bypassing the client's types) instead of typed Prisma calls. Both
+// fields are plain Prisma `String`s with no @map beyond `id -> _id`, so the raw documents
+// come back as ordinary JSON with no BSON unwrapping needed. Confirmed against a real run:
+// the typed db.category.findMany() throws "Cannot read properties of undefined (reading
+// 'findMany')" the instant this workflow checks out main, since Category no longer exists
+// as a Prisma model -- only $runCommandRaw can still see the underlying collection.
+//
 // Usage: DATABASE_URL=<mongodb-or-accelerate-url> node scripts/migrate-categories-to-collections.mjs [--dry-run]
 
 const dryRun = process.argv.includes('--dry-run')
@@ -17,6 +29,11 @@ const { PrismaClient } = await import('@prisma/client')
 const db = new PrismaClient({ datasources: { db: { url: rawUrl } } })
 
 function log(...args) { console.log('[migrate-categories]', ...args) }
+
+async function rawFind(collectionName, filter) {
+  const result = await db.$runCommandRaw({ find: collectionName, filter, limit: 100000 })
+  return Array.isArray(result?.cursor?.firstBatch) ? result.cursor.firstBatch : []
+}
 
 async function migrateNavigationSetting(key, slugMap) {
   const row = await db.setting.findUnique({ where: { key } })
@@ -43,7 +60,8 @@ async function migrateNavigationSetting(key, slugMap) {
 }
 
 async function main() {
-  const categories = await db.category.findMany()
+  const rawCategories = await rawFind('Category', {})
+  const categories = rawCategories.map(c => ({ ...c, id: c._id }))
   log(`found ${categories.length} categories`)
 
   const slugMap = new Map() // categorySlug -> collectionSlug (identical today, kept as a map for clarity/future-proofing)
@@ -77,12 +95,13 @@ async function main() {
     }
     slugMap.set(category.slug, category.slug)
 
-    const products = await db.product.findMany({ where: { categoryId: category.id }, select: { id: true } })
-    for (const product of products) {
+    const rawProducts = await rawFind('Product', { categoryId: category.id })
+    for (const rawProduct of rawProducts) {
+      const productId = rawProduct._id
       if (dryRun) { productsLinked++; continue }
-      const alreadyLinked = await db.collectionProduct.findFirst({ where: { collectionId: collection.id, productId: product.id } })
+      const alreadyLinked = await db.collectionProduct.findFirst({ where: { collectionId: collection.id, productId } })
       if (!alreadyLinked) {
-        await db.collectionProduct.create({ data: { collectionId: collection.id, productId: product.id, sortOrder: 0 } })
+        await db.collectionProduct.create({ data: { collectionId: collection.id, productId, sortOrder: 0 } })
         productsLinked++
       }
     }
