@@ -83,5 +83,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   if (isMaintenancePage) {
     return <html lang="en" className={FONT_VARIABLE_CLASSES}><head><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/>{theme.faviconUrl ? <link rel="icon" href={theme.faviconUrl}/> : null}</head><body>{children}</body></html>
   }
-  return <html lang="en" className={FONT_VARIABLE_CLASSES}><head><script dangerouslySetInnerHTML={{__html:adminThemeScript}}/><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/>{theme.faviconUrl ? <link rel="icon" href={theme.faviconUrl}/> : null}{theme.customCss ? <style dangerouslySetInnerHTML={{ __html: theme.customCss }}/> : null}</head><body className={theme.animations?.enabled ? 'animations-enabled' : ''}><TrackingScripts config={tracking}/><CartProvider><LiveVisitorTracker/><StoreNavRuntime theme={theme} navigation={navigation}/><StoreNavScroll/>{children}</CartProvider></body></html>
+  // suppressHydrationWarning is required here: adminThemeScript above deliberately sets
+  // data-admin-theme and style.colorScheme on this exact element from localStorage before
+  // hydration (to avoid a dark-mode flash), which SSR can never predict. Without this flag,
+  // React treats that as an unreconcilable mismatch and discards + fully re-renders the whole
+  // client tree from scratch on every /admin/* load -- which was silently breaking the theme
+  // editor's live-preview iframe: the fresh re-render recreates the iframe mid-handshake,
+  // permanently losing the postMessage exchange that populates the preview pane.
+  return <html lang="en" className={FONT_VARIABLE_CLASSES} suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:adminThemeScript}}/><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/>{theme.faviconUrl ? <link rel="icon" href={theme.faviconUrl}/> : null}{theme.customCss ? <style dangerouslySetInnerHTML={{ __html: theme.customCss }}/> : null}</head><body className={theme.animations?.enabled ? 'animations-enabled' : ''}><TrackingScripts config={tracking}/><CartProvider><LiveVisitorTracker/><StoreNavRuntime theme={theme} navigation={navigation}/><StoreNavScroll/>{children}</CartProvider></body></html>
 }
