@@ -47,4 +47,10 @@ jobs:
         run: npx prisma generate --schema=prisma/mongodb-schema
 
       - name: Run migration
-        run: node scripts/migrate-categories-to-collections.mjs ${{ inputs.dry_run == 'true' && '--dry-run' || '' }}
+        # inputs.dry_run is a real boolean (type: boolean above), not a string -- comparing it to the
+        # string literal 'true' made GitHub Actions coerce both sides to numbers (true -> 1, 'true' -> NaN),
+        # so `inputs.dry_run == 'true'` was ALWAYS false and --dry-run was never actually passed, regardless
+        # of the checkbox. Confirmed live: a run invoked with dry_run: true still executed for real (created
+        # a Collection and linked a product in production). Using the boolean directly in a truthy check
+        # avoids the type-coercion trap entirely.
+        run: node scripts/migrate-categories-to-collections.mjs ${{ inputs.dry_run && '--dry-run' || '' }}
