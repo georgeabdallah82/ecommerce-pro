@@ -27,6 +27,20 @@ function normalizeSections(raw:any, fallback:any[]){
   })
 }
 
+// category_strip/flash_deals/new_arrivals/best_sellers are read directly off
+// the Home page section list (see app/page.tsx) the same way hero already is,
+// but any install whose theme.sections predates these types just won't have
+// them -- append the missing ones from defaultSections so they show up as
+// real, editable rows instead of requiring the admin to know to add them.
+function ensureHomeExtras(list:any[]):any[]{
+  const extraTypes=['category_strip','flash_deals','new_arrivals','best_sellers']
+  const have=new Set(list.map((s:any)=>s.type))
+  const missing=extraTypes.filter(t=>!have.has(t))
+  if(!missing.length) return list
+  const extras=missing.map(t=>defaultSections.find(s=>s.type===t)).filter(Boolean)
+  return [...list,...extras]
+}
+
 function headerFirst(list:any[]){
   const normalized=normalizeSections(list,[])
   const headers=normalized.filter((s:any)=>s.type==='header')
@@ -73,7 +87,7 @@ export async function getThemeState(){
 
   const raw=parseJson<any>(themeSetting?.value,{})
   const theme=deepMerge(defaultTheme,raw)
-  const sections=normalizeSections(parseJson<any[]>(sectionsSetting?.value,defaultSections),defaultSections)
+  const sections=ensureHomeExtras(normalizeSections(parseJson<any[]>(sectionsSetting?.value,defaultSections),defaultSections))
 
   const editorTemplates=(theme.editorTemplates&&typeof theme.editorTemplates==='object')?structuredClone(theme.editorTemplates):{}
   editorTemplates['Home page']=headerFirst(sections)
@@ -122,7 +136,7 @@ export async function getThemeEditorState() {
   const publishedTheme=parseSettingValue(published?.value,defaultTheme)
   const rawTheme=parseSettingValue(draft?.value,publishedTheme)
   const publishedHome=headerFirstEditor(normalizeEditorSections(parseSettingValue(publishedSections?.value,defaultSections)))
-  const home=headerFirstEditor(normalizeEditorSections(parseSettingValue(draftSections?.value,publishedHome)))
+  const home=ensureHomeExtras(headerFirstEditor(normalizeEditorSections(parseSettingValue(draftSections?.value,publishedHome))))
   const editorTemplates=normalizeEditorTemplates(rawTheme.editorTemplates)
   if(!Object.prototype.hasOwnProperty.call(editorTemplates,'Home page')) editorTemplates['Home page']=home
   for(const key of Object.keys(editorTemplates)) editorTemplates[key]=headerFirstEditor(editorTemplates[key])

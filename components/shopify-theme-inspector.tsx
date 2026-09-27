@@ -151,6 +151,13 @@ function collectionTypePanels(): PanelSchema[] {
   ]
 }
 
+// These four map onto homepage blocks that are otherwise entirely hardcoded
+// (see components/aliexpress-home.tsx) -- heading and item count are the only
+// settings that section actually reads, so that's all this panel offers.
+function homeGridPanel(defaultHeading: string): PanelSchema[] {
+  return [{ title: 'Content', fields: [text('Heading', 'heading', defaultHeading), range('Products shown', 'limit', 4, 20, 12)] }]
+}
+
 function richTextPanels(): PanelSchema[] {
   return [
     { title: 'Content', fields: [
@@ -244,6 +251,10 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
   product_recommendations: () => productTypePanels(false),
   collection_grid: () => collectionTypePanels(),
   collection_carousel: () => collectionTypePanels(),
+  category_strip: () => [{ title: 'Content', fields: [range('Collections shown', 'limit', 4, 16, 12)] }],
+  flash_deals: () => homeGridPanel('Flash Deals'),
+  new_arrivals: () => homeGridPanel('New Arrivals'),
+  best_sellers: () => homeGridPanel('Best Sellers'),
   image_with_text: () => [
     { title: 'Content', fields: [
       text('Eyebrow', 'eyebrow'),

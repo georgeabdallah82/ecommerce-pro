@@ -13,6 +13,7 @@ import {
   GalleryHorizontal,
   GalleryHorizontalEnd,
   Camera,
+  Compass,
   Grid2x2,
   GripVertical,
   HelpCircle,
@@ -33,11 +34,13 @@ import {
   PanelTop,
   Plus,
   Redo2,
+  Rocket,
   Save,
   ShieldCheck,
   Smartphone,
   Sparkles,
   SplitSquareHorizontal,
+  Star,
   Tablet,
   Timer,
   Trash2,
@@ -47,6 +50,7 @@ import {
   Video,
   X,
   ImagePlus,
+  Zap,
 } from 'lucide-react'
 import ShopifyThemeInspector from '@/components/shopify-theme-inspector'
 import ThemeInspectorStyles from '@/components/theme-inspector-styles'
@@ -68,6 +72,10 @@ const META: Record<string, string> = {
   announcement: 'Announcement bar',
   header: 'Header',
   hero: 'Image banner',
+  category_strip: 'Category strip',
+  flash_deals: 'Flash deals',
+  new_arrivals: 'New arrivals',
+  best_sellers: 'Best sellers',
   slideshow: 'Slideshow',
   video: 'Video',
   image_with_text: 'Image with text',
@@ -97,6 +105,10 @@ const SECTION_ICONS: Record<string, typeof ImageIcon> = {
   announcement: Megaphone,
   header: Menu,
   hero: ImageIcon,
+  category_strip: Compass,
+  flash_deals: Zap,
+  new_arrivals: Rocket,
+  best_sellers: Star,
   slideshow: Images,
   video: Video,
   image_with_text: SplitSquareHorizontal,
@@ -133,7 +145,11 @@ function sectionDefaults(type: string): Section {
   if (type === 'hero') return { id: makeId(type), type, enabled: true, settings: { ...base, showContent: true, eyebrow: 'NEW COLLECTION', heading: 'Make your store impossible to ignore.', text: 'A premium storefront built for conversion.', buttonLabel: 'Shop now', buttonUrl: '/shop', imageUrl: '', mobileImageUrl: '', minHeight: 640, contentPosition: 'center-left', overlay: 0.2, overlayColor: '#000000', overlayStyle: 'none', imageFit: 'cover', focalX: 50, focalY: 50 } }
   if (type === 'product_grid' || type === 'product_carousel' || type === 'product_recommendations') return { id: makeId(type), type, enabled: true, settings: { ...base, heading: type === 'product_recommendations' ? 'You may also like' : 'Featured products', limit: 8, columns: 4, showViewAll: true } }
   if (type === 'featured_product') return { id: makeId(type), type, enabled: true, settings: { ...base, heading: 'Featured product', limit: 1, columns: 1, productId: '' } }
-  if (type === 'collection_grid' || type === 'collection_carousel') return { id: makeId(type), type, enabled: true, settings: { ...base, heading: 'Shop by collection', limit: 4, columns: 4, collectionIds: [] } }
+  if (type === 'collection_grid' || type === 'collection_carousel') return { id: makeId(type), type, enabled: true, settings: { ...base, heading: 'Shop by collection', limit: 8, columns: 4, collectionIds: [] } }
+  if (type === 'category_strip') return { id: makeId(type), type, enabled: true, settings: { limit: 12 } }
+  if (type === 'flash_deals') return { id: makeId(type), type, enabled: true, settings: { heading: 'Flash Deals', limit: 12 } }
+  if (type === 'new_arrivals') return { id: makeId(type), type, enabled: true, settings: { heading: 'New Arrivals', limit: 12 } }
+  if (type === 'best_sellers') return { id: makeId(type), type, enabled: true, settings: { heading: 'Best Sellers', limit: 12 } }
   if (type === 'main_product') return { id: makeId(type), type, enabled: true, settings: { ...base, previewProductId: '', stickyAddToCart: true, showReviews: true, showWishlist: true } }
   if (type === 'main_collection_banner') return { id: makeId(type), type, enabled: true, settings: { ...base, heading: 'Collection' } }
   if (type === 'main_collection_grid') return { id: makeId(type), type, enabled: true, settings: { ...base, heading: 'Products', limit: 24, columns: 4 } }
@@ -632,7 +648,7 @@ export default function FocalThemeEditor({ initial }: Props) {
                 <button className={styles.iconBtn} onClick={() => setPicker(true)}><Plus size={15} /></button>
               </div>
               <div className={styles.legacyNotice}>
-                &ldquo;{page}&rdquo; renders on your live storefront as a dedicated built-in page design, not from this section list -- edits below only change what you see in this editor&rsquo;s own preview. Header and Announcement here (tagged LIVE) are the exception: those apply to your real site regardless of this template.{page === 'Home page' && <> The Image banner is also live here (and only here) -- it's the one section this page reads out of the list below. The category strip, flash deals, collections, new arrivals and best sellers blocks further down the homepage aren&rsquo;t in this list at all -- toggle and rename them from the Theme tab&rsquo;s Homepage sections panel.</>} Footer is edited under the Theme tab instead.
+                &ldquo;{page}&rdquo; renders on your live storefront as a dedicated built-in page design, not from this section list -- edits below only change what you see in this editor&rsquo;s own preview. Header and Announcement here (tagged LIVE) are the exception: those apply to your real site regardless of this template.{page === 'Home page' && <> Image banner, Category strip, Flash deals, Collection list, New arrivals and Best sellers are also live here (and only here) -- these are the sections this page actually reads out of the list below; their position in this list doesn&rsquo;t affect where they appear on the page, but enabling/disabling and editing their content does.</>} Footer is edited under the Theme tab instead.
               </div>
               <div className={styles.rows}>
                 {current.map((section, index) => (
@@ -650,7 +666,7 @@ export default function FocalThemeEditor({ initial }: Props) {
                       <GripVertical size={13} className={styles.rowGrip} />
                       {(() => { const Icon = SECTION_ICONS[section.type] || LayoutGrid; return <Icon size={15} className={styles.rowIcon} /> })()}
                       <span>{META[section.type] || section.type.replaceAll('_', ' ')}</span>
-                      {(section.type === 'header' || section.type === 'announcement' || (section.type === 'hero' && page === 'Home page')) && <small className={styles.liveTag}>LIVE</small>}
+                      {(section.type === 'header' || section.type === 'announcement' || (page === 'Home page' && ['hero', 'category_strip', 'flash_deals', 'collection_grid', 'new_arrivals', 'best_sellers'].includes(section.type))) && <small className={styles.liveTag}>LIVE</small>}
                       {index === 0 && <small>MAIN</small>}
                     </button>
                     <button className={styles.rowToggle} onClick={() => { setSelectedId(section.id); setDrawer(true); toggle(section.enabled === false) }}>
@@ -678,17 +694,6 @@ export default function FocalThemeEditor({ initial }: Props) {
                 <ToggleField label="Show newsletter signup" value={theme.footer?.showNewsletter !== false} onChange={value => patchTheme('footer', { showNewsletter: value })} />
                 <Field label="Description text" value={theme.footer?.text || ''} onChange={value => patchTheme('footer', { text: value })} />
                 <RangeField label="Link columns shown" value={theme.footer?.columns ?? 4} min={2} max={4} onChange={value => patchTheme('footer', { columns: value })} />
-              </Panel>
-              <Panel title="Homepage sections">
-                <ToggleField label="Show category strip" value={theme.homepage?.showCategoryStrip !== false} onChange={value => patchTheme('homepage', { showCategoryStrip: value })} />
-                <ToggleField label="Show flash deals" value={theme.homepage?.showFlashDeals !== false} onChange={value => patchTheme('homepage', { showFlashDeals: value })} />
-                <Field label="Flash deals heading" value={theme.homepage?.flashDealsHeading || ''} onChange={value => patchTheme('homepage', { flashDealsHeading: value })} />
-                <ToggleField label="Show collections grid" value={theme.homepage?.showCollections !== false} onChange={value => patchTheme('homepage', { showCollections: value })} />
-                <Field label="Collections heading" value={theme.homepage?.collectionsHeading || ''} onChange={value => patchTheme('homepage', { collectionsHeading: value })} />
-                <ToggleField label="Show new arrivals" value={theme.homepage?.showNewArrivals !== false} onChange={value => patchTheme('homepage', { showNewArrivals: value })} />
-                <Field label="New arrivals heading" value={theme.homepage?.newArrivalsHeading || ''} onChange={value => patchTheme('homepage', { newArrivalsHeading: value })} />
-                <ToggleField label="Show best sellers" value={theme.homepage?.showBestSellers !== false} onChange={value => patchTheme('homepage', { showBestSellers: value })} />
-                <Field label="Best sellers heading" value={theme.homepage?.bestSellersHeading || ''} onChange={value => patchTheme('homepage', { bestSellersHeading: value })} />
               </Panel>
               <Panel title="Social links">
                 <Field label="Instagram URL" value={theme.social?.instagram || ''} onChange={value => patchTheme('social', { instagram: value })} />

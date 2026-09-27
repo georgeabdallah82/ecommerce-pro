@@ -11,6 +11,11 @@ export const revalidate=0
 export default async function Home(){
   const {theme,sections}=await getThemeState()
   const hero=sections.find((s:any)=>s.type==='hero'&&s.enabled!==false&&s.settings?.enabled!==false)
+  const categoryStrip=sections.find((s:any)=>s.type==='category_strip')
+  const flashDeals=sections.find((s:any)=>s.type==='flash_deals')
+  const collectionsSection=sections.find((s:any)=>s.type==='collection_grid')
+  const newArrivalsSection=sections.find((s:any)=>s.type==='new_arrivals')
+  const bestSellersSection=sections.find((s:any)=>s.type==='best_sellers')
   const unpublishedIds=await getUnpublishedProductIds()
   const [rawProducts,collections,iconCollections,contentBlocks]=await Promise.all([
     db.product.findMany({where:{status:'ACTIVE',id:{notIn:unpublishedIds}},include:{images:true,collections:{include:{collection:true}}},orderBy:[{featured:'desc'},{createdAt:'desc'}],take:60}),
@@ -24,5 +29,5 @@ export default async function Home(){
   const products=await withProductStats(rawProducts)
   const announcements=contentBlocks.filter((b:any)=>b.type==='announcement')
   const trustItems=contentBlocks.filter((b:any)=>b.type==='trust')
-  return <><AliExpressHome theme={theme} hero={hero} products={products} collections={collections} iconCollections={iconCollections} announcements={announcements} trustItems={trustItems}/><Footer theme={theme}/></>
+  return <><AliExpressHome theme={theme} hero={hero} products={products} collections={collections} iconCollections={iconCollections} announcements={announcements} trustItems={trustItems} categoryStrip={categoryStrip} flashDeals={flashDeals} collectionsSection={collectionsSection} newArrivalsSection={newArrivalsSection} bestSellersSection={bestSellersSection}/><Footer theme={theme}/></>
 }
