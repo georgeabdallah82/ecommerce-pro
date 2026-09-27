@@ -11,6 +11,7 @@ type AnyMap = Record<string, any>
 export default function AliExpressHome({ theme, hero, products, collections, iconCollections, announcements, trustItems }: { theme: AnyMap; hero?: AnyMap | null; products: AnyMap[]; collections: AnyMap[]; iconCollections: AnyMap[]; announcements?: AnyMap[]; trustItems?: AnyMap[] }) {
   const { wishlist, toggleWish } = useWishlist()
   const [quickProduct, setQuickProduct] = useState<AnyMap | null>(null)
+  const homepage = theme?.homepage || {}
 
   const discounted = useMemo(() => products.filter(p => Number(p.compareAtPrice || 0) > Number(p.basePrice || 0))
     .sort((a, b) => (Number(b.compareAtPrice) - Number(b.basePrice)) / Number(b.compareAtPrice) - (Number(a.compareAtPrice) - Number(a.basePrice)) / Number(a.compareAtPrice)), [products])
@@ -46,7 +47,7 @@ export default function AliExpressHome({ theme, hero, products, collections, ico
 
       {hero && <HeroSection theme={theme} section={hero} />}
 
-      {iconCollections.length > 0 && (
+      {homepage.showCategoryStrip !== false && iconCollections.length > 0 && (
         <section className="aliCategoryStrip">
           <div className="aliContainer aliCategoryRow">
             {iconCollections.map(c => (
@@ -59,12 +60,12 @@ export default function AliExpressHome({ theme, hero, products, collections, ico
         </section>
       )}
 
-      {discounted.length > 0 && (
+      {homepage.showFlashDeals !== false && discounted.length > 0 && (
         <section className="aliFlash">
           <div className="aliContainer aliFlashHead">
             <div className="aliFlashTitle">
               <span className="aliFlashBolt">⚡</span>
-              <h2>Flash Deals</h2>
+              <h2>{homepage.flashDealsHeading || 'Flash Deals'}</h2>
             </div>
             <div className="aliFlashTimer">
               <span>Ends in</span>
@@ -82,18 +83,18 @@ export default function AliExpressHome({ theme, hero, products, collections, ico
         </section>
       )}
 
-      {collections.length > 0 && (
+      {homepage.showCollections !== false && collections.length > 0 && (
         <section className="aliSection">
-          <div className="aliContainer aliSectionHead"><h2>Shop by collection</h2><Link href="/collections" className="aliViewAll">All collections <ChevronRight size={15} /></Link></div>
+          <div className="aliContainer aliSectionHead"><h2>{homepage.collectionsHeading || 'Shop by collection'}</h2><Link href="/collections" className="aliViewAll">All collections <ChevronRight size={15} /></Link></div>
           <div className="aliContainer aliCollectionGrid">
             {collections.slice(0, 8).map(c => <CollectionCard key={c.id} c={c} />)}
           </div>
         </section>
       )}
 
-      {newArrivals.length > 0 && (
+      {homepage.showNewArrivals !== false && newArrivals.length > 0 && (
         <section className="aliSection">
-          <div className="aliContainer aliSectionHead"><h2>New Arrivals</h2><Link href="/shop?sort=newest" className="aliViewAll">View all <ChevronRight size={15} /></Link></div>
+          <div className="aliContainer aliSectionHead"><h2>{homepage.newArrivalsHeading || 'New Arrivals'}</h2><Link href="/shop?sort=newest" className="aliViewAll">View all <ChevronRight size={15} /></Link></div>
           <div className="aliContainer aliDenseGrid">
             {newArrivals.slice(0, 12).map(p => (
               <ProductCard key={p.id} p={p} theme={theme} onQuickView={setQuickProduct} wishlist={wishlist} toggleWish={toggleWish} />
@@ -102,9 +103,9 @@ export default function AliExpressHome({ theme, hero, products, collections, ico
         </section>
       )}
 
-      {bestSellers.some(p => Number(p.soldCount || 0) > 0) && (
+      {homepage.showBestSellers !== false && bestSellers.some(p => Number(p.soldCount || 0) > 0) && (
         <section className="aliSection">
-          <div className="aliContainer aliSectionHead"><h2>Best Sellers</h2><Link href="/shop" className="aliViewAll">View all <ChevronRight size={15} /></Link></div>
+          <div className="aliContainer aliSectionHead"><h2>{homepage.bestSellersHeading || 'Best Sellers'}</h2><Link href="/shop" className="aliViewAll">View all <ChevronRight size={15} /></Link></div>
           <div className="aliContainer aliDenseGrid">
             {bestSellers.filter(p => Number(p.soldCount || 0) > 0).slice(0, 12).map(p => (
               <ProductCard key={p.id} p={p} theme={theme} onQuickView={setQuickProduct} wishlist={wishlist} toggleWish={toggleWish} />

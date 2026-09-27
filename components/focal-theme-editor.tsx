@@ -632,7 +632,7 @@ export default function FocalThemeEditor({ initial }: Props) {
                 <button className={styles.iconBtn} onClick={() => setPicker(true)}><Plus size={15} /></button>
               </div>
               <div className={styles.legacyNotice}>
-                &ldquo;{page}&rdquo; renders on your live storefront as a dedicated built-in page design, not from this section list -- edits below only change what you see in this editor&rsquo;s own preview. Header and Announcement here (tagged LIVE) are the exception: those apply to your real site regardless of this template. Footer is edited under the Theme tab instead.
+                &ldquo;{page}&rdquo; renders on your live storefront as a dedicated built-in page design, not from this section list -- edits below only change what you see in this editor&rsquo;s own preview. Header and Announcement here (tagged LIVE) are the exception: those apply to your real site regardless of this template.{page === 'Home page' && <> The Image banner is also live here (and only here) -- it's the one section this page reads out of the list below. The category strip, flash deals, collections, new arrivals and best sellers blocks further down the homepage aren&rsquo;t in this list at all -- toggle and rename them from the Theme tab&rsquo;s Homepage sections panel.</>} Footer is edited under the Theme tab instead.
               </div>
               <div className={styles.rows}>
                 {current.map((section, index) => (
@@ -650,7 +650,7 @@ export default function FocalThemeEditor({ initial }: Props) {
                       <GripVertical size={13} className={styles.rowGrip} />
                       {(() => { const Icon = SECTION_ICONS[section.type] || LayoutGrid; return <Icon size={15} className={styles.rowIcon} /> })()}
                       <span>{META[section.type] || section.type.replaceAll('_', ' ')}</span>
-                      {(section.type === 'header' || section.type === 'announcement') && <small className={styles.liveTag}>LIVE</small>}
+                      {(section.type === 'header' || section.type === 'announcement' || (section.type === 'hero' && page === 'Home page')) && <small className={styles.liveTag}>LIVE</small>}
                       {index === 0 && <small>MAIN</small>}
                     </button>
                     <button className={styles.rowToggle} onClick={() => { setSelectedId(section.id); setDrawer(true); toggle(section.enabled === false) }}>
@@ -678,6 +678,17 @@ export default function FocalThemeEditor({ initial }: Props) {
                 <ToggleField label="Show newsletter signup" value={theme.footer?.showNewsletter !== false} onChange={value => patchTheme('footer', { showNewsletter: value })} />
                 <Field label="Description text" value={theme.footer?.text || ''} onChange={value => patchTheme('footer', { text: value })} />
                 <RangeField label="Link columns shown" value={theme.footer?.columns ?? 4} min={2} max={4} onChange={value => patchTheme('footer', { columns: value })} />
+              </Panel>
+              <Panel title="Homepage sections">
+                <ToggleField label="Show category strip" value={theme.homepage?.showCategoryStrip !== false} onChange={value => patchTheme('homepage', { showCategoryStrip: value })} />
+                <ToggleField label="Show flash deals" value={theme.homepage?.showFlashDeals !== false} onChange={value => patchTheme('homepage', { showFlashDeals: value })} />
+                <Field label="Flash deals heading" value={theme.homepage?.flashDealsHeading || ''} onChange={value => patchTheme('homepage', { flashDealsHeading: value })} />
+                <ToggleField label="Show collections grid" value={theme.homepage?.showCollections !== false} onChange={value => patchTheme('homepage', { showCollections: value })} />
+                <Field label="Collections heading" value={theme.homepage?.collectionsHeading || ''} onChange={value => patchTheme('homepage', { collectionsHeading: value })} />
+                <ToggleField label="Show new arrivals" value={theme.homepage?.showNewArrivals !== false} onChange={value => patchTheme('homepage', { showNewArrivals: value })} />
+                <Field label="New arrivals heading" value={theme.homepage?.newArrivalsHeading || ''} onChange={value => patchTheme('homepage', { newArrivalsHeading: value })} />
+                <ToggleField label="Show best sellers" value={theme.homepage?.showBestSellers !== false} onChange={value => patchTheme('homepage', { showBestSellers: value })} />
+                <Field label="Best sellers heading" value={theme.homepage?.bestSellersHeading || ''} onChange={value => patchTheme('homepage', { bestSellersHeading: value })} />
               </Panel>
               <Panel title="Social links">
                 <Field label="Instagram URL" value={theme.social?.instagram || ''} onChange={value => patchTheme('social', { instagram: value })} />
