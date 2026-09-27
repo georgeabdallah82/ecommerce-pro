@@ -1,6 +1,8 @@
 'use client'
 
+import Link from 'next/link'
 import { useMemo, useState } from 'react'
+import { ChevronRight } from 'lucide-react'
 import { ProductCard, QuickView, StoreImage } from '@/components/storefront-sections'
 import { useWishlist } from '@/components/use-wishlist'
 
@@ -10,6 +12,11 @@ export default function AliExpressCollectionDetail({ theme, collection, products
   const { wishlist, toggleWish } = useWishlist()
   const [quickProduct, setQuickProduct] = useState<AnyMap | null>(null)
   const [sort, setSort] = useState('curated')
+  const cp = theme.collectionPage || {}
+  const showBreadcrumbs = cp.showBreadcrumbs !== false
+  const showDescription = cp.showDescription !== false
+  const showImage = cp.showImage !== false
+  const showSort = cp.showSort !== false
 
   const sorted = useMemo(() => {
     if (sort === 'price_asc') return [...products].sort((a, b) => Number(a.basePrice || 0) - Number(b.basePrice || 0))
@@ -21,28 +28,46 @@ export default function AliExpressCollectionDetail({ theme, collection, products
 
   return (
     <main className="focalStorefront aliCollectionPage">
-      <div className="aliCollectionBanner">
-        <StoreImage src={collection.imageUrl || '/placeholder-product.svg'} alt={collection.name} eager />
-        <div className="aliCollectionBannerOverlay">
-          <div className="aliContainer">
-            <span className="focalEyebrow">COLLECTION</span>
-            <h1>{collection.name}</h1>
-            {collection.description && <p>{collection.description}</p>}
-            <span className="aliCollectionCount">{products.length} product{products.length === 1 ? '' : 's'}</span>
+      {showBreadcrumbs && (
+        <div className="aliContainer aliBreadcrumbs">
+          <Link href="/">Home</Link><ChevronRight size={12} />
+          <Link href="/collections">Collections</Link><ChevronRight size={12} />
+          <span>{collection.name}</span>
+        </div>
+      )}
+      {showImage ? (
+        <div className="aliCollectionBanner">
+          <StoreImage src={collection.imageUrl || '/placeholder-product.svg'} alt={collection.name} eager />
+          <div className="aliCollectionBannerOverlay">
+            <div className="aliContainer">
+              <span className="focalEyebrow">COLLECTION</span>
+              <h1>{collection.name}</h1>
+              {showDescription && collection.description && <p>{collection.description}</p>}
+              <span className="aliCollectionCount">{products.length} product{products.length === 1 ? '' : 's'}</span>
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <header className="aliContainer aliCollectionsHead">
+          <span className="focalEyebrow">COLLECTION</span>
+          <h1>{collection.name}</h1>
+          {showDescription && collection.description && <p>{collection.description}</p>}
+          <span className="aliCollectionCount">{products.length} product{products.length === 1 ? '' : 's'}</span>
+        </header>
+      )}
 
       <div className="aliContainer">
         <div className="aliCollectionToolbar">
           <span className="focalResultCount">{products.length} product{products.length === 1 ? '' : 's'}</span>
-          <select value={sort} onChange={e => setSort(e.target.value)}>
-            <option value="curated">Featured</option>
-            <option value="price_asc">Price: low to high</option>
-            <option value="price_desc">Price: high to low</option>
-            <option value="bestselling">Best Selling</option>
-            <option value="rating">Rating</option>
-          </select>
+          {showSort && (
+            <select value={sort} onChange={e => setSort(e.target.value)}>
+              <option value="curated">Featured</option>
+              <option value="price_asc">Price: low to high</option>
+              <option value="price_desc">Price: high to low</option>
+              <option value="bestselling">Best Selling</option>
+              <option value="rating">Rating</option>
+            </select>
+          )}
         </div>
 
         {sorted.length ? (
