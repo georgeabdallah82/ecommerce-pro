@@ -5,9 +5,10 @@ import { GripVertical, ImagePlus, LayoutGrid, Link2, ListTree, Plus, Save, Trash
 import styles from './admin-navigation-editor.module.css'
 import ui from './admin-ui.module.css'
 import MediaPicker from './media-picker'
+import ThemePublishBar from './theme-publish-bar'
 
 type Item = { id: string; label: string; url?: string | null; type?: string; parentId?: string | null; resourceId?: string | null; group?: string | null; imageUrl?: string | null }
-type Props = { initial: Item[]; collections: any[] }
+type Props = { initial: Item[]; collections: any[]; initialDraft: boolean }
 type LinkKind = 'tile' | 'link' | 'sublink'
 type Draft = { label: string; linkType: 'custom' | 'collection'; url: string; resourceId: string; group: string; imageUrl: string }
 
@@ -73,12 +74,16 @@ function draftFromItem(item: Item): Draft {
   }
 }
 
-export default function NavigationEditorPro({ initial, collections }: Props) {
+export default function NavigationEditorPro({ initial, collections, initialDraft }: Props) {
   const [items, setItems] = useState<Item[]>(() => normalize(initial || []))
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
   const [dragId, setDragId] = useState<string | null>(null)
+  const [hasDraft, setHasDraft] = useState(initialDraft)
+  const [publishing, setPublishing] = useState(false)
+  const [publishMessage, setPublishMessage] = useState('')
+  const [publishError, setPublishError] = useState('')
 
   const roots = useMemo(() => childrenOf(items, null), [items])
   const [activeDeptId, setActiveDeptId] = useState<string | null>(null)
@@ -125,11 +130,32 @@ export default function NavigationEditorPro({ initial, collections }: Props) {
       })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data.error || 'Unable to save navigation')
+      setHasDraft(true)
       setNotice('Navigation saved')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unable to save navigation')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const publish = async () => {
+    if (!hasDraft || publishing) return
+    setPublishing(true)
+    setPublishMessage('')
+    setPublishError('')
+    try {
+      const response = await fetch('/api/admin/theme/publish', { method: 'POST' })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || 'Unable to publish navigation')
+      setHasDraft(false)
+      setPublishMessage('Published')
+      window.setTimeout(() => setPublishMessage(''), 2500)
+    } catch (e) {
+      setPublishError(e instanceof Error ? e.message : 'Unable to publish navigation')
+      window.setTimeout(() => setPublishError(''), 4000)
+    } finally {
+      setPublishing(false)
     }
   }
 
@@ -414,6 +440,8 @@ export default function NavigationEditorPro({ initial, collections }: Props) {
           />
         </div>
       )}
+
+      <ThemePublishBar draft={hasDraft} publishing={publishing} message={publishMessage} error={publishError} onPublish={publish} />
     </div>
   )
 }
