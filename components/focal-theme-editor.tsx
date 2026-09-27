@@ -665,6 +665,16 @@ export default function FocalThemeEditor({ initial }: Props) {
                 <ImageField label="Logo (for dark backgrounds, e.g. footer)" value={theme.logoUrlDark || ''} onChange={value => commit(templates, { ...theme, logoUrlDark: value })} />
                 <ImageField label="Favicon" value={theme.faviconUrl || ''} onChange={value => commit(templates, { ...theme, faviconUrl: value })} />
               </Panel>
+              <Panel title="Header">
+                <ToggleField label="Show wishlist icon" value={theme.header?.showWishlist === true} onChange={value => patchTheme('header', { showWishlist: value })} />
+                <ToggleField label="Transparent header" value={theme.header?.transparent === true} onChange={value => patchTheme('header', { transparent: value })} />
+                <ToggleField label="Transparent on homepage only" value={theme.header?.transparentHome === true} onChange={value => patchTheme('header', { transparentHome: value })} />
+              </Panel>
+              <Panel title="Footer">
+                <ToggleField label="Show newsletter signup" value={theme.footer?.showNewsletter !== false} onChange={value => patchTheme('footer', { showNewsletter: value })} />
+                <Field label="Description text" value={theme.footer?.text || ''} onChange={value => patchTheme('footer', { text: value })} />
+                <RangeField label="Link columns shown" value={theme.footer?.columns ?? 4} min={2} max={4} onChange={value => patchTheme('footer', { columns: value })} />
+              </Panel>
               <Panel title="Social links">
                 <Field label="Instagram URL" value={theme.social?.instagram || ''} onChange={value => patchTheme('social', { instagram: value })} />
                 <Field label="Facebook URL" value={theme.social?.facebook || ''} onChange={value => patchTheme('social', { facebook: value })} />

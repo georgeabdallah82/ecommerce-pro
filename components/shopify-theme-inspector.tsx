@@ -70,7 +70,7 @@ function BlocksEditor({ section, type, onUpdateBlocks }: { section: Section; typ
   const add = () => onUpdateBlocks([...blocks, { id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`, type, settings: {} }])
   const update = (index: number, patch: Record<string,any>) => onUpdateBlocks(blocks.map((block,index2) => index===index2 ? {...block,settings:{...(block.settings||{}),...patch}} : block))
   const remove = (index: number) => onUpdateBlocks(blocks.filter((_,index2)=>index!==index2))
-  return <div className="themeBlockList">{blocks.map((block,index)=><div className="themeBlock" key={block.id || index}><div className="themeBlockHeader"><GripVertical size={14}/><strong>{labels[block.type] || label} {index+1}</strong><button type="button" className="themeBlockDelete" onClick={()=>remove(index)} aria-label={`Delete ${label}`}><Trash2 size={14}/></button></div><div className="themeBlockFields">{type==='promo'&&<><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><TextArea label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><ImageField label="Image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Link URL" value={block.settings?.url} onChange={value=>update(index,{url:value})}/></>}{type==='quote'&&<><TextArea label="Quote" value={block.settings?.quote} onChange={value=>update(index,{quote:value})}/><Field label="Author" value={block.settings?.author} onChange={value=>update(index,{author:value})}/><Field label="Role" value={block.settings?.role} onChange={value=>update(index,{role:value})}/><Select label="Rating" value={block.settings?.rating??5} options={['1','2','3','4','5']} onChange={value=>update(index,{rating:Number(value)})}/></>}{type==='column'&&<><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><TextArea label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><ImageField label="Icon / image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/></>}{type==='question'&&<><Field label="Question" value={block.settings?.question||block.settings?.heading} onChange={value=>update(index,{question:value,heading:value})}/><TextArea label="Answer" value={block.settings?.answer||block.settings?.text} onChange={value=>update(index,{answer:value,text:value})}/></>}{type==='slide'&&<><Field label="Eyebrow" value={block.settings?.eyebrow} onChange={value=>update(index,{eyebrow:value})}/><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><TextArea label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><ImageField label="Image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Button URL" value={block.settings?.buttonUrl} onChange={value=>update(index,{buttonUrl:value})}/></>}{type==='logo'&&<><ImageField label="Logo" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Alt text" value={block.settings?.alt} onChange={value=>update(index,{alt:value})}/><Field label="Link URL" value={block.settings?.url} onChange={value=>update(index,{url:value})}/></>}{type==='badge'&&<><Select label="Icon" value={block.settings?.icon||'shield'} options={[{value:'truck',label:'Shipping'},{value:'shield',label:'Secure'},{value:'return',label:'Returns'},{value:'lock',label:'Payment'},{value:'support',label:'Support'},{value:'award',label:'Quality'}]} onChange={value=>update(index,{icon:value})}/><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><Field label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/></>}{type==='stat'&&<><Field label="Value" value={block.settings?.value} onChange={value=>update(index,{value:value})}/><Field label="Label" value={block.settings?.label} onChange={value=>update(index,{label:value})}/></>}{type==='photo'&&<><ImageField label="Image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Link URL" value={block.settings?.url} onChange={value=>update(index,{url:value})}/></>}{type==='message'&&<><Field label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><Field label="Link URL" value={block.settings?.link} onChange={value=>update(index,{link:value})}/></>}</div></div>)}<button type="button" className="themeAddBlock" onClick={add}><Plus size={14}/> Add {label}</button></div>
+  return <div className="themeBlockList">{blocks.map((block,index)=><div className="themeBlock" key={block.id || index}><div className="themeBlockHeader"><GripVertical size={14}/><strong>{labels[block.type] || label} {index+1}</strong><button type="button" className="themeBlockDelete" onClick={()=>remove(index)} aria-label={`Delete ${label}`}><Trash2 size={14}/></button></div><div className="themeBlockFields">{type==='promo'&&<><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><TextArea label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><ImageField label="Image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Link URL" value={block.settings?.url} onChange={value=>update(index,{url:value})}/></>}{type==='quote'&&<><TextArea label="Quote" value={block.settings?.quote} onChange={value=>update(index,{quote:value})}/><Field label="Author" value={block.settings?.author} onChange={value=>update(index,{author:value})}/><Field label="Role" value={block.settings?.role} onChange={value=>update(index,{role:value})}/><Select label="Rating" value={block.settings?.rating??5} options={['1','2','3','4','5']} onChange={value=>update(index,{rating:Number(value)})}/></>}{type==='column'&&<><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><TextArea label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><ImageField label="Icon / image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/></>}{type==='question'&&<><Field label="Question" value={block.settings?.question||block.settings?.heading} onChange={value=>update(index,{question:value,heading:value})}/><TextArea label="Answer" value={block.settings?.answer||block.settings?.text} onChange={value=>update(index,{answer:value,text:value})}/></>}{type==='slide'&&<><Field label="Eyebrow" value={block.settings?.eyebrow} onChange={value=>update(index,{eyebrow:value})}/><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><TextArea label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><ImageField label="Image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Button URL" value={block.settings?.buttonUrl} onChange={value=>update(index,{buttonUrl:value})}/></>}{type==='logo'&&<><ImageField label="Logo" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Text (shown if no logo image)" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><Field label="Alt text" value={block.settings?.alt} onChange={value=>update(index,{alt:value})}/><Field label="Link URL" value={block.settings?.url} onChange={value=>update(index,{url:value})}/></>}{type==='badge'&&<><Select label="Icon" value={block.settings?.icon||'shield'} options={[{value:'truck',label:'Shipping'},{value:'shield',label:'Secure'},{value:'return',label:'Returns'},{value:'lock',label:'Payment'},{value:'support',label:'Support'},{value:'award',label:'Quality'}]} onChange={value=>update(index,{icon:value})}/><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><Field label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/></>}{type==='stat'&&<><Field label="Value" value={block.settings?.value} onChange={value=>update(index,{value:value})}/><Field label="Label" value={block.settings?.label} onChange={value=>update(index,{label:value})}/></>}{type==='photo'&&<><ImageField label="Image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Link URL" value={block.settings?.url} onChange={value=>update(index,{url:value})}/></>}{type==='message'&&<><Field label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><Field label="Link URL" value={block.settings?.link} onChange={value=>update(index,{link:value})}/></>}</div></div>)}<button type="button" className="themeAddBlock" onClick={add}><Plus size={14}/> Add {label}</button></div>
 }
 
 // ---- Declarative field schema ----
@@ -164,16 +164,18 @@ function richTextPanels(): PanelSchema[] {
   ]
 }
 
+// Video has no real player -- the storefront only ever shows a static background
+// image behind a decorative play icon -- and slideshow only ever displays its
+// first Slide block's own image, never a top-level one. A separate top-level
+// "Image"/"Poster image" pair used to sit here regardless of type, writing to
+// fields (videoUrl, posterUrl) the renderer never reads, so editing them had no
+// visible effect. Video keeps a single image field wired to what it actually
+// renders (settings.imageUrl); slideshow's real, working image editing lives in
+// its Slides blocks below instead.
 function mediaPanels(type: 'video' | 'slideshow'): PanelSchema[] {
-  const mediaKey = type === 'video' ? 'videoUrl' : 'imageUrl'
-  const posterKey = type === 'video' ? 'posterUrl' : 'imageUrl'
-  const fields: Array<FieldSchema | FieldSchema[]> = [
-    type === 'video'
-      ? { kind: 'text', label: 'Video URL', get: s => s.imageUrl || s.videoUrl, set: value => ({ [mediaKey]: value }) }
-      : { kind: 'image', label: 'Image', get: s => s.imageUrl || s.videoUrl, set: value => ({ [mediaKey]: value }) },
-    { kind: 'image', label: 'Poster image', get: s => s.posterUrl || s.imageUrl, set: value => ({ [posterKey]: value }) },
-  ]
-  if (type === 'slideshow') fields.push(blocks('Slides', 'slide'))
+  const fields: Array<FieldSchema | FieldSchema[]> = type === 'video'
+    ? [image('Background image', 'imageUrl')]
+    : [blocks('Slides', 'slide')]
   fields.push(toggle('Autoplay', 'autoplay', true))
   fields.push(range('Height', 'minHeight', 320, 860, 560))
   return [{ title: type === 'video' ? 'Video' : 'Slideshow', fields }]
@@ -269,7 +271,14 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
     { title: 'Appearance', fields: [select('Background', 'background', ['primary','secondary','surface','dark'], 'primary')] },
   ],
   rich_text: () => richTextPanels(),
-  main_collection_banner: () => richTextPanels(),
+  // Not richTextPanels() -- that panel's Button label/URL fields are dead here:
+  // storefront-sections.tsx's main_collection_banner branch never renders a
+  // button, only heading/text/image, and (fixed alongside this) now reads
+  // s.eyebrow instead of hardcoding "COLLECTION".
+  main_collection_banner: () => [
+    { title: 'Content', fields: [text('Eyebrow', 'eyebrow'), text('Heading', 'heading'), textarea('Text', 'text')] },
+    { title: 'Media', fields: [image('Image', 'imageUrl')] },
+  ],
   trust_badges: () => [
     { title: 'Badges', fields: [blocks('Badges', 'badge')] },
   ],
@@ -320,21 +329,31 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
     ] },
     { title: 'Messages', fields: [blocks('Messages', 'message')] },
   ],
+  // Style, Mega menu and Navigation spacing used to live here too, but
+  // components/store-nav-fixed.tsx (the actual live header) never reads
+  // style/megaMenu/navSpacing at all -- confirmed by grep, they're set nowhere
+  // and read nowhere outside this file and the defaults. Removed rather than
+  // wired up: implementing them would be a header redesign, not a sync fix.
+  // Wishlist/transparency toggles that ARE read live moved to the Theme
+  // settings -> Header panel instead of here, since they're global header
+  // behavior (theme.header), not something that varies per template page.
   header: () => [
     { title: 'Header', fields: [
-      select('Style', 'style', ['split','centered','minimal'], 'split'),
       toggle('Sticky', 'sticky', true),
       toggle('Search', 'showSearch', true),
       toggle('Account', 'showAccount', true),
       toggle('Cart', 'showCart', true),
-      toggle('Mega menu', 'megaMenu', true),
       range('Logo width', 'logoWidth', 80, 260, 160),
-      range('Navigation spacing', 'navSpacing', 8, 56, 24),
     ] },
   ],
-  footer: () => [
-    { title: 'Footer', fields: [toggle('Newsletter', 'showNewsletter', true), textarea('Footer text', 'text'), range('Columns', 'columns', 2, 5, 4)] },
-  ],
+  // Empty, not omitted: omitting the key here falls back to commonLayoutPanel
+  // (Background/Text alignment/Spacing/Columns), which is just as dead for footer
+  // as the old dedicated panel was -- components/footer.tsx has its own fixed dark
+  // background and never calls sectionStyle(). The footer never varies per
+  // template page (unlike header), so its real, working controls live in the
+  // theme editor's Theme settings -> Footer panel (theme.footer) instead, matching
+  // Social links.
+  footer: () => [],
   video: () => mediaPanels('video'),
   slideshow: () => mediaPanels('slideshow'),
   main_product: () => mainProductPanel(),

@@ -22,10 +22,24 @@ const SOCIAL_LINKS: Array<{ key: string; label: string; Icon: () => React.JSX.El
   { key: 'youtube', label: 'YouTube', Icon: YoutubeIcon },
 ]
 
+const FOOTER_LINK_GROUPS = [
+  { title: 'Shop', links: [{ href: '/shop', label: 'All products' }, { href: '/collections', label: 'Collections' }, { href: '/wishlist', label: 'Wishlist' }] },
+  { title: 'Account', links: [{ href: '/account', label: 'My account' }, { href: '/orders/lookup', label: 'Track your order' }, { href: '/cart', label: 'Cart' }] },
+  { title: 'Legal', links: [{ href: '/privacy-policy', label: 'Privacy Policy' }, { href: '/terms-of-service', label: 'Terms of Service' }, { href: '/refund-policy', label: 'Refund Policy' }] },
+]
+
 export function Footer({ theme }: { theme?: any }) {
   const social: Record<string, string> = theme?.social || {}
   const activeSocial = SOCIAL_LINKS.filter(item => social[item.key])
   const brand = theme?.brandName || config.brand
+  // theme.footer is edited from the theme editor's Theme settings -> Footer panel (not a
+  // per-section panel -- the footer never varies per template/page, so it lives here like
+  // Social links does). columns counts the brand column plus however many of the link
+  // groups below are shown, so 4 (the default) shows all three; dropping to 2 keeps only Shop.
+  const footerSettings = theme?.footer || {}
+  const description = footerSettings.text || 'A refined shopping experience built to grow with your business.'
+  const showNewsletter = footerSettings.showNewsletter !== false
+  const visibleGroups = FOOTER_LINK_GROUPS.slice(0, Math.max(1, Math.min(3, Number(footerSettings.columns ?? 4) - 1)))
 
   // Admin Settings' "Phone / WhatsApp" field (contact.phone) lets a merchant override the
   // build-time NEXT_PUBLIC_WHATSAPP_NUMBER without a redeploy -- fetched client-side (like the
@@ -60,6 +74,11 @@ export function Footer({ theme }: { theme?: any }) {
 .focalFooterBottom{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:20px 0;margin-top:12px;border-top:1px solid rgba(255,255,255,.12);font-size:12px}
 .focalFooterPayments{display:flex;gap:8px;flex-wrap:wrap}
 .focalFooterPayments span{border:1px solid rgba(255,255,255,.22);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;letter-spacing:.02em}
+.focalFooterNewsletter p{margin:8px 0 12px}
+.focalFooterNewsletterForm{display:flex;gap:8px;flex-wrap:wrap}
+.focalFooterNewsletterForm input{flex:1;min-width:160px;height:42px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.06);border-radius:8px;padding:0 12px;color:#fff;font-size:13px}
+.focalFooterNewsletterForm input::placeholder{color:rgba(255,255,255,.5)}
+.focalFooterNewsletterForm button{border:0;border-radius:8px;padding:0 16px;background:var(--store-primary,#d42a2a);color:#fff;font-weight:700;font-size:13px;cursor:pointer}
 @media(max-width:700px){
   .focalFooter{padding:40px 0}
   .footerGrid.marketplace,.focalFooter .footerGrid{grid-template-columns:1fr 1fr!important;gap:28px 20px}
@@ -83,7 +102,7 @@ export function Footer({ theme }: { theme?: any }) {
       </div>
     )}
     <footer className="footer focalFooter">
-      <div className="focalContainer footerGrid marketplace">
+      <div className="focalContainer footerGrid marketplace" style={{ gridTemplateColumns: `1.4fr repeat(${visibleGroups.length + (showNewsletter ? 1 : 0)}, 1fr)` }}>
         <div>
           {theme?.logoUrlDark ? (
             <img className="footerLogo" src={theme.logoUrlDark} alt={brand} />
@@ -92,7 +111,7 @@ export function Footer({ theme }: { theme?: any }) {
           ) : (
             <div className="logo">{brand}</div>
           )}
-          <p className="muted">A refined shopping experience built to grow with your business.</p>
+          <p className="muted">{description}</p>
           {activeSocial.length > 0 && (
             <div className="focalFooterSocial">
               {activeSocial.map(({ key, label, Icon }) => (
@@ -101,24 +120,22 @@ export function Footer({ theme }: { theme?: any }) {
             </div>
           )}
         </div>
-        <div>
-          <strong>Shop</strong>
-          <p><Link href="/shop">All products</Link></p>
-          <p><Link href="/collections">Collections</Link></p>
-          <p><Link href="/wishlist">Wishlist</Link></p>
-        </div>
-        <div>
-          <strong>Account</strong>
-          <p><Link href="/account">My account</Link></p>
-          <p><Link href="/orders/lookup">Track your order</Link></p>
-          <p><Link href="/cart">Cart</Link></p>
-        </div>
-        <div>
-          <strong>Legal</strong>
-          <p><Link href="/privacy-policy">Privacy Policy</Link></p>
-          <p><Link href="/terms-of-service">Terms of Service</Link></p>
-          <p><Link href="/refund-policy">Refund Policy</Link></p>
-        </div>
+        {visibleGroups.map(group => (
+          <div key={group.title}>
+            <strong>{group.title}</strong>
+            {group.links.map(link => <p key={link.href}><Link href={link.href}>{link.label}</Link></p>)}
+          </div>
+        ))}
+        {showNewsletter && (
+          <div className="focalFooterNewsletter">
+            <strong>Stay in the loop</strong>
+            <p className="muted">Get launches, drops and offers in your inbox.</p>
+            <form className="focalFooterNewsletterForm" onSubmit={e => e.preventDefault()}>
+              <input type="email" placeholder="Email address" aria-label="Email address" required />
+              <button type="submit">Subscribe</button>
+            </form>
+          </div>
+        )}
       </div>
       <div className="focalContainer focalFooterBottom">
         <span className="muted">{new Date().getFullYear()} &middot; {brand} &middot; All rights reserved</span>

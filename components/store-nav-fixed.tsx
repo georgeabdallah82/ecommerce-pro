@@ -404,7 +404,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
     <style dangerouslySetInnerHTML={{ __html: css }} />
     {announcementEnabled && announcementPosition !== 'below' && <AnnouncementBar theme={theme} announcementSection={announcementSection} closed={announcementClosed} onDismiss={dismissAnnouncement}/>}
 
-    <header className="focalNav" style={{ background: transparent ? 'transparent' : theme.colors.surface, borderColor: theme.colors.border, position: headerSettings.sticky ? 'sticky' : 'relative', top: 0 }}>
+    <header className={`focalNav${transparent ? ' focalNavTransparent' : ''}`} style={{ background: transparent ? 'transparent' : theme.colors.surface, borderColor: theme.colors.border, position: headerSettings.sticky ? 'sticky' : 'relative', top: 0 }}>
       <div className="focalNavInner focalContainer">
         <button className="focalNavMobile" aria-label="Menu" onClick={() => setMenu(true)}><Menu size={19}/></button>
         <Link href="/" className="focalLogo" style={{ fontFamily: theme.typography.heading }}>{theme.logoUrl ? <img src={theme.logoUrl} alt={theme.brandName} style={{ maxWidth: headerSettings.logoWidth || 160 }} /> : <span>{theme.brandName}</span>}</Link>
