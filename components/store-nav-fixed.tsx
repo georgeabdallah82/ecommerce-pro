@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { keyOf, useCart } from './cart-provider'
 
-type NavItem = { id: string; label: string; url?: string | null; parentId?: string | null }
+type NavItem = { id: string; label: string; url?: string | null; parentId?: string | null; group?: string | null; imageUrl?: string | null }
 type TreeItem = NavItem & { children: TreeItem[] }
 
 const ANNOUNCEMENT_ICONS: Record<string, typeof Sparkles> = { spark: Sparkles, truck: Truck, tag: Tag, gift: Gift, clock: Clock, megaphone: Megaphone }
@@ -66,11 +66,27 @@ const css = `
 .focalNavChevron{width:28px;height:28px;display:grid;place-items:center;border:0;background:transparent;cursor:pointer;color:inherit;opacity:.7;transition:transform .2s ease}
 .focalDropdown{position:absolute;top:calc(100% + 10px);left:50%;transform:translateX(-50%);min-width:250px;background:rgba(255,255,255,.98);border:1px solid var(--focal-line);border-radius:14px;box-shadow:0 20px 50px rgba(25,21,18,.14);padding:8px;backdrop-filter:blur(18px);animation:focalMenuPop .2s cubic-bezier(.16,1,.3,1)}
 @keyframes focalMenuPop{from{opacity:0;transform:translate(-50%,6px)}to{opacity:1;transform:translate(-50%,0)}}
-.focalDropdownItem{position:relative}
+.focalDropdown.zaraDropdown{left:0;transform:none;min-width:min(560px,calc(100vw - 32px));max-width:min(680px,calc(100vw - 32px));padding:22px 26px}
 .focalDropdownLink{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 11px;border-radius:9px;color:var(--focal-ink);text-decoration:none;font-size:12px;font-weight:750;transition:background-color .15s ease,color .15s ease}
 .focalDropdownLink:hover{background:var(--focal-soft);color:var(--focal-primary)}
-.focalDropdownNested{position:absolute;left:calc(100% + 8px);top:-8px;min-width:230px;background:#fff;border:1px solid var(--focal-line);border-radius:14px;box-shadow:0 18px 46px rgba(25,21,18,.14);padding:8px}
 .focalNavActions{display:flex;gap:8px;align-items:center}
+
+/* SHARED DEPARTMENT CONTENT (desktop dropdown + mobile menu) -- image tiles
+   plus numbered link groups, editorial style */
+.zaraTileRow{display:flex;gap:14px;overflow-x:auto;padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--focal-line)}
+.zaraTile{flex:0 0 auto;width:118px;display:flex;flex-direction:column;gap:8px;text-decoration:none;color:inherit}
+.zaraTileImg{display:block;width:100%;aspect-ratio:3/4;border-radius:4px;background-color:var(--focal-soft);background-size:cover;background-position:center}
+.zaraTileLabel{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--focal-ink)}
+.zaraGroupGrid{display:grid;gap:20px}
+.zaraGroup{display:grid;grid-template-columns:112px 1fr;gap:18px}
+.zaraGroupHead{display:flex;align-items:baseline;gap:8px;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--focal-muted)}
+.zaraGroupNum{color:var(--focal-primary)}
+.zaraGroupLinks{display:grid;gap:13px;align-content:start}
+.zaraGroupLinks a{font-size:14px;font-weight:650;color:var(--focal-ink);text-decoration:none}
+.zaraGroupLinks a:hover{color:var(--focal-primary)}
+.zaraGroupSub{display:grid;gap:8px;padding:8px 0 0 2px}
+.zaraGroupSub a{font-size:12.5px;font-weight:550;color:var(--focal-muted)}
+@media(max-width:560px){.zaraGroup{grid-template-columns:88px 1fr}}
 .focalNavIcon{width:42px;height:42px;border:1px solid var(--focal-line);background:var(--focal-surface);color:var(--focal-ink);border-radius:12px;display:grid;place-items:center;position:relative;cursor:pointer;transition:transform .15s ease,background-color .15s ease,border-color .15s ease}
 .focalNavIcon:hover{transform:translateY(-1px);background:#fff;border-color:rgba(0,0,0,.15)}
 .focalNavIcon:active{transform:scale(.95)}
@@ -140,15 +156,15 @@ const css = `
 .focalSearchItemInfo small{font-size:11px;color:var(--focal-muted);font-weight:700}
 .focalSearchItemPrice{font-size:13px;font-weight:850;color:var(--focal-primary)}
 
-/* MOBILE MENU */
-.focalMobileOverlay{position:fixed;inset:0;z-index:100;background:rgba(18,16,14,.38);backdrop-filter:blur(6px);animation:focalFadeIn .2s ease-out forwards}
-.focalMobilePanel{margin-left:auto;width:min(380px,88%);height:100%;background:#fff;padding:22px;overflow-y:auto;animation:focalSlideIn .3s cubic-bezier(.16,1,.3,1) forwards}
-.focalMobileRow{display:flex;align-items:center;gap:6px;border-top:1px solid var(--focal-line);padding:14px 0}
-.focalMobileRow>a{font-size:16px;font-weight:850;color:var(--focal-ink);text-decoration:none;flex:1}
-.focalMobileToggle{width:34px;height:34px;border:1px solid var(--focal-line);border-radius:9px;background:#fff;display:grid;place-items:center;cursor:pointer}
-.focalMobileChildren{display:grid;padding:0 0 6px 12px}
-.focalMobileChild{padding:8px 0;font-size:13px;color:var(--focal-muted);text-decoration:none}
-.focalMobileChild.level2{padding-left:12px;font-size:12px}
+/* MOBILE MENU -- full-screen editorial panel (image tiles + numbered groups) */
+.focalMobileOverlay{position:fixed;inset:0;z-index:100;background:#fff;animation:focalFadeIn .2s ease-out forwards}
+.zaraMenuPanel{width:100%;height:100%;background:#fff;display:flex;flex-direction:column;overflow:hidden}
+.zaraMenuTop{flex:none;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--focal-line)}
+.zaraMenuTopActions{display:flex;align-items:center;gap:8px}
+.zaraDeptTabs{flex:none;display:flex;gap:22px;overflow-x:auto;padding:20px 20px 14px}
+.zaraDeptTab{flex:none;border:0;background:transparent;padding:0 0 10px;font-family:Georgia,'Times New Roman',serif;font-size:24px;font-weight:400;color:var(--focal-ink);text-decoration:none;cursor:pointer;position:relative;white-space:nowrap}
+.zaraDeptTab.active::after{content:'';position:absolute;left:50%;bottom:2px;width:5px;height:5px;border-radius:999px;background:var(--focal-ink);transform:translateX(-50%)}
+.zaraDeptBody{flex:1;overflow-y:auto;padding:4px 20px 32px}
 
 /* ALIEXPRESS-STYLE INLINE SEARCH BAR (desktop) */
 .aliNavSearchWrap{flex:1;max-width:760px;margin:0 24px;position:relative}
@@ -197,16 +213,80 @@ function buildTree(items: NavItem[]): TreeItem[] {
 
 function hasChildren(item: TreeItem) { return item.children.length > 0 }
 
-function DesktopNode({ item, openId, setOpenId, nested = false }: { item: TreeItem; openId: string | null; setOpenId: (id: string | null) => void; nested?: boolean }) {
+// Clusters a department's children by their optional `group` heading (e.g. "New In",
+// "Special Prices"), preserving first-appearance order for the auto-numbered headings.
+// Children with no group fall into a trailing, heading-less bucket so existing nav
+// items (saved before this field existed) keep rendering exactly as before.
+function groupChildren(children: TreeItem[]) {
+  const groups: { name: string; items: TreeItem[] }[] = []
+  const ungrouped: TreeItem[] = []
+  for (const child of children) {
+    const name = child.group?.trim()
+    if (!name) { ungrouped.push(child); continue }
+    let bucket = groups.find(g => g.name === name)
+    if (!bucket) { bucket = { name, items: [] }; groups.push(bucket) }
+    bucket.items.push(child)
+  }
+  return { groups, ungrouped }
+}
+
+// Shared department content -- feeds both the desktop dropdown panel and the
+// mobile full-screen menu's active department, so a merchant's group/image
+// settings look the same in both places.
+function DeptContent({ item, close }: { item: TreeItem; close: () => void }) {
+  const tiles = item.children.filter(c => c.imageUrl)
+  const { groups, ungrouped } = groupChildren(item.children)
+  return <>
+    {tiles.length > 0 && (
+      <div className="zaraTileRow">
+        {tiles.map(tile => (
+          <Link key={tile.id} href={tile.url || '#'} className="zaraTile" onClick={close}>
+            <span className="zaraTileImg" style={{ backgroundImage: `url(${tile.imageUrl})` }} />
+            <span className="zaraTileLabel">{tile.label}</span>
+          </Link>
+        ))}
+      </div>
+    )}
+    <div className="zaraGroupGrid">
+      {groups.map((group, i) => (
+        <div className="zaraGroup" key={group.name}>
+          <div className="zaraGroupHead"><span className="zaraGroupNum">{String(i + 1).padStart(2, '0')}</span><span>{group.name}</span></div>
+          <div className="zaraGroupLinks">
+            {group.items.map(link => (
+              <div key={link.id}>
+                <Link href={link.url || '#'} onClick={close}>{link.label}</Link>
+                {link.children.length > 0 && <div className="zaraGroupSub">{link.children.map(grand => <Link key={grand.id} href={grand.url || '#'} onClick={close}>{grand.label}</Link>)}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+      {ungrouped.length > 0 && (
+        <div className="zaraGroup">
+          <div className="zaraGroupLinks">
+            {ungrouped.map(link => (
+              <div key={link.id}>
+                <Link href={link.url || '#'} onClick={close}>{link.label}</Link>
+                {link.children.length > 0 && <div className="zaraGroupSub">{link.children.map(grand => <Link key={grand.id} href={grand.url || '#'} onClick={close}>{grand.label}</Link>)}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  </>
+}
+
+function DesktopNode({ item, openId, setOpenId }: { item: TreeItem; openId: string | null; setOpenId: (id: string | null) => void }) {
   const open = openId === item.id
   if (!hasChildren(item)) return <Link className="focalDropdownLink" href={item.url || '#'}>{item.label}</Link>
   return (
-    <div className={nested ? 'focalDropdownItem' : 'focalNavItem'} onMouseEnter={() => setOpenId(item.id)}>
+    <div className="focalNavItem" onMouseEnter={() => setOpenId(item.id)}>
       <div className="focalNavLink">
         <Link href={item.url || '#'}>{item.label}</Link>
         <button className="focalNavChevron" aria-label={`Open ${item.label} submenu`} onClick={(e) => { e.preventDefault(); setOpenId(open ? null : item.id) }}><ChevronDown size={13} /></button>
       </div>
-      {open && <div className={nested ? 'focalDropdownNested' : 'focalDropdown'} onMouseLeave={() => setOpenId(null)}>{item.children.map(child => <DesktopNode key={child.id} item={child} openId={openId} setOpenId={setOpenId} nested />)}</div>}
+      {open && <div className="focalDropdown zaraDropdown" onMouseLeave={() => setOpenId(null)}><DeptContent item={item} close={() => setOpenId(null)} /></div>}
     </div>
   )
 }
@@ -228,7 +308,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [searchLoading, setSearchLoading] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
-  const [mobileOpen, setMobileOpen] = useState<Set<string>>(new Set())
+  const [activeRootId, setActiveRootId] = useState<string | null>(null)
   const [announcementClosed, setAnnouncementClosed] = useState(false)
   const [desktopSearchOpen, setDesktopSearchOpen] = useState(false)
   const desktopSearchBlurTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -313,7 +393,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
   const announcementPosition = announcementSection?.settings?.position ?? theme.announcement?.position ?? 'above'
   const dismissAnnouncement = () => { setAnnouncementClosed(true); try { sessionStorage.setItem('focal-announcement-dismissed', '1') } catch {} }
 
-  const toggleMobile = (id: string) => setMobileOpen(current => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next })
+  const activeDept = tree.find(item => item.id === activeRootId && hasChildren(item)) || tree.find(hasChildren) || null
 
   if (!headerEnabled) return announcementEnabled ? <><style dangerouslySetInnerHTML={{ __html: css }} /><AnnouncementBar theme={theme} announcementSection={announcementSection} closed={announcementClosed} onDismiss={dismissAnnouncement}/></> : null
 
@@ -512,26 +592,25 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
       </aside>
     </div>}
 
-    {menu && <div className="focalMobileOverlay" onClick={() => setMenu(false)}>
-      <div className="focalMobilePanel" onClick={e => e.stopPropagation()}>
-        <div className="focalSearchTop">
-          <strong>{theme.brandName}</strong>
-          <button className="focalNavIcon" onClick={() => setMenu(false)} aria-label="Close menu"><X size={17}/></button>
+    {menu && <div className="focalMobileOverlay">
+      <div className="zaraMenuPanel">
+        <div className="zaraMenuTop">
+          <button className="focalNavIcon" onClick={() => setMenu(false)} aria-label="Close menu"><X size={19}/></button>
+          <div className="zaraMenuTopActions">
+            {headerSettings.showSearch !== false && <button className="focalNavIcon" onClick={() => { setMenu(false); setSearch(true); setSearchQuery('') }} aria-label="Search"><Search size={17}/></button>}
+            {headerSettings.showAccount !== false && <Link className="focalNavIcon" href="/account" onClick={() => setMenu(false)} aria-label="Account"><UserRound size={17}/></Link>}
+            {headerSettings.showCart !== false && <button className="focalNavIcon" onClick={() => { setMenu(false); openCart() }} aria-label={`Cart with ${count} items`}><ShoppingBag size={17}/>{count > 0 && <span className="focalCartCount">{count > 99 ? '99+' : count}</span>}</button>}
+          </div>
         </div>
-        {tree.map(item => <MobileNode key={item.id} item={item} mobileOpen={mobileOpen} toggle={toggleMobile} close={() => setMenu(false)}/>)}
+        <div className="zaraDeptTabs">
+          {tree.map(item => hasChildren(item) ? (
+            <button key={item.id} className={`zaraDeptTab ${activeDept?.id === item.id ? 'active' : ''}`} onClick={() => setActiveRootId(item.id)}>{item.label}</button>
+          ) : (
+            <Link key={item.id} className="zaraDeptTab" href={item.url || '#'} onClick={() => setMenu(false)}>{item.label}</Link>
+          ))}
+        </div>
+        {activeDept && <div className="zaraDeptBody"><DeptContent item={activeDept} close={() => setMenu(false)} /></div>}
       </div>
     </div>}
   </>
-}
-
-function MobileNode({ item, mobileOpen, toggle, close, depth = 0 }: { item: TreeItem; mobileOpen: Set<string>; toggle: (id: string) => void; close: () => void; depth?: number }) {
-  const open = mobileOpen.has(item.id)
-  const childClass = depth === 0 ? 'focalMobileChild' : 'focalMobileChild level2'
-  return <div>
-    <div className="focalMobileRow">
-      <Link href={item.url || '#'} onClick={close}>{item.label}</Link>
-      {item.children.length > 0 && <button className="focalMobileToggle" aria-label={`Toggle ${item.label}`} onClick={() => toggle(item.id)}>{open ? <Minus size={15}/> : <Plus size={15}/>}</button>}
-    </div>
-    {open && item.children.length > 0 && <div className="focalMobileChildren">{item.children.map(child => <div key={child.id}><Link className={childClass} href={child.url || '#'} onClick={close}>{child.label}</Link>{child.children.length > 0 && <div className="focalMobileChildren">{child.children.map(grand => <Link key={grand.id} className="focalMobileChild level2" href={grand.url || '#'} onClick={close}>{grand.label}</Link>)}</div>}</div>)}</div>}
-  </div>
 }

@@ -653,8 +653,11 @@ body:not(:has(.adminShell)) .focalType-hero .focalHero{overflow:hidden!important
   padding: 0 13px !important;
   margin: 0 !important;
   border-radius: 10px !important;
-  font-size: 13px !important;
-  font-weight: 800 !important;
+  font-family: Georgia, 'Times New Roman', serif !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  letter-spacing: .03em !important;
+  text-transform: uppercase !important;
   color: var(--focal-ink) !important;
   background: transparent !important;
 }
@@ -695,8 +698,11 @@ body:not(:has(.adminShell)) .focalType-hero .focalHero{overflow:hidden!important
   padding: 0 13px !important;
   gap: 1px !important;
   border-radius: 10px !important;
-  font-size: 13px !important;
-  font-weight: 800 !important;
+  font-family: Georgia, 'Times New Roman', serif !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  letter-spacing: .03em !important;
+  text-transform: uppercase !important;
 }
 
 .focalNavLink a {
