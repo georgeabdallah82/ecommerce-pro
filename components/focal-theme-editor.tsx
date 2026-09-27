@@ -631,6 +631,9 @@ export default function FocalThemeEditor({ initial }: Props) {
                 </div>
                 <button className={styles.iconBtn} onClick={() => setPicker(true)}><Plus size={15} /></button>
               </div>
+              <div className={styles.legacyNotice}>
+                &ldquo;{page}&rdquo; renders on your live storefront as a dedicated built-in page design, not from this section list -- edits below only change what you see in this editor&rsquo;s own preview. Header and Announcement here (tagged LIVE) are the exception: those apply to your real site regardless of this template. Footer is edited under the Theme tab instead.
+              </div>
               <div className={styles.rows}>
                 {current.map((section, index) => (
                   <div
@@ -647,6 +650,7 @@ export default function FocalThemeEditor({ initial }: Props) {
                       <GripVertical size={13} className={styles.rowGrip} />
                       {(() => { const Icon = SECTION_ICONS[section.type] || LayoutGrid; return <Icon size={15} className={styles.rowIcon} /> })()}
                       <span>{META[section.type] || section.type.replaceAll('_', ' ')}</span>
+                      {(section.type === 'header' || section.type === 'announcement') && <small className={styles.liveTag}>LIVE</small>}
                       {index === 0 && <small>MAIN</small>}
                     </button>
                     <button className={styles.rowToggle} onClick={() => { setSelectedId(section.id); setDrawer(true); toggle(section.enabled === false) }}>
@@ -664,6 +668,16 @@ export default function FocalThemeEditor({ initial }: Props) {
                 <ImageField label="Logo" value={theme.logoUrl || ''} onChange={value => commit(templates, { ...theme, logoUrl: value })} />
                 <ImageField label="Logo (for dark backgrounds, e.g. footer)" value={theme.logoUrlDark || ''} onChange={value => commit(templates, { ...theme, logoUrlDark: value })} />
                 <ImageField label="Favicon" value={theme.faviconUrl || ''} onChange={value => commit(templates, { ...theme, faviconUrl: value })} />
+              </Panel>
+              <Panel title="Header">
+                <ToggleField label="Show wishlist icon" value={theme.header?.showWishlist === true} onChange={value => patchTheme('header', { showWishlist: value })} />
+                <ToggleField label="Transparent header" value={theme.header?.transparent === true} onChange={value => patchTheme('header', { transparent: value })} />
+                <ToggleField label="Transparent on homepage only" value={theme.header?.transparentHome === true} onChange={value => patchTheme('header', { transparentHome: value })} />
+              </Panel>
+              <Panel title="Footer">
+                <ToggleField label="Show newsletter signup" value={theme.footer?.showNewsletter !== false} onChange={value => patchTheme('footer', { showNewsletter: value })} />
+                <Field label="Description text" value={theme.footer?.text || ''} onChange={value => patchTheme('footer', { text: value })} />
+                <RangeField label="Link columns shown" value={theme.footer?.columns ?? 4} min={2} max={4} onChange={value => patchTheme('footer', { columns: value })} />
               </Panel>
               <Panel title="Social links">
                 <Field label="Instagram URL" value={theme.social?.instagram || ''} onChange={value => patchTheme('social', { instagram: value })} />
