@@ -4,7 +4,7 @@ import ThemePreviewFrame from '@/components/theme-preview-frame'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-// Loaded only inside the theme editor's own iframe (see components/focal-theme-editor.tsx).
+// Loaded only inside the theme editor's own iframe (see components/theme-studio.tsx).
 // Renders nothing from the database itself -- the parent editor posts the
 // draft theme/sections/navigation/product data across via postMessage once
 // this frame announces it's ready, so the preview always reflects unsaved

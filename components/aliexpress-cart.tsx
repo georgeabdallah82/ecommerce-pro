@@ -5,12 +5,22 @@ import Link from 'next/link'
 import { Minus, Plus, ShieldCheck, ShoppingBag, Tag, Trash2, Truck } from 'lucide-react'
 import { useCart, keyOf } from '@/components/cart-provider'
 import { money } from '@/lib/config'
+import { ProductCard, QuickView } from '@/components/storefront-sections'
+import { useWishlist } from '@/components/use-wishlist'
 
-export default function AliExpressCart() {
+type AnyMap = Record<string, any>
+
+export default function AliExpressCart({ theme, recommended }: { theme?: AnyMap; recommended?: AnyMap[] }) {
   const { items, updateQty, removeItem, isSelected, toggleSelected, selectAll, deselectAll, selectedItems, selectedCount, selectedSubtotal } = useCart()
+  const { wishlist, toggleWish } = useWishlist()
+  const [quickProduct, setQuickProduct] = useState<AnyMap | null>(null)
   const [freeShippingThreshold, setFreeShippingThreshold] = useState<number | null>(null)
   const [couponCode, setCouponCode] = useState('')
   const [couponSaved, setCouponSaved] = useState(false)
+  const cartSettings = theme?.cart || {}
+  const showStickyCheckout = cartSettings.stickyCheckout !== false
+  const showFreeShippingBar = cartSettings.freeShippingBar !== false
+  const showRecommendations = cartSettings.recommendations !== false
 
   useEffect(() => {
     let active = true
@@ -53,7 +63,18 @@ export default function AliExpressCart() {
             <p>Browse the store, compare products, and add your favourites to start a fast checkout.</p>
             <Link className="focalButton primary" href="/shop">Continue shopping</Link>
           </section>
+          {showRecommendations && theme && recommended && recommended.length > 0 && (
+            <div className="aliSection">
+              <div className="aliSectionHead"><h2>You might also like</h2></div>
+              <div className="aliDenseGrid">
+                {recommended.map(p => (
+                  <ProductCard key={p.id} p={p} theme={theme} onQuickView={setQuickProduct} wishlist={wishlist} toggleWish={toggleWish} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
+        {quickProduct && theme && <QuickView product={quickProduct} theme={theme} onClose={() => setQuickProduct(null)} />}
       </main>
     )
   }
@@ -70,7 +91,7 @@ export default function AliExpressCart() {
           <span className="pill" aria-label={`${itemCount} items in cart`}>{itemCount} items</span>
         </header>
 
-        {freeShippingThreshold !== null && (
+        {showFreeShippingBar && freeShippingThreshold !== null && (
           <div className="aliShippingBanner">
             <Truck size={16} />
             {remainingForFreeShipping > 0
@@ -142,17 +163,32 @@ export default function AliExpressCart() {
             </div>
           </aside>
         </div>
+
+        {showRecommendations && theme && recommended && recommended.length > 0 && (
+          <div className="aliSection">
+            <div className="aliSectionHead"><h2>You might also like</h2></div>
+            <div className="aliDenseGrid">
+              {recommended.map(p => (
+                <ProductCard key={p.id} p={p} theme={theme} onQuickView={setQuickProduct} wishlist={wishlist} toggleWish={toggleWish} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="aliCartStickyBar">
-        <div className="aliCartStickyInfo">
-          <span>{selectedCount} item{selectedCount === 1 ? '' : 's'}</span>
-          <strong>{money(selectedSubtotal)}</strong>
+      {showStickyCheckout && (
+        <div className="aliCartStickyBar">
+          <div className="aliCartStickyInfo">
+            <span>{selectedCount} item{selectedCount === 1 ? '' : 's'}</span>
+            <strong>{money(selectedSubtotal)}</strong>
+          </div>
+          <Link className={`focalButton primary ${selectedItems.length ? '' : 'disabled'}`} href="/checkout" aria-disabled={!selectedItems.length} onClick={e => { if (!selectedItems.length) e.preventDefault() }}>
+            Checkout
+          </Link>
         </div>
-        <Link className={`focalButton primary ${selectedItems.length ? '' : 'disabled'}`} href="/checkout" aria-disabled={!selectedItems.length} onClick={e => { if (!selectedItems.length) e.preventDefault() }}>
-          Checkout
-        </Link>
-      </div>
+      )}
+
+      {quickProduct && theme && <QuickView product={quickProduct} theme={theme} onClose={() => setQuickProduct(null)} />}
     </main>
   )
 }

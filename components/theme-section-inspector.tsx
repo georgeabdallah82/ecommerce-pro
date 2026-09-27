@@ -14,10 +14,10 @@ type Props = {
   onUpdateBlocks: (blocks: any[]) => void
 }
 
-function Field({ label, value, onChange, placeholder }: { label: string; value: any; onChange: (value: string) => void; placeholder?: string }) {
+export function Field({ label, value, onChange, placeholder }: { label: string; value: any; onChange: (value: string) => void; placeholder?: string }) {
   return <label className="themeInspectorField"><span>{label}</span><input value={value ?? ''} placeholder={placeholder} onChange={event => onChange(event.target.value)} /></label>
 }
-function ImageField({ label, value, onChange }: { label: string; value: any; onChange: (value: string) => void }) {
+export function ImageField({ label, value, onChange }: { label: string; value: any; onChange: (value: string) => void }) {
   const [open, setOpen] = useState(false)
   const url = value ? String(value) : ''
   return (
@@ -46,20 +46,33 @@ function ImageField({ label, value, onChange }: { label: string; value: any; onC
     </div>
   )
 }
-function TextArea({ label, value, onChange, placeholder }: { label: string; value: any; onChange: (value: string) => void; placeholder?: string }) {
+export function TextArea({ label, value, onChange, placeholder }: { label: string; value: any; onChange: (value: string) => void; placeholder?: string }) {
   return <label className="themeInspectorField"><span>{label}</span><textarea value={value ?? ''} placeholder={placeholder} onChange={event => onChange(event.target.value)} /></label>
 }
-function Select({ label, value, options, onChange }: { label: string; value: any; options: Array<{value:string;label:string}> | string[]; onChange: (value: string) => void }) {
+export function Select({ label, value, options, onChange }: { label: string; value: any; options: Array<{value:string;label:string}> | string[]; onChange: (value: string) => void }) {
   const normalized = options.map(option => typeof option === 'string' ? { value: option, label: option } : option)
   return <label className="themeInspectorField"><span>{label}</span><select value={String(value ?? '')} onChange={event => onChange(event.target.value)}>{normalized.map(option => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>
 }
-function Toggle({ label, value, onChange }: { label: string; value: boolean; onChange: (value: boolean) => void }) {
+export function Toggle({ label, value, onChange }: { label: string; value: boolean; onChange: (value: boolean) => void }) {
   return <label className="themeInspectorToggle"><span>{label}</span><button type="button" className={value ? 'on' : ''} aria-pressed={value} onClick={() => onChange(!value)}><i /></button></label>
 }
-function Range({ label, value, min, max, step = 1, onChange }: { label: string; value: number; min: number; max: number; step?: number; onChange: (value: number) => void }) {
-  return <label className="themeInspectorRange"><div><span>{label}</span><b>{value}</b></div><input type="range" value={Number.isFinite(value) ? value : min} min={min} max={max} step={step} onChange={event => onChange(Number(event.target.value))} /></label>
+export function Range({ label, value, min, max, step = 1, unit = '', onChange }: { label: string; value: number; min: number; max: number; step?: number; unit?: string; onChange: (value: number) => void }) {
+  return <label className="themeInspectorRange"><div><span>{label}</span><b>{value}{unit}</b></div><input type="range" value={Number.isFinite(value) ? value : min} min={min} max={max} step={step} onChange={event => onChange(Number(event.target.value))} /></label>
 }
-function SectionPanel({ title, children }: { title: string; children: React.ReactNode }) {
+const HEX_RE = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i
+export function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  const [text, setText] = useState(value ?? '')
+  return (
+    <label className="themeInspectorField themeColorField">
+      <span>{label}</span>
+      <div className="themeColorRow">
+        <input type="color" value={HEX_RE.test(value) && value.length === 7 ? value : '#000000'} onChange={event => { setText(event.target.value); onChange(event.target.value) }} aria-label={`${label} swatch`} />
+        <input type="text" value={text} onChange={event => { setText(event.target.value); if (HEX_RE.test(event.target.value)) onChange(event.target.value) }} placeholder="#000000" />
+      </div>
+    </label>
+  )
+}
+export function SectionPanel({ title, children }: { title: string; children: React.ReactNode }) {
   return <details className="themeInspectorPanel" open><summary>{title}</summary><div>{children}</div></details>
 }
 
@@ -76,40 +89,46 @@ function BlocksEditor({ section, type, onUpdateBlocks }: { section: Section; typ
 // ---- Declarative field schema ----
 // Every section type below maps to a list of panels; each panel is a list of
 // fields (or arrays of fields, rendered together in one themeInspectorGrid
-// row, matching the original inline-JSX grouping). Each field's get/set pair
-// is a literal transcription of that field's old inline value/onChange
-// closure -- this is a structural refactor, not a behavior change.
-type SettingsMap = Record<string, any>
-type FieldCtx = { s: SettingsMap; products: any[]; collections: any[] }
-type OptionList = Array<{ value: string; label: string }> | string[]
-type OptionsSource = OptionList | ((ctx: FieldCtx) => OptionList)
+// row). Each field's get/set pair is a literal transcription of that field's
+// old inline value/onChange closure -- this is a structural refactor, not a
+// behavior change. Exported so theme-studio.tsx can reuse the exact same
+// schema/render pipeline for the Theme-settings drawer (a "virtual section"
+// whose settings live on theme[group] instead of section.settings), instead
+// of maintaining a second, differently-styled field system for it.
+export type SettingsMap = Record<string, any>
+export type FieldCtx = { s: SettingsMap; products: any[]; collections: any[] }
+export type OptionList = Array<{ value: string; label: string }> | string[]
+export type OptionsSource = OptionList | ((ctx: FieldCtx) => OptionList)
 
-type FieldSchema =
+export type FieldSchema =
   | { kind: 'text'; label: string; placeholder?: string; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
   | { kind: 'image'; label: string; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
   | { kind: 'textarea'; label: string; placeholder?: string; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
   | { kind: 'select'; label: string; options: OptionsSource; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
   | { kind: 'toggle'; label: string; get: (s: SettingsMap) => boolean; set: (value: boolean) => Record<string, any> }
-  | { kind: 'range'; label: string; min: number; max: number; step?: number; get: (s: SettingsMap) => number; set: (value: number) => Record<string, any> }
+  | { kind: 'range'; label: string; min: number; max: number; step?: number; unit?: string; get: (s: SettingsMap) => number; set: (value: number) => Record<string, any> }
+  | { kind: 'color'; label: string; get: (s: SettingsMap) => string; set: (value: string) => Record<string, any> }
   | { kind: 'blocks'; label: string; blockType: string }
 
-type PanelSchema = { title: string; fields: Array<FieldSchema | FieldSchema[]> }
+export type PanelSchema = { title: string; fields: Array<FieldSchema | FieldSchema[]> }
 
-const text = (label: string, name: string, placeholder?: string): FieldSchema =>
+export const text = (label: string, name: string, placeholder?: string): FieldSchema =>
   ({ kind: 'text', label, placeholder, get: s => s[name], set: value => ({ [name]: value }) })
-const image = (label: string, name: string): FieldSchema =>
+export const image = (label: string, name: string): FieldSchema =>
   ({ kind: 'image', label, get: s => s[name], set: value => ({ [name]: value }) })
-const textarea = (label: string, name: string, placeholder?: string): FieldSchema =>
+export const textarea = (label: string, name: string, placeholder?: string): FieldSchema =>
   ({ kind: 'textarea', label, placeholder, get: s => s[name], set: value => ({ [name]: value }) })
-const select = (label: string, name: string, options: OptionsSource, fallback = ''): FieldSchema =>
+export const select = (label: string, name: string, options: OptionsSource, fallback = ''): FieldSchema =>
   ({ kind: 'select', label, options, get: s => s[name] || fallback, set: value => ({ [name]: value }) })
-const toggle = (label: string, name: string, defaultTrue: boolean): FieldSchema =>
+export const toggle = (label: string, name: string, defaultTrue: boolean): FieldSchema =>
   ({ kind: 'toggle', label, get: s => defaultTrue ? s[name] !== false : Boolean(s[name]), set: value => ({ [name]: value }) })
-const range = (label: string, name: string, min: number, max: number, fallback: number, step?: number): FieldSchema =>
-  ({ kind: 'range', label, min, max, step, get: s => Number(s[name] ?? fallback), set: value => ({ [name]: value }) })
-const blocks = (label: string, blockType: string): FieldSchema => ({ kind: 'blocks', label, blockType })
+export const range = (label: string, name: string, min: number, max: number, fallback: number, step?: number, unit?: string): FieldSchema =>
+  ({ kind: 'range', label, min, max, step, unit, get: s => Number(s[name] ?? fallback), set: value => ({ [name]: value }) })
+export const color = (label: string, name: string, fallback: string): FieldSchema =>
+  ({ kind: 'color', label, get: s => s[name] || fallback, set: value => ({ [name]: value }) })
+export const blocks = (label: string, blockType: string): FieldSchema => ({ kind: 'blocks', label, blockType })
 
-const commonLayoutPanel: PanelSchema = {
+export const commonLayoutPanel: PanelSchema = {
   title: 'Layout & appearance',
   fields: [[
     { kind: 'select', label: 'Background', options: ['default','surface','secondary','dark','primary','gradient'], get: s => s.background || 'default', set: value => ({ background: value === 'default' ? '' : value }) },
@@ -284,8 +303,7 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
   rich_text: () => richTextPanels(),
   // Not richTextPanels() -- that panel's Button label/URL fields are dead here:
   // storefront-sections.tsx's main_collection_banner branch never renders a
-  // button, only heading/text/image, and (fixed alongside this) now reads
-  // s.eyebrow instead of hardcoding "COLLECTION".
+  // button, only heading/text/image.
   main_collection_banner: () => [
     { title: 'Content', fields: [text('Eyebrow', 'eyebrow'), text('Heading', 'heading'), textarea('Text', 'text')] },
     { title: 'Media', fields: [image('Image', 'imageUrl')] },
@@ -342,12 +360,9 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
   ],
   // Style, Mega menu and Navigation spacing used to live here too, but
   // components/store-nav-fixed.tsx (the actual live header) never reads
-  // style/megaMenu/navSpacing at all -- confirmed by grep, they're set nowhere
-  // and read nowhere outside this file and the defaults. Removed rather than
-  // wired up: implementing them would be a header redesign, not a sync fix.
-  // Wishlist/transparency toggles that ARE read live moved to the Theme
-  // settings -> Header panel instead of here, since they're global header
-  // behavior (theme.header), not something that varies per template page.
+  // style/megaMenu/navSpacing at all. Wishlist/transparency toggles that ARE
+  // read live are on the Theme settings -> Header category instead, since
+  // they're global header behavior (theme.header), not per-template.
   header: () => [
     { title: 'Header', fields: [
       toggle('Sticky', 'sticky', true),
@@ -357,13 +372,10 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
       range('Logo width', 'logoWidth', 80, 260, 160),
     ] },
   ],
-  // Empty, not omitted: omitting the key here falls back to commonLayoutPanel
-  // (Background/Text alignment/Spacing/Columns), which is just as dead for footer
-  // as the old dedicated panel was -- components/footer.tsx has its own fixed dark
-  // background and never calls sectionStyle(). The footer never varies per
-  // template page (unlike header), so its real, working controls live in the
-  // theme editor's Theme settings -> Footer panel (theme.footer) instead, matching
-  // Social links.
+  // Empty, not omitted: omitting the key here falls back to commonLayoutPanel,
+  // which is just as dead for footer as a dedicated panel would be --
+  // components/footer.tsx has its own fixed dark background. Footer's real
+  // controls live on the Theme settings -> Footer category (theme.footer).
   footer: () => [],
   video: () => mediaPanels('video'),
   slideshow: () => mediaPanels('slideshow'),
@@ -371,7 +383,7 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
   main_collection_grid: () => mainCollectionGridPanel(),
 }
 
-function renderField(schema: FieldSchema, ctx: FieldCtx, set: (patch: Record<string, any>) => void): React.ReactNode {
+export function renderField(schema: FieldSchema, ctx: FieldCtx, set: (patch: Record<string, any>) => void): React.ReactNode {
   const { s } = ctx
   switch (schema.kind) {
     case 'text':
@@ -387,13 +399,15 @@ function renderField(schema: FieldSchema, ctx: FieldCtx, set: (patch: Record<str
     case 'toggle':
       return <Toggle key={schema.label} label={schema.label} value={schema.get(s)} onChange={value => set(schema.set(value))} />
     case 'range':
-      return <Range key={schema.label} label={schema.label} min={schema.min} max={schema.max} step={schema.step} value={schema.get(s)} onChange={value => set(schema.set(value))} />
+      return <Range key={schema.label} label={schema.label} min={schema.min} max={schema.max} step={schema.step} unit={schema.unit} value={schema.get(s)} onChange={value => set(schema.set(value))} />
+    case 'color':
+      return <ColorField key={schema.label} label={schema.label} value={schema.get(s)} onChange={value => set(schema.set(value))} />
     case 'blocks':
       return null
   }
 }
 
-function renderPanel(panel: PanelSchema, ctx: FieldCtx, set: (patch: Record<string, any>) => void, section: Section, onUpdateBlocks: (blocks: any[]) => void) {
+export function renderPanel(panel: PanelSchema, ctx: FieldCtx, set: (patch: Record<string, any>) => void, section?: Section, onUpdateBlocks?: (blocks: any[]) => void) {
   return (
     <SectionPanel key={panel.title} title={panel.title}>
       {panel.fields.map((entry, index) => {
@@ -401,7 +415,7 @@ function renderPanel(panel: PanelSchema, ctx: FieldCtx, set: (patch: Record<stri
           return <div className="themeInspectorGrid" key={index}>{entry.map(field => renderField(field, ctx, set))}</div>
         }
         if (entry.kind === 'blocks') {
-          return <BlocksEditor key={entry.label} section={section} type={entry.blockType} onUpdateBlocks={onUpdateBlocks} />
+          return section && onUpdateBlocks ? <BlocksEditor key={entry.label} section={section} type={entry.blockType} onUpdateBlocks={onUpdateBlocks} /> : null
         }
         return renderField(entry, ctx, set)
       })}
@@ -409,7 +423,7 @@ function renderPanel(panel: PanelSchema, ctx: FieldCtx, set: (patch: Record<stri
   )
 }
 
-export default function ShopifyThemeInspector({ section, products, collections, onUpdate, onUpdateBlocks }: Props) {
+export default function SectionInspector({ section, products, collections, onUpdate, onUpdateBlocks }: Props) {
   const s = section.settings || {}
   const ctx: FieldCtx = { s, products, collections }
   const set = (patch: Record<string, any>) => onUpdate(patch)

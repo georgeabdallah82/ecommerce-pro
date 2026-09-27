@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Check, ChevronDown, Heart, Minus, Plus, ShoppingBag, Star } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, Heart, Minus, Plus, Share2, ShoppingBag, Star } from 'lucide-react'
 import { useCart } from '@/components/cart-provider'
 import { useWishlist } from '@/components/use-wishlist'
 import { ProductCard, QuickView, StarRow, StoreImage, formatSold, img, money } from '@/components/storefront-sections'
@@ -71,6 +71,22 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
   const [activeImgIndex, setActiveImgIndex] = useState(0)
   const [added, setAdded] = useState(false)
   const [quickProduct, setQuickProduct] = useState<AnyMap | null>(null)
+  const [shared, setShared] = useState(false)
+  const pp = theme.productPage || {}
+  const showBreadcrumbs = pp.showBreadcrumbs !== false
+  const showVendor = pp.showVendor !== false
+  const showReviews = pp.showReviews !== false
+  const showShare = pp.showShare !== false
+  const showWishlist = pp.showWishlist !== false
+  const showShippingAccordion = pp.showShippingAccordion !== false
+  const showDescription = pp.showDescription !== false
+  const showSpecs = pp.showSpecs !== false
+  const showRelated = pp.showRelated !== false
+  const relatedLimit = Number(pp.relatedLimit) || 12
+  const showTrustBadges = pp.showTrustBadges !== false
+  const showStockCounter = pp.showStockCounter !== false
+  const showQuantity = pp.showQuantity !== false
+  const primaryCollection = product.collections?.[0]?.collection
 
   useEffect(() => { setSelectedVariantId(product.variants?.[0]?.id || null); setQty(1); setActiveImgIndex(0) }, [product.id])
 
@@ -110,11 +126,28 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
     router.push('/checkout')
   }
 
+  const share = async () => {
+    const url = typeof window !== 'undefined' ? window.location.href : ''
+    try {
+      if (navigator.share) { await navigator.share({ title: product.name, url }); return }
+      await navigator.clipboard.writeText(url)
+      setShared(true)
+      setTimeout(() => setShared(false), 1500)
+    } catch {}
+  }
+
   const reviews = product.reviews || []
   const avgRating = Number(product.rating || 0)
 
   return (
     <div className="focalStorefront aliProductPage">
+      {showBreadcrumbs && (
+        <div className="aliContainer aliBreadcrumbs">
+          <Link href="/">Home</Link><ChevronRight size={12} />
+          {primaryCollection && <><Link href={`/collections/${primaryCollection.slug}`}>{primaryCollection.name}</Link><ChevronRight size={12} /></>}
+          <span>{product.name}</span>
+        </div>
+      )}
       <div className="aliContainer aliProductLayout">
         <div className="aliProductGallery">
           <div className="aliProductMainImage">
@@ -133,6 +166,7 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
         </div>
 
         <div className="aliProductInfo">
+          {showVendor && product.vendor && <span className="aliProductVendor">{product.vendor}</span>}
           <h1>{product.name}</h1>
           <div className="aliProductMeta">
             <span className="aliProductRating"><StarRow rating={avgRating} size={14} /> {avgRating > 0 && avgRating.toFixed(1)}</span>
@@ -156,39 +190,55 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
             </div>
           )}
 
-          <div className="focalStock">
-            <span className="focalStockDot" style={!canSell ? { background: 'var(--store-muted,#746b64)' } : undefined} /> {stockLabel}
-          </div>
-
-          <div className="aliQtyRow">
-            <span>Quantity</span>
-            <div className="focalQty">
-              <button onClick={() => setQty(Math.max(1, qty - 1))} aria-label="Decrease quantity"><Minus size={14} /></button>
-              <span>{qty}</span>
-              <button onClick={() => setQty(Math.min(99, qty + 1))} aria-label="Increase quantity"><Plus size={14} /></button>
+          {showStockCounter && (
+            <div className="focalStock">
+              <span className="focalStockDot" style={!canSell ? { background: 'var(--store-muted,#746b64)' } : undefined} /> {stockLabel}
             </div>
-          </div>
+          )}
+
+          {showQuantity && (
+            <div className="aliQtyRow">
+              <span>Quantity</span>
+              <div className="focalQty">
+                <button onClick={() => setQty(Math.max(1, qty - 1))} aria-label="Decrease quantity"><Minus size={14} /></button>
+                <span>{qty}</span>
+                <button onClick={() => setQty(Math.min(99, qty + 1))} aria-label="Increase quantity"><Plus size={14} /></button>
+              </div>
+            </div>
+          )}
 
           <div className="aliBuyRow">
             <button className="focalButton aliBuyNow" onClick={buyNow} disabled={!purchaseAllowed} title={purchaseAllowed ? undefined : 'This quantity is not available'}>Buy Now</button>
             <button className={`focalButton primary aliAddToCart ${added ? 'addedSuccess' : ''}`} onClick={addToCart} disabled={!purchaseAllowed} title={purchaseAllowed ? undefined : 'This quantity is not available'}>
               {added ? <>Added <Check size={16} /></> : <>Add to Cart <ShoppingBag size={16} /></>}
             </button>
-            <button type="button" className={`focalWishlist ${wished ? 'active' : ''}`} aria-label={wished ? 'Remove from wishlist' : 'Add to wishlist'} onClick={() => toggleWish(product.id)}>
-              <Heart size={18} fill={wished ? 'currentColor' : 'none'} />
-            </button>
+            {showWishlist && (
+              <button type="button" className={`focalWishlist ${wished ? 'active' : ''}`} aria-label={wished ? 'Remove from wishlist' : 'Add to wishlist'} onClick={() => toggleWish(product.id)}>
+                <Heart size={18} fill={wished ? 'currentColor' : 'none'} />
+              </button>
+            )}
+            {showShare && (
+              <button type="button" className="focalWishlist aliShareButton" aria-label="Share this product" onClick={share}>
+                {shared ? <Check size={18} /> : <Share2 size={17} />}
+              </button>
+            )}
           </div>
 
-          <div className="focalTrustGrid">
-            <span>✓ Secure checkout</span>
-            <span>✓ Easy returns</span>
-            <span>✓ Free shipping &gt; $50</span>
-          </div>
+          {showTrustBadges && (
+            <div className="focalTrustGrid">
+              <span>✓ Secure checkout</span>
+              <span>✓ Easy returns</span>
+              <span>✓ Free shipping &gt; $50</span>
+            </div>
+          )}
 
           <div className="focalAccordions">
-            <details open><summary>Description<ChevronDown size={16} /></summary><p>{product.description || product.shortDescription || ''}</p></details>
+            {showDescription && <details open><summary>Description<ChevronDown size={16} /></summary><p>{product.description || product.shortDescription || ''}</p></details>}
             <details><summary>Product information<ChevronDown size={16} /></summary><p>SKU {selectedVariant?.sku || product.sku || '—'}</p></details>
-            {product.metafields?.length > 0 && (
+            {showShippingAccordion && (
+              <details><summary>Shipping &amp; returns<ChevronDown size={16} /></summary><p>{pp.shippingText || 'Free standard delivery is automatically applied to orders over $50. Tracked shipping worldwide.'}</p></details>
+            )}
+            {showSpecs && product.metafields?.length > 0 && (
               <details><summary>Specifications<ChevronDown size={16} /></summary>
                 <table className="aliSpecTable">
                   <tbody>
@@ -215,36 +265,38 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
         </div>
       </div>
 
-      <div className="aliContainer aliReviewsSection">
-        <h2>Customer Reviews {reviews.length > 0 && <span className="aliReviewAvg"><StarRow rating={avgRating} size={16} /> {avgRating.toFixed(1)} ({reviews.length})</span>}</h2>
-        {reviewEligibility === 'can_review' && <ReviewForm productId={product.id} />}
-        {reviewEligibility === 'already_reviewed' && <p className="aliReviewFormNote">You've already reviewed this product — thanks for the feedback.</p>}
-        {reviewEligibility === 'guest' && <p className="aliReviewFormNote"><Link href="/account/login">Sign in</Link> to write a review after your order is delivered.</p>}
-        {reviews.length > 0 ? (
-          <div className="aliReviewList">
-            {reviews.map((r: AnyMap) => (
-              <div className={`aliReviewItem${r.featured ? ' aliReviewFeatured' : ''}`} key={r.id}>
-                <div className="aliReviewHead">
-                  <StarRow rating={Number(r.rating || 0)} size={13} />
-                  <strong>{r.user?.name || 'Verified buyer'}</strong>
-                  {r.featured && <span className="aliReviewFeaturedBadge">Featured</span>}
-                  <span>{new Date(r.createdAt).toLocaleDateString()}</span>
+      {showReviews && (
+        <div className="aliContainer aliReviewsSection">
+          <h2>Customer Reviews {reviews.length > 0 && <span className="aliReviewAvg"><StarRow rating={avgRating} size={16} /> {avgRating.toFixed(1)} ({reviews.length})</span>}</h2>
+          {reviewEligibility === 'can_review' && <ReviewForm productId={product.id} />}
+          {reviewEligibility === 'already_reviewed' && <p className="aliReviewFormNote">You've already reviewed this product — thanks for the feedback.</p>}
+          {reviewEligibility === 'guest' && <p className="aliReviewFormNote"><Link href="/account/login">Sign in</Link> to write a review after your order is delivered.</p>}
+          {reviews.length > 0 ? (
+            <div className="aliReviewList">
+              {reviews.map((r: AnyMap) => (
+                <div className={`aliReviewItem${r.featured ? ' aliReviewFeatured' : ''}`} key={r.id}>
+                  <div className="aliReviewHead">
+                    <StarRow rating={Number(r.rating || 0)} size={13} />
+                    <strong>{r.user?.name || 'Verified buyer'}</strong>
+                    {r.featured && <span className="aliReviewFeaturedBadge">Featured</span>}
+                    <span>{new Date(r.createdAt).toLocaleDateString()}</span>
+                  </div>
+                  {r.title && <div className="aliReviewTitle">{r.title}</div>}
+                  <p>{r.body}</p>
                 </div>
-                {r.title && <div className="aliReviewTitle">{r.title}</div>}
-                <p>{r.body}</p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="aliEmptyState">No reviews yet.</p>
-        )}
-      </div>
+              ))}
+            </div>
+          ) : (
+            <p className="aliEmptyState">No reviews yet.</p>
+          )}
+        </div>
+      )}
 
-      {related.length > 0 && (
+      {showRelated && related.length > 0 && (
         <div className="aliContainer aliSection">
           <div className="aliSectionHead"><h2>You may also like</h2></div>
           <div className="aliDenseGrid">
-            {related.slice(0, 12).map(p => (
+            {related.slice(0, relatedLimit).map(p => (
               <ProductCard key={p.id} p={p} theme={theme} onQuickView={setQuickProduct} wishlist={wishlist} toggleWish={toggleWish} />
             ))}
           </div>

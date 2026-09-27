@@ -48,7 +48,7 @@ type PreviewState = {
   selectedId: string
 } | null
 
-// The theme editor (components/focal-theme-editor.tsx) renders this page inside
+// The theme editor (components/theme-studio.tsx) renders this page inside
 // a same-origin iframe and posts the draft state below across on every change.
 // Message shapes:
 //   parent -> frame: { source: 'theme-editor', type: 'state', theme, sections, navigation, products, collections, selectedId }
