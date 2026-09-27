@@ -5,15 +5,16 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowUp,
+  AtSign,
   BadgeCheck,
   Check,
   Columns3,
+  Compass,
   Copy,
   FolderOpen,
   GalleryHorizontal,
   GalleryHorizontalEnd,
   Camera,
-  Compass,
   Grid2x2,
   GripVertical,
   HelpCircle,
@@ -37,10 +38,12 @@ import {
   Rocket,
   Save,
   ShieldCheck,
+  ShoppingCart,
   Smartphone,
   Sparkles,
   SplitSquareHorizontal,
   Star,
+  Store,
   Tablet,
   Timer,
   Trash2,
@@ -49,15 +52,17 @@ import {
   Undo2,
   Video,
   X,
-  ImagePlus,
   Zap,
 } from 'lucide-react'
-import ShopifyThemeInspector from '@/components/shopify-theme-inspector'
+import SectionInspector, {
+  renderPanel,
+  text, image, textarea, select, toggle, range, color,
+  type PanelSchema, type FieldCtx,
+} from '@/components/theme-section-inspector'
 import ThemeInspectorStyles from '@/components/theme-inspector-styles'
 import ThemePublishBar from '@/components/theme-publish-bar'
-import MediaPicker from '@/components/media-picker'
 import { FONT_OPTIONS } from '@/lib/font-options'
-import styles from './admin-theme-editor.module.css'
+import styles from './theme-studio.module.css'
 
 // Deliberately not under /admin -- see app/theme-editor-preview/page.tsx's top comment.
 const PREVIEW_PATH = '/theme-editor-preview'
@@ -68,6 +73,7 @@ type Snapshot = { theme: AnyMap; templates: Record<string, Section[]>; page: str
 type Props = { initial: { theme: AnyMap; sections: Section[]; navigation: any[]; draft: boolean } }
 
 const PAGES = ['Home page', 'Products', 'Product', 'Collections', 'Collection', 'Cart', 'Pages', 'Blog']
+const HOME_LIVE_TYPES = ['hero', 'category_strip', 'flash_deals', 'collection_grid', 'new_arrivals', 'best_sellers']
 const META: Record<string, string> = {
   announcement: 'Announcement bar',
   header: 'Header',
@@ -189,110 +195,87 @@ function defaultTemplates(source: Section[]) {
   } as Record<string, Section[]>
 }
 
-function Field({ label, value, onChange, type = 'text' }: { label: string; value: any; onChange: (value: any) => void; type?: string }) {
-  return (
-    <label className={styles.field}>
-      <span>{label}</span>
-      <input className={styles.input} type={type} value={value ?? ''} onChange={event => onChange(type === 'number' ? Number(event.target.value) : event.target.value)} />
-    </label>
-  )
-}
+// ---- Theme settings categories ----
+// Each category edits one theme[group] object (or the theme root, for
+// Branding) using the exact same declarative field schema + renderer as
+// section editing (components/theme-section-inspector.tsx), so both live in
+// the same drawer with the same visual language instead of two separate
+// systems. Only settings actually read live by the storefront are listed --
+// see app/cart/page.tsx, components/aliexpress-product.tsx,
+// components/aliexpress-collection-detail.tsx and components/aliexpress-shop.tsx
+// for exactly which of theme.productPage/collectionPage/cart each field drives.
+const ROOT_GROUP = '__root__'
+type ThemeCategory = { key: string; label: string; icon: typeof ImageIcon; group: string; panels: PanelSchema[] }
+const THEME_CATEGORIES: ThemeCategory[] = [
+  { key: 'branding', label: 'Branding', icon: Store, group: ROOT_GROUP, panels: [
+    { title: 'Branding', fields: [text('Brand name', 'brandName'), image('Logo', 'logoUrl'), image('Logo (for dark backgrounds, e.g. footer)', 'logoUrlDark'), image('Favicon', 'faviconUrl')] },
+  ] },
+  { key: 'header', label: 'Header', icon: Menu, group: 'header', panels: [
+    { title: 'Header', fields: [toggle('Show wishlist icon', 'showWishlist', false), toggle('Transparent header', 'transparent', false), toggle('Transparent on homepage only', 'transparentHome', false)] },
+  ] },
+  { key: 'productPage', label: 'Product page', icon: Package, group: 'productPage', panels: [
+    { title: 'Content', fields: [
+      toggle('Show breadcrumbs', 'showBreadcrumbs', true),
+      toggle('Show vendor', 'showVendor', true),
+      toggle('Show reviews', 'showReviews', true),
+      toggle('Show share button', 'showShare', true),
+      toggle('Show wishlist button', 'showWishlist', true),
+      toggle('Show description accordion', 'showDescription', true),
+      toggle('Show specifications accordion', 'showSpecs', true),
+      [toggle('Show shipping & returns accordion', 'showShippingAccordion', true)],
+      textarea('Shipping & returns text', 'shippingText'),
+    ] },
+    { title: 'Related products', fields: [toggle('Show related products', 'showRelated', true), range('Products shown', 'relatedLimit', 4, 20, 12)] },
+    { title: 'Purchase area', fields: [toggle('Show trust badges', 'showTrustBadges', true), toggle('Show stock counter', 'showStockCounter', true), toggle('Show quantity selector', 'showQuantity', true)] },
+  ] },
+  { key: 'collectionPage', label: 'Collection & shop pages', icon: FolderOpen, group: 'collectionPage', panels: [
+    { title: 'Content', fields: [
+      toggle('Show breadcrumbs', 'showBreadcrumbs', true),
+      toggle('Show collection description', 'showDescription', true),
+      toggle('Show collection banner image', 'showImage', true),
+      toggle('Show sort control', 'showSort', true),
+      toggle('Show filters (Shop page sidebar)', 'showFilters', true),
+    ] },
+  ] },
+  { key: 'cart', label: 'Cart', icon: ShoppingCart, group: 'cart', panels: [
+    { title: 'Cart', fields: [
+      toggle('Sticky mobile checkout bar', 'stickyCheckout', true),
+      toggle('Free shipping progress bar', 'freeShippingBar', true),
+      toggle('Show "You might also like"', 'recommendations', true),
+    ] },
+  ] },
+  { key: 'footer', label: 'Footer', icon: PanelBottom, group: 'footer', panels: [
+    { title: 'Footer', fields: [toggle('Show newsletter signup', 'showNewsletter', true), text('Description text', 'text'), range('Link columns shown', 'columns', 2, 4, 4)] },
+  ] },
+  { key: 'social', label: 'Social links', icon: AtSign, group: 'social', panels: [
+    { title: 'Social links', fields: [text('Instagram URL', 'instagram'), text('Facebook URL', 'facebook'), text('TikTok URL', 'tiktok'), text('X / Twitter URL', 'twitter'), text('YouTube URL', 'youtube')] },
+  ] },
+  { key: 'colors', label: 'Colors', icon: Palette, group: 'colors', panels: [
+    { title: 'Colors', fields: [
+      color('Primary', 'primary', '#0a0a0a'), color('Secondary', 'secondary', '#f0f0f0'), color('Accent', 'accent', '#d4ff3f'),
+      color('Background', 'background', '#ffffff'), color('Surface', 'surface', '#f5f5f5'), color('Text', 'text', '#0a0a0a'),
+      color('Muted text', 'muted', '#6b6b6b'), color('Border', 'border', '#e5e5e5'), color('Button text', 'buttonText', '#ffffff'),
+      color('Announcement bg', 'announcementBg', '#0a0a0a'), color('Announcement text', 'announcementText', '#ffffff'), color('Sale', 'sale', '#ff3b30'),
+    ] },
+  ] },
+  { key: 'typography', label: 'Typography', icon: TypeIcon, group: 'typography', panels: [
+    { title: 'Typography', fields: [
+      select('Heading font', 'heading', FONT_OPTIONS.map(f => ({ value: f.key, label: f.label })), 'spaceGrotesk'),
+      select('Body font', 'body', FONT_OPTIONS.map(f => ({ value: f.key, label: f.label })), 'inter'),
+    ] },
+  ] },
+  { key: 'buttons', label: 'Buttons', icon: Grid2x2, group: 'buttons', panels: [
+    { title: 'Buttons', fields: [range('Corner radius', 'radius', 0, 32, 8, undefined, 'px'), range('Height', 'height', 36, 64, 50, undefined, 'px'), toggle('Uppercase label', 'uppercase', true)] },
+  ] },
+  { key: 'cards', label: 'Cards', icon: LayoutGrid, group: 'cards', panels: [
+    { title: 'Cards', fields: [range('Card corner radius', 'radius', 0, 32, 14, undefined, 'px')] },
+  ] },
+  { key: 'layout', label: 'Layout', icon: Columns3, group: 'layout', panels: [
+    { title: 'Layout', fields: [range('Section spacing', 'sectionSpacing', 32, 160, 84, undefined, 'px'), range('Max page width', 'maxWidth', 960, 1600, 1360, 20, 'px')] },
+  ] },
+]
 
-function ImageField({ label, value, onChange }: { label: string; value: any; onChange: (value: string) => void }) {
-  const [open, setOpen] = useState(false)
-  const url = value ? String(value) : ''
-  return (
-    // A plain div, not a <label> -- see the matching note in
-    // shopify-theme-inspector.tsx's ImageField: nesting the MediaPicker modal
-    // inside a <label> made the browser's implicit label click-forwarding
-    // reopen the picker (via a synthesized click on "Change"/"Upload image")
-    // the instant any non-button area -- including the modal's own backdrop --
-    // was clicked, so the modal never visibly closed.
-    <div className="themeInspectorField themeImageField">
-      <span>{label}</span>
-      {url ? (
-        <div className="themeImagePreview">
-          <img className="themeImageThumb" src={url} alt="" />
-          <div className="themeImageActions">
-            <button type="button" onClick={() => setOpen(true)}>Change</button>
-            <button type="button" className="themeImageRemove" onClick={() => onChange('')} aria-label={`Remove ${label.toLowerCase()}`}><X size={13} /></button>
-          </div>
-        </div>
-      ) : (
-        <button type="button" className="themeImageEmpty" onClick={() => setOpen(true)}><ImagePlus size={16} /> Upload image</button>
-      )}
-      <MediaPicker open={open} onClose={() => setOpen(false)} onAdd={images => { if (images[0]) onChange(images[0].url); setOpen(false) }} />
-    </div>
-  )
-}
-
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className={styles.panel}>
-      <div className={styles.panelTitle}>{title}</div>
-      <div className={styles.panelBody}>{children}</div>
-    </section>
-  )
-}
-
-const HEX_RE = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i
-
-function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  const [text, setText] = useState(value)
-  useEffect(() => { setText(value) }, [value])
-  return (
-    <label className={styles.field}>
-      <span>{label}</span>
-      <div className={styles.colorRow}>
-        <input
-          type="color"
-          value={HEX_RE.test(value) && value.length === 7 ? value : '#000000'}
-          onChange={event => { setText(event.target.value); onChange(event.target.value) }}
-          className={styles.colorSwatch}
-          aria-label={`${label} swatch`}
-        />
-        <input
-          type="text"
-          value={text}
-          onChange={event => { setText(event.target.value); if (HEX_RE.test(event.target.value)) onChange(event.target.value) }}
-          className={styles.input}
-          placeholder="#000000"
-        />
-      </div>
-    </label>
-  )
-}
-
-function SelectField({ label, value, options, onChange }: { label: string; value: string; options: Array<{ value: string; label: string }>; onChange: (value: string) => void }) {
-  return (
-    <label className={styles.field}>
-      <span>{label}</span>
-      <select className={styles.fieldSelect} value={value} onChange={event => onChange(event.target.value)}>
-        {options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-      </select>
-    </label>
-  )
-}
-
-function RangeField({ label, value, min, max, step = 1, unit = '', onChange }: { label: string; value: number; min: number; max: number; step?: number; unit?: string; onChange: (value: number) => void }) {
-  return (
-    <label className={styles.field}>
-      <span>{label} — {value}{unit}</span>
-      <input type="range" min={min} max={max} step={step} value={value} onChange={event => onChange(Number(event.target.value))} />
-    </label>
-  )
-}
-
-function ToggleField({ label, value, onChange }: { label: string; value: boolean; onChange: (value: boolean) => void }) {
-  return (
-    <label className={`${styles.field} ${styles.toggleField}`}>
-      <span>{label}</span>
-      <input type="checkbox" checked={value} onChange={event => onChange(event.target.checked)} />
-    </label>
-  )
-}
-
-export default function FocalThemeEditor({ initial }: Props) {
+export default function ThemeStudio({ initial }: Props) {
   const fallback = useMemo(() => defaultTemplates(initial.sections), [initial.sections])
   const [theme, setTheme] = useState<AnyMap>(() => clone(initial.theme || {}))
   const [templates, setTemplates] = useState<Record<string, Section[]>>(() => {
@@ -305,6 +288,8 @@ export default function FocalThemeEditor({ initial }: Props) {
   const [selectedId, setSelectedId] = useState('')
   const [device, setDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
   const [sideTab, setSideTab] = useState<'sections' | 'theme' | 'history'>('sections')
+  const [activeCategoryKey, setActiveCategoryKey] = useState('')
+  const [drawerMode, setDrawerMode] = useState<'section' | 'theme'>('section')
   const [drawerTab, setDrawerTab] = useState<'content' | 'design' | 'advanced'>('content')
   const [drawer, setDrawer] = useState(false)
   const [picker, setPicker] = useState(false)
@@ -340,12 +325,14 @@ export default function FocalThemeEditor({ initial }: Props) {
   const current = templates[page] || []
   const selectedIndex = current.findIndex(section => section.id === selectedId)
   const selected = current[selectedIndex] || null
+  const activeCategory = THEME_CATEGORIES.find(c => c.key === activeCategoryKey) || null
 
   useEffect(() => {
     if (!current.some(section => section.id === selectedId)) {
       setSelectedId(current[0]?.id || '')
-      setDrawer(false)
+      if (drawerMode === 'section') setDrawer(false)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current, selectedId])
 
   useEffect(() => {
@@ -385,7 +372,7 @@ export default function FocalThemeEditor({ initial }: Props) {
       const data = event.data
       if (!data || data.source !== 'theme-preview') return
       if (data.type === 'ready') setPreviewReadyToken(t => t + 1)
-      else if (data.type === 'select') { setSelectedId(data.sectionId); setDrawer(true) }
+      else if (data.type === 'select') { setSelectedId(data.sectionId); setDrawerMode('section'); setDrawer(true) }
       else if (data.type === 'height') setPreviewHeight(Number(data.height) || 0)
     }
     window.addEventListener('message', onMessage)
@@ -418,13 +405,14 @@ export default function FocalThemeEditor({ initial }: Props) {
     commit({ ...templates, [page]: current.map(section => (section.id === selected.id ? { ...section, settings: { ...(section.settings || {}), ...patches } } : section)) })
   }
   const patchTheme = (group: string, patches: AnyMap) => {
+    if (group === ROOT_GROUP) { commit(templates, { ...theme, ...patches }); return }
     commit(templates, { ...theme, [group]: { ...(theme[group] || {}), ...patches } })
   }
   const patchBlocks = (blocks: any[]) => {
     if (!selected) return
     commit({ ...templates, [page]: current.map(section => (section.id === selected.id ? { ...section, blocks: clone(blocks) } : section)) })
   }
-  const toggle = (value: boolean) => {
+  const toggleSection = (value: boolean) => {
     if (!selected) return
     commit({ ...templates, [page]: current.map(section => (section.id === selected.id ? { ...section, enabled: value } : section)) })
   }
@@ -434,6 +422,7 @@ export default function FocalThemeEditor({ initial }: Props) {
     list.splice(selectedIndex < 0 ? list.length : selectedIndex + 1, 0, next)
     commit({ ...templates, [page]: list })
     setSelectedId(next.id)
+    setDrawerMode('section')
     setDrawer(true)
     setPicker(false)
     setPickerQuery('')
@@ -507,6 +496,11 @@ export default function FocalThemeEditor({ initial }: Props) {
     if (nextPage === page) return
     if (dirty) { confirmAction('You have unsaved changes. Switch templates anyway?', () => switchPage(nextPage)); return }
     switchPage(nextPage)
+  }
+  const openCategory = (key: string) => {
+    setActiveCategoryKey(key)
+    setDrawerMode('theme')
+    setDrawer(true)
   }
   const save = async () => {
     setSaving(true)
@@ -596,6 +590,10 @@ export default function FocalThemeEditor({ initial }: Props) {
   const maxWidth = device === 'mobile' ? 390 : device === 'tablet' ? 820 : 1320
   const frameClass = device === 'mobile' ? styles.frameMobile : device === 'tablet' ? styles.frameTablet : styles.frameDesktop
 
+  const categoryCtx: FieldCtx | null = activeCategory
+    ? { s: activeCategory.group === ROOT_GROUP ? theme : (theme[activeCategory.group] || {}), products, collections }
+    : null
+
   return (
     <div className={styles.editor}>
       <ThemeInspectorStyles />
@@ -607,7 +605,7 @@ export default function FocalThemeEditor({ initial }: Props) {
           </a>
           <div>
             <div className={styles.title}>Theme editor</div>
-            <div className={styles.sub}>FOCAL</div>
+            <div className={styles.sub}>{page}</div>
           </div>
           <select className={styles.select} value={page} onChange={event => changePage(event.target.value)}>
             {PAGES.map(item => (
@@ -616,13 +614,15 @@ export default function FocalThemeEditor({ initial }: Props) {
           </select>
         </div>
         <div className={styles.topRight}>
-          <button className={styles.iconBtn} onClick={undo} disabled={!history.length}><Undo2 size={15} /></button>
-          <button className={styles.iconBtn} onClick={redo} disabled={!future.length}><Redo2 size={15} /></button>
-          {(['desktop', 'tablet', 'mobile'] as const).map(item => (
-            <button className={styles.iconBtn} key={item} onClick={() => setDevice(item)}>
-              {item === 'desktop' ? <Monitor size={14} /> : item === 'tablet' ? <Tablet size={14} /> : <Smartphone size={14} />}
-            </button>
-          ))}
+          <button className={styles.iconBtn} onClick={undo} disabled={!history.length} aria-label="Undo"><Undo2 size={15} /></button>
+          <button className={styles.iconBtn} onClick={redo} disabled={!future.length} aria-label="Redo"><Redo2 size={15} /></button>
+          <div className={styles.deviceGroup}>
+            {(['desktop', 'tablet', 'mobile'] as const).map(item => (
+              <button className={`${styles.iconBtn} ${device === item ? styles.active : ''}`} key={item} onClick={() => setDevice(item)} aria-label={item}>
+                {item === 'desktop' ? <Monitor size={14} /> : item === 'tablet' ? <Tablet size={14} /> : <Smartphone size={14} />}
+              </button>
+            ))}
+          </div>
           <button className={`${styles.btn} ${styles.btnPrimary}`} disabled={!dirty || saving} onClick={save}>
             <Save size={14} />
             {saving ? 'Saving…' : dirty ? 'Save •' : 'Save'}
@@ -645,10 +645,10 @@ export default function FocalThemeEditor({ initial }: Props) {
                   <strong>{page}</strong>
                   <div className={styles.sideSectionsCount}>{current.filter(section => section.enabled !== false).length} visible sections</div>
                 </div>
-                <button className={styles.iconBtn} onClick={() => setPicker(true)}><Plus size={15} /></button>
+                <button className={styles.iconBtn} onClick={() => setPicker(true)} aria-label="Add section"><Plus size={15} /></button>
               </div>
               <div className={styles.legacyNotice}>
-                &ldquo;{page}&rdquo; renders on your live storefront as a dedicated built-in page design, not from this section list -- edits below only change what you see in this editor&rsquo;s own preview. Header and Announcement here (tagged LIVE) are the exception: those apply to your real site regardless of this template.{page === 'Home page' && <> Image banner, Category strip, Flash deals, Collection list, New arrivals and Best sellers are also live here (and only here) -- these are the sections this page actually reads out of the list below; their position in this list doesn&rsquo;t affect where they appear on the page, but enabling/disabling and editing their content does.</>} Footer is edited under the Theme tab instead.
+                &ldquo;{page}&rdquo; renders on your live storefront as a dedicated built-in page design, not from this section list -- edits below only change what you see in this editor&rsquo;s own preview. Header and Announcement here (tagged LIVE) are the exception: those apply to your real site regardless of this template.{page === 'Home page' && <> Image banner, Category strip, Flash deals, Collection list, New arrivals and Best sellers are also live here (and only here) -- these are the sections this page actually reads out of the list below; their position in this list doesn&rsquo;t affect where they appear on the page, but enabling/disabling and editing their content does.</>} Product page, Collection &amp; shop pages, Cart and Footer are edited under the Theme tab instead.
               </div>
               <div className={styles.rows}>
                 {current.map((section, index) => (
@@ -660,16 +660,16 @@ export default function FocalThemeEditor({ initial }: Props) {
                     onDragLeave={() => setDragOverId(prev => (prev === section.id ? null : prev))}
                     onDrop={() => { dropSection(section.id); setDragOverId(null) }}
                     onDragEnd={() => { setDragId(null); setDragOverId(null) }}
-                    className={`${styles.row} ${selectedId === section.id ? styles.active : ''} ${dragOverId === section.id && dragId !== section.id ? styles.dropTarget : ''}`}
+                    className={`${styles.row} ${selectedId === section.id && drawerMode === 'section' ? styles.active : ''} ${dragOverId === section.id && dragId !== section.id ? styles.dropTarget : ''}`}
                   >
-                    <button className={styles.rowMain} onClick={() => { setSelectedId(section.id); setDrawer(true); setDrawerTab('content') }}>
+                    <button className={styles.rowMain} onClick={() => { setSelectedId(section.id); setDrawerMode('section'); setDrawer(true); setDrawerTab('content') }}>
                       <GripVertical size={13} className={styles.rowGrip} />
                       {(() => { const Icon = SECTION_ICONS[section.type] || LayoutGrid; return <Icon size={15} className={styles.rowIcon} /> })()}
                       <span>{META[section.type] || section.type.replaceAll('_', ' ')}</span>
-                      {(section.type === 'header' || section.type === 'announcement' || (page === 'Home page' && ['hero', 'category_strip', 'flash_deals', 'collection_grid', 'new_arrivals', 'best_sellers'].includes(section.type))) && <small className={styles.liveTag}>LIVE</small>}
-                      {index === 0 && <small>MAIN</small>}
+                      {(section.type === 'header' || section.type === 'announcement' || (page === 'Home page' && HOME_LIVE_TYPES.includes(section.type))) && <small className={styles.liveTag}>LIVE</small>}
+                      {index === 0 && <small className={styles.mainTag}>MAIN</small>}
                     </button>
-                    <button className={styles.rowToggle} onClick={() => { setSelectedId(section.id); setDrawer(true); toggle(section.enabled === false) }}>
+                    <button className={styles.rowToggle} onClick={() => { setSelectedId(section.id); setDrawerMode('section'); setDrawer(true); toggleSection(section.enabled === false) }} aria-label={section.enabled === false ? 'Enable section' : 'Disable section'}>
                       {section.enabled === false ? <X size={14} /> : <Check size={14} />}
                     </button>
                   </div>
@@ -678,72 +678,46 @@ export default function FocalThemeEditor({ initial }: Props) {
               <button className={styles.add} onClick={() => setPicker(true)}><Plus size={14} />Add section</button>
             </>
           ) : sideTab === 'theme' ? (
-            <div className={styles.sideThemeTab}>
-              <Panel title="Brand">
-                <Field label="Brand name" value={theme.brandName || ''} onChange={value => commit(templates, { ...theme, brandName: value })} />
-                <ImageField label="Logo" value={theme.logoUrl || ''} onChange={value => commit(templates, { ...theme, logoUrl: value })} />
-                <ImageField label="Logo (for dark backgrounds, e.g. footer)" value={theme.logoUrlDark || ''} onChange={value => commit(templates, { ...theme, logoUrlDark: value })} />
-                <ImageField label="Favicon" value={theme.faviconUrl || ''} onChange={value => commit(templates, { ...theme, faviconUrl: value })} />
-              </Panel>
-              <Panel title="Header">
-                <ToggleField label="Show wishlist icon" value={theme.header?.showWishlist === true} onChange={value => patchTheme('header', { showWishlist: value })} />
-                <ToggleField label="Transparent header" value={theme.header?.transparent === true} onChange={value => patchTheme('header', { transparent: value })} />
-                <ToggleField label="Transparent on homepage only" value={theme.header?.transparentHome === true} onChange={value => patchTheme('header', { transparentHome: value })} />
-              </Panel>
-              <Panel title="Footer">
-                <ToggleField label="Show newsletter signup" value={theme.footer?.showNewsletter !== false} onChange={value => patchTheme('footer', { showNewsletter: value })} />
-                <Field label="Description text" value={theme.footer?.text || ''} onChange={value => patchTheme('footer', { text: value })} />
-                <RangeField label="Link columns shown" value={theme.footer?.columns ?? 4} min={2} max={4} onChange={value => patchTheme('footer', { columns: value })} />
-              </Panel>
-              <Panel title="Social links">
-                <Field label="Instagram URL" value={theme.social?.instagram || ''} onChange={value => patchTheme('social', { instagram: value })} />
-                <Field label="Facebook URL" value={theme.social?.facebook || ''} onChange={value => patchTheme('social', { facebook: value })} />
-                <Field label="TikTok URL" value={theme.social?.tiktok || ''} onChange={value => patchTheme('social', { tiktok: value })} />
-                <Field label="X / Twitter URL" value={theme.social?.twitter || ''} onChange={value => patchTheme('social', { twitter: value })} />
-                <Field label="YouTube URL" value={theme.social?.youtube || ''} onChange={value => patchTheme('social', { youtube: value })} />
-              </Panel>
-              <Panel title="Colors">
-                <ColorField label="Primary" value={theme.colors?.primary || '#0a0a0a'} onChange={value => patchTheme('colors', { primary: value })} />
-                <ColorField label="Secondary" value={theme.colors?.secondary || '#f0f0f0'} onChange={value => patchTheme('colors', { secondary: value })} />
-                <ColorField label="Accent" value={theme.colors?.accent || '#d4ff3f'} onChange={value => patchTheme('colors', { accent: value })} />
-                <ColorField label="Background" value={theme.colors?.background || '#ffffff'} onChange={value => patchTheme('colors', { background: value })} />
-                <ColorField label="Surface" value={theme.colors?.surface || '#f5f5f5'} onChange={value => patchTheme('colors', { surface: value })} />
-                <ColorField label="Text" value={theme.colors?.text || '#0a0a0a'} onChange={value => patchTheme('colors', { text: value })} />
-                <ColorField label="Muted text" value={theme.colors?.muted || '#6b6b6b'} onChange={value => patchTheme('colors', { muted: value })} />
-                <ColorField label="Border" value={theme.colors?.border || '#e5e5e5'} onChange={value => patchTheme('colors', { border: value })} />
-                <ColorField label="Button text" value={theme.colors?.buttonText || '#ffffff'} onChange={value => patchTheme('colors', { buttonText: value })} />
-                <ColorField label="Announcement bg" value={theme.colors?.announcementBg || '#0a0a0a'} onChange={value => patchTheme('colors', { announcementBg: value })} />
-                <ColorField label="Announcement text" value={theme.colors?.announcementText || '#ffffff'} onChange={value => patchTheme('colors', { announcementText: value })} />
-                <ColorField label="Sale" value={theme.colors?.sale || '#ff3b30'} onChange={value => patchTheme('colors', { sale: value })} />
-              </Panel>
-              <Panel title="Typography">
-                <SelectField label="Heading font" value={theme.typography?.heading || 'spaceGrotesk'} options={FONT_OPTIONS.map(f => ({ value: f.key, label: f.label }))} onChange={value => patchTheme('typography', { heading: value })} />
-                <SelectField label="Body font" value={theme.typography?.body || 'inter'} options={FONT_OPTIONS.map(f => ({ value: f.key, label: f.label }))} onChange={value => patchTheme('typography', { body: value })} />
-              </Panel>
-              <Panel title="Buttons">
-                <RangeField label="Corner radius" value={theme.buttons?.radius ?? 8} min={0} max={32} unit="px" onChange={value => patchTheme('buttons', { radius: value })} />
-                <RangeField label="Height" value={theme.buttons?.height ?? 50} min={36} max={64} unit="px" onChange={value => patchTheme('buttons', { height: value })} />
-                <ToggleField label="Uppercase label" value={theme.buttons?.uppercase !== false} onChange={value => patchTheme('buttons', { uppercase: value })} />
-              </Panel>
-              <Panel title="Cards & layout">
-                <RangeField label="Card corner radius" value={theme.cards?.radius ?? 14} min={0} max={32} unit="px" onChange={value => patchTheme('cards', { radius: value })} />
-                <RangeField label="Section spacing" value={theme.layout?.sectionSpacing ?? 84} min={32} max={160} unit="px" onChange={value => patchTheme('layout', { sectionSpacing: value })} />
-                <RangeField label="Max page width" value={theme.layout?.maxWidth ?? 1360} min={960} max={1600} step={20} unit="px" onChange={value => patchTheme('layout', { maxWidth: value })} />
-              </Panel>
-            </div>
-          ) : (
-            <div className={styles.sideThemeTab}>
-              {versionsLoading && <div className={styles.sideSectionsCount}>Loading history…</div>}
-              {versionsError && <div className={styles.sideSectionsCount}>{versionsError}</div>}
-              {!versionsLoading && !versionsError && !versions.length && <div className={styles.sideSectionsCount}>No published versions yet. History fills in after your next publish.</div>}
+            <>
+              <div className={styles.sideSectionsHead}>
+                <div>
+                  <strong>Theme settings</strong>
+                  <div className={styles.sideSectionsCount}>Global — applies across your whole store</div>
+                </div>
+              </div>
               <div className={styles.rows}>
+                {THEME_CATEGORIES.map(category => {
+                  const Icon = category.icon
+                  return (
+                    <div key={category.key} className={`${styles.row} ${activeCategoryKey === category.key && drawerMode === 'theme' ? styles.active : ''}`}>
+                      <button className={styles.rowMain} onClick={() => openCategory(category.key)}>
+                        <Icon size={15} className={styles.rowIcon} />
+                        <span>{category.label}</span>
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className={styles.sideSectionsHead}>
+                <div>
+                  <strong>Version history</strong>
+                  <div className={styles.sideSectionsCount}>Every publish keeps a restorable snapshot</div>
+                </div>
+              </div>
+              <div className={styles.rows}>
+                {versionsLoading && <div className={styles.sideSectionsCount}>Loading history…</div>}
+                {versionsError && <div className={styles.sideSectionsCount}>{versionsError}</div>}
+                {!versionsLoading && !versionsError && !versions.length && <div className={styles.sideSectionsCount}>No published versions yet. History fills in after your next publish.</div>}
                 {versions.map(version => (
                   <div className={styles.row} key={version.id}>
                     <div className={styles.rowMain}>
-                      <History size={13} />
+                      <History size={13} className={styles.rowIcon} />
                       <span>
                         {formatVersionTime(version.createdAt)}
-                        {version.createdBy && <small> · {version.createdBy}</small>}
+                        {version.createdBy && <small className={styles.versionBy}> · {version.createdBy}</small>}
                       </span>
                     </div>
                     <button className={styles.rowToggle} disabled={restoringId === version.id} onClick={() => restoreVersion(version.id)} aria-label="Restore this version">
@@ -752,7 +726,7 @@ export default function FocalThemeEditor({ initial }: Props) {
                   </div>
                 ))}
               </div>
-            </div>
+            </>
           )}
         </aside>
 
@@ -771,7 +745,7 @@ export default function FocalThemeEditor({ initial }: Props) {
           </div>
         </main>
 
-        {drawer && selected && (
+        {drawer && drawerMode === 'section' && selected && (
           <aside className={styles.drawer}>
             <div className={styles.drawerHead}>
               <div>
@@ -779,11 +753,11 @@ export default function FocalThemeEditor({ initial }: Props) {
                 <strong>{META[selected.type] || selected.type}</strong>
               </div>
               <div className={styles.drawerHeadActions}>
-                <button className={styles.iconBtn} onClick={() => moveSection(-1)} disabled={selectedIndex <= 0}><ArrowUp size={13} /></button>
-                <button className={styles.iconBtn} onClick={() => moveSection(1)} disabled={selectedIndex < 0 || selectedIndex >= current.length - 1}><ArrowDown size={13} /></button>
-                <button className={styles.iconBtn} onClick={duplicateSection}><Copy size={13} /></button>
-                <button className={styles.iconBtn} onClick={removeSection}><Trash2 size={13} /></button>
-                <button className={styles.iconBtn} onClick={() => setDrawer(false)}><X size={15} /></button>
+                <button className={styles.iconBtn} onClick={() => moveSection(-1)} disabled={selectedIndex <= 0} aria-label="Move up"><ArrowUp size={13} /></button>
+                <button className={styles.iconBtn} onClick={() => moveSection(1)} disabled={selectedIndex < 0 || selectedIndex >= current.length - 1} aria-label="Move down"><ArrowDown size={13} /></button>
+                <button className={styles.iconBtn} onClick={duplicateSection} aria-label="Duplicate"><Copy size={13} /></button>
+                <button className={styles.iconBtn} onClick={removeSection} aria-label="Delete"><Trash2 size={13} /></button>
+                <button className={styles.iconBtn} onClick={() => setDrawer(false)} aria-label="Close"><X size={15} /></button>
               </div>
             </div>
             <div className={styles.drawerTabs}>
@@ -792,29 +766,46 @@ export default function FocalThemeEditor({ initial }: Props) {
               ))}
             </div>
             {drawerTab === 'content' ? (
-              <ShopifyThemeInspector section={selected} products={products} collections={collections} onUpdate={patch} onUpdateBlocks={patchBlocks} />
+              <SectionInspector section={selected} products={products} collections={collections} onUpdate={patch} onUpdateBlocks={patchBlocks} />
             ) : drawerTab === 'design' ? (
-              <Panel title="Design">
-                <Field label="Section spacing" value={selected.settings?.spacing ?? 72} type="number" onChange={value => patch({ spacing: value })} />
-                <Field label="Content width" value={selected.settings?.contentWidth ?? 1180} type="number" onChange={value => patch({ contentWidth: value })} />
-              </Panel>
+              <div className="themeInspector">
+                <details className="themeInspectorPanel" open><summary>Design</summary><div>
+                  <label className="themeInspectorField"><span>Section spacing</span><input type="number" value={selected.settings?.spacing ?? 72} onChange={event => patch({ spacing: Number(event.target.value) })} /></label>
+                  <label className="themeInspectorField"><span>Content width</span><input type="number" value={selected.settings?.contentWidth ?? 1180} onChange={event => patch({ contentWidth: Number(event.target.value) })} /></label>
+                </div></details>
+              </div>
             ) : (
-              <Panel title="Advanced">
-                <label className={styles.field}>
-                  <span>Show section</span>
-                  <input type="checkbox" checked={selected.enabled !== false} onChange={event => toggle(event.target.checked)} />
-                </label>
-                <label className={styles.field}>
-                  <span>Animation</span>
-                  <select className={styles.fieldSelect} value={selected.settings?.animation || 'fade-up'} onChange={event => patch({ animation: event.target.value })}>
-                    <option value="none">None</option>
-                    <option value="fade-up">Fade up</option>
-                    <option value="fade">Fade</option>
-                    <option value="zoom">Zoom</option>
-                  </select>
-                </label>
-              </Panel>
+              <div className="themeInspector">
+                <details className="themeInspectorPanel" open><summary>Advanced</summary><div>
+                  <label className="themeInspectorToggle"><span>Show section</span><button type="button" className={selected.enabled !== false ? 'on' : ''} aria-pressed={selected.enabled !== false} onClick={() => toggleSection(selected.enabled === false)}><i /></button></label>
+                  <label className="themeInspectorField"><span>Animation</span>
+                    <select value={selected.settings?.animation || 'fade-up'} onChange={event => patch({ animation: event.target.value })}>
+                      <option value="none">None</option>
+                      <option value="fade-up">Fade up</option>
+                      <option value="fade">Fade</option>
+                      <option value="zoom">Zoom</option>
+                    </select>
+                  </label>
+                </div></details>
+              </div>
             )}
+          </aside>
+        )}
+
+        {drawer && drawerMode === 'theme' && activeCategory && categoryCtx && (
+          <aside className={styles.drawer}>
+            <div className={styles.drawerHead}>
+              <div>
+                <div className={styles.drawerHeadLabel}>Theme setting</div>
+                <strong>{activeCategory.label}</strong>
+              </div>
+              <div className={styles.drawerHeadActions}>
+                <button className={styles.iconBtn} onClick={() => setDrawer(false)} aria-label="Close"><X size={15} /></button>
+              </div>
+            </div>
+            <div className="themeInspector">
+              {activeCategory.panels.map(panel => renderPanel(panel, categoryCtx, patches => patchTheme(activeCategory.group, patches)))}
+            </div>
           </aside>
         )}
       </div>

@@ -39,6 +39,9 @@ export default function ThemeInspectorStyles() {
 .themeImageRemove{color:var(--admin-danger)!important}
 .themeImageEmpty{height:64px;width:100%;border:1px dashed var(--admin-border);border-radius:var(--admin-radius-sm);background:var(--admin-bg);display:flex;align-items:center;justify-content:center;gap:8px;font:inherit;font-size:11px;font-weight:800;color:var(--admin-muted);cursor:pointer}
 .themeImageEmpty:hover{border-color:var(--admin-accent);background:var(--admin-surface);color:var(--admin-ink)}
+.themeColorRow{display:flex;gap:8px;align-items:center}
+.themeColorRow input[type=color]{width:38px;height:38px;padding:2px;border:1px solid var(--admin-border);border-radius:var(--admin-radius-sm);background:var(--admin-surface);cursor:pointer;flex:0 0 auto}
+.themeColorRow input[type=text]{flex:1}
 @media(max-width:560px){.themeInspector{padding:10px}.themeInspectorGrid{grid-template-columns:1fr}.themeInspectorPanel>div{padding:12px}}
 `}}/>
 }

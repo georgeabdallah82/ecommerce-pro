@@ -3,7 +3,7 @@
 import { Check, Cloud, Loader2, UploadCloud } from 'lucide-react'
 import s from './admin-theme-publish-bar.module.css'
 
-// Purely presentational -- the theme editor (components/focal-theme-editor.tsx)
+// Purely presentational -- the theme editor (components/theme-studio.tsx)
 // owns the draft/publishing state and passes it in. It always knows the
 // instant a draft is saved or published, so there's no need for this bar to
 // poll the server itself to find out.
