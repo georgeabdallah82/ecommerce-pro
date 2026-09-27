@@ -612,6 +612,12 @@ function getMockHandler(model: string) {
         if (w.createdAt?.lt) list = list.filter((o) => new Date(o.createdAt) < new Date(w.createdAt.lt))
         if (w.status?.not) list = list.filter((o) => o.status !== w.status.not)
         else if (typeof w.status === 'string') list = list.filter((o) => o.status === w.status)
+        // The reservation-expiry cron (app/api/internal/release-expired-reservations) leans on
+        // this to exclude orders whose payment already resolved (PAID/PARTIALLY_REFUNDED/
+        // REFUNDED) from its cancellation candidates -- without it every PENDING order looked
+        // eligible regardless of whether it had actually been paid.
+        if (w.paymentStatus?.notIn) { const excluded = new Set(w.paymentStatus.notIn); list = list.filter((o) => !excluded.has(o.paymentStatus)) }
+        else if (typeof w.paymentStatus === 'string') list = list.filter((o) => o.paymentStatus === w.paymentStatus)
         if (w.couponCode?.not === null) list = list.filter((o) => o.couponCode != null)
         if (w.userId?.in) { const ids = new Set(w.userId.in); list = list.filter((o) => ids.has(o.userId)) }
         if (typeof w.userId === 'string') list = list.filter((o) => o.userId === w.userId)
