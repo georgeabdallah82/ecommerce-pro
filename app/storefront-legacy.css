@@ -464,8 +464,8 @@ body:not(:has(.adminShell)) .focalNav{position:sticky!important;top:0!important;
 body:not(:has(.adminShell)) .focalNavInner{min-height:72px!important;height:auto!important;display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;align-items:center!important;gap:24px!important}
 body:not(:has(.adminShell)) .focalLogo{white-space:nowrap!important;min-width:0}
 body:not(:has(.adminShell)) .focalLogo img{max-height:42px!important}
-body:not(:has(.adminShell)) .focalNavLinks{justify-content:center!important;gap:6px!important;min-width:0!important}
-body:not(:has(.adminShell)) .focalNavItem{height:72px!important}
+body:not(:has(.adminShell)) .focalNavInner .focalNavLinks{justify-content:center!important;gap:6px!important;min-width:0!important}
+body:not(:has(.adminShell)) .focalNavInner .focalNavItem{height:72px!important}
 body:not(:has(.adminShell)) .focalNavLinks>a,body:not(:has(.adminShell)) .focalNavLinkButton{height:42px!important;padding:0 13px!important;border-radius:11px!important;font-size:13px!important;font-weight:800!important}
 body:not(:has(.adminShell)) .focalNavLinks>a::after,body:not(:has(.adminShell)) .focalNavLinkButton::after{display:none!important}
 body:not(:has(.adminShell)) .focalNavLinks>a:hover,body:not(:has(.adminShell)) .focalNavLinkButton:hover{background:var(--focal-soft)!important;color:var(--focal-ink)!important}
