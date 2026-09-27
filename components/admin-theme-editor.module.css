@@ -80,6 +80,31 @@
 .sideSectionsCount { font-size: 9px; color: var(--admin-muted-soft); margin-top: 3px; }
 .sideThemeTab { padding: 12px; }
 
+/* This template's sections render live nowhere but this editor's own preview --
+   the real storefront route for it uses a dedicated hand-built page instead.
+   Header/Announcement (per this template) and Footer (Theme settings tab) are
+   the only exceptions, tagged below with .liveTag rather than repeated here. */
+.legacyNotice {
+  margin: 10px 12px 0;
+  padding: 10px 12px;
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-warning-soft);
+  color: var(--admin-warning);
+  font-size: 11px;
+  line-height: 1.5;
+  font-weight: 600;
+}
+.liveTag {
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  color: var(--admin-accent-strong);
+  background: var(--admin-accent-soft);
+  border-radius: 4px;
+  padding: 2px 5px;
+  flex: 0 0 auto;
+}
+
 .rows { padding: 8px; }
 .row { display: flex; margin: 3px 0; border: 1px solid transparent; border-radius: var(--admin-radius-sm); }
 .row.active { background: var(--admin-accent-soft); border-color: var(--admin-accent); }

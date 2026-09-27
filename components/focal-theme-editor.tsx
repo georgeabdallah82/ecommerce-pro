@@ -631,6 +631,9 @@ export default function FocalThemeEditor({ initial }: Props) {
                 </div>
                 <button className={styles.iconBtn} onClick={() => setPicker(true)}><Plus size={15} /></button>
               </div>
+              <div className={styles.legacyNotice}>
+                &ldquo;{page}&rdquo; renders on your live storefront as a dedicated built-in page design, not from this section list -- edits below only change what you see in this editor&rsquo;s own preview. Header and Announcement here (tagged LIVE) are the exception: those apply to your real site regardless of this template. Footer is edited under the Theme tab instead.
+              </div>
               <div className={styles.rows}>
                 {current.map((section, index) => (
                   <div
@@ -647,6 +650,7 @@ export default function FocalThemeEditor({ initial }: Props) {
                       <GripVertical size={13} className={styles.rowGrip} />
                       {(() => { const Icon = SECTION_ICONS[section.type] || LayoutGrid; return <Icon size={15} className={styles.rowIcon} /> })()}
                       <span>{META[section.type] || section.type.replaceAll('_', ' ')}</span>
+                      {(section.type === 'header' || section.type === 'announcement') && <small className={styles.liveTag}>LIVE</small>}
                       {index === 0 && <small>MAIN</small>}
                     </button>
                     <button className={styles.rowToggle} onClick={() => { setSelectedId(section.id); setDrawer(true); toggle(section.enabled === false) }}>
