@@ -74,7 +74,6 @@ describe('lib/permissions', () => {
       const allowed: Permission[] = [
         'dashboard.view',
         'products.view', 'products.manage',
-        'categories.view', 'categories.manage',
         'collections.view', 'collections.manage',
         'reviews.view', 'reviews.manage',
         'content.view', 'content.manage',

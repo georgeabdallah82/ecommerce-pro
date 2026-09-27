@@ -8,7 +8,7 @@ import { useWishlist } from '@/components/use-wishlist'
 
 type AnyMap = Record<string, any>
 
-export default function AliExpressHome({ theme, hero, products, collections, categories, announcements, trustItems }: { theme: AnyMap; hero?: AnyMap | null; products: AnyMap[]; collections: AnyMap[]; categories: AnyMap[]; announcements?: AnyMap[]; trustItems?: AnyMap[] }) {
+export default function AliExpressHome({ theme, hero, products, collections, iconCollections, announcements, trustItems }: { theme: AnyMap; hero?: AnyMap | null; products: AnyMap[]; collections: AnyMap[]; iconCollections: AnyMap[]; announcements?: AnyMap[]; trustItems?: AnyMap[] }) {
   const { wishlist, toggleWish } = useWishlist()
   const [quickProduct, setQuickProduct] = useState<AnyMap | null>(null)
 
@@ -46,11 +46,11 @@ export default function AliExpressHome({ theme, hero, products, collections, cat
 
       {hero && <HeroSection theme={theme} section={hero} />}
 
-      {categories.length > 0 && (
+      {iconCollections.length > 0 && (
         <section className="aliCategoryStrip">
           <div className="aliContainer aliCategoryRow">
-            {categories.map(c => (
-              <Link key={c.id} href={`/shop?category=${c.slug}`} className="aliCategoryItem">
+            {iconCollections.map(c => (
+              <Link key={c.id} href={`/shop?collection=${c.slug}`} className="aliCategoryItem">
                 <span className="aliCategoryIcon"><StoreImage src={c.imageUrl || '/placeholder-product.svg'} alt={c.name} /></span>
                 <span>{c.name}</span>
               </Link>

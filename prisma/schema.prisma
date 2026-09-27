@@ -120,22 +120,6 @@ model Address {
   createdAt   DateTime @default(now())
 }
 
-model Category {
-  id          String     @id @default(cuid())
-  name        String
-  slug        String     @unique
-  description String?
-  imageUrl    String?
-  isActive    Boolean    @default(true)
-  sortOrder   Int        @default(0)
-  parentId    String?
-  parent      Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
-  children    Category[] @relation("CategoryTree")
-  products    Product[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-}
-
 model Collection {
   id          String               @id @default(cuid())
   name        String
@@ -188,8 +172,6 @@ model Product {
   salesChannelsJson  String?
   productTemplate    String?              @default("product")
   publishedAt        DateTime?
-  categoryId         String?
-  category           Category?            @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   images             ProductImage[]
   variants           ProductVariant[]
   reviews            Review[]
@@ -202,7 +184,6 @@ model Product {
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
   @@index([status])
-  @@index([categoryId])
   @@index([featured])
 }
 

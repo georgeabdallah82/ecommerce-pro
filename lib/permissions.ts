@@ -15,7 +15,6 @@ export type Permission =
   | 'customerSegments.view' | 'customerSegments.manage'
   | 'customerTags.view' | 'customerTags.manage'
   | 'storeCredit.view' | 'storeCredit.manage'
-  | 'categories.view' | 'categories.manage'
   | 'collections.view' | 'collections.manage'
   | 'coupons.view' | 'coupons.manage'
   | 'giftCards.view' | 'giftCards.manage'
@@ -51,7 +50,6 @@ const all: Permission[] = [
   'customerSegments.view', 'customerSegments.manage',
   'customerTags.view', 'customerTags.manage',
   'storeCredit.view', 'storeCredit.manage',
-  'categories.view', 'categories.manage',
   'collections.view', 'collections.manage',
   'coupons.view', 'coupons.manage',
   'giftCards.view', 'giftCards.manage',
@@ -98,7 +96,6 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   EDITOR: [
     'dashboard.view',
     'products.view', 'products.manage',
-    'categories.view', 'categories.manage',
     'collections.view', 'collections.manage',
     'reviews.view', 'reviews.manage',
     'content.view', 'content.manage',

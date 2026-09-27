@@ -49,7 +49,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     where: { slug },
     include: {
       images: { orderBy: { sortOrder: 'asc' } },
-      category: true,
       variants: { include: { inventory: true } },
       inventory: true,
       reviews: {
@@ -68,9 +67,10 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   if (!(await isProductPublished(product.id))) return notFound()
 
   const unpublishedIds = await getUnpublishedProductIds()
-  const relatedRaw = product.category
+  const collectionIds = product.collections.map(c => c.collectionId)
+  const relatedRaw = collectionIds.length
     ? await db.product.findMany({
-        where: { status: 'ACTIVE', categoryId: product.categoryId, id: { not: product.id, notIn: unpublishedIds } },
+        where: { status: 'ACTIVE', id: { not: product.id, notIn: unpublishedIds }, collections: { some: { collectionId: { in: collectionIds } } } },
         select: {
           id: true,
           name: true,
@@ -80,7 +80,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           sku: true,
           featured: true,
           vendor: true,
-          category: { select: { id: true, name: true, slug: true } },
           images: {
             select: { id: true, url: true, alt: true, sortOrder: true },
             orderBy: { sortOrder: 'asc' },
@@ -154,15 +153,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     giftCard: product.giftCard,
     productTemplate: product.productTemplate,
     publishedAt: product.publishedAt,
-    category: product.category
-      ? {
-          id: product.category.id,
-          name: product.category.name,
-          slug: product.category.slug,
-          description: product.category.description,
-          imageUrl: product.category.imageUrl,
-        }
-      : null,
     images: product.images.map((image) => ({ id: image.id, url: image.url, alt: image.alt, sortOrder: image.sortOrder })),
     variants: product.variants.map((variant) => ({
       id: variant.id,

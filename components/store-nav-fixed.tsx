@@ -430,7 +430,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
                     <img src={p.images?.[0]?.url || '/placeholder-product.svg'} alt={p.name} />
                     <div className="focalSearchItemInfo">
                       <strong>{p.name}</strong>
-                      <small>{p.category?.name || p.vendor || 'In stock'}</small>
+                      <small>{p.vendor || 'In stock'}</small>
                     </div>
                     <div className="focalSearchItemPrice">{money(p.basePrice || 0)}</div>
                   </Link>
@@ -499,7 +499,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
               <img src={p.images?.[0]?.url || '/placeholder-product.svg'} alt={p.name} />
               <div className="focalSearchItemInfo">
                 <strong>{p.name}</strong>
-                <small>{p.category?.name || p.vendor || 'In stock'}</small>
+                <small>{p.vendor || 'In stock'}</small>
               </div>
               <div className="focalSearchItemPrice">{money(p.basePrice || 0)}</div>
             </Link>

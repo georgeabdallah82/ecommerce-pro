@@ -142,7 +142,7 @@ export function ProductCard({p,theme,onQuickView,preview,onSelect,wishlist,toggl
         </div>
       </div>
       <div className="focalProductBody">
-        <span className="focalEyebrow">{p.category?.name||'Shop'}</span>
+        <span className="focalEyebrow">{p.vendor||'Shop'}</span>
         <h3>{p.name}</h3>
         {reviewCount>0&&<div className="focalCardRating"><StarRow rating={Number(p.rating||0)}/><span>({reviewCount})</span></div>}
         <div className="focalPrice">
@@ -175,7 +175,7 @@ export function QuickView({product,theme,onClose}:{product:AnyMap;theme:AnyMap;o
         <button className="focalQuickClose" onClick={onClose} aria-label="Close quick view"><X size={18}/></button>
         <div className="focalQuickImage"><StoreImage src={image} alt={product.name} eager/></div>
         <div className="focalQuickInfo">
-          <span className="focalEyebrow">{product.category?.name||'PRODUCT'}</span>
+          <span className="focalEyebrow">{product.vendor||'PRODUCT'}</span>
           <h2>{product.name}</h2>
           <div className="focalPrice big">{money(value,theme.currency||'USD')}</div>
           <p>{product.shortDescription||product.description||''}</p>
@@ -194,7 +194,7 @@ export function QuickView({product,theme,onClose}:{product:AnyMap;theme:AnyMap;o
     </div>
   );
 }
-function CollectionToolbar({products,onChange}:{products:AnyMap[];onChange:(next:AnyMap[])=>void}){const categories=Array.from(new Set(products.map(p=>p.category?.name).filter(Boolean))) as string[];const [q,setQ]=useState('');const [cat,setCat]=useState('');const [sort,setSort]=useState('featured');useEffect(()=>{let next=products.filter(p=>!q||String(p.name).toLowerCase().includes(q.toLowerCase())||String(p.vendor||'').toLowerCase().includes(q.toLowerCase()));if(cat)next=next.filter(p=>p.category?.name===cat);next=[...next].sort((a,b)=>sort==='price-low'?Number(a.basePrice)-Number(b.basePrice):sort==='price-high'?Number(b.basePrice)-Number(a.basePrice):sort==='newest'?new Date(b.createdAt||0).getTime()-new Date(a.createdAt||0).getTime():Number(b.featured)-Number(a.featured));onChange(next)},[q,cat,sort,products,onChange]);return <div className="focalCollectionToolbar"><div className="focalToolbarSearch"><Search size={14}/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search products" aria-label="Search products"/></div><select value={cat} onChange={e=>setCat(e.target.value)} aria-label="Filter by category"><option value="">All categories</option>{categories.map(c=><option key={c} value={c}>{c}</option>)}</select><select value={sort} onChange={e=>setSort(e.target.value)} aria-label="Sort products"><option value="featured">Featured</option><option value="newest">Newest</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option></select></div>}
+function CollectionToolbar({products,onChange}:{products:AnyMap[];onChange:(next:AnyMap[])=>void}){const vendors=Array.from(new Set(products.map(p=>p.vendor).filter(Boolean))) as string[];const [q,setQ]=useState('');const [vendor,setVendor]=useState('');const [sort,setSort]=useState('featured');useEffect(()=>{let next=products.filter(p=>!q||String(p.name).toLowerCase().includes(q.toLowerCase())||String(p.vendor||'').toLowerCase().includes(q.toLowerCase()));if(vendor)next=next.filter(p=>p.vendor===vendor);next=[...next].sort((a,b)=>sort==='price-low'?Number(a.basePrice)-Number(b.basePrice):sort==='price-high'?Number(b.basePrice)-Number(a.basePrice):sort==='newest'?new Date(b.createdAt||0).getTime()-new Date(a.createdAt||0).getTime():Number(b.featured)-Number(a.featured));onChange(next)},[q,vendor,sort,products,onChange]);return <div className="focalCollectionToolbar"><div className="focalToolbarSearch"><Search size={14}/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search products" aria-label="Search products"/></div><select value={vendor} onChange={e=>setVendor(e.target.value)} aria-label="Filter by brand"><option value="">All brands</option>{vendors.map(v=><option key={v} value={v}>{v}</option>)}</select><select value={sort} onChange={e=>setSort(e.target.value)} aria-label="Sort products"><option value="featured">Featured</option><option value="newest">Newest</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option></select></div>}
 function MainProductSection({section,theme,product,preview,selected,onSelect,wishlist,toggleWish}:{section:AnyMap;theme:AnyMap;product:AnyMap|null;preview?:boolean;selected?:boolean;onSelect?:(id:string)=>void;wishlist:Record<string,boolean>;toggleWish:(id:string)=>void}){
   const {addItem}=useCart();
   const [selectedVariantId,setSelectedVariantId]=useState<string|null>(product?.variants?.[0]?.id||null);
@@ -263,7 +263,7 @@ function MainProductSection({section,theme,product,preview,selected,onSelect,wis
         </div>
 
         <div className="focalProductInfo">
-          <span className="focalEyebrow">{product.category?.name||'PRODUCT'}</span>
+          <span className="focalEyebrow">{product.vendor||'PRODUCT'}</span>
           <h1>{product.name}</h1>
           <div className="focalRating"><StarRow rating={Number(product.rating||0)} size={15}/> <span>{product.reviewCount||product.reviews?.length||0} reviews</span></div>
           {Number(product.soldCount||0)>0&&<div className="focalSoldCount standalone">{formatSold(Number(product.soldCount))}</div>}

@@ -9,7 +9,6 @@ export async function GET(req: Request) {
     const params = new URL(req.url).searchParams
     const q = params.get('q')?.trim() || ''
     const status = params.get('status')?.trim() || 'ALL'
-    const categoryId = params.get('categoryId')?.trim() || 'ALL'
     const sort = params.get('sort')?.trim() || 'updated_desc'
     const pageRaw = Number(params.get('page') || 1)
     const pageSizeRaw = Number(params.get('pageSize') || 25)
@@ -18,13 +17,12 @@ export async function GET(req: Request) {
     const boundedQuery = q.slice(0, 120)
     const where: any = {
       ...(status !== 'ALL' ? { status } : {}),
-      ...(categoryId !== 'ALL' ? { categoryId } : {}),
       ...(boundedQuery ? { OR: [{ name: { contains: boundedQuery, mode: 'insensitive' } }, { sku: { contains: boundedQuery, mode: 'insensitive' } }, { slug: { contains: boundedQuery, mode: 'insensitive' } }, { vendor: { contains: boundedQuery, mode: 'insensitive' } }, { brand: { contains: boundedQuery, mode: 'insensitive' } }] } : {}),
     }
     const orderBy = sort === 'name_asc' ? { name: 'asc' as const } : sort === 'name_desc' ? { name: 'desc' as const } : sort === 'price_asc' ? { basePrice: 'asc' as const } : sort === 'price_desc' ? { basePrice: 'desc' as const } : sort === 'created_desc' ? { createdAt: 'desc' as const } : { updatedAt: 'desc' as const }
     const [total, rows] = await Promise.all([
       db.product.count({ where }),
-      db.product.findMany({ where, include: { category: true, inventory: true, variants: { include: { inventory: true } }, images: true }, orderBy, skip: (page - 1) * pageSize, take: pageSize }),
+      db.product.findMany({ where, include: { inventory: true, variants: { include: { inventory: true } }, images: true }, orderBy, skip: (page - 1) * pageSize, take: pageSize }),
     ])
     return json({ rows, total, page, pageSize, pages: Math.max(1, Math.ceil(total / pageSize)) })
   } catch (e) {
@@ -77,7 +75,7 @@ export async function POST(req: Request) {
         brand: b.brand ? String(b.brand).trim().slice(0, 160) : null, vendor: b.vendor ? String(b.vendor).trim().slice(0, 160) : null, productType: b.productType ? String(b.productType).trim().slice(0, 160) : null,
         description: b.description ? String(b.description).slice(0, 20000) : null, shortDescription: b.shortDescription ? String(b.shortDescription).slice(0, 1000) : null,
         basePrice: Math.max(0, Math.trunc(Number(b.basePrice) || 0)), compareAtPrice: b.compareAtPrice !== undefined && b.compareAtPrice !== null && b.compareAtPrice !== '' ? Math.trunc(Number(b.compareAtPrice)) : null, costPrice: b.costPrice !== undefined && b.costPrice !== null && b.costPrice !== '' ? Math.trunc(Number(b.costPrice)) : null,
-        status: b.status || 'DRAFT', featured: Boolean(b.featured), categoryId: b.categoryId || null,
+        status: b.status || 'DRAFT', featured: Boolean(b.featured),
         seoTitle: b.seoTitle ? String(b.seoTitle).slice(0, 250) : null, seoDescription: b.seoDescription ? String(b.seoDescription).slice(0, 1000) : null, seoImageUrl: b.seoImageUrl ? String(b.seoImageUrl).slice(0, 2000) : null,
         weight: b.weight !== undefined && b.weight !== '' ? Number(b.weight) : null, weightUnit: b.weightUnit || null,
         requiresShipping: b.requiresShipping !== false, taxable: b.taxable !== false, trackInventory: b.trackInventory !== false, continueSellingWhenOutOfStock: Boolean(b.continueSellingWhenOutOfStock), giftCard: Boolean(b.giftCard),

@@ -18,7 +18,7 @@ export default async function CollectionPage({ params }: { params: Promise<{ slu
     include: {
       products: {
         where: unpublishedIds.length ? { productId: { notIn: unpublishedIds } } : undefined,
-        include: { product: { include: { images: true, category: true, collections: { include: { collection: true } } } } },
+        include: { product: { include: { images: true, collections: { include: { collection: true } } } } },
         orderBy: { sortOrder: 'asc' },
       },
     },

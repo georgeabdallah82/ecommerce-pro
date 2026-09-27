@@ -5,8 +5,8 @@ A full-stack Next.js + Prisma ecommerce platform with a clean storefront and an 
 ## Included
 
 ### Storefront
-- Responsive homepage, shop, categories and collections
-- Search, category filtering and price sorting
+- Responsive homepage, shop and collections
+- Search, collection filtering and price sorting
 - Product pages with variants and stock visibility
 - LocalStorage cart with quantity management
 - Checkout with server-side revalidation
@@ -25,7 +25,7 @@ A full-stack Next.js + Prisma ecommerce platform with a clean storefront and an 
 - Orders, statuses, fulfillment and tracking
 - Customers
 - Staff users and role-based permissions
-- Categories and collections
+- Collections
 - Coupons
 - Reviews moderation
 - Shipping zones/rates
@@ -128,13 +128,13 @@ This revision adds a visual Theme Studio and a full product editor designed arou
 - Header layout, sticky header, search/account/cart controls
 - Announcement bar
 - Hero, featured products, collection list, rich text, newsletter sections
-- Navigation editor with custom links and category links, plus nested dropdown parents
+- Navigation editor with custom links and collection links, plus nested dropdown parents
 - Theme configuration stored in the database and rendered by the storefront
 
 ### Product editor
 - Shopify-style multi-tab editor: General, Inventory, Shipping, Variants, Metafields, Search & SEO
 - Title/description, media gallery and alt text
-- Vendor/brand, product type, category, status, tags
+- Vendor/brand, product type, status, tags
 - Price, compare-at price and cost/margin
 - SKU, barcode, inventory tracking, reservations and locations
 - Physical product, tax, gift card, shipping weight, template

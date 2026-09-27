@@ -7,8 +7,8 @@ import ui from './admin-ui.module.css'
 import MediaPicker from './media-picker'
 
 type Item = { id: string; label: string; url?: string | null; type?: string; parentId?: string | null; resourceId?: string | null; group?: string | null; imageUrl?: string | null }
-type Props = { initial: Item[]; categories: any[]; collections: any[] }
-type Draft = { label: string; type: 'custom' | 'collection' | 'category'; url: string; resourceId: string; parentId: string | null }
+type Props = { initial: Item[]; collections: any[] }
+type Draft = { label: string; type: 'custom' | 'collection'; url: string; resourceId: string; parentId: string | null }
 
 const newId = () => `nav-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 const childrenOf = (items: Item[], parentId: string | null) => items.filter(x => (x.parentId ?? null) === parentId)
@@ -30,7 +30,7 @@ function normalize(items: Item[]) {
   return items.map(x => ({ ...x, parentId: x.parentId && valid.has(x.parentId) ? x.parentId : null }))
 }
 
-export default function NavigationEditorPro({ initial, categories, collections }: Props) {
+export default function NavigationEditorPro({ initial, collections }: Props) {
   const [items, setItems] = useState<Item[]>(() => normalize(initial || []))
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState('')
@@ -262,10 +262,10 @@ export default function NavigationEditorPro({ initial, categories, collections }
       {(adding || editor) && (
         <div className={styles.overlay} onMouseDown={() => { setAdding(null); setEditor(null) }}>
           {adding && (
-            <AddDrawer parentId={adding.parentId} items={items} categories={categories} collections={collections} onClose={() => setAdding(null)} onCreate={createItem} />
+            <AddDrawer parentId={adding.parentId} items={items} collections={collections} onClose={() => setAdding(null)} onCreate={createItem} />
           )}
           {editor && !adding && (
-            <EditDrawer item={editor} items={items} categories={categories} collections={collections} onClose={() => setEditor(null)} patch={patch} remove={remove} />
+            <EditDrawer item={editor} items={items} collections={collections} onClose={() => setEditor(null)} patch={patch} remove={remove} />
           )}
         </div>
       )}
@@ -277,10 +277,9 @@ function emptyDraft(parentId: string | null): Draft {
   return { label: '', type: 'custom', url: '', resourceId: '', parentId }
 }
 
-function AddDrawer({ parentId, items, categories, collections, onClose, onCreate }: {
+function AddDrawer({ parentId, items, collections, onClose, onCreate }: {
   parentId: string | null
   items: Item[]
-  categories: any[]
   collections: any[]
   onClose: () => void
   onCreate: (d: Draft) => void
@@ -291,10 +290,6 @@ function AddDrawer({ parentId, items, categories, collections, onClose, onCreate
   const chooseCollection = (id: string) => {
     const c = collections.find(x => x.id === id)
     set({ resourceId: id, label: c?.name || '', url: c ? `/collections/${c.slug}` : '' })
-  }
-  const chooseCategory = (id: string) => {
-    const c = categories.find(x => x.id === id)
-    set({ resourceId: id, label: c?.name || '', url: c ? `/shop?category=${c.slug}` : '' })
   }
 
   return (
@@ -328,7 +323,6 @@ function AddDrawer({ parentId, items, categories, collections, onClose, onCreate
           >
             <option value="custom">Custom URL</option>
             <option value="collection">Collection</option>
-            <option value="category">Category</option>
           </select>
         </div>
 
@@ -338,15 +332,6 @@ function AddDrawer({ parentId, items, categories, collections, onClose, onCreate
             <select value={draft.resourceId} onChange={e => chooseCollection(e.target.value)}>
               <option value="">Select collection</option>
               {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-        )}
-        {draft.type === 'category' && (
-          <div className={styles.field}>
-            <label>Category</label>
-            <select value={draft.resourceId} onChange={e => chooseCategory(e.target.value)}>
-              <option value="">Select category</option>
-              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
         )}
@@ -372,10 +357,9 @@ function AddDrawer({ parentId, items, categories, collections, onClose, onCreate
   )
 }
 
-function EditDrawer({ item, items, categories, collections, onClose, patch, remove }: {
+function EditDrawer({ item, items, collections, onClose, patch, remove }: {
   item: Item
   items: Item[]
-  categories: any[]
   collections: any[]
   onClose: () => void
   patch: (id: string, p: Partial<Item>) => void
@@ -386,12 +370,6 @@ function EditDrawer({ item, items, categories, collections, onClose, patch, remo
   const chooseCollection = (id: string) => {
     const c = collections.find(x => x.id === id)
     const next = { resourceId: id, label: c?.name || draft.label, url: c ? `/collections/${c.slug}` : '/collections' }
-    set(next)
-    patch(item.id, next)
-  }
-  const chooseCategory = (id: string) => {
-    const c = categories.find(x => x.id === id)
-    const next = { resourceId: id, label: c?.name || draft.label, url: c ? `/shop?category=${c.slug}` : '/shop' }
     set(next)
     patch(item.id, next)
   }
@@ -447,7 +425,6 @@ function EditDrawer({ item, items, categories, collections, onClose, patch, remo
           >
             <option value="custom">Custom URL</option>
             <option value="collection">Collection</option>
-            <option value="category">Category</option>
           </select>
         </div>
 
@@ -457,15 +434,6 @@ function EditDrawer({ item, items, categories, collections, onClose, patch, remo
             <select value={draft.resourceId || ''} onChange={e => chooseCollection(e.target.value)}>
               <option value="">Select collection</option>
               {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-        )}
-        {draft.type === 'category' && (
-          <div className={styles.field}>
-            <label>Category</label>
-            <select value={draft.resourceId || ''} onChange={e => chooseCategory(e.target.value)}>
-              <option value="">Select category</option>
-              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
         )}

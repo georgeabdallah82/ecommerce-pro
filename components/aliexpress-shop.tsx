@@ -8,7 +8,7 @@ import { useWishlist } from '@/components/use-wishlist'
 
 type AnyMap = Record<string, any>
 
-export default function AliExpressShop({ theme, products, categories, query }: { theme: AnyMap; products: AnyMap[]; categories: AnyMap[]; query: { q?: string; category?: string; min?: string; max?: string; sort?: string } }) {
+export default function AliExpressShop({ theme, products, collections, query }: { theme: AnyMap; products: AnyMap[]; collections: AnyMap[]; query: { q?: string; collection?: string; min?: string; max?: string; sort?: string } }) {
   const { wishlist, toggleWish } = useWishlist()
   const [quickProduct, setQuickProduct] = useState<AnyMap | null>(null)
   const sort = query.sort || 'newest'
@@ -24,16 +24,16 @@ export default function AliExpressShop({ theme, products, categories, query }: {
       <div className="aliContainer aliShopLayout">
         <aside className="aliShopSidebar">
           <div>
-            <h3>Categories</h3>
+            <h3>Collections</h3>
             <ul className="aliCategoryList">
-              <li><Link href="/shop" className={!query.category ? 'active' : ''}>All categories</Link></li>
-              {categories.map(c => (
-                <li key={c.id}><Link href={`/shop?category=${c.slug}`} className={query.category === c.slug ? 'active' : ''}>{c.name}</Link></li>
+              <li><Link href="/shop" className={!query.collection ? 'active' : ''}>All collections</Link></li>
+              {collections.map(c => (
+                <li key={c.id}><Link href={`/shop?collection=${c.slug}`} className={query.collection === c.slug ? 'active' : ''}>{c.name}</Link></li>
               ))}
             </ul>
           </div>
           <form method="GET" className="aliPriceFilter">
-            {query.category && <input type="hidden" name="category" value={query.category} />}
+            {query.collection && <input type="hidden" name="collection" value={query.collection} />}
             {query.q && <input type="hidden" name="q" value={query.q} />}
             {query.sort && <input type="hidden" name="sort" value={query.sort} />}
             <h3>Price</h3>
@@ -48,7 +48,7 @@ export default function AliExpressShop({ theme, products, categories, query }: {
 
         <main className="aliShopMain">
           <form method="GET" className="aliShopToolbar">
-            {query.category && <input type="hidden" name="category" value={query.category} />}
+            {query.collection && <input type="hidden" name="collection" value={query.collection} />}
             {query.min && <input type="hidden" name="min" value={query.min} />}
             {query.max && <input type="hidden" name="max" value={query.max} />}
             <div className="aliShopSearch">

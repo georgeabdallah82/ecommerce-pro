@@ -35,7 +35,6 @@ export async function GET(req: Request) {
             select: { id: true, url: true, alt: true, sortOrder: true },
             orderBy: { sortOrder: 'asc' },
           },
-          category: { select: { id: true, name: true, slug: true } },
         },
       },
     },

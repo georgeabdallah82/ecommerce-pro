@@ -5,11 +5,6 @@ import { defaultTheme, defaultSections, defaultNavigation } from './theme-defaul
 const globalForPrisma = globalThis as unknown as { prisma?: any }
 
 // Pre-seeded in-memory mock store for resilient operation when database is offline or unprovisioned
-const mockCategories = [
-  { id: 'cat-featured', name: 'Featured', slug: 'featured', description: 'Curated products', sortOrder: 0 },
-  { id: 'cat-home', name: 'Home Essentials', slug: 'home-essentials', description: 'Practical everyday products', sortOrder: 1 },
-]
-
 const mockProducts = [
   {
     id: 'prod-1',
@@ -22,8 +17,6 @@ const mockProducts = [
     featured: true,
     shortDescription: 'Thoughtfully selected essentials with a clean, premium presentation.',
     description: 'Designed for modern lifestyles, the Essential Starter Kit brings together elevated craftsmanship and daily utility.',
-    categoryId: 'cat-featured',
-    category: mockCategories[0],
     images: [
       { id: 'img-1', url: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=800&q=80', alt: 'Essential Starter Kit', sortOrder: 0 },
       { id: 'img-1b', url: 'https://images.unsplash.com/photo-1583394838336-acd977736f90?auto=format&fit=crop&w=800&q=80', alt: 'Essential Starter Kit Detail', sortOrder: 1 },
@@ -45,8 +38,6 @@ const mockProducts = [
     featured: true,
     shortDescription: 'Practical and elegant home goods built for timeless aesthetics.',
     description: 'A curated suite of functional accents designed to enrich your space with organic textures and thoughtful details.',
-    categoryId: 'cat-home',
-    category: mockCategories[1],
     images: [
       { id: 'img-2', url: 'https://images.unsplash.com/photo-1583394838336-acd977736f90?auto=format&fit=crop&w=800&q=80', alt: 'Everyday Home Set', sortOrder: 0 },
     ],
@@ -67,8 +58,6 @@ const mockProducts = [
     featured: false,
     shortDescription: 'An exclusive collection of personal care essentials for discerning users.',
     description: 'Formulated with sustainable ingredients and packaged in refillable, minimalist vessels.',
-    categoryId: 'cat-featured',
-    category: mockCategories[0],
     images: [
       { id: 'img-3', url: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=800&q=80', alt: 'Premium Care Bundle', sortOrder: 0 },
     ],
@@ -89,8 +78,6 @@ const mockProducts = [
     featured: false,
     shortDescription: 'Streamlined desktop and home organizer with minimalist finish.',
     description: 'Precision-machined compartments keep workspaces uncluttered and essentials always within reach.',
-    categoryId: 'cat-home',
-    category: mockCategories[1],
     images: [
       { id: 'img-4', url: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80', alt: 'Smart Organizer', sortOrder: 0 },
     ],
@@ -111,8 +98,6 @@ const mockProducts = [
     featured: true,
     shortDescription: 'Everyday carry essentials packaged in a sustainable compact case.',
     description: 'Durable, weather-resistant materials built to endure daily transit while looking effortless.',
-    categoryId: 'cat-featured',
-    category: mockCategories[0],
     images: [
       { id: 'img-5', url: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80', alt: 'Daily Essentials Pack', sortOrder: 0 },
     ],
@@ -133,8 +118,6 @@ const mockProducts = [
     featured: false,
     shortDescription: 'Our signature flagship package with all essentials included.',
     description: 'The ultimate gift set containing our entire range of award-winning staples.',
-    categoryId: 'cat-featured',
-    category: mockCategories[0],
     images: [
       { id: 'img-6', url: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?auto=format&fit=crop&w=800&q=80', alt: 'Signature Value Box', sortOrder: 0 },
     ],
@@ -158,6 +141,28 @@ const mockCollections: any[] = [
     createdAt: new Date('2025-01-01'),
     updatedAt: new Date('2025-01-01'),
   },
+  {
+    id: 'col-featured',
+    name: 'Featured',
+    slug: 'featured',
+    description: 'Curated products',
+    sortOrder: 1,
+    imageUrl: null,
+    isActive: true,
+    createdAt: new Date('2025-01-01'),
+    updatedAt: new Date('2025-01-01'),
+  },
+  {
+    id: 'col-home-essentials',
+    name: 'Home Essentials',
+    slug: 'home-essentials',
+    description: 'Practical everyday products',
+    sortOrder: 2,
+    imageUrl: null,
+    isActive: true,
+    createdAt: new Date('2025-01-01'),
+    updatedAt: new Date('2025-01-01'),
+  },
 ]
 // CollectionProduct join rows live in their own top-level array with collectionId/productId
 // foreign keys, joined back onto whichever side asked for it at read time (see
@@ -166,7 +171,11 @@ const mockCollections: any[] = [
 // previous static, once-computed `products` array embedded on the seed collection, which
 // never changed when a product's `featured` flag changed or a collectionProduct row was
 // written (it never was, since collectionProduct itself had zero mock backing before this).
-const mockCollectionProducts: any[] = mockProducts.filter((p: any) => p.featured).map((p: any, i: number) => ({ id: `colprod-seed-${i}`, collectionId: 'col-best-sellers', productId: p.id, sortOrder: i }))
+const mockCollectionProducts: any[] = [
+  ...mockProducts.filter((p: any) => p.featured).map((p: any, i: number) => ({ id: `colprod-seed-${i}`, collectionId: 'col-best-sellers', productId: p.id, sortOrder: i })),
+  ...['prod-1', 'prod-3', 'prod-5', 'prod-6'].map((id, i) => ({ id: `colprod-featured-${i}`, collectionId: 'col-featured', productId: id, sortOrder: i })),
+  ...['prod-2', 'prod-4'].map((id, i) => ({ id: `colprod-home-${i}`, collectionId: 'col-home-essentials', productId: id, sortOrder: i })),
+]
 function deriveCollectionProducts(collectionId: string) {
   return mockCollectionProducts.filter((cp: any) => cp.collectionId === collectionId).sort((a: any, b: any) => a.sortOrder - b.sortOrder)
 }
@@ -177,7 +186,6 @@ function withMockProductJoin(product: any) {
   return {
     ...product,
     images: [...(product.images || [])].sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)),
-    category: product.categoryId ? mockCategories.find((c: any) => c.id === product.categoryId) || null : product.category ?? null,
     variants: deriveMockProductVariants(product.id),
     inventory: deriveMockProductInventory(product.id, false),
     collections: joinProductCollections(product.id, { include: { collection: true } }),
@@ -479,12 +487,6 @@ function getMockHandler(model: string) {
         if (args?.where?.id?.notIn) { const ids = new Set(args.where.id.notIn); list = list.filter((p) => !ids.has(p.id)) }
         if (args?.where?.id?.not !== undefined) list = list.filter((p) => p.id !== args.where.id.not)
         if (args?.where?.giftCard !== undefined) list = list.filter((p) => Boolean((p as any).giftCard) === args.where.giftCard)
-        if (args?.where?.category?.slug) list = list.filter((p) => p.category?.slug === args.where.category.slug)
-        // The admin products list's Category dropdown and the CSV export's categoryId param
-        // both key off this plain scalar field, not the nested category.slug shape above --
-        // without it, both silently returned the whole catalog regardless of the selected
-        // category.
-        if (args?.where?.categoryId !== undefined) list = list.filter((p: any) => p.categoryId === args.where.categoryId)
         if (args?.where?.publishedAt === null) list = list.filter((p: any) => p.publishedAt == null)
         if (args?.where?.basePrice?.gte !== undefined) list = list.filter((p) => p.basePrice >= args.where.basePrice.gte)
         if (args?.where?.basePrice?.lte !== undefined) list = list.filter((p) => p.basePrice <= args.where.basePrice.lte)
@@ -500,7 +502,7 @@ function getMockHandler(model: string) {
         // real property, so always undefined on both sides) and the clause object itself as
         // `dir` (never `=== 'desc'`), degenerating the whole sort into a no-op. Normalizing to
         // an array of clauses and applying them least-significant-first (stable sort) is the
-        // same pattern collection/category findMany already use for real multi-key sorts.
+        // same pattern collection findMany already uses for real multi-key sorts.
         const orderClauses = Array.isArray(args?.orderBy) ? args.orderBy : args?.orderBy ? [args.orderBy] : []
         for (const clause of [...orderClauses].reverse()) {
           const [field, dir] = Object.entries(clause)[0] as [string, string]
@@ -531,34 +533,6 @@ function getMockHandler(model: string) {
         }
         const collectionsArg = args?.include?.collections || args?.select?.collections
         if (collectionsArg) list = list.map((p: any) => ({ ...p, collections: joinProductCollections(p.id, collectionsArg) }))
-        return list
-      }
-      if (model === 'category') {
-        let list = [...mockCategories]
-        const w = args?.where || {}
-        // The homepage's top-level category grid, the shop page's active-category filter, the
-        // admin nav editor's category picker, and the admin CSV export's category-id selector all
-        // pass one of these -- without them, every one of these silently returned/exported the
-        // whole category table regardless of isActive/parentId/id.in.
-        if (w.isActive !== undefined) list = list.filter((c: any) => c.isActive === w.isActive)
-        if (w.parentId !== undefined) list = list.filter((c: any) => c.parentId === w.parentId)
-        if (w.id?.in) { const ids = new Set(w.id.in); list = list.filter((c: any) => ids.has(c.id)) }
-        const orderBy = Array.isArray(args?.orderBy) ? args.orderBy : args?.orderBy ? [args.orderBy] : []
-        if (orderBy.length) {
-          list = list.sort((a: any, b: any) => {
-            for (const clause of orderBy) {
-              for (const [field, dir] of Object.entries(clause)) {
-                const av = a[field] ?? 0; const bv = b[field] ?? 0
-                if (av < bv) return dir === 'desc' ? 1 : -1
-                if (av > bv) return dir === 'desc' ? -1 : 1
-              }
-            }
-            return 0
-          })
-        }
-        if (args?.take) list = list.slice(0, args.take)
-        if (args?.include?._count?.select?.products) list = list.map((c: any) => ({ ...c, _count: { products: mockProducts.filter((p: any) => p.categoryId === c.id).length } }))
-        if (args?.include?.parent) list = list.map((c: any) => ({ ...c, parent: c.parentId ? mockCategories.find((p: any) => p.id === c.parentId) || null : null }))
         return list
       }
       if (model === 'metafieldDefinition') {
@@ -1070,20 +1044,6 @@ function getMockHandler(model: string) {
         if (where.email) return mockUsers.find((u) => u.email.toLowerCase() === String(where.email).toLowerCase()) || null
         if (where.id) return mockUsers.find((u) => u.id === where.id) || null
       }
-      if (model === 'category') {
-        const found = where.slug ? mockCategories.find((c: any) => c.slug === where.slug) : where.id ? mockCategories.find((c: any) => c.id === where.id) : undefined
-        if (!found) return null
-        // Category delete's cascade check reads _count.products/_count.children before deciding
-        // whether/how to clear orphaned references -- without this, that read threw a TypeError
-        // on the missing _count instead of the intended SetNull-style cleanup ever running.
-        if (args?.include?._count?.select) {
-          const result: any = { ...found, _count: {} }
-          if (args.include._count.select.products) result._count.products = mockProducts.filter((p: any) => p.categoryId === found.id).length
-          if (args.include._count.select.children) result._count.children = mockCategories.filter((c: any) => c.parentId === found.id).length
-          return result
-        }
-        return found
-      }
       if (model === 'collection') {
         const found = where.slug ? mockCollections.find((c: any) => c.slug === where.slug) : where.id ? mockCollections.find((c: any) => c.id === where.id) : undefined
         if (!found) return null
@@ -1522,7 +1482,6 @@ function getMockHandler(model: string) {
         item.paymentTransactions = expandCreate(item.paymentTransactions)
         mockOrders.unshift(item)
       }
-      if (model === 'category') mockCategories.push(item)
       if (model === 'themeVersion') mockThemeVersions.unshift(item)
       if (model === 'storeLocation') { if (item.isDefault) for (const x of mockStoreLocations) x.isDefault = false; mockStoreLocations.push(item) }
       if (model === 'salesChannel') mockSalesChannels.push(item)
@@ -1569,7 +1528,6 @@ function getMockHandler(model: string) {
         const inventoryRows = expandNested(item.inventory).map((row: any) => ({ productId: item.id, variantId: null, reserved: 0, ...row }))
         item.inventory = inventoryRows
         item.variants = []
-        item.category = item.categoryId ? mockCategories.find((c: any) => c.id === item.categoryId) || null : null
         mockProducts.push(item)
         for (const inv of inventoryRows) mockInventoryItems.push(inv)
       }
@@ -1784,19 +1742,7 @@ function getMockHandler(model: string) {
         }
         throw new Error('Record to update not found')
       }
-      // The categories CSV import's second pass (app/api/admin/imports/route.ts) wires up
-      // parent/child hierarchy via tx.category.update({ where: { slug }, data: { parentId } })
-      // once every row exists -- the generic byId dispatch below only ever matches args.where.id,
-      // so a where.slug update silently fell through to the no-op `return args?.data || {}`
-      // fallback, reporting success while never actually setting parentId.
-      if (model === 'category' && args.where?.slug && !args.where?.id) {
-        const row: any = mockCategories.find((c: any) => c.slug === args.where.slug)
-        if (!row) throw new Error('Record to update not found')
-        Object.assign(row, args.data || {})
-        row.updatedAt = new Date()
-        return row
-      }
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews, blogPost: mockBlogPosts, product: mockProducts, order: mockOrders, address: mockAddresses, returnRequest: mockReturnRequests, notification: mockNotifications, draftOrder: mockDraftOrders, shippingZone: mockShippingZones, purchaseOrder: mockPurchaseOrders, purchaseOrderItem: mockPurchaseOrderItems, page: mockPages, redirect: mockRedirects, collection: mockCollections, orderEdit: mockOrderEdits, inventoryTransfer: mockInventoryTransfers, category: mockCategories }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, coupon: mockCoupons, fulfillment: mockFulfillments, giftCard: mockGiftCards, productVariant: mockProductVariants, inventoryItem: mockInventoryItems, homepageBlock: mockHomepageBlocks, review: mockReviews, blogPost: mockBlogPosts, product: mockProducts, order: mockOrders, address: mockAddresses, returnRequest: mockReturnRequests, notification: mockNotifications, draftOrder: mockDraftOrders, shippingZone: mockShippingZones, purchaseOrder: mockPurchaseOrders, purchaseOrderItem: mockPurchaseOrderItems, page: mockPages, redirect: mockRedirects, collection: mockCollections, orderEdit: mockOrderEdits, inventoryTransfer: mockInventoryTransfers }
       if (byId[model] && args.where?.id) {
         const row = byId[model].find((x) => x.id === args.where.id)
         if (!row) throw new Error('Record to update not found')
@@ -1819,9 +1765,6 @@ function getMockHandler(model: string) {
           }
         }
         row.updatedAt = new Date()
-        // Keep the embedded `category` object (findMany/findUnique don't do a live join for it)
-        // in sync whenever categoryId actually changes, the same way `create` embeds it.
-        if (model === 'product' && 'categoryId' in (args.data || {})) row.category = row.categoryId ? mockCategories.find((c: any) => c.id === row.categoryId) || null : null
         if (model === 'fulfillment' && args?.include?.lines) return { ...row, lines: mockFulfillmentLines.filter((l) => l.fulfillmentId === row.id) }
         if (model === 'purchaseOrder' && (args?.include?.items || args?.include?.location)) {
           const result: any = { ...row }
@@ -1878,7 +1821,7 @@ function getMockHandler(model: string) {
       // (app/api/admin/products/[id]/route.ts) -- without a real branch, the row was never removed
       // from mockInventoryItems, leaving orphaned/duplicate stock rows that inflate the unfiltered
       // low-stock dashboard tile and the admin inventory list.
-      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, user: mockUsers, homepageBlock: mockHomepageBlocks, wishlistItem: mockWishlistItems, blogPost: mockBlogPosts, product: mockProducts, productVariant: mockProductVariants, address: mockAddresses, shippingZone: mockShippingZones, page: mockPages, redirect: mockRedirects, collection: mockCollections, metafieldDefinition: mockMetafieldDefinitions, category: mockCategories, inventoryItem: mockInventoryItems }
+      const byId: Record<string, any[]> = { storeLocation: mockStoreLocations, salesChannel: mockSalesChannels, webhookEndpoint: mockWebhookEndpoints, apiCredential: mockApiCredentials, taxRate: mockTaxRates, user: mockUsers, homepageBlock: mockHomepageBlocks, wishlistItem: mockWishlistItems, blogPost: mockBlogPosts, product: mockProducts, productVariant: mockProductVariants, address: mockAddresses, shippingZone: mockShippingZones, page: mockPages, redirect: mockRedirects, collection: mockCollections, metafieldDefinition: mockMetafieldDefinitions, inventoryItem: mockInventoryItems }
       const list = byId[model]
       if (list && args?.where?.id) { const i = list.findIndex((x) => x.id === args.where.id); if (i >= 0) return list.splice(i, 1)[0] }
       return {}
@@ -1894,8 +1837,6 @@ function getMockHandler(model: string) {
         let list = mockProducts
         if (w.status) list = list.filter((p: any) => p.status === w.status)
         if (w.featured !== undefined) list = list.filter((p: any) => p.featured === w.featured)
-        if (w.categoryId !== undefined) list = list.filter((p: any) => p.categoryId === w.categoryId)
-        if (w.category?.slug) list = list.filter((p: any) => p.category?.slug === w.category.slug)
         if (w.publishedAt === null) list = list.filter((p: any) => p.publishedAt == null)
         if (w.giftCard !== undefined) list = list.filter((p: any) => Boolean(p.giftCard) === w.giftCard)
         if (Array.isArray(w.OR)) list = list.filter((p: any) => w.OR.some((cond: any) => Object.entries(cond).some(([field, sub]) => mockFieldContains(p[field], sub))))
@@ -2251,12 +2192,11 @@ function getMockHandler(model: string) {
         for (const target of targets) Object.assign(target, args?.data || {})
         return { count: targets.length }
       }
-      // Backs three real call sites: the admin products list's bulk toolbar (Activate/Draft/
-      // Archive/Feature, `where: { id: { in: ids } } }`), the "Repair Platform State" action
-      // (`where: { status: 'ACTIVE', publishedAt: null } }`), and category delete's cascade
-      // clear (`where: { categoryId } }`). Without a real branch this fell to the generic
-      // fallback below (an unconditional count: 1 with no mutation applied) -- bulk actions
-      // silently changed nothing and always reported count: 1 regardless of selection size.
+      // Backs two real call sites: the admin products list's bulk toolbar (Activate/Draft/
+      // Archive/Feature, `where: { id: { in: ids } } }`) and the "Repair Platform State" action
+      // (`where: { status: 'ACTIVE', publishedAt: null } }`). Without a real branch this fell to
+      // the generic fallback below (an unconditional count: 1 with no mutation applied) -- bulk
+      // actions silently changed nothing and always reported count: 1 regardless of selection size.
       if (model === 'product') {
         const w = args?.where || {}
         let targets: any[] = mockProducts
@@ -2264,7 +2204,6 @@ function getMockHandler(model: string) {
         if (typeof w.id === 'string') targets = targets.filter((x: any) => x.id === w.id)
         if (w.status !== undefined) targets = targets.filter((x: any) => x.status === w.status)
         if (w.publishedAt === null) targets = targets.filter((x: any) => x.publishedAt == null)
-        if (w.categoryId !== undefined) targets = targets.filter((x: any) => x.categoryId === w.categoryId)
         for (const target of targets) {
           for (const [key, value] of Object.entries(args?.data || {})) {
             if (value && typeof value === 'object' && ('increment' in value || 'decrement' in value)) {
@@ -2275,19 +2214,7 @@ function getMockHandler(model: string) {
             }
           }
           target.updatedAt = new Date()
-          if ('categoryId' in (args?.data || {})) target.category = target.categoryId ? mockCategories.find((c: any) => c.id === target.categoryId) || null : null
         }
-        return { count: targets.length }
-      }
-      // Category delete's cascade clear calls this with `where: { parentId: id }, data: {
-      // parentId: null } }` to orphan-safe any child categories before removing their parent --
-      // without a real branch this fell to the generic fallback (count: 1, no mutation applied),
-      // leaving child categories pointing at a since-deleted parentId.
-      if (model === 'category') {
-        const w = args?.where || {}
-        let targets: any[] = mockCategories
-        if (w.parentId !== undefined) targets = targets.filter((x: any) => x.parentId === w.parentId)
-        for (const target of targets) Object.assign(target, args?.data || {})
         return { count: targets.length }
       }
       // Purchase-order receiving leans on this being a real optimistic-concurrency guard the same

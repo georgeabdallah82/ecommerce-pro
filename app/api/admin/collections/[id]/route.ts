@@ -12,7 +12,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       include: {
         products: {
           orderBy: { sortOrder: 'asc' },
-          include: { product: { include: { images: true, category: true, inventory: true, variants: { include: { inventory: true } } } } },
+          include: { product: { include: { images: true, inventory: true, variants: { include: { inventory: true } } } } },
         },
       },
     })

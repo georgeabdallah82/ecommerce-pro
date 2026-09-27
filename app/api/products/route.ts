@@ -30,9 +30,6 @@ const publicProductSelect = {
   giftCard: true,
   productTemplate: true,
   publishedAt: true,
-  category: {
-    select: { id: true, name: true, slug: true, description: true, imageUrl: true },
-  },
   images: {
     select: { id: true, url: true, alt: true, sortOrder: true },
     orderBy: { sortOrder: 'asc' as const },
@@ -76,9 +73,9 @@ export async function GET(req: Request) {
     const q = searchParams.get('q')?.trim() || ''
     const slug = searchParams.get('slug')?.trim() || ''
     const id = searchParams.get('id')?.trim() || ''
-    const category = searchParams.get('category')?.trim() || ''
+    const collection = searchParams.get('collection')?.trim() || ''
 
-    if (q.length > 100 || slug.length > 180 || id.length > 100 || category.length > 100) {
+    if (q.length > 100 || slug.length > 180 || id.length > 100 || collection.length > 100) {
       return json({ error: 'Invalid product query' }, { status: 400 })
     }
 
@@ -98,7 +95,7 @@ export async function GET(req: Request) {
     const where = {
       status: 'ACTIVE' as const,
       id: { notIn: unpublishedIds },
-      ...(category ? { category: { slug: category } } : {}),
+      ...(collection ? { collections: { some: { collection: { slug: collection } } } } : {}),
       ...(q
         ? {
             OR: [
