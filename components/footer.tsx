@@ -49,6 +49,7 @@ export function Footer({ theme }: { theme?: any }) {
 .focalFooter .footerGrid>div{min-width:0}
 .focalFooter a,.focalFooter p{overflow-wrap:anywhere}
 .focalFooterHelp{background:var(--store-primary,#d42a2a);color:#fff}
+.focalFooter .footerLogo{max-height:36px;display:inline-block;background:#fff;padding:8px 14px;border-radius:10px}
 .focalFooterHelpInner{display:flex;align-items:center;justify-content:center;gap:14px;padding:14px 0;font-size:13px;font-weight:700;flex-wrap:wrap;text-align:center}
 .focalFooterWhatsapp{display:inline-flex;align-items:center;gap:7px;background:#fff;color:var(--store-primary,#d42a2a);padding:8px 16px;border-radius:999px;font-weight:800;font-size:12px}
 .footerGrid.marketplace{grid-template-columns:1.4fr 1fr 1fr 1fr}
@@ -65,6 +66,7 @@ export function Footer({ theme }: { theme?: any }) {
   .focalFooter .footerGrid strong{font-size:15px}
   .focalFooter .footerGrid p{margin:8px 0}
   .focalFooter .logo{font-size:20px}
+  .focalFooter .footerLogo{max-height:28px}
   .focalFooterBottom{justify-content:center;text-align:center}
 }
 ` }} />
@@ -81,7 +83,7 @@ export function Footer({ theme }: { theme?: any }) {
     <footer className="footer focalFooter">
       <div className="focalContainer footerGrid marketplace">
         <div>
-          <div className="logo">{brand}</div>
+          {theme?.logoUrl ? <img className="footerLogo" src={theme.logoUrl} alt={brand} /> : <div className="logo">{brand}</div>}
           <p className="muted">A refined shopping experience built to grow with your business.</p>
           {activeSocial.length > 0 && (
             <div className="focalFooterSocial">
