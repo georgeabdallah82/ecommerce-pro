@@ -30,6 +30,14 @@ function detectOS() {
   return 'Other'
 }
 
+// /theme-editor-preview (the theme editor's own iframe target, see
+// app/theme-editor-preview/page.tsx) renders draft storefront markup for editing purposes only
+// -- it must never prompt for location or report itself as a real visitor hit, the same way
+// /admin already doesn't.
+function isTrackedPath(pathname: string) {
+  return !pathname.startsWith('/admin') && pathname !== '/theme-editor-preview'
+}
+
 function readConsent() {
   try {
     return window.localStorage.getItem(LOCATION_CONSENT_KEY)
@@ -56,7 +64,7 @@ export default function LiveVisitorTracker() {
 
   useEffect(() => {
     setMounted(true)
-    if (!window.location.pathname.startsWith('/admin')) {
+    if (isTrackedPath(window.location.pathname)) {
       setConsent(readConsent())
     }
   }, [])
@@ -66,7 +74,7 @@ export default function LiveVisitorTracker() {
   }, [coordinates])
 
   useEffect(() => {
-    if (window.location.pathname.startsWith('/admin') || consent !== 'granted') return
+    if (!isTrackedPath(window.location.pathname) || consent !== 'granted') return
     if (!navigator.geolocation) {
       setLocationError('This browser does not support precise location.')
       return
@@ -92,7 +100,7 @@ export default function LiveVisitorTracker() {
   }, [consent])
 
   useEffect(() => {
-    if (window.location.pathname.startsWith('/admin')) return
+    if (!isTrackedPath(window.location.pathname)) return
     let stopped = false
 
     const send = async () => {
@@ -145,7 +153,7 @@ export default function LiveVisitorTracker() {
     }
   }, [])
 
-  if (!mounted || typeof window === 'undefined' || window.location.pathname.startsWith('/admin') || consent !== null) {
+  if (!mounted || typeof window === 'undefined' || !isTrackedPath(window.location.pathname) || consent !== null) {
     return null
   }
 

@@ -55,7 +55,8 @@ import MediaPicker from '@/components/media-picker'
 import { FONT_OPTIONS } from '@/lib/font-options'
 import styles from './admin-theme-editor.module.css'
 
-const PREVIEW_PATH = '/admin/online-store/theme-editor/preview'
+// Deliberately not under /admin -- see app/theme-editor-preview/page.tsx's top comment.
+const PREVIEW_PATH = '/theme-editor-preview'
 
 type AnyMap = Record<string, any>
 type Section = { id: string; type: string; enabled?: boolean; settings?: AnyMap; blocks?: AnyMap[] }
@@ -301,7 +302,12 @@ export default function FocalThemeEditor({ initial }: Props) {
   const [collections, setCollections] = useState<any[]>([])
   const [dragId, setDragId] = useState<string | null>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
-  const [previewReady, setPreviewReady] = useState(false)
+  // A counter rather than a boolean: the iframe can legitimately send a second
+  // 'ready' (e.g. a dev-mode reload) after the first handshake already completed,
+  // and setPreviewReady(true) on an already-true value is a no-op that drops the
+  // state re-push the fresh document needs -- every 'ready' has to force a new
+  // effect run, which only a value that always changes can guarantee.
+  const [previewReadyToken, setPreviewReadyToken] = useState(0)
   const [previewHeight, setPreviewHeight] = useState(0)
   const [versions, setVersions] = useState<Array<{ id: string; createdAt: string; createdBy: string | null }>>([])
   const [versionsLoading, setVersionsLoading] = useState(false)
@@ -336,6 +342,21 @@ export default function FocalThemeEditor({ initial }: Props) {
     })
   }, [])
 
+  // The iframe's src is set imperatively here instead of as a static JSX prop
+  // because this page renders under app/admin/loading.tsx's Suspense boundary:
+  // Next streams this component's markup into a hidden container before its
+  // reveal script swaps it into place, and the browser's HTML parser starts
+  // loading anything with a `src` the instant it sees it in that hidden markup
+  // -- then the reveal swap discards that node and mounts a genuinely new
+  // <iframe> in its place, so the real, final iframe never gets a `src` at
+  // all (its handshake with theme-preview-frame.tsx never even starts) while
+  // the discarded, invisible one silently eats the only load. Assigning the
+  // src ourselves in an effect runs after that swap has settled, so the
+  // iframe that's actually on screen is the one that navigates.
+  useEffect(() => {
+    if (iframeRef.current) iframeRef.current.src = PREVIEW_PATH
+  }, [])
+
   // The preview lives in a same-origin iframe (components/theme-preview-frame.tsx),
   // driven entirely by postMessage instead of shared props/DOM, so the editor
   // chrome's CSS can never bleed into (or be bled into by) the real storefront
@@ -347,7 +368,7 @@ export default function FocalThemeEditor({ initial }: Props) {
       if (event.source !== iframeRef.current?.contentWindow) return
       const data = event.data
       if (!data || data.source !== 'theme-preview') return
-      if (data.type === 'ready') setPreviewReady(true)
+      if (data.type === 'ready') setPreviewReadyToken(t => t + 1)
       else if (data.type === 'select') { setSelectedId(data.sectionId); setDrawer(true) }
       else if (data.type === 'height') setPreviewHeight(Number(data.height) || 0)
     }
@@ -356,7 +377,7 @@ export default function FocalThemeEditor({ initial }: Props) {
   }, [])
 
   useEffect(() => {
-    if (!previewReady) return
+    if (!previewReadyToken) return
     iframeRef.current?.contentWindow?.postMessage({
       source: 'theme-editor',
       type: 'state',
@@ -367,7 +388,7 @@ export default function FocalThemeEditor({ initial }: Props) {
       collections,
       selectedId,
     }, window.location.origin)
-  }, [previewReady, theme, current, initial.navigation, products, collections, selectedId])
+  }, [previewReadyToken, theme, current, initial.navigation, products, collections, selectedId])
 
   const commit = (nextTemplates: Record<string, Section[]>, nextTheme = theme) => {
     setHistory(history => [...history, { theme: clone(theme), templates: clone(templates), page, selectedId }].slice(-50))
@@ -712,11 +733,9 @@ export default function FocalThemeEditor({ initial }: Props) {
           <div className={styles.preview}>
             <iframe
               ref={iframeRef}
-              src={PREVIEW_PATH}
               title="Storefront preview"
               className={`${styles.frame} ${frameClass}`}
               style={{ maxWidth, height: previewHeight || '100%', border: 0 }}
-              onLoad={() => setPreviewReady(false)}
             />
           </div>
         </main>

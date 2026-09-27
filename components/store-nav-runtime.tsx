@@ -10,7 +10,7 @@ export default function StoreNavRuntime({ theme, navigation }: { theme: any; nav
   const [currentNavigation, setCurrentNavigation] = useState(navigation || [])
 
   useEffect(() => {
-    if (pathname.startsWith('/admin')) return
+    if (pathname.startsWith('/admin') || pathname === '/theme-editor-preview') return
     let themeChannel: BroadcastChannel | null = null
     let navigationChannel: BroadcastChannel | null = null
 
@@ -34,6 +34,10 @@ export default function StoreNavRuntime({ theme, navigation }: { theme: any; nav
     }
   }, [pathname])
 
-  if (pathname.startsWith('/admin')) return null
+  // /theme-editor-preview (the theme editor's own iframe target, see
+  // app/theme-editor-preview/page.tsx) already renders its own StoreNavFixed with the
+  // in-progress draft theme via ThemePreviewFrame -- without this exclusion, this runtime
+  // component would render a second nav bar on top of it using the last-*published* theme.
+  if (pathname.startsWith('/admin') || pathname === '/theme-editor-preview') return null
   return <StoreNavFixed theme={currentTheme} navigation={currentNavigation} />
 }

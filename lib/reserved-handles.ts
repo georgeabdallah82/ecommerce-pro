@@ -6,5 +6,5 @@
 export const RESERVED_HANDLES = new Set([
   'account', 'admin', 'admin-login', 'api', 'app', 'blog', 'cart', 'checkout',
   'collections', 'coming-soon', 'invoice', 'order', 'orders', 'pay-invoice', 'privacy-policy',
-  'product', 'refund-policy', 'shop', 'terms-of-service', 'track', 'wishlist',
+  'product', 'refund-policy', 'shop', 'terms-of-service', 'theme-editor-preview', 'track', 'wishlist',
 ])

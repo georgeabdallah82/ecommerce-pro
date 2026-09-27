@@ -9,7 +9,10 @@ import { db } from '@/lib/prisma'
 const MAINTENANCE_BYPASS_PREFIXES = ['/admin', '/coming-soon', '/_next']
 const MAINTENANCE_API_BYPASS_PREFIXES = ['/api/admin', '/api/auth', '/api/internal', '/api/payments', '/api/health']
 const MAINTENANCE_BYPASS_EXACT = new Set(['/favicon.ico', '/robots.txt', '/sitemap.xml'])
-const REDIRECT_BYPASS_PREFIXES = ['/admin', '/api', '/_next']
+// /theme-editor-preview is a staff-only technical surface (the theme editor's iframe target,
+// see app/theme-editor-preview/page.tsx), reloaded on every draft edit -- exempting it here
+// avoids a redirect-table lookup on every one of those renders, the same way /admin already is.
+const REDIRECT_BYPASS_PREFIXES = ['/admin', '/api', '/_next', '/theme-editor-preview']
 
 function isStaticAsset(pathname: string) {
   return /\.[a-zA-Z0-9]+$/.test(pathname)
@@ -111,7 +114,7 @@ export async function proxy(request: NextRequest) {
   response.headers.set('X-Content-Type-Options', 'nosniff')
   // The theme editor's live preview (components/theme-preview-frame.tsx) embeds
   // this one route in a same-origin <iframe>; every other route stays DENY.
-  const isThemePreview = pathname === '/admin/online-store/theme-editor/preview'
+  const isThemePreview = pathname === '/theme-editor-preview'
   response.headers.set('X-Frame-Options', isThemePreview ? 'SAMEORIGIN' : 'DENY')
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
