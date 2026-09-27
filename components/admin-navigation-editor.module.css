@@ -161,6 +161,11 @@
   color: var(--admin-ink);
 }
 
+.navImageField { margin-top: 2px; }
+.navImagePreview { display: flex; align-items: center; gap: 10px; }
+.navImagePreview img { width: 56px; height: 56px; border-radius: 9px; object-fit: cover; border: 1px solid var(--admin-border); background: var(--admin-border-soft); }
+.navImageActions { display: flex; align-items: center; gap: 6px; }
+
 .destination { padding: 13px; border: 1px solid var(--admin-border); border-radius: 10px; background: var(--admin-border-soft); }
 .destination strong { font-size: 12px; color: var(--admin-ink); }
 .destinationNote { font-size: 11px; margin-top: 4px; }

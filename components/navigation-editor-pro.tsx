@@ -1,11 +1,12 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, GripVertical, Link2, Plus, Save, Settings2, Trash2, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, GripVertical, ImagePlus, Link2, Plus, Save, Settings2, Trash2, X } from 'lucide-react'
 import styles from './admin-navigation-editor.module.css'
 import ui from './admin-ui.module.css'
+import MediaPicker from './media-picker'
 
-type Item = { id: string; label: string; url?: string | null; type?: string; parentId?: string | null; resourceId?: string | null }
+type Item = { id: string; label: string; url?: string | null; type?: string; parentId?: string | null; resourceId?: string | null; group?: string | null; imageUrl?: string | null }
 type Props = { initial: Item[]; categories: any[]; collections: any[] }
 type Draft = { label: string; type: 'custom' | 'collection' | 'category'; url: string; resourceId: string; parentId: string | null }
 
@@ -487,11 +488,54 @@ function EditDrawer({ item, items, categories, collections, onClose, patch, remo
             }} />
           </div>
         )}
+
+        {draft.parentId && (
+          <>
+            <div className={styles.field}>
+              <label>Group heading (optional)</label>
+              <input
+                value={draft.group || ''}
+                onChange={e => {
+                  const group = e.target.value
+                  set({ group })
+                  patch(item.id, { group })
+                }}
+                placeholder="e.g. New In, Special Prices, Collection"
+              />
+              <small className={ui.muted}>Links sharing the same heading are grouped together in the menu, numbered in the order the headings first appear.</small>
+            </div>
+            <div className={styles.field}>
+              <label>Featured image (optional)</label>
+              <small className={ui.muted}>Shown as an image tile at the top of this item&rsquo;s menu, in addition to its text link below.</small>
+              <NavImageField value={draft.imageUrl || ''} onChange={imageUrl => { set({ imageUrl }); patch(item.id, { imageUrl }) }} />
+            </div>
+          </>
+        )}
       </div>
       <div className={styles.drawerFoot}>
         <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={onClose}>Done</button>
         <button className={styles.removeBtn} onClick={() => { remove(item.id); onClose() }}>Remove item</button>
       </div>
+    </div>
+  )
+}
+
+function NavImageField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className={styles.navImageField}>
+      {value ? (
+        <div className={styles.navImagePreview}>
+          <img src={value} alt="" />
+          <div className={styles.navImageActions}>
+            <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setOpen(true)}>Change</button>
+            <button type="button" className={ui.iconBtn} onClick={() => onChange('')} aria-label="Remove image"><X size={13} /></button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setOpen(true)}><ImagePlus size={15} /> Upload image</button>
+      )}
+      <MediaPicker open={open} onClose={() => setOpen(false)} onAdd={images => { if (images[0]) onChange(images[0].url); setOpen(false) }} />
     </div>
   )
 }
