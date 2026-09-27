@@ -662,6 +662,7 @@ export default function FocalThemeEditor({ initial }: Props) {
               <Panel title="Brand">
                 <Field label="Brand name" value={theme.brandName || ''} onChange={value => commit(templates, { ...theme, brandName: value })} />
                 <ImageField label="Logo" value={theme.logoUrl || ''} onChange={value => commit(templates, { ...theme, logoUrl: value })} />
+                <ImageField label="Logo (for dark backgrounds, e.g. footer)" value={theme.logoUrlDark || ''} onChange={value => commit(templates, { ...theme, logoUrlDark: value })} />
                 <ImageField label="Favicon" value={theme.faviconUrl || ''} onChange={value => commit(templates, { ...theme, faviconUrl: value })} />
               </Panel>
               <Panel title="Social links">

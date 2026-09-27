@@ -1,6 +1,6 @@
 export const defaultTheme={
   brandName:process.env.NEXT_PUBLIC_BRAND_NAME||'YOUR BRAND',
-  logoUrl:'',faviconUrl:'',
+  logoUrl:'',logoUrlDark:'',faviconUrl:'',
   colors:{background:'#f7f7f8',surface:'#ffffff',text:'#1a1a1a',muted:'#68707a',primary:'#d42a2a',secondary:'#fff1e6',buttonText:'#ffffff',border:'#e7e7ea',announcementBg:'#1a1a1a',announcementText:'#ffffff',accent:'#ff7a1a',sale:'#e11d2e',success:'#16a34a',warning:'#f59e0b'},
   typography:{heading:'poppins',body:'inter',scale:'100',headingWeight:'700',bodyWeight:'500',letterSpacing:'normal',lineHeight:'1.5'},
   layout:{maxWidth:1360,sectionSpacing:76,productColumns:4,cardGap:16,contentWidth:'wide',pageGutter:28},
