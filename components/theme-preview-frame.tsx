@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { CartProvider } from '@/components/cart-provider'
 import StoreNavFixed from '@/components/store-nav-fixed'
-import StorefrontSections from '@/components/storefront-sections'
+import AliExpressHome from '@/components/aliexpress-home'
+import { Footer } from '@/components/footer'
 import { fontCssStack } from '@/lib/font-options'
 
 // The page this iframe is mounted at renders through the same root
@@ -99,14 +100,22 @@ export default function ThemePreviewFrame() {
     })
   }, [state?.theme])
 
+  // AliExpressHome (below) has no click-to-select or scroll-target wiring of
+  // its own (the real homepage that renders it has no reason to need any),
+  // and its sections use fixed classnames rather than the generic,
+  // index-addressable `.focalSection` shell the old generic renderer used --
+  // three of the six types (collection_grid/new_arrivals/best_sellers) even
+  // share one identical class with no way to tell them apart in the DOM. So
+  // clicking a section directly in the preview pane to jump to its drawer,
+  // and auto-scrolling the preview when a section is selected from the
+  // editor's own sidebar list, both only work here for the hero banner; the
+  // sidebar list itself (unaffected by any of this) remains the reliable way
+  // to select and edit every section type.
   useEffect(() => {
     if (!state?.selectedId) return
-    const visibleIndex = state.sections
-      .filter(section => section.enabled !== false && section.settings?.enabled !== false && section.type !== 'header' && section.type !== 'announcement' && section.type !== 'footer')
-      .findIndex(section => section.id === state.selectedId)
-    if (visibleIndex < 0) return
-    const nodes = document.querySelectorAll<HTMLElement>('.focalSection')
-    nodes[visibleIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    const hero = state.sections.find(section => section.type === 'hero')
+    if (hero?.id !== state.selectedId) return
+    document.querySelector<HTMLElement>('.focalType-hero')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }, [state?.selectedId, state?.sections])
 
   if (!state) return <div style={{ minHeight: '100vh' }} />
@@ -116,18 +125,39 @@ export default function ThemePreviewFrame() {
   // in-progress header edits made on any template page, not just Home.
   const navTheme = { ...state.theme, editorTemplates: { ...(state.theme.editorTemplates || {}), Pages: state.sections } }
 
+  // Renders the exact same component the real homepage (app/page.tsx) uses,
+  // deriving its typed section props from state.sections the same way, so the
+  // preview can never drift from what a visitor actually sees the way the old
+  // generic StorefrontSections renderer did (it had no case at all for
+  // category_strip/flash_deals/new_arrivals/best_sellers, so those were
+  // invisible here despite being live on the real site). announcements/
+  // trustItems come from a separate content-block system app/page.tsx queries
+  // from the database directly -- not part of the theme editor's postMessage
+  // state -- so the preview can't reflect those; that's a pre-existing gap,
+  // not something introduced here.
+  const hero = state.sections.find(section => section.type === 'hero')
+  const categoryStrip = state.sections.find(section => section.type === 'category_strip')
+  const flashDeals = state.sections.find(section => section.type === 'flash_deals')
+  const collectionsSection = state.sections.find(section => section.type === 'collection_grid')
+  const newArrivalsSection = state.sections.find(section => section.type === 'new_arrivals')
+  const bestSellersSection = state.sections.find(section => section.type === 'best_sellers')
+
   return (
     <CartProvider>
       <StoreNavFixed theme={navTheme} navigation={state.navigation} />
-      <StorefrontSections
+      <AliExpressHome
         theme={state.theme}
-        sections={state.sections}
+        hero={hero}
         products={state.products}
         collections={state.collections}
-        preview
-        selectedId={state.selectedId}
-        onSelect={sectionId => window.parent.postMessage({ source: 'theme-preview', type: 'select', sectionId }, window.location.origin)}
+        iconCollections={state.collections}
+        categoryStrip={categoryStrip}
+        flashDeals={flashDeals}
+        collectionsSection={collectionsSection}
+        newArrivalsSection={newArrivalsSection}
+        bestSellersSection={bestSellersSection}
       />
+      <Footer theme={state.theme} />
     </CartProvider>
   )
 }
