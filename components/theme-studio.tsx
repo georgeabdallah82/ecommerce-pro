@@ -2,15 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ArrowDown,
   ArrowLeft,
-  ArrowUp,
   AtSign,
   BadgeCheck,
   Check,
   Columns3,
   Compass,
-  Copy,
   FolderOpen,
   GalleryHorizontal,
   GalleryHorizontalEnd,
@@ -73,7 +70,22 @@ type Snapshot = { theme: AnyMap; templates: Record<string, Section[]>; page: str
 type Props = { initial: { theme: AnyMap; sections: Section[]; navigation: any[]; draft: boolean } }
 
 const PAGES = ['Home page', 'Products', 'Product', 'Collections', 'Collection', 'Cart', 'Pages', 'Blog']
+// The homepage (app/page.tsx) is the ONLY route that reads specific types out
+// of the sections list -- exactly these six, by s.type, regardless of their
+// position in the list. Every other page template this editor can technically
+// hold (Products/Product/Collections/Collection/Cart/Pages/Blog) renders from
+// its own hardcoded component instead (components/aliexpress-*.tsx) and never
+// reads `sections` at all, so editing them here was pure decoration with zero
+// effect on the live site. Header and Announcement are the other exception --
+// they're read globally, independent of which page you're viewing.
 const HOME_LIVE_TYPES = ['hero', 'category_strip', 'flash_deals', 'collection_grid', 'new_arrivals', 'best_sellers']
+const HOME_ALLOWED_TYPES = ['header', 'announcement', ...HOME_LIVE_TYPES]
+// Drops any section type this editor may have accumulated before the live-only
+// restriction below existed (e.g. Featured product, Promo grid, Testimonials)
+// -- those rows never affected the live homepage, only this editor's own
+// preview, so silently dropping them on load cleans up old data without a
+// migration and without losing anything a visitor could ever have seen.
+const sanitizeHomeSections = (list: Section[]) => list.filter(section => HOME_ALLOWED_TYPES.includes(section.type))
 const META: Record<string, string> = {
   announcement: 'Announcement bar',
   header: 'Header',
@@ -180,9 +192,9 @@ function sectionDefaults(type: string): Section {
 }
 
 function defaultTemplates(source: Section[]) {
-  const home = source?.length
-    ? clone(source)
-    : [sectionDefaults('announcement'), sectionDefaults('header'), sectionDefaults('hero'), sectionDefaults('product_grid'), sectionDefaults('collection_grid'), sectionDefaults('newsletter'), sectionDefaults('footer')]
+  const liveDefaults = [sectionDefaults('announcement'), sectionDefaults('header'), sectionDefaults('hero'), sectionDefaults('category_strip'), sectionDefaults('flash_deals'), sectionDefaults('collection_grid'), sectionDefaults('new_arrivals'), sectionDefaults('best_sellers')]
+  const sanitized = source?.length ? sanitizeHomeSections(clone(source)) : []
+  const home = sanitized.length ? sanitized : liveDefaults
   return {
     'Home page': home,
     Products: [sectionDefaults('announcement'), sectionDefaults('header'), sectionDefaults('product_grid'), sectionDefaults('newsletter'), sectionDefaults('footer')],
@@ -282,6 +294,8 @@ export default function ThemeStudio({ initial }: Props) {
     const stored = initial.theme?.editorTemplates || {}
     const base = clone(fallback)
     for (const key of PAGES) if (Array.isArray(stored[key]) && stored[key].length) base[key] = clone(stored[key])
+    base['Home page'] = sanitizeHomeSections(base['Home page'])
+    if (!base['Home page'].length) base['Home page'] = clone(fallback['Home page'])
     return base
   })
   const [page, setPage] = useState('Home page')
@@ -301,7 +315,6 @@ export default function ThemeStudio({ initial }: Props) {
   const [message, setMessage] = useState('')
   const [products, setProducts] = useState<any[]>([])
   const [collections, setCollections] = useState<any[]>([])
-  const [dragId, setDragId] = useState<string | null>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   // A counter rather than a boolean: the iframe can legitimately send a second
   // 'ready' (e.g. a dev-mode reload) after the first handshake already completed,
@@ -315,7 +328,6 @@ export default function ThemeStudio({ initial }: Props) {
   const [versionsError, setVersionsError] = useState('')
   const [restoringId, setRestoringId] = useState<string | null>(null)
   const [confirmState, setConfirmState] = useState<{ message: string; onConfirm: () => void } | null>(null)
-  const [dragOverId, setDragOverId] = useState<string | null>(null)
   const confirmAction = (message: string, onConfirm: () => void) => setConfirmState({ message, onConfirm })
   const [hasDraft, setHasDraft] = useState(initial.draft)
   const [publishing, setPublishing] = useState(false)
@@ -437,34 +449,6 @@ export default function ThemeStudio({ initial }: Props) {
       setDrawer(false)
     })
   }
-  const duplicateSection = () => {
-    if (!selected) return
-    const copy = clone(selected)
-    copy.id = makeId(selected.type)
-    const list = [...current]
-    list.splice(selectedIndex + 1, 0, copy)
-    commit({ ...templates, [page]: list })
-    setSelectedId(copy.id)
-  }
-  const moveSection = (delta: number) => {
-    if (selectedIndex < 0) return
-    const nextIndex = selectedIndex + delta
-    if (nextIndex < 0 || nextIndex >= current.length) return
-    const list = [...current]
-    ;[list[selectedIndex], list[nextIndex]] = [list[nextIndex], list[selectedIndex]]
-    commit({ ...templates, [page]: list })
-  }
-  const dropSection = (targetId: string) => {
-    if (!dragId || dragId === targetId) return
-    const from = current.findIndex(section => section.id === dragId)
-    const to = current.findIndex(section => section.id === targetId)
-    if (from < 0 || to < 0) return
-    const list = [...current]
-    const item = list.splice(from, 1)[0]
-    list.splice(to, 0, item)
-    commit({ ...templates, [page]: list })
-    setDragId(null)
-  }
   const undo = () => {
     const snapshot = history.at(-1)
     if (!snapshot) return
@@ -486,16 +470,6 @@ export default function ThemeStudio({ initial }: Props) {
     setPage(snapshot.page)
     setSelectedId(snapshot.selectedId)
     setDirty(true)
-  }
-  const switchPage = (nextPage: string) => {
-    setPage(nextPage)
-    setSelectedId('')
-    setDrawer(false)
-  }
-  const changePage = (nextPage: string) => {
-    if (nextPage === page) return
-    if (dirty) { confirmAction('You have unsaved changes. Switch templates anyway?', () => switchPage(nextPage)); return }
-    switchPage(nextPage)
   }
   const openCategory = (key: string) => {
     setActiveCategoryKey(key)
@@ -605,13 +579,8 @@ export default function ThemeStudio({ initial }: Props) {
           </a>
           <div>
             <div className={styles.title}>Theme editor</div>
-            <div className={styles.sub}>{page}</div>
+            <div className={styles.sub}>Homepage sections</div>
           </div>
-          <select className={styles.select} value={page} onChange={event => changePage(event.target.value)}>
-            {PAGES.map(item => (
-              <option value={item} key={item}>{item}</option>
-            ))}
-          </select>
         </div>
         <div className={styles.topRight}>
           <button className={styles.iconBtn} onClick={undo} disabled={!history.length} aria-label="Undo"><Undo2 size={15} /></button>
@@ -648,26 +617,18 @@ export default function ThemeStudio({ initial }: Props) {
                 <button className={styles.iconBtn} onClick={() => setPicker(true)} aria-label="Add section"><Plus size={15} /></button>
               </div>
               <div className={styles.legacyNotice}>
-                &ldquo;{page}&rdquo; renders on your live storefront as a dedicated built-in page design, not from this section list -- edits below only change what you see in this editor&rsquo;s own preview. Header and Announcement here (tagged LIVE) are the exception: those apply to your real site regardless of this template.{page === 'Home page' && <> Image banner, Category strip, Flash deals, Collection list, New arrivals and Best sellers are also live here (and only here) -- these are the sections this page actually reads out of the list below; their position in this list doesn&rsquo;t affect where they appear on the page, but enabling/disabling and editing their content does.</>} Product page, Collection &amp; shop pages, Cart and Footer are edited under the Theme tab instead.
+                Every section below is live on your homepage. Header and Announcement apply across your whole site, not just this page. Their on-page position is fixed (Image banner, then Category strip, Flash deals, Collection list, New arrivals, Best sellers) -- dragging to reorder them here doesn&rsquo;t move them on the page, but enabling, disabling, and editing their content does apply live. Product page, Collection &amp; shop pages, Cart and Footer settings are edited under the Theme tab instead.
               </div>
               <div className={styles.rows}>
-                {current.map((section, index) => (
+                {current.map(section => (
                   <div
                     key={section.id}
-                    draggable
-                    onDragStart={() => setDragId(section.id)}
-                    onDragOver={event => { event.preventDefault(); if (dragId && dragId !== section.id) setDragOverId(section.id) }}
-                    onDragLeave={() => setDragOverId(prev => (prev === section.id ? null : prev))}
-                    onDrop={() => { dropSection(section.id); setDragOverId(null) }}
-                    onDragEnd={() => { setDragId(null); setDragOverId(null) }}
-                    className={`${styles.row} ${selectedId === section.id && drawerMode === 'section' ? styles.active : ''} ${dragOverId === section.id && dragId !== section.id ? styles.dropTarget : ''}`}
+                    className={`${styles.row} ${selectedId === section.id && drawerMode === 'section' ? styles.active : ''}`}
                   >
                     <button className={styles.rowMain} onClick={() => { setSelectedId(section.id); setDrawerMode('section'); setDrawer(true); setDrawerTab('content') }}>
-                      <GripVertical size={13} className={styles.rowGrip} />
                       {(() => { const Icon = SECTION_ICONS[section.type] || LayoutGrid; return <Icon size={15} className={styles.rowIcon} /> })()}
                       <span>{META[section.type] || section.type.replaceAll('_', ' ')}</span>
-                      {(section.type === 'header' || section.type === 'announcement' || (page === 'Home page' && HOME_LIVE_TYPES.includes(section.type))) && <small className={styles.liveTag}>LIVE</small>}
-                      {index === 0 && <small className={styles.mainTag}>MAIN</small>}
+                      <small className={styles.liveTag}>LIVE</small>
                     </button>
                     <button className={styles.rowToggle} onClick={() => { setSelectedId(section.id); setDrawerMode('section'); setDrawer(true); toggleSection(section.enabled === false) }} aria-label={section.enabled === false ? 'Enable section' : 'Disable section'}>
                       {section.enabled === false ? <X size={14} /> : <Check size={14} />}
@@ -753,9 +714,6 @@ export default function ThemeStudio({ initial }: Props) {
                 <strong>{META[selected.type] || selected.type}</strong>
               </div>
               <div className={styles.drawerHeadActions}>
-                <button className={styles.iconBtn} onClick={() => moveSection(-1)} disabled={selectedIndex <= 0} aria-label="Move up"><ArrowUp size={13} /></button>
-                <button className={styles.iconBtn} onClick={() => moveSection(1)} disabled={selectedIndex < 0 || selectedIndex >= current.length - 1} aria-label="Move down"><ArrowDown size={13} /></button>
-                <button className={styles.iconBtn} onClick={duplicateSection} aria-label="Duplicate"><Copy size={13} /></button>
                 <button className={styles.iconBtn} onClick={removeSection} aria-label="Delete"><Trash2 size={13} /></button>
                 <button className={styles.iconBtn} onClick={() => setDrawer(false)} aria-label="Close"><X size={15} /></button>
               </div>
@@ -823,7 +781,7 @@ export default function ThemeStudio({ initial }: Props) {
             />
             {(() => {
               const results = Object.entries(META)
-                .filter(([key]) => !['announcement', 'header'].includes(key))
+                .filter(([key]) => HOME_LIVE_TYPES.includes(key))
                 .filter(([, label]) => label.toLowerCase().includes(pickerQuery.trim().toLowerCase()))
               if (!results.length) return <div className={styles.pickerEmpty}>No sections match &ldquo;{pickerQuery}&rdquo;.</div>
               return (
