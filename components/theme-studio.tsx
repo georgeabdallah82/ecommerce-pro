@@ -85,7 +85,18 @@ const HOME_ALLOWED_TYPES = ['header', 'announcement', ...HOME_LIVE_TYPES]
 // -- those rows never affected the live homepage, only this editor's own
 // preview, so silently dropping them on load cleans up old data without a
 // migration and without losing anything a visitor could ever have seen.
-const sanitizeHomeSections = (list: Section[]) => list.filter(section => HOME_ALLOWED_TYPES.includes(section.type))
+// Also backfills any of the six live types with no stored row at all: several
+// of them (category_strip, flash_deals, new_arrivals, best_sellers) render on
+// the live homepage purely from their own data existing (collections,
+// discounted/new/best-selling products) even with no section object ever
+// saved for them, so without this they'd be live on the site but permanently
+// missing -- and therefore un-toggleable and un-configurable -- from this list.
+const sanitizeHomeSections = (list: Section[]) => {
+  const kept = list.filter(section => HOME_ALLOWED_TYPES.includes(section.type))
+  const present = new Set(kept.map(section => section.type))
+  for (const type of HOME_ALLOWED_TYPES) if (!present.has(type)) kept.push(sectionDefaults(type))
+  return kept
+}
 const META: Record<string, string> = {
   announcement: 'Announcement bar',
   header: 'Header',
