@@ -5,12 +5,12 @@ import Link from 'next/link'
 import { Minus, Plus, ShieldCheck, ShoppingBag, Tag, Trash2, Truck } from 'lucide-react'
 import { useCart, keyOf } from '@/components/cart-provider'
 import { money } from '@/lib/config'
-import { ProductCard, QuickView } from '@/components/storefront-sections'
+import StorefrontSections, { ProductCard, QuickView } from '@/components/storefront-sections'
 import { useWishlist } from '@/components/use-wishlist'
 
 type AnyMap = Record<string, any>
 
-export default function AliExpressCart({ theme, recommended }: { theme?: AnyMap; recommended?: AnyMap[] }) {
+export default function AliExpressCart({ theme, recommended, sections = [], zoneCollections = [] }: { theme?: AnyMap; recommended?: AnyMap[]; sections?: AnyMap[]; zoneCollections?: AnyMap[] }) {
   const { items, updateQty, removeItem, isSelected, toggleSelected, selectAll, deselectAll, selectedItems, selectedCount, selectedSubtotal } = useCart()
   const { wishlist, toggleWish } = useWishlist()
   const [quickProduct, setQuickProduct] = useState<AnyMap | null>(null)
@@ -73,6 +73,7 @@ export default function AliExpressCart({ theme, recommended }: { theme?: AnyMap;
               </div>
             </div>
           )}
+          {sections.length > 0 && theme && <StorefrontSections theme={theme} sections={sections} products={recommended || []} collections={zoneCollections} />}
         </div>
         {quickProduct && theme && <QuickView product={quickProduct} theme={theme} onClose={() => setQuickProduct(null)} />}
       </main>
@@ -174,6 +175,11 @@ export default function AliExpressCart({ theme, recommended }: { theme?: AnyMap;
             </div>
           </div>
         )}
+        {/* Merchant-addable content -- see the matching comment in
+            components/aliexpress-product.tsx for the pattern this follows.
+            Placed above the sticky checkout bar/QuickView modal, which stay
+            fixed-position overlays regardless of what's added here. */}
+        {sections.length > 0 && theme && <StorefrontSections theme={theme} sections={sections} products={recommended || []} collections={zoneCollections} />}
       </div>
 
       {showStickyCheckout && (
