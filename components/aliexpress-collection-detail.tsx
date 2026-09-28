@@ -3,12 +3,12 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
-import { ProductCard, QuickView, StoreImage } from '@/components/storefront-sections'
+import StorefrontSections, { ProductCard, QuickView, StoreImage } from '@/components/storefront-sections'
 import { useWishlist } from '@/components/use-wishlist'
 
 type AnyMap = Record<string, any>
 
-export default function AliExpressCollectionDetail({ theme, collection, products }: { theme: AnyMap; collection: AnyMap; products: AnyMap[] }) {
+export default function AliExpressCollectionDetail({ theme, collection, products, sections = [], zoneCollections = [] }: { theme: AnyMap; collection: AnyMap; products: AnyMap[]; sections?: AnyMap[]; zoneCollections?: AnyMap[] }) {
   const { wishlist, toggleWish } = useWishlist()
   const [quickProduct, setQuickProduct] = useState<AnyMap | null>(null)
   const [sort, setSort] = useState('curated')
@@ -80,6 +80,13 @@ export default function AliExpressCollectionDetail({ theme, collection, products
           <p className="aliEmptyState">No products in this collection yet.</p>
         )}
       </div>
+
+      {/* Merchant-addable content appended below the fixed collection layout
+          above -- see the matching comment in components/aliexpress-product.tsx
+          for the pattern this follows. Shared with /shop (components/
+          aliexpress-shop.tsx), same as their settings already are under the
+          Theme tab's "Collection & shop pages" category. */}
+      {sections.length > 0 && <StorefrontSections theme={theme} sections={sections} products={products} collections={zoneCollections} />}
 
       {quickProduct && <QuickView product={quickProduct} theme={theme} onClose={() => setQuickProduct(null)} />}
     </main>
