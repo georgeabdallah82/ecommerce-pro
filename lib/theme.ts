@@ -64,10 +64,20 @@ function templateDefaults(type:string){
   const make=(id:string,sectionType:string,settings:any={})=>({id:`${id}-template-default`,type:sectionType,enabled:true,settings:{...common,...settings},blocks:[]})
   const announcement=()=>make('announcement','announcement',{text:'Free shipping on orders over $50',link:'',height:40})
   const header=()=>make('header','header',{sticky:true,transparent:false,transparentHome:false,showSearch:true,showAccount:true,showWishlist:false,showCart:true,logoWidth:160})
-  const newsletter=()=>make('newsletter','newsletter',{heading:'Stay in the loop',text:'Get launches, drops and offers in your inbox.',buttonLabel:'Subscribe',background:'primary'})
   const footer=()=>make('footer','footer',{columns:4})
-  if(type==='Product') return [announcement(),header(),make('main-product','main_product',{previewProductId:'',stickyAddToCart:true,showVendor:true,showReviews:true,showWishlist:true}),make('recommendations','product_recommendations',{heading:'You may also like',subheading:'Best sellers, new arrivals or a hand-picked edit.',limit:4,columns:4,showViewAll:true,collection:''}),newsletter(),footer()]
-  if(type==='Collection') return [announcement(),header(),make('collection-banner','main_collection_banner',{heading:'Collection',subheading:'',imageUrl:''}),make('collection-products','main_collection_grid',{heading:'Products',limit:24,columns:4}),newsletter(),footer()]
+  // No product_recommendations/newsletter here (unlike a first draft of this
+  // function): the real product/collection pages (components/aliexpress-
+  // product.tsx, aliexpress-collection-detail.tsx, aliexpress-shop.tsx) each
+  // already render their own "You may also like"-equivalent content and
+  // never read editorTemplates.Product/.Collection for it, so seeding one
+  // here would silently duplicate it the moment this page-specific zone
+  // became live-rendered -- and a newsletter block newly appearing on every
+  // product/collection page with no merchant action would be its own
+  // unrequested surprise. Defaulting to just the structural placeholders
+  // means this zone renders nothing extra until a merchant actively adds to
+  // it, so activating it changes nothing visually on any existing store.
+  if(type==='Product') return [announcement(),header(),make('main-product','main_product',{previewProductId:'',stickyAddToCart:true,showVendor:true,showReviews:true,showWishlist:true}),footer()]
+  if(type==='Collection') return [announcement(),header(),make('collection-banner','main_collection_banner',{heading:'Collection',subheading:'',imageUrl:''}),make('collection-products','main_collection_grid',{heading:'Products',limit:24,columns:4}),footer()]
   return []
 }
 
