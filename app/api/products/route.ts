@@ -3,6 +3,7 @@ import { consumeRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { json } from '@/lib/utils'
 import { getUnpublishedProductIds } from '@/lib/sales-channels'
+import { withProductStats } from '@/lib/product-stats'
 
 const publicProductSelect = {
   id: true,
@@ -30,6 +31,7 @@ const publicProductSelect = {
   giftCard: true,
   productTemplate: true,
   publishedAt: true,
+  createdAt: true,
   images: {
     select: { id: true, url: true, alt: true, sortOrder: true },
     orderBy: { sortOrder: 'asc' as const },
@@ -61,7 +63,9 @@ async function findPublicProduct(where: Record<string, unknown>) {
   const product = await db.product.findFirst({ where: { ...where, status: 'ACTIVE' }, select: publicProductSelect })
   if (!product) return null
   const unpublishedIds = await getUnpublishedProductIds()
-  return unpublishedIds.includes(product.id) ? null : product
+  if (unpublishedIds.includes(product.id)) return null
+  const [withStats] = await withProductStats([product])
+  return withStats
 }
 
 export async function GET(req: Request) {
@@ -114,8 +118,9 @@ export async function GET(req: Request) {
       orderBy: [{ featured: 'desc' }, { createdAt: 'desc' }],
       take: 100,
     })
+    const withStats = await withProductStats(products)
 
-    return json(products, { headers: { 'Cache-Control': 'public, max-age=30, s-maxage=120, stale-while-revalidate=600' } })
+    return json(withStats, { headers: { 'Cache-Control': 'public, max-age=30, s-maxage=120, stale-while-revalidate=600' } })
   } catch {
     return json({ error: 'Unable to load products' }, { status: 500 })
   }
