@@ -32,6 +32,7 @@ export default function ThemeInspectorStyles() {
 .themeAddBlock{height:38px;border:1px dashed var(--admin-border);border-radius:var(--admin-radius-sm);background:var(--admin-bg);font:inherit;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;color:var(--admin-ink)}
 .themeAddBlock:hover{border-color:var(--admin-accent);background:var(--admin-surface)}
 .themeImagePreview{display:flex;align-items:center;gap:10px}
+.themeImageHint{display:block;margin-top:6px;font-size:11px;line-height:1.5;color:var(--admin-muted)}.themeImageHint b{color:var(--admin-ink);font-weight:700}.themeImageWarn{color:var(--admin-warning,#b54708);font-weight:700}
 .themeImageThumb{width:64px;height:64px;border-radius:var(--admin-radius-sm);object-fit:cover;border:1px solid var(--admin-border);background:var(--admin-bg);flex:0 0 auto}
 .themeImageActions{display:flex;gap:6px;flex-wrap:wrap}
 .themeImageActions button{height:30px;padding:0 11px;border:1px solid var(--admin-border);border-radius:7px;background:var(--admin-surface);font:inherit;font-size:11px;font-weight:800;color:var(--admin-ink-soft);cursor:pointer}

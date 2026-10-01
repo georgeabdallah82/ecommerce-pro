@@ -6,7 +6,6 @@ import {useContext,useEffect,useMemo,useState} from 'react'
 import {useCart} from '@/components/cart-provider'
 import NewsletterForm from '@/components/newsletter-form'
 import {StorefrontPreviewContext} from '@/components/preview-context'
-import {Footer} from '@/components/footer'
 import {useWishlist} from '@/components/use-wishlist'
 
 const TRUST_ICONS:Record<string,typeof ShieldCheck>={truck:Truck,shield:ShieldCheck,return:RotateCcw,lock:Lock,support:Headphones,award:Award}
@@ -491,4 +490,4 @@ if(type==='stats')return <section key={section.id} className={commonClass} style
 if(type==='social_grid')return <section key={section.id} className={commonClass} style={commonStyle} onClick={e=>click(section.id,e)}><div className="focalContainer"><div className="focalSectionHead"><div><span className="focalEyebrow">{s.handle||'FOLLOW US'}</span><h2>{s.heading||'Shop the feed'}</h2></div></div><div className="focalSocialGrid" style={{gridTemplateColumns:`repeat(${Math.min(Number(s.columns||5),6)},minmax(0,1fr))`}}>{(section.blocks||[]).map((b:any)=><Link key={b.id} href={b.settings?.url||'#'} className="focalSocialItem" onClick={preview?(e:React.MouseEvent)=>{e.preventDefault();e.stopPropagation()}:undefined}>{b.settings?.imageUrl&&<StoreImage src={b.settings.imageUrl} alt=""/>}</Link>)}</div></div></section>
 if(type==='countdown')return <CountdownSection key={section.id} section={section} theme={theme} preview={preview} click={click} products={products} onQuickView={setQuickProduct} onSelect={()=>onSelect?.(section.id)} wishlist={wishlist} toggleWish={toggleWish}/>
 if(type==='main_product')return <MainProductSection key={section.id} section={section} theme={theme} product={activeProduct} preview={preview} selected={selected} onSelect={onSelect} wishlist={wishlist} toggleWish={toggleWish}/>
-return null})}{preview&&(sections||[]).some((s:any)=>s&&s.type==='footer'&&s.enabled!==false&&s.settings?.enabled!==false)&&<div className="themeEditorFooter"><Footer theme={theme}/></div>}{quickProduct&&<QuickView product={quickProduct} theme={theme} onClose={()=>setQuickProduct(null)}/>}</div>}
+return null})}{quickProduct&&<QuickView product={quickProduct} theme={theme} onClose={()=>setQuickProduct(null)}/>}</div>}
