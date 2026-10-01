@@ -87,8 +87,9 @@
 .tabs button.active { background: var(--admin-accent-soft); color: var(--admin-accent-strong); }
 
 /* Page-template switcher: Home / Product / Collection & shop / Cart. */
-.pageTabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 0 10px 10px; flex: 0 0 auto; }
+.pageTabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 10px 10px; flex: 0 0 auto; }
 .pageTabs button {
+  flex: 1 1 auto;
   min-height: 30px;
   border: 1px solid var(--admin-border, transparent);
   border-radius: var(--admin-radius-sm);
@@ -366,3 +367,10 @@
 .saveStatus { font-size: 11.5px; font-weight: 600; color: var(--admin-muted); white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
 .saveStatusError { color: var(--admin-danger, #b42318); }
 @media (max-width: 1050px) { .saveStatus { display: none; } }
+
+.pagePicker { margin: 0 12px 10px; display: grid; gap: 8px; }
+.pagePickerRow { display: flex; align-items: center; gap: 6px; }
+.pagePickerRow select, .pagePickerRow input { flex: 1; min-width: 0; height: 32px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm); background: var(--admin-surface, #fff); color: var(--admin-ink); font: inherit; font-size: 12px; padding: 0 8px; }
+.pageStatus { font-size: 10px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; background: var(--admin-bg); color: var(--admin-muted); }
+.pageStatusLive { background: var(--admin-accent-soft); color: var(--admin-accent-strong); }
+.pageLink { font-size: 12px; font-weight: 700; color: var(--admin-accent-strong); text-decoration: none; margin-left: auto; }
