@@ -11,10 +11,18 @@ export const pageIdFromKey = (key: string) => key.slice(PAGE_KEY_PREFIX.length)
 // Structural entries that are never page content (the nav and footer render themselves).
 const NOT_CONTENT = new Set(['header', 'announcement', 'footer', 'main_product', 'main_collection_banner', 'main_collection_grid'])
 
-export function pageSections(theme: { editorTemplates?: Record<string, any[]> } | null | undefined, pageId: string) {
-  const list = theme?.editorTemplates?.[pageTemplateKey(pageId)]
+// Sections a merchant added to one template (a custom page, or the blog pages' shared
+// zone), minus the structural placeholders the nav/footer render themselves.
+export function zoneSections(theme: { editorTemplates?: Record<string, any[]> } | null | undefined, key: string) {
+  const list = theme?.editorTemplates?.[key]
   return (Array.isArray(list) ? list : []).filter(section => section && !NOT_CONTENT.has(section.type))
 }
+
+export const pageSections = (theme: { editorTemplates?: Record<string, any[]> } | null | undefined, pageId: string) => zoneSections(theme, pageTemplateKey(pageId))
+
+// Shared by the blog list and every article. A fresh key on purpose: older editors saved
+// a template named "Blog" with seeded sections, which must never start showing on the blog.
+export const BLOG_TEMPLATE_KEY = 'BlogPages'
 
 // Plain-text pages (just a title and body) look exactly as they always did. A page built
 // from sections only shows its title/body block when it actually has body content, so a

@@ -5,6 +5,9 @@ import { db } from '@/lib/prisma'
 import { getThemeState } from '@/lib/theme'
 import { parseJson } from '@/lib/utils'
 import { Footer } from '@/components/footer'
+import StorefrontSections from '@/components/storefront-sections'
+import { BLOG_TEMPLATE_KEY, zoneSections } from '@/lib/custom-pages'
+import { loadZoneData } from '@/lib/zone-data'
 
 function readTags(tagsJson: string | null) {
   const parsed = parseJson<unknown>(tagsJson, [])
@@ -33,6 +36,8 @@ export default async function BlogPostPage({ params }: { params: Promise<{ handl
   const post = await db.blogPost.findUnique({ where: { handle } })
   if (!post || post.status !== 'PUBLISHED') notFound()
   const tags = readTags(post.tagsJson)
+  const sections = zoneSections(theme, BLOG_TEMPLATE_KEY)
+  const { products, collections } = sections.length ? await loadZoneData() : { products: [] as any[], collections: [] as any[] }
 
   return <>
     <div className="focalStorefront">
@@ -50,6 +55,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ handl
           </span>
         )}
       </div>
+      {sections.length > 0 && <StorefrontSections theme={theme} sections={sections} products={products} collections={collections} />}
     </div>
     <Footer theme={theme} />
   </>

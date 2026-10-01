@@ -64,6 +64,8 @@ import SectionInspector, {
 import ThemeInspectorStyles from '@/components/theme-inspector-styles'
 import { FONT_OPTIONS } from '@/lib/font-options'
 import { mergeLegacyStrips, type LegacyBlock } from '@/lib/home-strips'
+import PageSeoPanel from '@/components/page-seo-panel'
+import { SECTION_PRESETS, type SectionPreset } from '@/lib/section-presets'
 import { isPageTemplateKey, pageIdFromKey, pageTemplateKey } from '@/lib/custom-pages'
 import styles from './theme-studio.module.css'
 
@@ -72,7 +74,7 @@ const PREVIEW_PATH = '/theme-editor-preview'
 
 type AnyMap = Record<string, any>
 type Section = { id: string; type: string; enabled?: boolean; settings?: AnyMap; blocks?: AnyMap[] }
-type PageRow = { id: string; title: string; handle: string; bodyHtml: string | null; status: string }
+type PageRow = { id: string; title: string; handle: string; bodyHtml: string | null; status: string; seoTitle?: string | null; seoDescription?: string | null }
 type Snapshot = { theme: AnyMap; templates: Record<string, Section[]>; page: string; selectedId: string }
 type Props = { initial: { theme: AnyMap; sections: Section[]; navigation: any[]; draft: boolean; legacyBlocks?: LegacyBlock[]; openPage?: string } }
 
@@ -85,6 +87,7 @@ const PAGE_TABS = [
   { key: 'Product', label: 'Product' },
   { key: 'Collection', label: 'Collection & shop' },
   { key: 'Cart', label: 'Cart' },
+  { key: 'BlogPages', label: 'Blog' },
 ]
 const PAGES = PAGE_TABS.map(tab => tab.key)
 // Structural entries kept in a zone page's stored template (header/announcement
@@ -103,6 +106,14 @@ const PAGE_ZONE_COPY: Record<string, { title: string; body: string }> = {
   Product: { title: 'Product page content', body: 'Sections you add appear below the product, its reviews and recommendations on every product page.' },
   Collection: { title: 'Collection & shop content', body: 'Sections you add appear below the product listing on /shop and every collection page.' },
   Cart: { title: 'Cart page content', body: 'Sections you add appear below the cart and its recommendations.' },
+  BlogPages: { title: 'Blog content', body: 'Sections you add appear below the blog list and below every article.' },
+}
+// What each built-in page already shows, for the note that sits under the page tabs.
+const PAGE_OWN_CONTENT: Record<string, string> = {
+  Product: 'gallery, variants, add to cart, reviews',
+  Collection: 'filters, sorting and the product grid',
+  Cart: 'items, coupon, order summary and checkout',
+  BlogPages: 'the list of posts, or the article itself',
 }
 // Header and Announcement are read globally by the storefront nav, independent
 // of which page you're viewing.
@@ -257,6 +268,7 @@ function defaultTemplates(source: Section[]) {
     Product: [],
     Collection: [],
     Cart: [],
+    BlogPages: [],
   } as Record<string, Section[]>
 }
 
@@ -369,6 +381,7 @@ export default function ThemeStudio({ initial }: Props) {
   const [templates, setTemplates] = useState<Record<string, Section[]>>(() => initialState.templates)
   const [page, setPage] = useState(() => (initial.openPage ? pageTemplateKey(initial.openPage) : 'Home page'))
   const [pages, setPages] = useState<PageRow[]>([])
+  const [blogPosts, setBlogPosts] = useState<any[]>([])
   const [pagesTab, setPagesTab] = useState(() => Boolean(initial.openPage))
   const [newPageTitle, setNewPageTitle] = useState<string | null>(null)
   const [pageBusy, setPageBusy] = useState(false)
@@ -381,6 +394,7 @@ export default function ThemeStudio({ initial }: Props) {
   const [drawer, setDrawer] = useState(false)
   const [picker, setPicker] = useState(false)
   const [pickerQuery, setPickerQuery] = useState('')
+  const [pickerTab, setPickerTab] = useState<'sections' | 'presets'>('sections')
   const [history, setHistory] = useState<Snapshot[]>([])
   const [future, setFuture] = useState<Snapshot[]>([])
   const [dirty, setDirty] = useState(initialState.migrated)
@@ -431,6 +445,11 @@ export default function ThemeStudio({ initial }: Props) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current, selectedId])
+
+  useEffect(() => {
+    // Only the published posts, newest first, as sample content for the Blog preview.
+    fetch('/api/admin/blog-posts', { cache: 'no-store' }).then(r => (r.ok ? r.json() : [])).then(data => setBlogPosts(rows(data).filter((post: any) => post.status === 'PUBLISHED').slice(0, 6))).catch(() => {})
+  }, [])
 
   useEffect(() => {
     fetch('/api/admin/pages', { cache: 'no-store' }).then(r => (r.ok ? r.json() : [])).then(data => setPages(rows(data))).catch(() => {})
@@ -487,6 +506,7 @@ export default function ThemeStudio({ initial }: Props) {
       type: 'state',
       page,
       pageInfo: activePage ? { title: activePage.title, bodyHtml: activePage.bodyHtml } : null,
+      blogPosts: page === 'BlogPages' ? blogPosts : [],
       theme,
       sections: current,
       navigation: initial.navigation,
@@ -494,7 +514,7 @@ export default function ThemeStudio({ initial }: Props) {
       collections,
       selectedId,
     }, window.location.origin)
-  }, [previewReadyToken, page, activePage, theme, current, initial.navigation, products, collections, selectedId])
+  }, [previewReadyToken, page, activePage, blogPosts, theme, current, initial.navigation, products, collections, selectedId])
 
   const commit = (nextTemplates: Record<string, Section[]>, nextTheme = theme) => {
     setHistory(history => [...history, { theme: clone(theme), templates: clone(templates), page, selectedId }].slice(-50))
@@ -519,21 +539,43 @@ export default function ThemeStudio({ initial }: Props) {
     if (!selected) return
     commit(withPage(current.map(section => (section.id === selected.id ? { ...section, enabled: value } : section))))
   }
+  // Right after the selected content section; otherwise at the end of the page content
+  // (never inside the header group or after the footer).
+  const insertionIndex = (list: Section[]) => {
+    const lastContent = list.reduce((last, section, index) => (isContentSection(section) ? index : last), -1)
+    const firstAfterTop = list.findIndex(section => !isTopSection(section))
+    return selected && isContentSection(selected) ? selectedIndex + 1 : lastContent >= 0 ? lastContent + 1 : firstAfterTop < 0 ? list.length : firstAfterTop
+  }
+  const closePicker = () => { setPicker(false); setPickerQuery('') }
+  // An empty page starts on the ready-made tab: the fastest way to a first draft.
+  const openPicker = () => { setPickerTab(current.some(isContentSection) ? 'sections' : 'presets'); setPicker(true) }
   const addSection = (type: string) => {
     const next = sectionDefaults(type)
     const list = [...current]
-    // Right after the selected content section; otherwise at the end of the page content
-    // (never inside the header group or after the footer).
-    const lastContent = list.reduce((last, section, index) => (isContentSection(section) ? index : last), -1)
-    const firstAfterTop = list.findIndex(section => !isTopSection(section))
-    const at = selected && isContentSection(selected) ? selectedIndex + 1 : lastContent >= 0 ? lastContent + 1 : firstAfterTop < 0 ? list.length : firstAfterTop
-    list.splice(at, 0, next)
+    list.splice(insertionIndex(list), 0, next)
     commit(withPage(list))
     setSelectedId(next.id)
     setDrawerMode('section')
     setDrawer(true)
-    setPicker(false)
-    setPickerQuery('')
+    closePicker()
+  }
+  // A preset adds several sections in one step (a single undo removes the whole group).
+  const addPreset = (preset: SectionPreset) => {
+    const made = preset.items.map(item => {
+      const base = sectionDefaults(item.type)
+      return {
+        ...base,
+        settings: { ...(base.settings || {}), ...(item.settings || {}) },
+        blocks: item.blocks ? item.blocks.map(block => ({ id: makeId(block.type), type: block.type, settings: { ...block.settings } })) : base.blocks,
+      } as Section
+    })
+    const list = [...current]
+    list.splice(insertionIndex(list), 0, ...made)
+    commit(withPage(list))
+    // Select the last section so the next addition lands after the whole group, not inside it.
+    setSelectedId(made[made.length - 1].id)
+    setMessage(`Added “${preset.label}” (${made.length} section${made.length === 1 ? '' : 's'}). Undo removes it all.`)
+    closePicker()
   }
   const removeSection = () => {
     if (!selected || !isContentSection(selected)) return
@@ -863,6 +905,7 @@ export default function ThemeStudio({ initial }: Props) {
                       {activePage.status === 'PUBLISHED' && <a className={styles.pageLink} href={`/${activePage.handle}`} target="_blank" rel="noreferrer">View</a>}
                     </div>
                   )}
+                  {activePage && <PageSeoPanel page={activePage} onSaved={row => setPages(list => list.map(item => (item.id === row.id ? { ...item, ...row } : item)))} />}
                 </div>
               )}
               <div className={styles.sideSectionsHead}>
@@ -870,7 +913,7 @@ export default function ThemeStudio({ initial }: Props) {
                   <strong>{isHome ? 'Homepage sections' : isCustomPage ? (activePage?.title || 'Page') : onPagesTab ? 'Pages' : PAGE_ZONE_COPY[page]?.title}</strong>
                   <div className={styles.sideSectionsCount}>{current.filter(section => section.enabled !== false).length} visible sections</div>
                 </div>
-                <button className={styles.iconBtn} onClick={() => setPicker(true)} aria-label="Add section"><Plus size={15} /></button>
+                <button className={styles.iconBtn} onClick={openPicker} aria-label="Add section"><Plus size={15} /></button>
               </div>
               <div className={styles.legacyNotice}>
                 {isHome
@@ -879,7 +922,7 @@ export default function ThemeStudio({ initial }: Props) {
                     ? (isCustomPage
                       ? `Build this page from sections -- banners, product lists, collection lists, FAQs and more. ${activePage && activePage.status !== 'PUBLISHED' ? 'It is a draft: visitors cannot see it until you click Make visible.' : 'Changes go live when you publish.'}`
                       : 'Pick a page above, or create a new one, then build it from the same sections as your homepage.')
-                    : <>{`${PAGE_ZONE_COPY[page]?.body} The page's own content -- ${page === 'Product' ? 'gallery, variants, add to cart, reviews' : page === 'Collection' ? 'filters, sorting and the product grid' : 'items, coupon, order summary and checkout'} -- is built in and always stays above it.`}{' '}Page-level options live under the Theme tab.</>}
+                    : <>{`${PAGE_ZONE_COPY[page]?.body} The page's own content -- ${PAGE_OWN_CONTENT[page] || 'its built-in content'} -- is built in and always stays above it.`}{' '}Page-level options live under the Theme tab.</>}
               </div>
               <div className={styles.rows}>
                 {onPagesTab && !isCustomPage ? <div className={styles.emptyZone}>{pages.length ? 'Choose a page above to start designing it.' : 'You have no pages yet. Create one above, for example “Summer sale”, then add banners, products and collections to it.'}</div> : (() => {
@@ -916,7 +959,7 @@ export default function ThemeStudio({ initial }: Props) {
                       {isHome && <div className={styles.groupLabel}><span>Page content</span><small>Drag to reorder</small></div>}
                       {!content.length && <div className={styles.emptyZone}>{isHome ? 'No sections yet.' : isCustomPage ? 'This page is empty.' : 'Nothing added yet -- this page shows only its built-in content.'} Use Add section to put banners, products, testimonials, FAQs and more {isHome ? 'on your homepage' : isCustomPage ? 'on this page' : 'below it'}.</div>}
                       {content.map(section => renderRow(section, true))}
-                      <button className={styles.add} onClick={() => setPicker(true)}><Plus size={14} />Add section</button>
+                      <button className={styles.add} onClick={openPicker}><Plus size={14} />Add section</button>
                       {isHome && footer.length > 0 && <>
                         <div className={styles.groupLabel}><span>Footer</span><small>Edit under Theme settings</small></div>
                         {footer.map(section => renderRow(section, false))}
@@ -1064,7 +1107,22 @@ export default function ThemeStudio({ initial }: Props) {
       {picker && (
         <div className={styles.pickerOverlay} onMouseDown={() => { setPicker(false); setPickerQuery('') }}>
           <div className={styles.pickerDialog} onMouseDown={event => event.stopPropagation()}>
-            <strong className={styles.pickerTitle}>Add section</strong>
+            <strong className={styles.pickerTitle}>Add to this page</strong>
+            <div className={styles.pickerTabs} role="tablist">
+              <button role="tab" aria-selected={pickerTab === 'sections'} className={pickerTab === 'sections' ? styles.active : ''} onClick={() => setPickerTab('sections')}>Sections</button>
+              <button role="tab" aria-selected={pickerTab === 'presets'} className={pickerTab === 'presets' ? styles.active : ''} onClick={() => setPickerTab('presets')}>Ready-made</button>
+            </div>
+            {pickerTab === 'presets' ? (
+              <div className={styles.presetList}>
+                {SECTION_PRESETS.map(preset => (
+                  <button key={preset.id} className={styles.presetCard} onClick={() => addPreset(preset)}>
+                    <strong>{preset.label}</strong>
+                    <span>{preset.description}</span>
+                    <small>{preset.items.map(item => META[item.type] || item.type).join(' · ')}</small>
+                  </button>
+                ))}
+              </div>
+            ) : (<>
             <input
               className={styles.pickerSearch}
               value={pickerQuery}
@@ -1091,6 +1149,7 @@ export default function ThemeStudio({ initial }: Props) {
                 </div>
               )
             })()}
+            </>)}
           </div>
         </div>
       )}

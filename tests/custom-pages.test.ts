@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { isPageTemplateKey, pageIdFromKey, pageSections, pageTemplateKey, showPageHeader } from '@/lib/custom-pages'
+import { BLOG_TEMPLATE_KEY, isPageTemplateKey, pageIdFromKey, pageSections, pageTemplateKey, showPageHeader, zoneSections } from '@/lib/custom-pages'
 
 describe('lib/custom-pages', () => {
   it('keys a page by its id and round-trips', () => {
@@ -23,5 +23,15 @@ describe('lib/custom-pages', () => {
     assert.equal(showPageHeader({ bodyHtml: '<p>Hi</p>' }, 3), true)
     assert.equal(showPageHeader({ bodyHtml: null }, 3), false)
     assert.equal(showPageHeader({ bodyHtml: '   ' }, 3), false)
+  })
+
+  it('reads the blog zone from its own key and ignores the legacy "Blog" template', () => {
+    const theme = { editorTemplates: {
+      Blog: [{ id: 'old', type: 'hero' }, { id: 'old2', type: 'newsletter' }],
+      [BLOG_TEMPLATE_KEY]: [{ id: 'f', type: 'footer' }, { id: 'a', type: 'product_grid' }],
+    } }
+    assert.deepEqual(zoneSections(theme, BLOG_TEMPLATE_KEY).map(s => s.type), ['product_grid'])
+    assert.deepEqual(zoneSections({ editorTemplates: { Blog: [{ id: 'old', type: 'hero' }] } }, BLOG_TEMPLATE_KEY), [], 'older seeded Blog sections never show')
+    assert.notEqual(BLOG_TEMPLATE_KEY, 'Blog')
   })
 })

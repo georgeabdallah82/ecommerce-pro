@@ -6,6 +6,7 @@ import StoreNavFixed from '@/components/store-nav-fixed'
 import StorefrontSections from '@/components/storefront-sections'
 import { StorefrontPreviewContext } from '@/components/preview-context'
 import CustomPageView from '@/components/custom-page-view'
+import { BlogIndexView } from '@/components/blog-views'
 import AliExpressProduct from '@/components/aliexpress-product'
 import AliExpressShop from '@/components/aliexpress-shop'
 import AliExpressCart from '@/components/aliexpress-cart'
@@ -48,6 +49,7 @@ type AnyMap = Record<string, any>
 type PreviewState = {
   page: string
   pageInfo: { title: string; bodyHtml?: string | null } | null
+  blogPosts: AnyMap[]
   theme: AnyMap
   sections: AnyMap[]
   navigation: any[]
@@ -78,6 +80,7 @@ export default function ThemePreviewFrame() {
       setState({
         page: typeof data.page === 'string' ? data.page : 'Home page',
         pageInfo: data.pageInfo && typeof data.pageInfo === 'object' ? data.pageInfo : null,
+        blogPosts: Array.isArray(data.blogPosts) ? data.blogPosts : [],
         theme: data.theme,
         sections: Array.isArray(data.sections) ? data.sections : [],
         navigation: Array.isArray(data.navigation) ? data.navigation : [],
@@ -159,7 +162,14 @@ export default function ThemePreviewFrame() {
     <CartProvider>
       <StorefrontPreviewContext.Provider value={{ selectedId: state.selectedId, onSelect: select }}>
       <StoreNavFixed theme={navTheme} navigation={state.navigation} />
-      {state.page.startsWith('Page:') ? (
+      {state.page === 'BlogPages' ? (
+        // The blog list with the merchant's published posts, then the editable zone -- the
+        // same markup and order as the live /blog route.
+        <div className="focalStorefront">
+          <BlogIndexView posts={state.blogPosts.map(post => ({ ...post, tags: Array.isArray(post.tags) ? post.tags : [] })) as any} />
+          {state.sections.length > 0 && <StorefrontSections theme={state.theme} sections={state.sections} products={state.products} collections={state.collections} />}
+        </div>
+      ) : state.page.startsWith('Page:') ? (
         <CustomPageView theme={state.theme} page={state.pageInfo || { title: 'Page', bodyHtml: '' }} sections={state.sections} products={state.products} collections={state.collections} />
       ) : state.page === 'Home page' ? (
         <StorefrontSections
