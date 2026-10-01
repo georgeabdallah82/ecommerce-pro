@@ -86,6 +86,25 @@
 .tabs button:hover { color: var(--admin-ink); }
 .tabs button.active { background: var(--admin-accent-soft); color: var(--admin-accent-strong); }
 
+/* Page-template switcher: Home / Product / Collection & shop / Cart. */
+.pageTabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 0 10px 10px; flex: 0 0 auto; }
+.pageTabs button {
+  min-height: 30px;
+  border: 1px solid var(--admin-border, transparent);
+  border-radius: var(--admin-radius-sm);
+  background: transparent;
+  color: var(--admin-muted);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.15;
+  padding: 4px 3px;
+  cursor: pointer;
+}
+.pageTabs button:hover { color: var(--admin-ink); }
+.pageTabs button.active { background: var(--admin-accent-soft); color: var(--admin-accent-strong); border-color: transparent; }
+.emptyZone { margin: 4px 12px 10px; padding: 14px 12px; border: 1px dashed var(--admin-border, #d4d4d8); border-radius: var(--admin-radius-sm); color: var(--admin-muted); font-size: 11px; line-height: 1.55; }
+
 .sideSectionsHead { padding: 4px 14px 10px; display: flex; justify-content: space-between; align-items: flex-start; flex: 0 0 auto; }
 .sideSectionsHead strong { font-size: 12.5px; font-weight: 800; }
 .sideSectionsCount { font-size: 10px; color: var(--admin-muted-soft); margin-top: 3px; }
