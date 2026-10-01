@@ -592,7 +592,7 @@ export default function ThemeStudio({ initial }: Props) {
     setDrawerMode('theme')
     setDrawer(true)
   }
-  const save = async () => {
+  const save = async (): Promise<boolean> => {
     setSaving(true)
     setMessage('')
     try {
@@ -609,15 +609,19 @@ export default function ThemeStudio({ initial }: Props) {
       setDirty(false)
       setHasDraft(true)
       setMessage('Theme saved')
+      return true
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to save theme')
+      return false
     } finally {
       setSaving(false)
     }
   }
 
-  const publish = async () => {
-    if (!hasDraft || publishing) return
+  // `force` is for publishAll below: it has just saved, but this closure still holds the
+  // pre-save hasDraft, which would make a first-ever publish bail out.
+  const publish = async (force = false) => {
+    if ((!hasDraft && !force) || publishing) return
     setPublishing(true)
     setPublishMessage('')
     setPublishError('')
@@ -635,6 +639,53 @@ export default function ThemeStudio({ initial }: Props) {
       setPublishing(false)
     }
   }
+
+  // Publish always publishes what's on screen: if there are unsaved edits it saves them
+  // first. Publishing alone would push the previously saved draft and silently leave the
+  // latest edits behind.
+  const publishAll = async () => {
+    if (publishing || saving) return
+    if (dirty && !(await save())) return
+    await publish(true)
+  }
+
+  // Leaving with unsaved edits asks first (closing the tab, reloading, the back arrow).
+  useEffect(() => {
+    if (!dirty) return
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [dirty])
+
+  // Ctrl/Cmd+S saves, Ctrl/Cmd+Z undoes, Ctrl/Cmd+Shift+Z or Ctrl+Y redoes -- except while
+  // typing in a field, where the browser's own text undo must keep working.
+  const shortcutRef = useRef({ save, undo, redo, dirty })
+  shortcutRef.current = { save, undo, redo, dirty }
+  useEffect(() => {
+    const run = (key: string, shift: boolean, typing: boolean) => {
+      if (key === 's') { if (shortcutRef.current.dirty) void shortcutRef.current.save(); return true }
+      if (typing) return false
+      if (key === 'z') { if (shift) shortcutRef.current.redo(); else shortcutRef.current.undo(); return true }
+      if (key === 'y') { shortcutRef.current.redo(); return true }
+      return false
+    }
+    function onKey(event: KeyboardEvent) {
+      if (!(event.metaKey || event.ctrlKey) || event.altKey) return
+      const target = event.target as HTMLElement | null
+      const typing = !!target && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+      if (run(event.key.toLowerCase(), event.shiftKey, typing)) event.preventDefault()
+    }
+    // The preview is a separate document, so keys pressed while focus is inside it
+    // never reach this window; theme-preview-frame.tsx forwards the same three shortcuts.
+    function onMessage(event: MessageEvent) {
+      if (event.origin !== window.location.origin || event.source !== iframeRef.current?.contentWindow) return
+      const data = event.data
+      if (data?.source === 'theme-preview' && data.type === 'shortcut') run(String(data.key), !!data.shift, false)
+    }
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('message', onMessage)
+    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('message', onMessage) }
+  }, [])
 
   useEffect(() => {
     if (sideTab !== 'history' || versions.length || versionsLoading) return
@@ -699,8 +750,8 @@ export default function ThemeStudio({ initial }: Props) {
           </div>
         </div>
         <div className={styles.topRight}>
-          <button className={styles.iconBtn} onClick={undo} disabled={!history.length} aria-label="Undo"><Undo2 size={15} /></button>
-          <button className={styles.iconBtn} onClick={redo} disabled={!future.length} aria-label="Redo"><Redo2 size={15} /></button>
+          <button className={styles.iconBtn} onClick={undo} disabled={!history.length} aria-label="Undo" title="Undo (Ctrl/Cmd+Z)"><Undo2 size={15} /></button>
+          <button className={styles.iconBtn} onClick={redo} disabled={!future.length} aria-label="Redo" title="Redo (Ctrl/Cmd+Shift+Z)"><Redo2 size={15} /></button>
           <div className={styles.deviceGroup}>
             {(['desktop', 'tablet', 'mobile'] as const).map(item => (
               <button className={`${styles.iconBtn} ${device === item ? styles.active : ''}`} key={item} onClick={() => setDevice(item)} aria-label={item}>
@@ -708,7 +759,7 @@ export default function ThemeStudio({ initial }: Props) {
               </button>
             ))}
           </div>
-          <button className={`${styles.btn} ${styles.btnPrimary}`} disabled={!dirty || saving} onClick={save}>
+          <button className={`${styles.btn} ${styles.btnPrimary}`} disabled={!dirty || saving} onClick={save} title="Save draft (Ctrl/Cmd+S)">
             <Save size={14} />
             {saving ? 'Saving…' : dirty ? 'Save •' : 'Save'}
           </button>
@@ -980,7 +1031,7 @@ export default function ThemeStudio({ initial }: Props) {
 
       {message && <div className={styles.notice}>{message}</div>}
 
-      <ThemePublishBar draft={hasDraft} publishing={publishing} message={publishMessage} error={publishError} onPublish={publish} />
+      <ThemePublishBar draft={hasDraft || dirty} publishing={publishing || saving} message={publishMessage} error={publishError} onPublish={publishAll} />
     </div>
   )
 }
