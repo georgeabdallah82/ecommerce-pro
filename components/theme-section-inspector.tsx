@@ -134,47 +134,47 @@ export const commonLayoutPanel: PanelSchema = {
     { kind: 'select', label: 'Background', options: ['default','surface','secondary','dark','primary','gradient'], get: s => s.background || 'default', set: value => ({ background: value === 'default' ? '' : value }) },
     select('Text alignment', 'textAlign', ['left','center','right'], 'left'),
     range('Spacing', 'spacing', 0, 160, 72),
-    range('Columns', 'columns', 2, 6, 4),
   ]],
 }
 
-function productTypePanels(featured: boolean): PanelSchema[] {
-  const selectionField: FieldSchema = featured
-    ? { kind: 'select', label: 'Product', options: ({ products }) => products.map(p => ({ value: p.id, label: p.name })), get: s => s.productId || '', set: value => ({ productId: value }) }
-    : { kind: 'select', label: 'Collection', options: ({ collections }) => [{ value: '', label: 'All products' }, ...collections.map(c => ({ value: c.slug || c.id, label: c.name }))], get: s => s.collection || '', set: value => ({ collection: value }) }
+// Every product-list section (grid, carousel, featured, recommendations) renders the
+// same grid of products from an optional collection. An earlier version of this panel
+// offered a "Product" picker for featured_product and Card style / Image ratio
+// selects, none of which the renderer ever read.
+function productTypePanels(): PanelSchema[] {
   return [
     { title: 'Content', fields: [
+      text('Eyebrow', 'eyebrow', 'SHOP / CURATED'),
       text('Heading', 'heading'),
       textarea('Subheading', 'subheading'),
-      selectionField,
+      { kind: 'select', label: 'Collection', options: ({ collections }) => [{ value: '', label: 'All products' }, ...collections.map(c => ({ value: c.slug || c.id, label: c.name }))], get: s => s.collection || '', set: value => ({ collection: value }) },
       [range('Product limit', 'limit', 1, 48, 8), range('Columns', 'columns', 2, 6, 4)],
       toggle('Show View all', 'showViewAll', true),
     ] },
-    { title: 'Card display', fields: [
-      [select('Card style', 'style', ['cards','minimal','editorial'], 'cards'), select('Image ratio', 'imageRatio', ['square','portrait','landscape'], 'square')],
-    ] },
+    commonLayoutPanel,
   ]
 }
 
 function collectionTypePanels(): PanelSchema[] {
   return [
     { title: 'Content', fields: [
+      text('Eyebrow', 'eyebrow', 'COLLECTIONS'),
       text('Heading', 'heading'),
       textarea('Subheading', 'subheading'),
       range('Collections shown', 'limit', 1, 24, 4),
-      range('Columns', 'columns', 2, 6, 4),
+      range('Columns', 'columns', 2, 5, 4),
     ] },
     { title: 'Collection selection', fields: [
       { kind: 'select', label: 'Collection', options: ({ collections }) => [{ value: '', label: 'Automatic' }, ...collections.map(c => ({ value: c.id, label: c.name }))], get: s => (Array.isArray(s.collectionIds) ? s.collectionIds[0] : '') || '', set: value => ({ collectionIds: value ? [value] : [] }) },
     ] },
+    commonLayoutPanel,
   ]
 }
 
-// These four map onto homepage blocks that are otherwise entirely hardcoded
-// (see components/aliexpress-home.tsx) -- heading and item count are the only
-// settings that section actually reads, so that's all this panel offers.
+// New arrivals / best sellers: heading, item count and the View all link are the
+// settings those blocks read (their layout is fixed AliExpress-style markup).
 function homeGridPanel(defaultHeading: string): PanelSchema[] {
-  return [{ title: 'Content', fields: [text('Heading', 'heading', defaultHeading), range('Products shown', 'limit', 4, 20, 12)] }]
+  return [{ title: 'Content', fields: [text('Heading', 'heading', defaultHeading), range('Products shown', 'limit', 4, 20, 12), toggle('Show View all', 'showViewAll', true)] }]
 }
 
 function richTextPanels(): PanelSchema[] {
@@ -192,19 +192,21 @@ function richTextPanels(): PanelSchema[] {
 
 // Video has no real player -- the storefront only ever shows a static background
 // image behind a decorative play icon -- and slideshow only ever displays its
-// first Slide block's own image, never a top-level one. A separate top-level
-// "Image"/"Poster image" pair used to sit here regardless of type, writing to
-// fields (videoUrl, posterUrl) the renderer never reads, so editing them had no
-// visible effect. Video keeps a single image field wired to what it actually
-// renders (settings.imageUrl); slideshow's real, working image editing lives in
-// its Slides blocks below instead.
+// first Slide block's own image, never a top-level one. Video therefore offers
+// exactly what it renders (eyebrow, heading, text, background image); an earlier
+// version also showed Autoplay and Height controls that its renderer never read.
+// Slideshow's real, working image editing lives in its Slides blocks.
 function mediaPanels(type: 'video' | 'slideshow'): PanelSchema[] {
-  const fields: Array<FieldSchema | FieldSchema[]> = type === 'video'
-    ? [image('Background image', 'imageUrl')]
-    : [blocks('Slides', 'slide')]
-  fields.push(toggle('Autoplay', 'autoplay', true))
-  fields.push(range('Height', 'minHeight', 320, 860, 560))
-  return [{ title: type === 'video' ? 'Video' : 'Slideshow', fields }]
+  if (type === 'video') {
+    return [
+      { title: 'Video', fields: [text('Eyebrow', 'eyebrow', 'VIDEO'), text('Heading', 'heading'), textarea('Text', 'text'), image('Background image', 'imageUrl')] },
+      commonLayoutPanel,
+    ]
+  }
+  return [
+    { title: 'Slideshow', fields: [blocks('Slides', 'slide'), toggle('Autoplay', 'autoplay', true), range('Height', 'minHeight', 320, 860, 560)] },
+    commonLayoutPanel,
+  ]
 }
 
 // main_product and main_collection_grid used to share this panel, but they
@@ -264,10 +266,10 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
       range('Corner radius', 'borderRadius', 0, 60, 0),
     ] },
   ],
-  product_grid: () => productTypePanels(false),
-  product_carousel: () => productTypePanels(false),
-  featured_product: () => productTypePanels(true),
-  product_recommendations: () => productTypePanels(false),
+  product_grid: () => productTypePanels(),
+  product_carousel: () => productTypePanels(),
+  featured_product: () => productTypePanels(),
+  product_recommendations: () => productTypePanels(),
   collection_grid: () => collectionTypePanels(),
   collection_carousel: () => collectionTypePanels(),
   category_strip: () => [{ title: 'Content', fields: [range('Collections shown', 'limit', 4, 16, 12)] }],
@@ -291,22 +293,24 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
     ] },
     { title: 'Media & layout', fields: [
       image('Image', 'imageUrl'),
+      text('Image alt text', 'imageAlt'),
       select('Image position', 'layout', ['image-left','image-right'], 'image-right'),
-      select('Background', 'background', ['default','secondary','surface','dark'], 'secondary'),
-      range('Min height', 'minHeight', 260, 700, 420),
     ] },
+    commonLayoutPanel,
   ],
   promo_grid: () => [
-    { title: 'Content', fields: [text('Heading', 'heading'), range('Columns', 'columns', 2, 4, 3)] },
+    { title: 'Content', fields: [text('Eyebrow', 'eyebrow', 'FEATURED'), text('Heading', 'heading'), range('Columns', 'columns', 2, 4, 3)] },
     { title: 'Promo cards', fields: [blocks('Promo cards', 'promo')] },
+    commonLayoutPanel,
   ],
   testimonials: () => [
-    { title: 'Content', fields: [text('Heading', 'heading'), textarea('Subheading', 'subheading'), range('Columns', 'columns', 1, 4, 3), toggle('Autoplay', 'autoplay', true)] },
+    { title: 'Content', fields: [text('Eyebrow', 'eyebrow', 'REVIEWS'), text('Heading', 'heading'), textarea('Subheading', 'subheading'), range('Columns', 'columns', 1, 3, 3)] },
     { title: 'Testimonials', fields: [blocks('Testimonials', 'quote')] },
+    commonLayoutPanel,
   ],
   newsletter: () => [
-    { title: 'Content', fields: [text('Heading', 'heading'), textarea('Text', 'text'), text('Button label', 'buttonLabel')] },
-    { title: 'Appearance', fields: [select('Background', 'background', ['primary','secondary','surface','dark'], 'primary')] },
+    { title: 'Content', fields: [text('Eyebrow', 'eyebrow', 'NEWSLETTER'), text('Heading', 'heading'), textarea('Text', 'text'), text('Button label', 'buttonLabel')] },
+    { title: 'Appearance', fields: [select('Background', 'background', ['primary','secondary','surface','dark'], 'primary'), range('Spacing', 'spacing', 0, 160, 72)] },
   ],
   rich_text: () => richTextPanels(),
   // Not richTextPanels() -- that panel's Button label/URL fields are dead here:
@@ -318,6 +322,7 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
   ],
   trust_badges: () => [
     { title: 'Badges', fields: [blocks('Badges', 'badge')] },
+    commonLayoutPanel,
   ],
   countdown: () => [
     { title: 'Content', fields: [
@@ -336,24 +341,28 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
     commonLayoutPanel,
   ],
   stats: () => [
-    { title: 'Content', fields: [text('Heading', 'heading'), range('Columns', 'columns', 2, 6, 4)] },
+    { title: 'Content', fields: [text('Eyebrow', 'eyebrow', 'BY THE NUMBERS'), text('Heading', 'heading'), range('Columns', 'columns', 2, 6, 4)] },
     { title: 'Stats', fields: [blocks('Stats', 'stat')] },
+    commonLayoutPanel,
   ],
   social_grid: () => [
     { title: 'Content', fields: [text('Heading', 'heading'), text('Handle / label', 'handle'), range('Columns', 'columns', 3, 6, 5)] },
     { title: 'Photos', fields: [blocks('Photos', 'photo')] },
+    commonLayoutPanel,
   ],
   multicolumn: () => [
-    { title: 'Content', fields: [text('Heading', 'heading'), textarea('Subheading', 'subheading'), range('Columns', 'columns', 2, 4, 3)] },
+    { title: 'Content', fields: [text('Eyebrow', 'eyebrow', 'BENEFITS'), text('Heading', 'heading'), range('Columns', 'columns', 2, 4, 3)] },
     { title: 'Columns', fields: [blocks('Columns', 'column')] },
+    commonLayoutPanel,
   ],
   faq: () => [
-    { title: 'Content', fields: [text('Heading', 'heading'), textarea('Subheading', 'subheading')] },
+    { title: 'Content', fields: [text('Eyebrow', 'eyebrow', 'FAQ'), text('Heading', 'heading')] },
     { title: 'Questions', fields: [blocks('Questions', 'question')] },
+    commonLayoutPanel,
   ],
   logo_list: () => [
-    { title: 'Content', fields: [text('Heading', 'heading'), range('Columns', 'columns', 2, 6, 4)] },
     { title: 'Logos', fields: [blocks('Logos', 'logo')] },
+    commonLayoutPanel,
   ],
   announcement: () => [
     { title: 'Announcement', fields: [
