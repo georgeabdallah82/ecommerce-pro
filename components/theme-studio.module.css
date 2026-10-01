@@ -109,10 +109,7 @@
 .sideSectionsHead strong { font-size: 12.5px; font-weight: 800; }
 .sideSectionsCount { font-size: 10px; color: var(--admin-muted-soft); margin-top: 3px; }
 
-/* This template's sections render live nowhere but this editor's own preview --
-   the real storefront route for it uses a dedicated hand-built page instead.
-   Header/Announcement (per this template) and homepage-only exceptions are
-   tagged below with .liveTag rather than repeated here. */
+/* Short explanatory note under the page tabs. */
 .legacyNotice {
   margin: 0 12px 10px;
   padding: 10px 12px;
@@ -124,20 +121,16 @@
   font-weight: 600;
   flex: 0 0 auto;
 }
-.liveTag {
-  font-size: 8.5px;
-  font-weight: 800;
-  letter-spacing: .04em;
-  color: var(--admin-accent-strong);
-  background: var(--admin-accent-soft);
-  border-radius: 4px;
-  padding: 2px 5px;
-  flex: 0 0 auto;
-}
 .mainTag { font-size: 9px; color: var(--admin-muted); flex: 0 0 auto; }
 .versionBy { color: var(--admin-muted-soft); font-weight: 500; }
 
 .rows { padding: 4px 8px 8px; overflow: auto; flex: 1 1 auto; }
+.groupLabel { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 14px 8px 4px; }
+.groupLabel:first-child { padding-top: 6px; }
+.groupLabel span { font-size: 10px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--admin-muted); }
+.groupLabel small { font-size: 10px; color: var(--admin-muted-soft); }
+.rowGripSpacer { width: 13px; flex: 0 0 13px; }
+.rowOff .rowMain { opacity: .5; }
 .row { display: flex; margin: 2px 0; border: 1px solid transparent; border-radius: var(--admin-radius-sm); transition: background .1s ease, border-color .1s ease; }
 .row:hover { background: var(--admin-bg); }
 .row.active { background: var(--admin-accent-soft); border-color: var(--admin-accent); }

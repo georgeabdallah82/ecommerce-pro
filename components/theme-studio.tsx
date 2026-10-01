@@ -7,7 +7,8 @@ import {
   ArrowUp,
   AtSign,
   BadgeCheck,
-  Check,
+  Eye,
+  EyeOff,
   Columns3,
   Compass,
   Copy,
@@ -89,6 +90,13 @@ const PAGES = PAGE_TABS.map(tab => tab.key)
 // repairTemplate looks for) that must never show up as editable rows -- they
 // don't render as content, so listing them would be decoration again.
 const ZONE_HIDDEN_TYPES = new Set(['header', 'announcement', 'footer', 'main_product', 'main_collection_banner', 'main_collection_grid'])
+// Shopify-style structure of the Home list: Header (site-wide announcement + header,
+// always first and not reorderable), Page content (everything the homepage is built
+// from -- drag to reorder, add, duplicate, delete), Footer (always last). Only page
+// content ever moves, so reordering can never push a section past the header/footer.
+const isTopSection = (section: Section) => section.type === 'header' || section.type === 'announcement'
+const isFooterSection = (section: Section) => section.type === 'footer'
+const isContentSection = (section: Section) => !isTopSection(section) && !isFooterSection(section)
 const PAGE_ZONE_COPY: Record<string, { title: string; body: string }> = {
   Product: { title: 'Product page content', body: 'Sections you add appear below the product, its reviews and recommendations on every product page.' },
   Collection: { title: 'Collection & shop content', body: 'Sections you add appear below the product listing on /shop and every collection page.' },
@@ -497,7 +505,12 @@ export default function ThemeStudio({ initial }: Props) {
   const addSection = (type: string) => {
     const next = sectionDefaults(type)
     const list = [...current]
-    list.splice(selectedIndex < 0 ? list.length : selectedIndex + 1, 0, next)
+    // Right after the selected content section; otherwise at the end of the page content
+    // (never inside the header group or after the footer).
+    const lastContent = list.reduce((last, section, index) => (isContentSection(section) ? index : last), -1)
+    const firstAfterTop = list.findIndex(section => !isTopSection(section))
+    const at = selected && isContentSection(selected) ? selectedIndex + 1 : lastContent >= 0 ? lastContent + 1 : firstAfterTop < 0 ? list.length : firstAfterTop
+    list.splice(at, 0, next)
     commit(withPage(list))
     setSelectedId(next.id)
     setDrawerMode('section')
@@ -506,7 +519,7 @@ export default function ThemeStudio({ initial }: Props) {
     setPickerQuery('')
   }
   const removeSection = () => {
-    if (!selected) return
+    if (!selected || !isContentSection(selected)) return
     confirmAction(`Delete "${META[selected.type] || selected.type.replaceAll('_', ' ')}"? You can undo this from the toolbar.`, () => {
       const list = current.filter(section => section.id !== selected.id)
       const nextId = list[Math.max(0, selectedIndex - 1)]?.id || list[0]?.id || ''
@@ -516,7 +529,7 @@ export default function ThemeStudio({ initial }: Props) {
     })
   }
   const duplicateSection = () => {
-    if (!selected) return
+    if (!selected || !isContentSection(selected)) return
     const copy = clone(selected)
     copy.id = makeId(selected.type)
     const list = [...current]
@@ -524,16 +537,19 @@ export default function ThemeStudio({ initial }: Props) {
     commit(withPage(list))
     setSelectedId(copy.id)
   }
+  // Position of a section among the movable (page content) sections, for Move up/down.
+  const contentIndexes = current.reduce<number[]>((acc, section, index) => (isContentSection(section) ? [...acc, index] : acc), [])
+  const contentPos = contentIndexes.indexOf(selectedIndex)
   const moveSection = (delta: number) => {
-    if (selectedIndex < 0) return
-    const nextIndex = selectedIndex + delta
-    if (nextIndex < 0 || nextIndex >= current.length) return
+    const target = contentIndexes[contentPos + delta]
+    if (contentPos < 0 || target === undefined) return
     const list = [...current]
-    ;[list[selectedIndex], list[nextIndex]] = [list[nextIndex], list[selectedIndex]]
+    ;[list[selectedIndex], list[target]] = [list[target], list[selectedIndex]]
     commit(withPage(list))
   }
   const dropSection = (targetId: string) => {
     if (!dragId || dragId === targetId) return
+    if (!current.some(section => section.id === dragId && isContentSection(section)) || !current.some(section => section.id === targetId && isContentSection(section))) return
     const from = current.findIndex(section => section.id === dragId)
     const to = current.findIndex(section => section.id === targetId)
     if (from < 0 || to < 0) return
@@ -723,36 +739,54 @@ export default function ThemeStudio({ initial }: Props) {
               </div>
               <div className={styles.legacyNotice}>
                 {isHome
-                  ? 'Every section below is live on your homepage, in this order -- drag to reorder, or use Add section to insert anything from banners to testimonials. Header and Announcement apply across your whole site, not just this page.'
+                  ? 'Everything under Page content is live on your homepage, in this order. Header and Footer apply across the whole site.'
                   : `${PAGE_ZONE_COPY[page]?.body} The page's own content -- ${page === 'Product' ? 'gallery, variants, add to cart, reviews' : page === 'Collection' ? 'filters, sorting and the product grid' : 'items, coupon, order summary and checkout'} -- is built in and always stays above it.`}
                 {' '}Page-level options live under the Theme tab.
               </div>
               <div className={styles.rows}>
-                {!current.length && <div className={styles.emptyZone}>Nothing added yet -- this page shows only its built-in content. Use Add section to put banners, testimonials, FAQs and more below it.</div>}
-                {current.map(section => (
-                  <div
-                    key={section.id}
-                    draggable
-                    onDragStart={() => setDragId(section.id)}
-                    onDragOver={event => { event.preventDefault(); if (dragId && dragId !== section.id) setDragOverId(section.id) }}
-                    onDragLeave={() => setDragOverId(prev => (prev === section.id ? null : prev))}
-                    onDrop={() => { dropSection(section.id); setDragOverId(null) }}
-                    onDragEnd={() => { setDragId(null); setDragOverId(null) }}
-                    className={`${styles.row} ${selectedId === section.id && drawerMode === 'section' ? styles.active : ''} ${dragOverId === section.id && dragId !== section.id ? styles.dropTarget : ''}`}
-                  >
-                    <button className={styles.rowMain} onClick={() => { setSelectedId(section.id); setDrawerMode('section'); setDrawer(true); setDrawerTab('content') }}>
-                      <GripVertical size={13} className={styles.rowGrip} />
-                      {(() => { const Icon = SECTION_ICONS[section.type] || LayoutGrid; return <Icon size={15} className={styles.rowIcon} /> })()}
-                      <span>{META[section.type] || section.type.replaceAll('_', ' ')}</span>
-                      <small className={styles.liveTag}>LIVE</small>
-                    </button>
-                    <button className={styles.rowToggle} onClick={() => { setSelectedId(section.id); setDrawerMode('section'); setDrawer(true); toggleSection(section.enabled === false) }} aria-label={section.enabled === false ? 'Enable section' : 'Disable section'}>
-                      {section.enabled === false ? <X size={14} /> : <Check size={14} />}
-                    </button>
-                  </div>
-                ))}
+                {(() => {
+                  const renderRow = (section: Section, movable: boolean) => (
+                    <div
+                      key={section.id}
+                      draggable={movable}
+                      onDragStart={movable ? () => setDragId(section.id) : undefined}
+                      onDragOver={movable ? event => { event.preventDefault(); if (dragId && dragId !== section.id) setDragOverId(section.id) } : undefined}
+                      onDragLeave={movable ? () => setDragOverId(prev => (prev === section.id ? null : prev)) : undefined}
+                      onDrop={movable ? () => { dropSection(section.id); setDragOverId(null) } : undefined}
+                      onDragEnd={movable ? () => { setDragId(null); setDragOverId(null) } : undefined}
+                      className={`${styles.row} ${selectedId === section.id && drawerMode === 'section' ? styles.active : ''} ${dragOverId === section.id && dragId !== section.id ? styles.dropTarget : ''} ${section.enabled === false ? styles.rowOff : ''}`}
+                    >
+                      <button className={styles.rowMain} onClick={() => { setSelectedId(section.id); setDrawerMode('section'); setDrawer(true); setDrawerTab('content') }}>
+                        {movable ? <GripVertical size={13} className={styles.rowGrip} /> : <span className={styles.rowGripSpacer} />}
+                        {(() => { const Icon = SECTION_ICONS[section.type] || LayoutGrid; return <Icon size={15} className={styles.rowIcon} /> })()}
+                        <span>{META[section.type] || section.type.replaceAll('_', ' ')}</span>
+                      </button>
+                      <button className={styles.rowToggle} onClick={() => { setSelectedId(section.id); setDrawerMode('section'); setDrawer(true); toggleSection(section.enabled === false) }} aria-label={section.enabled === false ? 'Show section' : 'Hide section'} title={section.enabled === false ? 'Hidden -- click to show' : 'Visible -- click to hide'}>
+                        {section.enabled === false ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    </div>
+                  )
+                  const top = current.filter(isTopSection)
+                  const content = current.filter(isContentSection)
+                  const footer = current.filter(isFooterSection)
+                  return (
+                    <>
+                      {isHome && top.length > 0 && <>
+                        <div className={styles.groupLabel}><span>Header</span><small>Whole site</small></div>
+                        {top.map(section => renderRow(section, false))}
+                      </>}
+                      {isHome && <div className={styles.groupLabel}><span>Page content</span><small>Drag to reorder</small></div>}
+                      {!content.length && <div className={styles.emptyZone}>{isHome ? 'No sections yet.' : 'Nothing added yet -- this page shows only its built-in content.'} Use Add section to put banners, products, testimonials, FAQs and more {isHome ? 'on your homepage' : 'below it'}.</div>}
+                      {content.map(section => renderRow(section, true))}
+                      <button className={styles.add} onClick={() => setPicker(true)}><Plus size={14} />Add section</button>
+                      {isHome && footer.length > 0 && <>
+                        <div className={styles.groupLabel}><span>Footer</span><small>Whole site</small></div>
+                        {footer.map(section => renderRow(section, false))}
+                      </>}
+                    </>
+                  )
+                })()}
               </div>
-              <button className={styles.add} onClick={() => setPicker(true)}><Plus size={14} />Add section</button>
             </>
           ) : sideTab === 'theme' ? (
             <>
@@ -830,10 +864,12 @@ export default function ThemeStudio({ initial }: Props) {
                 <strong>{META[selected.type] || selected.type}</strong>
               </div>
               <div className={styles.drawerHeadActions}>
-                <button className={styles.iconBtn} onClick={() => moveSection(-1)} disabled={selectedIndex <= 0} aria-label="Move up"><ArrowUp size={13} /></button>
-                <button className={styles.iconBtn} onClick={() => moveSection(1)} disabled={selectedIndex < 0 || selectedIndex >= current.length - 1} aria-label="Move down"><ArrowDown size={13} /></button>
-                <button className={styles.iconBtn} onClick={duplicateSection} aria-label="Duplicate"><Copy size={13} /></button>
-                <button className={styles.iconBtn} onClick={removeSection} aria-label="Delete"><Trash2 size={13} /></button>
+                {selected && isContentSection(selected) && <>
+                  <button className={styles.iconBtn} onClick={() => moveSection(-1)} disabled={contentPos <= 0} aria-label="Move up"><ArrowUp size={13} /></button>
+                  <button className={styles.iconBtn} onClick={() => moveSection(1)} disabled={contentPos < 0 || contentPos >= contentIndexes.length - 1} aria-label="Move down"><ArrowDown size={13} /></button>
+                  <button className={styles.iconBtn} onClick={duplicateSection} aria-label="Duplicate"><Copy size={13} /></button>
+                  <button className={styles.iconBtn} onClick={removeSection} aria-label="Delete"><Trash2 size={13} /></button>
+                </>}
                 <button className={styles.iconBtn} onClick={() => setDrawer(false)} aria-label="Close"><X size={15} /></button>
               </div>
             </div>
