@@ -374,3 +374,14 @@
 .pageStatus { font-size: 10px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; background: var(--admin-bg); color: var(--admin-muted); }
 .pageStatusLive { background: var(--admin-accent-soft); color: var(--admin-accent-strong); }
 .pageLink { font-size: 12px; font-weight: 700; color: var(--admin-accent-strong); text-decoration: none; margin-left: auto; }
+
+.pickerTabs { display: flex; gap: 4px; margin-top: 10px; }
+.pickerTabs button { flex: 1; height: 32px; border: 0; border-radius: var(--admin-radius-sm); background: transparent; color: var(--admin-muted); font: inherit; font-size: 11.5px; font-weight: 800; cursor: pointer; }
+.pickerTabs button:hover { color: var(--admin-ink); }
+.pickerTabs button.active { background: var(--admin-accent-soft); color: var(--admin-accent-strong); }
+.presetList { margin-top: 14px; display: grid; gap: 10px; max-height: 60vh; overflow: auto; }
+.presetCard { display: grid; gap: 4px; text-align: left; padding: 12px 14px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm); background: var(--admin-surface); color: var(--admin-ink); font: inherit; cursor: pointer; transition: border-color .12s ease, background .12s ease; }
+.presetCard:hover { border-color: var(--admin-accent); background: var(--admin-accent-soft); }
+.presetCard strong { font-size: 13px; font-weight: 800; }
+.presetCard span { font-size: 11.5px; color: var(--admin-muted); line-height: 1.45; }
+.presetCard small { font-size: 10.5px; font-weight: 700; color: var(--admin-accent-strong); }

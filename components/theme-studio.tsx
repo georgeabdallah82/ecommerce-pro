@@ -64,6 +64,7 @@ import SectionInspector, {
 import ThemeInspectorStyles from '@/components/theme-inspector-styles'
 import { FONT_OPTIONS } from '@/lib/font-options'
 import { mergeLegacyStrips, type LegacyBlock } from '@/lib/home-strips'
+import { SECTION_PRESETS, type SectionPreset } from '@/lib/section-presets'
 import { isPageTemplateKey, pageIdFromKey, pageTemplateKey } from '@/lib/custom-pages'
 import styles from './theme-studio.module.css'
 
@@ -381,6 +382,7 @@ export default function ThemeStudio({ initial }: Props) {
   const [drawer, setDrawer] = useState(false)
   const [picker, setPicker] = useState(false)
   const [pickerQuery, setPickerQuery] = useState('')
+  const [pickerTab, setPickerTab] = useState<'sections' | 'presets'>('sections')
   const [history, setHistory] = useState<Snapshot[]>([])
   const [future, setFuture] = useState<Snapshot[]>([])
   const [dirty, setDirty] = useState(initialState.migrated)
@@ -519,21 +521,43 @@ export default function ThemeStudio({ initial }: Props) {
     if (!selected) return
     commit(withPage(current.map(section => (section.id === selected.id ? { ...section, enabled: value } : section))))
   }
+  // Right after the selected content section; otherwise at the end of the page content
+  // (never inside the header group or after the footer).
+  const insertionIndex = (list: Section[]) => {
+    const lastContent = list.reduce((last, section, index) => (isContentSection(section) ? index : last), -1)
+    const firstAfterTop = list.findIndex(section => !isTopSection(section))
+    return selected && isContentSection(selected) ? selectedIndex + 1 : lastContent >= 0 ? lastContent + 1 : firstAfterTop < 0 ? list.length : firstAfterTop
+  }
+  const closePicker = () => { setPicker(false); setPickerQuery('') }
+  // An empty page starts on the ready-made tab: the fastest way to a first draft.
+  const openPicker = () => { setPickerTab(current.some(isContentSection) ? 'sections' : 'presets'); setPicker(true) }
   const addSection = (type: string) => {
     const next = sectionDefaults(type)
     const list = [...current]
-    // Right after the selected content section; otherwise at the end of the page content
-    // (never inside the header group or after the footer).
-    const lastContent = list.reduce((last, section, index) => (isContentSection(section) ? index : last), -1)
-    const firstAfterTop = list.findIndex(section => !isTopSection(section))
-    const at = selected && isContentSection(selected) ? selectedIndex + 1 : lastContent >= 0 ? lastContent + 1 : firstAfterTop < 0 ? list.length : firstAfterTop
-    list.splice(at, 0, next)
+    list.splice(insertionIndex(list), 0, next)
     commit(withPage(list))
     setSelectedId(next.id)
     setDrawerMode('section')
     setDrawer(true)
-    setPicker(false)
-    setPickerQuery('')
+    closePicker()
+  }
+  // A preset adds several sections in one step (a single undo removes the whole group).
+  const addPreset = (preset: SectionPreset) => {
+    const made = preset.items.map(item => {
+      const base = sectionDefaults(item.type)
+      return {
+        ...base,
+        settings: { ...(base.settings || {}), ...(item.settings || {}) },
+        blocks: item.blocks ? item.blocks.map(block => ({ id: makeId(block.type), type: block.type, settings: { ...block.settings } })) : base.blocks,
+      } as Section
+    })
+    const list = [...current]
+    list.splice(insertionIndex(list), 0, ...made)
+    commit(withPage(list))
+    // Select the last section so the next addition lands after the whole group, not inside it.
+    setSelectedId(made[made.length - 1].id)
+    setMessage(`Added “${preset.label}” (${made.length} section${made.length === 1 ? '' : 's'}). Undo removes it all.`)
+    closePicker()
   }
   const removeSection = () => {
     if (!selected || !isContentSection(selected)) return
@@ -870,7 +894,7 @@ export default function ThemeStudio({ initial }: Props) {
                   <strong>{isHome ? 'Homepage sections' : isCustomPage ? (activePage?.title || 'Page') : onPagesTab ? 'Pages' : PAGE_ZONE_COPY[page]?.title}</strong>
                   <div className={styles.sideSectionsCount}>{current.filter(section => section.enabled !== false).length} visible sections</div>
                 </div>
-                <button className={styles.iconBtn} onClick={() => setPicker(true)} aria-label="Add section"><Plus size={15} /></button>
+                <button className={styles.iconBtn} onClick={openPicker} aria-label="Add section"><Plus size={15} /></button>
               </div>
               <div className={styles.legacyNotice}>
                 {isHome
@@ -916,7 +940,7 @@ export default function ThemeStudio({ initial }: Props) {
                       {isHome && <div className={styles.groupLabel}><span>Page content</span><small>Drag to reorder</small></div>}
                       {!content.length && <div className={styles.emptyZone}>{isHome ? 'No sections yet.' : isCustomPage ? 'This page is empty.' : 'Nothing added yet -- this page shows only its built-in content.'} Use Add section to put banners, products, testimonials, FAQs and more {isHome ? 'on your homepage' : isCustomPage ? 'on this page' : 'below it'}.</div>}
                       {content.map(section => renderRow(section, true))}
-                      <button className={styles.add} onClick={() => setPicker(true)}><Plus size={14} />Add section</button>
+                      <button className={styles.add} onClick={openPicker}><Plus size={14} />Add section</button>
                       {isHome && footer.length > 0 && <>
                         <div className={styles.groupLabel}><span>Footer</span><small>Edit under Theme settings</small></div>
                         {footer.map(section => renderRow(section, false))}
@@ -1064,7 +1088,22 @@ export default function ThemeStudio({ initial }: Props) {
       {picker && (
         <div className={styles.pickerOverlay} onMouseDown={() => { setPicker(false); setPickerQuery('') }}>
           <div className={styles.pickerDialog} onMouseDown={event => event.stopPropagation()}>
-            <strong className={styles.pickerTitle}>Add section</strong>
+            <strong className={styles.pickerTitle}>Add to this page</strong>
+            <div className={styles.pickerTabs} role="tablist">
+              <button role="tab" aria-selected={pickerTab === 'sections'} className={pickerTab === 'sections' ? styles.active : ''} onClick={() => setPickerTab('sections')}>Sections</button>
+              <button role="tab" aria-selected={pickerTab === 'presets'} className={pickerTab === 'presets' ? styles.active : ''} onClick={() => setPickerTab('presets')}>Ready-made</button>
+            </div>
+            {pickerTab === 'presets' ? (
+              <div className={styles.presetList}>
+                {SECTION_PRESETS.map(preset => (
+                  <button key={preset.id} className={styles.presetCard} onClick={() => addPreset(preset)}>
+                    <strong>{preset.label}</strong>
+                    <span>{preset.description}</span>
+                    <small>{preset.items.map(item => META[item.type] || item.type).join(' · ')}</small>
+                  </button>
+                ))}
+              </div>
+            ) : (<>
             <input
               className={styles.pickerSearch}
               value={pickerQuery}
@@ -1091,6 +1130,7 @@ export default function ThemeStudio({ initial }: Props) {
                 </div>
               )
             })()}
+            </>)}
           </div>
         </div>
       )}
