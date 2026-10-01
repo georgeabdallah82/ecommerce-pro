@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { CartProvider } from '@/components/cart-provider'
 import StoreNavFixed from '@/components/store-nav-fixed'
-import StorefrontSections, { StorefrontPreviewContext } from '@/components/storefront-sections'
+import StorefrontSections from '@/components/storefront-sections'
+import { StorefrontPreviewContext } from '@/components/preview-context'
 import AliExpressProduct from '@/components/aliexpress-product'
 import AliExpressShop from '@/components/aliexpress-shop'
 import AliExpressCart from '@/components/aliexpress-cart'
@@ -138,6 +139,7 @@ export default function ThemePreviewFrame() {
 
   return (
     <CartProvider>
+      <StorefrontPreviewContext.Provider value={{ selectedId: state.selectedId, onSelect: select }}>
       <StoreNavFixed theme={navTheme} navigation={state.navigation} />
       {state.page === 'Home page' ? (
         <StorefrontSections
@@ -154,7 +156,7 @@ export default function ThemePreviewFrame() {
         // content is real and untouched, with only the merchant-editable zone
         // (state.sections) driven by the editor. Sample products/collections
         // stand in for whatever a visitor's own URL would load.
-        <StorefrontPreviewContext.Provider value={{ selectedId: state.selectedId, onSelect: select }}>
+        <>
           {sample ? (
             state.page === 'Product' ? (
               <AliExpressProduct
@@ -179,9 +181,10 @@ export default function ThemePreviewFrame() {
               Add at least one active product to preview this page.
             </div>
           )}
-        </StorefrontPreviewContext.Provider>
+        </>
       )}
       <Footer theme={state.theme} />
+      </StorefrontPreviewContext.Provider>
     </CartProvider>
   )
 }

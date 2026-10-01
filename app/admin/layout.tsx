@@ -42,6 +42,7 @@ const groups: AdminSidebarGroup[] = [
   ]},
   { id: 'marketing', label: 'Marketing', items: [
     { href: '/admin/coupons', label: 'Discounts', permission: 'coupons.view', icon: 'discounts' },
+    { href: '/admin/newsletter', label: 'Email subscribers', permission: 'customers.view', icon: 'newsletter' },
     { href: '/admin/push-campaigns', label: 'Push campaigns', permission: 'customers.manage', icon: 'pushCampaigns' },
   ]},
   { id: 'analytics', label: 'Analytics', items: [

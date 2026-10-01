@@ -309,7 +309,7 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
     commonLayoutPanel,
   ],
   newsletter: () => [
-    { title: 'Content', fields: [text('Eyebrow', 'eyebrow', 'NEWSLETTER'), text('Heading', 'heading'), textarea('Text', 'text'), text('Button label', 'buttonLabel')] },
+    { title: 'Content', fields: [text('Eyebrow', 'eyebrow', 'NEWSLETTER'), text('Heading', 'heading'), textarea('Text', 'text'), text('Button label', 'buttonLabel'), text('Email placeholder', 'placeholder', 'Email address'), text('Success message', 'successMessage', 'Thanks for subscribing!')] },
     { title: 'Appearance', fields: [select('Background', 'background', ['primary','secondary','surface','dark'], 'primary'), range('Spacing', 'spacing', 0, 160, 72)] },
   ],
   rich_text: () => richTextPanels(),
