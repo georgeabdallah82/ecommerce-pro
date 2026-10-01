@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { GripVertical, ImagePlus, Plus, Trash2, X } from 'lucide-react'
 import MediaPicker from './media-picker'
 
@@ -17,9 +17,30 @@ type Props = {
 export function Field({ label, value, onChange, placeholder }: { label: string; value: any; onChange: (value: string) => void; placeholder?: string }) {
   return <label className="themeInspectorField"><span>{label}</span><input value={value ?? ''} placeholder={placeholder} onChange={event => onChange(event.target.value)} /></label>
 }
-export function ImageField({ label, value, onChange }: { label: string; value: any; onChange: (value: string) => void }) {
+// Natural size of an already-uploaded image, so the merchant can see what they actually
+// uploaded and be warned before a small file looks blurry on a large screen.
+function useImageSize(url: string) {
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null)
+  useEffect(() => {
+    setSize(null)
+    if (!url) return
+    let cancelled = false
+    const image = new window.Image()
+    image.onload = () => { if (!cancelled && image.naturalWidth) setSize({ w: image.naturalWidth, h: image.naturalHeight }) }
+    image.src = url
+    return () => { cancelled = true }
+  }, [url])
+  return size
+}
+
+export type ImageRecommendation = { w: number; h: number; note?: string }
+
+export function ImageField({ label, value, onChange, recommended }: { label: string; value: any; onChange: (value: string) => void; recommended?: ImageRecommendation }) {
   const [open, setOpen] = useState(false)
   const url = value ? String(value) : ''
+  const size = useImageSize(url)
+  const lowRes = !!(size && recommended && size.w < recommended.w * 0.7)
+  const wrongShape = !!(size && recommended && Math.abs(size.w / size.h - recommended.w / recommended.h) / (recommended.w / recommended.h) > 0.3)
   return (
     // A plain div, not a <label> -- there's no native form control here for a
     // <label> to legitimately point to, only a custom button-driven widget and
@@ -41,6 +62,14 @@ export function ImageField({ label, value, onChange }: { label: string; value: a
         </div>
       ) : (
         <button type="button" className="themeImageEmpty" onClick={() => setOpen(true)}><ImagePlus size={16} /> Upload image</button>
+      )}
+      {recommended && (
+        <small className="themeImageHint">
+          {size ? <b>Your image: {size.w} × {size.h} px. </b> : null}
+          Recommended {recommended.w} × {recommended.h} px{recommended.note ? ` — ${recommended.note}` : ''}.
+          {lowRes && <span className="themeImageWarn"> Low resolution: this may look blurry on large screens.</span>}
+          {!lowRes && wrongShape && <span className="themeImageWarn"> Different shape than recommended: the edges may be cropped.</span>}
+        </small>
       )}
       <MediaPicker open={open} onClose={() => setOpen(false)} onAdd={images => { if (images[0]) onChange(images[0].url); setOpen(false) }} />
     </div>
@@ -102,7 +131,7 @@ export type OptionsSource = OptionList | ((ctx: FieldCtx) => OptionList)
 
 export type FieldSchema =
   | { kind: 'text'; label: string; placeholder?: string; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
-  | { kind: 'image'; label: string; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
+  | { kind: 'image'; label: string; recommended?: ImageRecommendation; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
   | { kind: 'textarea'; label: string; placeholder?: string; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
   | { kind: 'select'; label: string; options: OptionsSource; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
   | { kind: 'toggle'; label: string; get: (s: SettingsMap) => boolean; set: (value: boolean) => Record<string, any> }
@@ -114,8 +143,8 @@ export type PanelSchema = { title: string; fields: Array<FieldSchema | FieldSche
 
 export const text = (label: string, name: string, placeholder?: string): FieldSchema =>
   ({ kind: 'text', label, placeholder, get: s => s[name], set: value => ({ [name]: value }) })
-export const image = (label: string, name: string): FieldSchema =>
-  ({ kind: 'image', label, get: s => s[name], set: value => ({ [name]: value }) })
+export const image = (label: string, name: string, recommended?: ImageRecommendation): FieldSchema =>
+  ({ kind: 'image', label, recommended, get: s => s[name], set: value => ({ [name]: value }) })
 export const textarea = (label: string, name: string, placeholder?: string): FieldSchema =>
   ({ kind: 'textarea', label, placeholder, get: s => s[name], set: value => ({ [name]: value }) })
 export const select = (label: string, name: string, options: OptionsSource, fallback = ''): FieldSchema =>
@@ -199,7 +228,7 @@ function richTextPanels(): PanelSchema[] {
 function mediaPanels(type: 'video' | 'slideshow'): PanelSchema[] {
   if (type === 'video') {
     return [
-      { title: 'Video', fields: [text('Eyebrow', 'eyebrow', 'VIDEO'), text('Heading', 'heading'), textarea('Text', 'text'), image('Background image', 'imageUrl')] },
+      { title: 'Video', fields: [text('Eyebrow', 'eyebrow', 'VIDEO'), text('Heading', 'heading'), textarea('Text', 'text'), image('Background image', 'imageUrl', { w: 1600, h: 900, note: '16:9' })] },
       commonLayoutPanel,
     ]
   }
@@ -238,8 +267,8 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
       [text('Button label', 'buttonLabel'), text('Button URL', 'buttonUrl'), text('Secondary label', 'secondaryLabel'), text('Secondary URL', 'secondaryUrl')],
     ] },
     { title: 'Media', fields: [
-      { kind: 'image', label: 'Desktop image', get: s => s.desktopImageUrl || s.imageUrl, set: value => ({ desktopImageUrl: value }) },
-      image('Mobile image', 'mobileImageUrl'),
+      { kind: 'image', label: 'Desktop image', recommended: { w: 1920, h: 840, note: 'wide banner, shown on screens wider than 750 px' }, get: s => s.desktopImageUrl || s.imageUrl, set: value => ({ desktopImageUrl: value }) },
+      image('Mobile image', 'mobileImageUrl', { w: 800, h: 1000, note: 'portrait, shown on phones. If empty, the desktop image is used and may be cropped' }),
       text('Alt text', 'imageAlt'),
       [
         select('Image fit', 'imageFit', ['cover','contain','fill'], 'cover'),
@@ -292,7 +321,7 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
       [text('Button label', 'buttonLabel'), text('Button URL', 'buttonUrl')],
     ] },
     { title: 'Media & layout', fields: [
-      image('Image', 'imageUrl'),
+      image('Image', 'imageUrl', { w: 1200, h: 1000, note: 'shown beside the text' }),
       text('Image alt text', 'imageAlt'),
       select('Image position', 'layout', ['image-left','image-right'], 'image-right'),
     ] },
@@ -318,7 +347,7 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
   // button, only heading/text/image.
   main_collection_banner: () => [
     { title: 'Content', fields: [text('Eyebrow', 'eyebrow'), text('Heading', 'heading'), textarea('Text', 'text')] },
-    { title: 'Media', fields: [image('Image', 'imageUrl')] },
+    { title: 'Media', fields: [image('Image', 'imageUrl', { w: 1920, h: 600, note: 'wide banner' })] },
   ],
   announcement_strip: () => [
     { title: 'Messages', fields: [blocks('Messages', 'message')] },
@@ -413,7 +442,7 @@ export function renderField(schema: FieldSchema, ctx: FieldCtx, set: (patch: Rec
     case 'text':
       return <Field key={schema.label} label={schema.label} placeholder={schema.placeholder} value={schema.get(s)} onChange={value => set(schema.set(value))} />
     case 'image':
-      return <ImageField key={schema.label} label={schema.label} value={schema.get(s)} onChange={value => set(schema.set(value))} />
+      return <ImageField key={schema.label} label={schema.label} value={schema.get(s)} recommended={schema.recommended} onChange={value => set(schema.set(value))} />
     case 'textarea':
       return <TextArea key={schema.label} label={schema.label} placeholder={schema.placeholder} value={schema.get(s)} onChange={value => set(schema.set(value))} />
     case 'select': {
@@ -454,10 +483,6 @@ export default function SectionInspector({ section, products, collections, onUpd
   const panels = (SECTION_PANELS[section.type] || (() => [commonLayoutPanel]))()
   return (
     <div className="themeInspector">
-      <SectionPanel title="General">
-        <Toggle label="Section enabled" value={section.enabled !== false} onChange={value => onUpdate({ enabled: value })} />
-        <Field label="Section ID" value={section.id} onChange={() => {}} />
-      </SectionPanel>
       {panels.map(panel => renderPanel(panel, ctx, set, section, onUpdateBlocks))}
     </div>
   )

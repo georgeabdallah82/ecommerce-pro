@@ -9,6 +9,7 @@ import {
   BadgeCheck,
   Eye,
   EyeOff,
+  UploadCloud,
   Columns3,
   Compass,
   Copy,
@@ -61,7 +62,6 @@ import SectionInspector, {
   type PanelSchema, type FieldCtx,
 } from '@/components/theme-section-inspector'
 import ThemeInspectorStyles from '@/components/theme-inspector-styles'
-import ThemePublishBar from '@/components/theme-publish-bar'
 import { FONT_OPTIONS } from '@/lib/font-options'
 import { mergeLegacyStrips, type LegacyBlock } from '@/lib/home-strips'
 import styles from './theme-studio.module.css'
@@ -759,9 +759,16 @@ export default function ThemeStudio({ initial }: Props) {
               </button>
             ))}
           </div>
-          <button className={`${styles.btn} ${styles.btnPrimary}`} disabled={!dirty || saving} onClick={save} title="Save draft (Ctrl/Cmd+S)">
+          <span className={`${styles.saveStatus} ${publishError ? styles.saveStatusError : ''}`} role="status" aria-live="polite">
+            {publishError || (publishing ? 'Publishing…' : saving ? 'Saving…' : dirty ? 'Unsaved changes' : publishMessage || (hasDraft ? 'Saved — not published yet' : 'Published'))}
+          </span>
+          <button className={styles.btn} disabled={!dirty || saving || publishing} onClick={save} title="Save draft (Ctrl/Cmd+S)">
             <Save size={14} />
-            {saving ? 'Saving…' : dirty ? 'Save •' : 'Save'}
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+          <button className={`${styles.btn} ${styles.btnPrimary}`} disabled={(!hasDraft && !dirty) || saving || publishing} onClick={publishAll} title="Publish to your live store">
+            <UploadCloud size={14} />
+            {publishing ? 'Publishing…' : 'Publish'}
           </button>
         </div>
       </header>
@@ -805,16 +812,16 @@ export default function ThemeStudio({ initial }: Props) {
                       onDragLeave={movable ? () => setDragOverId(prev => (prev === section.id ? null : prev)) : undefined}
                       onDrop={movable ? () => { dropSection(section.id); setDragOverId(null) } : undefined}
                       onDragEnd={movable ? () => { setDragId(null); setDragOverId(null) } : undefined}
-                      className={`${styles.row} ${selectedId === section.id && drawerMode === 'section' ? styles.active : ''} ${dragOverId === section.id && dragId !== section.id ? styles.dropTarget : ''} ${section.enabled === false ? styles.rowOff : ''}`}
+                      className={`${styles.row} ${(section.type === 'footer' ? drawerMode === 'theme' && activeCategoryKey === 'footer' : selectedId === section.id && drawerMode === 'section') ? styles.active : ''} ${dragOverId === section.id && dragId !== section.id ? styles.dropTarget : ''} ${section.enabled === false ? styles.rowOff : ''}`}
                     >
-                      <button className={styles.rowMain} onClick={() => { setSelectedId(section.id); setDrawerMode('section'); setDrawer(true); setDrawerTab('content') }}>
+                      <button className={styles.rowMain} onClick={() => { if (section.type === 'footer') { openCategory('footer'); return } setSelectedId(section.id); setDrawerMode('section'); setDrawer(true); setDrawerTab('content') }}>
                         {movable ? <GripVertical size={13} className={styles.rowGrip} /> : <span className={styles.rowGripSpacer} />}
                         {(() => { const Icon = SECTION_ICONS[section.type] || LayoutGrid; return <Icon size={15} className={styles.rowIcon} /> })()}
                         <span>{META[section.type] || section.type.replaceAll('_', ' ')}</span>
                       </button>
-                      <button className={styles.rowToggle} onClick={() => { setSelectedId(section.id); setDrawerMode('section'); setDrawer(true); toggleSection(section.enabled === false) }} aria-label={section.enabled === false ? 'Show section' : 'Hide section'} title={section.enabled === false ? 'Hidden -- click to show' : 'Visible -- click to hide'}>
+                      {section.type !== 'footer' && <button className={styles.rowToggle} onClick={() => { setSelectedId(section.id); setDrawerMode('section'); setDrawer(true); toggleSection(section.enabled === false) }} aria-label={section.enabled === false ? 'Show section' : 'Hide section'} title={section.enabled === false ? 'Hidden -- click to show' : 'Visible -- click to hide'}>
                         {section.enabled === false ? <EyeOff size={14} /> : <Eye size={14} />}
-                      </button>
+                      </button>}
                     </div>
                   )
                   const top = current.filter(isTopSection)
@@ -831,7 +838,7 @@ export default function ThemeStudio({ initial }: Props) {
                       {content.map(section => renderRow(section, true))}
                       <button className={styles.add} onClick={() => setPicker(true)}><Plus size={14} />Add section</button>
                       {isHome && footer.length > 0 && <>
-                        <div className={styles.groupLabel}><span>Footer</span><small>Whole site</small></div>
+                        <div className={styles.groupLabel}><span>Footer</span><small>Edit under Theme settings</small></div>
                         {footer.map(section => renderRow(section, false))}
                       </>}
                     </>
@@ -1031,7 +1038,6 @@ export default function ThemeStudio({ initial }: Props) {
 
       {message && <div className={styles.notice}>{message}</div>}
 
-      <ThemePublishBar draft={hasDraft || dirty} publishing={publishing || saving} message={publishMessage} error={publishError} onPublish={publishAll} />
     </div>
   )
 }
