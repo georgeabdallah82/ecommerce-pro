@@ -63,6 +63,7 @@ type PreviewState = {
 //   frame -> parent: { source: 'theme-preview', type: 'ready' }
 //   frame -> parent: { source: 'theme-preview', type: 'select', sectionId }
 //   frame -> parent: { source: 'theme-preview', type: 'height', height }
+//   frame -> parent: { source: 'theme-preview', type: 'shortcut', key: 's' | 'z' | 'y', shift }
 export default function ThemePreviewFrame() {
   const [state, setState] = useState<PreviewState>(null)
 
@@ -85,6 +86,20 @@ export default function ThemePreviewFrame() {
     window.addEventListener('message', onMessage)
     window.parent.postMessage({ source: 'theme-preview', type: 'ready' }, window.location.origin)
     return () => window.removeEventListener('message', onMessage)
+  }, [])
+
+  // Editor shortcuts (save / undo / redo) must keep working when a merchant has clicked
+  // into the preview, where key events never reach the editor's own window.
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (!(event.metaKey || event.ctrlKey) || event.altKey) return
+      const key = event.key.toLowerCase()
+      if (key !== 's' && key !== 'z' && key !== 'y') return
+      event.preventDefault()
+      window.parent.postMessage({ source: 'theme-preview', type: 'shortcut', key, shift: event.shiftKey }, window.location.origin)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
   }, [])
 
   // Report content height to the parent so it can size the iframe element
