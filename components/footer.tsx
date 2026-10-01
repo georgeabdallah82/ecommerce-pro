@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import NewsletterForm from '@/components/newsletter-form'
 import { MessageCircle } from 'lucide-react'
 import { config } from '@/lib/config'
 
@@ -130,10 +131,7 @@ export function Footer({ theme }: { theme?: any }) {
           <div className="focalFooterNewsletter">
             <strong>Stay in the loop</strong>
             <p className="muted">Get launches, drops and offers in your inbox.</p>
-            <form className="focalFooterNewsletterForm" onSubmit={e => e.preventDefault()}>
-              <input type="email" placeholder="Email address" aria-label="Email address" required />
-              <button type="submit">Subscribe</button>
-            </form>
+            <NewsletterForm className="focalFooterNewsletterForm" source="footer" />
           </div>
         )}
       </div>

@@ -7,7 +7,7 @@ import { db } from '@/lib/prisma'
 // their own, narrower bypass so mutations to non-admin/auth/internal/webhook endpoints are
 // actually blocked during maintenance instead of silently exempted wholesale.
 const MAINTENANCE_BYPASS_PREFIXES = ['/admin', '/coming-soon', '/_next']
-const MAINTENANCE_API_BYPASS_PREFIXES = ['/api/admin', '/api/auth', '/api/internal', '/api/payments', '/api/health']
+const MAINTENANCE_API_BYPASS_PREFIXES = ['/api/admin', '/api/auth', '/api/internal', '/api/payments', '/api/health', '/api/newsletter']
 const MAINTENANCE_BYPASS_EXACT = new Set(['/favicon.ico', '/robots.txt', '/sitemap.xml'])
 // /theme-editor-preview is a staff-only technical surface (the theme editor's iframe target,
 // see app/theme-editor-preview/page.tsx), reloaded on every draft edit -- exempting it here
