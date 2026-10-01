@@ -72,15 +72,29 @@ type Section = { id: string; type: string; enabled?: boolean; settings?: AnyMap;
 type Snapshot = { theme: AnyMap; templates: Record<string, Section[]>; page: string; selectedId: string }
 type Props = { initial: { theme: AnyMap; sections: Section[]; navigation: any[]; draft: boolean } }
 
-const PAGES = ['Home page', 'Products', 'Product', 'Collections', 'Collection', 'Cart', 'Pages', 'Blog']
-// The homepage (app/page.tsx) is the ONLY route that reads specific types out
-// of the sections list -- exactly these six, by s.type, regardless of their
-// position in the list. Every other page template this editor can technically
-// hold (Products/Product/Collections/Collection/Cart/Pages/Blog) renders from
-// its own hardcoded component instead (components/aliexpress-*.tsx) and never
-// reads `sections` at all, so editing them here was pure decoration with zero
-// effect on the live site. Header and Announcement are the other exception --
-// they're read globally, independent of which page you're viewing.
+// The four page templates the editor manages. Home is a full section builder;
+// the other three append a merchant-editable content zone below that page's own
+// built-in commerce UI (product purchase flow, shop/collection listing, cart
+// and checkout handoff), which this editor deliberately never touches.
+const PAGE_TABS = [
+  { key: 'Home page', label: 'Home' },
+  { key: 'Product', label: 'Product' },
+  { key: 'Collection', label: 'Collection & shop' },
+  { key: 'Cart', label: 'Cart' },
+]
+const PAGES = PAGE_TABS.map(tab => tab.key)
+// Structural entries kept in a zone page's stored template (header/announcement
+// are read by store-nav-fixed.tsx, main_* are the placeholders lib/theme.ts's
+// repairTemplate looks for) that must never show up as editable rows -- they
+// don't render as content, so listing them would be decoration again.
+const ZONE_HIDDEN_TYPES = new Set(['header', 'announcement', 'footer', 'main_product', 'main_collection_banner', 'main_collection_grid'])
+const PAGE_ZONE_COPY: Record<string, { title: string; body: string }> = {
+  Product: { title: 'Product page content', body: 'Sections you add appear below the product, its reviews and recommendations on every product page.' },
+  Collection: { title: 'Collection & shop content', body: 'Sections you add appear below the product listing on /shop and every collection page.' },
+  Cart: { title: 'Cart page content', body: 'Sections you add appear below the cart and its recommendations.' },
+}
+// Header and Announcement are read globally by the storefront nav, independent
+// of which page you're viewing.
 // app/page.tsx renders the Home page's full sections list through the same
 // generic StorefrontSections engine used everywhere else (components/
 // storefront-sections.tsx) -- real position, any of these ~30 types, any
@@ -217,13 +231,11 @@ function defaultTemplates(source: Section[]) {
   const home = sanitized.length ? sanitized : liveDefaults
   return {
     'Home page': home,
-    Products: [sectionDefaults('announcement'), sectionDefaults('header'), sectionDefaults('product_grid'), sectionDefaults('newsletter'), sectionDefaults('footer')],
-    Product: [sectionDefaults('announcement'), sectionDefaults('header'), sectionDefaults('main_product'), sectionDefaults('product_recommendations'), sectionDefaults('newsletter'), sectionDefaults('footer')],
-    Collections: [sectionDefaults('announcement'), sectionDefaults('header'), sectionDefaults('collection_grid'), sectionDefaults('newsletter'), sectionDefaults('footer')],
-    Collection: [sectionDefaults('announcement'), sectionDefaults('header'), sectionDefaults('main_collection_banner'), sectionDefaults('main_collection_grid'), sectionDefaults('newsletter'), sectionDefaults('footer')],
-    Cart: [sectionDefaults('announcement'), sectionDefaults('header'), sectionDefaults('newsletter'), sectionDefaults('footer')],
-    Pages: [sectionDefaults('announcement'), sectionDefaults('header'), sectionDefaults('hero'), sectionDefaults('rich_text'), sectionDefaults('newsletter'), sectionDefaults('footer')],
-    Blog: [sectionDefaults('announcement'), sectionDefaults('header'), sectionDefaults('hero'), sectionDefaults('collection_grid'), sectionDefaults('newsletter'), sectionDefaults('footer')],
+    // Empty on purpose: these three are addable zones, so a store that has
+    // never added anything must render nothing extra (see lib/theme.ts).
+    Product: [],
+    Collection: [],
+    Cart: [],
   } as Record<string, Section[]>
 }
 
@@ -356,7 +368,13 @@ export default function ThemeStudio({ initial }: Props) {
   const [publishMessage, setPublishMessage] = useState('')
   const [publishError, setPublishError] = useState('')
 
-  const current = templates[page] || []
+  const isHome = page === 'Home page'
+  const fullPage = templates[page] || []
+  // On zone pages the list the editor works with is only the merchant's own
+  // content; the structural placeholders are held aside and re-attached on every
+  // write (see `withPage`), so they survive a save untouched.
+  const current = useMemo(() => (isHome ? fullPage : fullPage.filter(section => !ZONE_HIDDEN_TYPES.has(section.type))), [isHome, fullPage])
+  const withPage = (list: Section[]) => ({ ...templates, [page]: isHome ? list : [...fullPage.filter(section => ZONE_HIDDEN_TYPES.has(section.type)), ...list] })
   const selectedIndex = current.findIndex(section => section.id === selectedId)
   const selected = current[selectedIndex] || null
   const activeCategory = THEME_CATEGORIES.find(c => c.key === activeCategoryKey) || null
@@ -418,6 +436,7 @@ export default function ThemeStudio({ initial }: Props) {
     iframeRef.current?.contentWindow?.postMessage({
       source: 'theme-editor',
       type: 'state',
+      page,
       theme,
       sections: current,
       navigation: initial.navigation,
@@ -425,7 +444,7 @@ export default function ThemeStudio({ initial }: Props) {
       collections,
       selectedId,
     }, window.location.origin)
-  }, [previewReadyToken, theme, current, initial.navigation, products, collections, selectedId])
+  }, [previewReadyToken, page, theme, current, initial.navigation, products, collections, selectedId])
 
   const commit = (nextTemplates: Record<string, Section[]>, nextTheme = theme) => {
     setHistory(history => [...history, { theme: clone(theme), templates: clone(templates), page, selectedId }].slice(-50))
@@ -436,7 +455,7 @@ export default function ThemeStudio({ initial }: Props) {
   }
   const patch = (patches: AnyMap) => {
     if (!selected) return
-    commit({ ...templates, [page]: current.map(section => (section.id === selected.id ? { ...section, settings: { ...(section.settings || {}), ...patches } } : section)) })
+    commit(withPage(current.map(section => (section.id === selected.id ? { ...section, settings: { ...(section.settings || {}), ...patches } } : section))))
   }
   const patchTheme = (group: string, patches: AnyMap) => {
     if (group === ROOT_GROUP) { commit(templates, { ...theme, ...patches }); return }
@@ -444,17 +463,17 @@ export default function ThemeStudio({ initial }: Props) {
   }
   const patchBlocks = (blocks: any[]) => {
     if (!selected) return
-    commit({ ...templates, [page]: current.map(section => (section.id === selected.id ? { ...section, blocks: clone(blocks) } : section)) })
+    commit(withPage(current.map(section => (section.id === selected.id ? { ...section, blocks: clone(blocks) } : section))))
   }
   const toggleSection = (value: boolean) => {
     if (!selected) return
-    commit({ ...templates, [page]: current.map(section => (section.id === selected.id ? { ...section, enabled: value } : section)) })
+    commit(withPage(current.map(section => (section.id === selected.id ? { ...section, enabled: value } : section))))
   }
   const addSection = (type: string) => {
     const next = sectionDefaults(type)
     const list = [...current]
     list.splice(selectedIndex < 0 ? list.length : selectedIndex + 1, 0, next)
-    commit({ ...templates, [page]: list })
+    commit(withPage(list))
     setSelectedId(next.id)
     setDrawerMode('section')
     setDrawer(true)
@@ -466,7 +485,7 @@ export default function ThemeStudio({ initial }: Props) {
     confirmAction(`Delete "${META[selected.type] || selected.type.replaceAll('_', ' ')}"? You can undo this from the toolbar.`, () => {
       const list = current.filter(section => section.id !== selected.id)
       const nextId = list[Math.max(0, selectedIndex - 1)]?.id || list[0]?.id || ''
-      commit({ ...templates, [page]: list })
+      commit(withPage(list))
       setSelectedId(nextId)
       setDrawer(false)
     })
@@ -477,7 +496,7 @@ export default function ThemeStudio({ initial }: Props) {
     copy.id = makeId(selected.type)
     const list = [...current]
     list.splice(selectedIndex + 1, 0, copy)
-    commit({ ...templates, [page]: list })
+    commit(withPage(list))
     setSelectedId(copy.id)
   }
   const moveSection = (delta: number) => {
@@ -486,7 +505,7 @@ export default function ThemeStudio({ initial }: Props) {
     if (nextIndex < 0 || nextIndex >= current.length) return
     const list = [...current]
     ;[list[selectedIndex], list[nextIndex]] = [list[nextIndex], list[selectedIndex]]
-    commit({ ...templates, [page]: list })
+    commit(withPage(list))
   }
   const dropSection = (targetId: string) => {
     if (!dragId || dragId === targetId) return
@@ -496,7 +515,7 @@ export default function ThemeStudio({ initial }: Props) {
     const list = [...current]
     const item = list.splice(from, 1)[0]
     list.splice(to, 0, item)
-    commit({ ...templates, [page]: list })
+    commit(withPage(list))
     setDragId(null)
   }
   const undo = () => {
@@ -520,6 +539,12 @@ export default function ThemeStudio({ initial }: Props) {
     setPage(snapshot.page)
     setSelectedId(snapshot.selectedId)
     setDirty(true)
+  }
+  const switchPage = (key: string) => {
+    if (key === page) return
+    setPage(key)
+    setSelectedId('')
+    if (drawerMode === 'section') setDrawer(false)
   }
   const openCategory = (key: string) => {
     setActiveCategoryKey(key)
@@ -629,7 +654,7 @@ export default function ThemeStudio({ initial }: Props) {
           </a>
           <div>
             <div className={styles.title}>Theme editor</div>
-            <div className={styles.sub}>Homepage sections</div>
+            <div className={styles.sub}>{PAGE_TABS.find(tab => tab.key === page)?.label || page}</div>
           </div>
         </div>
         <div className={styles.topRight}>
@@ -659,17 +684,26 @@ export default function ThemeStudio({ initial }: Props) {
 
           {sideTab === 'sections' ? (
             <>
+              <div className={styles.pageTabs} role="tablist" aria-label="Page template">
+                {PAGE_TABS.map(tab => (
+                  <button key={tab.key} role="tab" aria-selected={page === tab.key} className={page === tab.key ? styles.active : ''} onClick={() => switchPage(tab.key)}>{tab.label}</button>
+                ))}
+              </div>
               <div className={styles.sideSectionsHead}>
                 <div>
-                  <strong>{page}</strong>
+                  <strong>{isHome ? 'Homepage sections' : PAGE_ZONE_COPY[page]?.title}</strong>
                   <div className={styles.sideSectionsCount}>{current.filter(section => section.enabled !== false).length} visible sections</div>
                 </div>
                 <button className={styles.iconBtn} onClick={() => setPicker(true)} aria-label="Add section"><Plus size={15} /></button>
               </div>
               <div className={styles.legacyNotice}>
-                Every section below is live on your homepage, in this order -- drag to reorder, or use Add section to insert anything from banners to testimonials. Header and Announcement apply across your whole site, not just this page. Product page, Collection &amp; shop pages, Cart and Footer settings are edited under the Theme tab instead.
+                {isHome
+                  ? 'Every section below is live on your homepage, in this order -- drag to reorder, or use Add section to insert anything from banners to testimonials. Header and Announcement apply across your whole site, not just this page.'
+                  : `${PAGE_ZONE_COPY[page]?.body} The page's own content -- ${page === 'Product' ? 'gallery, variants, add to cart, reviews' : page === 'Collection' ? 'filters, sorting and the product grid' : 'items, coupon, order summary and checkout'} -- is built in and always stays above it.`}
+                {' '}Page-level options live under the Theme tab.
               </div>
               <div className={styles.rows}>
+                {!current.length && <div className={styles.emptyZone}>Nothing added yet -- this page shows only its built-in content. Use Add section to put banners, testimonials, FAQs and more below it.</div>}
                 {current.map(section => (
                   <div
                     key={section.id}
@@ -750,7 +784,7 @@ export default function ThemeStudio({ initial }: Props) {
 
         <main className={styles.canvas}>
           <div className={styles.canvasBar}>
-            <strong>{page}</strong>
+            <strong>{PAGE_TABS.find(tab => tab.key === page)?.label || page}</strong>
             <span className={styles.canvasBarStatus}>{dirty ? 'Live preview · unsaved changes' : 'Live preview'}</span>
           </div>
           <div className={styles.preview}>
@@ -841,7 +875,7 @@ export default function ThemeStudio({ initial }: Props) {
             />
             {(() => {
               const results = Object.entries(META)
-                .filter(([key]) => !['announcement', 'header'].includes(key))
+                .filter(([key]) => (isHome ? !['announcement', 'header'].includes(key) : !ZONE_HIDDEN_TYPES.has(key)))
                 .filter(([, label]) => label.toLowerCase().includes(pickerQuery.trim().toLowerCase()))
               if (!results.length) return <div className={styles.pickerEmpty}>No sections match &ldquo;{pickerQuery}&rdquo;.</div>
               return (

@@ -3,7 +3,10 @@
 import { useEffect, useState } from 'react'
 import { CartProvider } from '@/components/cart-provider'
 import StoreNavFixed from '@/components/store-nav-fixed'
-import StorefrontSections from '@/components/storefront-sections'
+import StorefrontSections, { StorefrontPreviewContext } from '@/components/storefront-sections'
+import AliExpressProduct from '@/components/aliexpress-product'
+import AliExpressShop from '@/components/aliexpress-shop'
+import AliExpressCart from '@/components/aliexpress-cart'
 import { Footer } from '@/components/footer'
 import { fontCssStack } from '@/lib/font-options'
 
@@ -41,6 +44,7 @@ function themeCssVars(theme: Record<string, any>): React.CSSProperties {
 
 type AnyMap = Record<string, any>
 type PreviewState = {
+  page: string
   theme: AnyMap
   sections: AnyMap[]
   navigation: any[]
@@ -52,7 +56,9 @@ type PreviewState = {
 // The theme editor (components/theme-studio.tsx) renders this page inside
 // a same-origin iframe and posts the draft state below across on every change.
 // Message shapes:
-//   parent -> frame: { source: 'theme-editor', type: 'state', theme, sections, navigation, products, collections, selectedId }
+//   parent -> frame: { source: 'theme-editor', type: 'state', page, theme, sections, navigation, products, collections, selectedId }
+//   `page` is the template being edited ('Home page' | 'Product' | 'Collection' | 'Cart'); `sections` is
+//   that page's full list for Home, or just its addable content zone for the other three.
 //   frame -> parent: { source: 'theme-preview', type: 'ready' }
 //   frame -> parent: { source: 'theme-preview', type: 'select', sectionId }
 //   frame -> parent: { source: 'theme-preview', type: 'height', height }
@@ -66,6 +72,7 @@ export default function ThemePreviewFrame() {
       const data = event.data
       if (!data || data.source !== 'theme-editor' || data.type !== 'state') return
       setState({
+        page: typeof data.page === 'string' ? data.page : 'Home page',
         theme: data.theme,
         sections: Array.isArray(data.sections) ? data.sections : [],
         navigation: Array.isArray(data.navigation) ? data.navigation : [],
@@ -100,22 +107,22 @@ export default function ThemePreviewFrame() {
     })
   }, [state?.theme])
 
-  // Position-indexed against every rendered .focalSection node, matching the
-  // filtered "visible" list StorefrontSections itself builds. category_strip/
-  // flash_deals/new_arrivals/best_sellers (see components/storefront-sections.tsx)
-  // render with their own fixed ali-prefixed classnames instead of the generic
-  // .focalSection shell, to stay pixel-identical to the AliExpress homepage
-  // styling they were copied from -- so selecting one of those four from the
-  // editor's sidebar won't auto-scroll the preview to it (it can still be
-  // clicked directly in the preview to select it, same as any other section).
-  // Every other section type scrolls correctly.
+  // Position-indexed against every .focalSection node inside a StorefrontSections
+  // root (.themeEditorPreview), matching the filtered "visible" list it builds.
+  // Scoping to that root -- rather than the whole document -- keeps this correct on
+  // the Product/Shop/Cart previews, where the page's own untouched content sits
+  // above the zone. category_strip/flash_deals/new_arrivals/best_sellers (see
+  // components/storefront-sections.tsx) render with their own fixed ali-prefixed
+  // classnames instead of the generic .focalSection shell, so selecting one of
+  // those four from the editor's sidebar won't auto-scroll the preview to it (it
+  // can still be clicked directly in the preview to select it).
   useEffect(() => {
     if (!state?.selectedId) return
     const visibleIndex = state.sections
       .filter(section => section.enabled !== false && section.settings?.enabled !== false && section.type !== 'header' && section.type !== 'announcement' && section.type !== 'footer')
       .findIndex(section => section.id === state.selectedId)
     if (visibleIndex < 0) return
-    const nodes = document.querySelectorAll<HTMLElement>('.focalSection')
+    const nodes = document.querySelectorAll<HTMLElement>('.themeEditorPreview .focalSection')
     nodes[visibleIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }, [state?.selectedId, state?.sections])
 
@@ -126,19 +133,64 @@ export default function ThemePreviewFrame() {
   // in-progress header edits made on any template page, not just Home.
   const navTheme = { ...state.theme, editorTemplates: { ...(state.theme.editorTemplates || {}), Pages: state.sections } }
 
+  const select = (sectionId: string) => window.parent.postMessage({ source: 'theme-preview', type: 'select', sectionId }, window.location.origin)
+  const sample = pageSample(state)
+
   return (
     <CartProvider>
       <StoreNavFixed theme={navTheme} navigation={state.navigation} />
-      <StorefrontSections
-        theme={state.theme}
-        sections={state.sections}
-        products={state.products}
-        collections={state.collections}
-        preview
-        selectedId={state.selectedId}
-        onSelect={sectionId => window.parent.postMessage({ source: 'theme-preview', type: 'select', sectionId }, window.location.origin)}
-      />
+      {state.page === 'Home page' ? (
+        <StorefrontSections
+          theme={state.theme}
+          sections={state.sections}
+          products={state.products}
+          collections={state.collections}
+          preview
+          selectedId={state.selectedId}
+          onSelect={select}
+        />
+      ) : (
+        // These are the same components the live site renders -- the page's own
+        // content is real and untouched, with only the merchant-editable zone
+        // (state.sections) driven by the editor. Sample products/collections
+        // stand in for whatever a visitor's own URL would load.
+        <StorefrontPreviewContext.Provider value={{ selectedId: state.selectedId, onSelect: select }}>
+          {sample ? (
+            state.page === 'Product' ? (
+              <AliExpressProduct
+                theme={state.theme}
+                product={sample.product}
+                related={sample.related}
+                variantAvailability={[]}
+                productAvailable={sample.product.variants?.length ? 99 : Number(sample.product.stock ?? 99)}
+                trackInventory={false}
+                continueSellingWhenOutOfStock
+                reviewEligibility="guest"
+                sections={state.sections}
+                collections={state.collections}
+              />
+            ) : state.page === 'Collection' ? (
+              <AliExpressShop theme={state.theme} products={state.products} collections={state.collections} query={{}} sections={state.sections} />
+            ) : (
+              <AliExpressCart theme={state.theme} recommended={sample.related} sections={state.sections} zoneCollections={state.collections} />
+            )
+          ) : (
+            <div style={{ padding: '96px 24px', textAlign: 'center', color: 'var(--store-muted, #6b7280)' }}>
+              Add at least one active product to preview this page.
+            </div>
+          )}
+        </StorefrontPreviewContext.Provider>
+      )}
       <Footer theme={state.theme} />
     </CartProvider>
   )
+}
+
+// Product pages need a real product to render; the Shop/Collection and Cart
+// previews only need the product list. Returns null when the store has no
+// products yet, so the preview explains itself instead of crashing.
+function pageSample(state: NonNullable<PreviewState>) {
+  const product = state.products[0]
+  if (!product) return null
+  return { product, related: state.products.filter(p => p.id !== product.id).slice(0, 12) }
 }
