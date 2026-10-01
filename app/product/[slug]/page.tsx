@@ -42,9 +42,19 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   }
 }
 
+// theme.editorTemplates.Product already exists in the theme's stored data
+// (lib/theme.ts repairs it to always include a main_product placeholder plus
+// sensible defaults like product_recommendations/newsletter) but was never
+// read by this page. main_product/header/announcement/footer are excluded
+// here since they're either the already-rendered, untouched core above (see
+// components/aliexpress-product.tsx) or apply globally, not per-page --
+// everything left is genuinely merchant-addable content for this page.
+const PRODUCT_ZONE_EXCLUDE = new Set(['header', 'announcement', 'footer', 'main_product'])
+
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const { theme } = await getThemeState()
+  const sections = (theme.editorTemplates?.Product || []).filter((s: any) => s && !PRODUCT_ZONE_EXCLUDE.has(s.type))
   const product = await db.product.findUnique({
     where: { slug },
     include: {
@@ -97,7 +107,11 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       })
     : []
   const currentUser = await getCurrentUser()
-  const [related, [ownStats], purchase, existingReview] = await Promise.all([
+  // Only queried when the merchant's appended content zone actually contains
+  // a collection_grid/collection_carousel section -- the two default sections
+  // there (product_recommendations, newsletter) never need it.
+  const needsCollections = sections.some((s: any) => s.type === 'collection_grid' || s.type === 'collection_carousel')
+  const [related, [ownStats], purchase, existingReview, zoneCollections] = await Promise.all([
     withProductStats(relatedRaw),
     getProductStats([product.id]).then(stats => [stats[product.id]]),
     currentUser
@@ -107,6 +121,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         })
       : null,
     currentUser ? db.review.findFirst({ where: { productId: product.id, userId: currentUser.id }, select: { id: true } }) : null,
+    needsCollections ? db.collection.findMany({ where: { isActive: true }, take: 12, orderBy: { sortOrder: 'asc' } }) : Promise.resolve([]),
   ])
   const reviewEligibility: 'guest' | 'not_purchased' | 'already_reviewed' | 'can_review' = !currentUser
     ? 'guest'
@@ -221,6 +236,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         trackInventory={product.trackInventory}
         continueSellingWhenOutOfStock={product.continueSellingWhenOutOfStock}
         reviewEligibility={reviewEligibility}
+        sections={sections}
+        collections={zoneCollections}
       />
       <Footer theme={theme} />
     </>

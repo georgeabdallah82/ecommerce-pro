@@ -18,6 +18,14 @@ function effectivePriceCents(p:{basePrice:number;variants:{price:number|null}[]}
   return p.variants.length?Math.min(...p.variants.map(v=>v.price??p.basePrice)):p.basePrice
 }
 
+// theme.editorTemplates.Collection is shared between /shop and
+// /collections/[slug] (components/aliexpress-collection-detail.tsx), matching
+// how their "Collection & shop pages" settings are already unified under one
+// Theme tab category. main_collection_banner/main_collection_grid are
+// structural placeholders for the untouched core rendered above, not real
+// content here.
+const COLLECTION_ZONE_EXCLUDE=new Set(['header','announcement','footer','main_collection_banner','main_collection_grid'])
+
 export default async function Shop({searchParams}:{searchParams:Promise<{q?:string;collection?:string;min?:string;max?:string;sort?:string}>}){
   const sp=await searchParams
   const q=sp.q?.trim();const min=Number(sp.min);const max=Number(sp.max);const sort=sp.sort||'newest'
@@ -37,5 +45,6 @@ export default async function Shop({searchParams}:{searchParams:Promise<{q?:stri
     :sort==='price_desc'?scoped.sort((a,b)=>b.effectivePrice-a.effectivePrice)
     :scoped.sort((a,b)=>new Date(b.createdAt).getTime()-new Date(a.createdAt).getTime())
   const products=await withProductStats(scoped)
-  return <><AliExpressShop theme={theme} products={products} collections={collections} query={sp}/><Footer theme={theme}/></>
+  const sections=(theme.editorTemplates?.Collection||[]).filter((s:any)=>s&&!COLLECTION_ZONE_EXCLUDE.has(s.type))
+  return <><AliExpressShop theme={theme} products={products} collections={collections} query={sp} sections={sections}/><Footer theme={theme}/></>
 }

@@ -3,12 +3,12 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Search } from 'lucide-react'
-import { ProductCard, QuickView } from '@/components/storefront-sections'
+import StorefrontSections, { ProductCard, QuickView } from '@/components/storefront-sections'
 import { useWishlist } from '@/components/use-wishlist'
 
 type AnyMap = Record<string, any>
 
-export default function AliExpressShop({ theme, products, collections, query }: { theme: AnyMap; products: AnyMap[]; collections: AnyMap[]; query: { q?: string; collection?: string; min?: string; max?: string; sort?: string } }) {
+export default function AliExpressShop({ theme, products, collections, query, sections = [] }: { theme: AnyMap; products: AnyMap[]; collections: AnyMap[]; query: { q?: string; collection?: string; min?: string; max?: string; sort?: string }; sections?: AnyMap[] }) {
   const { wishlist, toggleWish } = useWishlist()
   const [quickProduct, setQuickProduct] = useState<AnyMap | null>(null)
   const sort = query.sort || 'newest'
@@ -85,6 +85,16 @@ export default function AliExpressShop({ theme, products, collections, query }: 
           )}
         </main>
       </div>
+
+      {/* Merchant-addable content appended below the fixed shop layout above --
+          see the matching comment in components/aliexpress-product.tsx for
+          the pattern this follows. Shared with /collections/[slug]
+          (components/aliexpress-collection-detail.tsx), same as their
+          settings already are under the Theme tab's "Collection & shop
+          pages" category. Reuses this page's own already-fetched
+          products/collections, so a product_grid or collection_grid section
+          added here needs no extra data fetching of its own. */}
+      {sections.length > 0 && <StorefrontSections theme={theme} sections={sections} products={products} collections={collections} />}
 
       {quickProduct && <QuickView product={quickProduct} theme={theme} onClose={() => setQuickProduct(null)} />}
     </div>

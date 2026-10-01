@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { Check, ChevronDown, ChevronRight, Heart, Minus, Plus, Share2, ShoppingBag, Star } from 'lucide-react'
 import { useCart } from '@/components/cart-provider'
 import { useWishlist } from '@/components/use-wishlist'
-import { ProductCard, QuickView, StarRow, StoreImage, formatSold, img, money } from '@/components/storefront-sections'
+import StorefrontSections, { ProductCard, QuickView, StarRow, StoreImage, formatSold, img, money } from '@/components/storefront-sections'
 
 type AnyMap = Record<string, any>
 
@@ -62,7 +62,7 @@ function ReviewForm({ productId }: { productId: string }) {
   )
 }
 
-export default function AliExpressProduct({ theme, product, related, variantAvailability, productAvailable, trackInventory, continueSellingWhenOutOfStock, reviewEligibility }: { theme: AnyMap; product: AnyMap; related: AnyMap[]; variantAvailability: Array<{ name: string; sku: string; available: number }>; productAvailable: number; trackInventory: boolean; continueSellingWhenOutOfStock: boolean; reviewEligibility: ReviewEligibility }) {
+export default function AliExpressProduct({ theme, product, related, variantAvailability, productAvailable, trackInventory, continueSellingWhenOutOfStock, reviewEligibility, sections = [], collections = [] }: { theme: AnyMap; product: AnyMap; related: AnyMap[]; variantAvailability: Array<{ name: string; sku: string; available: number }>; productAvailable: number; trackInventory: boolean; continueSellingWhenOutOfStock: boolean; reviewEligibility: ReviewEligibility; sections?: AnyMap[]; collections?: AnyMap[] }) {
   const { addItem } = useCart()
   const { wishlist, toggleWish } = useWishlist()
   const router = useRouter()
@@ -302,6 +302,16 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
           </div>
         </div>
       )}
+
+      {/* Merchant-addable content appended below the fixed product layout above --
+          the same generic section engine every other admin-editable content
+          area uses (components/storefront-sections.tsx), reading
+          theme.editorTemplates.Product with the header/announcement/footer/
+          main_product placeholder rows filtered out (see app/product/[slug]/
+          page.tsx). Everything above this point is the untouched, existing
+          product page -- inventory, variants, reviews, buy-now/checkout --
+          none of it is affected by what a merchant adds here. */}
+      {sections.length > 0 && <StorefrontSections theme={theme} sections={sections} products={related} collections={collections} />}
 
       {quickProduct && <QuickView product={quickProduct} theme={theme} onClose={() => setQuickProduct(null)} />}
     </div>

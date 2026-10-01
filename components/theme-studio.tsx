@@ -2,12 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
+  ArrowDown,
   ArrowLeft,
+  ArrowUp,
   AtSign,
   BadgeCheck,
   Check,
   Columns3,
   Compass,
+  Copy,
   FolderOpen,
   GalleryHorizontal,
   GalleryHorizontalEnd,
@@ -78,24 +81,30 @@ const PAGES = ['Home page', 'Products', 'Product', 'Collections', 'Collection', 
 // reads `sections` at all, so editing them here was pure decoration with zero
 // effect on the live site. Header and Announcement are the other exception --
 // they're read globally, independent of which page you're viewing.
+// app/page.tsx renders the Home page's full sections list through the same
+// generic StorefrontSections engine used everywhere else (components/
+// storefront-sections.tsx) -- real position, any of these ~30 types, any
+// number of them. hero/category_strip/flash_deals/collection_grid/
+// new_arrivals/best_sellers are the only ones that carry AliExpress-specific
+// styling of their own; every other type (image_with_text, testimonials,
+// promo_grid, etc.) is just as genuinely live here as any of those six.
 const HOME_LIVE_TYPES = ['hero', 'category_strip', 'flash_deals', 'collection_grid', 'new_arrivals', 'best_sellers']
 const HOME_ALLOWED_TYPES = ['header', 'announcement', ...HOME_LIVE_TYPES]
-// Drops any section type this editor may have accumulated before the live-only
-// restriction below existed (e.g. Featured product, Promo grid, Testimonials)
-// -- those rows never affected the live homepage, only this editor's own
-// preview, so silently dropping them on load cleans up old data without a
-// migration and without losing anything a visitor could ever have seen.
-// Also backfills any of the six live types with no stored row at all: several
-// of them (category_strip, flash_deals, new_arrivals, best_sellers) render on
-// the live homepage purely from their own data existing (collections,
-// discounted/new/best-selling products) even with no section object ever
-// saved for them, so without this they'd be live on the site but permanently
-// missing -- and therefore un-toggleable and un-configurable -- from this list.
+// Four of the six (category_strip/flash_deals/new_arrivals/best_sellers)
+// render on the live homepage purely from their own data existing
+// (collections, discounted/new/best-selling products), with no section
+// object required at all -- so without backfilling a default row for
+// whichever of the eight "always there" types is missing from stored data,
+// they'd be live on the site but permanently missing, and therefore
+// un-toggleable and un-configurable, from this list. This only ever adds
+// missing rows; it never removes one, unlike an earlier version of this
+// function that also dropped any type outside this set -- every type is now
+// genuinely renderable here, so there's nothing left to drop.
 const sanitizeHomeSections = (list: Section[]) => {
-  const kept = list.filter(section => HOME_ALLOWED_TYPES.includes(section.type))
-  const present = new Set(kept.map(section => section.type))
-  for (const type of HOME_ALLOWED_TYPES) if (!present.has(type)) kept.push(sectionDefaults(type))
-  return kept
+  const present = new Set(list.map(section => section.type))
+  const backfilled = [...list]
+  for (const type of HOME_ALLOWED_TYPES) if (!present.has(type)) backfilled.push(sectionDefaults(type))
+  return backfilled
 }
 const META: Record<string, string> = {
   announcement: 'Announcement bar',
@@ -326,6 +335,7 @@ export default function ThemeStudio({ initial }: Props) {
   const [message, setMessage] = useState('')
   const [products, setProducts] = useState<any[]>([])
   const [collections, setCollections] = useState<any[]>([])
+  const [dragId, setDragId] = useState<string | null>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   // A counter rather than a boolean: the iframe can legitimately send a second
   // 'ready' (e.g. a dev-mode reload) after the first handshake already completed,
@@ -339,6 +349,7 @@ export default function ThemeStudio({ initial }: Props) {
   const [versionsError, setVersionsError] = useState('')
   const [restoringId, setRestoringId] = useState<string | null>(null)
   const [confirmState, setConfirmState] = useState<{ message: string; onConfirm: () => void } | null>(null)
+  const [dragOverId, setDragOverId] = useState<string | null>(null)
   const confirmAction = (message: string, onConfirm: () => void) => setConfirmState({ message, onConfirm })
   const [hasDraft, setHasDraft] = useState(initial.draft)
   const [publishing, setPublishing] = useState(false)
@@ -459,6 +470,34 @@ export default function ThemeStudio({ initial }: Props) {
       setSelectedId(nextId)
       setDrawer(false)
     })
+  }
+  const duplicateSection = () => {
+    if (!selected) return
+    const copy = clone(selected)
+    copy.id = makeId(selected.type)
+    const list = [...current]
+    list.splice(selectedIndex + 1, 0, copy)
+    commit({ ...templates, [page]: list })
+    setSelectedId(copy.id)
+  }
+  const moveSection = (delta: number) => {
+    if (selectedIndex < 0) return
+    const nextIndex = selectedIndex + delta
+    if (nextIndex < 0 || nextIndex >= current.length) return
+    const list = [...current]
+    ;[list[selectedIndex], list[nextIndex]] = [list[nextIndex], list[selectedIndex]]
+    commit({ ...templates, [page]: list })
+  }
+  const dropSection = (targetId: string) => {
+    if (!dragId || dragId === targetId) return
+    const from = current.findIndex(section => section.id === dragId)
+    const to = current.findIndex(section => section.id === targetId)
+    if (from < 0 || to < 0) return
+    const list = [...current]
+    const item = list.splice(from, 1)[0]
+    list.splice(to, 0, item)
+    commit({ ...templates, [page]: list })
+    setDragId(null)
   }
   const undo = () => {
     const snapshot = history.at(-1)
@@ -628,15 +667,22 @@ export default function ThemeStudio({ initial }: Props) {
                 <button className={styles.iconBtn} onClick={() => setPicker(true)} aria-label="Add section"><Plus size={15} /></button>
               </div>
               <div className={styles.legacyNotice}>
-                Every section below is live on your homepage. Header and Announcement apply across your whole site, not just this page. Their on-page position is fixed (Image banner, then Category strip, Flash deals, Collection list, New arrivals, Best sellers) -- dragging to reorder them here doesn&rsquo;t move them on the page, but enabling, disabling, and editing their content does apply live. Product page, Collection &amp; shop pages, Cart and Footer settings are edited under the Theme tab instead.
+                Every section below is live on your homepage, in this order -- drag to reorder, or use Add section to insert anything from banners to testimonials. Header and Announcement apply across your whole site, not just this page. Product page, Collection &amp; shop pages, Cart and Footer settings are edited under the Theme tab instead.
               </div>
               <div className={styles.rows}>
                 {current.map(section => (
                   <div
                     key={section.id}
-                    className={`${styles.row} ${selectedId === section.id && drawerMode === 'section' ? styles.active : ''}`}
+                    draggable
+                    onDragStart={() => setDragId(section.id)}
+                    onDragOver={event => { event.preventDefault(); if (dragId && dragId !== section.id) setDragOverId(section.id) }}
+                    onDragLeave={() => setDragOverId(prev => (prev === section.id ? null : prev))}
+                    onDrop={() => { dropSection(section.id); setDragOverId(null) }}
+                    onDragEnd={() => { setDragId(null); setDragOverId(null) }}
+                    className={`${styles.row} ${selectedId === section.id && drawerMode === 'section' ? styles.active : ''} ${dragOverId === section.id && dragId !== section.id ? styles.dropTarget : ''}`}
                   >
                     <button className={styles.rowMain} onClick={() => { setSelectedId(section.id); setDrawerMode('section'); setDrawer(true); setDrawerTab('content') }}>
+                      <GripVertical size={13} className={styles.rowGrip} />
                       {(() => { const Icon = SECTION_ICONS[section.type] || LayoutGrid; return <Icon size={15} className={styles.rowIcon} /> })()}
                       <span>{META[section.type] || section.type.replaceAll('_', ' ')}</span>
                       <small className={styles.liveTag}>LIVE</small>
@@ -725,6 +771,9 @@ export default function ThemeStudio({ initial }: Props) {
                 <strong>{META[selected.type] || selected.type}</strong>
               </div>
               <div className={styles.drawerHeadActions}>
+                <button className={styles.iconBtn} onClick={() => moveSection(-1)} disabled={selectedIndex <= 0} aria-label="Move up"><ArrowUp size={13} /></button>
+                <button className={styles.iconBtn} onClick={() => moveSection(1)} disabled={selectedIndex < 0 || selectedIndex >= current.length - 1} aria-label="Move down"><ArrowDown size={13} /></button>
+                <button className={styles.iconBtn} onClick={duplicateSection} aria-label="Duplicate"><Copy size={13} /></button>
                 <button className={styles.iconBtn} onClick={removeSection} aria-label="Delete"><Trash2 size={13} /></button>
                 <button className={styles.iconBtn} onClick={() => setDrawer(false)} aria-label="Close"><X size={15} /></button>
               </div>
@@ -792,7 +841,7 @@ export default function ThemeStudio({ initial }: Props) {
             />
             {(() => {
               const results = Object.entries(META)
-                .filter(([key]) => HOME_LIVE_TYPES.includes(key))
+                .filter(([key]) => !['announcement', 'header'].includes(key))
                 .filter(([, label]) => label.toLowerCase().includes(pickerQuery.trim().toLowerCase()))
               if (!results.length) return <div className={styles.pickerEmpty}>No sections match &ldquo;{pickerQuery}&rdquo;.</div>
               return (

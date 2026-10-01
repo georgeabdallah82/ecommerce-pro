@@ -9,9 +9,15 @@ import AliExpressCollectionDetail from '@/components/aliexpress-collection-detai
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
+// Shared with /shop (app/shop/page.tsx) -- see that file's own comment on
+// theme.editorTemplates.Collection and why these types are excluded.
+const COLLECTION_ZONE_EXCLUDE = new Set(['header', 'announcement', 'footer', 'main_collection_banner', 'main_collection_grid'])
+
 export default async function CollectionPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const { theme } = await getThemeState()
+  const sections = (theme.editorTemplates?.Collection || []).filter((s: any) => s && !COLLECTION_ZONE_EXCLUDE.has(s.type))
+  const needsCollections = sections.some((s: any) => s.type === 'collection_grid' || s.type === 'collection_carousel')
   const unpublishedIds = await getUnpublishedProductIds()
   const collection = await db.collection.findUnique({
     where: { slug },
@@ -31,10 +37,13 @@ export default async function CollectionPage({ params }: { params: Promise<{ slu
   // products; without this, a collection tile links straight to a 404 (or a checkout rejection
   // if it somehow reaches the cart) that those other pages never expose customers to.
   const activeItems = collection.products.filter(x => x.product.status === 'ACTIVE')
-  const products = await withProductStats(activeItems.map(x => x.product))
+  const [products, zoneCollections] = await Promise.all([
+    withProductStats(activeItems.map(x => x.product)),
+    needsCollections ? db.collection.findMany({ where: { isActive: true }, take: 12, orderBy: { sortOrder: 'asc' } }) : Promise.resolve([]),
+  ])
   return (
     <>
-      <AliExpressCollectionDetail theme={theme} collection={collection} products={products} />
+      <AliExpressCollectionDetail theme={theme} collection={collection} products={products} sections={sections} zoneCollections={zoneCollections} />
       <Footer theme={theme} />
     </>
   )
