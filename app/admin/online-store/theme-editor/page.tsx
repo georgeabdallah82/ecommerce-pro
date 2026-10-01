@@ -6,7 +6,8 @@ import ThemeStudio from '@/components/theme-studio'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-export default async function ThemeEditorPage() {
+export default async function ThemeEditorPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const { page: openPage } = await searchParams
   await requirePermission('content.view')
   const state = await getThemeEditorState()
   // Rows from the retired admin "Content" panel, handed to the studio once so it can turn
@@ -22,6 +23,7 @@ export default async function ThemeEditorPage() {
         navigation: JSON.parse(JSON.stringify(state.navigation)),
         draft: state.draft,
         legacyBlocks: JSON.parse(JSON.stringify(legacyBlocks)),
+        openPage: typeof openPage === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(openPage) ? openPage : undefined,
       }}
     />
   )

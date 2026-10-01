@@ -64,6 +64,7 @@ import SectionInspector, {
 import ThemeInspectorStyles from '@/components/theme-inspector-styles'
 import { FONT_OPTIONS } from '@/lib/font-options'
 import { mergeLegacyStrips, type LegacyBlock } from '@/lib/home-strips'
+import { isPageTemplateKey, pageIdFromKey, pageTemplateKey } from '@/lib/custom-pages'
 import styles from './theme-studio.module.css'
 
 // Deliberately not under /admin -- see app/theme-editor-preview/page.tsx's top comment.
@@ -71,8 +72,9 @@ const PREVIEW_PATH = '/theme-editor-preview'
 
 type AnyMap = Record<string, any>
 type Section = { id: string; type: string; enabled?: boolean; settings?: AnyMap; blocks?: AnyMap[] }
+type PageRow = { id: string; title: string; handle: string; bodyHtml: string | null; status: string }
 type Snapshot = { theme: AnyMap; templates: Record<string, Section[]>; page: string; selectedId: string }
-type Props = { initial: { theme: AnyMap; sections: Section[]; navigation: any[]; draft: boolean; legacyBlocks?: LegacyBlock[] } }
+type Props = { initial: { theme: AnyMap; sections: Section[]; navigation: any[]; draft: boolean; legacyBlocks?: LegacyBlock[]; openPage?: string } }
 
 // The four page templates the editor manages. Home is a full section builder;
 // the other three append a merchant-editable content zone below that page's own
@@ -347,6 +349,8 @@ export default function ThemeStudio({ initial }: Props) {
     const stored = initial.theme?.editorTemplates || {}
     const base = clone(fallback)
     for (const key of PAGES) if (Array.isArray(stored[key]) && stored[key].length) base[key] = clone(stored[key])
+    // One template per custom page (Online Store > Pages) that has been designed here.
+    for (const key of Object.keys(stored)) if (isPageTemplateKey(key) && Array.isArray(stored[key])) base[key] = clone(stored[key])
     base['Home page'] = sanitizeHomeSections(base['Home page'])
     if (!base['Home page'].length) base['Home page'] = clone(fallback['Home page'])
     let migrated = false
@@ -363,7 +367,11 @@ export default function ThemeStudio({ initial }: Props) {
     return next
   })
   const [templates, setTemplates] = useState<Record<string, Section[]>>(() => initialState.templates)
-  const [page, setPage] = useState('Home page')
+  const [page, setPage] = useState(() => (initial.openPage ? pageTemplateKey(initial.openPage) : 'Home page'))
+  const [pages, setPages] = useState<PageRow[]>([])
+  const [pagesTab, setPagesTab] = useState(() => Boolean(initial.openPage))
+  const [newPageTitle, setNewPageTitle] = useState<string | null>(null)
+  const [pageBusy, setPageBusy] = useState(false)
   const [selectedId, setSelectedId] = useState('')
   const [device, setDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
   const [sideTab, setSideTab] = useState<'sections' | 'theme' | 'history'>('sections')
@@ -402,6 +410,10 @@ export default function ThemeStudio({ initial }: Props) {
   const [publishError, setPublishError] = useState('')
 
   const isHome = page === 'Home page'
+  const isCustomPage = isPageTemplateKey(page)
+  const onPagesTab = isCustomPage || pagesTab
+  const activePage = isCustomPage ? pages.find(row => row.id === pageIdFromKey(page)) || null : null
+  const pageLabel = isCustomPage ? activePage?.title || 'Page' : PAGE_TABS.find(tab => tab.key === page)?.label || page
   const fullPage = templates[page] || []
   // On zone pages the list the editor works with is only the merchant's own
   // content; the structural placeholders are held aside and re-attached on every
@@ -419,6 +431,10 @@ export default function ThemeStudio({ initial }: Props) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current, selectedId])
+
+  useEffect(() => {
+    fetch('/api/admin/pages', { cache: 'no-store' }).then(r => (r.ok ? r.json() : [])).then(data => setPages(rows(data))).catch(() => {})
+  }, [])
 
   useEffect(() => {
     Promise.all([
@@ -470,6 +486,7 @@ export default function ThemeStudio({ initial }: Props) {
       source: 'theme-editor',
       type: 'state',
       page,
+      pageInfo: activePage ? { title: activePage.title, bodyHtml: activePage.bodyHtml } : null,
       theme,
       sections: current,
       navigation: initial.navigation,
@@ -477,7 +494,7 @@ export default function ThemeStudio({ initial }: Props) {
       collections,
       selectedId,
     }, window.location.origin)
-  }, [previewReadyToken, page, theme, current, initial.navigation, products, collections, selectedId])
+  }, [previewReadyToken, page, activePage, theme, current, initial.navigation, products, collections, selectedId])
 
   const commit = (nextTemplates: Record<string, Section[]>, nextTheme = theme) => {
     setHistory(history => [...history, { theme: clone(theme), templates: clone(templates), page, selectedId }].slice(-50))
@@ -583,9 +600,44 @@ export default function ThemeStudio({ initial }: Props) {
   }
   const switchPage = (key: string) => {
     if (key === page) return
+    setPagesTab(isPageTemplateKey(key))
     setPage(key)
     setSelectedId('')
     if (drawerMode === 'section') setDrawer(false)
+  }
+  const openPagesTab = () => {
+    setPagesTab(true)
+    const first = isCustomPage ? null : pages[0]
+    if (first) switchPage(pageTemplateKey(first.id))
+  }
+  const createPage = async () => {
+    const title = (newPageTitle || '').trim()
+    if (!title || pageBusy) return
+    setPageBusy(true)
+    try {
+      const response = await fetch('/api/admin/pages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title, status: 'DRAFT' }) })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || 'Unable to create page')
+      setPages(list => [data.page, ...list])
+      setNewPageTitle(null)
+      switchPage(pageTemplateKey(data.page.id))
+      setMessage(`Page created as a draft. Build it below; make it visible when it's ready.`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Unable to create page')
+    } finally { setPageBusy(false) }
+  }
+  const setPageStatus = async (status: 'PUBLISHED' | 'DRAFT') => {
+    if (!activePage || pageBusy) return
+    setPageBusy(true)
+    try {
+      const response = await fetch('/api/admin/pages', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: activePage.id, status }) })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || 'Unable to update page')
+      setPages(list => list.map(row => (row.id === activePage.id ? { ...row, status: data.page?.status || status } : row)))
+      setMessage(status === 'PUBLISHED' ? 'Page is visible to visitors (publish your theme to show its sections).' : 'Page hidden from visitors.')
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Unable to update page')
+    } finally { setPageBusy(false) }
   }
   const openCategory = (key: string) => {
     setActiveCategoryKey(key)
@@ -746,7 +798,7 @@ export default function ThemeStudio({ initial }: Props) {
           </a>
           <div>
             <div className={styles.title}>Theme editor</div>
-            <div className={styles.sub}>{PAGE_TABS.find(tab => tab.key === page)?.label || page}</div>
+            <div className={styles.sub}>{pageLabel}</div>
           </div>
         </div>
         <div className={styles.topRight}>
@@ -785,12 +837,37 @@ export default function ThemeStudio({ initial }: Props) {
             <>
               <div className={styles.pageTabs} role="tablist" aria-label="Page template">
                 {PAGE_TABS.map(tab => (
-                  <button key={tab.key} role="tab" aria-selected={page === tab.key} className={page === tab.key ? styles.active : ''} onClick={() => switchPage(tab.key)}>{tab.label}</button>
+                  <button key={tab.key} role="tab" aria-selected={!onPagesTab && page === tab.key} className={!onPagesTab && page === tab.key ? styles.active : ''} onClick={() => switchPage(tab.key)}>{tab.label}</button>
                 ))}
+                <button role="tab" aria-selected={onPagesTab} className={onPagesTab ? styles.active : ''} onClick={openPagesTab}>Pages</button>
               </div>
+              {onPagesTab && (
+                <div className={styles.pagePicker}>
+                  <div className={styles.pagePickerRow}>
+                    <select value={isCustomPage ? page : ''} onChange={event => event.target.value && switchPage(event.target.value)} aria-label="Page to design" disabled={!pages.length}>
+                      {!isCustomPage && <option value="">{pages.length ? 'Choose a page…' : 'No pages yet'}</option>}
+                      {pages.map(row => <option key={row.id} value={pageTemplateKey(row.id)}>{row.title}{row.status === 'PUBLISHED' ? '' : ' (draft)'}</option>)}
+                    </select>
+                    <button className={styles.btn} onClick={() => setNewPageTitle(newPageTitle === null ? '' : null)}><Plus size={13} />New page</button>
+                  </div>
+                  {newPageTitle !== null && (
+                    <div className={styles.pagePickerRow}>
+                      <input autoFocus value={newPageTitle} onChange={event => setNewPageTitle(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') void createPage() }} placeholder="Page name, e.g. Summer sale" maxLength={120} aria-label="New page name" />
+                      <button className={`${styles.btn} ${styles.btnPrimary}`} disabled={!newPageTitle.trim() || pageBusy} onClick={() => void createPage()}>Create</button>
+                    </div>
+                  )}
+                  {activePage && (
+                    <div className={styles.pagePickerRow}>
+                      <span className={`${styles.pageStatus} ${activePage.status === 'PUBLISHED' ? styles.pageStatusLive : ''}`}>{activePage.status === 'PUBLISHED' ? 'Visible' : 'Draft'}</span>
+                      <button className={styles.btn} disabled={pageBusy} onClick={() => void setPageStatus(activePage.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED')}>{activePage.status === 'PUBLISHED' ? 'Hide page' : 'Make visible'}</button>
+                      {activePage.status === 'PUBLISHED' && <a className={styles.pageLink} href={`/${activePage.handle}`} target="_blank" rel="noreferrer">View</a>}
+                    </div>
+                  )}
+                </div>
+              )}
               <div className={styles.sideSectionsHead}>
                 <div>
-                  <strong>{isHome ? 'Homepage sections' : PAGE_ZONE_COPY[page]?.title}</strong>
+                  <strong>{isHome ? 'Homepage sections' : isCustomPage ? (activePage?.title || 'Page') : onPagesTab ? 'Pages' : PAGE_ZONE_COPY[page]?.title}</strong>
                   <div className={styles.sideSectionsCount}>{current.filter(section => section.enabled !== false).length} visible sections</div>
                 </div>
                 <button className={styles.iconBtn} onClick={() => setPicker(true)} aria-label="Add section"><Plus size={15} /></button>
@@ -798,11 +875,14 @@ export default function ThemeStudio({ initial }: Props) {
               <div className={styles.legacyNotice}>
                 {isHome
                   ? 'Everything under Page content is live on your homepage, in this order. Header and Footer apply across the whole site.'
-                  : `${PAGE_ZONE_COPY[page]?.body} The page's own content -- ${page === 'Product' ? 'gallery, variants, add to cart, reviews' : page === 'Collection' ? 'filters, sorting and the product grid' : 'items, coupon, order summary and checkout'} -- is built in and always stays above it.`}
-                {' '}Page-level options live under the Theme tab.
+                  : onPagesTab
+                    ? (isCustomPage
+                      ? `Build this page from sections -- banners, product lists, collection lists, FAQs and more. ${activePage && activePage.status !== 'PUBLISHED' ? 'It is a draft: visitors cannot see it until you click Make visible.' : 'Changes go live when you publish.'}`
+                      : 'Pick a page above, or create a new one, then build it from the same sections as your homepage.')
+                    : <>{`${PAGE_ZONE_COPY[page]?.body} The page's own content -- ${page === 'Product' ? 'gallery, variants, add to cart, reviews' : page === 'Collection' ? 'filters, sorting and the product grid' : 'items, coupon, order summary and checkout'} -- is built in and always stays above it.`}{' '}Page-level options live under the Theme tab.</>}
               </div>
               <div className={styles.rows}>
-                {(() => {
+                {onPagesTab && !isCustomPage ? <div className={styles.emptyZone}>{pages.length ? 'Choose a page above to start designing it.' : 'You have no pages yet. Create one above, for example “Summer sale”, then add banners, products and collections to it.'}</div> : (() => {
                   const renderRow = (section: Section, movable: boolean) => (
                     <div
                       key={section.id}
@@ -834,7 +914,7 @@ export default function ThemeStudio({ initial }: Props) {
                         {top.map(section => renderRow(section, false))}
                       </>}
                       {isHome && <div className={styles.groupLabel}><span>Page content</span><small>Drag to reorder</small></div>}
-                      {!content.length && <div className={styles.emptyZone}>{isHome ? 'No sections yet.' : 'Nothing added yet -- this page shows only its built-in content.'} Use Add section to put banners, products, testimonials, FAQs and more {isHome ? 'on your homepage' : 'below it'}.</div>}
+                      {!content.length && <div className={styles.emptyZone}>{isHome ? 'No sections yet.' : isCustomPage ? 'This page is empty.' : 'Nothing added yet -- this page shows only its built-in content.'} Use Add section to put banners, products, testimonials, FAQs and more {isHome ? 'on your homepage' : isCustomPage ? 'on this page' : 'below it'}.</div>}
                       {content.map(section => renderRow(section, true))}
                       <button className={styles.add} onClick={() => setPicker(true)}><Plus size={14} />Add section</button>
                       {isHome && footer.length > 0 && <>
@@ -901,7 +981,7 @@ export default function ThemeStudio({ initial }: Props) {
 
         <main className={styles.canvas}>
           <div className={styles.canvasBar}>
-            <strong>{PAGE_TABS.find(tab => tab.key === page)?.label || page}</strong>
+            <strong>{pageLabel}</strong>
             <span className={styles.canvasBarStatus}>{dirty ? 'Live preview · unsaved changes' : 'Live preview'}</span>
           </div>
           <div className={styles.preview}>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Check, ExternalLink, FileText, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react'
+import { Check, ExternalLink, FileText, LayoutTemplate, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react'
 import ui from './admin-ui.module.css'
 
 type PageRow = { id: string; title: string; handle: string; bodyHtml: string | null; status: string; seoTitle: string | null; seoDescription: string | null; updatedAt: string }
@@ -85,7 +85,7 @@ export default function PagesAdmin({ initial }: { initial: PageRow[] }) {
         <td><strong>{row.title}</strong></td>
         <td><code>/{row.handle}</code></td>
         <td><span className={`${ui.statusPill} ${row.status === 'PUBLISHED' ? ui.statusPillSuccess : ui.statusPillWarning}`}>{row.status === 'PUBLISHED' ? <><Check size={13}/> Published</> : 'Draft'}</span></td>
-        <td><div className="inline">{row.status === 'PUBLISHED' && <a className={ui.iconBtn} title="View page" href={`/${row.handle}`} target="_blank" rel="noreferrer"><ExternalLink size={15}/></a>}<button className={ui.iconBtn} title="Edit page" onClick={() => openEdit(row)}><Pencil size={15}/></button><button className={ui.iconBtn} title="Delete page" disabled={busy === row.id} onClick={() => remove(row)}><Trash2 size={15}/></button></div></td>
+        <td><div className="inline">{row.status === 'PUBLISHED' && <a className={ui.iconBtn} title="View page" href={`/${row.handle}`} target="_blank" rel="noreferrer"><ExternalLink size={15}/></a>}<a className={ui.iconBtn} title="Design this page with sections (products, collections, banners…)" href={`/admin/online-store/theme-editor?page=${row.id}`}><LayoutTemplate size={15}/></a><button className={ui.iconBtn} title="Edit page" onClick={() => openEdit(row)}><Pencil size={15}/></button><button className={ui.iconBtn} title="Delete page" disabled={busy === row.id} onClick={() => remove(row)}><Trash2 size={15}/></button></div></td>
       </tr>)}
     </tbody></table></div>
     {!filtered.length && <div className={ui.empty}><FileText size={28}/><h3>No pages</h3><p className={ui.muted}>Add a page like About Us, FAQ, or Contact.</p></div>}

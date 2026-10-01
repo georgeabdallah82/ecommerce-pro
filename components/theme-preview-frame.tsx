@@ -5,6 +5,7 @@ import { CartProvider } from '@/components/cart-provider'
 import StoreNavFixed from '@/components/store-nav-fixed'
 import StorefrontSections from '@/components/storefront-sections'
 import { StorefrontPreviewContext } from '@/components/preview-context'
+import CustomPageView from '@/components/custom-page-view'
 import AliExpressProduct from '@/components/aliexpress-product'
 import AliExpressShop from '@/components/aliexpress-shop'
 import AliExpressCart from '@/components/aliexpress-cart'
@@ -46,6 +47,7 @@ function themeCssVars(theme: Record<string, any>): React.CSSProperties {
 type AnyMap = Record<string, any>
 type PreviewState = {
   page: string
+  pageInfo: { title: string; bodyHtml?: string | null } | null
   theme: AnyMap
   sections: AnyMap[]
   navigation: any[]
@@ -75,6 +77,7 @@ export default function ThemePreviewFrame() {
       if (!data || data.source !== 'theme-editor' || data.type !== 'state') return
       setState({
         page: typeof data.page === 'string' ? data.page : 'Home page',
+        pageInfo: data.pageInfo && typeof data.pageInfo === 'object' ? data.pageInfo : null,
         theme: data.theme,
         sections: Array.isArray(data.sections) ? data.sections : [],
         navigation: Array.isArray(data.navigation) ? data.navigation : [],
@@ -156,7 +159,9 @@ export default function ThemePreviewFrame() {
     <CartProvider>
       <StorefrontPreviewContext.Provider value={{ selectedId: state.selectedId, onSelect: select }}>
       <StoreNavFixed theme={navTheme} navigation={state.navigation} />
-      {state.page === 'Home page' ? (
+      {state.page.startsWith('Page:') ? (
+        <CustomPageView theme={state.theme} page={state.pageInfo || { title: 'Page', bodyHtml: '' }} sections={state.sections} products={state.products} collections={state.collections} />
+      ) : state.page === 'Home page' ? (
         <StorefrontSections
           theme={state.theme}
           sections={state.sections}
