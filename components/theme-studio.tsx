@@ -64,6 +64,7 @@ import SectionInspector, {
 import ThemeInspectorStyles from '@/components/theme-inspector-styles'
 import { FONT_OPTIONS } from '@/lib/font-options'
 import { mergeLegacyStrips, type LegacyBlock } from '@/lib/home-strips'
+import PageSeoPanel from '@/components/page-seo-panel'
 import { SECTION_PRESETS, type SectionPreset } from '@/lib/section-presets'
 import { isPageTemplateKey, pageIdFromKey, pageTemplateKey } from '@/lib/custom-pages'
 import styles from './theme-studio.module.css'
@@ -73,7 +74,7 @@ const PREVIEW_PATH = '/theme-editor-preview'
 
 type AnyMap = Record<string, any>
 type Section = { id: string; type: string; enabled?: boolean; settings?: AnyMap; blocks?: AnyMap[] }
-type PageRow = { id: string; title: string; handle: string; bodyHtml: string | null; status: string }
+type PageRow = { id: string; title: string; handle: string; bodyHtml: string | null; status: string; seoTitle?: string | null; seoDescription?: string | null }
 type Snapshot = { theme: AnyMap; templates: Record<string, Section[]>; page: string; selectedId: string }
 type Props = { initial: { theme: AnyMap; sections: Section[]; navigation: any[]; draft: boolean; legacyBlocks?: LegacyBlock[]; openPage?: string } }
 
@@ -887,6 +888,7 @@ export default function ThemeStudio({ initial }: Props) {
                       {activePage.status === 'PUBLISHED' && <a className={styles.pageLink} href={`/${activePage.handle}`} target="_blank" rel="noreferrer">View</a>}
                     </div>
                   )}
+                  {activePage && <PageSeoPanel page={activePage} onSaved={row => setPages(list => list.map(item => (item.id === row.id ? { ...item, ...row } : item)))} />}
                 </div>
               )}
               <div className={styles.sideSectionsHead}>
