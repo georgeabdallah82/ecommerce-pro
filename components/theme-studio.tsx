@@ -875,7 +875,7 @@ export default function ThemeStudio({ initial }: Props) {
             />
             {(() => {
               const results = Object.entries(META)
-                .filter(([key]) => (isHome ? !['announcement', 'header'].includes(key) : !ZONE_HIDDEN_TYPES.has(key)))
+                .filter(([key]) => (isHome ? !['announcement', 'header', 'main_product', 'main_collection_banner', 'main_collection_grid'].includes(key) : !ZONE_HIDDEN_TYPES.has(key)))
                 .filter(([, label]) => label.toLowerCase().includes(pickerQuery.trim().toLowerCase()))
               if (!results.length) return <div className={styles.pickerEmpty}>No sections match &ldquo;{pickerQuery}&rdquo;.</div>
               return (
