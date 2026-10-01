@@ -414,31 +414,42 @@ function CountdownSection({section,theme,preview,click,products,onQuickView,onSe
 // real homepage or (once wired up) this shared, addable-anywhere section system.
 function FlashDealsSection({section,theme,discounted,preview,click,onQuickView,onSelect,wishlist,toggleWish}:{section:AnyMap;theme:AnyMap;discounted:AnyMap[];preview?:boolean;click:(id:string,e:React.MouseEvent)=>void;onQuickView:(p:AnyMap)=>void;onSelect?:()=>void;wishlist:Record<string,boolean>;toggleWish:(id:string)=>void}){
   const s=section.settings||{}
-  const [remaining,setRemaining]=useState(0)
+  // Editable from the theme studio: show/hide, "daily" (resets at midnight, the
+  // default, so existing stores look unchanged) or a fixed end date & time.
+  const showTimer=s.showCountdown!==false
+  const fixedEnd=s.countdownMode==='date'?Date.parse(s.endDate||'')||0:0
+  const [remaining,setRemaining]=useState<number|null>(null)
   useEffect(()=>{
-    const next=new Date()
-    next.setHours(24,0,0,0)
-    const target=next.getTime()
-    setRemaining(Math.max(0,target-Date.now()))
-    const id=setInterval(()=>setRemaining(Math.max(0,target-Date.now())),1000)
+    if(!showTimer)return
+    const compute=()=>{
+      if(s.countdownMode==='date')return fixedEnd?Math.max(0,fixedEnd-Date.now()):0
+      const next=new Date();next.setHours(24,0,0,0);return Math.max(0,next.getTime()-Date.now())
+    }
+    setRemaining(compute())
+    const id=setInterval(()=>setRemaining(compute()),1000)
     return ()=>clearInterval(id)
-  },[])
+  },[showTimer,s.countdownMode,fixedEnd])
   if(!discounted.length)return null
-  const totalSec=Math.floor(remaining/1000)
-  const hh=Math.floor(totalSec/3600)
+  const totalSec=Math.floor((remaining||0)/1000)
+  const dd=Math.floor(totalSec/86400)
+  const hh=Math.floor((totalSec%86400)/3600)
   const mm=Math.floor((totalSec%3600)/60)
   const ss=totalSec%60
+  const two=(n:number)=>String(n).padStart(2,'0')
+  // A fixed-date deal that has already ended shows no timer rather than 00:00:00.
+  const timerVisible=showTimer&&remaining!==null&&!(s.countdownMode==='date'&&(!fixedEnd||remaining<=0))
   return (
     <section key={section.id} className="aliFlash" onClick={e=>click(section.id,e)}>
       <div className="aliContainer aliFlashHead">
         <div className="aliFlashTitle"><span className="aliFlashBolt">⚡</span><h2>{s.heading||'Flash Deals'}</h2></div>
-        <div className="aliFlashTimer">
-          <span>Ends in</span>
-          <strong>{String(hh).padStart(2,'0')}</strong>:
-          <strong>{String(mm).padStart(2,'0')}</strong>:
-          <strong>{String(ss).padStart(2,'0')}</strong>
-        </div>
-        <Link href="/shop" className="aliViewAll" onClick={preview?(e:React.MouseEvent)=>e.stopPropagation():undefined}>View all <ChevronRight size={15}/></Link>
+        {timerVisible&&<div className="aliFlashTimer">
+          <span>{s.countdownLabel||'Ends in'}</span>
+          {dd>0&&<><strong>{dd}d</strong>:</>}
+          <strong>{two(hh)}</strong>:
+          <strong>{two(mm)}</strong>:
+          <strong>{two(ss)}</strong>
+        </div>}
+        {s.showViewAll!==false&&<Link href="/shop" className="aliViewAll" onClick={preview?(e:React.MouseEvent)=>e.stopPropagation():undefined}>View all <ChevronRight size={15}/></Link>}
       </div>
       <div className="aliContainer aliFlashGrid">
         {discounted.slice(0,Number(s.limit)||12).map((p:any)=><ProductCard key={p.id} p={p} theme={theme} onQuickView={onQuickView} preview={preview} onSelect={onSelect} wishlist={wishlist} toggleWish={toggleWish}/>)}

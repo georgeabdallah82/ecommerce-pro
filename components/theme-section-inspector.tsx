@@ -271,7 +271,15 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
   collection_grid: () => collectionTypePanels(),
   collection_carousel: () => collectionTypePanels(),
   category_strip: () => [{ title: 'Content', fields: [range('Collections shown', 'limit', 4, 16, 12)] }],
-  flash_deals: () => homeGridPanel('Flash Deals'),
+  flash_deals: () => [
+    { title: 'Content', fields: [text('Heading', 'heading', 'Flash Deals'), range('Products shown', 'limit', 4, 20, 12), toggle('Show View all', 'showViewAll', true)] },
+    { title: 'Countdown', fields: [
+      toggle('Show countdown', 'showCountdown', true),
+      text('Timer label', 'countdownLabel', 'Ends in'),
+      select('Timer runs until', 'countdownMode', [{ value: 'daily', label: 'Midnight, every day' }, { value: 'date', label: 'A specific date & time' }], 'daily'),
+      text('End date & time', 'endDate', 'YYYY-MM-DDTHH:mm, e.g. 2026-12-31T23:59'),
+    ] },
+  ],
   new_arrivals: () => homeGridPanel('New Arrivals'),
   best_sellers: () => homeGridPanel('Best Sellers'),
   image_with_text: () => [
