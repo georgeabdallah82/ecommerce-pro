@@ -36,7 +36,7 @@ const CHECK_LINKS: Record<string, string> = {
   webhooks: '/admin/operations',
   'api-credentials': '/admin/operations',
   'abandoned-checkouts': '/admin/operations',
-  'storefront-content': '/admin/content',
+  'storefront-content': '/admin/online-store/pages',
   theme: '/admin/online-store/theme-editor',
   navigation: '/admin/online-store/navigation',
   'customer-base': '/admin/customers',

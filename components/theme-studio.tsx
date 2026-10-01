@@ -62,6 +62,7 @@ import SectionInspector, {
 import ThemeInspectorStyles from '@/components/theme-inspector-styles'
 import ThemePublishBar from '@/components/theme-publish-bar'
 import { FONT_OPTIONS } from '@/lib/font-options'
+import { mergeLegacyStrips, type LegacyBlock } from '@/lib/home-strips'
 import styles from './theme-studio.module.css'
 
 // Deliberately not under /admin -- see app/theme-editor-preview/page.tsx's top comment.
@@ -70,7 +71,7 @@ const PREVIEW_PATH = '/theme-editor-preview'
 type AnyMap = Record<string, any>
 type Section = { id: string; type: string; enabled?: boolean; settings?: AnyMap; blocks?: AnyMap[] }
 type Snapshot = { theme: AnyMap; templates: Record<string, Section[]>; page: string; selectedId: string }
-type Props = { initial: { theme: AnyMap; sections: Section[]; navigation: any[]; draft: boolean } }
+type Props = { initial: { theme: AnyMap; sections: Section[]; navigation: any[]; draft: boolean; legacyBlocks?: LegacyBlock[] } }
 
 // The four page templates the editor manages. Home is a full section builder;
 // the other three append a merchant-editable content zone below that page's own
@@ -122,6 +123,8 @@ const sanitizeHomeSections = (list: Section[]) => {
 }
 const META: Record<string, string> = {
   announcement: 'Announcement bar',
+  announcement_strip: 'Announcement strip',
+  trust_strip: 'Trust strip',
   header: 'Header',
   hero: 'Image banner',
   category_strip: 'Category strip',
@@ -155,6 +158,8 @@ const META: Record<string, string> = {
 }
 const SECTION_ICONS: Record<string, typeof ImageIcon> = {
   announcement: Megaphone,
+  announcement_strip: Megaphone,
+  trust_strip: ShieldCheck,
   header: Menu,
   hero: ImageIcon,
   category_strip: Compass,
@@ -198,6 +203,12 @@ function sectionDefaults(type: string): Section {
   if (type === 'product_grid' || type === 'product_carousel' || type === 'product_recommendations') return { id: makeId(type), type, enabled: true, settings: { ...base, heading: type === 'product_recommendations' ? 'You may also like' : 'Featured products', limit: 8, columns: 4, showViewAll: true } }
   if (type === 'featured_product') return { id: makeId(type), type, enabled: true, settings: { ...base, heading: 'Featured product', limit: 1, columns: 1, productId: '' } }
   if (type === 'collection_grid' || type === 'collection_carousel') return { id: makeId(type), type, enabled: true, settings: { ...base, heading: 'Shop by collection', limit: 8, columns: 4, collectionIds: [] } }
+  if (type === 'announcement_strip') return { id: makeId(type), type, enabled: true, settings: {}, blocks: [{ id: makeId('message'), type: 'message', settings: { text: 'Free delivery on qualifying orders.', link: '' } }] }
+  if (type === 'trust_strip') return { id: makeId(type), type, enabled: true, settings: {}, blocks: [
+    { id: makeId('trust_item'), type: 'trust_item', settings: { heading: 'Free shipping', text: 'On qualifying orders' } },
+    { id: makeId('trust_item'), type: 'trust_item', settings: { heading: 'Secure checkout', text: 'Your order is protected' } },
+    { id: makeId('trust_item'), type: 'trust_item', settings: { heading: 'Easy returns', text: 'Hassle-free, within 30 days' } },
+  ] }
   if (type === 'category_strip') return { id: makeId(type), type, enabled: true, settings: { limit: 12 } }
   if (type === 'flash_deals') return { id: makeId(type), type, enabled: true, settings: { heading: 'Flash Deals', limit: 12 } }
   if (type === 'new_arrivals') return { id: makeId(type), type, enabled: true, settings: { heading: 'New Arrivals', limit: 12 } }
@@ -321,15 +332,29 @@ const THEME_CATEGORIES: ThemeCategory[] = [
 
 export default function ThemeStudio({ initial }: Props) {
   const fallback = useMemo(() => defaultTemplates(initial.sections), [initial.sections])
-  const [theme, setTheme] = useState<AnyMap>(() => clone(initial.theme || {}))
-  const [templates, setTemplates] = useState<Record<string, Section[]>>(() => {
+  // Computed once. If this store still has the old admin "Content" announcement/trust rows
+  // (and hasn't been migrated yet), they become sections here and the theme is flagged so
+  // the live homepage stops rendering the old rows once this is saved and published.
+  const initialState = useMemo(() => {
     const stored = initial.theme?.editorTemplates || {}
     const base = clone(fallback)
     for (const key of PAGES) if (Array.isArray(stored[key]) && stored[key].length) base[key] = clone(stored[key])
     base['Home page'] = sanitizeHomeSections(base['Home page'])
     if (!base['Home page'].length) base['Home page'] = clone(fallback['Home page'])
-    return base
+    let migrated = false
+    if (!initial.theme?.legacyHomeBlocksMigrated && initial.legacyBlocks?.length) {
+      base['Home page'] = mergeLegacyStrips(base['Home page'], initial.legacyBlocks).sections
+      migrated = true
+    }
+    return { templates: base as Record<string, Section[]>, migrated }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const [theme, setTheme] = useState<AnyMap>(() => {
+    const next = clone(initial.theme || {})
+    if (initialState.migrated) next.legacyHomeBlocksMigrated = true
+    return next
   })
+  const [templates, setTemplates] = useState<Record<string, Section[]>>(() => initialState.templates)
   const [page, setPage] = useState('Home page')
   const [selectedId, setSelectedId] = useState('')
   const [device, setDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
@@ -342,9 +367,9 @@ export default function ThemeStudio({ initial }: Props) {
   const [pickerQuery, setPickerQuery] = useState('')
   const [history, setHistory] = useState<Snapshot[]>([])
   const [future, setFuture] = useState<Snapshot[]>([])
-  const [dirty, setDirty] = useState(false)
+  const [dirty, setDirty] = useState(initialState.migrated)
   const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState('')
+  const [message, setMessage] = useState(initialState.migrated ? 'Your homepage announcement bar and trust strip are now sections below. Save and publish to apply.' : '')
   const [products, setProducts] = useState<any[]>([])
   const [collections, setCollections] = useState<any[]>([])
   const [dragId, setDragId] = useState<string | null>(null)
