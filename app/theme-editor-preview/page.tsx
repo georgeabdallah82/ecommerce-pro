@@ -1,5 +1,5 @@
 import { requirePermission } from '@/lib/auth'
-import ThemePreviewFrame from '@/components/theme-preview-frame'
+import ThemePreviewLoader from '@/components/theme-preview-loader'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -25,5 +25,5 @@ export const revalidate = 0
 // render a second time alongside this frame's own (draft-theme) nav.
 export default async function ThemeEditorPreviewPage() {
   await requirePermission('content.view')
-  return <ThemePreviewFrame />
+  return <ThemePreviewLoader />
 }
