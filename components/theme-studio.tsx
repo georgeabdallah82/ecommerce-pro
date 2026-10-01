@@ -87,6 +87,7 @@ const PAGE_TABS = [
   { key: 'Product', label: 'Product' },
   { key: 'Collection', label: 'Collection & shop' },
   { key: 'Cart', label: 'Cart' },
+  { key: 'BlogPages', label: 'Blog' },
 ]
 const PAGES = PAGE_TABS.map(tab => tab.key)
 // Structural entries kept in a zone page's stored template (header/announcement
@@ -105,6 +106,14 @@ const PAGE_ZONE_COPY: Record<string, { title: string; body: string }> = {
   Product: { title: 'Product page content', body: 'Sections you add appear below the product, its reviews and recommendations on every product page.' },
   Collection: { title: 'Collection & shop content', body: 'Sections you add appear below the product listing on /shop and every collection page.' },
   Cart: { title: 'Cart page content', body: 'Sections you add appear below the cart and its recommendations.' },
+  BlogPages: { title: 'Blog content', body: 'Sections you add appear below the blog list and below every article.' },
+}
+// What each built-in page already shows, for the note that sits under the page tabs.
+const PAGE_OWN_CONTENT: Record<string, string> = {
+  Product: 'gallery, variants, add to cart, reviews',
+  Collection: 'filters, sorting and the product grid',
+  Cart: 'items, coupon, order summary and checkout',
+  BlogPages: 'the list of posts, or the article itself',
 }
 // Header and Announcement are read globally by the storefront nav, independent
 // of which page you're viewing.
@@ -259,6 +268,7 @@ function defaultTemplates(source: Section[]) {
     Product: [],
     Collection: [],
     Cart: [],
+    BlogPages: [],
   } as Record<string, Section[]>
 }
 
@@ -371,6 +381,7 @@ export default function ThemeStudio({ initial }: Props) {
   const [templates, setTemplates] = useState<Record<string, Section[]>>(() => initialState.templates)
   const [page, setPage] = useState(() => (initial.openPage ? pageTemplateKey(initial.openPage) : 'Home page'))
   const [pages, setPages] = useState<PageRow[]>([])
+  const [blogPosts, setBlogPosts] = useState<any[]>([])
   const [pagesTab, setPagesTab] = useState(() => Boolean(initial.openPage))
   const [newPageTitle, setNewPageTitle] = useState<string | null>(null)
   const [pageBusy, setPageBusy] = useState(false)
@@ -436,6 +447,11 @@ export default function ThemeStudio({ initial }: Props) {
   }, [current, selectedId])
 
   useEffect(() => {
+    // Only the published posts, newest first, as sample content for the Blog preview.
+    fetch('/api/admin/blog-posts', { cache: 'no-store' }).then(r => (r.ok ? r.json() : [])).then(data => setBlogPosts(rows(data).filter((post: any) => post.status === 'PUBLISHED').slice(0, 6))).catch(() => {})
+  }, [])
+
+  useEffect(() => {
     fetch('/api/admin/pages', { cache: 'no-store' }).then(r => (r.ok ? r.json() : [])).then(data => setPages(rows(data))).catch(() => {})
   }, [])
 
@@ -490,6 +506,7 @@ export default function ThemeStudio({ initial }: Props) {
       type: 'state',
       page,
       pageInfo: activePage ? { title: activePage.title, bodyHtml: activePage.bodyHtml } : null,
+      blogPosts: page === 'BlogPages' ? blogPosts : [],
       theme,
       sections: current,
       navigation: initial.navigation,
@@ -497,7 +514,7 @@ export default function ThemeStudio({ initial }: Props) {
       collections,
       selectedId,
     }, window.location.origin)
-  }, [previewReadyToken, page, activePage, theme, current, initial.navigation, products, collections, selectedId])
+  }, [previewReadyToken, page, activePage, blogPosts, theme, current, initial.navigation, products, collections, selectedId])
 
   const commit = (nextTemplates: Record<string, Section[]>, nextTheme = theme) => {
     setHistory(history => [...history, { theme: clone(theme), templates: clone(templates), page, selectedId }].slice(-50))
@@ -905,7 +922,7 @@ export default function ThemeStudio({ initial }: Props) {
                     ? (isCustomPage
                       ? `Build this page from sections -- banners, product lists, collection lists, FAQs and more. ${activePage && activePage.status !== 'PUBLISHED' ? 'It is a draft: visitors cannot see it until you click Make visible.' : 'Changes go live when you publish.'}`
                       : 'Pick a page above, or create a new one, then build it from the same sections as your homepage.')
-                    : <>{`${PAGE_ZONE_COPY[page]?.body} The page's own content -- ${page === 'Product' ? 'gallery, variants, add to cart, reviews' : page === 'Collection' ? 'filters, sorting and the product grid' : 'items, coupon, order summary and checkout'} -- is built in and always stays above it.`}{' '}Page-level options live under the Theme tab.</>}
+                    : <>{`${PAGE_ZONE_COPY[page]?.body} The page's own content -- ${PAGE_OWN_CONTENT[page] || 'its built-in content'} -- is built in and always stays above it.`}{' '}Page-level options live under the Theme tab.</>}
               </div>
               <div className={styles.rows}>
                 {onPagesTab && !isCustomPage ? <div className={styles.emptyZone}>{pages.length ? 'Choose a page above to start designing it.' : 'You have no pages yet. Create one above, for example “Summer sale”, then add banners, products and collections to it.'}</div> : (() => {
