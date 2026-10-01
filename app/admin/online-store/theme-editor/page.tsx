@@ -1,7 +1,7 @@
 import { requirePermission } from '@/lib/auth'
 import { getThemeEditorState } from '@/lib/theme'
 import { db } from '@/lib/prisma'
-import ThemeStudio from '@/components/theme-studio'
+import ThemeStudioLoader from '@/components/theme-studio-loader'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -16,7 +16,7 @@ export default async function ThemeEditorPage({ searchParams }: { searchParams: 
     ? []
     : await db.homepageBlock.findMany({ where: { isActive: true, type: { in: ['announcement', 'trust'] } }, orderBy: { sortOrder: 'asc' } })
   return (
-    <ThemeStudio
+    <ThemeStudioLoader
       initial={{
         theme: JSON.parse(JSON.stringify(state.theme)),
         sections: JSON.parse(JSON.stringify(state.sections)),
