@@ -45,5 +45,25 @@ export default function ThemeInspectorStyles() {
 .themeColorRow input[type=color]{width:38px;height:38px;padding:2px;border:1px solid var(--admin-border);border-radius:var(--admin-radius-sm);background:var(--admin-surface);cursor:pointer;flex:0 0 auto}
 .themeColorRow input[type=text]{flex:1}
 @media(max-width:560px){.themeInspector{padding:10px}.themeInspectorGrid{grid-template-columns:1fr}.themeInspectorPanel>div{padding:12px}}
+
+.themePicker{gap:8px}
+.themePickerHint{font-size:11px;line-height:1.45;color:var(--admin-muted)}
+.themePickerAuto{padding:10px 12px;border:1px dashed var(--admin-border);border-radius:var(--admin-radius-sm);font-size:11.5px;line-height:1.45;color:var(--admin-muted)}
+.themePickerChosen,.themePickerList{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.themePickerList{max-height:220px;overflow:auto;border:1px solid var(--admin-border-soft);border-radius:var(--admin-radius-sm);padding:4px;background:var(--admin-bg)}
+.themePickerChosen li{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--admin-border);border-radius:var(--admin-radius-sm);background:var(--admin-surface)}
+.themePickerChosen li>div,.themePickerList li button>div{flex:1;min-width:0;display:grid;gap:1px;text-align:left}
+.themePickerChosen strong,.themePickerList strong{font-size:12px;font-weight:700;color:var(--admin-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.themePickerChosen em,.themePickerList em{font-size:10.5px;font-style:normal;color:var(--admin-muted)}
+.themePickerChosen a{font-size:10.5px;color:var(--admin-accent-strong);text-decoration:underline}
+.themePickerChosen li>button{width:26px;height:26px;border:0;border-radius:6px;background:transparent;color:var(--admin-muted);cursor:pointer;display:grid;place-items:center;font-size:13px}
+.themePickerChosen li>button:hover:not(:disabled){background:var(--admin-bg);color:var(--admin-ink)}
+.themePickerChosen li>button:disabled{opacity:.3;cursor:default}
+.themePicker img,.themePickerNoImage{width:34px;height:34px;flex:0 0 34px;border-radius:7px;object-fit:cover;background:var(--admin-bg);border:1px solid var(--admin-border-soft)}
+.themePickerNoImage{display:grid;place-items:center;font-size:12px;color:var(--admin-muted)}
+.themePickerList li button{width:100%;display:flex;align-items:center;gap:8px;padding:6px 8px;border:0;border-radius:6px;background:transparent;color:var(--admin-ink);cursor:pointer;text-align:left}
+.themePickerList li button:hover{background:var(--admin-surface)}
+.themePickerEmpty{padding:8px;font-size:11.5px;color:var(--admin-muted)}
+.themePickerClear{justify-self:start;border:0;background:transparent;padding:0;font-size:11px;font-weight:700;color:var(--admin-muted);text-decoration:underline;cursor:pointer}
 `}}/>
 }

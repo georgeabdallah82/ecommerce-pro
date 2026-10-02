@@ -137,6 +137,7 @@ export type FieldSchema =
   | { kind: 'toggle'; label: string; get: (s: SettingsMap) => boolean; set: (value: boolean) => Record<string, any> }
   | { kind: 'range'; label: string; min: number; max: number; step?: number; unit?: string; get: (s: SettingsMap) => number; set: (value: number) => Record<string, any> }
   | { kind: 'color'; label: string; get: (s: SettingsMap) => string; set: (value: string) => Record<string, any> }
+  | { kind: 'picker'; label: string; source: 'products' | 'collections'; hint?: string; get: (s: SettingsMap) => string[]; set: (ids: string[]) => Record<string, any> }
   | { kind: 'blocks'; label: string; blockType: string }
 
 export type PanelSchema = { title: string; fields: Array<FieldSchema | FieldSchema[]> }
@@ -176,9 +177,12 @@ function productTypePanels(): PanelSchema[] {
       text('Eyebrow', 'eyebrow', 'SHOP / CURATED'),
       text('Heading', 'heading'),
       textarea('Subheading', 'subheading'),
-      { kind: 'select', label: 'Collection', options: ({ collections }) => [{ value: '', label: 'All products' }, ...collections.map(c => ({ value: c.slug || c.id, label: c.name }))], get: s => s.collection || '', set: value => ({ collection: value }) },
-      [range('Product limit', 'limit', 1, 48, 8), range('Columns', 'columns', 2, 6, 4)],
+      [range('Products shown (automatic)', 'limit', 1, 48, 8), range('Columns', 'columns', 2, 6, 4)],
       toggle('Show View all', 'showViewAll', true),
+    ] },
+    { title: 'Products', fields: [
+      { kind: 'select', label: 'Show products from', options: ({ collections }) => [{ value: '', label: 'All products' }, ...collections.map(c => ({ value: c.slug || c.id, label: c.name }))], get: s => s.collection || '', set: value => ({ collection: value }) },
+      { kind: 'picker', label: 'Or hand-pick products', source: 'products', hint: 'Hand-picked products show in this order and replace the choice above. The product limit applies to the automatic choice only.', get: s => (Array.isArray(s.productIds) ? s.productIds : []), set: ids => ({ productIds: ids }) },
     ] },
     commonLayoutPanel,
   ]
@@ -190,11 +194,11 @@ function collectionTypePanels(): PanelSchema[] {
       text('Eyebrow', 'eyebrow', 'COLLECTIONS'),
       text('Heading', 'heading'),
       textarea('Subheading', 'subheading'),
-      range('Collections shown', 'limit', 1, 24, 4),
+      range('Collections shown (automatic)', 'limit', 1, 24, 4),
       range('Columns', 'columns', 2, 5, 4),
     ] },
-    { title: 'Collection selection', fields: [
-      { kind: 'select', label: 'Collection', options: ({ collections }) => [{ value: '', label: 'Automatic' }, ...collections.map(c => ({ value: c.id, label: c.name }))], get: s => (Array.isArray(s.collectionIds) ? s.collectionIds[0] : '') || '', set: value => ({ collectionIds: value ? [value] : [] }) },
+    { title: 'Collections', fields: [
+      { kind: 'picker', label: 'Choose collections', source: 'collections', hint: 'Pick which collections to show and their order. Leave empty to show them automatically. A collection\'s picture is set on the collection itself (Collections in the admin).', get: s => (Array.isArray(s.collectionIds) ? s.collectionIds : []), set: ids => ({ collectionIds: ids, sourceCollection: '' }) },
     ] },
     commonLayoutPanel,
   ]
@@ -301,7 +305,9 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
   product_recommendations: () => productTypePanels(),
   collection_grid: () => collectionTypePanels(),
   collection_carousel: () => collectionTypePanels(),
-  category_strip: () => [{ title: 'Content', fields: [range('Collections shown', 'limit', 4, 16, 12)] }],
+  category_strip: () => [{ title: 'Content', fields: [range('Collections shown', 'limit', 4, 16, 12)] }, { title: 'Collections', fields: [
+    { kind: 'picker', label: 'Choose collections', source: 'collections', hint: 'Leave empty to show collections automatically.', get: s => (Array.isArray(s.collectionIds) ? s.collectionIds : []), set: ids => ({ collectionIds: ids }) },
+  ] }],
   flash_deals: () => [
     { title: 'Content', fields: [text('Heading', 'heading', 'Flash Deals'), range('Products shown', 'limit', 4, 20, 12), toggle('Show View all', 'showViewAll', true)] },
     { title: 'Countdown', fields: [
@@ -436,6 +442,74 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
   main_collection_grid: () => mainCollectionGridPanel(),
 }
 
+// Choose specific products or collections, in the order they should appear. Empty means
+// "automatic" (the section picks for itself), so existing sections keep working unchanged.
+type PickerItem = { id: string; label: string; sub?: string; image?: string; editHref?: string }
+function pickerItems(source: 'products' | 'collections', ctx: FieldCtx): PickerItem[] {
+  if (source === 'products') {
+    return ctx.products.map((p: any) => ({ id: String(p.id), label: p.name || 'Product', sub: p.sku || undefined, image: (p.images || [])[0]?.url || '', editHref: p.id ? `/admin/products/${p.id}` : undefined }))
+  }
+  return ctx.collections.map((c: any) => ({ id: String(c.id), label: c.name || 'Collection', sub: c._count?.products !== undefined ? `${c._count.products} product${c._count.products === 1 ? '' : 's'}` : undefined, image: c.imageUrl || '', editHref: c.id ? `/admin/collections/${c.id}` : undefined }))
+}
+export function ItemPicker({ label, hint, source, items, value, onChange }: { label: string; hint?: string; source: 'products' | 'collections'; items: PickerItem[]; value: string[]; onChange: (ids: string[]) => void }) {
+  const [query, setQuery] = useState('')
+  const noun = source === 'products' ? 'product' : 'collection'
+  const byId = new Map(items.map(item => [item.id, item]))
+  // Ids that no longer exist (a deleted collection) are dropped from the view; they are
+  // cleared the next time the merchant changes the selection.
+  const chosen = value.map(id => byId.get(id)).filter((item): item is PickerItem => !!item)
+  const available = items.filter(item => !value.includes(item.id) && (!query.trim() || `${item.label} ${item.sub || ''}`.toLowerCase().includes(query.trim().toLowerCase())))
+  const move = (index: number, delta: number) => {
+    const next = chosen.map(item => item.id)
+    const target = index + delta
+    if (target < 0 || target >= next.length) return
+    ;[next[index], next[target]] = [next[target], next[index]]
+    onChange(next)
+  }
+  const thumb = (item: PickerItem) => (item.image ? <img src={item.image} alt="" loading="lazy" /> : <span className="themePickerNoImage" title="No image yet">{noun === 'collection' ? '?' : ''}</span>)
+  return (
+    <div className="themeInspectorField themePicker">
+      <span>{label}</span>
+      {hint && <small className="themePickerHint">{hint}</small>}
+      {chosen.length === 0 ? (
+        <div className="themePickerAuto">Automatic: the section chooses {noun}s for you. Add some below to pick them yourself.</div>
+      ) : (
+        <ul className="themePickerChosen">
+          {chosen.map((item, index) => (
+            <li key={item.id}>
+              {thumb(item)}
+              <div><strong>{item.label}</strong>{item.sub && <em>{item.sub}</em>}{!item.image && noun === 'collection' && item.editHref && <a href={item.editHref} target="_blank" rel="noreferrer">No image: add one</a>}</div>
+              <button type="button" aria-label="Move up" disabled={index === 0} onClick={() => move(index, -1)}>↑</button>
+              <button type="button" aria-label="Move down" disabled={index === chosen.length - 1} onClick={() => move(index, 1)}>↓</button>
+              <button type="button" aria-label={`Remove ${item.label}`} onClick={() => onChange(chosen.filter(other => other.id !== item.id).map(other => other.id))}><X size={13} /></button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {chosen.length > 0 && <button type="button" className="themePickerClear" onClick={() => onChange([])}>Clear selection (back to automatic)</button>}
+      {items.length === 0 ? (
+        <div className="themePickerAuto">No {noun}s yet. Add some in the admin first.</div>
+      ) : (
+        <>
+          {items.length > 6 && <input type="search" placeholder={`Search ${noun}s…`} value={query} onChange={event => setQuery(event.target.value)} />}
+          <ul className="themePickerList">
+            {available.slice(0, 40).map(item => (
+              <li key={item.id}>
+                <button type="button" onClick={() => onChange([...chosen.map(other => other.id), item.id])}>
+                  {thumb(item)}
+                  <div><strong>{item.label}</strong>{item.sub && <em>{item.sub}</em>}</div>
+                  <Plus size={14} />
+                </button>
+              </li>
+            ))}
+            {available.length === 0 && <li className="themePickerEmpty">{value.length ? `All ${noun}s are selected.` : `No ${noun}s match.`}</li>}
+          </ul>
+        </>
+      )}
+    </div>
+  )
+}
+
 export function renderField(schema: FieldSchema, ctx: FieldCtx, set: (patch: Record<string, any>) => void): React.ReactNode {
   const { s } = ctx
   switch (schema.kind) {
@@ -455,6 +529,8 @@ export function renderField(schema: FieldSchema, ctx: FieldCtx, set: (patch: Rec
       return <Range key={schema.label} label={schema.label} min={schema.min} max={schema.max} step={schema.step} unit={schema.unit} value={schema.get(s)} onChange={value => set(schema.set(value))} />
     case 'color':
       return <ColorField key={schema.label} label={schema.label} value={schema.get(s)} onChange={value => set(schema.set(value))} />
+    case 'picker':
+      return <ItemPicker key={schema.label} label={schema.label} hint={schema.hint} source={schema.source} items={pickerItems(schema.source, ctx)} value={schema.get(s)} onChange={ids => set(schema.set(ids))} />
     case 'blocks':
       return null
   }
