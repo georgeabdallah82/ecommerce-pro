@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { CreditCard, Plus, RefreshCw, Search, Settings2, X } from 'lucide-react'
 import { money } from '@/lib/config'
 import styles from './admin-gift-cards.module.css'
@@ -72,6 +72,16 @@ export default function GiftCardsAdmin({ initial, canManage, defaultCurrency }: 
     catch (e) { setError(e instanceof Error ? e.message : 'Unable to load gift cards') }
     finally { setLoading(false) }
   }
+
+  // Live filtering: the loaded list filters instantly; a debounced server search also finds
+  // cards beyond the loaded page.
+  const searched = useRef(q.trim())
+  useEffect(() => {
+    const needle = q.trim()
+    if (needle === searched.current) return
+    const timer = setTimeout(() => { searched.current = needle; void search() }, 300)
+    return () => clearTimeout(timer)
+  }, [q]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function openCreate() {
     setCreateOpen(true); setAmount(''); setCurrency(defaultCurrency); setCode(''); setCustomerId(''); setExpiresAt(''); setNote(''); setCreateError('')
@@ -161,12 +171,11 @@ export default function GiftCardsAdmin({ initial, canManage, defaultCurrency }: 
     {(error || notice) && <div className={`${ui.alert} ${error ? ui.alertDanger : ''}`}>{error || notice}</div>}
 
     <div className={`${ui.card} ${styles.toolbar}`}>
-      <div className={styles.search}><Search size={15} /><input value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && search()} placeholder="Search by code or last 4 digits…" /></div>
+      <div className={styles.search}><Search size={15} /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search by code or last 4 digits…" /></div>
       <select className={`${ui.select} ${ui.selectCompact}`} value={status} onChange={e => setStatus(e.target.value)}>
         <option value="ALL">All statuses</option>
         {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
       </select>
-      <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={search} disabled={loading}>Search</button>
     </div>
 
     <div className={ui.card}>

@@ -1,0 +1,46 @@
+/* Push campaigns + Email subscribers. Desktop gets a two-column workspace (compose on the
+   left, live preview and audience on the right) instead of one narrow card; phones stack. */
+.workspace { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(300px, .9fr); gap: 18px; align-items: start; }
+.panel { padding: 22px; }
+.panelTitle { margin: 0 0 4px; font-size: 15px; color: var(--admin-ink); }
+.panelText { margin: 0 0 16px; font-size: 12.5px; line-height: 1.55; color: var(--admin-muted); }
+.field + .field { margin-top: 14px; }
+.counter { float: right; font-size: 11px; font-weight: 600; color: var(--admin-muted-soft); }
+.side { display: grid; gap: 18px; position: sticky; top: calc(var(--admin-topbar-h, 74px) + 16px); }
+
+/* Lock-screen style preview of the notification */
+.phone { padding: 18px; border-radius: 22px; background: linear-gradient(160deg, var(--admin-ink), color-mix(in srgb, var(--admin-ink) 70%, var(--admin-accent))); }
+.notification { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; padding: 12px; border-radius: 14px; background: rgba(255, 255, 255, .92); color: #111; box-shadow: 0 6px 20px rgba(0, 0, 0, .18); }
+.notificationIcon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; background: var(--admin-accent); color: var(--admin-accent-ink); }
+.notificationMeta { display: flex; justify-content: space-between; gap: 8px; font-size: 10.5px; color: #555; }
+.notification strong { display: block; margin-top: 2px; font-size: 13px; line-height: 1.3; overflow-wrap: anywhere; }
+.notification p { margin: 2px 0 0; font-size: 12px; line-height: 1.4; color: #333; overflow-wrap: anywhere; }
+.placeholder { color: #8a8a8a; }
+
+.checklist { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; font-size: 12.5px; color: var(--admin-ink-soft); }
+.checklist li { display: flex; gap: 8px; align-items: flex-start; line-height: 1.45; }
+.checklist svg { flex: none; margin-top: 2px; color: var(--admin-accent); }
+
+.confirmRow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 16px; padding: 12px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); background: var(--admin-bg); font-size: 12.5px; color: var(--admin-ink); }
+.confirmRow span { flex: 1 1 200px; }
+
+/* Email subscribers summary */
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.stat { display: grid; gap: 4px; padding: 16px 18px; }
+.stat span { font-size: 11.5px; font-weight: 700; color: var(--admin-muted); }
+.stat strong { font-size: 24px; letter-spacing: -.03em; color: var(--admin-ink); }
+.stat small { font-size: 11px; color: var(--admin-muted); }
+.toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+.toolbar input { max-width: 320px; }
+.toolbar a { margin-left: auto; }
+
+@media (max-width: 900px) {
+  .workspace { grid-template-columns: 1fr; }
+  .side { position: static; }
+}
+@media (max-width: 640px) {
+  .stats { grid-template-columns: 1fr 1fr; }
+  .stats > :last-child { grid-column: 1 / -1; }
+  .toolbar input { max-width: none; flex: 1 1 100%; }
+  .toolbar a { margin-left: 0; }
+}

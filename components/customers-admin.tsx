@@ -80,7 +80,11 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
     finally { setBulkBusy(false) }
   }
 
-  useEffect(() => { void load(1) }, [status, pageSize, tag])
+  // Live filtering: typing (debounced), status, tag and page size reload the list.
+  useEffect(() => {
+    const timer = setTimeout(() => { void load(1) }, q.trim() ? 300 : 0)
+    return () => clearTimeout(timer)
+  }, [q, status, pageSize, tag]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Active/disabled come straight from the server so the tiles always reflect the true
   // totals for the current search, not just whichever page of rows happens to be loaded.
@@ -124,9 +128,9 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
       <div className="statCard"><span className={ui.muted}>Repeat customers on page</span><strong>{stats.repeat}</strong></div>
     </div>
 
-    <div className={`${ui.card} catalogToolbar`}>
-      <div className="productSearch"><Search size={16}/><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search by name, email or phone…" onKeyDown={e => { if (e.key === 'Enter') void load(1) }}/><button className="searchClear" hidden={!q} onClick={() => { setQ(''); void load(1) }}><X size={14}/></button></div>
-      <div className="catalogFilters open"><select className={ui.input} value={status} onChange={e => setStatus(e.target.value)}><option value="ALL">All customers</option><option value="ACTIVE">Active</option><option value="DISABLED">Disabled</option></select><select className={ui.input} value={tag} onChange={e => setTag(e.target.value)}><option value="">All tags</option>{availableTags.map((t: any) => <option key={t.id} value={t.value}>{t.value}</option>)}</select><button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => load(1)} disabled={loading}>{loading ? 'Loading…' : 'Search'}</button></div>
+    <div className={`${ui.card} catalogToolbar customersToolbar`}>
+      <div className="productSearch"><Search size={16}/><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search by name, email or phone…"/><button className="searchClear" hidden={!q} onClick={() => setQ('')} aria-label="Clear search"><X size={14}/></button></div>
+      <div className="catalogFilters open"><select className={ui.input} value={status} onChange={e => setStatus(e.target.value)}><option value="ALL">All customers</option><option value="ACTIVE">Active</option><option value="DISABLED">Disabled</option></select><select className={ui.input} value={tag} onChange={e => setTag(e.target.value)}><option value="">All tags</option>{availableTags.map((t: any) => <option key={t.id} value={t.value}>{t.value}</option>)}</select></div>
     </div>
 
     {selected.length > 0 && (

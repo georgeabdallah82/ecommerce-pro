@@ -255,6 +255,10 @@ body:has(.adminShell) .themeStudioPro{background:var(--admin-bg)!important}
 /* Phones keep stat cards two per row (they're short: a label and a number), so the numbers
    stay above the fold; only the wider link tiles go full width. */
 @media(max-width:480px){.adminTileGrid{grid-template-columns:1fr!important}}
+/* Customers: search, status and tag filters on one row (they filter live, no Search button). */
+body:has(.adminShell) .customersToolbar{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)!important}
+body:has(.adminShell) .customersToolbar .catalogFilters{display:grid!important;grid-template-columns:1fr 1fr!important;margin-bottom:0!important}
+@media(max-width:760px){body:has(.adminShell) .customersToolbar{grid-template-columns:1fr!important}}
 /* Tab rows wrap on phones so no tab is cut off at the screen edge. */
 @media(max-width:640px){body:has(.adminShell) .opsTabs,body:has(.adminShell) .orderViews{flex-wrap:wrap!important;overflow:visible!important}}
 

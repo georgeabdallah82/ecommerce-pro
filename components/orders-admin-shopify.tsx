@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ArrowUpRight, ChevronLeft, ChevronRight, FileText, PackageCheck, Plus, RefreshCw, Search, Truck, X } from 'lucide-react'
 import { money } from '@/lib/config'
@@ -103,6 +103,16 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone }
     }
   }
 
+  // Live filtering: search (debounced), status and page size reload the list as they change,
+  // like every other admin list. The first render already has the server's rows.
+  const appliedFilters = useRef(JSON.stringify([q.trim(), filter, pageSize]))
+  useEffect(() => {
+    const key = JSON.stringify([q.trim(), filter, pageSize])
+    if (key === appliedFilters.current) return
+    const timer = setTimeout(() => { appliedFilters.current = key; void load(1) }, q.trim() ? 300 : 0)
+    return () => clearTimeout(timer)
+  }, [q, filter, pageSize]) // eslint-disable-line react-hooks/exhaustive-deps
+
   async function update(id: string, data: any, message = 'Order updated.') {
     setBusy(id); setError(''); setNotice('')
     try {
@@ -200,14 +210,13 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone }
       <div className={`${ui.card} ${styles.toolbar}`}>
         <div className={styles.search}>
           <Search size={16} />
-          <input value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void load(1) }} placeholder="Search orders, customers, email…" />
-          {q && <button onClick={() => { setQ(''); void load(1) }} aria-label="Clear search"><X size={14} /></button>}
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search orders, customers, email…" />
+          {q && <button onClick={() => setQ('')} aria-label="Clear search"><X size={14} /></button>}
         </div>
-        <select className={`${ui.select} ${styles.statusSelect}`} value={filter} onChange={e => { setFilter(e.target.value); void load(1) }}>
+        <select className={`${ui.select} ${styles.statusSelect}`} value={filter} onChange={e => setFilter(e.target.value)}>
           <option value="">All statuses</option>
           {statuses.map(s => <option key={s}>{s}</option>)}
         </select>
-        <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => load(1)} disabled={loading}>{loading ? 'Searching…' : 'Apply'}</button>
         <span className={styles.revenue}><span>Revenue (loaded)</span>{money(stats.revenue)}</span>
       </div>
 
@@ -233,7 +242,7 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone }
         <div className={styles.tableTopline}>
           <span>{shown.length} order{shown.length === 1 ? '' : 's'} on this page</span>
           <label className="inline" style={{ gap: 8, fontSize: 12 }}>Rows
-            <select className={`${ui.select} ${styles.compactSelect}`} value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); void load(1) }}>
+            <select className={`${ui.select} ${styles.compactSelect}`} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
               <option value={25}>25</option>
               <option value={50}>50</option>
               <option value={100}>100</option>
