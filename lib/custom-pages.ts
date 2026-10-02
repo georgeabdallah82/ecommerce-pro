@@ -3,6 +3,8 @@
 // keyed by page id, so renaming a page's handle never orphans its design -- which means
 // they get drafts, publishing and version history through the existing theme flow with
 // no database change.
+import { themeTemplates } from '@/lib/theme-templates'
+
 export const PAGE_KEY_PREFIX = 'Page:'
 export const pageTemplateKey = (pageId: string) => `${PAGE_KEY_PREFIX}${pageId}`
 export const isPageTemplateKey = (key: string) => key.startsWith(PAGE_KEY_PREFIX)
@@ -14,7 +16,7 @@ const NOT_CONTENT = new Set(['header', 'announcement', 'footer', 'main_product',
 // Sections a merchant added to one template (a custom page, or the blog pages' shared
 // zone), minus the structural placeholders the nav/footer render themselves.
 export function zoneSections(theme: { editorTemplates?: Record<string, any[]> } | null | undefined, key: string) {
-  const list = theme?.editorTemplates?.[key]
+  const list = themeTemplates(theme)[key]
   return (Array.isArray(list) ? list : []).filter(section => section && !NOT_CONTENT.has(section.type))
 }
 

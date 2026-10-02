@@ -37,6 +37,19 @@ jobs:
         env:
           DATABASE_URL: mongodb://127.0.0.1:27017/ecommerce_staging?replicaSet=rs0&directConnection=true
         run: npx prisma db push --schema=prisma/mongodb-schema
+      - name: Barcode index repair (scripts/fix-barcode-indexes.mjs)
+        env:
+          DATABASE_URL: mongodb://127.0.0.1:27017/ecommerce_staging?replicaSet=rs0&directConnection=true
+        run: |
+          mongo() { docker exec mongodb-staging mongosh --quiet "mongodb://127.0.0.1:27017/ecommerce_staging?replicaSet=rs0&directConnection=true" --eval "$1"; }
+          # Recreate production's original state: a plain unique barcode index and one product without a barcode.
+          mongo "db.Product.getIndexes().filter(i => i.key.barcode).forEach(i => db.Product.dropIndex(i.name)); db.Product.createIndex({ barcode: 1 }, { unique: true, name: 'Product_barcode_key' }); db.Product.insertOne({ _id: 'ci-a', sku: 'CI-A', slug: 'ci-a' })"
+          if mongo "db.Product.insertOne({ _id: 'ci-b', sku: 'CI-B', slug: 'ci-b' })" 2>/dev/null; then echo "expected the legacy index to reject a second product without a barcode"; exit 1; fi
+          node scripts/fix-barcode-indexes.mjs
+          node scripts/fix-barcode-indexes.mjs
+          mongo "db.Product.insertMany([{ _id: 'ci-b', sku: 'CI-B', slug: 'ci-b' }, { _id: 'ci-c', sku: 'CI-C', slug: 'ci-c', barcode: null }, { _id: 'ci-d', sku: 'CI-D', slug: 'ci-d', barcode: '123' }])"
+          if mongo "db.Product.insertOne({ _id: 'ci-e', sku: 'CI-E', slug: 'ci-e', barcode: '123' })" 2>/dev/null; then echo "expected a repeated real barcode to be rejected"; exit 1; fi
+          mongo "db.Product.deleteMany({ _id: /^ci-/ })"
       - name: Typecheck
         run: npm run typecheck
       - name: Backend audit

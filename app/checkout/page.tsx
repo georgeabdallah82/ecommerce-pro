@@ -19,7 +19,8 @@ const defaultSettings:StoreSettings={payment:{cod:true,card:false,bank:false,wal
 declare global { interface Window { Checkout?: { configure: (options: unknown) => void; showPaymentPage: () => void } } }
 
 export default function Checkout() {
-  const { selectedItems: items, selectedSubtotal: subtotal, clearSelected, addItem } = useCart()
+  const { selectedItems: items, selectedSubtotal: subtotal, clearSelected, addItem, ready: cartReady, items: cartItems } = useCart()
+  const [recovering, setRecovering] = useState(false)
   const router = useRouter()
   const [savedCoupon, setSavedCoupon] = useState('')
   const [recoveredEmail, setRecoveredEmail] = useState('')
@@ -56,6 +57,7 @@ export default function Checkout() {
     if (!token) return
     try { if (localStorage.getItem('ecom-recovered-token') === token) return } catch {}
     recoveryStarted.current = true
+    setRecovering(true)
     fetch(`/api/checkout/progress?token=${encodeURIComponent(token)}`, { cache: 'no-store' })
       .then(r => r.json())
       .then(data => {
@@ -77,7 +79,7 @@ export default function Checkout() {
         try { localStorage.setItem('ecom-recovered-token', token) } catch {}
       })
       .catch(() => {})
-      .finally(() => { router.replace('/checkout', { scroll: false }) })
+      .finally(() => { setRecovering(false); router.replace('/checkout', { scroll: false }) })
   }, [])
 
   function captureCheckoutProgress(email: string) {
@@ -125,21 +127,37 @@ export default function Checkout() {
 
   useEffect(() => { loadShippingRates('Lebanon') }, [])
 
+  // Bumped by the "Try again" button to reload the settings.
+  const [settingsAttempt, setSettingsAttempt] = useState(0)
   useEffect(()=>{
     let active=true
+    // A brief network or server hiccup shouldn't break checkout: retry twice before giving up.
+    const loadStoreSettings=async()=>{
+      for(let attempt=0;;attempt+=1){
+        try{
+          const response=await fetch('/api/store/settings',{cache:'no-store'})
+          const data=await response.json().catch(()=>({}))
+          if(response.ok&&data.settings)return data.settings as StoreSettings
+          if(attempt>=2)throw new Error(data.error||'Unable to load checkout settings')
+        }catch(e){if(attempt>=2)throw e}
+        await new Promise(resolve=>setTimeout(resolve,500*(attempt+1)))
+        if(!active)throw new Error('cancelled')
+      }
+    }
+    setSettingsError('')
     Promise.all([
-      fetch('/api/store/settings',{cache:'no-store'}).then(async response=>{const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'Unable to load checkout settings');return data.settings||defaultSettings}),
+      loadStoreSettings(),
       // Wallet and coins belong to an account: only ask for them once we know someone is
       // signed in (guests used to get two 401s logged on every checkout visit).
-      fetch('/api/auth/session',{cache:'no-store'}).then(async response=>{const data=await response.json().catch(()=>({authenticated:false}));return Boolean(response.ok&&data.authenticated)}).then(async isAuthenticated=>{
+      fetch('/api/auth/session',{cache:'no-store'}).then(async response=>{const data=await response.json().catch(()=>({authenticated:false}));return Boolean(response.ok&&data.authenticated)}).catch(()=>false).then(async isAuthenticated=>{
         if(!isAuthenticated)return [false,null,null] as const
         const read=(url:string)=>fetch(url,{cache:'no-store'}).then(async response=>{if(!response.ok)return null;return response.json().catch(()=>null)})
         const [wallet,coins]=await Promise.all([read('/api/account/wallet'),read('/api/account/coins')])
         return [true,wallet,coins] as const
       }),
-    ]).then(([storeSettings,[isAuthenticated,wallet,coins]])=>{if(active){setSettings(storeSettings);setAuthenticated(isAuthenticated);setSessionLoaded(true);if(isAuthenticated&&wallet){setWalletBalance(Math.max(0,Number(wallet.balance||0)));setWalletCurrency(wallet.currency||'USD')}else{setWalletBalance(0)}if(isAuthenticated&&coins){setCoinBalance(Math.max(0,Number(coins.balance||0)))}else{setCoinBalance(0)}}}).catch(e=>{if(active){setSettings(defaultSettings);setAuthenticated(false);setSessionLoaded(true);setWalletBalance(0);setCoinBalance(0);setSettingsError(e instanceof Error?e.message:'Unable to load checkout settings')}})
+    ]).then(([storeSettings,[isAuthenticated,wallet,coins]])=>{if(active){setSettings(storeSettings);setAuthenticated(isAuthenticated);setSessionLoaded(true);if(isAuthenticated&&wallet){setWalletBalance(Math.max(0,Number(wallet.balance||0)));setWalletCurrency(wallet.currency||'USD')}else{setWalletBalance(0)}if(isAuthenticated&&coins){setCoinBalance(Math.max(0,Number(coins.balance||0)))}else{setCoinBalance(0)}}}).catch(()=>{if(active){setSettings(defaultSettings);setAuthenticated(false);setSessionLoaded(true);setWalletBalance(0);setCoinBalance(0);setSettingsError("We couldn't load the latest checkout options, so cash on delivery is shown. Your order is still checked by the store when you place it.")}})
     return ()=>{active=false}
-  },[])
+  },[settingsAttempt])
 
   useEffect(()=>{
     if(!clientCheckout) return
@@ -207,11 +225,16 @@ export default function Checkout() {
 
   if(clientCheckout) return <main className="section"><div className="container narrow"><div className="card" style={{textAlign:'center'}}><span className="muted">SECURE PAYMENT</span><h1 className="h2">Continue to secure card payment</h1><p className="muted">Your payment details are entered directly on the payment provider's secure page.</p><div className="alert">Loading secure payment…</div><Link className="textLink" href="/cart">Return to cart</Link></div></div></main>
 
+  // Every item removed (or none selected in the cart): show that instead of a $0 order with only
+  // the delivery fee in the total. Not while an abandoned cart is being restored, or right
+  // after an order is placed (the cart empties just before the success page opens).
+  if(cartReady && !items.length && !recovering && !loading) return <main className="section"><div className="container narrow"><div className="card" style={{textAlign:'center'}}><span className="muted">CHECKOUT</span><h1 className="h2">{cartItems.length ? 'No items selected' : 'Your cart is empty'}</h1><p className="muted">{cartItems.length ? 'Choose the items you want to buy in your cart, then come back to check out.' : 'Add something you love, then come back to check out.'}</p><div className="inline" style={{justifyContent:'center',gap:12,flexWrap:'wrap'}}>{cartItems.length ? <Link className="btn" href="/cart">Go to cart</Link> : <Link className="btn" href="/shop">Continue shopping</Link>}</div></div></div></main>
+
   return <main className="section"><div className="container split"><form className="card checkoutForm" onSubmit={submit}>
     <span className="muted">CHECKOUT</span><h1 className="h2">Secure, simple, fast.</h1><CartNotices />
     {!settings && <div className="alert">Loading checkout settings…</div>}
     {guestBlocked && <div className="alert danger">Guest checkout is disabled. <Link className="textLink" href="/account/login">Sign in</Link> to continue.</div>}
-    {settingsError && <div className="alert danger">{settingsError}</div>}
+    {settingsError && <div className="alert">{settingsError} <button type="button" className="textButton" onClick={()=>setSettingsAttempt(n=>n+1)}>Try again</button></div>}
     <h3>Contact</h3><label className="fieldLabel">Email<input className="input" required name="email" type="email" autoComplete="email" inputMode="email" placeholder="you@example.com" defaultValue={recoveredEmail} key={recoveredEmail} onBlur={e => captureCheckoutProgress(e.target.value.trim())} /></label><label className="fieldLabel">Phone (WhatsApp)<input className="input" required name="phone" type="tel" autoComplete="tel" inputMode="tel" placeholder="e.g. 70 123 456" minLength={6} /><span className="muted" style={{fontSize:12}}>The courier calls this number on delivery.</span></label>
     <h3>Delivery</h3><div className="grid two"><label className="fieldLabel">First name<input className="input" required name="firstName" autoComplete="given-name" placeholder="First name" /></label><label className="fieldLabel">Last name<input className="input" required name="lastName" autoComplete="family-name" placeholder="Last name" /></label></div>
     <label className="fieldLabel">Address<input className="input" required name="line1" autoComplete="address-line1" placeholder="Street address" /></label><label className="fieldLabel">Apartment, floor, etc. <span className="muted">(optional)</span><input className="input" name="line2" autoComplete="address-line2" placeholder="Apartment, floor, etc." /></label>

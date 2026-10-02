@@ -61,6 +61,17 @@ function convert(schema, sourceName) {
     '  @@index([userId, referenceId, type])\n',
   )
 
+  // Barcodes are optional, but a MongoDB unique index counts every missing/null value as the
+  // same key -- so once one product had no barcode, every later product created without one
+  // failed with a unique-constraint error. Keep a plain index here; real (non-empty) barcode
+  // uniqueness is enforced by lib/barcodes.ts and the partial unique index that
+  // scripts/fix-barcode-indexes.mjs creates.
+  for (const model of ['Product', 'ProductVariant']) {
+    schema = schema.replace(new RegExp(`model ${model} \\{\\n[\\s\\S]*?\\n\\}`), block => block
+      .replace(/^(\s*barcode\s+String\?)\s+@unique\s*$/m, '$1')
+      .replace(/\n\}$/, '\n  @@index([barcode])\n}'))
+  }
+
   // Prisma emulates referential actions for MongoDB. The PostgreSQL relation
   // graph contains multiple cycles/cascade paths. Start with explicit
   // NoAction semantics; safe cascades will be restored selectively after the

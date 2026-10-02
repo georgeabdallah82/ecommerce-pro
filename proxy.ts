@@ -77,9 +77,12 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     !isStaticAsset(pathname)
   // Both lookups run at the same time: a storefront page view used to wait for one database
   // round trip, then a second, before rendering even started.
+  // A failed lookup (a brief database/Accelerate hiccup) must not fail the request itself:
+  // unhandled, it turned every page and API call into a bare 500 -- checkout showed "Unable
+  // to load checkout settings". Treat it as "no redirect" / "not in maintenance" instead.
   const [redirect, maintenanceSetting] = await Promise.all([
-    needsRedirectCheck ? db.redirect.findUnique({ where: { fromPath: pathname } }) : null,
-    needsMaintenanceCheck ? db.setting.findUnique({ where: { key: 'maintenance.enabled' } }) : null,
+    needsRedirectCheck ? db.redirect.findUnique({ where: { fromPath: pathname } }).catch(() => null) : null,
+    needsMaintenanceCheck ? db.setting.findUnique({ where: { key: 'maintenance.enabled' } }).catch(() => null) : null,
   ])
   if (needsRedirectCheck) {
     if (redirect) {

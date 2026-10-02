@@ -9,6 +9,7 @@ import type { Metadata } from 'next'
 import { Footer } from '@/components/footer'
 import AliExpressProduct from '@/components/aliexpress-product'
 import { absoluteUrl, getSiteSeo, isShareableImage, metaText, shareMeta, siteUrl } from '@/lib/seo'
+import { themeTemplates } from '@/lib/theme-templates'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -75,7 +76,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       metafields: { include: { definition: true } },
     },
   }), getUnpublishedProductIds(), getCurrentUser()])
-  const sections = (theme.editorTemplates?.Product || []).filter((s: any) => s && !PRODUCT_ZONE_EXCLUDE.has(s.type))
+  const sections = (themeTemplates(theme).Product || []).filter((s: any) => s && !PRODUCT_ZONE_EXCLUDE.has(s.type))
 
   if (!product || product.status !== 'ACTIVE') return notFound()
   // Same check as isProductPublished(): hidden from the storefront sales channel.

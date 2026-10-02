@@ -7,6 +7,7 @@ import {Footer} from '@/components/footer'
 import AliExpressShop from '@/components/aliexpress-shop'
 import { getSiteSeo, metaText, shareMeta } from '@/lib/seo'
 import type { Metadata } from 'next'
+import { themeTemplates } from '@/lib/theme-templates'
 
 export const dynamic='force-dynamic'
 export const revalidate=0
@@ -76,6 +77,6 @@ export default async function Shop({searchParams}:{searchParams:Promise<{q?:stri
   const rowById=new Map(pageRows.map(p=>[p.id,p]))
   const ordered=pageIds.map(id=>rowById.get(id)).filter((p):p is NonNullable<typeof p>=>Boolean(p)).map(p=>({...p,effectivePrice:effectivePriceCents(p)}))
   const products=await withProductStats(ordered)
-  const sections=(theme.editorTemplates?.Collection||[]).filter((s:any)=>s&&!COLLECTION_ZONE_EXCLUDE.has(s.type))
+  const sections=(themeTemplates(theme).Collection||[]).filter((s:any)=>s&&!COLLECTION_ZONE_EXCLUDE.has(s.type))
   return <><AliExpressShop theme={theme} products={products} collections={collections} query={sp} sections={sections} pagination={{page,pages,total}}/><Footer theme={theme}/></>
 }

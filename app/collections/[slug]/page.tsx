@@ -7,6 +7,7 @@ import { Footer } from '@/components/footer'
 import AliExpressCollectionDetail from '@/components/aliexpress-collection-detail'
 import { absoluteUrl, getSiteSeo, isShareableImage, metaText, shareMeta } from '@/lib/seo'
 import type { Metadata } from 'next'
+import { themeTemplates } from '@/lib/theme-templates'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -38,7 +39,7 @@ export default async function CollectionPage({ params }: { params: Promise<{ slu
       },
     },
   })])
-  const sections = (theme.editorTemplates?.Collection || []).filter((s: any) => s && !COLLECTION_ZONE_EXCLUDE.has(s.type))
+  const sections = (themeTemplates(theme).Collection || []).filter((s: any) => s && !COLLECTION_ZONE_EXCLUDE.has(s.type))
   const needsCollections = sections.some((s: any) => s.type === 'collection_grid' || s.type === 'collection_carousel')
   if (!collection || !collection.isActive) notFound()
   const hidden = new Set(unpublishedIds)
@@ -53,9 +54,12 @@ export default async function CollectionPage({ params }: { params: Promise<{ slu
     withProductStats(activeItems.map(x => x.product)),
     needsCollections ? db.collection.findMany({ where: { isActive: true }, take: 12, orderBy: { sortOrder: 'asc' } }) : Promise.resolve([]),
   ])
+  // The raw collection still carries its full product rows (cost price, barcode); send only
+  // the collection's own fields to the client -- products go through withProductStats above.
+  const { products: _rows, ...collectionInfo } = collection
   return (
     <>
-      <AliExpressCollectionDetail theme={theme} collection={collection} products={products} sections={sections} zoneCollections={zoneCollections} />
+      <AliExpressCollectionDetail theme={theme} collection={collectionInfo} products={products} sections={sections} zoneCollections={zoneCollections} />
       <Footer theme={theme} />
     </>
   )

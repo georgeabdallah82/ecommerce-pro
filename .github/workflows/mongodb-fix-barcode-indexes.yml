@@ -1,0 +1,55 @@
+name: Fix production barcode indexes
+
+# One-time repair: lets more than one product be saved without a barcode.
+# See scripts/fix-barcode-indexes.mjs.
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type FIX-BARCODES to authorize this run against production
+        required: true
+      dry_run:
+        description: Preview only -- no writes
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  fix-indexes:
+    if: inputs.confirmation == 'FIX-BARCODES'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: ${{ secrets.MIGRATION_PRODUCTION_TARGET_DATABASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.2
+
+      - name: Verify database secret exists
+        run: |
+          test -n "$DATABASE_URL"
+          case "$DATABASE_URL" in
+            mongodb://*|mongodb+srv://*) ;;
+            *) echo "DATABASE_URL must be a MongoDB connection string"; exit 1 ;;
+          esac
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Prepare MongoDB Prisma schema
+        run: node scripts/prepare-mongodb-schema.mjs
+
+      - name: Generate MongoDB Prisma client
+        run: npx prisma generate --schema=prisma/mongodb-schema
+
+      - name: Fix barcode indexes
+        run: node scripts/fix-barcode-indexes.mjs
+        env:
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
