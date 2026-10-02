@@ -44,7 +44,11 @@ async function fixCollection(collection) {
   if (!dryRun) {
     await db.$runCommandRaw({
       createIndexes: collection,
-      indexes: [{ key: { barcode: 1 }, name: wanted, unique: true, partialFilterExpression: { barcode: { $type: 'string', $gt: '' } } }],
+      // `$gt: ''` only matches non-empty strings (MongoDB compares within a type), so null and
+      // missing barcodes stay out of the index. Not `$type`: Prisma's raw-command result reader
+      // treats any object with a `$type` key as its own tagged value and crashes on
+      // listIndexes once such an index exists.
+      indexes: [{ key: { barcode: 1 }, name: wanted, unique: true, partialFilterExpression: { barcode: { $gt: '' } } }],
     })
   }
 }
