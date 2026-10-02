@@ -162,7 +162,7 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
           <div className={ui.bulkActions}>
             <button className={`${ui.btn} ${ui.btnSecondary}`} disabled={bulkBusy} onClick={() => bulk('ACTIVATE')}><CheckCircle2 size={15} /> Activate</button>
             <button className={`${ui.btn} ${ui.btnSecondary}`} disabled={bulkBusy} onClick={() => bulk('DEACTIVATE')}><XCircle size={15} /> Deactivate</button>
-            <button className={`${ui.btn} ${ui.btnSecondary}`} disabled={bulkBusy} onClick={() => bulk('DELETE')}><Trash2 size={15} /> Delete</button>
+            <button className={`${ui.btn} ${ui.btnDanger}`} disabled={bulkBusy} onClick={() => bulk('DELETE')}><Trash2 size={15} /> Delete</button>
           </div>
         </div>
       )}

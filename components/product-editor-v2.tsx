@@ -352,7 +352,7 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
       </main>
 
       <aside className={s.rail}>
-        <Card title="Status" sub="Publishing"><span className={s.pill}>{product.status}</span></Card>
+        <Card title="Status" sub="Publishing"><span className={`${ui.statusPill} ${product.status === 'ACTIVE' ? ui.statusPillSuccess : product.status === 'DRAFT' ? ui.statusPillWarning : ''}`}>{product.status === 'ACTIVE' ? 'Active' : product.status === 'DRAFT' ? 'Draft' : 'Archived'}</span></Card>
         <Card title="Summary" sub="Catalog facts">
           <div className={s.summaryLine}><span>SKU</span><strong>{product.sku}</strong></div>
           <div className={s.summaryLine}><span>Variants</span><strong>{product.variants.length}</strong></div>
