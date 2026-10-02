@@ -6,6 +6,7 @@ import { json } from '@/lib/utils'
 import { sendGiftCardIssuedEmail } from '@/lib/email'
 import { expireGiftCards } from '@/lib/gift-cards'
 import { getStoreCurrency } from '@/lib/store-currency'
+import { runInBackground } from '@/lib/background'
 
 function generateCode() { return randomBytes(10).toString('hex').toUpperCase().match(/.{1,5}/g)!.join('-') }
 
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
     const card = await db.giftCard.create({ data: { code, last4: code.replace(/[^A-Z0-9]/g, '').slice(-4), customerId: b.customerId ? String(b.customerId) : null, initialAmount: amount, balance: amount, currency: String(b.currency || await getStoreCurrency()), expiresAt: b.expiresAt ? new Date(b.expiresAt) : null, note: b.note ? String(b.note) : null } })
     await audit(actor.id, 'gift_card.created', 'GiftCard', card.id, { amount, customerId: card.customerId })
     if (card.customerId) {
-      void sendGiftCardIssuedEmail(card.id).catch(error => console.error('[email] gift card issued email failed', error))
+      runInBackground(sendGiftCardIssuedEmail(card.id).catch(error => console.error('[email] gift card issued email failed', error)))
       try { await db.notification.create({ data: { userId: card.customerId, title: 'You received a gift card', body: `A gift card worth ${(amount / 100).toFixed(2)} ${card.currency} was added to your account.`, type: 'GIFT_CARD' } }) } catch {
         // Notification delivery must never make gift card issuance fail.
       }

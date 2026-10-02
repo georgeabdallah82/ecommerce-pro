@@ -5,6 +5,7 @@ import { json } from '@/lib/utils'
 import { canTransitionOrder, fulfillmentForStatus } from '@/lib/orders'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { ShipmentStatus, OrderStatus } from '@prisma/client'
+import { runInBackground } from '@/lib/background'
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -48,8 +49,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       if (orderEvent) {
         if (orderEvent.userId) await db.notification.create({ data: { userId: orderEvent.userId, title: `Order ${orderEvent.orderNumber} delivered`, body: `Your order ${orderEvent.orderNumber} has been delivered.`, type: 'ORDER_STATUS' } })
         const eventPayload = { id: orderEvent.orderId, orderNumber: orderEvent.orderNumber, status: OrderStatus.DELIVERED, fulfillmentStatus: fulfillmentForStatus(OrderStatus.DELIVERED) }
-        void dispatchWebhookEvent('order.updated', eventPayload).catch(error => console.error('[webhook] order.updated dispatch failed', error))
-        void dispatchWebhookEvent('order.fulfilled', eventPayload).catch(error => console.error('[webhook] order.fulfilled dispatch failed', error))
+        runInBackground(dispatchWebhookEvent('order.updated', eventPayload).catch(error => console.error('[webhook] order.updated dispatch failed', error)))
+        runInBackground(dispatchWebhookEvent('order.fulfilled', eventPayload).catch(error => console.error('[webhook] order.fulfilled dispatch failed', error)))
       }
     }
 

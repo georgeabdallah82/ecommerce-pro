@@ -390,7 +390,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .cartPage .cartActionUX a{min-height:50px;border-radius:13px}
 .cartPage .emptyCartUX{border:1px dashed #d9c8bd;border-radius:22px;background:linear-gradient(180deg,#fff,#fffaf6);padding:64px 24px;text-align:center}
 .cartPage .emptyCartUX .icon{width:58px;height:58px;border-radius:18px;display:grid;place-items:center;background:var(--focal-soft);margin:0 auto 16px}
-.cartPage .emptyCartUX h2{font-size:26px;letter-spacing:-.03em;margin:0 0 6px}
+.cartPage .emptyCartUX h1,.cartPage .emptyCartUX h2{font-size:26px;letter-spacing:-.03em;margin:0 0 6px}
 .cartPage .emptyCartUX p{color:var(--focal-muted);max-width:40ch;margin:0 auto 20px;line-height:1.6}
 
 
@@ -3995,3 +3995,6 @@ a.aliSpecListItem:hover{opacity:.8}
 .checkoutPayOption small{font-size:12.5px;color:var(--store-muted,#6b6b6b)}
 .checkoutPayOption.selected{border-color:var(--store-primary,#d42a2a);box-shadow:0 0 0 1px var(--store-primary,#d42a2a) inset}
 .checkoutCodesToggle{justify-self:start;font-size:13.5px;font-weight:700;color:var(--store-primary,#d42a2a)!important}
+
+/* Present for screen readers and search engines, not drawn on screen. */
+.srOnly{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}

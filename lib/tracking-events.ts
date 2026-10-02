@@ -2,7 +2,7 @@ declare global {
   interface Window {
     fbq?: (...args: unknown[]) => void
     gtag?: (...args: unknown[]) => void
-    ttq?: { track: (event: string, data?: Record<string, unknown>) => void; page?: () => void }
+    ttq?: { track: (event: string, data?: Record<string, unknown>, options?: Record<string, unknown>) => void; page?: () => void }
   }
 }
 
@@ -30,7 +30,7 @@ export function trackPurchase(order: { orderNumber: string; value: number; curre
       content_ids: order.items.map(i => i.sku),
       content_type: 'product',
       contents: order.items.map(i => ({ id: i.sku, quantity: i.quantity })),
-    })
+    }, { eventID: `purchase-${order.orderNumber}` })
   } catch {}
   try {
     window.gtag?.('event', 'purchase', {
@@ -45,6 +45,6 @@ export function trackPurchase(order: { orderNumber: string; value: number; curre
       value: order.value,
       currency: order.currency,
       contents: order.items.map(i => ({ content_id: i.sku, content_name: i.name, quantity: i.quantity, price: i.price })),
-    })
+    }, { event_id: `purchase-${order.orderNumber}` })
   } catch {}
 }

@@ -9,6 +9,7 @@ import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { getTaxRatePercent } from '@/lib/pricing'
 import { sendOrderEditEmail } from '@/lib/email'
 import { OrderStatus, PaymentStatus, Prisma } from '@prisma/client'
+import { runInBackground } from '@/lib/background'
 
 const ORDER_EDIT_ORDER_CONFLICT_MESSAGE = 'This order was just modified — please retry.'
 
@@ -142,7 +143,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       return { updated, refundToSettle, paymentAdjustment, userId: current.userId }
     })
 
-    void dispatchWebhookEvent('order.updated', { id: order.updated.id, orderNumber: order.updated.orderNumber, status: order.updated.status, paymentStatus: order.updated.paymentStatus }).catch(error => console.error('[webhook] order.updated dispatch failed', error))
+    runInBackground(dispatchWebhookEvent('order.updated', { id: order.updated.id, orderNumber: order.updated.orderNumber, status: order.updated.status, paymentStatus: order.updated.paymentStatus }).catch(error => console.error('[webhook] order.updated dispatch failed', error)))
 
     // Every other flow that moves money on a paid order (returns, gift cards, fulfillment)
     // notifies the customer -- an order edit that just issued a refund or created a charge the
@@ -164,7 +165,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     // for -- an edit that leaves the order owing more money (a pending manual charge with no
     // automatic confirmation) defers issuance until that payment is later confirmed (see
     // issueAndNotifyGiftCardsForOrder, called from the order PATCH route when staff mark it PAID).
-    void sendOrderEditEmail(order.updated.id, order.paymentAdjustment, order.paymentAdjustment?.type !== 'charge').catch(error => console.error('[email] order edit email failed', error))
+    runInBackground(sendOrderEditEmail(order.updated.id, order.paymentAdjustment, order.paymentAdjustment?.type !== 'charge').catch(error => console.error('[email] order edit email failed', error)))
 
     if (order.refundToSettle && order.refundToSettle.refundProvider !== 'manual' && order.refundToSettle.refundProvider !== 'wallet') {
       const settled = await settleReturnRefund(actor.id, { orderId: order.updated.id, refundId: order.refundToSettle.refundId, refundProvider: order.refundToSettle.refundProvider, refundExternalId: order.refundToSettle.refundExternalId, amount: order.refundToSettle.amount, currency: order.updated.currency, auditAction: 'order.edit_refund' })

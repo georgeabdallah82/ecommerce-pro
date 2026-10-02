@@ -56,6 +56,7 @@ export async function PATCH(req: Request) {
       if (String(b.password).length < 8) return json({ error: 'Password must be at least 8 characters' }, { status: 400 })
       data.passwordHash = await hashPassword(String(b.password))
     }
+    if (data.passwordHash || (data.role && data.role !== target.role) || data.isActive === false) data.sessionsRevokedAt = new Date()
     const u = await db.user.update({ where: { id: targetId }, data, select: safeUserSelect })
     await audit(actor.id, 'user.updated', 'User', u.id, { role: u.role, isActive: u.isActive })
     return json({ user: u }, { headers: { 'Cache-Control': 'private, no-store' } })
@@ -96,7 +97,7 @@ export async function DELETE(req: Request) {
     if (target.role === Role.CUSTOMER) return json({ error: 'Customer accounts are managed from Customers' }, { status: 409 })
     if (target.id === actor.id) return json({ error: 'You cannot delete your own account' }, { status: 400 })
     if (target.role === 'SUPER_ADMIN' && actor.role !== 'SUPER_ADMIN') return json({ error: 'Only the super admin can delete a super admin' }, { status: 403 })
-    await db.user.update({ where: { id: targetId }, data: { isActive: false } })
+    await db.user.update({ where: { id: targetId }, data: { isActive: false, sessionsRevokedAt: new Date() } })
     await audit(actor.id, 'user.deactivated', 'User', target.id, { previousRole: target.role })
     return json({ success: true }, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (e) {

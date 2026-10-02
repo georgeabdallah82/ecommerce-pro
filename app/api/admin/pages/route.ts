@@ -3,6 +3,7 @@ import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json, slugify } from '@/lib/utils'
 import { RESERVED_HANDLES } from '@/lib/reserved-handles'
+import { sanitizeRichHtml } from '@/lib/sanitize-html'
 
 function cleanHandle(value: unknown, fallback: string) {
   return slugify(String(value || fallback)).slice(0, 200)
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
       data: {
         title,
         handle,
-        bodyHtml: b.bodyHtml ? String(b.bodyHtml).slice(0, 200000) : null,
+        bodyHtml: b.bodyHtml ? sanitizeRichHtml(String(b.bodyHtml).slice(0, 200000)) : null,
         status,
         seoTitle: b.seoTitle ? String(b.seoTitle).trim().slice(0, 200) : null,
         seoDescription: b.seoDescription ? String(b.seoDescription).trim().slice(0, 500) : null,
@@ -73,7 +74,7 @@ export async function PATCH(req: Request) {
       if (RESERVED_HANDLES.has(handle)) return json({ error: `"${handle}" is a reserved path and can't be used as a page handle` }, { status: 400 })
       data.handle = handle
     }
-    if (b.bodyHtml !== undefined) data.bodyHtml = b.bodyHtml ? String(b.bodyHtml).slice(0, 200000) : null
+    if (b.bodyHtml !== undefined) data.bodyHtml = b.bodyHtml ? sanitizeRichHtml(String(b.bodyHtml).slice(0, 200000)) : null
     if (b.seoTitle !== undefined) data.seoTitle = b.seoTitle ? String(b.seoTitle).trim().slice(0, 200) : null
     if (b.seoDescription !== undefined) data.seoDescription = b.seoDescription ? String(b.seoDescription).trim().slice(0, 500) : null
     if (b.status !== undefined) {

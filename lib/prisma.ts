@@ -323,6 +323,7 @@ const mockShippingZones: any[] = [
   },
 ]
 
+const mockRateLimitBuckets = new Map<string, { id: string; key: string; count: number; resetAt: Date }>()
 const mockAdminLoginLockouts = new Map<string, { id: string; email: string; failedCount: number; lockedUntil: Date | null; updatedAt: Date }>()
 const mockLiveVisitorSessions = new Map<string, any>()
 const mockThemeVersions: Array<{ id: string; theme: string; sections: string; navigation: string; createdAt: Date; createdBy: string | null }> = []
@@ -1392,6 +1393,15 @@ function getMockHandler(model: string) {
         mockUsers.push(created)
         return created
       }
+      if (model === 'rateLimitBucket' && args.where?.key) {
+        const existing = mockRateLimitBuckets.get(args.where.key)
+        const increment = args.update?.count?.increment
+        const record = existing
+          ? { ...existing, count: existing.count + (typeof increment === 'number' ? increment : 0) }
+          : { id: `ratelimit-${Date.now()}`, key: args.where.key, count: 0, resetAt: new Date(), ...(args.create || {}) }
+        mockRateLimitBuckets.set(args.where.key, record)
+        return { ...record }
+      }
       if (model === 'adminLoginLockout' && args.where?.email) {
         const existing = mockAdminLoginLockouts.get(args.where.email)
         const record = existing
@@ -2044,6 +2054,13 @@ function getMockHandler(model: string) {
       return { count: rows.length }
     },
     updateMany: async (args?: any) => {
+      if (model === 'rateLimitBucket' && args?.where?.key) {
+        const row = mockRateLimitBuckets.get(args.where.key)
+        const lte = args.where.resetAt?.lte
+        if (!row || (lte && !(row.resetAt <= lte))) return { count: 0 }
+        Object.assign(row, args.data || {})
+        return { count: 1 }
+      }
       // lib/inventory.ts's whole reservation/release/fulfillment ledger leans on this being a
       // real optimistic-concurrency guard: e.g. reserveStock's
       // `where: { id, reserved: { lte: quantity - canReserve } }` must return count 0 (not the
@@ -2372,6 +2389,13 @@ function getMockHandler(model: string) {
       return { _sum: {}, _count: {}, _avg: {}, _min: {}, _max: {} }
     },
     deleteMany: async (args?: any) => {
+      if (model === 'rateLimitBucket') {
+        if (args?.where?.key) return { count: mockRateLimitBuckets.delete(args.where.key) ? 1 : 0 }
+        const lt = args?.where?.resetAt?.lt
+        let count = 0
+        for (const [key, row] of mockRateLimitBuckets) if (!lt || row.resetAt < lt) { mockRateLimitBuckets.delete(key); count++ }
+        return { count }
+      }
       if (model === 'setting' && args?.where?.key) {
         return { count: mockSettings.delete(args.where.key) ? 1 : 0 }
       }

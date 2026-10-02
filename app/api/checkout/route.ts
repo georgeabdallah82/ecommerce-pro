@@ -10,7 +10,7 @@ import { getPaymentProvider } from '@/lib/payments'
 import { sendNewOrderPush } from '@/lib/push'
 import { sendOrderConfirmationEmail } from '@/lib/email'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
-import { consumeRateLimit } from '@/lib/rate-limit'
+import { consumeDurableRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { getUnpublishedProductIds } from '@/lib/sales-channels'
@@ -19,6 +19,7 @@ import { discountAmount, misconfigured, taxableAmountAfterRewards, zeroSplit, ty
 import { PaymentMethod } from '@prisma/client'
 import { ZodError } from 'zod'
 import { newOrderNumber } from '@/lib/order-number'
+import { runInBackground } from '@/lib/background'
 
 function stableSerialize(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value)
@@ -134,6 +135,9 @@ function checkoutFailure(error: unknown) {
   const message = error instanceof Error ? error.message : ''
   if (message === 'This idempotency key was already used for a different checkout') return { message, status: 409 }
   if (message.startsWith('Maximum quantity per product is ')) return { message, status: 400 }
+  // reserveStock throws this when another shopper took the last units between our stock
+  // check and the reservation -- tell the customer, instead of a generic "try again" 500.
+  if (message.startsWith('Not enough stock for ')) return { message: 'One or more requested quantities are no longer available.', status: 409 }
   if (SAFE_CHECKOUT_MESSAGES.has(message)) return { message, status: 400 }
   console.error('[checkout] unexpected failure', error)
   return { message: 'Unable to place your order right now. Please try again.', status: 500 }
@@ -183,7 +187,9 @@ export async function POST(req: Request) {
     const currentIp = clientIp(req.headers)
     const user = await getCurrentUser()
     const limitKey = user?.id ? `checkout:user:${user.id}` : `checkout:ip:${currentIp}`
-    const limit = consumeRateLimit(limitKey, 20, 10 * 60 * 1000)
+    // Signed-in customers are limited per account; guests per IP, set higher because mobile
+    // carriers put many shoppers behind one address.
+    const limit = await consumeDurableRateLimit(limitKey, user?.id ? 20 : 60, 10 * 60 * 1000)
     if (!limit.allowed) return json({ error: 'Too many checkout attempts. Please try again later.' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds), 'Cache-Control': 'no-store' } })
 
     const rawBody = await req.text()
@@ -205,7 +211,7 @@ export async function POST(req: Request) {
     if (!user?.id && !guestCheckoutEnabled) return json({ error: 'Guest checkout is disabled. Please sign in to continue.' }, { status: 403 })
     if (paymentMethod === PaymentMethod.WALLET && !user?.id) return json({ error: 'Wallet checkout requires a customer account.' }, { status: 400 })
     if (!paymentEnabled[paymentMethod]) return json({ error: 'This payment method is currently unavailable.' }, { status: 400 })
-    if (input.coinsToUse > 0 && !user?.id) return json({ error: 'This coupon requires a customer account' }, { status: 400 })
+    if (input.coinsToUse > 0 && !user?.id) return json({ error: 'Sign in to use your coins.' }, { status: 400 })
 
     const merged = new Map<string, { productId: string; variantId: string | null; quantity: number }>()
     for (const item of input.items) {
@@ -424,11 +430,11 @@ export async function POST(req: Request) {
         console.error('[checkout] order notification failed', error)
       }
     }
-    void sendNewOrderPush({ id: order.id, orderNumber: order.orderNumber, grandTotal: order.grandTotal, currency: order.currency }).catch(error => console.error('[push] new-order notification failed', error))
+    runInBackground(sendNewOrderPush({ id: order.id, orderNumber: order.orderNumber, grandTotal: order.grandTotal, currency: order.currency }).catch(error => console.error('[push] new-order notification failed', error)))
     if (paymentMethod !== PaymentMethod.CARD || order.grandTotal === 0) {
-      void sendOrderConfirmationEmail(order.id).catch(error => console.error('[email] order confirmation failed', error))
+      runInBackground(sendOrderConfirmationEmail(order.id).catch(error => console.error('[email] order confirmation failed', error)))
     }
-    void dispatchWebhookEvent('order.created', { id: order.id, orderNumber: order.orderNumber, email: order.email, grandTotal: order.grandTotal, currency: order.currency, status: order.status, paymentStatus: order.paymentStatus }).catch(error => console.error('[webhook] order.created dispatch failed', error))
+    runInBackground(dispatchWebhookEvent('order.created', { id: order.id, orderNumber: order.orderNumber, email: order.email, grandTotal: order.grandTotal, currency: order.currency, status: order.status, paymentStatus: order.paymentStatus }).catch(error => console.error('[webhook] order.created dispatch failed', error)))
     await audit(user?.id, 'order.created', 'Order', order.id, { orderNumber: order.orderNumber, total: grandTotal, paymentMethod, paymentProvider: paymentMethod === PaymentMethod.CARD ? paymentProvider.name : paymentMethod.toLowerCase(), coinsUsed: requestedCoins, coinDiscount, giftCardAmount: giftCardDiscount })
     return json({ order: { id: order.id, orderNumber: order.orderNumber, total: order.grandTotal }, payment: clientCheckout, rewards: { coinsUsed: requestedCoins, coinDiscount, giftCardAmount: giftCardDiscount } }, { status: 201, headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {
