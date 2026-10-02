@@ -3980,3 +3980,9 @@ a.aliSpecListItem:hover{opacity:.8}
   .focalStorefront .block-center .focalPromoGrid,.focalStorefront .block-right .focalPromoGrid,
   .focalStorefront .block-center .focalTestimonialGrid,.focalStorefront .block-right .focalTestimonialGrid{--c:1}
 }
+
+/* Editor preview only: a section with nothing to show (see EmptySectionNotice). */
+.themeEmptyNotice{padding:18px 0;cursor:pointer}
+.themeEmptyNotice .focalContainer{display:grid;gap:4px;padding:16px 18px;border:2px dashed #c9bfb6;border-radius:12px;background:repeating-linear-gradient(135deg,#faf7f4 0 12px,#f4efea 12px 24px);color:#4a4039;font:500 13px/1.5 system-ui,sans-serif}
+.themeEmptyNotice strong{font-size:14px;color:#191512}
+.themeEmptyNotice em{font-style:normal;color:#7a6e64}

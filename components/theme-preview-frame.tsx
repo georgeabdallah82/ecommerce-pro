@@ -129,22 +129,19 @@ export default function ThemePreviewFrame() {
     })
   }, [state?.theme])
 
-  // Position-indexed against every .focalSection node inside a StorefrontSections
-  // root (.themeEditorPreview), matching the filtered "visible" list it builds.
-  // Scoping to that root -- rather than the whole document -- keeps this correct on
-  // the Product/Shop/Cart previews, where the page's own untouched content sits
-  // above the zone. category_strip/flash_deals/new_arrivals/best_sellers (see
-  // components/storefront-sections.tsx) render with their own fixed ali-prefixed
-  // classnames instead of the generic .focalSection shell, so selecting one of
-  // those four from the editor's sidebar won't auto-scroll the preview to it (it
-  // can still be clicked directly in the preview to select it).
+  // Every visible section renders exactly one top-level node inside the StorefrontSections
+  // root (.themeEditorPreview): sections with nothing to show render an editor notice
+  // instead of nothing, so the n-th visible section is the n-th child. (Counting only
+  // .focalSection nodes skipped the flash deals / new arrivals / strip sections, so
+  // picking a section in the sidebar scrolled to the wrong one.)
   useEffect(() => {
     if (!state?.selectedId) return
     const visibleIndex = state.sections
       .filter(section => section.enabled !== false && section.settings?.enabled !== false && section.type !== 'header' && section.type !== 'announcement' && section.type !== 'footer')
       .findIndex(section => section.id === state.selectedId)
     if (visibleIndex < 0) return
-    const nodes = document.querySelectorAll<HTMLElement>('.themeEditorPreview .focalSection')
+    const root = document.querySelector<HTMLElement>('.themeEditorPreview')
+    const nodes = root ? Array.from(root.children).filter(node => node.tagName !== 'STYLE') as HTMLElement[] : []
     nodes[visibleIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }, [state?.selectedId, state?.sections])
 
