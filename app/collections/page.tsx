@@ -3,9 +3,17 @@ import { getThemeState } from '@/lib/theme'
 import { getUnpublishedProductIds } from '@/lib/sales-channels'
 import { Footer } from '@/components/footer'
 import AliExpressCollections from '@/components/aliexpress-collections'
+import { getSiteSeo, metaText, shareMeta } from '@/lib/seo'
+import type { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+
+export async function generateMetadata(): Promise<Metadata> {
+  const seo = await getSiteSeo().catch(() => null)
+  const description = metaText(`Shop by collection at ${seo?.brand || 'our store'}.`)
+  return { title: 'Collections', description, alternates: { canonical: '/collections' }, ...shareMeta({ title: 'Collections', description, url: '/collections', image: seo?.image }) }
+}
 
 export default async function Collections() {
   const [{ theme }, unpublishedIds, rawCollections] = await Promise.all([

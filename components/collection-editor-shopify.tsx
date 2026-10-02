@@ -115,7 +115,7 @@ export default function CollectionEditorShopify({ id }: { id: string }) {
       </div>
       <div className="inline">
         <Link className={`${ui.btn} ${ui.btnSecondary} ${s.topbarBtn}`} href={`/collections/${collection.slug}`} target="_blank"><Eye size={16} /> Preview</Link>
-        <button className={`${ui.btn} ${ui.btnSecondary} ${s.topbarBtn}`} disabled={deleting} onClick={remove}>{deleting ? 'Deleting…' : <><Trash2 size={16} /> Delete</>}</button>
+        <button className={`${ui.btn} ${ui.btnDanger} ${s.topbarBtn}`} disabled={deleting} onClick={remove}>{deleting ? 'Deleting…' : <><Trash2 size={16} /> Delete</>}</button>
       </div>
     </div>
 

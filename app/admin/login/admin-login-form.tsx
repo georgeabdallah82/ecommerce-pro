@@ -1,9 +1,11 @@
 'use client'
 
 import { FormEvent, useState } from 'react'
-import { ArrowRight, Eye, EyeOff, ShieldCheck } from 'lucide-react'
+import { ArrowRight, Eye, EyeOff } from 'lucide-react'
 
-export default function AdminLoginForm() {
+export type AdminLoginBrand = { name: string; logoUrl?: string; logoDarkUrl?: string; vars?: Record<string, string> }
+
+export default function AdminLoginForm({ brand }: { brand?: AdminLoginBrand }) {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -19,40 +21,44 @@ export default function AdminLoginForm() {
     } catch (err) { setError(err instanceof Error ? err.message : 'Unable to sign in'); setBusy(false) }
   }
 
-  return <main className="adminLoginPage">
+  const name = brand?.name || 'Control Center'
+  return <main className="adminLoginPage" style={brand?.vars as React.CSSProperties}>
     <style jsx>{`
-      .adminLoginPage{min-height:100vh;display:grid;place-items:center;padding:28px;background:radial-gradient(circle at 15% 10%,rgba(49,166,106,.11),transparent 30%),radial-gradient(circle at 90% 90%,rgba(23,23,23,.07),transparent 30%),#f5f5f2}
-      .adminLoginShell{width:min(980px,100%);display:grid;grid-template-columns:1fr 430px;overflow:hidden;border:1px solid #e1e1db;border-radius:26px;background:#fff;box-shadow:0 30px 90px rgba(20,20,18,.13)}
-      .adminLoginBrand{padding:52px;background:linear-gradient(145deg,#171817,#2c312d);color:#fff;display:flex;flex-direction:column;justify-content:space-between;min-height:560px}.adminLoginBrandTop{display:flex;align-items:center;gap:11px}.adminLoginBrandMark{display:grid;place-items:center;width:42px;height:42px;border-radius:13px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15)}.adminLoginBrand h2{margin:52px 0 10px;font-size:42px;line-height:1.02;letter-spacing:-.05em;color:#fff}.adminLoginBrand p{max-width:330px;margin:0;color:rgba(255,255,255,.67);font-size:14px;line-height:1.7}.adminLoginFacts{display:grid;gap:10px}.adminLoginFact{display:flex;align-items:center;gap:9px;color:rgba(255,255,255,.78);font-size:11px}.adminLoginFact span{width:7px;height:7px;border-radius:50%;background:#6fd99b;box-shadow:0 0 0 4px rgba(111,217,155,.12)}
-      .adminLoginForm{padding:52px 42px;display:flex;flex-direction:column;justify-content:center}.adminLoginEyebrow{font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:900;color:#77776f}.adminLoginForm h1{margin:8px 0 6px;font-size:30px;letter-spacing:-.04em}.adminLoginForm>p{margin:0;color:#77776f;font-size:13px;line-height:1.55}.adminLoginFields{display:grid;gap:16px;margin-top:28px}.adminLoginLabel{display:grid;gap:7px;font-size:11px;font-weight:850;color:#3f3f3a}.adminLoginInputWrap{position:relative}.adminLoginInput{width:100%;height:46px;padding:0 44px 0 13px;border:1px solid #dcdcd6;border-radius:11px;background:#fbfbf8;color:#222;outline:none;font-size:13px}.adminLoginInput:focus{background:#fff;border-color:#85857d;box-shadow:0 0 0 3px rgba(23,23,23,.06)}.adminLoginPasswordToggle{position:absolute;right:7px;top:6px;width:34px;height:34px;border:0;border-radius:9px;background:transparent;color:#77776f;display:grid;place-items:center;cursor:pointer}.adminLoginPasswordToggle:hover{background:#f0f0eb;color:#222}.adminLoginAlert{margin-top:16px;padding:11px 12px;border:1px solid #f0c7c2;border-radius:11px;background:#fff3f2;color:#972d24;font-size:12px;line-height:1.5}.adminLoginSubmit{height:46px;margin-top:4px;display:flex;align-items:center;justify-content:center;gap:9px;border:1px solid #171817;border-radius:11px;background:#171817;color:#fff;font-size:13px;font-weight:850;cursor:pointer;box-shadow:0 8px 20px rgba(23,23,23,.12);transition:.16s ease}.adminLoginSubmit:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 12px 28px rgba(23,23,23,.17)}.adminLoginSubmit:disabled{opacity:.55;cursor:not-allowed}.adminLoginFoot{margin-top:18px;text-align:center;color:#909089;font-size:10px}
-      @media(max-width:820px){.adminLoginShell{grid-template-columns:1fr;max-width:520px}.adminLoginBrand{display:none}.adminLoginForm{padding:42px 30px}}
-      @media(max-width:420px){.adminLoginPage{padding:14px}.adminLoginForm{padding:34px 22px}.adminLoginShell{border-radius:20px}}
-      html[data-admin-theme='dark'] .adminLoginPage{background:#0f1210;color:#eef3ef}
-      /* .adminLoginShell/.adminLoginEyebrow used to be appended here as bare,
-         unscoped rules (no html[data-admin-theme='dark'] prefix), so they applied
-         unconditionally in every theme -- .adminLoginEyebrow's intended dark color
-         clobbered the correct light-mode value in light mode too. Properly scoped
-         below, plus dark coverage added for every other classname on this page
-         that previously had none at all. */
-      html[data-admin-theme='dark'] .adminLoginShell{background:#191d1b;border-color:#2c332e;box-shadow:0 30px 90px rgba(0,0,0,.45)}
-      html[data-admin-theme='dark'] .adminLoginEyebrow{color:#9da69f}
-      html[data-admin-theme='dark'] .adminLoginForm>p{color:#9da69f}
-      html[data-admin-theme='dark'] .adminLoginLabel{color:#dce3de}
-      html[data-admin-theme='dark'] .adminLoginInput{border-color:#343b36;background:#191d1b;color:#eef2ef}
-      html[data-admin-theme='dark'] .adminLoginInput:focus{background:#1f2422;border-color:#9da69f;box-shadow:0 0 0 3px rgba(157,166,159,.18)}
-      html[data-admin-theme='dark'] .adminLoginPasswordToggle{color:#9da69f}
-      html[data-admin-theme='dark'] .adminLoginPasswordToggle:hover{background:#2c332e;color:#eef2ef}
-      html[data-admin-theme='dark'] .adminLoginAlert{border-color:#4a2620;background:#33201c;color:#f0776a}
-      html[data-admin-theme='dark'] .adminLoginFoot{color:#9ba49e}
+      .adminLoginPage{--accent:var(--login-accent,#d42a2a);--accent-ink:var(--login-accent-ink,#fff);--panel:var(--login-panel,#191512);min-height:100vh;display:grid;place-items:center;padding:28px;background:radial-gradient(circle at 12% 8%,color-mix(in srgb,var(--accent) 12%,transparent),transparent 32%),radial-gradient(circle at 92% 92%,rgba(25,21,18,.06),transparent 30%),var(--login-bg,#f7f3ef)}
+      .adminLoginShell{width:min(980px,100%);display:grid;grid-template-columns:1fr 430px;overflow:hidden;border-radius:26px;background:#fff;box-shadow:0 1px 2px rgba(25,21,18,.05),0 30px 90px rgba(120,20,10,.12)}
+      .adminLoginBrand{position:relative;overflow:hidden;padding:48px;background:var(--panel);color:#fff;display:flex;flex-direction:column;justify-content:space-between;min-height:560px}
+      .adminLoginBrand::after{content:'';position:absolute;right:-120px;bottom:-140px;width:380px;height:380px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--accent) 55%,transparent),transparent 70%);opacity:.55}
+      .adminLoginLogo{height:34px;width:auto;max-width:220px;object-fit:contain;display:block}.adminLoginName{font-size:20px;font-weight:900;letter-spacing:-.03em}
+      .adminLoginBrand h2{position:relative;margin:56px 0 12px;font-size:42px;line-height:1.04;letter-spacing:-.05em;color:#fff}.adminLoginBrand h2 em{font-style:normal;color:var(--accent)}
+      .adminLoginBrand p{position:relative;max-width:330px;margin:0;color:rgba(255,255,255,.68);font-size:14px;line-height:1.7}
+      .adminLoginFacts{position:relative;display:grid;gap:11px}.adminLoginFact{display:flex;align-items:center;gap:10px;color:rgba(255,255,255,.8);font-size:12px}.adminLoginFact span{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 25%,transparent)}
+      .adminLoginForm{padding:52px 42px;display:flex;flex-direction:column;justify-content:center}.adminLoginMobileLogo{display:none;margin-bottom:26px}
+      .adminLoginEyebrow{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:900;color:#746b64}.adminLoginForm h1{margin:8px 0 6px;font-size:30px;letter-spacing:-.04em;color:#191512}.adminLoginForm>p{margin:0;color:#746b64;font-size:13px;line-height:1.55}
+      .adminLoginFields{display:grid;gap:16px;margin-top:28px}.adminLoginLabel{display:grid;gap:7px;font-size:11.5px;font-weight:800;color:#3d3833}.adminLoginInputWrap{position:relative}
+      .adminLoginInput{width:100%;height:48px;padding:0 44px 0 14px;border:1px solid #eaded4;border-radius:12px;background:#fffaf6;color:#191512;outline:none;font-size:14px}.adminLoginInput:focus{background:#fff;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent)}
+      .adminLoginPasswordToggle{position:absolute;right:7px;top:7px;width:34px;height:34px;border:0;border-radius:9px;background:transparent;color:#746b64;display:grid;place-items:center;cursor:pointer}.adminLoginPasswordToggle:hover{background:#f3ede7;color:#191512}
+      .adminLoginAlert{position:relative;margin-top:16px;padding:11px 12px 11px 40px;border:1px solid #f1c9c4;border-left:3px solid #c1372a;border-radius:11px;background:#fdecea;color:#972d24;font-size:12.5px;line-height:1.5}.adminLoginAlert::before{content:'!';position:absolute;left:12px;top:11px;display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#c1372a;color:#fff;font-size:11px;font-weight:900}
+      .adminLoginSubmit{height:48px;margin-top:6px;display:flex;align-items:center;justify-content:center;gap:9px;border:0;border-radius:12px;background:var(--accent);color:var(--accent-ink);font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 10px 24px color-mix(in srgb,var(--accent) 28%,transparent);transition:.16s ease}.adminLoginSubmit:hover:not(:disabled){transform:translateY(-1px);filter:brightness(.96)}.adminLoginSubmit:disabled{opacity:.55;cursor:not-allowed}
+      .adminLoginFoot{margin-top:18px;text-align:center;color:#8d8178;font-size:11px}
+      @media(max-width:820px){.adminLoginShell{grid-template-columns:1fr;max-width:480px}.adminLoginBrand{display:none}.adminLoginForm{padding:40px 30px}.adminLoginMobileLogo{display:block}}
+      @media(max-width:420px){.adminLoginPage{padding:14px;align-items:start;padding-top:8vh}.adminLoginForm{padding:32px 22px}.adminLoginShell{border-radius:22px}}
     `}</style>
     <section className="adminLoginShell">
-      <aside className="adminLoginBrand"><div><div className="adminLoginBrandTop"><div className="adminLoginBrandMark"><ShieldCheck size={20}/></div><strong>Control Center</strong></div><h2>Run your store with confidence.</h2><p>Secure staff access to orders, catalog, inventory, customers, content and analytics.</p></div><div className="adminLoginFacts"><div className="adminLoginFact"><span/>Permission-based access</div><div className="adminLoginFact"><span/>Auditable store operations</div><div className="adminLoginFact"><span/>Live analytics workspace</div></div></aside>
+      <aside className="adminLoginBrand">
+        <div style={{ position: 'relative' }}>
+          {brand?.logoDarkUrl ? <img className="adminLoginLogo" src={brand.logoDarkUrl} alt={name} /> : <span className="adminLoginName">{name}</span>}
+          <h2>Your store,<br /><em>in control.</em></h2>
+          <p>Orders, products, customers and your storefront, all in one place.</p>
+        </div>
+        <div className="adminLoginFacts"><div className="adminLoginFact"><span />Live orders and sales</div><div className="adminLoginFact"><span />Theme studio for your storefront</div><div className="adminLoginFact"><span />Staff roles and activity log</div></div>
+      </aside>
       <form onSubmit={submit} className="adminLoginForm">
-        <div className="adminLoginEyebrow">Store operations</div><h1>Welcome back</h1><p>Sign in with your staff account to continue.</p>
+        <div className="adminLoginMobileLogo">{brand?.logoUrl ? <img className="adminLoginLogo" src={brand.logoUrl} alt={name} /> : <span className="adminLoginName" style={{ color: '#191512' }}>{name}</span>}</div>
+        <div className="adminLoginEyebrow">{name} admin</div><h1>Welcome back</h1><p>Sign in with your staff account to continue.</p>
         <div className="adminLoginFields"><label className="adminLoginLabel">Email<input className="adminLoginInput" name="email" type="email" autoComplete="username" placeholder="you@example.com" required/></label><label className="adminLoginLabel">Password<div className="adminLoginInputWrap"><input className="adminLoginInput" name="password" type={showPassword?'text':'password'} autoComplete="current-password" placeholder="Enter your password" required/><button type="button" className="adminLoginPasswordToggle" onClick={()=>setShowPassword(v=>!v)} aria-label={showPassword?'Hide password':'Show password'}>{showPassword?<EyeOff size={16}/>:<Eye size={16}/>}</button></div></label></div>
-        {error&&<div className="adminLoginAlert">{error}</div>}
+        {error&&<div className="adminLoginAlert" role="alert">{error}</div>}
         <button className="adminLoginSubmit" disabled={busy}>{busy?'Signing in…':'Sign in'}{!busy&&<ArrowRight size={15}/>}</button>
-        <div className="adminLoginFoot">Staff access only · Customer accounts use the storefront account flow.</div>
+        <div className="adminLoginFoot">Staff access only · Customers sign in on the store.</div>
       </form>
     </section>
   </main>

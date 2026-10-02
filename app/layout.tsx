@@ -2,6 +2,7 @@ import './globals.css'
 import './storefront-legacy.css'
 import { headers } from 'next/headers'
 import { db } from '@/lib/prisma'
+import { getSiteSeo } from '@/lib/seo'
 import { getThemeState, defaultTheme, defaultNavigation } from '@/lib/theme'
 import { getTrackingConfig } from '@/lib/tracking'
 import { FONT_VARIABLE_CLASSES } from '@/lib/fonts'
@@ -22,15 +23,16 @@ const brand = process.env.NEXT_PUBLIC_BRAND_NAME || 'Your Brand'
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '')
 
 export async function generateMetadata(): Promise<Metadata> {
-  const seoSettings = await db.setting.findMany({ where: { key: { in: ['seo.title', 'seo.description'] } } }).catch(() => [])
-  const seoMap = new Map(seoSettings.map(s => [s.key, s.value]))
-  const title = seoMap.get('seo.title') || brand
-  const description = seoMap.get('seo.description') || `Shop ${brand} online.`
+  // Store-wide title, description and share image (lib/seo.ts); pages override what they know better.
+  const seo = await getSiteSeo().catch(() => ({ brand, title: brand, description: `Shop ${brand} online.`, image: undefined }))
+  const images = seo.image ? [{ url: seo.image, alt: seo.title }] : undefined
   return {
-    title: { default: title, template: `%s | ${title}` },
-    description,
+    title: { default: seo.title, template: `%s | ${seo.title}` },
+    description: seo.description,
     metadataBase: new URL(siteUrl),
     robots: { index: true, follow: true },
+    openGraph: { type: 'website', siteName: seo.brand, title: seo.title, description: seo.description, url: siteUrl, images },
+    twitter: { card: seo.image ? 'summary_large_image' : 'summary', title: seo.title, description: seo.description, images: seo.image ? [seo.image] : undefined },
   }
 }
 

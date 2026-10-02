@@ -8,12 +8,11 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { Footer } from '@/components/footer'
 import AliExpressProduct from '@/components/aliexpress-product'
+import { absoluteUrl, getSiteSeo, isShareableImage, metaText, shareMeta, siteUrl } from '@/lib/seo'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-const siteUrl = () =>
-  (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '')
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
@@ -30,15 +29,19 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     },
   })
   if (!product) return {}
-  const image = product.seoImageUrl || product.images[0]?.url
-  const description = product.seoDescription || product.shortDescription || product.description || undefined
+  // Placeholder text like "0" is skipped (lib/seo.ts metaText) so Google and WhatsApp show
+  // real copy; SVGs are skipped because share previews can't render them.
+  const imageUrl = [product.seoImageUrl, ...product.images.map(i => i.url)].find(isShareableImage)
+  const image = imageUrl ? absoluteUrl(imageUrl) : undefined
+  const description = metaText(product.seoDescription) || metaText(product.shortDescription) || metaText(product.description)
+    || metaText(`Buy ${product.name} online with fast delivery.`)
   const title = product.seoTitle || product.name
   const url = `${siteUrl()}/product/${slug}`
   return {
     title,
     description,
     alternates: { canonical: url },
-    openGraph: { title, description, url, images: image ? [image] : undefined, type: 'website' },
+    ...shareMeta({ title, description, url, image: image || (await getSiteSeo().catch(() => null))?.image }),
   }
 }
 
@@ -209,9 +212,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: product.name,
-    description: product.description || product.shortDescription || undefined,
+    description: metaText(product.description, 5000) || metaText(product.shortDescription, 5000),
     sku: product.sku,
-    image: product.images.map((image) => image.url),
+    image: product.images.map((image) => absoluteUrl(image.url)),
     brand: product.brand ? { '@type': 'Brand', name: product.brand } : undefined,
     url: `${siteUrl()}/product/${product.slug}`,
     offers: {

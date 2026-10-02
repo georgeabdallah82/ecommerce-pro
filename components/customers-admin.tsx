@@ -142,7 +142,7 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
           <button className={`${ui.btn} ${ui.btnSecondary}`} disabled={bulkBusy} onClick={() => bulkTag()}><Tag size={15} /> Tag</button>
           <button className={`${ui.btn} ${ui.btnSecondary}`} disabled={bulkBusy} onClick={() => bulk('ACTIVATE')}><UserCheck size={15} /> Activate</button>
           <button className={`${ui.btn} ${ui.btnSecondary}`} disabled={bulkBusy} onClick={() => bulk('DISABLE')}><ShieldOff size={15} /> Disable</button>
-          <button className={`${ui.btn} ${ui.btnSecondary}`} disabled={bulkBusy} onClick={() => bulk('DELETE')}><Trash2 size={15} /> Delete</button>
+          <button className={`${ui.btn} ${ui.btnDanger}`} disabled={bulkBusy} onClick={() => bulk('DELETE')}><Trash2 size={15} /> Delete</button>
         </div>
       </div>
     )}

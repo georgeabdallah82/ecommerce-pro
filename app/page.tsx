@@ -4,9 +4,13 @@ import {withProductStats} from '@/lib/product-stats'
 import {getUnpublishedProductIds} from '@/lib/sales-channels'
 import StorefrontSections from '@/components/storefront-sections'
 import {Footer} from '@/components/footer'
+import type { Metadata } from 'next'
+import { absoluteUrl, siteUrl } from '@/lib/seo'
 
 export const dynamic='force-dynamic'
 export const revalidate=0
+
+export const metadata: Metadata = { alternates: { canonical: '/' } }
 
 export default async function Home(){
   const {theme,sections}=await getThemeState()
@@ -25,7 +29,14 @@ export default async function Home(){
   const products=await withProductStats(rawProducts)
   const announcements=contentBlocks.filter((b:any)=>b.type==='announcement')
   const trustItems=contentBlocks.filter((b:any)=>b.type==='trust')
+  // Tells Google the store's name and logo, and lets it show a search box for the store.
+  const base=siteUrl()
+  const structuredData=[
+    {'@context':'https://schema.org','@type':'Organization',name:theme.brandName,url:base,logo:/^(https?:\/\/|\/)/.test(theme.logoUrl||'')?absoluteUrl(theme.logoUrl):undefined},
+    {'@context':'https://schema.org','@type':'WebSite',name:theme.brandName,url:base,potentialAction:{'@type':'SearchAction',target:`${base}/shop?q={search_term_string}`,'query-input':'required name=search_term_string'}},
+  ]
   return <div className="aliHome">
+    <script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(structuredData).replace(/</g,'\\u003c')}}/>
     {announcements.map(block=>{
       let text=block.title||''
       try{const parsed=JSON.parse(block.contentJson||'{}');if(parsed?.text)text=String(parsed.text)}catch{}

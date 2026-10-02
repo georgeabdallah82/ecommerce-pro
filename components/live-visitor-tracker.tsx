@@ -1,5 +1,6 @@
 'use client'
 
+import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { MapPin, ShieldCheck, X, Navigation } from 'lucide-react'
 
@@ -68,6 +69,19 @@ export default function LiveVisitorTracker() {
       setConsent(readConsent())
     }
   }, [])
+
+  // The location question waits until a shopper's third page this visit and never shows
+  // while they're buying (cart, checkout, order, account): a pop-up there costs sales.
+  const pathname = usePathname() || ''
+  const [askReady, setAskReady] = useState(false)
+  useEffect(() => {
+    try {
+      const views = Number(window.sessionStorage.getItem('lv_page_views') || 0) + 1
+      window.sessionStorage.setItem('lv_page_views', String(views))
+      setAskReady(views >= 3)
+    } catch { setAskReady(false) }
+  }, [pathname])
+  const buyingPath = /^\/(cart|checkout|order|account)(\/|$)/.test(pathname)
 
   useEffect(() => {
     coordinatesRef.current = coordinates
@@ -153,7 +167,7 @@ export default function LiveVisitorTracker() {
     }
   }, [])
 
-  if (!mounted || typeof window === 'undefined' || !isTrackedPath(window.location.pathname) || consent !== null) {
+  if (!mounted || typeof window === 'undefined' || !isTrackedPath(window.location.pathname) || consent !== null || !askReady || buyingPath) {
     return null
   }
 
@@ -214,7 +228,7 @@ export default function LiveVisitorTracker() {
            the single most important tap on the storefront. Anchoring to the
            top on narrow viewports instead avoids that collision structurally
            rather than trying to detect it. */
-        @media(max-width:600px){.lv-consent-root{top:110px;bottom:auto;left:16px;right:16px}.lv-consent-card{width:100%}}
+        @media(max-width:600px){.lv-consent-root{top:auto;bottom:16px;left:16px;right:16px}.lv-consent-card{width:100%}}
       `}</style>
 
       <div className="lv-consent-card">

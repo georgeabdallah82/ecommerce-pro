@@ -5,9 +5,21 @@ import {getUnpublishedProductIds} from '@/lib/sales-channels'
 import {ProductStatus} from '@prisma/client'
 import {Footer} from '@/components/footer'
 import AliExpressShop from '@/components/aliexpress-shop'
+import { getSiteSeo, metaText, shareMeta } from '@/lib/seo'
+import type { Metadata } from 'next'
 
 export const dynamic='force-dynamic'
 export const revalidate=0
+
+// Search and filter results are useful to shoppers but thin for Google: keep them out of the index.
+export async function generateMetadata({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }): Promise<Metadata> {
+  const params = await searchParams
+  const filtered = Object.values(params).some(Boolean)
+  const seo = await getSiteSeo().catch(() => null)
+  const title = params.q ? `Search: ${params.q}` : 'Shop all products'
+  const description = `Browse every product at ${seo?.brand || 'our store'}. ${seo?.description || ''}`.trim()
+  return { title, description: metaText(description), alternates: { canonical: '/shop' }, robots: filtered ? { index: false, follow: true } : undefined, ...shareMeta({ title, description: metaText(description), url: '/shop', image: seo?.image }) }
+}
 
 // A product's real "starting price" is the cheapest of its variants' own price
 // overrides (ProductVariant.price), not basePrice -- once a product has variants,
