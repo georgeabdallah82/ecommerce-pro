@@ -2,6 +2,15 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 
+// The old built-in default. Themes saved before it was replaced still store it word for word,
+// and it promised $50 free delivery and worldwide shipping whatever the store's settings,
+// so it counts as "not set".
+const LEGACY_DEFAULT = 'Free standard delivery is automatically applied to orders over $50. Tracked shipping worldwide.'
+export function merchantShippingText(value: unknown): string {
+  const text = String(value ?? '').trim()
+  return text === LEGACY_DEFAULT ? '' : text
+}
+
 // Default "Shipping & returns" text on product pages when the merchant hasn't written their
 // own. Built from the real free-delivery threshold (Settings > Checkout) so it can never
 // promise a different amount than checkout charges.

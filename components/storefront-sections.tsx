@@ -7,7 +7,7 @@ import {useCart} from '@/components/cart-provider'
 import NewsletterForm from '@/components/newsletter-form'
 import {StorefrontPreviewContext} from '@/components/preview-context'
 import {useWishlist} from '@/components/use-wishlist'
-import { ShippingNote } from '@/components/shipping-note'
+import { ShippingNote, merchantShippingText } from '@/components/shipping-note'
 
 const TRUST_ICONS:Record<string,typeof ShieldCheck>={truck:Truck,shield:ShieldCheck,return:RotateCcw,lock:Lock,support:Headphones,award:Award}
 
@@ -353,7 +353,7 @@ function MainProductSection({section,theme,product,preview,selected,onSelect,wis
           </div>
           <div className="focalAccordions">
             <details open><summary>Description<ChevronDown size={16}/></summary><p>{product.description||product.shortDescription||''}</p></details>
-            <details><summary>Shipping & returns<ChevronDown size={16}/></summary><p>{s.shippingText || <ShippingNote />}</p></details>
+            <details><summary>Shipping & returns<ChevronDown size={16}/></summary><p>{merchantShippingText(s.shippingText) || <ShippingNote />}</p></details>
             <details><summary>Product information<ChevronDown size={16}/></summary><p>SKU {selectedVariant?.sku||product.sku||'—'}</p></details>
           </div>
         </div>
