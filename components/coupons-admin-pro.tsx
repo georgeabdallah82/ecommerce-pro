@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Check, Copy, Gift, Layers, Percent, Plus, Search, ShieldCheck, Tag, X } from 'lucide-react'
+import { Check, Copy, Gift, Layers, Pencil, Percent, Plus, Search, ShieldCheck, Tag, Trash2, X } from 'lucide-react'
 import { money } from '@/lib/config'
 import styles from './admin-coupons.module.css'
 import ui from './admin-ui.module.css'
@@ -128,6 +128,26 @@ const emptyForm = {
   getAppliesTo: 'ALL_PRODUCTS' as Scope, getProductIds: [] as string[], getCollectionIds: [] as string[],
 }
 
+// A stored date as the value a datetime-local input expects (local time, no seconds).
+function toLocalInput(value: string | null) {
+  if (!value) return ''
+  const d = new Date(value)
+  return Number.isNaN(d.getTime()) ? '' : new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+}
+
+// A saved discount turned back into the form's own units (dollars, whole percent).
+function formFromCoupon(c: Coupon): typeof emptyForm {
+  return {
+    code: c.code, isAutomatic: c.isAutomatic, type: c.type,
+    value: c.type === 'PERCENTAGE' ? String(c.value) : c.type === 'FIXED' ? (c.value / 100).toFixed(2) : '0',
+    minSubtotal: c.minSubtotal ? (c.minSubtotal / 100).toFixed(2) : '', maxUses: c.maxUses ? String(c.maxUses) : '',
+    startsAt: toLocalInput(c.startsAt), expiresAt: toLocalInput(c.expiresAt), firstOrderOnly: c.firstOrderOnly,
+    appliesTo: c.appliesTo || 'ALL_PRODUCTS', productIds: c.productIds || [], collectionIds: c.collectionIds || [],
+    buyQuantity: String(c.buyQuantity || 1), getQuantity: String(c.getQuantity || 1), getDiscountPercent: String(c.getDiscountPercent ?? 100),
+    getAppliesTo: c.getAppliesTo || 'ALL_PRODUCTS', getProductIds: c.getProductIds || [], getCollectionIds: c.getCollectionIds || [],
+  }
+}
+
 export default function CouponsAdminPro({ initial }: { initial: Coupon[] }) {
   const confirm = useConfirm()
   const [rows, setRows] = useState<Coupon[]>(initial || [])
@@ -138,6 +158,8 @@ export default function CouponsAdminPro({ initial }: { initial: Coupon[] }) {
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState(emptyForm)
+  // The discount being edited, or null while creating a new one.
+  const [editing, setEditing] = useState<Coupon | null>(null)
   const [catalog, setCatalog] = useState<{ products: CatalogProduct[]; collections: CatalogCollection[] } | null>(null)
 
   useEffect(() => {
@@ -178,7 +200,24 @@ export default function CouponsAdminPro({ initial }: { initial: Coupon[] }) {
     setRows(await api('/api/admin/coupons'))
   }
 
-  async function createCoupon(e: React.FormEvent) {
+  function openCreate() {
+    setEditing(null); setForm(emptyForm); setError(''); setFormOpen(true)
+  }
+
+  function openEdit(c: Coupon) {
+    setEditing(c); setForm(formFromCoupon(c)); setError(''); setFormOpen(true)
+  }
+
+  async function deleteCoupon(c: Coupon) {
+    if (!(await confirm({ title: `Delete ${c.code}?`, message: c.usedCount ? `It has been used ${c.usedCount} time${c.usedCount === 1 ? '' : 's'}. Past orders keep their discount, but customers can no longer use this code. This can't be undone.` : "Customers can no longer use this code. This can't be undone.", confirmLabel: 'Delete discount' }))) return
+    setError('')
+    try {
+      await api(`/api/admin/coupons?id=${encodeURIComponent(c.id)}`, { method: 'DELETE' })
+      setRows(current => current.filter(x => x.id !== c.id))
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to delete discount') }
+  }
+
+  async function saveCoupon(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true); setError('')
     try {
@@ -187,15 +226,17 @@ export default function CouponsAdminPro({ initial }: { initial: Coupon[] }) {
       if (type === 'PERCENTAGE' && (valueNumber <= 0 || valueNumber > 100)) throw new Error('Percentage must be between 1 and 100.')
       if (type === 'FIXED' && valueNumber < 0) throw new Error('Discount value cannot be negative.')
       if (type === 'BUY_X_GET_Y' && (Number(form.buyQuantity) < 1 || Number(form.getQuantity) < 1)) throw new Error('Buy and get quantities must be at least 1.')
-      const data = await api('/api/admin/coupons', { method: 'POST', body: JSON.stringify({
+      const data = await api('/api/admin/coupons', { method: editing ? 'PATCH' : 'POST', body: JSON.stringify({
+        ...(editing ? { id: editing.id } : {}),
         code: form.code,
         isAutomatic: form.isAutomatic,
         type,
         value: type === 'PERCENTAGE' ? Math.round(valueNumber) : type === 'FIXED' ? Math.round(valueNumber * 100) : 0,
         minSubtotal: form.minSubtotal ? Math.round(Number(form.minSubtotal) * 100) : null,
         maxUses: form.maxUses ? Number(form.maxUses) : null,
-        startsAt: form.startsAt || null,
-        expiresAt: form.expiresAt || null,
+        // datetime-local values are local time; send them as real instants.
+        startsAt: form.startsAt ? new Date(form.startsAt).toISOString() : null,
+        expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : null,
         firstOrderOnly: form.firstOrderOnly,
         appliesTo: form.appliesTo,
         productIds: form.productIds,
@@ -209,10 +250,11 @@ export default function CouponsAdminPro({ initial }: { initial: Coupon[] }) {
           getCollectionIds: form.getCollectionIds,
         } : {}),
       }) })
-      setRows(current => [data.coupon, ...current])
+      setRows(current => editing ? current.map(x => x.id === editing.id ? data.coupon : x) : [data.coupon, ...current])
       setForm(emptyForm)
+      setEditing(null)
       setFormOpen(false)
-    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to create discount') }
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to save discount') }
     finally { setSaving(false) }
   }
 
@@ -235,7 +277,7 @@ export default function CouponsAdminPro({ initial }: { initial: Coupon[] }) {
   return <div className={styles.page}>
     <div className={styles.header}>
       <div><span className={ui.muted}>GROWTH</span><h1 className={ui.heading}>Discounts</h1><p className={ui.muted}>Create and manage discount codes with clear rules and usage control.</p></div>
-      <button className={ui.btn} onClick={() => setFormOpen(true)}><Plus size={16}/> Create discount</button>
+      <button className={ui.btn} onClick={openCreate}><Plus size={16}/> Create discount</button>
     </div>
 
     {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
@@ -260,23 +302,24 @@ export default function CouponsAdminPro({ initial }: { initial: Coupon[] }) {
 
     <div className={`${ui.card} productTableCard`}>
       <div className={styles.tableTopline}><span className={ui.muted}>{filtered.length} discount{filtered.length === 1 ? '' : 's'}</span><span className={ui.muted}>Codes are case-insensitive</span></div>
-      <div className={ui.tableWrap}><table className={`${ui.table} productTable`}><thead><tr><th>Discount</th><th>Type</th><th>Value</th><th>Applies to</th><th>Usage</th><th>Schedule</th><th>Status</th><th></th></tr></thead><tbody>
+      <div className={ui.tableWrap}><table className={`${ui.table} ${ui.cardTable} productTable`}><thead><tr><th>Discount</th><th>Type</th><th>Value</th><th>Applies to</th><th>Usage</th><th>Schedule</th><th>Status</th><th></th></tr></thead><tbody>
         {filtered.map(c => <tr key={c.id}>
-          <td><div className="inline"><div className={styles.discountIcon}><Tag size={18}/></div><div><strong>{c.code}</strong>{c.isAutomatic && <span className={ui.statusPill} style={{ marginLeft: 8 }}>Automatic</span>}<div className={ui.muted}>{c.firstOrderOnly ? 'First order only' : 'Available to all customers'}</div></div></div></td>
-          <td>{label(c.type)}</td><td><strong>{valueLabel(c)}</strong>{c.minSubtotal ? <div className={ui.muted}>Min {money(c.minSubtotal)}</div> : null}</td>
-          <td>{scopeSummary(c.appliesTo, c.productIds, c.collectionIds)}</td>
-          <td>{c.usedCount}{c.maxUses ? <span className={ui.muted}> / {c.maxUses}</span> : <span className={ui.muted}> / unlimited</span>}</td>
-          <td>{c.expiresAt ? <span>{new Date(c.expiresAt).toLocaleDateString()}</span> : <span className={ui.muted}>No expiry</span>}</td>
-          <td><span className={`${ui.statusPill} ${c.isActive ? ui.statusPillSuccess : ui.statusPillWarning}`}>{c.isActive ? <><Check size={13}/> Active</> : 'Inactive'}</span></td>
-          <td><div className="inline"><button className={ui.iconBtn} title="Copy code" onClick={() => copyCode(c.code)}>{copied === c.code ? <Check size={15}/> : <Copy size={15}/>}</button><button className={c.isActive ? `${ui.textButton} ${ui.textButtonDanger}` : ui.textButton} onClick={() => toggle(c)}>{c.isActive ? 'Disable' : 'Enable'}</button></div></td>
+          <td data-cell="primary"><div className="inline"><div className={styles.discountIcon}><Tag size={18}/></div><div><strong>{c.code}</strong>{c.isAutomatic && <span className={ui.statusPill} style={{ marginLeft: 8 }}>Automatic</span>}<div className={ui.muted}>{c.firstOrderOnly ? 'First order only' : 'Available to all customers'}</div></div></div></td>
+          <td data-label="Type">{label(c.type)}</td><td data-label="Value"><strong>{valueLabel(c)}</strong>{c.minSubtotal ? <div className={ui.muted}>Min {money(c.minSubtotal)}</div> : null}</td>
+          <td data-label="Applies to">{scopeSummary(c.appliesTo, c.productIds, c.collectionIds)}</td>
+          <td data-label="Usage">{c.usedCount}{c.maxUses ? <span className={ui.muted}> / {c.maxUses}</span> : <span className={ui.muted}> / unlimited</span>}</td>
+          <td data-label="Ends">{c.expiresAt ? <span>{new Date(c.expiresAt).toLocaleDateString()}</span> : <span className={ui.muted}>No expiry</span>}</td>
+          <td data-label="Status"><span className={`${ui.statusPill} ${c.isActive ? ui.statusPillSuccess : ui.statusPillWarning}`}>{c.isActive ? <><Check size={13}/> Active</> : 'Inactive'}</span></td>
+          <td data-cell="actions"><div className="inline"><button className={ui.iconBtn} title="Copy code" aria-label={`Copy ${c.code}`} onClick={() => copyCode(c.code)}>{copied === c.code ? <Check size={15}/> : <Copy size={15}/>}</button><button className={ui.iconBtn} title="Edit discount" aria-label={`Edit ${c.code}`} onClick={() => openEdit(c)}><Pencil size={15}/></button><button className={c.isActive ? `${ui.textButton} ${ui.textButtonDanger}` : ui.textButton} onClick={() => toggle(c)}>{c.isActive ? 'Disable' : 'Enable'}</button><button className={`${ui.iconBtn} ${ui.iconBtnDanger}`} title="Delete discount" aria-label={`Delete ${c.code}`} onClick={() => deleteCoupon(c)}><Trash2 size={15}/></button></div></td>
         </tr>)}
       </tbody></table></div>
       {!filtered.length && <div className={ui.empty}><Gift size={28}/><h3>No discounts found</h3><p className={ui.muted}>Try a different search or create a new discount.</p></div>}
     </div>
 
     {formOpen && <div className={ui.modalOverlay} onClick={() => !saving && setFormOpen(false)}><div className={`${ui.card} ${styles.modal}`} onClick={e => e.stopPropagation()}>
-      <div className="inventoryModalHead"><div><span className={`${ui.muted} ${ui.tiny}`}>CREATE DISCOUNT</span><h2>New discount</h2><p className={ui.muted}>Set the code, value and eligibility rules.</p></div><button className={ui.iconBtn} onClick={() => setFormOpen(false)} disabled={saving}><X size={17}/></button></div>
-      <form onSubmit={createCoupon} className={styles.form}>
+      <div className="inventoryModalHead"><div><span className={`${ui.muted} ${ui.tiny}`}>{editing ? 'EDIT DISCOUNT' : 'CREATE DISCOUNT'}</span><h2>{editing ? editing.code : 'New discount'}</h2><p className={ui.muted}>{editing ? 'Changes apply to future checkouts. Past orders keep the discount they got.' : 'Set the code, value and eligibility rules.'}</p></div><button className={ui.iconBtn} onClick={() => setFormOpen(false)} disabled={saving}><X size={17}/></button></div>
+      <form onSubmit={saveCoupon} className={styles.form}>
+        {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
         <div className={styles.codeRow}><label className={ui.fieldLabel}>Discount code<input className={ui.input} required value={form.code} onChange={e => setForm({...form, code: e.target.value.toUpperCase().replace(/\s+/g, '-').slice(0, 64)})} placeholder="SUMMER10"/></label><button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setForm({...form, code: `SAVE${Math.floor(1000 + Math.random()*9000)}`})}>Generate</button></div>
         <label className={styles.toggleRow}><input type="checkbox" checked={form.isAutomatic} onChange={e => setForm({...form, isAutomatic: e.target.checked})}/><span><strong>Apply automatically</strong><small>Customers get this discount at checkout without entering the code above. Only applies when they haven't entered a different code.</small></span></label>
         <div className={styles.typeGrid}>
@@ -323,7 +366,7 @@ export default function CouponsAdminPro({ initial }: { initial: Coupon[] }) {
 
         <div className={styles.formGrid}><label className={ui.fieldLabel}>Minimum order<input className={ui.input} type="number" min="0" step="0.01" value={form.minSubtotal} onChange={e => setForm({...form, minSubtotal: e.target.value})} placeholder="None"/></label><label className={ui.fieldLabel}>Maximum uses<input className={ui.input} type="number" min="1" step="1" value={form.maxUses} onChange={e => setForm({...form, maxUses: e.target.value})} placeholder="Unlimited"/></label><label className={ui.fieldLabel}>Starts<input className={ui.input} type="datetime-local" value={form.startsAt} onChange={e => setForm({...form, startsAt: e.target.value})}/></label><label className={ui.fieldLabel}>Ends<input className={ui.input} type="datetime-local" value={form.expiresAt} onChange={e => setForm({...form, expiresAt: e.target.value})}/></label></div>
         <label className={styles.toggleRow}><input type="checkbox" checked={form.firstOrderOnly} onChange={e => setForm({...form, firstOrderOnly: e.target.checked})}/><span><strong>First order only</strong><small>Limit this discount to customers with no previous completed order.</small></span></label>
-        <div className={`inline ${styles.formFooter}`}><div className="inline"><ShieldCheck size={15}/><span className={ui.muted}>Validated again at checkout</span></div><div className="inline"><button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setFormOpen(false)} disabled={saving}>Cancel</button><button className={ui.btn} disabled={saving}>{saving ? 'Creating…' : 'Create discount'}</button></div></div>
+        <div className={`inline ${styles.formFooter}`}><div className="inline"><ShieldCheck size={15}/><span className={ui.muted}>Validated again at checkout</span></div><div className="inline"><button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setFormOpen(false)} disabled={saving}>Cancel</button><button className={ui.btn} disabled={saving}>{saving ? 'Saving…' : editing ? 'Save changes' : 'Create discount'}</button></div></div>
       </form>
     </div></div>}
   </div>

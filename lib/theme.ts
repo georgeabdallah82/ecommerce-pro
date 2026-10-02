@@ -4,6 +4,7 @@ import {getStorefrontSettings} from '@/lib/storefront-settings'
 import {normalizeNavUrl} from '@/lib/links'
 import {parseJson} from '@/lib/utils'
 import {defaultTheme,defaultSections,defaultNavigation} from './theme-defaults'
+import { setThemeTemplates } from '@/lib/theme-templates'
 export type ThemeConfig=typeof defaultTheme
 export {defaultTheme,defaultSections,defaultNavigation}
 
@@ -123,9 +124,10 @@ async function loadThemeState(){
   // Server code reads every page template (product/collection/cart/custom page sections),
   // but the browser only needs each template's header + announcement settings (the header
   // component picks them by route). Pages pass `theme` into client components, so the full
-  // templates were serialized into every page's HTML. Non-enumerable keeps them readable
-  // here while React/JSON serialization skips them; headerTemplates is the slim copy.
-  Object.defineProperty(theme,'editorTemplates',{value:editorTemplates,enumerable:false,writable:true,configurable:true})
+  // templates were serialized into every page's HTML. They're kept server-side instead (read
+  // them with themeTemplates(theme)); headerTemplates is the slim copy the browser gets.
+  delete theme.editorTemplates
+  setThemeTemplates(theme,editorTemplates)
   theme.headerTemplates=Object.fromEntries(Object.entries(editorTemplates).map(([key,list])=>[key,(Array.isArray(list)?list:[]).filter((section:any)=>section?.type==='header'||section?.type==='announcement')]))
 
   return {theme,sections,navigation:withAbsoluteUrls(parseJson<any[]>(navigationSetting?.value,defaultNavigation))}

@@ -35,6 +35,9 @@ type CartContextValue = {
   selectedItems: CartItem[]
   selectedCount: number
   selectedSubtotal: number
+  // False until the saved cart has been read from this browser (an empty cart before then
+  // means "not loaded yet", not "empty").
+  ready: boolean
   // What changed when the cart was checked against the store (prices, stock, removed items).
   notices: string[]
   dismissNotices: () => void
@@ -128,6 +131,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo<CartContextValue>(() => ({
     items,
+    ready,
     isOpen,
     openCart,
     closeCart,
@@ -186,7 +190,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     selectedSubtotal: items.filter(x => selected[keyOf(x)] !== false).reduce((a, b) => a + b.price * b.quantity, 0),
     notices,
     dismissNotices: () => setNotices([]),
-  }), [items, isOpen, selected, notices])
+  }), [items, ready, isOpen, selected, notices])
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>
 }

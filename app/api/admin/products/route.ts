@@ -3,6 +3,7 @@ import { audit } from '@/lib/audit'
 import { db } from '@/lib/prisma'
 import { json, slugify } from '@/lib/utils'
 import { productInputError } from '@/lib/product-input'
+import { cleanBarcode, freeProductSlug, productConflict, uniqueConflictMessage, variantConflict } from '@/lib/product-uniqueness'
 
 export async function GET(req: Request) {
   try {
@@ -71,10 +72,15 @@ export async function POST(req: Request) {
       const vb = v.barcode ? String(v.barcode).trim().slice(0, 120) : ''
       if (vb) { if (variantBarcodes.has(vb)) return json({ error: `Duplicate variant barcode: ${vb}` }, { status: 400 }); variantBarcodes.add(vb) }
     }
+    const barcode = cleanBarcode(b.barcode)
+    const conflict = await productConflict(db, { sku, barcode }) || await variantConflict(db, variants.map((v: any) => ({ sku: String(v.sku || '').trim().slice(0, 120), barcode: cleanBarcode(v.barcode) })))
+    if (conflict) return json({ error: conflict }, { status: 409 })
+    // Two products can share a name; give the second one "name-2" rather than failing.
+    const slug = await freeProductSlug(db, slugify(String(b.slug || name)).slice(0, 200) || `product-${Date.now()}`)
 
     const p = await db.$transaction(async tx => {
       const created = await tx.product.create({ data: {
-        name, slug: slugify(String(b.slug || name)).slice(0, 200) || `product-${Date.now()}`, sku,
+        name, slug, sku, barcode,
         brand: b.brand ? String(b.brand).trim().slice(0, 160) : null, vendor: b.vendor ? String(b.vendor).trim().slice(0, 160) : null, productType: b.productType ? String(b.productType).trim().slice(0, 160) : null,
         description: b.description ? String(b.description).slice(0, 20000) : null, shortDescription: b.shortDescription ? String(b.shortDescription).slice(0, 1000) : null,
         basePrice: Math.max(0, Math.trunc(Number(b.basePrice) || 0)), compareAtPrice: b.compareAtPrice !== undefined && b.compareAtPrice !== null && b.compareAtPrice !== '' ? Math.trunc(Number(b.compareAtPrice)) : null, costPrice: b.costPrice !== undefined && b.costPrice !== null && b.costPrice !== '' ? Math.trunc(Number(b.costPrice)) : null,
@@ -94,7 +100,7 @@ export async function POST(req: Request) {
           productId: created.id,
           name: String(v.name || 'Default Title').trim().slice(0, 160),
           sku: String(v.sku).trim().slice(0, 120),
-          barcode: v.barcode ? String(v.barcode).trim().slice(0, 120) : null,
+          barcode: cleanBarcode(v.barcode),
           optionJson: typeof v.optionJson === 'string' ? v.optionJson.slice(0, 5000) : JSON.stringify(v.options || {}).slice(0, 5000),
           price: v.price !== undefined && v.price !== '' ? Math.trunc(Number(v.price)) : null,
           compareAtPrice: v.compareAtPrice !== undefined && v.compareAtPrice !== '' ? Math.trunc(Number(v.compareAtPrice)) : null,
@@ -110,7 +116,8 @@ export async function POST(req: Request) {
     return json({ product: p }, { status: 201 })
   } catch (e) {
     const message = e instanceof Error ? e.message : ''
-    if (message.includes('Unique constraint')) return json({ error: 'A product, SKU or barcode with the same unique value already exists.' }, { status: 409 })
+    const conflictMessage = uniqueConflictMessage(e)
+    if (conflictMessage) return json({ error: conflictMessage }, { status: 409 })
     if (message === 'UNAUTHORIZED') return json({ error: 'Unauthorized' }, { status: 401 })
     if (message === 'FORBIDDEN') return json({ error: 'Forbidden' }, { status: 403 })
     console.error('Admin products POST failed', e)

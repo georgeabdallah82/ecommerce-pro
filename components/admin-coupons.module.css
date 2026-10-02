@@ -22,7 +22,7 @@
 
 .discountIcon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: var(--admin-radius-md); border: 1px solid var(--admin-border); background: var(--admin-border-soft); color: var(--admin-muted); flex: 0 0 auto; }
 
-.modal { width: min(700px, 94vw); padding: 0; }
+.modal { width: min(700px, 94vw); max-height: calc(100dvh - 44px); overflow-y: auto; overscroll-behavior: contain; padding: 0; }
 .form { display: grid; gap: 14px; padding: 22px 24px; }
 
 .codeRow { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; }

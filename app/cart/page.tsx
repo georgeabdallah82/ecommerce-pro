@@ -4,6 +4,7 @@ import { withProductStats } from '@/lib/product-stats'
 import { getUnpublishedProductIds } from '@/lib/sales-channels'
 import { Footer } from '@/components/footer'
 import AliExpressCart from '@/components/aliexpress-cart'
+import { themeTemplates } from '@/lib/theme-templates'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -16,7 +17,7 @@ const CART_ZONE_EXCLUDE = new Set(['header', 'announcement', 'footer'])
 
 export default async function Cart() {
   const [{ theme }, unpublishedIds] = await Promise.all([getThemeState(), getUnpublishedProductIds()])
-  const sections = (theme.editorTemplates?.Cart || []).filter((s: any) => s && !CART_ZONE_EXCLUDE.has(s.type))
+  const sections = (themeTemplates(theme).Cart || []).filter((s: any) => s && !CART_ZONE_EXCLUDE.has(s.type))
   const needsCollections = sections.some((s: any) => s.type === 'collection_grid' || s.type === 'collection_carousel')
   const [rawRecommended, zoneCollections] = await Promise.all([
     db.product.findMany({

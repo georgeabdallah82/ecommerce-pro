@@ -5,6 +5,7 @@ import { json, slugify } from '@/lib/utils'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { runInBackground } from '@/lib/background'
 import { productInputError } from '@/lib/product-input'
+import { cleanBarcode, productConflict, uniqueConflictMessage, variantConflict } from '@/lib/product-uniqueness'
 
 async function getProduct(id:string){
   const product=await db.product.findUnique({where:{id},include:{images:{orderBy:{sortOrder:'asc'}},variants:{include:{inventory:{include:{location:true}}}},inventory:{where:{variantId:null},include:{location:true}},tags:true,collections:{include:{collection:true}},metafields:{include:{definition:true}}}})
@@ -44,6 +45,14 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
       }
     }
 
+    // SKU and barcode were shown in the editor but never saved here; save them now, after
+    // checking they don't clash with another product (or another product's variants).
+    if(b.sku!==undefined){const sku=String(b.sku||'').trim().slice(0,120);if(!sku)return json({error:'SKU is required'},{status:400});data.sku=sku}
+    if(b.barcode!==undefined)data.barcode=cleanBarcode(b.barcode)
+    const conflict=await productConflict(db,{sku:data.sku!==existing.sku?data.sku:undefined,barcode:data.barcode!==existing.barcode?data.barcode:undefined,slug:data.slug!==existing.slug?data.slug:undefined},id)
+      ||(Array.isArray(b.variants)?await variantConflict(db,b.variants.map((v:any)=>({id:v.id?String(v.id):null,sku:String(v.sku||'').trim(),barcode:cleanBarcode(v.barcode)})),existing.variants.map(v=>v.id)):null)
+    if(conflict)return json({error:conflict},{status:409})
+
     const product=await db.$transaction(async tx=>{
       const p=await tx.product.update({where:{id},data})
       if(Array.isArray(b.images)){const images=b.images.slice(0,20);const keptIds=images.filter((x:any)=>x.id).map((x:any)=>String(x.id));if(keptIds.length)await tx.productImage.deleteMany({where:{productId:id,id:{notIn:keptIds}}});else await tx.productImage.deleteMany({where:{productId:id}});const existingImageById=new Map(existing.images.map(img=>[img.id,img]));for(let i=0;i<images.length;i++){const x=images[i];const url=String(x.url||'').trim();if(!url)continue;if(x.id){const alt=x.alt?String(x.alt):null;const cur=existingImageById.get(String(x.id));if(cur&&cur.url===url&&cur.alt===alt&&cur.sortOrder===i)continue;await tx.productImage.update({where:{id:String(x.id)},data:{url,alt,sortOrder:i}})}else await tx.productImage.create({data:{productId:id,url,alt:x.alt?String(x.alt):null,sortOrder:i}})}}
@@ -65,7 +74,7 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
         const existingVariantById=new Map(existing.variants.map(v=>[v.id,v]))
         for(const v of b.variants){
           const variantId=v.id?String(v.id):null
-          const vd:any={name:String(v.name||'Default Title'),sku:String(v.sku||`${existing.sku}-${Date.now()}`),barcode:v.barcode?String(v.barcode):null,optionJson:typeof v.optionJson==='string'?v.optionJson:JSON.stringify(v.options||{}),price:v.price===''||v.price==null?null:Math.trunc(Number(v.price)),compareAtPrice:v.compareAtPrice===''||v.compareAtPrice==null?null:Math.trunc(Number(v.compareAtPrice)),weight:v.weight===''||v.weight==null?null:Number(v.weight),weightUnit:v.weightUnit?String(v.weightUnit):null}
+          const vd:any={name:String(v.name||'Default Title'),sku:String(v.sku||`${existing.sku}-${Date.now()}`),barcode:cleanBarcode(v.barcode),optionJson:typeof v.optionJson==='string'?v.optionJson:JSON.stringify(v.options||{}),price:v.price===''||v.price==null?null:Math.trunc(Number(v.price)),compareAtPrice:v.compareAtPrice===''||v.compareAtPrice==null?null:Math.trunc(Number(v.compareAtPrice)),weight:v.weight===''||v.weight==null?null:Number(v.weight),weightUnit:v.weightUnit?String(v.weightUnit):null}
           const existingVariant=variantId?existingVariantById.get(variantId):undefined
           // Skip the write entirely when nothing about this variant actually changed -- the
           // editor re-submits every variant on every save, and each write here is a full
@@ -91,7 +100,7 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
     return json({product:await getProduct(id)})
   }catch(e){
     const message=e instanceof Error?e.message:'Unable to update product'
-    if(typeof message==='string'&&message.includes('Unique constraint'))return json({error:'A product, SKU or barcode with the same unique value already exists.'},{status:409})
+    const conflictMessage=uniqueConflictMessage(e);if(conflictMessage)return json({error:conflictMessage},{status:409})
     return json({error:message},{status:400})
   }
 }

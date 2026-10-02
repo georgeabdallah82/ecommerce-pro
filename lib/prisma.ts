@@ -1052,6 +1052,7 @@ function getMockHandler(model: string) {
         return found
       }
       if (model === 'coupon' && where.code) return mockCoupons.find((c) => c.code.toUpperCase() === String(where.code).toUpperCase()) || null
+      if (model === 'coupon' && where.id) return mockCoupons.find((c: any) => c.id === where.id) || null
       if (model === 'adminLoginLockout' && where.email) return mockAdminLoginLockouts.get(where.email) || null
       if (model === 'themeVersion' && where.id) return mockThemeVersions.find((v) => v.id === where.id) || null
       if (model === 'storeLocation') return (where.id ? mockStoreLocations.find((x) => x.id === where.id) : where.handle ? mockStoreLocations.find((x) => x.handle === where.handle) : null) || null
@@ -1787,6 +1788,10 @@ function getMockHandler(model: string) {
       return args?.data || {}
     },
     delete: async (args?: any) => {
+      if (model === 'coupon' && args?.where?.id) {
+        const i = mockCoupons.findIndex((x: any) => x.id === args.where.id)
+        return i >= 0 ? mockCoupons.splice(i, 1)[0] : {}
+      }
       if (model === 'customerTagMember' && args?.where?.tagId_customerId) {
         const { tagId, customerId } = args.where.tagId_customerId
         const i = mockCustomerTagMembers.findIndex((x) => x.tagId === tagId && x.customerId === customerId)
