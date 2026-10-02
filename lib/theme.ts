@@ -1,3 +1,4 @@
+import {cache} from 'react'
 import {db} from '@/lib/prisma'
 import {parseJson} from '@/lib/utils'
 import {defaultTheme,defaultSections,defaultNavigation} from './theme-defaults'
@@ -88,7 +89,10 @@ function repairTemplate(key:string,value:any){
   return list
 }
 
-export async function getThemeState(){
+// Read once per page render: the layout, metadata and page all ask for the theme, and each
+// read is a database round trip (React's cache() scopes this to a single request).
+export const getThemeState=cache(loadThemeState)
+async function loadThemeState(){
   const [themeSetting,sectionsSetting,navigationSetting]=await Promise.all([
     db.setting.findUnique({where:{key:'theme.config'}}),
     db.setting.findUnique({where:{key:'theme.sections'}}),

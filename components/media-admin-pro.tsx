@@ -3,6 +3,7 @@ import { useMemo, useRef, useState } from 'react'
 import { Copy, Grid2X2, Image as ImageIcon, List, Plus, Search, UploadCloud, X } from 'lucide-react'
 import s from './admin-media.module.css'
 import ui from './admin-ui.module.css'
+import { optimizeImage } from '@/lib/optimize-image'
 
 export default function MediaAdminPro({ initial }: { initial: any[] }) {
   const [rows, setRows] = useState(initial || [])
@@ -22,7 +23,7 @@ export default function MediaAdminPro({ initial }: { initial: any[] }) {
   function pickFile(f: File | null | undefined) {
     if (!f) return
     if (!f.type.startsWith('image/')) { setError('Only image files are allowed'); return }
-    if (f.size > 5 * 1024 * 1024) { setError('Maximum file size is 5 MB'); return }
+    if (f.size > 25 * 1024 * 1024) { setError('Maximum file size is 25 MB'); return }
     setError('')
     setFile(f)
     if (!form.name) setForm(x => ({ ...x, name: f.name }))
@@ -32,8 +33,11 @@ export default function MediaAdminPro({ initial }: { initial: any[] }) {
     if (!file) return
     setBusy(true); setError('')
     try {
+      // Resized to at most 1600px and re-encoded as WebP before upload (lib/optimize-image.ts).
+      const optimized = await optimizeImage(file)
+      if (optimized.size > 5 * 1024 * 1024) throw new Error('This image is still over 5 MB after resizing. Try a smaller file.')
       const body = new FormData()
-      body.append('file', file)
+      body.append('file', optimized)
       body.append('alt', form.alt || form.name || file.name)
       const r = await fetch('/api/admin/media/upload', { method: 'POST', body })
       const d = await r.json()
@@ -106,7 +110,7 @@ export default function MediaAdminPro({ initial }: { initial: any[] }) {
               >
                 <UploadCloud size={26} />
                 <strong>Click to browse or drag an image here</strong>
-                <span className={`${ui.muted} ${ui.tiny}`}>PNG, JPG, GIF up to 5 MB</span>
+                <span className={`${ui.muted} ${ui.tiny}`}>PNG, JPG, WebP, GIF or SVG. Photos are resized for fast loading.</span>
                 <input ref={fileInput} type="file" accept="image/*" onChange={e => pickFile(e.target.files?.[0])} />
               </div>}
           <label className={ui.fieldLabel}>Alt text<input className={ui.input} value={form.alt} onChange={e => setForm({ ...form, alt: e.target.value })} placeholder="Describe the image" /></label>

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Save, Store, CreditCard, Truck, Globe2, Mail, ShieldCheck, Search, Bell, Code2, ChevronRight, BarChart3, Timer } from 'lucide-react'
 import styles from './admin-settings-center.module.css'
 import ui from './admin-ui.module.css'
+import MediaPicker from './media-picker'
 
 const groups = [
   { key: 'General', label: 'General', icon: Store, desc: 'Store identity and regional defaults' },
@@ -56,6 +57,7 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
   const [search, setSearch] = useState('')
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState('')
+  const [shareImageOpen, setShareImageOpen] = useState(false)
   const [values, setValues] = useState<Record<string, string>>({
     'store.name': map.get('store.name') || 'YOUR BRAND',
     'store.currency': map.get('store.currency') || 'USD',
@@ -67,6 +69,7 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
     'checkout.taxRatePercent': map.get('checkout.taxRatePercent') || '0',
     'seo.title': map.get('seo.title') || '',
     'seo.description': map.get('seo.description') || '',
+    'seo.image': map.get('seo.image') || '',
     'tracking.metaPixelId': map.get('tracking.metaPixelId') || '',
     'tracking.gaMeasurementId': map.get('tracking.gaMeasurementId') || '',
     'tracking.tiktokPixelId': map.get('tracking.tiktokPixelId') || '',
@@ -182,10 +185,22 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
                   SEO description
                   <textarea className={ui.textarea} rows={3} value={values['seo.description'] || ''} onChange={e => set('seo.description', e.target.value)} />
                 </label>
-                <div className={ui.muted} style={{ border: '1px solid var(--admin-border, #e5e0da)', borderRadius: 10, padding: 12 }}>
-                  <strong style={{ display: 'block', color: 'inherit' }}>{values['seo.title'] || values['store.name']}</strong>
-                  <span style={{ display: 'block', marginTop: 4 }}>{values['seo.description'] || `Shop ${values['store.name']} online.`}</span>
+                <div className={ui.fieldLabel}>
+                  Share image
+                  <span className={ui.fieldHelp}>Shown when someone shares your store link on WhatsApp, Instagram or Facebook. Use a JPG or PNG (not SVG), ideally 1200 × 630. If empty, your homepage banner or first product photo is used.</span>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setShareImageOpen(true)}>{values['seo.image'] ? 'Change image' : 'Choose image'}</button>
+                    {values['seo.image'] && <button type="button" className={`${ui.btn} ${ui.btnGhost}`} onClick={() => set('seo.image', '')}>Remove</button>}
+                  </div>
                 </div>
+                <div className={styles.sharePreview} aria-label="Share preview">
+                  {values['seo.image'] ? <img src={values['seo.image']} alt="" /> : <div className={styles.sharePreviewEmpty}>Homepage banner or first product photo</div>}
+                  <div>
+                    <strong>{values['seo.title'] || values['store.name']}</strong>
+                    <span>{values['seo.description'] || `Shop ${values['store.name']} online. Fast delivery and easy returns.`}</span>
+                  </div>
+                </div>
+                <MediaPicker open={shareImageOpen} onClose={() => setShareImageOpen(false)} onAdd={images => { if (images[0]) set('seo.image', images[0].url); setShareImageOpen(false) }} />
               </Card>
             </>
           )}

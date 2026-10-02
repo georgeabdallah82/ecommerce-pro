@@ -5,9 +5,22 @@ import { getUnpublishedProductIds } from '@/lib/sales-channels'
 import { notFound } from 'next/navigation'
 import { Footer } from '@/components/footer'
 import AliExpressCollectionDetail from '@/components/aliexpress-collection-detail'
+import { absoluteUrl, getSiteSeo, isShareableImage, metaText, shareMeta } from '@/lib/seo'
+import type { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params
+  const collection = await db.collection.findUnique({ where: { slug }, select: { name: true, description: true, imageUrl: true } }).catch(() => null)
+  if (!collection) return {}
+  const seo = await getSiteSeo().catch(() => null)
+  const description = metaText(collection.description) || metaText(`Shop ${collection.name} at ${seo?.brand || 'our store'}.`)
+  const image = isShareableImage(collection.imageUrl) ? absoluteUrl(collection.imageUrl) : seo?.image
+  const url = `/collections/${slug}`
+  return { title: collection.name, description, alternates: { canonical: url }, ...shareMeta({ title: collection.name, description, url, image }) }
+}
 
 // Shared with /shop (app/shop/page.tsx) -- see that file's own comment on
 // theme.editorTemplates.Collection and why these types are excluded.
