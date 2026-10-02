@@ -252,7 +252,11 @@ body:has(.adminShell) .themeStudioPro{background:var(--admin-bg)!important}
 /* Responsive workspace */
 @media(max-width:1050px){body:has(.adminShell) .adminMain{padding:0 22px 42px!important}}
 @media(max-width:760px){body:has(.adminShell) .adminMain{padding:0 14px 34px!important}.dashboardKpis{grid-template-columns:1fr 1fr!important}.adminTileGrid{grid-template-columns:1fr 1fr!important}body:has(.adminShell) .catalogStats{grid-template-columns:1fr 1fr!important}}
-@media(max-width:480px){body:has(.adminShell) .dashboardKpis{grid-template-columns:1fr!important}body:has(.adminShell) .catalogStats{grid-template-columns:1fr!important}.adminTileGrid{grid-template-columns:1fr!important}}
+/* Phones keep stat cards two per row (they're short: a label and a number), so the numbers
+   stay above the fold; only the wider link tiles go full width. */
+@media(max-width:480px){.adminTileGrid{grid-template-columns:1fr!important}}
+/* Tab rows wrap on phones so no tab is cut off at the screen edge. */
+@media(max-width:640px){body:has(.adminShell) .opsTabs,body:has(.adminShell) .orderViews{flex-wrap:wrap!important;overflow:visible!important}}
 
 /* Headings/text pick up ink tokens automatically via inheritance */
 body:has(.adminShell) h1,body:has(.adminShell) h2,body:has(.adminShell) h3,body:has(.adminShell) h4{color:var(--admin-ink)!important}

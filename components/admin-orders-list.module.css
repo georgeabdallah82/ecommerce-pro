@@ -243,5 +243,6 @@
   .header > div:last-child { width: 100%; }
   .header > div:last-child > * { flex: 1; }
   .title { font-size: 29px; }
-  .ordersTable { min-width: 1080px; }
+  /* Every saved view stays visible: wrap instead of a sideways scroll that hides the last tabs. */
+  .viewBar { flex-wrap: wrap; overflow: visible; }
 }

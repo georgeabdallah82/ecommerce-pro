@@ -241,7 +241,7 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone }
           </label>
         </div>
         <div className={ui.tableWrap}>
-          <table className={`${ui.table} ${styles.ordersTable}`}>
+          <table className={`${ui.table} ${ui.cardTable} ${styles.ordersTable}`}>
             <thead>
               <tr>
                 <th><input aria-label="Select all" type="checkbox" checked={allShownSelected} onChange={() => setSelected(allShownSelected ? selected.filter(id => !shown.some(o => o.id === id)) : [...new Set([...selected, ...shown.map(o => o.id)])])} /></th>
@@ -260,17 +260,17 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone }
                 const isSelected = selected.includes(o.id)
                 return (
                   <tr key={o.id} className={isSelected ? styles.selectedRow : undefined}>
-                    <td><input aria-label={`Select order ${o.orderNumber}`} type="checkbox" checked={isSelected} onChange={() => setSelected(current => current.includes(o.id) ? current.filter(id => id !== o.id) : [...current, o.id])} /></td>
-                    <td>
+                    <td data-cell="check"><input aria-label={`Select order ${o.orderNumber}`} type="checkbox" checked={isSelected} onChange={() => setSelected(current => current.includes(o.id) ? current.filter(id => id !== o.id) : [...current, o.id])} /></td>
+                    <td data-cell="primary">
                       <Link className={ui.textLink} href={`/admin/orders/${o.id}`}><span className={styles.orderNumber}>#{o.orderNumber}</span></Link>
                       <div className={styles.rowMeta}>{formatAdminDateTime(o.createdAt, storeTimezone)}</div>
                     </td>
-                    <td><strong>{o.user?.name || 'Guest'}</strong><div className={styles.rowMeta}>{o.email}</div></td>
-                    <td>{(o.items || []).reduce((a: number, x: any) => a + x.quantity, 0)}</td>
-                    <td><strong>{money(o.grandTotal, o.currency)}</strong></td>
-                    <td><span className={`${styles.statusPill} ${paymentPillClass(o.paymentStatus)}`}>{o.paymentStatus}</span><div className={styles.rowMeta}>{o.paymentMethod}</div></td>
-                    <td><span className={`${styles.statusPill} ${statusPillClass(o.status)}`}>{o.status}</span>{o.trackingNumber && <div className={styles.rowMeta}>{o.trackingNumber}</div>}</td>
-                    <td>
+                    <td data-label="Customer"><strong>{o.user?.name || 'Guest'}</strong><div className={styles.rowMeta}>{o.email}</div></td>
+                    <td data-label="Items">{(o.items || []).reduce((a: number, x: any) => a + x.quantity, 0)}</td>
+                    <td data-label="Total"><strong>{money(o.grandTotal, o.currency)}</strong></td>
+                    <td data-label="Payment"><span className={`${styles.statusPill} ${paymentPillClass(o.paymentStatus)}`}>{o.paymentStatus}</span><div className={styles.rowMeta}>{o.paymentMethod}</div></td>
+                    <td data-label="Status"><span className={`${styles.statusPill} ${statusPillClass(o.status)}`}>{o.status}</span>{o.trackingNumber && <div className={styles.rowMeta}>{o.trackingNumber}</div>}</td>
+                    <td data-cell="actions">
                       <div className={`inline ${styles.orderActions}`}>
                         <Link className={ui.iconBtn} href={`/admin/orders/${o.id}`} title="Open order"><ArrowUpRight size={15} /></Link>
                         <Link className={ui.iconBtn} href={`/admin/orders/${o.id}/invoice`} title="Invoice"><FileText size={15} /></Link>

@@ -143,17 +143,17 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
 
     <div className={`${ui.card} productTableCard`}>
       <div className="tableTopline"><span className={ui.muted}>{total.toLocaleString()} customers</span><label className={ui.muted}>Rows <select className={`${ui.input} ${ui.inputCompact}`} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}><option>25</option><option>50</option><option>100</option></select></label></div>
-      <div className={ui.tableWrap}><table className={ui.table}><thead><tr><th><input type="checkbox" checked={rows.length > 0 && selected.length === rows.length} onChange={toggleAll} aria-label="Select all customers" /></th><th>Customer</th><th>Contact</th><th>Tags</th><th>Orders</th><th>Reviews</th><th>Spend</th><th>Status</th><th>Joined</th><th></th></tr></thead><tbody>{rows.map(c => <tr key={c.id}>
-        <td><input type="checkbox" checked={selected.includes(c.id)} onChange={() => toggleRow(c.id)} aria-label={`Select ${c.name}`} /></td>
-        <td><Link className="productListName" href={`/admin/customers/${c.id}`}><div className="customerAvatar">{initials(c.name)}</div><div><strong>{c.name}</strong><div className={ui.muted}>{c.email}</div></div></Link></td>
-        <td><span>{c.phone || '—'}</span></td>
-        <td><div className="inline" style={{ flexWrap: 'wrap', gap: 4 }}>{(c.tags || []).map((t: any) => <span className={ui.statusPill} key={t.id}>{t.value}</span>)}{!(c.tags || []).length && <span className={ui.muted}>—</span>}</div></td>
-        <td><strong>{c._count?.orders || 0}</strong></td>
-        <td>{c._count?.reviews || 0}</td>
-        <td><strong>{money(c.totalSpent || 0)}</strong></td>
-        <td><span className={c.isActive ? `${ui.statusPill} ${ui.statusPillSuccess}` : ui.statusPill}>{c.isActive ? <UserCheck size={13}/> : <UserX size={13}/>} {c.isActive ? 'Active' : 'Disabled'}</span></td>
-        <td>{new Date(c.createdAt).toLocaleDateString()}</td>
-        <td><div className="inline">
+      <div className={ui.tableWrap}><table className={`${ui.table} ${ui.cardTable}`}><thead><tr><th><input type="checkbox" checked={rows.length > 0 && selected.length === rows.length} onChange={toggleAll} aria-label="Select all customers" /></th><th>Customer</th><th>Contact</th><th>Tags</th><th>Orders</th><th>Reviews</th><th>Spend</th><th>Status</th><th>Joined</th><th></th></tr></thead><tbody>{rows.map(c => <tr key={c.id}>
+        <td data-cell="check"><input type="checkbox" checked={selected.includes(c.id)} onChange={() => toggleRow(c.id)} aria-label={`Select ${c.name}`} /></td>
+        <td data-cell="primary"><Link className="productListName" href={`/admin/customers/${c.id}`}><div className="customerAvatar">{initials(c.name)}</div><div><strong>{c.name}</strong><div className={ui.muted}>{c.email}</div></div></Link></td>
+        <td data-label="Phone"><span>{c.phone || '—'}</span></td>
+        <td data-label="Tags"><div className="inline" style={{ flexWrap: 'wrap', gap: 4 }}>{(c.tags || []).map((t: any) => <span className={ui.statusPill} key={t.id}>{t.value}</span>)}{!(c.tags || []).length && <span className={ui.muted}>—</span>}</div></td>
+        <td data-label="Orders"><strong>{c._count?.orders || 0}</strong></td>
+        <td data-cell="hide">{c._count?.reviews || 0}</td>
+        <td data-label="Spend"><strong>{money(c.totalSpent || 0)}</strong></td>
+        <td data-label="Status"><span className={c.isActive ? `${ui.statusPill} ${ui.statusPillSuccess}` : ui.statusPill}>{c.isActive ? <UserCheck size={13}/> : <UserX size={13}/>} {c.isActive ? 'Active' : 'Disabled'}</span></td>
+        <td data-label="Joined">{new Date(c.createdAt).toLocaleDateString()}</td>
+        <td data-cell="actions"><div className="inline">
           <Link className={ui.iconBtn} href={`/admin/customers/${c.id}`} title="View customer"><Eye size={16}/></Link>
           <button className={ui.iconBtn} title="Delete customer" onClick={() => deleteCustomer(c)}><Trash2 size={16}/></button>
         </div></td>

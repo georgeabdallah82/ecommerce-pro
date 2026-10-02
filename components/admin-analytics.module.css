@@ -245,7 +245,8 @@
   .grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 520px) {
-  .kpis { grid-template-columns: 1fr; }
+  .kpis { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .metricCard { padding: 14px; }
   .metricCard strong { font-size: 22px; }
   .metricCard .sparkline { display: none; }
   .chartWrap { padding: 14px; }
