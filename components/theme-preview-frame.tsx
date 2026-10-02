@@ -172,15 +172,18 @@ export default function ThemePreviewFrame() {
       ) : state.page.startsWith('Page:') ? (
         <CustomPageView theme={state.theme} page={state.pageInfo || { title: 'Page', bodyHtml: '' }} sections={state.sections} products={state.products} collections={state.collections} />
       ) : state.page === 'Home page' ? (
-        <StorefrontSections
-          theme={state.theme}
-          sections={state.sections}
-          products={state.products}
-          collections={state.collections}
-          preview
-          selectedId={state.selectedId}
-          onSelect={select}
-        />
+        // The live homepage wraps its sections in .aliHome (it sets the page background).
+        <div className="aliHome">
+          <StorefrontSections
+            theme={state.theme}
+            sections={state.sections}
+            products={state.products}
+            collections={state.collections}
+            preview
+            selectedId={state.selectedId}
+            onSelect={select}
+          />
+        </div>
       ) : (
         // These are the same components the live site renders -- the page's own
         // content is real and untouched, with only the merchant-editable zone

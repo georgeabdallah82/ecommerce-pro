@@ -480,7 +480,8 @@ export default function ThemeStudio({ initial }: Props) {
       fetch('/api/admin/collections', { cache: 'no-store' }).then(r => (r.ok ? r.json() : [])).catch(() => []),
     ]).then(([productData, collectionData]) => {
       setProducts(rows(productData))
-      setCollections(rows(collectionData))
+      // The live site only lists active collections; match it so the preview never shows one a visitor can't see.
+      setCollections(rows(collectionData).filter((collection: any) => collection.isActive !== false))
     })
   }, [])
 

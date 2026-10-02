@@ -8,7 +8,7 @@ import { getUnpublishedProductIds } from '@/lib/sales-channels'
 export async function loadZoneData() {
   const unpublishedIds = await getUnpublishedProductIds()
   const [rawProducts, collections] = await Promise.all([
-    db.product.findMany({ where: { status: 'ACTIVE', id: { notIn: unpublishedIds } }, include: { images: true, collections: { include: { collection: true } } }, orderBy: [{ featured: 'desc' }, { createdAt: 'desc' }], take: 60 }),
+    db.product.findMany({ where: { status: 'ACTIVE', id: { notIn: unpublishedIds } }, include: { images: { orderBy: { sortOrder: 'asc' } }, collections: { include: { collection: true } } }, orderBy: [{ featured: 'desc' }, { createdAt: 'desc' }], take: 60 }),
     db.collection.findMany({ where: { isActive: true }, include: { products: { select: { productId: true } } }, take: 24, orderBy: { sortOrder: 'asc' } }),
   ])
   return { products: await withProductStats(rawProducts), collections }

@@ -12,7 +12,7 @@ export default async function Home(){
   const {theme,sections}=await getThemeState()
   const unpublishedIds=await getUnpublishedProductIds()
   const [rawProducts,collections,contentBlocks]=await Promise.all([
-    db.product.findMany({where:{status:'ACTIVE',id:{notIn:unpublishedIds}},include:{images:true,collections:{include:{collection:true}}},orderBy:[{featured:'desc'},{createdAt:'desc'}],take:60}),
+    db.product.findMany({where:{status:'ACTIVE',id:{notIn:unpublishedIds}},include:{images:{orderBy:{sortOrder:'asc'}},collections:{include:{collection:true}}},orderBy:[{featured:'desc'},{createdAt:'desc'}],take:60}),
     db.collection.findMany({where:{isActive:true},include:{products:{select:{productId:true}}},take:12,orderBy:{sortOrder:'asc'}}),
     // Legacy: the announcement bar and trust strip used to live in these admin "Content"
     // rows. They are theme-studio sections now (announcement_strip / trust_strip); the
