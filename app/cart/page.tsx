@@ -21,7 +21,7 @@ export default async function Cart() {
   const [rawRecommended, zoneCollections] = await Promise.all([
     db.product.findMany({
       where: { status: 'ACTIVE', id: { notIn: unpublishedIds } },
-      include: { images: true, collections: { include: { collection: true } } },
+      include: { images: { orderBy: { sortOrder: 'asc' } }, collections: { include: { collection: true } } },
       orderBy: [{ featured: 'desc' }, { createdAt: 'desc' }],
       take: 12,
     }),

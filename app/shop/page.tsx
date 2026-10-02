@@ -33,7 +33,7 @@ export default async function Shop({searchParams}:{searchParams:Promise<{q?:stri
   const unpublishedIds=await getUnpublishedProductIds()
   const [{theme},rawProducts,collections]=await Promise.all([
     getThemeState(),
-    db.product.findMany({where:{status:ProductStatus.ACTIVE,id:{notIn:unpublishedIds},...searchFilter,...(sp.collection?{collections:{some:{collection:{slug:sp.collection}}}}:{})},include:{images:true,collections:{include:{collection:true}},variants:{select:{price:true}}}}),
+    db.product.findMany({where:{status:ProductStatus.ACTIVE,id:{notIn:unpublishedIds},...searchFilter,...(sp.collection?{collections:{some:{collection:{slug:sp.collection}}}}:{})},include:{images:{orderBy:{sortOrder:'asc'}},collections:{include:{collection:true}},variants:{select:{price:true}}}}),
     db.collection.findMany({where:{isActive:true},orderBy:{sortOrder:'asc'}})
   ])
   const hasMin=Number.isFinite(min)&&min>0;const hasMax=Number.isFinite(max)&&max>0
