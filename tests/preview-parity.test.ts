@@ -45,3 +45,17 @@ describe('editor preview matches the live site', () => {
     assert.match(read('app/api/admin/theme/preview-data/route.ts'), /loadZoneData/)
   })
 })
+
+describe('section text alignment', () => {
+  it('the storefront acts on the setting for every section that offers it', () => {
+    const renderer = read('components/storefront-sections.tsx')
+    const css = read('app/storefront-legacy.css')
+    // Headings used to ignore it (the heading box shrink-wraps its text), so the setting looked dead.
+    for (const selector of ['.align-center .focalSectionHead', '.align-center .aliSectionHead', '.aliFlash.align-center', '.aliCategoryStrip.align-center', '.align-center .focalNewsletter', '.focalType-collection_grid.align-center']) {
+      assert.ok(css.includes(selector), `storefront-legacy.css has no rule for ${selector}`)
+    }
+    for (const marker of ["aliSection${alignClass(s)}", "aliCategoryStrip${alignClass(s)}", "aliFlash${alignClass(s)}", "${s.fullBleed===false?'contained':''}${alignClass(s)}"]) {
+      assert.ok(renderer.includes(marker), `storefront-sections.tsx does not apply the alignment class: ${marker}`)
+    }
+  })
+})

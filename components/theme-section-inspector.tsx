@@ -208,7 +208,7 @@ function collectionTypePanels(): PanelSchema[] {
 // New arrivals / best sellers: heading, item count and the View all link are the
 // settings those blocks read (their layout is fixed AliExpress-style markup).
 function homeGridPanel(defaultHeading: string): PanelSchema[] {
-  return [{ title: 'Content', fields: [text('Heading', 'heading', defaultHeading), range('Products shown', 'limit', 4, 20, 12), toggle('Show View all', 'showViewAll', true)] }]
+  return [{ title: 'Content', fields: [text('Heading', 'heading', defaultHeading), range('Products shown', 'limit', 4, 20, 12), toggle('Show View all', 'showViewAll', true), select('Text alignment', 'textAlign', ['left','center','right'], 'left')] }]
 }
 
 function richTextPanels(): PanelSchema[] {
@@ -306,11 +306,11 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
   product_recommendations: () => productTypePanels(),
   collection_grid: () => collectionTypePanels(),
   collection_carousel: () => collectionTypePanels(),
-  category_strip: () => [{ title: 'Content', fields: [range('Collections shown', 'limit', 4, 16, 12)] }, { title: 'Collections', fields: [
+  category_strip: () => [{ title: 'Content', fields: [range('Collections shown', 'limit', 4, 16, 12), select('Text alignment', 'textAlign', ['left','center','right'], 'left')] }, { title: 'Collections', fields: [
     { kind: 'picker', label: 'Choose collections', source: 'collections', hint: 'Leave empty to show collections automatically.', get: s => (Array.isArray(s.collectionIds) ? s.collectionIds : []), set: ids => ({ collectionIds: ids }) },
   ] }],
   flash_deals: () => [
-    { title: 'Content', fields: [text('Heading', 'heading', 'Flash Deals'), range('Products shown', 'limit', 4, 20, 12), toggle('Show View all', 'showViewAll', true)] },
+    { title: 'Content', fields: [text('Heading', 'heading', 'Flash Deals'), range('Products shown', 'limit', 4, 20, 12), toggle('Show View all', 'showViewAll', true), select('Text alignment', 'textAlign', ['left','center','right'], 'left')] },
     { title: 'Countdown', fields: [
       toggle('Show countdown', 'showCountdown', true),
       text('Timer label', 'countdownLabel', 'Ends in'),
@@ -346,7 +346,7 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
   ],
   newsletter: () => [
     { title: 'Content', fields: [text('Eyebrow', 'eyebrow', 'NEWSLETTER'), text('Heading', 'heading'), textarea('Text', 'text'), text('Button label', 'buttonLabel'), text('Email placeholder', 'placeholder', 'Email address'), text('Success message', 'successMessage', 'Thanks for subscribing!')] },
-    { title: 'Appearance', fields: [select('Background', 'background', ['primary','secondary','surface','dark'], 'primary'), range('Spacing', 'spacing', 0, 160, 72)] },
+    { title: 'Appearance', fields: [select('Background', 'background', ['primary','secondary','surface','dark'], 'primary'), select('Text alignment', 'textAlign', ['left','center','right'], 'left'), range('Spacing', 'spacing', 0, 160, 72)] },
   ],
   rich_text: () => richTextPanels(),
   // Not richTextPanels() -- that panel's Button label/URL fields are dead here:
@@ -359,9 +359,11 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
   announcement_strip: () => [
     { title: 'Messages', fields: [blocks('Messages', 'message')] },
     { title: 'Colors', fields: [[color('Background', 'backgroundColor', '#191512'), color('Text', 'textColor', '#ffffff')]] },
+    { title: 'Layout', fields: [select('Text alignment', 'textAlign', ['center','left','right'], 'center')] },
   ],
   trust_strip: () => [
     { title: 'Items', fields: [blocks('Items', 'trust_item')] },
+    { title: 'Layout', fields: [select('Text alignment', 'textAlign', ['center','left','right'], 'center')] },
   ],
   trust_badges: () => [
     { title: 'Badges', fields: [blocks('Badges', 'badge')] },
