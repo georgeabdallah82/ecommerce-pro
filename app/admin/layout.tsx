@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import AdminNav, { type AdminSidebarGroup } from '@/components/admin-nav'
 import { ToastProvider } from '@/components/admin-toast'
 import { getThemeState } from '@/lib/theme'
-import { adminAccentCss } from '@/lib/admin-accent'
+import { adminBrandCss } from '@/lib/admin-accent'
 
 const groups: AdminSidebarGroup[] = [
   { id: 'home', label: 'Home', items: [
@@ -70,9 +70,9 @@ const groups: AdminSidebarGroup[] = [
 const adminCss = `
 body:has(.adminShell) > .nav, body:has(.adminShell) .nav { display:none !important; }
 body:has(.adminShell) .catalogStats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:0 0 16px; }
-body:has(.adminShell) .statCard { appearance:none; width:100%; padding:16px 18px; border:1px solid #e4e4df; border-radius:14px; background:#fff; text-align:left; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,.03); transition:border .15s ease,box-shadow .15s ease,transform .15s ease; }
+body:has(.adminShell) .statCard { appearance:none; width:100%; padding:16px 18px; border:1px solid var(--admin-border); border-radius:14px; background:var(--admin-surface); text-align:left; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,.03); transition:border .15s ease,box-shadow .15s ease,transform .15s ease; }
 body:has(.adminShell) .statCard:hover { border-color:#cfcfc8; box-shadow:0 5px 18px rgba(0,0,0,.05); transform:translateY(-1px); }
-body:has(.adminShell) .statCard.active { border-color:#171717; box-shadow:0 0 0 1px #171717 inset; }
+body:has(.adminShell) .statCard.active { border-color:var(--admin-ink); box-shadow:0 0 0 1px var(--admin-ink) inset; }
 body:has(.adminShell) .statCard span { display:block; font-size:12px; }
 body:has(.adminShell) .statCard strong { display:block; margin-top:6px; font-size:25px; line-height:1; letter-spacing:-.03em; }
 body:has(.adminShell) .catalogToolbar { display:grid; grid-template-columns:minmax(320px,1.4fr) auto minmax(300px,.9fr); gap:10px; align-items:center; padding:12px; margin-bottom:14px; border-radius:15px; overflow:visible; box-shadow:0 1px 2px rgba(0,0,0,.02); }
@@ -81,7 +81,7 @@ body:has(.adminShell) .catalogFilters { display:grid; grid-template-columns:1fr 
 body:has(.adminShell) .catalogFilters .input { min-width:0; }
 body:has(.adminShell) .catalogToolbar .btn { min-height:44px; }
 body:has(.adminShell) .productTableCard { border-radius:15px; box-shadow:0 1px 2px rgba(0,0,0,.03); }
-body:has(.adminShell) .tableTopline { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid #ededeb; }
+body:has(.adminShell) .tableTopline { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid var(--admin-border-soft); }
 body:has(.adminShell) .tableTopline .input.compact { height:34px; min-width:74px; }
 body:has(.adminShell) .productTable { min-width:980px; }
 body:has(.adminShell) .productTable th { background:#fbfbf9; padding:12px 14px; font-size:11px; text-transform:uppercase; letter-spacing:.06em; border-bottom:1px solid #e8e8e3; }
@@ -91,13 +91,13 @@ body:has(.adminShell) .productTable tbody tr.selectedRow { background:#f3f3ef; }
 body:has(.adminShell) .productListName { min-width:280px; }
 body:has(.adminShell) .statusPill { padding:6px 9px; border:1px solid transparent; }
 body:has(.adminShell) .table .iconBtn { width:34px; height:34px; border-radius:9px; }
-body:has(.adminShell) .catalogPagination { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-top:1px solid #ededeb; }
+body:has(.adminShell) .catalogPagination { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-top:1px solid var(--admin-border-soft); }
 body:has(.adminShell) .alert { margin-bottom:12px; }
 body:has(.adminShell) .btn { box-shadow:0 1px 1px rgba(0,0,0,.04); transition:transform .15s ease,box-shadow .15s ease; }
 body:has(.adminShell) .btn:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 5px 14px rgba(0,0,0,.08); }
 body:has(.adminShell) .btn:disabled { opacity:.55; cursor:not-allowed; }
 body:has(.adminShell) .input:focus, body:has(.adminShell) .textarea:focus { outline:none; border-color:#8e8e87; box-shadow:0 0 0 3px rgba(23,23,23,.06); }
-.opsTabs{display:flex;gap:4px;overflow:auto;padding:4px;margin-bottom:16px;border:1px solid #e4e4df;background:#fff;border-radius:12px}.opsTabs button{border:0;background:transparent;padding:10px 14px;border-radius:8px;font:inherit;font-weight:600;color:#6a6a64;white-space:nowrap;cursor:pointer}.opsTabs button.active{background:#171717;color:#fff}
+.opsTabs{display:flex;gap:4px;overflow:auto;padding:4px;margin-bottom:16px;border:1px solid var(--admin-border);background:var(--admin-surface);border-radius:12px}.opsTabs button{border:0;background:transparent;padding:10px 14px;border-radius:8px;font:inherit;font-weight:600;color:#6a6a64;white-space:nowrap;cursor:pointer}.opsTabs button.active{background:var(--admin-ink);color:var(--admin-surface)}
 /* Still consumed by components/shipping-admin-pro.tsx's zone-rate editor (not yet migrated onto a CSS Module) - do not remove until that page is componentized too. */
 .opsPanel{padding:20px}.opsList{display:grid;gap:8px;margin-top:16px}.opsRow{display:grid;grid-template-columns:minmax(0,1.5fr) auto minmax(100px,.8fr);align-items:center;gap:12px;padding:11px 12px;background:#fafaf8;border:1px solid #ecece7;border-radius:10px;font-size:13px}
 @media(max-width:1100px){body:has(.adminShell) .catalogToolbar{grid-template-columns:1fr}}
@@ -110,7 +110,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const visibleGroups = groups.map(group => ({ ...group, items: group.items.filter(item => hasPermission(user.role, item.permission as Permission)) })).filter(group => group.items.length)
   // The admin's accent follows the store's published Primary colour (see lib/admin-accent.ts).
   // If the theme can't be read, the admin keeps its default accent.
-  const brandCss = await getThemeState().then(({ theme }) => adminAccentCss(theme?.colors?.primary)).catch(() => '')
+  const brandCss = await getThemeState().then(({ theme }) => adminBrandCss(theme?.colors)).catch(() => '')
 
   return <>
     <style dangerouslySetInnerHTML={{__html:adminCss}} />
