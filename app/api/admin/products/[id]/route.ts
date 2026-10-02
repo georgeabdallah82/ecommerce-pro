@@ -4,6 +4,7 @@ import { audit } from '@/lib/audit'
 import { json, slugify } from '@/lib/utils'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { runInBackground } from '@/lib/background'
+import { productInputError } from '@/lib/product-input'
 
 async function getProduct(id:string){
   const product=await db.product.findUnique({where:{id},include:{images:{orderBy:{sortOrder:'asc'}},variants:{include:{inventory:{include:{location:true}}}},inventory:{where:{variantId:null},include:{location:true}},tags:true,collections:{include:{collection:true}},metafields:{include:{definition:true}}}})
@@ -19,6 +20,7 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
     const actor=await requirePermission('products.manage');const {id}=await params;const b=await req.json()
     const existing=await db.product.findUnique({where:{id},include:{variants:{include:{inventory:true,orderItems:true}},images:true,inventory:{where:{variantId:null}},tags:true}})
     if(!existing)return json({error:'Product not found'},{status:404})
+    const inputError=productInputError(b);if(inputError)return json({error:inputError},{status:400})
     const existingSharedPool=existing.variants.length>0&&existing.variants.every(v=>v.inventory.length===0)&&existing.inventory.some(x=>x.quantity>0||x.reserved>0)
     const slug=b.slug!==undefined?(slugify(String(b.slug||b.name||existing.name))||`product-${Date.now()}`):undefined
     const data:any={};const textFields=['name','brand','vendor','productType','description','shortDescription','seoTitle','seoDescription','seoImageUrl','weightUnit','productTemplate','salesChannelsJson']

@@ -144,3 +144,15 @@ describe('core ecommerce business rules', () => {
     })
   })
 })
+
+describe('collectsCashOnDelivery', () => {
+  it('marks unpaid cash-on-delivery orders paid on delivery, and nothing else', async () => {
+    const { collectsCashOnDelivery } = await import('@/lib/orders')
+    assert.equal(collectsCashOnDelivery({ paymentMethod: 'COD', paymentStatus: 'UNPAID' }), true)
+    assert.equal(collectsCashOnDelivery({ paymentMethod: 'COD', paymentStatus: 'PENDING' }), true)
+    assert.equal(collectsCashOnDelivery({ paymentMethod: 'COD', paymentStatus: 'PAID' }), false)
+    assert.equal(collectsCashOnDelivery({ paymentMethod: 'COD', paymentStatus: 'REFUNDED' }), false)
+    assert.equal(collectsCashOnDelivery({ paymentMethod: 'BANK_TRANSFER', paymentStatus: 'UNPAID' }), false)
+    assert.equal(collectsCashOnDelivery({ paymentMethod: 'CARD', paymentStatus: 'PENDING' }), false)
+  })
+})

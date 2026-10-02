@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useCart } from '@/components/cart-provider'
 import { money } from '@/lib/config'
+import { CartNotices } from '@/components/cart-notices'
 
 type PaymentDetails = {
   bank: { bankName:string; accountName:string; iban:string; instructions:string } | null
@@ -128,10 +129,15 @@ export default function Checkout() {
     let active=true
     Promise.all([
       fetch('/api/store/settings',{cache:'no-store'}).then(async response=>{const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'Unable to load checkout settings');return data.settings||defaultSettings}),
-      fetch('/api/auth/session',{cache:'no-store'}).then(async response=>{const data=await response.json().catch(()=>({authenticated:false}));return Boolean(response.ok&&data.authenticated)}),
-      fetch('/api/account/wallet',{cache:'no-store'}).then(async response=>{if(!response.ok)return null;return response.json().catch(()=>null)}),
-      fetch('/api/account/coins',{cache:'no-store'}).then(async response=>{if(!response.ok)return null;return response.json().catch(()=>null)}),
-    ]).then(([storeSettings,isAuthenticated,wallet,coins])=>{if(active){setSettings(storeSettings);setAuthenticated(isAuthenticated);setSessionLoaded(true);if(isAuthenticated&&wallet){setWalletBalance(Math.max(0,Number(wallet.balance||0)));setWalletCurrency(wallet.currency||'USD')}else{setWalletBalance(0)}if(isAuthenticated&&coins){setCoinBalance(Math.max(0,Number(coins.balance||0)))}else{setCoinBalance(0)}}}).catch(e=>{if(active){setSettings(defaultSettings);setAuthenticated(false);setSessionLoaded(true);setWalletBalance(0);setCoinBalance(0);setSettingsError(e instanceof Error?e.message:'Unable to load checkout settings')}})
+      // Wallet and coins belong to an account: only ask for them once we know someone is
+      // signed in (guests used to get two 401s logged on every checkout visit).
+      fetch('/api/auth/session',{cache:'no-store'}).then(async response=>{const data=await response.json().catch(()=>({authenticated:false}));return Boolean(response.ok&&data.authenticated)}).then(async isAuthenticated=>{
+        if(!isAuthenticated)return [false,null,null] as const
+        const read=(url:string)=>fetch(url,{cache:'no-store'}).then(async response=>{if(!response.ok)return null;return response.json().catch(()=>null)})
+        const [wallet,coins]=await Promise.all([read('/api/account/wallet'),read('/api/account/coins')])
+        return [true,wallet,coins] as const
+      }),
+    ]).then(([storeSettings,[isAuthenticated,wallet,coins]])=>{if(active){setSettings(storeSettings);setAuthenticated(isAuthenticated);setSessionLoaded(true);if(isAuthenticated&&wallet){setWalletBalance(Math.max(0,Number(wallet.balance||0)));setWalletCurrency(wallet.currency||'USD')}else{setWalletBalance(0)}if(isAuthenticated&&coins){setCoinBalance(Math.max(0,Number(coins.balance||0)))}else{setCoinBalance(0)}}}).catch(e=>{if(active){setSettings(defaultSettings);setAuthenticated(false);setSessionLoaded(true);setWalletBalance(0);setCoinBalance(0);setSettingsError(e instanceof Error?e.message:'Unable to load checkout settings')}})
     return ()=>{active=false}
   },[])
 
@@ -202,7 +208,7 @@ export default function Checkout() {
   if(clientCheckout) return <main className="section"><div className="container narrow"><div className="card" style={{textAlign:'center'}}><span className="muted">SECURE PAYMENT</span><h1 className="h2">Continue to secure card payment</h1><p className="muted">Your payment details are entered directly on the payment provider's secure page.</p><div className="alert">Loading secure payment…</div><Link className="textLink" href="/cart">Return to cart</Link></div></div></main>
 
   return <main className="section"><div className="container split"><form className="card checkoutForm" onSubmit={submit}>
-    <span className="muted">CHECKOUT</span><h1 className="h2">Secure, simple, fast.</h1>
+    <span className="muted">CHECKOUT</span><h1 className="h2">Secure, simple, fast.</h1><CartNotices />
     {!settings && <div className="alert">Loading checkout settings…</div>}
     {guestBlocked && <div className="alert danger">Guest checkout is disabled. <Link className="textLink" href="/account/login">Sign in</Link> to continue.</div>}
     {settingsError && <div className="alert danger">{settingsError}</div>}

@@ -44,3 +44,10 @@ export function fulfillmentForStatus(status: OrderStatus): FulfillmentStatus {
   if (status === 'SHIPPED' || status === 'PROCESSING') return 'PARTIAL'
   return 'UNFULFILLED'
 }
+
+// Cash on delivery is paid when it's delivered: the courier hands over the goods and takes the
+// money. Without this, delivered COD orders stayed UNPAID forever, so they never counted as
+// sold and customers saw "Unpaid" on orders they had paid for.
+export function collectsCashOnDelivery(order: { paymentMethod: string; paymentStatus: string }) {
+  return order.paymentMethod === 'COD' && (order.paymentStatus === 'UNPAID' || order.paymentStatus === 'PENDING')
+}
