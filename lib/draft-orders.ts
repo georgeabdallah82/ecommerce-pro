@@ -3,6 +3,7 @@ import { reserveStock } from '@/lib/inventory'
 import { sendOrderConfirmationEmail } from '@/lib/email'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
 import type { PaymentMethod } from '@prisma/client'
+import { newOrderNumber } from '@/lib/order-number'
 
 // Shared by the admin "Complete order" action (force-completes as COD, staff
 // collects payment separately) and the customer-facing invoice payment flow
@@ -15,7 +16,7 @@ export async function completeDraftOrder(draftId: string, paymentMethod: Payment
   if (draft.status === 'COMPLETED') throw new Error('Draft order is already completed')
   if (draft.status === 'CANCELLED') throw new Error('Cancelled draft order cannot be completed')
 
-  const orderNumber = `ORD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
+  const orderNumber = newOrderNumber()
   const productIds = [...new Set(draft.items.map(i => i.productId))]
   const products = await db.product.findMany({ where: { id: { in: productIds }, status: 'ACTIVE' }, include: { variants: true, inventory: true } })
   const byId = new Map(products.map(p => [p.id, p]))

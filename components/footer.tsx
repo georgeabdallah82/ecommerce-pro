@@ -4,6 +4,7 @@ import Link from 'next/link'
 import NewsletterForm from '@/components/newsletter-form'
 import { MessageCircle } from 'lucide-react'
 import { config } from '@/lib/config'
+import { whatsappUrl } from '@/lib/links'
 
 // lucide-react 1.x dropped brand/logo icons entirely (kept to generic UI
 // glyphs only), so these platform icons are small hand-drawn SVGs rather
@@ -38,7 +39,8 @@ export function Footer({ theme }: { theme?: any }) {
   // Social links does). columns counts the brand column plus however many of the link
   // groups below are shown, so 4 (the default) shows all three; dropping to 2 keeps only Shop.
   const footerSettings = theme?.footer || {}
-  const description = footerSettings.text || 'A refined shopping experience built to grow with your business.'
+  // Only the merchant's own tagline (Theme settings -> Footer); no stock marketing copy.
+  const description = footerSettings.text || ''
   const showNewsletter = footerSettings.showNewsletter !== false
   const visibleGroups = FOOTER_LINK_GROUPS.slice(0, Math.max(1, Math.min(3, Number(footerSettings.columns ?? 4) - 1)))
 
@@ -46,16 +48,27 @@ export function Footer({ theme }: { theme?: any }) {
   // build-time NEXT_PUBLIC_WHATSAPP_NUMBER without a redeploy -- fetched client-side (like the
   // free-shipping-threshold banner in aliexpress-cart.tsx) so this component, used across ~30
   // pages, doesn't need a new prop threaded through every call site.
+  // The same response says which payment methods checkout really offers, so the badges
+  // below never advertise one the customer can't pick.
   const [whatsapp, setWhatsapp] = useState(config.whatsapp)
+  const [country, setCountry] = useState(config.country)
+  const [payments, setPayments] = useState<string[]>([])
   useEffect(() => {
     let active = true
     fetch('/api/store/settings', { cache: 'no-store' })
       .then(res => res.json())
-      .then(data => { if (active && data?.settings?.contact?.phone) setWhatsapp(data.settings.contact.phone) })
+      .then(data => {
+        const settings = data?.settings
+        if (!active || !settings) return
+        if (settings.contact?.phone) setWhatsapp(settings.contact.phone)
+        if (settings.store?.country) setCountry(settings.store.country)
+        const p = settings.payment || {}
+        setPayments([p.card && 'Card', p.cod && 'Cash on delivery', p.bank && 'Bank transfer'].filter(Boolean) as string[])
+      })
       .catch(() => {})
     return () => { active = false }
   }, [])
-  const whatsappDigits = whatsapp.replace(/[^\d+]/g, '')
+  const whatsappLink = whatsappUrl(whatsapp, country)
 
   return <>
     <style dangerouslySetInnerHTML={{ __html: `
@@ -92,11 +105,11 @@ export function Footer({ theme }: { theme?: any }) {
   .focalFooterBottom{justify-content:center;text-align:center}
 }
 ` }} />
-    {whatsapp && (
+    {whatsappLink && (
       <div className="focalFooterHelp">
         <div className="focalContainer focalFooterHelpInner">
           <span>Need help with your order?</span>
-          <a href={`https://wa.me/${whatsappDigits}`} target="_blank" rel="noopener noreferrer" className="focalFooterWhatsapp">
+          <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="focalFooterWhatsapp">
             <MessageCircle size={15} /> WhatsApp us
           </a>
         </div>
@@ -112,7 +125,7 @@ export function Footer({ theme }: { theme?: any }) {
           ) : (
             <div className="logo">{brand}</div>
           )}
-          <p className="muted">{description}</p>
+          {description && <p className="muted">{description}</p>}
           {activeSocial.length > 0 && (
             <div className="focalFooterSocial">
               {activeSocial.map(({ key, label, Icon }) => (
@@ -137,11 +150,11 @@ export function Footer({ theme }: { theme?: any }) {
       </div>
       <div className="focalContainer focalFooterBottom">
         <span className="muted">{new Date().getFullYear()} &middot; {brand} &middot; All rights reserved</span>
-        <div className="focalFooterPayments">
-          <span>Card</span>
-          <span>Cash on delivery</span>
-          <span>Bank transfer</span>
-        </div>
+        {payments.length > 0 && (
+          <div className="focalFooterPayments">
+            {payments.map(label => <span key={label}>{label}</span>)}
+          </div>
+        )}
       </div>
     </footer>
   </>

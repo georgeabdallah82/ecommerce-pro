@@ -9,6 +9,7 @@ import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { json } from '@/lib/utils'
 import { getStoreCurrency } from '@/lib/store-currency'
 import { PaymentMethod, PaymentStatus, OrderStatus, FulfillmentStatus } from '@prisma/client'
+import { newOrderNumber } from '@/lib/order-number'
 
 export async function POST(req: Request) {
   try {
@@ -56,7 +57,7 @@ export async function POST(req: Request) {
     const address = { firstName: String(body.firstName || name.split(' ')[0] || 'Customer'), lastName: String(body.lastName || name.split(' ').slice(1).join(' ') || ''), line1: String(body.line1 || '').trim(), line2: String(body.line2 || '').trim(), city: String(body.city || '').trim(), region: String(body.region || '').trim(), postalCode: String(body.postalCode || '').trim(), country: String(body.country || 'Lebanon').trim(), phone: phone || '' }
     if (!address.line1 || !address.city || !address.country) return json({ error: 'Shipping address is required' }, { status: 400 })
 
-    const orderNumber = `ORD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
+    const orderNumber = newOrderNumber()
     const currency = await getStoreCurrency()
     const order = await db.$transaction(async tx => { for (const line of normalized) await reserveStock(tx, byId.get(line.productId)!, line.variantId, line.quantity, orderNumber); return tx.order.create({ data: { orderNumber, userId: existingUser?.id ?? null, email: existingUser?.email ?? email, phone, subtotal, discountTotal: discount, shippingTotal, taxTotal, grandTotal, currency, status, paymentStatus, fulfillmentStatus: FulfillmentStatus.UNFULFILLED, paymentMethod, shippingAddressJson: JSON.stringify(address), billingAddressJson: JSON.stringify(address), notes: String(body.notes || '').trim().slice(0, 5000) || `Manual order created by ${actor.email}`, shippingMethod: String(body.shippingMethod || 'Manual').trim().slice(0, 120), items: { create: normalized }, events: { create: { status: OrderStatus.PENDING, message: 'Manual order created by admin.' } }, paymentTransactions: paymentStatus !== PaymentStatus.UNPAID ? { create: { provider: 'manual', externalId: null, status: paymentStatus.toLowerCase(), amount: grandTotal, currency } } : undefined }, include: { items: true } }) })
     void sendNewOrderPush({ id: order.id, orderNumber: order.orderNumber, grandTotal: order.grandTotal, currency: order.currency }).catch(error => console.error('[push] manual-order notification failed', error))

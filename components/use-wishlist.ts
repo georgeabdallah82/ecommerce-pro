@@ -23,6 +23,12 @@ export function useWishlist() {
     setWishlist(w => ({ ...w, [id]: !previous }))
     try {
       const response = await fetch('/api/wishlist', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ productId: id }) })
+      if (response.status === 401) {
+        // Wishlists belong to an account: send the shopper to sign in, then straight back here.
+        setWishlist(w => ({ ...w, [id]: previous }))
+        window.location.href = `/account/login?next=${encodeURIComponent(location.pathname + location.search)}`
+        return
+      }
       if (!response.ok) setWishlist(w => ({ ...w, [id]: previous }))
     } catch {
       setWishlist(w => ({ ...w, [id]: previous }))

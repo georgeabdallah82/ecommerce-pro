@@ -1,6 +1,7 @@
 import {cache} from 'react'
 import {db} from '@/lib/prisma'
 import {getStorefrontSettings} from '@/lib/storefront-settings'
+import {normalizeNavUrl} from '@/lib/links'
 import {parseJson} from '@/lib/utils'
 import {defaultTheme,defaultSections,defaultNavigation} from './theme-defaults'
 export type ThemeConfig=typeof defaultTheme
@@ -90,6 +91,8 @@ function repairTemplate(key:string,value:any){
   return list
 }
 
+// Storefront menus get absolute links (see lib/links.ts); the editor keeps what was typed.
+const withAbsoluteUrls=(items:any[]):any[]=>Array.isArray(items)?items.map(item=>item&&typeof item==='object'?{...item,url:normalizeNavUrl(item.url),...(Array.isArray(item.children)?{children:withAbsoluteUrls(item.children)}:{})}:item):items
 // Read once per page render: the layout, metadata and page all ask for the theme, and each
 // read is a database round trip (React's cache() scopes this to a single request).
 export const getThemeState=cache(loadThemeState)
@@ -119,7 +122,7 @@ async function loadThemeState(){
   }
   theme.editorTemplates=editorTemplates
 
-  return {theme,sections,navigation:parseJson<any[]>(navigationSetting?.value,defaultNavigation)}
+  return {theme,sections,navigation:withAbsoluteUrls(parseJson<any[]>(navigationSetting?.value,defaultNavigation))}
 }
 
 // getThemeState() above always resolves the currently PUBLISHED theme --

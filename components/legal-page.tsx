@@ -1,12 +1,24 @@
-export function Placeholder({ children }: { children: React.ReactNode }) {
-  return <span className="aliLegalPlaceholder">{children}</span>
-}
+import { Fragment } from 'react'
+import { whatsappUrl } from '@/lib/links'
 
-// Renders the merchant's real value once configured (env var), falling back
-// to the flagged placeholder so an unset field stays visibly obvious instead
-// of silently going blank.
-export function ConfiguredField({ value, placeholder }: { value: string; placeholder: React.ReactNode }) {
-  return value ? <>{value}</> : <Placeholder>{placeholder}</Placeholder>
+type Contact = { email: string; phone: string; country: string; address: string }
+
+// "Contact us" block shared by the policy pages. Only details the merchant has filled in
+// (Settings > General) are shown; nothing renders as a bracketed placeholder.
+export function LegalContact({ brand, contact }: { brand: string; contact: Contact }) {
+  const wa = whatsappUrl(contact.phone, contact.country)
+  const lines = [
+    contact.address,
+    contact.email && <a href={`mailto:${contact.email}`}>{contact.email}</a>,
+    contact.phone && <>WhatsApp: {wa ? <a href={wa} target="_blank" rel="noopener noreferrer">{contact.phone}</a> : contact.phone}</>,
+  ].filter(Boolean)
+  return (
+    <p>
+      {brand}
+      {lines.map((line, i) => <Fragment key={i}><br/>{line}</Fragment>)}
+      {!contact.email && !contact.phone && <><br/>Use <a href="/orders/lookup">order tracking</a> to reach us about an order.</>}
+    </p>
+  )
 }
 
 export function LegalPage({ title, updated, children }: { title: string; updated: string; children: React.ReactNode }) {

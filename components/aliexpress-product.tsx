@@ -7,6 +7,7 @@ import { Check, ChevronDown, ChevronRight, Heart, Minus, Plus, Share2, ShoppingB
 import { useCart } from '@/components/cart-provider'
 import { useWishlist } from '@/components/use-wishlist'
 import StorefrontSections, { ProductCard, QuickView, StarRow, StoreImage, formatSold, img, money } from '@/components/storefront-sections'
+import { ShippingNote } from '@/components/shipping-note'
 
 type AnyMap = Record<string, any>
 
@@ -236,7 +237,7 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
             {showDescription && <details open><summary>Description<ChevronDown size={16} /></summary><p>{product.description || product.shortDescription || ''}</p></details>}
             <details><summary>Product information<ChevronDown size={16} /></summary><p>SKU {selectedVariant?.sku || product.sku || '—'}</p></details>
             {showShippingAccordion && (
-              <details><summary>Shipping &amp; returns<ChevronDown size={16} /></summary><p>{pp.shippingText || 'Free standard delivery is automatically applied to orders over $50. Tracked shipping worldwide.'}</p></details>
+              <details><summary>Shipping &amp; returns<ChevronDown size={16} /></summary><p>{pp.shippingText || <ShippingNote />}</p></details>
             )}
             {showSpecs && product.metafields?.length > 0 && (
               <details><summary>Specifications<ChevronDown size={16} /></summary>

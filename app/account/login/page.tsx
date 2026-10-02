@@ -1,10 +1,13 @@
 import Link from 'next/link'
 import { login } from './server'
+import { safeNextPath } from '@/lib/links'
 
-export default async function Login({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+export default async function Login({ searchParams }: { searchParams: Promise<{ error?: string; next?: string }> }) {
   const params = await searchParams
   const invalid = params.error === 'invalid'
   const rateLimited = params.error === 'rate-limited'
+  const next = safeNextPath(params.next)
+  const nextQuery = next === '/account' ? '' : `?next=${encodeURIComponent(next)}`
 
   return (
     <main className="section">
@@ -15,6 +18,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
         {invalid && <div className="alert danger" style={{ marginTop: 18 }}>Invalid email or password. Please try again.</div>}
         {rateLimited && <div className="alert danger" style={{ marginTop: 18 }}>Too many sign-in attempts. Please wait a few minutes and try again.</div>}
         <form action={login} className="card" style={{ padding: 24, marginTop: 20 }}>
+          <input type="hidden" name="next" value={next} />
           <label className="fieldLabel" htmlFor="email">Email</label>
           <input className="input" id="email" name="email" type="email" autoComplete="email" placeholder="you@example.com" required />
           <label className="fieldLabel" htmlFor="password" style={{ marginTop: 14 }}>Password</label>
@@ -24,7 +28,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
           </div>
           <button className="btn" style={{ width: '100%', marginTop: 16 }}>Sign in</button>
         </form>
-        <p className="muted" style={{ marginTop: 16 }}>New here? <Link href="/account/register" style={{ textDecoration: 'underline' }}>Create an account</Link></p>
+        <p className="muted" style={{ marginTop: 16 }}>New here? <Link href={`/account/register${nextQuery}`} style={{ textDecoration: 'underline' }}>Create an account</Link></p>
       </div>
     </main>
   )

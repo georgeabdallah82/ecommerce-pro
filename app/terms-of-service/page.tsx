@@ -1,19 +1,18 @@
 import { getThemeState } from '@/lib/theme'
 import { config } from '@/lib/config'
-import { getContactInfo } from '@/lib/store-contact'
+import { getContactInfo, getPolicyInfo } from '@/lib/store-contact'
 import { Footer } from '@/components/footer'
-import { LegalPage, Placeholder, ConfiguredField } from '@/components/legal-page'
+import { LegalPage, LegalContact } from '@/components/legal-page'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 export default async function TermsOfService() {
-  const [{ theme }, contact] = await Promise.all([getThemeState(), getContactInfo()])
+  const [{ theme }, contact, policy] = await Promise.all([getThemeState(), getContactInfo(), getPolicyInfo()])
   const brand = theme.brandName || config.brand
-  const updated = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
 
   return <>
-    <LegalPage title="Terms of Service" updated={updated}>
+    <LegalPage title="Terms of Service" updated={policy.updated}>
       <p>These terms apply whenever you browse or place an order on this website ("the Store"), operated by {brand}. By placing an order, you agree to them.</p>
 
       <h2>Orders and pricing</h2>
@@ -45,13 +44,8 @@ export default async function TermsOfService() {
       <p>We may update these terms from time to time; the current version always applies. Material changes will be reflected by an updated "Last updated" date above.</p>
 
       <h2>Contact us</h2>
-      <p>
-        {brand}<br/>
-        <ConfiguredField value={config.businessAddress} placeholder="[registered business address]"/><br/>
-        <ConfiguredField value={contact.email} placeholder="[support email address]"/>
-        {contact.phone && <> · WhatsApp: {contact.phone}</>}
-      </p>
-      <p>These terms are governed by the laws of <Placeholder>[{config.country}, or your actual jurisdiction]</Placeholder>.</p>
+      <LegalContact brand={brand} contact={contact}/>
+      <p>These terms are governed by the laws of {contact.country}.</p>
     </LegalPage>
     <Footer theme={theme}/>
   </>

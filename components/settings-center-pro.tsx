@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Save, Store, CreditCard, Truck, Globe2, Mail, ShieldCheck, Search, Bell, Code2, ChevronRight, BarChart3, Timer } from 'lucide-react'
 import styles from './admin-settings-center.module.css'
 import ui from './admin-ui.module.css'
 import MediaPicker from './media-picker'
+import { POLICY_DEFAULTS } from '@/lib/policy-defaults'
 
 const groups = [
   { key: 'General', label: 'General', icon: Store, desc: 'Store identity and regional defaults' },
@@ -65,6 +66,10 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
     'store.timezone': map.get('store.timezone') || 'Asia/Beirut',
     'contact.email': map.get('contact.email') || '',
     'contact.phone': map.get('contact.phone') || '',
+    'store.address': map.get('store.address') || '',
+    'policy.returnDays': map.get('policy.returnDays') || POLICY_DEFAULTS.returnDays,
+    'policy.refundTime': map.get('policy.refundTime') || POLICY_DEFAULTS.refundTime,
+    'policy.damageReportHours': map.get('policy.damageReportHours') || POLICY_DEFAULTS.damageReportHours,
     'checkout.freeShippingThreshold': map.get('checkout.freeShippingThreshold') || '100',
     'checkout.taxRatePercent': map.get('checkout.taxRatePercent') || '0',
     'seo.title': map.get('seo.title') || '',
@@ -77,6 +82,7 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
     'maintenance.headline': map.get('maintenance.headline') || "We're launching soon",
     'maintenance.message': map.get('maintenance.message') || "We're putting the finishing touches on something great. Check back soon.",
   })
+  const savedPolicy = useRef<Record<string, string>>(values)
   const [flags, setFlags] = useState<Record<string, boolean>>(() => ({
     ...Object.fromEntries([
       'payment.cod', 'payment.card', 'payment.bank', 'payment.wallet',
@@ -106,6 +112,12 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
     setNotice('')
     try {
       for (const [key, value] of Object.entries(values)) await api('/api/admin/settings', { method: 'PATCH', body: JSON.stringify({ key, value }) })
+      // The policy pages show "Last updated"; move it forward only when their wording changed.
+      const policyKeys = ['store.address', 'contact.email', 'contact.phone', 'store.country', 'policy.returnDays', 'policy.refundTime', 'policy.damageReportHours']
+      if (policyKeys.some(key => (values[key] || '') !== (savedPolicy.current[key] || ''))) {
+        await api('/api/admin/settings', { method: 'PATCH', body: JSON.stringify({ key: 'policy.updatedAt', value: new Date().toISOString() }) })
+        savedPolicy.current = { ...values }
+      }
       for (const [key, value] of Object.entries(flags)) await api('/api/admin/settings', { method: 'PATCH', body: JSON.stringify({ key, value: String(value) }) })
       if (tab === 'Payments') {
         const saved = await api('/api/admin/payment-provider', { method: 'PATCH', body: JSON.stringify(paymentConfig) })
@@ -176,6 +188,16 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
                   <Field label="Timezone" value={values['store.timezone']} onChange={v => set('store.timezone', v)} />
                   <Field label="Store email" value={values['contact.email']} onChange={v => set('contact.email', v)} />
                   <Field label="Phone / WhatsApp" value={values['contact.phone']} onChange={v => set('contact.phone', v)} />
+                </div>
+                <Field label="Business address" value={values['store.address']} onChange={v => set('store.address', v)} />
+                <span className={ui.fieldHelp}>Shown under "Contact us" on your Privacy, Terms and Refund pages. Leave empty to show only email and WhatsApp.</span>
+              </Card>
+
+              <Card title="Policies" desc="Used in the wording of your Refund Policy page. Customers see these exact values.">
+                <div className={ui.twoCol}>
+                  <Field label="Return window (days)" value={values['policy.returnDays']} onChange={v => set('policy.returnDays', v.replace(/\D/g, ''))} />
+                  <Field label="Report damaged items within (hours)" value={values['policy.damageReportHours']} onChange={v => set('policy.damageReportHours', v.replace(/\D/g, ''))} />
+                  <Field label="Refunds arrive within" value={values['policy.refundTime']} onChange={v => set('policy.refundTime', v)} />
                 </div>
               </Card>
 
