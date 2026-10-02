@@ -84,4 +84,11 @@ describe('sections never silently disappear', () => {
     const studio = read('components/theme-studio.tsx')
     assert.match(studio, /for \(const type of \['header', 'announcement'\]\) if \(!present\.has\(type\)\)/)
   })
+
+  it('flash deals can be hand-picked', () => {
+    const panels = read('components/theme-section-inspector.tsx')
+    const flash = panels.slice(panels.indexOf('flash_deals: () => ['), panels.indexOf('new_arrivals: () =>'))
+    assert.match(flash, /kind: 'picker'[^}]*source: 'products'/)
+    assert.match(read('components/storefront-sections.tsx'), /products=\{products\} preview/)
+  })
 })

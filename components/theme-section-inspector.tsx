@@ -319,7 +319,10 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
     { kind: 'picker', label: 'Choose collections', source: 'collections', hint: 'Leave empty to show collections automatically.', get: s => (Array.isArray(s.collectionIds) ? s.collectionIds : []), set: ids => ({ collectionIds: ids }) },
   ] }, boxPanel],
   flash_deals: () => [
-    { title: 'Content', fields: [text('Heading', 'heading', 'Flash Deals'), range('Products shown', 'limit', 4, 20, 12), toggle('Show View all', 'showViewAll', true), select('Text alignment', 'textAlign', ['left','center','right'], 'left')] },
+    { title: 'Content', fields: [text('Heading', 'heading', 'Flash Deals'), range('Products shown (automatic)', 'limit', 4, 20, 12), toggle('Show View all', 'showViewAll', true), select('Text alignment', 'textAlign', ['left','center','right'], 'left')] },
+    { title: 'Products', fields: [
+      { kind: 'picker', label: 'Choose the products', source: 'products', hint: 'Pick the products for this flash sale, in the order you want. Leave empty to show every product on sale (compare-at price above price) automatically.', get: s => (Array.isArray(s.productIds) ? s.productIds : []), set: ids => ({ productIds: ids }) },
+    ] },
     { title: 'Countdown', fields: [
       toggle('Show countdown', 'showCountdown', true),
       text('Timer label', 'countdownLabel', 'Ends in'),
