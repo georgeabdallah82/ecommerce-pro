@@ -297,7 +297,10 @@ function DesktopNode({ item, openId, setOpenId }: { item: TreeItem; openId: stri
 export default function StoreNavFixed({ theme, navigation }: { theme: any; navigation: NavItem[] }) {
   const pathname = usePathname() || '/'
   const templateKey = templateForPath(pathname)
-  const template = Array.isArray(theme.editorTemplates?.[templateKey]) ? theme.editorTemplates[templateKey] : null
+  // Storefront pages send only headerTemplates (header + announcement per template); the theme
+  // editor preview still passes full editorTemplates.
+  const templates = theme.headerTemplates ?? theme.editorTemplates
+  const template = Array.isArray(templates?.[templateKey]) ? templates[templateKey] : null
   const headerSection = template?.find((section: any) => section.type === 'header')
   const announcementSection = template?.find((section: any) => section.type === 'announcement')
   const headerSettings = { ...(theme.header || {}), ...(headerSection?.settings || {}) }

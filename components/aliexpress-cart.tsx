@@ -59,7 +59,7 @@ export default function AliExpressCart({ theme, recommended, sections = [], zone
         <div className="focalContainer">
           <section className="emptyCartUX" role="status">
             <div className="icon"><ShoppingBag size={26} /></div>
-            <h2>Nothing here yet.</h2>
+            <h1>Nothing here yet.</h1>
             <p>Browse the store, compare products, and add your favourites to start a fast checkout.</p>
             <Link className="focalButton primary" href="/shop">Continue shopping</Link>
           </section>

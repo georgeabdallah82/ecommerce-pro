@@ -120,7 +120,13 @@ async function loadThemeState(){
   for(const [key,value] of Object.entries(editorTemplates)){
     if(key!=='Home page') editorTemplates[key]=headerFirst(value as any[])
   }
-  theme.editorTemplates=editorTemplates
+  // Server code reads every page template (product/collection/cart/custom page sections),
+  // but the browser only needs each template's header + announcement settings (the header
+  // component picks them by route). Pages pass `theme` into client components, so the full
+  // templates were serialized into every page's HTML. Non-enumerable keeps them readable
+  // here while React/JSON serialization skips them; headerTemplates is the slim copy.
+  Object.defineProperty(theme,'editorTemplates',{value:editorTemplates,enumerable:false,writable:true,configurable:true})
+  theme.headerTemplates=Object.fromEntries(Object.entries(editorTemplates).map(([key,list])=>[key,(Array.isArray(list)?list:[]).filter((section:any)=>section?.type==='header'||section?.type==='announcement')]))
 
   return {theme,sections,navigation:withAbsoluteUrls(parseJson<any[]>(navigationSetting?.value,defaultNavigation))}
 }

@@ -24,6 +24,7 @@ export default function AliExpressShop({ theme, products, collections, query, se
 
   return (
     <div className="focalStorefront aliShopPage">
+      <h1 className="srOnly">{query.q ? `Search results for ${query.q}` : collections.find(c => c.slug === query.collection)?.name || 'Shop all products'}</h1>
       <div className={`aliContainer aliShopLayout ${showFilters ? '' : 'noSidebar'}`}>
         {showFilters && (
           <aside className="aliShopSidebar">
@@ -42,9 +43,9 @@ export default function AliExpressShop({ theme, products, collections, query, se
               {query.sort && <input type="hidden" name="sort" value={query.sort} />}
               <h3>Price</h3>
               <div className="aliPriceInputs">
-                <input type="number" name="min" placeholder="Min" defaultValue={query.min} min={0} />
+                <input type="number" name="min" aria-label="Minimum price" placeholder="Min" defaultValue={query.min} min={0} />
                 <span>-</span>
-                <input type="number" name="max" placeholder="Max" defaultValue={query.max} min={0} />
+                <input type="number" name="max" aria-label="Maximum price" placeholder="Max" defaultValue={query.max} min={0} />
               </div>
               <button type="submit" className="focalButton primary aliPriceApply">Apply</button>
             </form>
@@ -58,10 +59,10 @@ export default function AliExpressShop({ theme, products, collections, query, se
             {query.max && <input type="hidden" name="max" value={query.max} />}
             <div className="aliShopSearch">
               <Search size={16} />
-              <input type="text" name="q" placeholder="Search products…" defaultValue={query.q} />
+              <input type="text" name="q" aria-label="Search products" placeholder="Search products…" defaultValue={query.q} />
             </div>
             {showSort && (
-              <select name="sort" defaultValue={sort} onChange={e => e.currentTarget.form?.submit()}>
+              <select name="sort" aria-label="Sort products" defaultValue={sort} onChange={e => e.currentTarget.form?.submit()}>
                 <option value="newest">Newest</option>
                 <option value="bestselling">Best Selling</option>
                 <option value="rating">Top Rated</option>

@@ -135,6 +135,9 @@ function checkoutFailure(error: unknown) {
   const message = error instanceof Error ? error.message : ''
   if (message === 'This idempotency key was already used for a different checkout') return { message, status: 409 }
   if (message.startsWith('Maximum quantity per product is ')) return { message, status: 400 }
+  // reserveStock throws this when another shopper took the last units between our stock
+  // check and the reservation -- tell the customer, instead of a generic "try again" 500.
+  if (message.startsWith('Not enough stock for ')) return { message: 'One or more requested quantities are no longer available.', status: 409 }
   if (SAFE_CHECKOUT_MESSAGES.has(message)) return { message, status: 400 }
   console.error('[checkout] unexpected failure', error)
   return { message: 'Unable to place your order right now. Please try again.', status: 500 }
@@ -208,7 +211,7 @@ export async function POST(req: Request) {
     if (!user?.id && !guestCheckoutEnabled) return json({ error: 'Guest checkout is disabled. Please sign in to continue.' }, { status: 403 })
     if (paymentMethod === PaymentMethod.WALLET && !user?.id) return json({ error: 'Wallet checkout requires a customer account.' }, { status: 400 })
     if (!paymentEnabled[paymentMethod]) return json({ error: 'This payment method is currently unavailable.' }, { status: 400 })
-    if (input.coinsToUse > 0 && !user?.id) return json({ error: 'This coupon requires a customer account' }, { status: 400 })
+    if (input.coinsToUse > 0 && !user?.id) return json({ error: 'Sign in to use your coins.' }, { status: 400 })
 
     const merged = new Map<string, { productId: string; variantId: string | null; quantity: number }>()
     for (const item of input.items) {
