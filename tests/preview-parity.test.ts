@@ -91,4 +91,11 @@ describe('sections never silently disappear', () => {
     assert.match(flash, /kind: 'picker'[^}]*source: 'products'/)
     assert.match(read('components/storefront-sections.tsx'), /products=\{products\} preview/)
   })
+
+  it('the editor page loads products and collections on the server, not from the browser', () => {
+    const page = read('app/admin/online-store/theme-editor/page.tsx')
+    assert.match(page, /await loadZoneData\(\)/)
+    assert.match(page, /products: zone \?/)
+    assert.match(read('components/theme-studio.tsx'), /useState<any\[\]>\(initial\.products \|\| \[\]\)/)
+  })
 })
