@@ -410,6 +410,7 @@ export default function ThemeStudio({ initial }: Props) {
   const [mobileView, setMobileView] = useState<'sections' | 'preview'>('sections')
   const [message, setMessage] = useState(initialState.migrated ? 'Your homepage announcement bar and trust strip are now sections below. Save and publish to apply.' : '')
   const [saveError, setSaveError] = useState('')
+  const [dataError, setDataError] = useState('')
   const [messageIsError, setMessageIsError] = useState(false)
   const [products, setProducts] = useState<any[]>([])
   const [collections, setCollections] = useState<any[]>([])
@@ -475,14 +476,22 @@ export default function ThemeStudio({ initial }: Props) {
   }, [])
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/products', { cache: 'no-store' }).then(r => (r.ok ? r.json() : [])).catch(() => []),
-      fetch('/api/admin/collections', { cache: 'no-store' }).then(r => (r.ok ? r.json() : [])).catch(() => []),
-    ]).then(([productData, collectionData]) => {
-      setProducts(rows(productData))
-      // The live site only lists active collections; match it so the preview never shows one a visitor can't see.
-      setCollections(rows(collectionData).filter((collection: any) => collection.isActive !== false))
-    })
+    // Preferred: one call that runs the live storefront's own queries. If it fails, fall back
+    // to the older public/admin endpoints, and if nothing loads say so (the pickers would
+    // otherwise claim there are no products or collections).
+    const legacy = () => Promise.all([
+      fetch('/api/products', { cache: 'no-store' }).then(r => (r.ok ? r.json() : Promise.reject(new Error(`products ${r.status}`)))),
+      fetch('/api/admin/collections', { cache: 'no-store' }).then(r => (r.ok ? r.json() : Promise.reject(new Error(`collections ${r.status}`)))),
+    ]).then(([productData, collectionData]) => ({ products: rows(productData), collections: rows(collectionData).filter((collection: any) => collection.isActive !== false) }))
+    fetch('/api/admin/theme/preview-data', { cache: 'no-store' })
+      .then(async r => {
+        const data = await r.json().catch(() => ({}))
+        if (!r.ok) throw new Error(data.error || `preview data ${r.status}`)
+        return { products: rows(data.products), collections: rows(data.collections) }
+      })
+      .catch(legacy)
+      .then(({ products, collections }) => { setProducts(products); setCollections(collections) })
+      .catch(error => setDataError(error instanceof Error ? error.message : 'Unable to load products and collections'))
   }, [])
 
   // The iframe's src is set imperatively here instead of as a static JSX prop
@@ -1088,7 +1097,7 @@ export default function ThemeStudio({ initial }: Props) {
               ))}
             </div>
             {drawerTab === 'content' ? (
-              <SectionInspector section={selected} products={products} collections={collections} onUpdate={patch} onUpdateBlocks={patchBlocks} />
+              <SectionInspector section={selected} products={products} collections={collections} loadError={dataError} onUpdate={patch} onUpdateBlocks={patchBlocks} />
             ) : drawerTab === 'design' ? (
               <div className="themeInspector">
                 <details className="themeInspectorPanel" open><summary>Design</summary><div>

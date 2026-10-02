@@ -35,4 +35,13 @@ describe('editor preview matches the live site', () => {
   it('the studio only previews active collections, like the live queries', () => {
     assert.match(read('components/theme-studio.tsx'), /isActive !== false/)
   })
+
+  it('loads the studio data through the storefront queries and never hides a failed load', () => {
+    const studio = read('components/theme-studio.tsx')
+    assert.match(studio, /\/api\/admin\/theme\/preview-data/)
+    // `.then(r => (r.ok ? r.json() : []))` on the products / collections requests turned a
+    // failed load into "you have no products / collections".
+    assert.doesNotMatch(studio, /fetch\('\/api\/(products|admin\/collections)'[^)]*\)\.then\(r => \(r\.ok \? r\.json\(\) : \[\]\)\)/)
+    assert.match(read('app/api/admin/theme/preview-data/route.ts'), /loadZoneData/)
+  })
 })

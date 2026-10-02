@@ -49,6 +49,7 @@ export default function ThemeInspectorStyles() {
 .themePicker{gap:8px}
 .themePickerHint{font-size:11px;line-height:1.45;color:var(--admin-muted)}
 .themePickerAuto{padding:10px 12px;border:1px dashed var(--admin-border);border-radius:var(--admin-radius-sm);font-size:11.5px;line-height:1.45;color:var(--admin-muted)}
+.themePickerError{border-style:solid;border-color:var(--admin-danger);color:var(--admin-danger)}
 .themePickerChosen,.themePickerList{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 .themePickerList{max-height:220px;overflow:auto;border:1px solid var(--admin-border-soft);border-radius:var(--admin-radius-sm);padding:4px;background:var(--admin-bg)}
 .themePickerChosen li{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--admin-border);border-radius:var(--admin-radius-sm);background:var(--admin-surface)}

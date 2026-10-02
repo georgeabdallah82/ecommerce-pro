@@ -10,6 +10,7 @@ type Props = {
   section: Section
   products: any[]
   collections: any[]
+  loadError?: string
   onUpdate: (patch: Record<string, any>) => void
   onUpdateBlocks: (blocks: any[]) => void
 }
@@ -125,7 +126,7 @@ function BlocksEditor({ section, type, onUpdateBlocks }: { section: Section; typ
 // whose settings live on theme[group] instead of section.settings), instead
 // of maintaining a second, differently-styled field system for it.
 export type SettingsMap = Record<string, any>
-export type FieldCtx = { s: SettingsMap; products: any[]; collections: any[] }
+export type FieldCtx = { s: SettingsMap; products: any[]; collections: any[]; loadError?: string }
 export type OptionList = Array<{ value: string; label: string }> | string[]
 export type OptionsSource = OptionList | ((ctx: FieldCtx) => OptionList)
 
@@ -449,9 +450,9 @@ function pickerItems(source: 'products' | 'collections', ctx: FieldCtx): PickerI
   if (source === 'products') {
     return ctx.products.map((p: any) => ({ id: String(p.id), label: p.name || 'Product', sub: p.sku || undefined, image: (p.images || [])[0]?.url || '', editHref: p.id ? `/admin/products/${p.id}` : undefined }))
   }
-  return ctx.collections.map((c: any) => ({ id: String(c.id), label: c.name || 'Collection', sub: c._count?.products !== undefined ? `${c._count.products} product${c._count.products === 1 ? '' : 's'}` : undefined, image: c.imageUrl || '', editHref: c.id ? `/admin/collections/${c.id}` : undefined }))
+  return ctx.collections.map((c: any) => ({ id: String(c.id), label: c.name || 'Collection', sub: (() => { const count = c._count?.products ?? (Array.isArray(c.products) ? c.products.length : undefined); return count === undefined ? undefined : `${count} product${count === 1 ? '' : 's'}` })(), image: c.imageUrl || '', editHref: c.id ? `/admin/collections/${c.id}` : undefined }))
 }
-export function ItemPicker({ label, hint, source, items, value, onChange }: { label: string; hint?: string; source: 'products' | 'collections'; items: PickerItem[]; value: string[]; onChange: (ids: string[]) => void }) {
+export function ItemPicker({ label, hint, source, items, value, onChange, loadError }: { label: string; hint?: string; source: 'products' | 'collections'; items: PickerItem[]; value: string[]; onChange: (ids: string[]) => void; loadError?: string }) {
   const [query, setQuery] = useState('')
   const noun = source === 'products' ? 'product' : 'collection'
   const byId = new Map(items.map(item => [item.id, item]))
@@ -488,7 +489,11 @@ export function ItemPicker({ label, hint, source, items, value, onChange }: { la
       )}
       {chosen.length > 0 && <button type="button" className="themePickerClear" onClick={() => onChange([])}>Clear selection (back to automatic)</button>}
       {items.length === 0 ? (
-        <div className="themePickerAuto">No {noun}s yet. Add some in the admin first.</div>
+        loadError ? (
+          <div className="themePickerAuto themePickerError">Couldn't load your {noun}s ({loadError}). Reload the editor to try again. {value.length > 0 && 'Your current selection is kept.'}</div>
+        ) : (
+          <div className="themePickerAuto">No active {noun}s yet. Add some in the admin first.</div>
+        )
       ) : (
         <>
           {items.length > 6 && <input type="search" placeholder={`Search ${noun}s…`} value={query} onChange={event => setQuery(event.target.value)} />}
@@ -530,7 +535,7 @@ export function renderField(schema: FieldSchema, ctx: FieldCtx, set: (patch: Rec
     case 'color':
       return <ColorField key={schema.label} label={schema.label} value={schema.get(s)} onChange={value => set(schema.set(value))} />
     case 'picker':
-      return <ItemPicker key={schema.label} label={schema.label} hint={schema.hint} source={schema.source} items={pickerItems(schema.source, ctx)} value={schema.get(s)} onChange={ids => set(schema.set(ids))} />
+      return <ItemPicker key={schema.label} label={schema.label} hint={schema.hint} source={schema.source} items={pickerItems(schema.source, ctx)} value={schema.get(s)} onChange={ids => set(schema.set(ids))} loadError={ctx.loadError} />
     case 'blocks':
       return null
   }
@@ -552,9 +557,9 @@ export function renderPanel(panel: PanelSchema, ctx: FieldCtx, set: (patch: Reco
   )
 }
 
-export default function SectionInspector({ section, products, collections, onUpdate, onUpdateBlocks }: Props) {
+export default function SectionInspector({ section, products, collections, loadError, onUpdate, onUpdateBlocks }: Props) {
   const s = section.settings || {}
-  const ctx: FieldCtx = { s, products, collections }
+  const ctx: FieldCtx = { s, products, collections, loadError }
   const set = (patch: Record<string, any>) => onUpdate(patch)
   const panels = (SECTION_PANELS[section.type] || (() => [commonLayoutPanel]))()
   return (
