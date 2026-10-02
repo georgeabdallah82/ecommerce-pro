@@ -3902,3 +3902,34 @@ body > .footer {
 .aliSpecList{display:flex;flex-wrap:wrap;gap:6px}
 .aliSpecListItem{background:var(--store-secondary,#fff0e8);color:var(--store-text,#191512);border-radius:999px;padding:3px 10px;font-size:13px;text-decoration:none}
 a.aliSpecListItem:hover{opacity:.8}
+
+/* ===== Section text alignment (the studio's "Text alignment" setting) =====
+   Left is the default and adds no class. Center / right move the whole heading block
+   (eyebrow, heading, subheading, View all link) and the rows of cards, not just the text
+   inside a shrink-wrapped box, which is why the setting used to look like it did nothing. */
+.focalStorefront .align-center .focalSectionHead{flex-direction:column;align-items:center;text-align:center;gap:10px}
+.focalStorefront .align-center .focalSectionHead p{margin-inline:auto}
+.focalStorefront .align-right .focalSectionHead{flex-direction:row-reverse;text-align:right}
+.focalStorefront .align-right .focalSectionHead p{margin-left:auto}
+.focalStorefront .align-center .aliSectionHead{flex-direction:column;align-items:center;gap:8px;text-align:center}
+.focalStorefront .align-right .aliSectionHead{flex-direction:row-reverse;text-align:right}
+.aliFlash.align-center .aliFlashHead{justify-content:center}
+.aliFlash.align-center .aliViewAll{margin-left:0}
+.aliFlash.align-right .aliFlashHead{flex-direction:row-reverse}
+.aliFlash.align-right .aliViewAll{margin-left:0;margin-right:auto}
+.aliCategoryStrip.align-center .aliCategoryRow{justify-content:center}
+.aliCategoryStrip.align-right .aliCategoryRow{justify-content:flex-end}
+.focalStorefront .align-center .focalNewsletter{grid-template-columns:1fr;justify-items:center;text-align:center}
+.focalStorefront .align-right .focalNewsletter{grid-template-columns:1fr;justify-items:end;text-align:right}
+.focalStorefront .focalType-collection_grid.align-center .focalCollectionGrid,
+.focalStorefront .focalType-collection_grid.align-right .focalCollectionGrid{display:flex!important;flex-wrap:wrap;gap:24px 14px}
+.focalStorefront .focalType-collection_grid.align-center .focalCollectionGrid{justify-content:center}
+.focalStorefront .focalType-collection_grid.align-right .focalCollectionGrid{justify-content:flex-end}
+.focalStorefront .focalType-collection_grid.align-center .focalCollectionCard,
+.focalStorefront .focalType-collection_grid.align-right .focalCollectionCard{flex:0 0 100px;width:100px}
+@media(max-width:700px){
+  .focalStorefront .align-right .focalSectionHead,
+  .focalStorefront .align-right .aliSectionHead{flex-direction:column;align-items:flex-end}
+  .focalStorefront .focalType-collection_grid.align-center .focalCollectionCard,
+  .focalStorefront .focalType-collection_grid.align-right .focalCollectionCard{flex-basis:78px;width:78px}
+}
