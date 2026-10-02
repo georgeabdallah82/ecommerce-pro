@@ -8,6 +8,7 @@ import {
   AtSign,
   BadgeCheck,
   Eye,
+  PanelLeft,
   EyeOff,
   UploadCloud,
   Columns3,
@@ -399,6 +400,8 @@ export default function ThemeStudio({ initial }: Props) {
   const [future, setFuture] = useState<Snapshot[]>([])
   const [dirty, setDirty] = useState(initialState.migrated)
   const [saving, setSaving] = useState(false)
+  // Phones show one pane at a time (section list or preview); wider screens show both.
+  const [mobileView, setMobileView] = useState<'sections' | 'preview'>('sections')
   const [message, setMessage] = useState(initialState.migrated ? 'Your homepage announcement bar and trust strip are now sections below. Save and publish to apply.' : '')
   const [saveError, setSaveError] = useState('')
   const [messageIsError, setMessageIsError] = useState(false)
@@ -880,7 +883,7 @@ export default function ThemeStudio({ initial }: Props) {
         </div>
       </header>
 
-      <div className={styles.body}>
+      <div className={`${styles.body} ${mobileView === 'preview' ? styles.showPreview : styles.showSections}`}>
         <aside className={styles.side}>
           <div className={styles.tabs}>
             <button className={sideTab === 'sections' ? styles.active : ''} onClick={() => setSideTab('sections')}><GripVertical size={13} />Sections</button>
@@ -1187,6 +1190,11 @@ export default function ThemeStudio({ initial }: Props) {
           </div>
         </div>
       )}
+
+      <nav className={styles.mobileSwitch} aria-label="Editor view">
+        <button type="button" className={mobileView === 'sections' ? styles.active : ''} aria-pressed={mobileView === 'sections'} onClick={() => setMobileView('sections')}><PanelLeft size={15} /> Sections</button>
+        <button type="button" className={mobileView === 'preview' ? styles.active : ''} aria-pressed={mobileView === 'preview'} onClick={() => setMobileView('preview')}><Eye size={15} /> Preview</button>
+      </nav>
 
       {message && (
         <div className={`${styles.notice} ${messageIsError ? styles.noticeError : ''}`} role={messageIsError ? 'alert' : 'status'}>
