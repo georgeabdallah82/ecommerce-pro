@@ -311,7 +311,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 85;
+    z-index: 1100; /* above map controls (Leaflet panes go up to 1000), below dialogs */
     display: flex;
     height: calc(var(--admin-tabbar-h) + env(safe-area-inset-bottom));
     padding: 6px 4px env(safe-area-inset-bottom);

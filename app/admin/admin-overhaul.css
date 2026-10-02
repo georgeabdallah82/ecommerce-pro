@@ -153,8 +153,8 @@ body:has(.adminShell) .statCard strong,body:has(.adminShell) .stat strong{color:
    so clicking a filter tile gave zero visual feedback about which one was
    selected on any of those three pages. Mirrors the already-correct
    .typeCard.active pattern in admin-coupons.module.css. */
-body:has(.adminShell) .statCard.active{border-color:var(--admin-accent)!important;box-shadow:0 0 0 1px var(--admin-accent) inset!important;background:var(--admin-accent-soft)!important}
-body:has(.adminShell) .statCard.active strong{color:var(--admin-accent-strong)!important}
+body:has(.adminShell) .statCard.active{border-color:var(--admin-border-soft)!important;box-shadow:inset 4px 0 0 var(--admin-accent),var(--admin-card-shadow)!important;background:var(--admin-surface)!important}
+body:has(.adminShell) .statCard.active strong{color:var(--admin-ink)!important}
 /* .catalogStats (the row wrapping those stat tiles) had a mobile-only override
    at 480px but no base rule at all -- confirmed by grep -- so on every screen
    above 480px the tiles stacked as plain full-width blocks with no grid/gap on
@@ -272,6 +272,9 @@ body:has(.adminShell) .themeStudioPro{background:var(--admin-bg)!important}
 body:has(.adminShell) .customersToolbar{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)!important}
 body:has(.adminShell) .customersToolbar .catalogFilters{display:grid!important;grid-template-columns:1fr 1fr!important;margin-bottom:0!important}
 @media(max-width:760px){body:has(.adminShell) .customersToolbar{grid-template-columns:1fr!important}}
+/* Redesign: every surface card is borderless (hairline), rounded and softly lifted; tab rows use pills. */
+body:has(.adminShell) .statCard,body:has(.adminShell) .catalogToolbar,body:has(.adminShell) .productTableCard,body:has(.adminShell) .dashboardPanel,body:has(.adminShell) .recentPanel,body:has(.adminShell) .opsCard,body:has(.adminShell) .healthCheck,body:has(.adminShell) .healthHero,body:has(.adminShell) .adminPanel,body:has(.adminShell) .adminTile,body:has(.adminShell) .onlineStoreHero,body:has(.adminShell) .orderViews,body:has(.adminShell) .opsTabs{border-color:var(--admin-border-soft)!important;border-radius:var(--admin-card-radius)!important;box-shadow:var(--admin-card-shadow)!important}
+body:has(.adminShell) .orderViews button,body:has(.adminShell) .opsTabs button{border-radius:999px!important}
 /* Dashboard: the top bar takes the brand colour so it flows into the welcome band below it. */
 .adminTopbar .adminLogoDark{display:none}
 body:has([data-dashboard-hero]) .adminTopbar{background:var(--admin-accent)!important;border-bottom-color:transparent!important;backdrop-filter:none!important}

@@ -222,7 +222,7 @@
 /* Report tabs */
 .tabs { display: flex; gap: 4px; padding: 4px; margin-bottom: 16px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); background: var(--admin-surface); width: fit-content; }
 .tab { border: 0; border-radius: var(--admin-radius-sm); padding: 9px 16px; background: transparent; color: var(--admin-muted); font: inherit; font-size: 12.5px; font-weight: 800; cursor: pointer; }
-.tabActive { background: var(--admin-border-soft); color: var(--admin-ink); }
+.tabActive { background: var(--admin-accent); color: var(--admin-accent-ink); border-radius: 999px; }
 
 /* Discounts report table */
 .exportBtn { margin-left: auto; }

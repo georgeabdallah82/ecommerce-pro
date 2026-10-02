@@ -33,7 +33,7 @@
 .stat small { font-size: 11px; color: var(--admin-muted); }
 .statClickable { cursor: pointer; }
 .statClickable:hover { box-shadow: var(--admin-shadow-md); }
-.statActive { border-color: var(--admin-accent); box-shadow: 0 0 0 3px var(--admin-focus); }
+.statActive { border-color: var(--admin-border-soft); background: var(--admin-surface); box-shadow: inset 4px 0 0 var(--admin-accent), var(--admin-card-shadow); }
 .statWarning strong { color: var(--admin-warning); }
 .statDanger strong { color: var(--admin-danger); }
 
