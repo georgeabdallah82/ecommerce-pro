@@ -3986,3 +3986,13 @@ a.aliSpecListItem:hover{opacity:.8}
 .themeEmptyNotice .focalContainer{display:grid;gap:4px;padding:16px 18px;border:2px dashed #c9bfb6;border-radius:12px;background:repeating-linear-gradient(135deg,#faf7f4 0 12px,#f4efea 12px 24px);color:#4a4039;font:500 13px/1.5 system-ui,sans-serif}
 .themeEmptyNotice strong{font-size:14px;color:#191512}
 .themeEmptyNotice em{font-style:normal;color:#7a6e64}
+
+/* Checkout: payment methods as tap-friendly cards, and the folded-away discount codes link. */
+.checkoutPayOptions{display:grid;gap:8px}
+.checkoutPayOption{display:flex;align-items:flex-start;gap:12px;padding:14px;border:1px solid var(--store-border,#e5e0da);border-radius:12px;background:var(--store-surface,#fff);cursor:pointer;transition:border-color .15s ease,box-shadow .15s ease}
+.checkoutPayOption input{margin-top:3px;accent-color:var(--store-primary,#d42a2a)}
+.checkoutPayOption span{display:grid;gap:2px}
+.checkoutPayOption strong{font-size:14px}
+.checkoutPayOption small{font-size:12.5px;color:var(--store-muted,#6b6b6b)}
+.checkoutPayOption.selected{border-color:var(--store-primary,#d42a2a);box-shadow:0 0 0 1px var(--store-primary,#d42a2a) inset}
+.checkoutCodesToggle{justify-self:start;font-size:13.5px;font-weight:700;color:var(--store-primary,#d42a2a)!important}
