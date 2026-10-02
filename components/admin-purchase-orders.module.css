@@ -23,7 +23,7 @@
 .statusDraft { background: var(--admin-border-soft); color: var(--admin-muted); }
 .statusOrdered { background: var(--admin-warning-soft); color: var(--admin-warning); }
 .statusPartial { background: var(--admin-warning-soft); color: var(--admin-warning); }
-.statusReceived { background: var(--admin-accent-soft); color: var(--admin-accent-strong); }
+.statusReceived { background: var(--admin-success-soft); color: var(--admin-success-strong); }
 .statusCancelled { background: var(--admin-danger-soft); color: var(--admin-danger); }
 
 .progressWrap { display: flex; align-items: center; gap: 8px; min-width: 130px; }

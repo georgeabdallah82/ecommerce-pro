@@ -43,9 +43,9 @@
 .assignedPrice { font-size: 12px; color: var(--admin-ink-soft); font-weight: 650; }
 
 .status { width: 100%; display: flex; align-items: center; gap: 11px; padding: 12px; border: 1px solid var(--admin-border); background: var(--admin-surface); border-radius: var(--admin-radius-md); text-align: left; cursor: pointer; font: inherit; }
-.statusActive { background: var(--admin-accent-soft); border-color: var(--admin-accent); }
+.statusActive { background: var(--admin-success-soft); border-color: var(--admin-success); }
 .statusDot { width: 9px; height: 9px; border-radius: 50%; background: var(--admin-muted); flex: none; }
-.statusActive .statusDot { background: var(--admin-accent-strong); }
+.statusActive .statusDot { background: var(--admin-success-strong); }
 .status strong { display: block; font-size: 13px; color: var(--admin-ink); }
 .status small { display: block; margin-top: 3px; color: var(--admin-muted); font-size: 11px; }
 

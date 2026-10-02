@@ -234,7 +234,7 @@
   font-size: 10px;
   font-weight: 850;
 }
-.statusPillSuccess { background: var(--admin-accent-soft); color: var(--admin-accent-strong); border-color: transparent; }
+.statusPillSuccess { background: var(--admin-success-soft); color: var(--admin-success-strong); border-color: transparent; }
 .statusPillWarning { background: var(--admin-warning-soft); color: var(--admin-warning); border-color: transparent; }
 .statusPillDanger { background: var(--admin-danger-soft); color: var(--admin-danger); border-color: transparent; }
 
@@ -246,8 +246,8 @@
      never got a radius token override from admin-overhaul.css, so this is what
      every alert on every admin page has actually looked like. */
   border-radius: 12px;
-  background: var(--admin-accent-soft);
-  color: var(--admin-accent-strong);
+  background: var(--admin-success-soft);
+  color: var(--admin-success-strong);
   font-size: 14px;
 }
 .alertDanger { border-color: var(--admin-danger-border); background: var(--admin-danger-soft); color: var(--admin-danger); }

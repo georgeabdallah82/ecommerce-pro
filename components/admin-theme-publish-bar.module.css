@@ -24,8 +24,8 @@
 .status { display: flex; align-items: center; gap: 8px; min-width: 145px; }
 .dot { width: 8px; height: 8px; border-radius: 99px; background: var(--admin-warning); }
 .statusText { font-size: 13px; font-weight: 600; color: var(--admin-ink-soft); }
-.publishedIcon { color: var(--admin-accent); display: inline-flex; }
-.message { font-size: 12px; color: var(--admin-accent); }
+.publishedIcon { color: var(--admin-success); display: inline-flex; }
+.message { font-size: 12px; color: var(--admin-success); }
 .error { font-size: 12px; color: var(--admin-danger); max-width: 220px; }
 
 .publishBtn {

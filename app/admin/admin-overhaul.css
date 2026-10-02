@@ -46,6 +46,12 @@ body:has(.adminShell){
   --admin-accent-ink:#ffffff;
   --admin-accent-soft:#e3f1ec;
   --admin-accent-strong:#005e46;
+  /* Success ("ok", Active, In stock, Paid, positive changes, live dots) is always green,
+     independent of the brand accent, so a red store's statuses never read as errors. */
+  --admin-success:#008060;
+  --admin-success-soft:#e3f1ec;
+  --admin-success-strong:#005e46;
+  --admin-success-ring:rgba(0,128,96,.16);
   --admin-danger:#c1372a;
   --admin-danger-soft:#fdecea;
   --admin-danger-border:#f1c9c4;
@@ -82,6 +88,10 @@ html[data-admin-theme='dark'] body:has(.adminShell){
   --admin-accent-ink:#0c1f16;
   --admin-accent-soft:#173626;
   --admin-accent-strong:#7ee4ac;
+  --admin-success:#4fd18b;
+  --admin-success-soft:#173626;
+  --admin-success-strong:#7ee4ac;
+  --admin-success-ring:rgba(79,209,139,.22);
   --admin-danger:#f0776a;
   --admin-danger-soft:#33201c;
   --admin-danger-border:#5a3128;

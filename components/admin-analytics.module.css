@@ -25,7 +25,7 @@
 }
 .metricCard strong { font-size: 25px; letter-spacing: -.03em; color: var(--admin-ink); }
 .metricUp, .metricDown { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 800; }
-.metricUp { color: var(--admin-accent-strong); }
+.metricUp { color: var(--admin-success-strong); }
 .metricDown { color: var(--admin-danger); }
 
 .grid { display: grid; grid-template-columns: 1.45fr .85fr; gap: 16px; }

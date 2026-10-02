@@ -67,7 +67,7 @@
   font-size: 10.5px;
   font-weight: 800;
 }
-.pillSuccess { background: var(--admin-accent-soft); color: var(--admin-accent-strong); border-color: transparent; }
+.pillSuccess { background: var(--admin-success-soft); color: var(--admin-success-strong); border-color: transparent; }
 .pillWarning { background: var(--admin-warning-soft); color: var(--admin-warning); border-color: transparent; }
 .pillDanger { background: var(--admin-danger-soft); color: var(--admin-danger); border-color: transparent; }
 .pillNeutral { background: var(--admin-border-soft); color: var(--admin-muted); border-color: transparent; }
