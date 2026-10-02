@@ -127,6 +127,7 @@ const SAFE_CHECKOUT_MESSAGES = new Set([
   'This gift card is no longer available',
   'Selected shipping method is no longer available',
   'A shipping address is required for this order.',
+  'A phone number is required so the courier can reach you.',
 ])
 
 function checkoutFailure(error: unknown) {
@@ -259,6 +260,9 @@ export async function POST(req: Request) {
       if (!addr.firstName?.trim() || !addr.lastName?.trim() || !addr.line1?.trim() || !addr.city?.trim()) {
         throw new Error('A shipping address is required for this order.')
       }
+      // The checkout form already asks for this; the server must too, or a direct request
+      // (or a broken form) creates a delivery the courier has no way to arrange.
+      if (String(input.phone || input.shippingAddress?.phone || '').replace(/\D/g, '').length < 6) throw new Error('A phone number is required so the courier can reach you.')
     }
 
     const { discount, coupon } = input.couponCode

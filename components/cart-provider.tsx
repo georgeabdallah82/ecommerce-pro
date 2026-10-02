@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { trackAddToCart } from '@/lib/tracking-events'
 import { config } from '@/lib/config'
+import { applyCartValidation, type CartLineCheck } from '@/lib/cart-sync'
 
 export type CartItem = {
   productId: string
@@ -34,6 +35,9 @@ type CartContextValue = {
   selectedItems: CartItem[]
   selectedCount: number
   selectedSubtotal: number
+  // What changed when the cart was checked against the store (prices, stock, removed items).
+  notices: string[]
+  dismissNotices: () => void
 }
 
 const CartContext = createContext<CartContextValue | null>(null)
@@ -90,6 +94,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (ready) localStorage.setItem('ecom-cart-v1', JSON.stringify(items))
   }, [items, ready])
+
+  // Check the saved cart against current prices and stock: on load, and whenever lines are
+  // added or removed (not on quantity changes, which checkout re-checks anyway).
+  const [notices, setNotices] = useState<string[]>([])
+  const lineSignature = items.map(keyOf).sort().join('|')
+  useEffect(() => {
+    if (!ready || !lineSignature) return
+    let active = true
+    const lines = items.map(i => ({ productId: i.productId, variantId: i.variantId || null }))
+    fetch('/api/cart/validate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ items: lines }) })
+      .then(res => (res.ok ? res.json() : null))
+      .then((data: { items?: CartLineCheck[] } | null) => {
+        if (!active || !Array.isArray(data?.items)) return
+        setItems(prev => {
+          const { items: next, changes } = applyCartValidation(prev, data.items!)
+          if (changes.length) setNotices(current => [...new Set([...current, ...changes])])
+          return changes.length ? next : prev
+        })
+      })
+      .catch(() => {})
+    return () => { active = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, lineSignature])
 
   useEffect(() => {
     if (ready) localStorage.setItem('ecom-cart-selected-v1', JSON.stringify(selected))
@@ -157,7 +184,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     selectedItems: items.filter(x => selected[keyOf(x)] !== false),
     selectedCount: items.filter(x => selected[keyOf(x)] !== false).reduce((a, b) => a + b.quantity, 0),
     selectedSubtotal: items.filter(x => selected[keyOf(x)] !== false).reduce((a, b) => a + b.price * b.quantity, 0),
-  }), [items, isOpen, selected])
+    notices,
+    dismissNotices: () => setNotices([]),
+  }), [items, isOpen, selected, notices])
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>
 }

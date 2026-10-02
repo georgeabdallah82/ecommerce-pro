@@ -24,7 +24,9 @@ export async function getProductStats(productIds: string[]): Promise<Record<stri
   const ids = Array.from(new Set(productIds)).filter(Boolean)
   if (!ids.length) return {}
   const reviewStats = await db.review.groupBy({ by: ['productId'], where: { productId: { in: ids }, approved: true }, _avg: { rating: true }, _count: { rating: true } }) as unknown as ReviewGroupRow[]
-  const soldStats = await db.orderItem.groupBy({ by: ['productId'], where: { productId: { in: ids }, order: { paymentStatus: 'PAID' } }, _sum: { quantity: true } }) as unknown as OrderItemGroupRow[]
+  // Sold = paid for. Cash-on-delivery orders count once delivered (the courier collected the
+  // money), including ones delivered before delivery started marking them PAID.
+  const soldStats = await db.orderItem.groupBy({ by: ['productId'], where: { productId: { in: ids }, order: { OR: [{ paymentStatus: 'PAID' }, { paymentMethod: 'COD', status: 'DELIVERED' }] } }, _sum: { quantity: true } }) as unknown as OrderItemGroupRow[]
   const out: Record<string, ProductStats> = {}
   for (const id of ids) out[id] = { ...EMPTY }
   for (const r of reviewStats) out[r.productId] = { ...out[r.productId], rating: r._avg.rating || 0, reviewCount: r._count.rating }
@@ -32,8 +34,21 @@ export async function getProductStats(productIds: string[]): Promise<Record<stri
   return out
 }
 
+// Fields that must never reach the browser. Every storefront listing (home, shop, collections,
+// cart, wishlist, related products) passes its rows through here into client components,
+// whose props are serialized into the page -- so a whole Product row used to publish the
+// merchant's cost price and internal channel settings in the page source.
+const PRIVATE_PRODUCT_FIELDS = ['costPrice', 'salesChannelsJson', 'barcode'] as const
+
+export function stripPrivateProductFields<T extends object>(product: T): T {
+  const copy: any = { ...product }
+  for (const field of PRIVATE_PRODUCT_FIELDS) delete copy[field]
+  if (Array.isArray(copy.variants)) copy.variants = copy.variants.map((v: any) => { const { costPrice, barcode, ...rest } = v || {}; return rest })
+  return copy
+}
+
 export function attachProductStats<T extends { id: string }>(products: T[], stats: Record<string, ProductStats>): Array<T & ProductStats> {
-  return products.map(p => ({ ...p, ...(stats[p.id] || EMPTY) }))
+  return products.map(p => ({ ...stripPrivateProductFields(p), ...(stats[p.id] || EMPTY) }))
 }
 
 export async function withProductStats<T extends { id: string }>(products: T[]): Promise<Array<T & ProductStats>> {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { Search } from 'lucide-react'
 import StorefrontSections, { ProductCard, QuickView } from '@/components/storefront-sections'
@@ -8,7 +8,7 @@ import { useWishlist } from '@/components/use-wishlist'
 
 type AnyMap = Record<string, any>
 
-export default function AliExpressShop({ theme, products, collections, query, sections = [] }: { theme: AnyMap; products: AnyMap[]; collections: AnyMap[]; query: { q?: string; collection?: string; min?: string; max?: string; sort?: string }; sections?: AnyMap[] }) {
+export default function AliExpressShop({ theme, products, collections, query, sections = [], pagination }: { theme: AnyMap; products: AnyMap[]; collections: AnyMap[]; query: { q?: string; collection?: string; min?: string; max?: string; sort?: string; page?: string }; sections?: AnyMap[]; pagination?: { page: number; pages: number; total: number } }) {
   const { wishlist, toggleWish } = useWishlist()
   const [quickProduct, setQuickProduct] = useState<AnyMap | null>(null)
   const sort = query.sort || 'newest'
@@ -16,11 +16,15 @@ export default function AliExpressShop({ theme, products, collections, query, se
   const showFilters = cp.showFilters !== false
   const showSort = cp.showSort !== false
 
-  const sorted = useMemo(() => {
-    if (sort === 'bestselling') return [...products].sort((a, b) => Number(b.soldCount || 0) - Number(a.soldCount || 0))
-    if (sort === 'rating') return [...products].sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0))
-    return products
-  }, [products, sort])
+  // Sorted (and paginated) on the server across the whole catalog.
+  const sorted = products
+  const total = pagination?.total ?? products.length
+  const pageHref = (n: number) => {
+    const params = new URLSearchParams(Object.entries(query).filter(([k, v]) => k !== 'page' && v) as [string, string][])
+    if (n > 1) params.set('page', String(n))
+    const qs = params.toString()
+    return qs ? `/shop?${qs}` : '/shop'
+  }
 
   return (
     <div className="focalStorefront aliShopPage">
@@ -73,7 +77,7 @@ export default function AliExpressShop({ theme, products, collections, query, se
             <button type="submit" className="focalButton primary">Search</button>
           </form>
 
-          <p className="aliResultCount">{sorted.length} product{sorted.length === 1 ? '' : 's'}</p>
+          <p className="aliResultCount">{total} product{total === 1 ? '' : 's'}</p>
 
           {sorted.length > 0 ? (
             <div className="aliDenseGrid aliShopGrid">
@@ -83,6 +87,14 @@ export default function AliExpressShop({ theme, products, collections, query, se
             </div>
           ) : (
             <div className="aliEmptyState">No products match your filters.</div>
+          )}
+
+          {pagination && pagination.pages > 1 && (
+            <nav aria-label="Pages" style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', margin: '28px 0 8px', flexWrap: 'wrap' }}>
+              {pagination.page > 1 && <Link className="focalButton secondary" href={pageHref(pagination.page - 1)} rel="prev">Previous</Link>}
+              <span style={{ fontSize: 14 }}>Page {pagination.page} of {pagination.pages}</span>
+              {pagination.page < pagination.pages && <Link className="focalButton secondary" href={pageHref(pagination.page + 1)} rel="next">Next</Link>}
+            </nav>
           )}
         </main>
       </div>

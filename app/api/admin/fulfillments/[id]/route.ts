@@ -2,10 +2,11 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
-import { canTransitionOrder, fulfillmentForStatus } from '@/lib/orders'
+import { canTransitionOrder, fulfillmentForStatus, collectsCashOnDelivery } from '@/lib/orders'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { ShipmentStatus, OrderStatus } from '@prisma/client'
 import { runInBackground } from '@/lib/background'
+import { issueAndNotifyGiftCardsForOrder } from '@/lib/email'
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -31,7 +32,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     // the order itself is delivered. Without this, marking a shipment delivered here left
     // Order.status stuck on SHIPPED forever: no customer notification, no order.fulfilled webhook,
     // and the order-status dropdown still showing SHIPPED as if nothing happened.
-    let orderEvent: { orderId: string; userId: string | null; orderNumber: string } | null = null
+    let orderEvent: { orderId: string; userId: string | null; orderNumber: string; codCollected: boolean } | null = null
     if (status === ShipmentStatus.DELIVERED) {
       orderEvent = await db.$transaction(async tx => {
         const order = await tx.order.findUnique({ where: { id: existing.orderId } })
@@ -41,16 +42,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           data: {
             status: OrderStatus.DELIVERED,
             fulfillmentStatus: fulfillmentForStatus(OrderStatus.DELIVERED),
-            events: { create: { status: OrderStatus.DELIVERED, message: `Shipment ${id} delivered.` } },
+            ...(collectsCashOnDelivery(order) ? { paymentStatus: 'PAID' as const } : {}),
+            events: { create: { status: OrderStatus.DELIVERED, message: `Shipment ${id} delivered.${collectsCashOnDelivery(order) ? ' Cash collected on delivery — marked as paid.' : ''}` } },
           },
         })
-        return { orderId: updatedOrder.id, userId: order.userId, orderNumber: updatedOrder.orderNumber }
+        return { orderId: updatedOrder.id, userId: order.userId, orderNumber: updatedOrder.orderNumber, codCollected: collectsCashOnDelivery(order) }
       })
       if (orderEvent) {
         if (orderEvent.userId) await db.notification.create({ data: { userId: orderEvent.userId, title: `Order ${orderEvent.orderNumber} delivered`, body: `Your order ${orderEvent.orderNumber} has been delivered.`, type: 'ORDER_STATUS' } })
         const eventPayload = { id: orderEvent.orderId, orderNumber: orderEvent.orderNumber, status: OrderStatus.DELIVERED, fulfillmentStatus: fulfillmentForStatus(OrderStatus.DELIVERED) }
         runInBackground(dispatchWebhookEvent('order.updated', eventPayload).catch(error => console.error('[webhook] order.updated dispatch failed', error)))
         runInBackground(dispatchWebhookEvent('order.fulfilled', eventPayload).catch(error => console.error('[webhook] order.fulfilled dispatch failed', error)))
+        // Payment confirmed by delivery: issue any gift-card products, as marking an order PAID does.
+        if (orderEvent.codCollected) runInBackground(issueAndNotifyGiftCardsForOrder(orderEvent.orderId).catch(error => console.error('[email] gift card issuance on delivery failed', error)))
       }
     }
 

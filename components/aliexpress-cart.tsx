@@ -7,6 +7,7 @@ import { useCart, keyOf } from '@/components/cart-provider'
 import { money } from '@/lib/config'
 import StorefrontSections, { ProductCard, QuickView } from '@/components/storefront-sections'
 import { useWishlist } from '@/components/use-wishlist'
+import { CartNotices } from '@/components/cart-notices'
 
 type AnyMap = Record<string, any>
 
@@ -91,6 +92,7 @@ export default function AliExpressCart({ theme, recommended, sections = [], zone
           </div>
           <span className="pill" aria-label={`${itemCount} items in cart`}>{itemCount} items</span>
         </header>
+        <CartNotices />
 
         {showFreeShippingBar && freeShippingThreshold !== null && (
           <div className="aliShippingBanner">

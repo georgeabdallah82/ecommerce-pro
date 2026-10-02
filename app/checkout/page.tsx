@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useCart } from '@/components/cart-provider'
 import { money } from '@/lib/config'
+import { CartNotices } from '@/components/cart-notices'
 
 type PaymentDetails = {
   bank: { bankName:string; accountName:string; iban:string; instructions:string } | null
@@ -202,7 +203,7 @@ export default function Checkout() {
   if(clientCheckout) return <main className="section"><div className="container narrow"><div className="card" style={{textAlign:'center'}}><span className="muted">SECURE PAYMENT</span><h1 className="h2">Continue to secure card payment</h1><p className="muted">Your payment details are entered directly on the payment provider's secure page.</p><div className="alert">Loading secure payment…</div><Link className="textLink" href="/cart">Return to cart</Link></div></div></main>
 
   return <main className="section"><div className="container split"><form className="card checkoutForm" onSubmit={submit}>
-    <span className="muted">CHECKOUT</span><h1 className="h2">Secure, simple, fast.</h1>
+    <span className="muted">CHECKOUT</span><h1 className="h2">Secure, simple, fast.</h1><CartNotices />
     {!settings && <div className="alert">Loading checkout settings…</div>}
     {guestBlocked && <div className="alert danger">Guest checkout is disabled. <Link className="textLink" href="/account/login">Sign in</Link> to continue.</div>}
     {settingsError && <div className="alert danger">{settingsError}</div>}

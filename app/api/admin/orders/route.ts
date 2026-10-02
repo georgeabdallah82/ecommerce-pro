@@ -2,7 +2,7 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
 import { audit } from '@/lib/audit'
-import { canTransitionOrder, canTransitionPayment, fulfillmentForStatus } from '@/lib/orders'
+import { canTransitionOrder, canTransitionPayment, collectsCashOnDelivery, fulfillmentForStatus } from '@/lib/orders'
 import { fulfillOrderStock, releaseOrderReservations, pickMajorityLocation } from '@/lib/inventory'
 import { remainingRefundable, pickRefundSource, creditWalletRefund, settleReturnRefund, type ReturnableOrder } from '@/lib/returns'
 import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
@@ -169,16 +169,18 @@ export async function PATCH(req: Request) {
         }
       }
 
+      const codCollected = statusChanged && requestedStatus === OrderStatus.DELIVERED && !requestedPayment && collectsCashOnDelivery(order)
       const data: any = {
         ...detailsPatch,
         ...(statusChanged ? { status: requestedStatus, fulfillmentStatus: fulfillmentForStatus(requestedStatus!) } : {}),
         ...(paymentChanged ? { paymentStatus: requestedPayment } : {}),
+        ...(codCollected ? { paymentStatus: PaymentStatus.PAID } : {}),
         ...(cancelRefundAmount > 0 ? { paymentStatus: PaymentStatus.REFUNDED } : {}),
       }
       const cancelMessage = cancelRefundAmount > 0
         ? ` A ${(cancelRefundAmount / 100).toFixed(2)} ${order.currency} refund was issued${cancelRefundProvider === 'wallet' ? ' to the customer’s wallet' : ''}.`
         : refundToSettle ? ` A ${(refundToSettle.amount / 100).toFixed(2)} ${order.currency} refund is being processed.` : ''
-      const updated = await tx.order.update({ where: { id: order.id }, data: { ...data, ...(statusChanged ? { events: { create: { status: requestedStatus!, message: `Order moved from ${order.status} to ${requestedStatus}.${cancelMessage}` } } } : {}) } })
+      const updated = await tx.order.update({ where: { id: order.id }, data: { ...data, ...(statusChanged ? { events: { create: { status: requestedStatus!, message: `Order moved from ${order.status} to ${requestedStatus}.${cancelMessage}${codCollected ? ' Cash collected on delivery — marked as paid.' : ''}` } } } : {}) } })
       // Recording a Fulfillment (with one line per order item) is how this "ship the whole
       // order" action leaves a real shipment record behind -- carrier/tracking-URL metadata a
       // customer-facing tracking page or a future partial-shipment flow can read, rather than
@@ -223,7 +225,7 @@ export async function PATCH(req: Request) {
           trackingCorrection = { orderNumber: order.orderNumber, trackingNumber: detailsPatch.trackingNumber as string | null }
         }
       }
-      return { order, updated, statusChanged, paymentChanged, hasOnlyDetails, fulfilledInventoryIds, fulfilling, fulfillmentId: fulfillment?.id, refundToSettle, cancelRefundAmount, trackingCorrection }
+      return { order, updated, statusChanged, paymentChanged: paymentChanged || codCollected, codCollected, hasOnlyDetails, fulfilledInventoryIds, fulfilling, fulfillmentId: fulfillment?.id, refundToSettle, cancelRefundAmount, trackingCorrection }
     })
     if (result.order.userId && result.statusChanged) {
       const body = result.cancelRefundAmount > 0
@@ -244,7 +246,7 @@ export async function PATCH(req: Request) {
     // deliberately never issued at edit-commit time (see app/api/admin/order-edits/[id]/route.ts)
     // since that additional amount is only a pending manual charge with no automatic payment
     // confirmation -- staff marking the order PAID here is that confirmation.
-    if (result.paymentChanged && requestedPayment === PaymentStatus.PAID) {
+    if ((result.paymentChanged && requestedPayment === PaymentStatus.PAID) || result.codCollected) {
       runInBackground(issueAndNotifyGiftCardsForOrder(result.order.id).catch(error => console.error('[email] gift card issuance on payment confirmation failed', error)))
     }
     await audit(actor.id, 'order.updated', 'Order', result.order.id, { from: result.order.status, to: result.updated.status, paymentFrom: result.order.paymentStatus, paymentTo: result.updated.paymentStatus, statusChanged: result.statusChanged, paymentChanged: result.paymentChanged, detailsEdited: Object.keys(detailsPatch), fulfillmentId: result.fulfillmentId, cancelRefundAmount: result.cancelRefundAmount || undefined, cancelRefundPending: result.refundToSettle?.amount })
