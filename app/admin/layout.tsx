@@ -7,6 +7,8 @@ import { ToastProvider } from '@/components/admin-toast'
 import { ConfirmProvider } from '@/components/admin-confirm'
 import { getThemeState } from '@/lib/theme'
 import { adminBrandCss } from '@/lib/admin-accent'
+import { db } from '@/lib/prisma'
+import { OrderStatus } from '@prisma/client'
 
 const groups: AdminSidebarGroup[] = [
   { id: 'home', label: 'Home', items: [
@@ -111,7 +113,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const visibleGroups = groups.map(group => ({ ...group, items: group.items.filter(item => hasPermission(user.role, item.permission as Permission)) })).filter(group => group.items.length)
   // The admin's accent follows the store's published Primary colour (see lib/admin-accent.ts).
   // If the theme can't be read, the admin keeps its default accent.
-  const brandCss = await getThemeState().then(({ theme }) => adminBrandCss(theme?.colors)).catch(() => '')
+  const theme = await getThemeState().then(state => state.theme).catch(() => null)
+  const brandCss = theme ? adminBrandCss(theme.colors) : ''
+  const brand = { name: theme?.brandName || 'Control Center', logoUrl: theme?.logoUrl || undefined, logoDarkUrl: theme?.logoUrlDark || undefined, iconUrl: theme?.faviconUrl || undefined }
+  // Badge on Orders in the sidebar and phone tab bar: orders still waiting to ship.
+  const ordersToFulfill = hasPermission(user.role, 'orders.view')
+    ? await db.order.count({ where: { status: { in: [OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PROCESSING] } } }).catch(() => 0)
+    : 0
 
   return <>
     <style dangerouslySetInnerHTML={{__html:adminCss}} />
@@ -119,7 +127,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="adminShell">
       <ToastProvider>
         <ConfirmProvider>
-          <AdminNav groups={visibleGroups} name={user.name} email={user.email} role={user.role} vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}>
+          <AdminNav groups={visibleGroups} brand={brand} ordersToFulfill={ordersToFulfill} name={user.name} email={user.email} role={user.role} vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}>
             {children}
           </AdminNav>
         </ConfirmProvider>

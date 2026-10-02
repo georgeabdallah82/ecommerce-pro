@@ -21,9 +21,70 @@
  * flex/height default) since that was exactly the class of bug noted above.
  */
 
+/*
+ * Shell shape: a full-height dark sidebar (store logo, sections, signed-in user) beside a
+ * column holding the sticky top bar and the page. Below 900px the sidebar is replaced by a
+ * bottom tab bar (Home, Orders, Products, Customers, More) and the full menu opens as a drawer.
+ */
 :root {
-  --admin-topbar-h: 60px;
+  --admin-topbar-h: 64px;
+  --admin-tabbar-h: 64px;
 }
+
+.shell { display: flex; flex-direction: row; align-items: stretch; min-height: 100vh; width: 100%; }
+.column { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  flex: 0 0 248px;
+  width: 248px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 14px 14px;
+  background: var(--admin-sidebar-bg);
+  color: var(--admin-sidebar-ink);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.sidebarBrand { display: flex; align-items: center; min-height: 34px; padding: 2px 10px 18px; text-decoration: none; flex: 0 0 auto; }
+.logoImg { display: block; height: 28px; width: auto; max-width: 180px; object-fit: contain; }
+.brandTextDark { font-size: 17px; font-weight: 900; letter-spacing: -.03em; color: #fff; white-space: nowrap; }
+.brandText { font-size: 15px; font-weight: 900; letter-spacing: -.03em; color: var(--admin-ink); white-space: nowrap; }
+.brand { display: flex; align-items: center; gap: 9px; text-decoration: none; }
+
+.sidebarNav { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; margin: 0 -4px; padding: 0 4px; scrollbar-width: thin; scrollbar-color: var(--admin-sidebar-hover) transparent; }
+.sidebarGroup { margin-bottom: 4px; }
+.sidebarGroupLabel { padding: 12px 11px 5px; color: var(--admin-sidebar-muted); font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.sidebarItem {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 11px;
+  min-height: 38px;
+  padding: 0 11px;
+  border-radius: 10px;
+  color: var(--admin-sidebar-ink);
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background .12s ease, color .12s ease;
+}
+.sidebarItem:hover { background: var(--admin-sidebar-hover); color: #fff; }
+.sidebarItem svg { opacity: .8; flex: 0 0 auto; }
+.sidebarItemActive, .sidebarItemActive:hover { background: var(--admin-accent); color: var(--admin-accent-ink); }
+.sidebarItemActive svg { opacity: 1; }
+.navBadge { margin-left: auto; min-width: 20px; padding: 1px 7px; border-radius: 99px; background: var(--admin-accent); color: var(--admin-accent-ink); font-size: 11px; font-weight: 800; text-align: center; }
+.sidebarItemActive .navBadge { background: var(--admin-accent-ink); color: var(--admin-accent); }
+
+.userCard { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 10px; border-radius: 12px; background: var(--admin-sidebar-hover); flex: 0 0 auto; }
+.userAvatar { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--admin-accent); color: var(--admin-accent-ink); font-size: 12px; font-weight: 900; flex: none; }
+.userText { display: grid; min-width: 0; flex: 1 1 auto; }
+.userText strong { color: #fff; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.userText small { color: var(--admin-sidebar-muted); font-size: 11px; text-transform: capitalize; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.userSignOut { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: var(--admin-sidebar-muted); cursor: pointer; }
+.userSignOut:hover { background: rgba(255,255,255,.08); color: #fff; }
 
 .topbar {
   position: sticky;
@@ -34,81 +95,53 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 16px;
-  padding: 0 20px;
+  gap: 14px;
+  padding: 0 36px;
   background: var(--admin-topbar-bg);
   backdrop-filter: blur(18px);
   border-bottom: 1px solid var(--admin-border);
   box-sizing: border-box;
 }
-
-.topbarLeft { display: flex; flex-direction: row; align-items: center; gap: 14px; flex: 0 0 auto; }
-
-.hamburger {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: 1px solid var(--admin-border);
-  border-radius: var(--admin-radius-sm);
-  background: var(--admin-surface);
-  color: var(--admin-ink-soft);
-  cursor: pointer;
-}
-
-.brand { display: flex; flex-direction: row; align-items: center; gap: 9px; text-decoration: none; flex: 0 0 auto; }
-.brandMark {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--admin-radius-sm);
-  background: var(--admin-accent);
-  color: var(--admin-accent-ink);
-  box-shadow: 0 5px 14px rgba(0, 128, 96, .25);
-  flex: 0 0 auto;
-}
-.brandText { font-size: 14px; font-weight: 900; letter-spacing: -.03em; color: var(--admin-ink); white-space: nowrap; }
+.topbarLogo { display: none; align-items: center; text-decoration: none; flex: 0 0 auto; }
+.topbarLogo .logoImg { height: 24px; max-width: 140px; }
 
 .topbarSearch {
   display: flex;
   flex-direction: row;
   align-items: center;
   gap: 9px;
-  height: 38px;
-  width: min(420px, 100%);
-  margin: 0 auto;
-  padding: 0 12px;
+  height: 40px;
+  width: min(520px, 100%);
+  padding: 0 13px;
   border: 1px solid var(--admin-border);
-  border-radius: var(--admin-radius-md);
+  border-radius: 11px;
   background: var(--admin-surface);
   color: var(--admin-muted);
   font: inherit;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
   box-sizing: border-box;
 }
 .topbarSearch:hover { border-color: var(--admin-muted-soft); color: var(--admin-ink-soft); }
 .topbarSearch span { flex: 1 1 auto; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.topbarSearch kbd { flex: 0 0 auto; padding: 2px 6px; border: 1px solid var(--admin-border); border-radius: 6px; background: var(--admin-border-soft); color: var(--admin-muted); font: 700 10px/1 ui-monospace, monospace; }
+.topbarSearch kbd { flex: 0 0 auto; padding: 2px 6px; border-radius: 6px; background: var(--admin-border-soft); color: var(--admin-muted); font: 700 10px/1 ui-monospace, monospace; }
 
-.topbarRight { display: flex; flex-direction: row; align-items: center; gap: 8px; flex: 0 0 auto; }
+.topbarRight { display: flex; flex-direction: row; align-items: center; gap: 8px; flex: 0 0 auto; margin-left: auto; }
 
 .account { position: relative; }
-.accountBtn { border: 0; background: transparent; padding: 0; cursor: pointer; border-radius: var(--admin-radius-sm); }
+.accountBtn { border: 0; background: transparent; padding: 0; cursor: pointer; border-radius: 50%; }
 .avatar {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: var(--admin-radius-sm);
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
   background: var(--admin-accent);
   color: var(--admin-accent-ink);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 900;
 }
 .accountPanel {
@@ -165,52 +198,30 @@
 }
 .accountItem:hover { background: var(--admin-border-soft); color: var(--admin-ink); }
 
-/* Body row: sidebar + main content, below the top bar. */
-.body {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  flex: 1 1 auto;
-  min-height: 0;
-  width: 100%;
-  box-sizing: border-box;
-}
+.mainCol { flex: 1 1 auto; min-width: 0; }
 
-.sidebar {
-  position: sticky;
-  top: var(--admin-topbar-h);
-  flex: 0 0 240px;
-  width: 240px;
-  max-height: calc(100vh - var(--admin-topbar-h));
-  overflow-y: auto;
-  padding: 16px 12px 24px;
-  border-right: 1px solid var(--admin-border);
-  background: var(--admin-surface);
-  box-sizing: border-box;
-}
-
-.sidebarNav { display: flex; flex-direction: column; }
-.sidebarGroup { margin-bottom: 6px; }
-.sidebarGroupLabel { padding: 10px 10px 4px; color: var(--admin-muted); font-size: 10px; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; }
-.sidebarItem {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 11px;
-  height: 38px;
-  padding: 0 10px;
-  border-radius: var(--admin-radius-sm);
-  color: var(--admin-ink-soft);
-  font-size: 13px;
+/* Phone bottom tab bar (hidden on desktop). */
+.tabbar { display: none; }
+.tab {
+  flex: 1 1 0;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 3px;
+  border: 0;
+  background: transparent;
+  color: var(--admin-sidebar-muted);
+  font: inherit;
+  font-size: 10.5px;
   font-weight: 700;
   text-decoration: none;
+  cursor: pointer;
 }
-.sidebarItem:hover { background: var(--admin-border-soft); color: var(--admin-ink); }
-.sidebarItem svg { opacity: .72; flex: 0 0 auto; }
-.sidebarItemActive { background: var(--admin-accent-soft); color: var(--admin-accent-strong); }
-.sidebarItemActive svg { opacity: 1; }
-
-.mainCol { flex: 1 1 auto; min-width: 0; }
+.tabIcon { position: relative; display: grid; place-items: center; width: 40px; height: 28px; border-radius: 10px; }
+.tabActive { color: #fff; }
+.tabActive .tabIcon { background: var(--admin-accent); color: var(--admin-accent-ink); }
+.tabBadge { position: absolute; top: -5px; right: -4px; min-width: 17px; padding: 0 5px; border-radius: 99px; border: 2px solid var(--admin-sidebar-bg); background: var(--admin-accent); color: var(--admin-accent-ink); font-size: 9.5px; font-weight: 800; line-height: 14px; text-align: center; }
+.tabActive .tabBadge { background: #fff; color: var(--admin-accent); }
 
 /* Search - portaled to <body>, so it escapes the top bar's own backdrop-filter
    containing block (backdrop-filter, like filter/transform, traps fixed-position
@@ -252,13 +263,14 @@
   display: flex;
   flex-direction: column;
   padding: 14px calc(14px + env(safe-area-inset-left)) calc(14px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left));
-  background: var(--admin-surface);
+  background: var(--admin-sidebar-bg);
+  color: var(--admin-sidebar-ink);
   box-shadow: 20px 0 60px rgba(0, 0, 0, .2);
   overflow: hidden;
   box-sizing: border-box;
 }
-.mobileHead { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 2px 14px; border-bottom: 1px solid var(--admin-border-soft); flex: 0 0 auto; }
-.mobileClose { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm); background: var(--admin-surface); color: var(--admin-ink-soft); cursor: pointer; }
+.mobileHead { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 2px 14px; border-bottom: 1px solid var(--admin-sidebar-hover); flex: 0 0 auto; }
+.mobileClose { display: grid; place-items: center; width: 34px; height: 34px; border: 0; border-radius: var(--admin-radius-sm); background: var(--admin-sidebar-hover); color: #fff; cursor: pointer; }
 .mobileSearchBtn {
   display: flex;
   flex-direction: row;
@@ -267,10 +279,10 @@
   height: 40px;
   margin-top: 12px;
   padding: 0 11px;
-  border: 1px solid var(--admin-border);
+  border: 0;
   border-radius: var(--admin-radius-md);
-  background: var(--admin-border-soft);
-  color: var(--admin-muted);
+  background: var(--admin-sidebar-hover);
+  color: var(--admin-sidebar-ink);
   font: inherit;
   font-size: 12.5px;
   font-weight: 700;
@@ -280,14 +292,31 @@
   box-sizing: border-box;
 }
 .mobileNav { flex: 1 1 auto; min-height: 0; overflow-y: auto; margin-top: 10px; }
-.mobileFoot { flex: 0 0 auto; display: flex; flex-direction: column; gap: 3px; margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--admin-border-soft); }
+.mobileFoot { flex: 0 0 auto; display: flex; flex-direction: column; gap: 3px; margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--admin-sidebar-hover); }
+.mobileFoot .accountItem { color: var(--admin-sidebar-ink); }
+.mobileFoot .accountItem:hover { background: var(--admin-sidebar-hover); color: #fff; }
+.mobileFoot :global(.adminThemeToggle) { color: var(--admin-sidebar-ink) !important; background: transparent !important; }
 .mobileFoot .rolePill { margin: 0 0 6px 2px; }
 
 @media (max-width: 900px) {
   .sidebar { display: none; }
-  .hamburger { display: inline-flex; }
-  .topbar { padding: 0 14px; gap: 10px; }
-  .brandText { display: none; }
+  .topbar { padding: 0 14px; gap: 10px; height: 58px; min-height: 58px; }
+  .topbarLogo { display: flex; }
   .topbarSearch span, .topbarSearch kbd { display: none; }
-  .topbarSearch { width: 38px; height: 38px; padding: 0; justify-content: center; flex: 0 0 auto; }
+  .topbarSearch { width: 40px; height: 40px; padding: 0; justify-content: center; flex: 0 0 auto; margin-left: auto; }
+  .topbarRight { margin-left: 0; }
+  .avatar { width: 36px; height: 36px; }
+  .tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1100; /* above map controls (Leaflet panes go up to 1000), below dialogs */
+    display: flex;
+    height: calc(var(--admin-tabbar-h) + env(safe-area-inset-bottom));
+    padding: 6px 4px env(safe-area-inset-bottom);
+    background: var(--admin-sidebar-bg);
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, .12);
+    box-sizing: border-box;
+  }
 }

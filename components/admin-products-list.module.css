@@ -57,6 +57,8 @@
 .view small { font-size: 11px; color: var(--admin-muted-soft); }
 .view:hover { background: var(--admin-border-soft); color: var(--admin-ink); }
 .viewActive { background: var(--admin-accent); color: var(--admin-accent-ink); }
+/* Redesign: tabs are pills; the selected one is filled with the brand colour. */
+.view, .viewActive { border-radius: 999px; }
 .viewActive small { color: inherit; opacity: .78; }
 .chevron { transition: transform .15s ease; }
 .chevronOpen { transform: rotate(180deg); }

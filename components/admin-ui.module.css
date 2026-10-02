@@ -129,13 +129,14 @@
 .card {
   overflow: hidden;
   background: var(--admin-surface);
-  border: 1px solid var(--admin-border);
-  border-radius: var(--admin-radius-lg);
-  box-shadow: var(--admin-shadow-sm);
+  /* Redesign: borderless (a hairline only), rounded, softly lifted. */
+  border: 1px solid var(--admin-border-soft);
+  border-radius: var(--admin-card-radius, 20px);
+  box-shadow: var(--admin-card-shadow, var(--admin-shadow-sm));
   color: var(--admin-ink);
   transition: box-shadow .18s ease, transform .18s ease;
 }
-.card:hover { box-shadow: var(--admin-shadow-md); }
+.card:hover { box-shadow: var(--admin-card-shadow, var(--admin-shadow-md)); }
 
 /* Forms */
 .input, .select {

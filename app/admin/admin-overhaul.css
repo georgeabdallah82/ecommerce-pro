@@ -73,6 +73,14 @@ body:has(.adminShell){
   --admin-shadow-lg:0 26px 80px rgba(27,26,22,.18);
   --admin-font-sans:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
   --admin-topbar-bg:rgba(246,245,240,.88);
+  /* Dark sidebar + phone tab bar (follows the brand's text colour when the theme sets one). */
+  --admin-sidebar-bg:#191512;
+  --admin-sidebar-ink:#d9d0c8;
+  --admin-sidebar-muted:#8d8178;
+  --admin-sidebar-hover:#2a2420;
+  /* Cards: borderless, rounded, softly lifted. */
+  --admin-card-radius:20px;
+  --admin-card-shadow:0 1px 2px rgba(25,21,18,.04),0 6px 24px rgba(120,20,10,.06);
   background:var(--admin-bg)!important;color:var(--admin-ink)
 }
 html[data-admin-theme='dark'] body:has(.adminShell){
@@ -110,6 +118,11 @@ html[data-admin-theme='dark'] body:has(.adminShell){
   --admin-shadow-md:0 8px 24px rgba(0,0,0,.35);
   --admin-shadow-lg:0 26px 80px rgba(0,0,0,.5);
   --admin-topbar-bg:rgba(15,18,16,.9);
+  --admin-sidebar-bg:#0a0c0b;
+  --admin-sidebar-ink:#c9cdc3;
+  --admin-sidebar-muted:#7d8278;
+  --admin-sidebar-hover:#1c201d;
+  --admin-card-shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.28);
   background:var(--admin-bg)!important;color:var(--admin-ink)!important
 }
 body:has(.adminShell),body:has(.adminShell) button,body:has(.adminShell) input,body:has(.adminShell) select,body:has(.adminShell) textarea{font-family:var(--admin-font-sans)}
@@ -140,8 +153,8 @@ body:has(.adminShell) .statCard strong,body:has(.adminShell) .stat strong{color:
    so clicking a filter tile gave zero visual feedback about which one was
    selected on any of those three pages. Mirrors the already-correct
    .typeCard.active pattern in admin-coupons.module.css. */
-body:has(.adminShell) .statCard.active{border-color:var(--admin-accent)!important;box-shadow:0 0 0 1px var(--admin-accent) inset!important;background:var(--admin-accent-soft)!important}
-body:has(.adminShell) .statCard.active strong{color:var(--admin-accent-strong)!important}
+body:has(.adminShell) .statCard.active{border-color:var(--admin-border-soft)!important;box-shadow:inset 4px 0 0 var(--admin-accent),var(--admin-card-shadow)!important;background:var(--admin-surface)!important}
+body:has(.adminShell) .statCard.active strong{color:var(--admin-ink)!important}
 /* .catalogStats (the row wrapping those stat tiles) had a mobile-only override
    at 480px but no base rule at all -- confirmed by grep -- so on every screen
    above 480px the tiles stacked as plain full-width blocks with no grid/gap on
@@ -250,8 +263,8 @@ body:has(.adminShell) .emptyInline,body:has(.adminShell) .opsLoading{border-colo
 body:has(.adminShell) .themeStudioPro{background:var(--admin-bg)!important}
 
 /* Responsive workspace */
-@media(max-width:1050px){body:has(.adminShell) .adminMain{padding:0 22px 42px!important}}
-@media(max-width:760px){body:has(.adminShell) .adminMain{padding:0 14px 34px!important}.dashboardKpis{grid-template-columns:1fr 1fr!important}.adminTileGrid{grid-template-columns:1fr 1fr!important}body:has(.adminShell) .catalogStats{grid-template-columns:1fr 1fr!important}}
+@media(max-width:1050px){body:has(.adminShell) .adminMain{padding:24px 22px 42px!important}}
+@media(max-width:760px){body:has(.adminShell) .adminMain{padding:18px 14px 34px!important}.dashboardKpis{grid-template-columns:1fr 1fr!important}.adminTileGrid{grid-template-columns:1fr 1fr!important}body:has(.adminShell) .catalogStats{grid-template-columns:1fr 1fr!important}}
 /* Phones keep stat cards two per row (they're short: a label and a number), so the numbers
    stay above the fold; only the wider link tiles go full width. */
 @media(max-width:480px){.adminTileGrid{grid-template-columns:1fr!important}}
@@ -259,6 +272,19 @@ body:has(.adminShell) .themeStudioPro{background:var(--admin-bg)!important}
 body:has(.adminShell) .customersToolbar{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)!important}
 body:has(.adminShell) .customersToolbar .catalogFilters{display:grid!important;grid-template-columns:1fr 1fr!important;margin-bottom:0!important}
 @media(max-width:760px){body:has(.adminShell) .customersToolbar{grid-template-columns:1fr!important}}
+/* Redesign: every surface card is borderless (hairline), rounded and softly lifted; tab rows use pills. */
+body:has(.adminShell) .statCard,body:has(.adminShell) .catalogToolbar,body:has(.adminShell) .productTableCard,body:has(.adminShell) .dashboardPanel,body:has(.adminShell) .recentPanel,body:has(.adminShell) .opsCard,body:has(.adminShell) .healthCheck,body:has(.adminShell) .healthHero,body:has(.adminShell) .adminPanel,body:has(.adminShell) .adminTile,body:has(.adminShell) .onlineStoreHero,body:has(.adminShell) .orderViews,body:has(.adminShell) .opsTabs{border-color:var(--admin-border-soft)!important;border-radius:var(--admin-card-radius)!important;box-shadow:var(--admin-card-shadow)!important}
+body:has(.adminShell) .orderViews button,body:has(.adminShell) .opsTabs button{border-radius:999px!important}
+/* Dashboard: the top bar takes the brand colour so it flows into the welcome band below it. */
+.adminTopbar .adminLogoDark{display:none}
+body:has([data-dashboard-hero]) .adminTopbar{background:var(--admin-accent)!important;border-bottom-color:transparent!important;backdrop-filter:none!important}
+body:has([data-dashboard-hero]) .adminTopbar .adminLogoLight{display:none}
+body:has([data-dashboard-hero]) .adminTopbar .adminLogoDark{display:inline-flex}
+body:has([data-dashboard-hero]) .adminTopbar>button,body:has([data-dashboard-hero]) .adminTopbar .orderAlertsBtn,body:has([data-dashboard-hero]) .adminTopbar .orderAlertsIconBtn{background:rgba(255,255,255,.14)!important;border-color:rgba(255,255,255,.28)!important;color:var(--admin-accent-ink)!important}
+body:has([data-dashboard-hero]) .adminTopbar>button kbd{background:rgba(255,255,255,.18)!important;color:var(--admin-accent-ink)!important}
+body:has([data-dashboard-hero]) .adminTopbar button[aria-label="Account menu"]>span{background:var(--admin-accent-ink)!important;color:var(--admin-accent)!important}
+/* Room for the phone bottom tab bar (components/admin-nav.module.css). */
+@media(max-width:900px){body:has(.adminShell) .adminMain{padding-bottom:calc(var(--admin-tabbar-h,64px) + 34px + env(safe-area-inset-bottom))!important}}
 /* Tab rows wrap on phones so no tab is cut off at the screen edge. */
 @media(max-width:640px){body:has(.adminShell) .opsTabs,body:has(.adminShell) .orderViews{flex-wrap:wrap!important;overflow:visible!important}}
 

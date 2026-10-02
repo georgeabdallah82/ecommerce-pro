@@ -48,9 +48,9 @@
 .navButton:hover { background: var(--admin-surface); border-color: var(--admin-border); }
 .navButtonActive {
   background: var(--admin-surface);
-  border-color: var(--admin-border);
+  border-color: var(--admin-border-soft);
   color: var(--admin-ink);
-  box-shadow: var(--admin-shadow-sm);
+  box-shadow: inset 3px 0 0 var(--admin-accent), var(--admin-shadow-sm);
 }
 .navText { display: grid; gap: 2px; }
 .navText strong { font-size: 13px; }

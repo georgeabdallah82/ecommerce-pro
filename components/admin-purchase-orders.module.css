@@ -12,6 +12,8 @@
 .views { display: flex; align-items: center; gap: 2px; margin-bottom: 12px; padding: 4px; overflow: auto; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); background: var(--admin-surface); box-shadow: var(--admin-shadow-sm); }
 .view { border: 0; background: transparent; border-radius: var(--admin-radius-sm); padding: 9px 12px; font: inherit; font-size: 11px; font-weight: 800; color: var(--admin-muted); white-space: nowrap; cursor: pointer; }
 .viewActive { background: var(--admin-accent); color: var(--admin-accent-ink); }
+/* Redesign: tabs are pills; the selected one is filled with the brand colour. */
+.view, .viewActive { border-radius: 999px; }
 
 .tableCard { overflow: hidden; }
 .resultsTable { min-width: 900px; }
