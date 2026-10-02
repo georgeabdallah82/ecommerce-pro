@@ -39,7 +39,7 @@ export default function AdminLoginForm() {
       html[data-admin-theme='dark'] .adminLoginForm>p{color:#9da69f}
       html[data-admin-theme='dark'] .adminLoginLabel{color:#dce3de}
       html[data-admin-theme='dark'] .adminLoginInput{border-color:#343b36;background:#191d1b;color:#eef2ef}
-      html[data-admin-theme='dark'] .adminLoginInput:focus{background:#1f2422;border-color:#4fd18b;box-shadow:0 0 0 3px rgba(79,209,139,.15)}
+      html[data-admin-theme='dark'] .adminLoginInput:focus{background:#1f2422;border-color:#9da69f;box-shadow:0 0 0 3px rgba(157,166,159,.18)}
       html[data-admin-theme='dark'] .adminLoginPasswordToggle{color:#9da69f}
       html[data-admin-theme='dark'] .adminLoginPasswordToggle:hover{background:#2c332e;color:#eef2ef}
       html[data-admin-theme='dark'] .adminLoginAlert{border-color:#4a2620;background:#33201c;color:#f0776a}

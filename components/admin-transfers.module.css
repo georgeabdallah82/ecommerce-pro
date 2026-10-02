@@ -26,7 +26,7 @@
 .statusDraft { background: var(--admin-border-soft); color: var(--admin-muted); }
 .statusPending { background: var(--admin-warning-soft); color: var(--admin-warning); }
 .statusInTransit { background: var(--admin-warning-soft); color: var(--admin-warning); }
-.statusReceived { background: var(--admin-accent-soft); color: var(--admin-accent-strong); }
+.statusReceived { background: var(--admin-success-soft); color: var(--admin-success-strong); }
 .statusCancelled { background: var(--admin-danger-soft); color: var(--admin-danger); }
 
 .detailHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 18px; flex-wrap: wrap; }

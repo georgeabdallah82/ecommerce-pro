@@ -4,6 +4,8 @@ import { hasPermission, type Permission } from '@/lib/permissions'
 import { redirect } from 'next/navigation'
 import AdminNav, { type AdminSidebarGroup } from '@/components/admin-nav'
 import { ToastProvider } from '@/components/admin-toast'
+import { getThemeState } from '@/lib/theme'
+import { adminAccentCss } from '@/lib/admin-accent'
 
 const groups: AdminSidebarGroup[] = [
   { id: 'home', label: 'Home', items: [
@@ -106,9 +108,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const user = await getCurrentUser()
   if (!user) redirect('/admin/login')
   const visibleGroups = groups.map(group => ({ ...group, items: group.items.filter(item => hasPermission(user.role, item.permission as Permission)) })).filter(group => group.items.length)
+  // The admin's accent follows the store's published Primary colour (see lib/admin-accent.ts).
+  // If the theme can't be read, the admin keeps its default accent.
+  const brandCss = await getThemeState().then(({ theme }) => adminAccentCss(theme?.colors?.primary)).catch(() => '')
 
   return <>
     <style dangerouslySetInnerHTML={{__html:adminCss}} />
+    {brandCss && <style dangerouslySetInnerHTML={{__html:brandCss}} />}
     <div className="adminShell">
       <ToastProvider>
         <AdminNav groups={visibleGroups} name={user.name} email={user.email} role={user.role} vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}>

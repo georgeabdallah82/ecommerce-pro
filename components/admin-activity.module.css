@@ -23,7 +23,7 @@
 .actorEmail { color: var(--admin-muted); font-size: 11.5px; }
 
 .actionPill { display: inline-flex; align-items: center; border-radius: var(--admin-radius-pill); padding: 4px 10px; font-size: 10.5px; font-weight: 800; border: 1px solid transparent; white-space: nowrap; }
-.actionCreate { background: var(--admin-accent-soft); color: var(--admin-accent-strong); }
+.actionCreate { background: var(--admin-success-soft); color: var(--admin-success-strong); }
 .actionRemove { background: var(--admin-danger-soft); color: var(--admin-danger); }
 .actionCaution { background: var(--admin-warning-soft); color: var(--admin-warning); }
 .actionNeutral { background: var(--admin-border-soft); color: var(--admin-ink-soft); }

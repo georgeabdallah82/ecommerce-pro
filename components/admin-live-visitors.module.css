@@ -10,8 +10,8 @@
  * Hardcoded pixel radii/shadows from the original that didn't land exactly on
  * an --admin-radius-* or --admin-shadow-* step were normalized to the nearest
  * token. Two colors had no direct semantic token:
- *  - the live/"precise" indicator green (#16a34a) maps to --admin-accent,
- *    which is itself a green in this theme.
+ *  - the live/"precise" indicator green (#16a34a) maps to --admin-success
+ *    (always green; --admin-accent follows the store brand colour).
  *  - the "approximate" map-pin blue (#2563eb) had no blue token available, so
  *    it was remapped to --admin-warning (amber) to keep a distinct,
  *    theme-aware "less precise" signal instead of inventing a new token.
@@ -38,7 +38,7 @@
 
 .lvHeader { display: flex; align-items: flex-end; justify-content: space-between; gap: 22px; }
 .lvKicker { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; letter-spacing: .11em; text-transform: uppercase; font-weight: 900; color: var(--admin-accent-strong); }
-.lvLiveDot { width: 7px; height: 7px; border-radius: var(--admin-radius-pill); background: var(--admin-accent); box-shadow: 0 0 0 5px var(--admin-focus); }
+.lvLiveDot { width: 7px; height: 7px; border-radius: var(--admin-radius-pill); background: var(--admin-success); box-shadow: 0 0 0 5px var(--admin-success-ring); }
 .lvTitle { margin: 9px 0 4px; font-size: 34px; line-height: 1.05; letter-spacing: -.04em; }
 .lvSubtitle { margin: 0; max-width: 760px; color: var(--admin-muted); font-size: 14px; line-height: 1.65; }
 .lvActions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
@@ -122,7 +122,7 @@
 .lvRowMain { min-width: 0; }
 .lvRowTop { display: flex; align-items: center; gap: 7px; min-width: 0; }
 .lvRowName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 900; }
-.lvRowStatus { width: 6px; height: 6px; flex: 0 0 6px; border-radius: var(--admin-radius-pill); background: var(--admin-accent); }
+.lvRowStatus { width: 6px; height: 6px; flex: 0 0 6px; border-radius: var(--admin-radius-pill); background: var(--admin-success); }
 .lvRowPage { display: block; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--admin-muted); font-size: 11px; }
 .lvRowLocation { display: flex; align-items: center; gap: 5px; margin-top: 5px; overflow: hidden; color: var(--admin-ink); font-size: 11px; }
 .lvRowLocation span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -180,7 +180,7 @@
 .lvMarkerHost { background: transparent !important; border: 0 !important; }
 .lvMarker { position: relative; display: flex; width: 42px; height: 42px; align-items: center; justify-content: center; }
 .lvMarkerRing { position: absolute; width: 38px; height: 38px; border-radius: var(--admin-radius-pill); background: var(--admin-focus); animation: lvPulse 2.2s ease-out infinite; }
-.lvMarkerCore { position: relative; z-index: 2; width: 16px; height: 16px; border: 3px solid var(--admin-surface); border-radius: var(--admin-radius-pill); background: var(--admin-accent); box-shadow: var(--admin-shadow-sm); }
+.lvMarkerCore { position: relative; z-index: 2; width: 16px; height: 16px; border: 3px solid var(--admin-surface); border-radius: var(--admin-radius-pill); background: var(--admin-success); box-shadow: var(--admin-shadow-sm); }
 .lvMarker.lvMarkerSelected .lvMarkerCore { width: 21px; height: 21px; background: var(--admin-ink); box-shadow: var(--admin-shadow-md); }
 .lvMarker.lvMarkerSelected .lvMarkerRing { background: var(--admin-border-soft); animation-duration: 1.5s; }
 .lvMarker.lvMarkerApprox .lvMarkerCore { background: var(--admin-warning); }
@@ -213,7 +213,7 @@
   backdrop-filter: blur(16px);
 }
 .lvMapStatus { top: 16px; left: 16px; padding: 10px 13px; border-radius: var(--admin-radius-md); font-size: 12px; font-weight: 800; }
-.lvMapStatusDot { width: 8px; height: 8px; border-radius: var(--admin-radius-pill); background: var(--admin-accent); box-shadow: 0 0 0 5px var(--admin-focus); }
+.lvMapStatusDot { width: 8px; height: 8px; border-radius: var(--admin-radius-pill); background: var(--admin-success); box-shadow: 0 0 0 5px var(--admin-success-ring); }
 .lvMapControls { top: 16px; right: 16px; display: grid; gap: 7px; }
 .lvMapBtn {
   display: grid;
@@ -231,7 +231,7 @@
 .lvMapBtn:disabled { opacity: .35; cursor: not-allowed; }
 .lvMapLegend { bottom: 16px; left: 16px; padding: 9px 11px; border-radius: var(--admin-radius-md); font-size: 11px; color: var(--admin-muted); }
 .lvLegendItem { display: inline-flex; align-items: center; gap: 7px; margin-right: 12px; font-weight: 700; color: var(--admin-ink); }
-.lvLegendDot { width: 8px; height: 8px; border-radius: var(--admin-radius-pill); background: var(--admin-accent); }
+.lvLegendDot { width: 8px; height: 8px; border-radius: var(--admin-radius-pill); background: var(--admin-success); }
 .lvLegendDot.lvLegendDotApprox { background: var(--admin-warning); }
 .lvMapEmpty { position: absolute; z-index: 510; inset: 78px 24px 70px; display: flex; align-items: center; justify-content: center; pointer-events: none; }
 .lvMapEmptyCard {

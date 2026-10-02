@@ -22,8 +22,8 @@
 
 .page { max-width: 1480px; margin: 0 auto; padding-bottom: 32px; }
 
-.liveBadge { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; color: var(--admin-accent-strong); }
-.liveDot { width: 8px; height: 8px; border-radius: 50%; background: var(--admin-accent-strong); box-shadow: 0 0 0 3px var(--admin-accent-soft); }
+.liveBadge { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; color: var(--admin-success-strong); }
+.liveDot { width: 8px; height: 8px; border-radius: 50%; background: var(--admin-success-strong); box-shadow: 0 0 0 3px var(--admin-success-soft); }
 
 /* Stats row */
 .statsGrid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }

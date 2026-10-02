@@ -179,7 +179,7 @@
   letter-spacing: .02em;
   text-transform: capitalize;
 }
-.statusActive { background: var(--admin-accent-soft); color: var(--admin-accent-strong); }
+.statusActive { background: var(--admin-success-soft); color: var(--admin-success-strong); }
 .statusDraft { background: var(--admin-border-soft); color: var(--admin-muted); }
 .statusArchived { background: var(--admin-border-soft); color: var(--admin-muted-soft); }
 
