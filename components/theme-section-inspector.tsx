@@ -329,7 +329,10 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
     boxPanel,
   ],
   new_arrivals: () => homeGridPanel('New Arrivals'),
-  best_sellers: () => homeGridPanel('Best Sellers'),
+  best_sellers: () => {
+    const [content, ...rest] = homeGridPanel('Best Sellers')
+    return [{ ...content, fields: [...content.fields, select('If nothing has sold yet', 'whenEmpty', [{ value: 'newest', label: 'Show newest products' }, { value: 'hide', label: 'Hide the section' }], 'newest')] }, ...rest]
+  },
   image_with_text: () => [
     { title: 'Content', fields: [
       text('Eyebrow', 'eyebrow'),

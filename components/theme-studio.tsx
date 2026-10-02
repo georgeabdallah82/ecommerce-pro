@@ -118,29 +118,14 @@ const PAGE_OWN_CONTENT: Record<string, string> = {
 }
 // Header and Announcement are read globally by the storefront nav, independent
 // of which page you're viewing.
-// app/page.tsx renders the Home page's full sections list through the same
-// generic StorefrontSections engine used everywhere else (components/
-// storefront-sections.tsx) -- real position, any of these ~30 types, any
-// number of them. hero/category_strip/flash_deals/collection_grid/
-// new_arrivals/best_sellers are the only ones that carry AliExpress-specific
-// styling of their own; every other type (image_with_text, testimonials,
-// promo_grid, etc.) is just as genuinely live here as any of those six.
-const HOME_LIVE_TYPES = ['hero', 'category_strip', 'flash_deals', 'collection_grid', 'new_arrivals', 'best_sellers']
-const HOME_ALLOWED_TYPES = ['header', 'announcement', ...HOME_LIVE_TYPES]
-// Four of the six (category_strip/flash_deals/new_arrivals/best_sellers)
-// render on the live homepage purely from their own data existing
-// (collections, discounted/new/best-selling products), with no section
-// object required at all -- so without backfilling a default row for
-// whichever of the eight "always there" types is missing from stored data,
-// they'd be live on the site but permanently missing, and therefore
-// un-toggleable and un-configurable, from this list. This only ever adds
-// missing rows; it never removes one, unlike an earlier version of this
-// function that also dropped any type outside this set -- every type is now
-// genuinely renderable here, so there's nothing left to drop.
+// Only the two site-wide rows (header, announcement) are guaranteed to exist: the storefront
+// reads them globally, so they must always be configurable here. Content sections are only
+// rendered if they are in the list, so a deleted one stays deleted. (Re-adding the six
+// AliExpress-style sections on every load used to bring deleted ones back.)
 const sanitizeHomeSections = (list: Section[]) => {
   const present = new Set(list.map(section => section.type))
   const backfilled = [...list]
-  for (const type of HOME_ALLOWED_TYPES) if (!present.has(type)) backfilled.push(sectionDefaults(type))
+  for (const type of ['header', 'announcement']) if (!present.has(type)) backfilled.push(sectionDefaults(type))
   return backfilled
 }
 const META: Record<string, string> = {

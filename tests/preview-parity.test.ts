@@ -68,3 +68,20 @@ describe('section text alignment', () => {
     for (const selector of ['.has-sec-w .focalContainer', '.has-sec-w.sec-left', '.has-sec-w.sec-right', '.block-center .focalProductGrid', '.block-right .focalProductGrid', '.block-center .aliDenseGrid', '.focalType-collection_grid.block-center']) assert.ok(css.includes(selector), `no CSS for ${selector}`)
   })
 })
+
+describe('sections never silently disappear', () => {
+  it('every section that can render nothing shows an editor notice instead', () => {
+    const renderer = read('components/storefront-sections.tsx')
+    // Each data-dependent `return null` must be `return preview ? <EmptySectionNotice/> : null`.
+    const bare = [...renderer.matchAll(/if\(!(?:collections|newArrivals|sold|bars|items|discounted)\.length\)return null/g)].map(m => m[0])
+    assert.deepEqual(bare, [])
+    for (const name of ['Category strip', 'New arrivals', 'Best sellers', 'Flash deals', 'Announcement strip', 'Trust strip']) {
+      assert.ok(renderer.includes(`name="${name}"`) || renderer.includes(`name={'${name}'}`), `no editor notice for ${name}`)
+    }
+  })
+
+  it('the studio does not re-add content sections the merchant deleted', () => {
+    const studio = read('components/theme-studio.tsx')
+    assert.match(studio, /for \(const type of \['header', 'announcement'\]\) if \(!present\.has\(type\)\)/)
+  })
+})
