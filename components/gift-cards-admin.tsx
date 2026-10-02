@@ -5,6 +5,7 @@ import { CreditCard, Plus, RefreshCw, Search, Settings2, X } from 'lucide-react'
 import { money } from '@/lib/config'
 import styles from './admin-gift-cards.module.css'
 import ui from './admin-ui.module.css'
+import { useConfirm } from './admin-confirm'
 
 type GiftCard = {
   id: string
@@ -32,6 +33,7 @@ async function api(path: string, init?: RequestInit) {
 }
 
 export default function GiftCardsAdmin({ initial, canManage, defaultCurrency }: { initial: GiftCard[]; canManage: boolean; defaultCurrency: string }) {
+  const confirm = useConfirm()
   const [rows, setRows] = useState<GiftCard[]>(initial || [])
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('ALL')
@@ -135,6 +137,7 @@ export default function GiftCardsAdmin({ initial, canManage, defaultCurrency }: 
   }
 
   async function changeStatus(nextStatus: string) {
+    if (nextStatus === 'DISABLED' && manageCard && !(await confirm({ title: `Disable gift card ending ${manageCard.last4}?`, message: 'It can no longer be used at checkout until you set it back to Active.', confirmLabel: 'Disable gift card' }))) return
     if (!manageCard || nextStatus === manageCard.status) return
     setManageBusy(true); setManageError('')
     try {

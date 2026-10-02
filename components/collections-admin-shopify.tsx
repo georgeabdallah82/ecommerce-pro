@@ -6,6 +6,7 @@ import { CheckCircle2, Eye, MoreHorizontal, Plus, Search, Tag, Trash2, XCircle, 
 import styles from './admin-collections.module.css'
 import ui from './admin-ui.module.css'
 import { useToast } from './admin-toast'
+import { useConfirm } from './admin-confirm'
 
 async function api(path: string, init?: RequestInit) {
   const response = await fetch(path, {
@@ -18,6 +19,7 @@ async function api(path: string, init?: RequestInit) {
 }
 
 export default function CollectionsAdminShopify({ initial }: { initial: any[] }) {
+  const confirm = useConfirm()
   const toast = useToast()
   const [rows, setRows] = useState<any[]>(initial || [])
   const [q, setQ] = useState('')
@@ -54,7 +56,7 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
   }
 
   const deleteCollection = async (collection: { id: string; name: string }) => {
-    if (!confirm(`Delete "${collection.name}"? This cannot be undone.`)) return
+    if (!(await confirm({ title: `Delete "${collection.name}"?`, message: 'Products stay in your store; only the collection is removed. This cannot be undone.', confirmLabel: 'Delete collection' }))) return
     try {
       await api(`/api/admin/collections/${collection.id}`, { method: 'DELETE' })
       await refresh()
@@ -69,7 +71,7 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
 
   const bulk = async (bulkAction: 'ACTIVATE' | 'DEACTIVATE' | 'DELETE') => {
     if (!selected.length) return
-    if (bulkAction === 'DELETE' && !confirm(`Delete ${selected.length} collection${selected.length === 1 ? '' : 's'}? This cannot be undone.`)) return
+    if (bulkAction === 'DELETE' && !(await confirm({ title: `Delete ${selected.length} collection${selected.length === 1 ? '' : 's'}?`, message: 'Products stay in your store; only the collections are removed. This cannot be undone.', confirmLabel: 'Delete' }))) return
     const count = selected.length
     setBulkBusy(true)
     try {
@@ -228,7 +230,7 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
                         <Eye size={16} />
                       </Link>
                       <button
-                        className={ui.iconBtn}
+                        className={`${ui.iconBtn} ${ui.iconBtnDanger}`}
                         title="Delete collection"
                         onClick={() => deleteCollection(collection)}
                       >

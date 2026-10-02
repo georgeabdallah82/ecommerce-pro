@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Eye, Plus, Search, ShieldOff, Tag, Trash2, U
 import { money } from '@/lib/config'
 import ui from './admin-ui.module.css'
 import { useToast } from './admin-toast'
+import { useConfirm } from './admin-confirm'
 
 async function api(path: string, init?: RequestInit) {
   const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
@@ -17,6 +18,7 @@ async function api(path: string, init?: RequestInit) {
 const initials = (name: string) => name.trim().split(/\s+/).slice(0, 2).map(x => x[0]?.toUpperCase() || '').join('') || '?'
 
 export default function CustomersAdmin({ initial }: { initial: any }) {
+  const confirm = useConfirm()
   const toast = useToast()
   const [rows, setRows] = useState<any[]>(initial?.rows || [])
   const [q, setQ] = useState('')
@@ -54,7 +56,7 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
 
   async function bulk(bulkAction: 'ACTIVATE' | 'DISABLE' | 'DELETE') {
     if (!selected.length) return
-    if (bulkAction === 'DELETE' && !confirm(`Delete ${selected.length} customer${selected.length === 1 ? '' : 's'}? This permanently removes their accounts, addresses, reviews and loyalty history. Their past orders are kept but no longer linked to an account.`)) return
+    if (bulkAction === 'DELETE' && !(await confirm({ title: `Delete ${selected.length} customer${selected.length === 1 ? '' : 's'}?`, message: 'This permanently removes their accounts, addresses, reviews and loyalty history. Their past orders are kept but no longer linked to an account.', confirmLabel: 'Delete' }))) return
     const count = selected.length
     setBulkBusy(true)
     try {
@@ -105,7 +107,7 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
   }
 
   async function deleteCustomer(customer: { id: string; name: string }) {
-    if (!confirm(`Delete ${customer.name}? This permanently removes their account, addresses, reviews and loyalty history. Their past orders are kept but no longer linked to an account.`)) return
+    if (!(await confirm({ title: `Delete ${customer.name}?`, message: 'This permanently removes their account, addresses, reviews and loyalty history. Their past orders are kept but no longer linked to an account.', confirmLabel: 'Delete customer' }))) return
     try {
       await api(`/api/admin/customers/${customer.id}`, { method: 'DELETE' })
       await load(page)
@@ -159,7 +161,7 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
         <td data-label="Joined">{new Date(c.createdAt).toLocaleDateString()}</td>
         <td data-cell="actions"><div className="inline">
           <Link className={ui.iconBtn} href={`/admin/customers/${c.id}`} title="View customer"><Eye size={16}/></Link>
-          <button className={ui.iconBtn} title="Delete customer" onClick={() => deleteCustomer(c)}><Trash2 size={16}/></button>
+          <button className={`${ui.iconBtn} ${ui.iconBtnDanger}`} title="Delete customer" onClick={() => deleteCustomer(c)}><Trash2 size={16}/></button>
         </div></td>
       </tr>)}</tbody></table></div>
       {!rows.length && <div className={ui.empty}>No customers match your search.</div>}

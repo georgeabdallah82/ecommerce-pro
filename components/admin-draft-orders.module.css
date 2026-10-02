@@ -42,16 +42,17 @@
   min-height: 40px;
   padding: 0 16px;
   border-radius: var(--admin-radius-md);
-  border: 1px solid var(--admin-danger);
-  background: var(--admin-danger);
-  color: #fff;
+  /* Outlined: this is the "Cancel draft" trigger; the confirm dialog carries the solid button. */
+  border: 1px solid var(--admin-danger-border);
+  background: transparent;
+  color: var(--admin-danger);
   font: inherit;
   font-size: 12px;
   font-weight: 850;
   box-shadow: var(--admin-shadow-sm);
   cursor: pointer;
 }
-.dangerBtn:hover:not(:disabled) { filter: brightness(0.92); }
+.dangerBtn:hover:not(:disabled) { background: var(--admin-danger-soft); border-color: var(--admin-danger); }
 .dangerBtn:disabled { opacity: .6; cursor: not-allowed; }
 
 .detailHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }

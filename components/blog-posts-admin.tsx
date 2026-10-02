@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { Check, ExternalLink, Newspaper, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react'
 import ui from './admin-ui.module.css'
 import s from './admin-blog-posts.module.css'
+import { useConfirm } from './admin-confirm'
 
 type PostRow = { id: string; title: string; handle: string; excerpt: string | null; bodyHtml: string | null; featuredImage: string | null; status: string; tags: string[]; seoTitle: string | null; seoDescription: string | null; updatedAt: string }
 
@@ -24,6 +25,7 @@ async function api(path: string, init?: RequestInit) {
 const initialForm = { title: '', handle: '', excerpt: '', bodyHtml: '', featuredImage: '', status: 'DRAFT', tags: [] as string[], seoTitle: '', seoDescription: '' }
 
 export default function BlogPostsAdmin({ initial }: { initial: PostRow[] }) {
+  const confirm = useConfirm()
   const [rows, setRows] = useState<PostRow[]>(initial || [])
   const [query, setQuery] = useState('')
   const [formOpen, setFormOpen] = useState(false)
@@ -55,7 +57,7 @@ export default function BlogPostsAdmin({ initial }: { initial: PostRow[] }) {
   }
 
   async function remove(row: PostRow) {
-    if (!window.confirm(`Delete "${row.title}"?`)) return
+    if (!(await confirm({ title: `Delete "${row.title}"?`, message: 'The post is removed from your blog. This cannot be undone.', confirmLabel: 'Delete post' }))) return
     setBusy(row.id); setError('')
     try { await api('/api/admin/blog-posts', { method: 'DELETE', body: JSON.stringify({ id: row.id }) }); await refresh() }
     catch (e) { setError(e instanceof Error ? e.message : 'Unable to delete post') }
@@ -94,7 +96,7 @@ export default function BlogPostsAdmin({ initial }: { initial: PostRow[] }) {
         <td><code>/blog/{row.handle}</code></td>
         <td>{row.tags?.length ? row.tags.join(', ') : <span className={ui.muted}>—</span>}</td>
         <td><span className={`${ui.statusPill} ${row.status === 'PUBLISHED' ? ui.statusPillSuccess : ui.statusPillWarning}`}>{row.status === 'PUBLISHED' ? <><Check size={13}/> Published</> : 'Draft'}</span></td>
-        <td><div className="inline">{row.status === 'PUBLISHED' && <a className={ui.iconBtn} title="View post" href={`/blog/${row.handle}`} target="_blank" rel="noreferrer"><ExternalLink size={15}/></a>}<button className={ui.iconBtn} title="Edit post" onClick={() => openEdit(row)}><Pencil size={15}/></button><button className={ui.iconBtn} title="Delete post" disabled={busy === row.id} onClick={() => remove(row)}><Trash2 size={15}/></button></div></td>
+        <td><div className="inline">{row.status === 'PUBLISHED' && <a className={ui.iconBtn} title="View post" href={`/blog/${row.handle}`} target="_blank" rel="noreferrer"><ExternalLink size={15}/></a>}<button className={ui.iconBtn} title="Edit post" onClick={() => openEdit(row)}><Pencil size={15}/></button><button className={`${ui.iconBtn} ${ui.iconBtnDanger}`} title="Delete post" disabled={busy === row.id} onClick={() => remove(row)}><Trash2 size={15}/></button></div></td>
       </tr>)}
     </tbody></table></div>
     {!filtered.length && <div className={ui.empty}><Newspaper size={28}/><h3>No posts</h3><p className={ui.muted}>Add your first blog post.</p></div>}

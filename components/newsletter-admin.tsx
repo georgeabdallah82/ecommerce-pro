@@ -5,12 +5,14 @@ import { Download, Trash2 } from 'lucide-react'
 import { useToast } from './admin-toast'
 import ui from './admin-ui.module.css'
 import s from './admin-marketing.module.css'
+import { useConfirm } from './admin-confirm'
 
 type Subscriber = { email: string; subscribedAt: string; source: string }
 
 const SOURCE_LABELS: Record<string, string> = { homepage: 'Newsletter section', footer: 'Footer', storefront: 'Storefront' }
 
 export default function NewsletterAdmin({ initial, canManage }: { initial: Subscriber[]; canManage: boolean }) {
+  const confirm = useConfirm()
   const toast = useToast()
   const [rows, setRows] = useState(initial)
   const [query, setQuery] = useState('')
@@ -26,7 +28,7 @@ export default function NewsletterAdmin({ initial, canManage }: { initial: Subsc
   }, [rows])
 
   async function remove(email: string) {
-    if (!window.confirm(`Remove ${email} from the list?`)) return
+    if (!(await confirm({ title: `Remove ${email}?`, message: 'They stop receiving your emails. They can sign up again any time.', confirmLabel: 'Remove' }))) return
     setBusy(email)
     try {
       const res = await fetch(`/api/admin/newsletter?email=${encodeURIComponent(email)}`, { method: 'DELETE' })
@@ -63,7 +65,7 @@ export default function NewsletterAdmin({ initial, canManage }: { initial: Subsc
                 <td data-cell="primary">{row.email}</td>
                 <td data-label="Subscribed">{row.subscribedAt ? new Date(row.subscribedAt).toLocaleString() : '—'}</td>
                 <td data-label="From">{SOURCE_LABELS[row.source] || row.source}</td>
-                {canManage && <td data-cell="actions"><button type="button" className={ui.iconBtnDanger} onClick={() => remove(row.email)} disabled={busy === row.email} aria-label={`Remove ${row.email}`}><Trash2 size={14} /></button></td>}
+                {canManage && <td data-cell="actions"><button type="button" className={`${ui.iconBtn} ${ui.iconBtnDanger}`} onClick={() => remove(row.email)} disabled={busy === row.email} aria-label={`Remove ${row.email}`}><Trash2 size={14} /></button></td>}
               </tr>
             ))}
           </tbody>

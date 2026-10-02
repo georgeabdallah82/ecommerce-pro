@@ -106,8 +106,24 @@
 .iconBtn:disabled { opacity: .35; cursor: not-allowed; }
 .iconBtn:focus-visible { outline: 3px solid var(--admin-focus); outline-offset: 2px; }
 
-.iconBtnDanger { border-color: var(--admin-danger-border); background: var(--admin-danger-soft); color: var(--admin-danger); }
-.iconBtnDanger:hover:not(:disabled) { background: var(--admin-danger); border-color: var(--admin-danger); color: #fff; }
+/* Destructive actions (Delete, Remove, Disable, Cancel order...) are outlined, never filled, so
+   they can't be mistaken for the brand-coloured primary button, and always go through a confirm
+   step (useConfirm in admin-confirm.tsx). Only the final button inside that dialog is solid. */
+.iconBtnDanger { border-color: var(--admin-danger-border); background: transparent; color: var(--admin-danger); }
+.iconBtnDanger:hover:not(:disabled) { background: var(--admin-danger-soft); border-color: var(--admin-danger); color: var(--admin-danger); }
+.btnDanger { border-color: var(--admin-danger-border); background: transparent; color: var(--admin-danger); box-shadow: none; }
+.btnDanger:hover:not(:disabled) { background: var(--admin-danger-soft); border-color: var(--admin-danger); color: var(--admin-danger); }
+.btnDangerSolid { border-color: var(--admin-danger); background: var(--admin-danger); color: #fff; }
+.btnDangerSolid:hover:not(:disabled) { background: var(--admin-danger); border-color: var(--admin-danger); filter: brightness(.92); }
+
+/* Confirm dialog (admin-confirm.tsx) */
+.confirmModal { width: min(440px, 100%); padding: 22px; }
+.confirmIcon { display: grid; place-items: center; width: 40px; height: 40px; margin-bottom: 14px; border-radius: 12px; background: var(--admin-danger-soft); color: var(--admin-danger); }
+.confirmIconNeutral { background: var(--admin-accent-soft); color: var(--admin-accent-strong); }
+.confirmTitle { margin: 0; font-size: 17px; line-height: 1.3; letter-spacing: -.01em; color: var(--admin-ink); }
+.confirmMessage { margin: 8px 0 0; font-size: 13px; line-height: 1.55; color: var(--admin-ink-soft); white-space: pre-line; }
+.confirmActions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+@media (max-width: 480px) { .confirmActions > * { flex: 1 1 auto; } }
 
 /* Surfaces */
 .card {
@@ -251,6 +267,12 @@
   font-size: 14px;
 }
 .alertDanger { border-color: var(--admin-danger-border); background: var(--admin-danger-soft); color: var(--admin-danger); }
+/* A status icon and coloured edge, so an error reads as an error and not as brand-coloured UI
+   (with a red brand, an error tint and a selected/primary tint are otherwise close). */
+.alert { position: relative; padding-left: 42px; border-left-width: 3px; border-left-color: var(--admin-success); }
+.alert::before { content: '\2713'; position: absolute; left: 13px; top: 12px; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--admin-success); color: var(--admin-surface); font-size: 11px; font-weight: 900; line-height: 1; }
+.alertDanger { border-left-color: var(--admin-danger); }
+.alertDanger::before { content: '!'; background: var(--admin-danger); }
 
 /* Empty state */
 .empty {

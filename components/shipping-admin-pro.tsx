@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { Check, Globe2, Pencil, Plus, RefreshCw, Trash2, Truck, X } from 'lucide-react'
 import { money } from '@/lib/config'
 import ui from './admin-ui.module.css'
+import { useConfirm } from './admin-confirm'
 
 type Rate = { id: string; name: string; price: number; freeAbove: number | null; estimatedDays: number | null; isActive: boolean }
 type Zone = { id: string; name: string; countries: string; regions: string | null; isActive: boolean; rates: Rate[] }
@@ -23,6 +24,7 @@ function dollars(cents: number | null) {
 }
 
 export default function ShippingAdminPro({ initial }: { initial: Zone[] }) {
+  const confirm = useConfirm()
   const [rows, setRows] = useState<Zone[]>(initial || [])
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL')
@@ -69,6 +71,7 @@ export default function ShippingAdminPro({ initial }: { initial: Zone[] }) {
   }
 
   async function toggleZone(zone: Zone) {
+    if (zone.isActive && !(await confirm({ title: `Disable ${zone.name}?`, message: 'Customers in this zone can no longer pick its shipping rates at checkout.', confirmLabel: 'Disable zone' }))) return
     setBusy(zone.id); setError('')
     try { await api('/api/admin/shipping', { method: 'PATCH', body: JSON.stringify({ id: zone.id, isActive: !zone.isActive }) }); await refresh() }
     catch (e) { setError(e instanceof Error ? e.message : 'Unable to update zone') }
@@ -76,7 +79,7 @@ export default function ShippingAdminPro({ initial }: { initial: Zone[] }) {
   }
 
   async function deleteZone(zone: Zone) {
-    if (!window.confirm(`Delete ${zone.name}? This removes its shipping rates too.`)) return
+    if (!(await confirm({ title: `Delete ${zone.name}?`, message: 'This removes its shipping rates too.', confirmLabel: 'Delete zone' }))) return
     setBusy(zone.id); setError('')
     try { await api('/api/admin/shipping', { method: 'DELETE', body: JSON.stringify({ id: zone.id }) }); if (open === zone.id) setOpen(null); await refresh() }
     catch (e) { setError(e instanceof Error ? e.message : 'Unable to delete zone') }
@@ -84,6 +87,7 @@ export default function ShippingAdminPro({ initial }: { initial: Zone[] }) {
   }
 
   async function toggleRate(zone: Zone, rate: Rate) {
+    if (rate.isActive && !(await confirm({ title: `Disable ${rate.name}?`, message: `Customers in ${zone.name} can no longer choose this rate at checkout.`, confirmLabel: 'Disable rate' }))) return
     setBusy(rate.id); setError('')
     try { await api('/api/admin/shipping', { method: 'PATCH', body: JSON.stringify({ id: zone.id, rate: { id: rate.id, isActive: !rate.isActive } }) }); await refresh() }
     catch (e) { setError(e instanceof Error ? e.message : 'Unable to update rate') }
@@ -177,7 +181,7 @@ export default function ShippingAdminPro({ initial }: { initial: Zone[] }) {
         <td><div><strong>{zone.countries || 'All countries'}</strong>{zone.regions && <div className={ui.muted}>{zone.regions}</div>}</div></td>
         <td><strong>{zone.rates.length}</strong><div className={ui.muted}>{zone.rates.filter(r => r.isActive).length} active</div></td>
         <td><span className={`${ui.statusPill} ${zone.isActive ? ui.statusPillSuccess : ui.statusPillWarning}`}>{zone.isActive ? <><Check size={13}/> Active</> : 'Inactive'}</span></td>
-        <td><div className="inline"><button className={ui.textButton} disabled={busy === zone.id} onClick={() => toggleZone(zone)}>{zone.isActive ? 'Disable' : 'Enable'}</button><button className={ui.iconBtn} title="Edit zone" onClick={() => openEditZone(zone)}><Pencil size={15}/></button><button className={ui.iconBtn} title="Delete zone" disabled={busy === zone.id} onClick={() => deleteZone(zone)}><Trash2 size={15}/></button></div></td>
+        <td><div className="inline"><button className={zone.isActive ? `${ui.textButton} ${ui.textButtonDanger}` : ui.textButton} disabled={busy === zone.id} onClick={() => toggleZone(zone)}>{zone.isActive ? 'Disable' : 'Enable'}</button><button className={ui.iconBtn} title="Edit zone" onClick={() => openEditZone(zone)}><Pencil size={15}/></button><button className={`${ui.iconBtn} ${ui.iconBtnDanger}`} title="Delete zone" disabled={busy === zone.id} onClick={() => deleteZone(zone)}><Trash2 size={15}/></button></div></td>
       </tr>)}
     </tbody></table></div>
     {!filtered.length && <div className={ui.empty}><Truck size={28}/><h3>No shipping zones</h3><p className={ui.muted}>Create a zone to define where and how you ship.</p></div>}

@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { Check, ExternalLink, FileText, LayoutTemplate, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react'
 import ui from './admin-ui.module.css'
+import { useConfirm } from './admin-confirm'
 
 type PageRow = { id: string; title: string; handle: string; bodyHtml: string | null; status: string; seoTitle: string | null; seoDescription: string | null; updatedAt: string }
 
@@ -16,6 +17,7 @@ async function api(path: string, init?: RequestInit) {
 const initialForm = { title: '', handle: '', bodyHtml: '', status: 'DRAFT', seoTitle: '', seoDescription: '' }
 
 export default function PagesAdmin({ initial }: { initial: PageRow[] }) {
+  const confirm = useConfirm()
   const [rows, setRows] = useState<PageRow[]>(initial || [])
   const [query, setQuery] = useState('')
   const [formOpen, setFormOpen] = useState(false)
@@ -47,7 +49,7 @@ export default function PagesAdmin({ initial }: { initial: PageRow[] }) {
   }
 
   async function remove(row: PageRow) {
-    if (!window.confirm(`Delete "${row.title}"?`)) return
+    if (!(await confirm({ title: `Delete "${row.title}"?`, message: 'Visitors to this page will get a "not found" page. This cannot be undone.', confirmLabel: 'Delete page' }))) return
     setBusy(row.id); setError('')
     try { await api('/api/admin/pages', { method: 'DELETE', body: JSON.stringify({ id: row.id }) }); await refresh() }
     catch (e) { setError(e instanceof Error ? e.message : 'Unable to delete page') }
@@ -85,7 +87,7 @@ export default function PagesAdmin({ initial }: { initial: PageRow[] }) {
         <td><strong>{row.title}</strong></td>
         <td><code>/{row.handle}</code></td>
         <td><span className={`${ui.statusPill} ${row.status === 'PUBLISHED' ? ui.statusPillSuccess : ui.statusPillWarning}`}>{row.status === 'PUBLISHED' ? <><Check size={13}/> Published</> : 'Draft'}</span></td>
-        <td><div className="inline">{row.status === 'PUBLISHED' && <a className={ui.iconBtn} title="View page" href={`/${row.handle}`} target="_blank" rel="noreferrer"><ExternalLink size={15}/></a>}<a className={ui.iconBtn} title="Design this page with sections (products, collections, banners…)" href={`/admin/online-store/theme-editor?page=${row.id}`}><LayoutTemplate size={15}/></a><button className={ui.iconBtn} title="Edit page" onClick={() => openEdit(row)}><Pencil size={15}/></button><button className={ui.iconBtn} title="Delete page" disabled={busy === row.id} onClick={() => remove(row)}><Trash2 size={15}/></button></div></td>
+        <td><div className="inline">{row.status === 'PUBLISHED' && <a className={ui.iconBtn} title="View page" href={`/${row.handle}`} target="_blank" rel="noreferrer"><ExternalLink size={15}/></a>}<a className={ui.iconBtn} title="Design this page with sections (products, collections, banners…)" href={`/admin/online-store/theme-editor?page=${row.id}`}><LayoutTemplate size={15}/></a><button className={ui.iconBtn} title="Edit page" onClick={() => openEdit(row)}><Pencil size={15}/></button><button className={`${ui.iconBtn} ${ui.iconBtnDanger}`} title="Delete page" disabled={busy === row.id} onClick={() => remove(row)}><Trash2 size={15}/></button></div></td>
       </tr>)}
     </tbody></table></div>
     {!filtered.length && <div className={ui.empty}><FileText size={28}/><h3>No pages</h3><p className={ui.muted}>Add a page like About Us, FAQ, or Contact.</p></div>}

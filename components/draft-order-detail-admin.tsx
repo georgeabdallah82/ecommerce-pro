@@ -8,6 +8,7 @@ import { money } from '@/lib/config'
 import styles from './admin-draft-orders.module.css'
 import s from './admin-order-detail.module.css'
 import ui from './admin-ui.module.css'
+import { useConfirm } from './admin-confirm'
 
 type DraftOrderItem = { id: string; name: string; sku: string; quantity: number; unitPrice: number; totalPrice: number }
 type DraftOrder = {
@@ -38,6 +39,7 @@ async function api(path: string, init?: RequestInit) {
 }
 
 export default function DraftOrderDetailAdmin({ initial, canManage }: { initial: DraftOrder; canManage: boolean }) {
+  const confirm = useConfirm()
   const router = useRouter()
   const [d, setD] = useState(initial)
   const [editing, setEditing] = useState(false)
@@ -71,7 +73,7 @@ export default function DraftOrderDetailAdmin({ initial, canManage }: { initial:
   }
 
   async function complete() {
-    if (!confirm('Complete this draft order? It will reserve stock and become a real order.')) return
+    if (!(await confirm({ title: 'Complete this draft order?', message: 'It will reserve stock and become a real order.', confirmLabel: 'Complete order', tone: 'default' }))) return
     setBusy(true); setError(''); setMsg('')
     try {
       const data = await api(`/api/admin/draft-orders/${d.id}`, { method: 'POST' })
@@ -80,7 +82,7 @@ export default function DraftOrderDetailAdmin({ initial, canManage }: { initial:
   }
 
   async function sendInvoice() {
-    if (!confirm(`Email an invoice to ${d.email}? They'll be able to pay it online.`)) return
+    if (!(await confirm({ title: `Email an invoice to ${d.email}?`, message: "They'll be able to pay it online.", confirmLabel: 'Send invoice', tone: 'default' }))) return
     setBusy(true); setError(''); setMsg('')
     try {
       const data = await api(`/api/admin/draft-orders/${d.id}/send-invoice`, { method: 'POST' })
@@ -90,7 +92,7 @@ export default function DraftOrderDetailAdmin({ initial, canManage }: { initial:
   }
 
   async function cancelDraft() {
-    if (!confirm('Cancel this draft order? This cannot be undone.')) return
+    if (!(await confirm({ title: 'Cancel this draft order?', message: 'This cannot be undone.', confirmLabel: 'Cancel draft', cancelLabel: 'Keep draft' }))) return
     setBusy(true); setError(''); setMsg('')
     try {
       await api(`/api/admin/draft-orders/${d.id}`, { method: 'DELETE' })

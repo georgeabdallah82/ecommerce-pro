@@ -4,6 +4,7 @@ import { hasPermission, type Permission } from '@/lib/permissions'
 import { redirect } from 'next/navigation'
 import AdminNav, { type AdminSidebarGroup } from '@/components/admin-nav'
 import { ToastProvider } from '@/components/admin-toast'
+import { ConfirmProvider } from '@/components/admin-confirm'
 import { getThemeState } from '@/lib/theme'
 import { adminBrandCss } from '@/lib/admin-accent'
 
@@ -117,9 +118,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     {brandCss && <style dangerouslySetInnerHTML={{__html:brandCss}} />}
     <div className="adminShell">
       <ToastProvider>
-        <AdminNav groups={visibleGroups} name={user.name} email={user.email} role={user.role} vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}>
-          {children}
-        </AdminNav>
+        <ConfirmProvider>
+          <AdminNav groups={visibleGroups} name={user.name} email={user.email} role={user.role} vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}>
+            {children}
+          </AdminNav>
+        </ConfirmProvider>
       </ToastProvider>
     </div>
   </>

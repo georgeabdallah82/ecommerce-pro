@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ArrowLeft, ArrowRight, Ban, PackageCheck, Send } from 'lucide-react'
 import styles from './admin-transfers.module.css'
 import ui from './admin-ui.module.css'
+import { useConfirm } from './admin-confirm'
 
 async function api(path: string, init?: RequestInit) {
   const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
@@ -21,6 +22,7 @@ function statusClass(status: string) {
 }
 
 export default function InventoryTransferDetail({ initial, canManage }: { initial: any; canManage: boolean }) {
+  const confirm = useConfirm()
   const [transfer, setTransfer] = useState(initial)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
@@ -28,9 +30,9 @@ export default function InventoryTransferDetail({ initial, canManage }: { initia
   const isTerminal = transfer.status === 'RECEIVED' || transfer.status === 'CANCELLED'
 
   async function updateStatus(status: string) {
-    if (status === 'CANCELLED' && !confirm('Cancel this transfer?')) return
-    if (status === 'IN_TRANSIT' && !confirm('Ship this transfer? Stock will be deducted from the source location now.')) return
-    if (status === 'RECEIVED' && !confirm('Receive this transfer? Stock will be added to the destination location now.')) return
+    if (status === 'CANCELLED' && !(await confirm({ title: 'Cancel this transfer?', confirmLabel: 'Cancel transfer', cancelLabel: 'Keep transfer' }))) return
+    if (status === 'IN_TRANSIT' && !(await confirm({ title: 'Ship this transfer?', message: 'Stock will be deducted from the source location now.', confirmLabel: 'Ship transfer', tone: 'default' }))) return
+    if (status === 'RECEIVED' && !(await confirm({ title: 'Receive this transfer?', message: 'Stock will be added to the destination location now.', confirmLabel: 'Receive transfer', tone: 'default' }))) return
     setBusy(true); setMsg('')
     try {
       const d = await api(`/api/admin/inventory/transfers/${transfer.id}`, { method: 'PATCH', body: JSON.stringify({ status }) })
@@ -55,7 +57,7 @@ export default function InventoryTransferDetail({ initial, canManage }: { initia
           <div className="inline">
             {transfer.status === 'DRAFT' && <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => updateStatus('PENDING')} disabled={busy}>Mark as pending</button>}
             {transfer.status === 'PENDING' && <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => updateStatus('DRAFT')} disabled={busy}>Revert to draft</button>}
-            {transfer.status !== 'IN_TRANSIT' && <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => updateStatus('CANCELLED')} disabled={busy}><Ban size={15} /> Cancel</button>}
+            {transfer.status !== 'IN_TRANSIT' && <button className={`${ui.btn} ${ui.btnDanger}`} onClick={() => updateStatus('CANCELLED')} disabled={busy}><Ban size={15} /> Cancel</button>}
             {transfer.status === 'IN_TRANSIT'
               ? <button className={ui.btn} onClick={() => updateStatus('RECEIVED')} disabled={busy || !transfer.toLocation}><PackageCheck size={15} /> Receive transfer</button>
               : <button className={ui.btn} onClick={() => updateStatus('IN_TRANSIT')} disabled={busy || !transfer.fromLocation || !transfer.toLocation}><Send size={15} /> Ship transfer</button>}

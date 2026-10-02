@@ -121,14 +121,14 @@
   padding: 0 18px;
   border-radius: var(--admin-radius-sm);
   border: 1px solid var(--admin-danger-border);
-  background: var(--admin-danger-soft);
+  background: transparent;
   color: var(--admin-danger);
   font: inherit;
   font-weight: 700;
   cursor: pointer;
   width: 100%;
 }
-.dangerButton:hover:not(:disabled) { background: var(--admin-danger-border); }
+.dangerButton:hover:not(:disabled) { background: var(--admin-danger-soft); border-color: var(--admin-danger); }
 .dangerButton:disabled { opacity: .6; cursor: not-allowed; }
 
 .checkCard { display: flex; align-items: flex-start; gap: 12px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); padding: 13px; cursor: pointer; }

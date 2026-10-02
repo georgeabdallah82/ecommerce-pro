@@ -5,6 +5,7 @@ import { Check, Copy, Gift, Layers, Percent, Plus, Search, ShieldCheck, Tag, X }
 import { money } from '@/lib/config'
 import styles from './admin-coupons.module.css'
 import ui from './admin-ui.module.css'
+import { useConfirm } from './admin-confirm'
 
 type Scope = 'ALL_PRODUCTS' | 'SPECIFIC_PRODUCTS' | 'SPECIFIC_COLLECTIONS'
 
@@ -128,6 +129,7 @@ const emptyForm = {
 }
 
 export default function CouponsAdminPro({ initial }: { initial: Coupon[] }) {
+  const confirm = useConfirm()
   const [rows, setRows] = useState<Coupon[]>(initial || [])
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<'ALL' | 'ACTIVE' | 'INACTIVE' | 'EXPIRING'>('ALL')
@@ -215,6 +217,7 @@ export default function CouponsAdminPro({ initial }: { initial: Coupon[] }) {
   }
 
   async function toggle(c: Coupon) {
+    if (c.isActive && !(await confirm({ title: `Disable ${c.code}?`, message: 'Customers can no longer use this code at checkout until you enable it again.', confirmLabel: 'Disable discount' }))) return
     setError('')
     try {
       const data = await api('/api/admin/coupons', { method: 'PATCH', body: JSON.stringify({ id: c.id, isActive: !c.isActive }) })
@@ -265,7 +268,7 @@ export default function CouponsAdminPro({ initial }: { initial: Coupon[] }) {
           <td>{c.usedCount}{c.maxUses ? <span className={ui.muted}> / {c.maxUses}</span> : <span className={ui.muted}> / unlimited</span>}</td>
           <td>{c.expiresAt ? <span>{new Date(c.expiresAt).toLocaleDateString()}</span> : <span className={ui.muted}>No expiry</span>}</td>
           <td><span className={`${ui.statusPill} ${c.isActive ? ui.statusPillSuccess : ui.statusPillWarning}`}>{c.isActive ? <><Check size={13}/> Active</> : 'Inactive'}</span></td>
-          <td><div className="inline"><button className={ui.iconBtn} title="Copy code" onClick={() => copyCode(c.code)}>{copied === c.code ? <Check size={15}/> : <Copy size={15}/>}</button><button className={ui.textButton} onClick={() => toggle(c)}>{c.isActive ? 'Disable' : 'Enable'}</button></div></td>
+          <td><div className="inline"><button className={ui.iconBtn} title="Copy code" onClick={() => copyCode(c.code)}>{copied === c.code ? <Check size={15}/> : <Copy size={15}/>}</button><button className={c.isActive ? `${ui.textButton} ${ui.textButtonDanger}` : ui.textButton} onClick={() => toggle(c)}>{c.isActive ? 'Disable' : 'Enable'}</button></div></td>
         </tr>)}
       </tbody></table></div>
       {!filtered.length && <div className={ui.empty}><Gift size={28}/><h3>No discounts found</h3><p className={ui.muted}>Try a different search or create a new discount.</p></div>}
