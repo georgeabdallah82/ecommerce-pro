@@ -1,4 +1,4 @@
-import { db } from '@/lib/prisma'
+import { getStorefrontSettings } from '@/lib/storefront-settings'
 
 export type TrackingConfig = {
   metaPixelId: string
@@ -6,11 +6,8 @@ export type TrackingConfig = {
   tiktokPixelId: string
 }
 
-const TRACKING_KEYS = ['tracking.metaPixelId', 'tracking.gaMeasurementId', 'tracking.tiktokPixelId'] as const
-
 export async function getTrackingConfig(): Promise<TrackingConfig> {
-  const rows = await db.setting.findMany({ where: { key: { in: [...TRACKING_KEYS] } } })
-  const map = new Map(rows.map((r: { key: string; value: string }) => [r.key, r.value]))
+  const map = await getStorefrontSettings()
   return {
     metaPixelId: (map.get('tracking.metaPixelId') || '').trim(),
     gaMeasurementId: (map.get('tracking.gaMeasurementId') || '').trim(),

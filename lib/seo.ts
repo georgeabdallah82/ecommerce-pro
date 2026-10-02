@@ -1,6 +1,7 @@
 import { cache } from 'react'
 import { db } from '@/lib/prisma'
 import { getThemeState } from '@/lib/theme'
+import { getStorefrontSettings } from '@/lib/storefront-settings'
 
 // Shared helpers for page titles, descriptions and social share previews (WhatsApp,
 // Instagram, Facebook, Google).
@@ -48,11 +49,10 @@ export type SiteSeo = { brand: string; title: string; description: string; image
 // brand name, the homepage's first banner image, and the first product photo.
 export const getSiteSeo = cache(loadSiteSeo)
 async function loadSiteSeo(): Promise<SiteSeo> {
-  const [settings, themeState] = await Promise.all([
-    db.setting.findMany({ where: { key: { in: ['seo.title', 'seo.description', 'seo.image', 'store.name'] } } }).catch(() => []),
+  const [map, themeState] = await Promise.all([
+    getStorefrontSettings().catch(() => new Map<string, string>()),
     getThemeState().catch(() => null),
   ])
-  const map = new Map(settings.map(s => [s.key, s.value]))
   const brand = themeState?.theme?.brandName || map.get('store.name') || process.env.NEXT_PUBLIC_BRAND_NAME || 'Our store'
   const title = map.get('seo.title') || brand
   const description = metaText(map.get('seo.description')) || `Shop ${brand} online. Fast delivery and easy returns.`

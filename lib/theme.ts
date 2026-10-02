@@ -1,5 +1,6 @@
 import {cache} from 'react'
 import {db} from '@/lib/prisma'
+import {getStorefrontSettings} from '@/lib/storefront-settings'
 import {parseJson} from '@/lib/utils'
 import {defaultTheme,defaultSections,defaultNavigation} from './theme-defaults'
 export type ThemeConfig=typeof defaultTheme
@@ -93,11 +94,8 @@ function repairTemplate(key:string,value:any){
 // read is a database round trip (React's cache() scopes this to a single request).
 export const getThemeState=cache(loadThemeState)
 async function loadThemeState(){
-  const [themeSetting,sectionsSetting,navigationSetting]=await Promise.all([
-    db.setting.findUnique({where:{key:'theme.config'}}),
-    db.setting.findUnique({where:{key:'theme.sections'}}),
-    db.setting.findUnique({where:{key:'navigation.main'}})
-  ])
+  const settings=await getStorefrontSettings()
+  const themeSetting={value:settings.get('theme.config')},sectionsSetting={value:settings.get('theme.sections')},navigationSetting={value:settings.get('navigation.main')}
 
   const raw=parseJson<any>(themeSetting?.value,{})
   const theme=deepMerge(defaultTheme,raw)

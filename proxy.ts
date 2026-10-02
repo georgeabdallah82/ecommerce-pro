@@ -67,8 +67,17 @@ export async function proxy(request: NextRequest) {
   }
 
   const needsRedirectCheck = !REDIRECT_BYPASS_PREFIXES.some(p => pathname.startsWith(p)) && !isStaticAsset(pathname)
+  const needsMaintenanceCheck =
+    !MAINTENANCE_BYPASS_PREFIXES.some(p => pathname.startsWith(p)) &&
+    !MAINTENANCE_BYPASS_EXACT.has(pathname) &&
+    !isStaticAsset(pathname)
+  // Both lookups run at the same time: a storefront page view used to wait for one database
+  // round trip, then a second, before rendering even started.
+  const [redirect, maintenanceSetting] = await Promise.all([
+    needsRedirectCheck ? db.redirect.findUnique({ where: { fromPath: pathname } }) : null,
+    needsMaintenanceCheck ? db.setting.findUnique({ where: { key: 'maintenance.enabled' } }) : null,
+  ])
   if (needsRedirectCheck) {
-    const redirect = await db.redirect.findUnique({ where: { fromPath: pathname } })
     if (redirect) {
       void db.redirect.update({ where: { id: redirect.id }, data: { hits: { increment: 1 } } }).catch(() => undefined)
       const destination = /^https?:\/\//i.test(redirect.toPath) ? redirect.toPath : new URL(redirect.toPath, request.url)
@@ -76,12 +85,7 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  const needsMaintenanceCheck =
-    !MAINTENANCE_BYPASS_PREFIXES.some(p => pathname.startsWith(p)) &&
-    !MAINTENANCE_BYPASS_EXACT.has(pathname) &&
-    !isStaticAsset(pathname)
   if (needsMaintenanceCheck) {
-    const maintenanceSetting = await db.setting.findUnique({ where: { key: 'maintenance.enabled' } })
     if (maintenanceSetting?.value === 'true' && !(await isStaffSession(request.cookies.get('session')?.value))) {
       // Rewriting to /coming-soon is meaningless to an API client, and simply exempting the
       // whole '/api' prefix (as this used to) left checkout/orders/wishlist/reviews fully
@@ -117,7 +121,9 @@ export async function proxy(request: NextRequest) {
   const isThemePreview = pathname === '/theme-editor-preview'
   response.headers.set('X-Frame-Options', isThemePreview ? 'SAMEORIGIN' : 'DENY')
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  // geolocation=(self): the storefront's opt-in live-map location prompt (components/live-visitor-tracker.tsx)
+  // needs it on our own pages; geolocation=() blocked it outright, so "Allow" could never work.
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)')
   response.headers.set('X-DNS-Prefetch-Control', 'on')
 
   if (isApi && hasSession) {

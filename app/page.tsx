@@ -13,8 +13,7 @@ export const revalidate=0
 export const metadata: Metadata = { alternates: { canonical: '/' } }
 
 export default async function Home(){
-  const {theme,sections}=await getThemeState()
-  const unpublishedIds=await getUnpublishedProductIds()
+  const [{theme,sections},unpublishedIds]=await Promise.all([getThemeState(),getUnpublishedProductIds()])
   const [rawProducts,collections,contentBlocks]=await Promise.all([
     db.product.findMany({where:{status:'ACTIVE',id:{notIn:unpublishedIds}},include:{images:{orderBy:{sortOrder:'asc'}},collections:{include:{collection:true}}},orderBy:[{featured:'desc'},{createdAt:'desc'}],take:60}),
     db.collection.findMany({where:{isActive:true},include:{products:{select:{productId:true}}},take:12,orderBy:{sortOrder:'asc'}}),
