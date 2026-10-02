@@ -2,6 +2,7 @@ import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { db } from '@/lib/prisma'
 import { json, slugify } from '@/lib/utils'
+import { productInputError } from '@/lib/product-input'
 
 export async function GET(req: Request) {
   try {
@@ -52,6 +53,8 @@ export async function POST(req: Request) {
       return json({ ok: true, count: result.count })
     }
 
+    const inputError = productInputError(b)
+    if (inputError) return json({ error: inputError }, { status: 400 })
     const name = String(b.name || '').trim().slice(0, 200)
     const sku = String(b.sku || '').trim().slice(0, 120)
     if (!name || !sku) return json({ error: 'Name and SKU are required' }, { status: 400 })

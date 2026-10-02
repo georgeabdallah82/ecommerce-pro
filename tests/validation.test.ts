@@ -109,3 +109,28 @@ describe('lib/validation', () => {
     })
   })
 })
+
+describe('json auth errors', () => {
+  it('turns UNAUTHORIZED / FORBIDDEN into 401 / 403 with a readable message', async () => {
+    const { json } = await import('@/lib/utils')
+    const a = json({ error: 'UNAUTHORIZED' }, { status: 400 })
+    assert.equal(a.status, 401)
+    assert.equal((await a.json()).error, 'Please sign in to continue.')
+    const f = json({ error: 'FORBIDDEN' }, { status: 400 })
+    assert.equal(f.status, 403)
+    const other = json({ error: 'Name is required' }, { status: 400 })
+    assert.equal(other.status, 400)
+    assert.equal((await other.json()).error, 'Name is required')
+  })
+})
+
+describe('productInputError', () => {
+  it('rejects unknown statuses and non-numeric numbers, accepts normal edits', async () => {
+    const { productInputError } = await import('@/lib/product-input')
+    assert.equal(productInputError({ name: 'Mug', sku: 'M1', basePrice: '12.50', status: 'ACTIVE', compareAtPrice: '' }), null)
+    assert.match(productInputError({ status: 'WHATEVER' })!, /Status/)
+    assert.match(productInputError({ basePrice: 'abc' })!, /basePrice/)
+    assert.match(productInputError({ variants: [{ sku: 'A', price: 'x' }] })!, /Variant price/)
+    assert.equal(productInputError({ variants: [{ sku: 'A', price: 1500, compareAtPrice: null }] }), null)
+  })
+})

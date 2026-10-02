@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs'
 import { db } from '@/lib/prisma'
 import { hasPermission, type Permission } from '@/lib/permissions'
 import { Role } from '@prisma/client'
+import { isSessionRevoked } from '@/lib/session-revocation'
 
 function getSecret() {
   const rawSecret = process.env.AUTH_SECRET
@@ -46,11 +47,7 @@ export async function getCurrentUser() {
   } catch { return null }
 }
 
-// True when a token issued at `issuedAtSeconds` predates the account's last session revocation.
-export function isSessionRevoked(issuedAtSeconds: number, sessionsRevokedAt: Date | null | undefined) {
-  if (!sessionsRevokedAt) return false
-  return issuedAtSeconds < Math.floor(sessionsRevokedAt.getTime() / 1000)
-}
+export { isSessionRevoked }
 
 export async function requireUser() { const user = await getCurrentUser(); if (!user) throw new Error('UNAUTHORIZED'); return user }
 export async function requireRole(roles: Role[]) { const user = await requireUser(); if (!roles.includes(user.role)) throw new Error('FORBIDDEN'); return user }

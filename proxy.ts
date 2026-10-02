@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import type { NextFetchEvent, NextRequest } from 'next/server'
 import { jwtVerify } from 'jose'
 import { db } from '@/lib/prisma'
+import { isSessionRevoked } from '@/lib/session-revocation'
 
 // '/api' is deliberately NOT in this list (see the maintenance check below) -- API requests get
 // their own, narrower bypass so mutations to non-admin/auth/internal/webhook endpoints are
@@ -24,6 +25,9 @@ async function isStaffSession(sessionToken: string | undefined) {
     const { payload } = await jwtVerify(sessionToken, new TextEncoder().encode(process.env.AUTH_SECRET))
     if (!payload.sub || typeof payload.sub !== 'string') return false
     const user = await db.user.findUnique({ where: { id: payload.sub } })
+    // Same rule as getCurrentUser: a staff session revoked (password/role change, disabled)
+    // must not keep previewing the store behind "coming soon".
+    if (typeof payload.iat !== 'number' || isSessionRevoked(payload.iat, user?.sessionsRevokedAt)) return false
     return !!user?.isActive && user.role !== 'CUSTOMER'
   } catch {
     return false
@@ -48,7 +52,7 @@ function isSameOrigin(request: NextRequest) {
   }
 }
 
-export async function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest, event: NextFetchEvent) {
   if (request.headers.get('Render-Health-Check') === '1') {
     return new Response('ok', {
       status: 200,
@@ -79,7 +83,8 @@ export async function proxy(request: NextRequest) {
   ])
   if (needsRedirectCheck) {
     if (redirect) {
-      void db.redirect.update({ where: { id: redirect.id }, data: { hits: { increment: 1 } } }).catch(() => undefined)
+      // waitUntil keeps the Worker alive for the counter write after the redirect is sent.
+      event.waitUntil(db.redirect.update({ where: { id: redirect.id }, data: { hits: { increment: 1 } } }).then(() => undefined, () => undefined))
       const destination = /^https?:\/\//i.test(redirect.toPath) ? redirect.toPath : new URL(redirect.toPath, request.url)
       return NextResponse.redirect(destination, 308)
     }
@@ -125,6 +130,12 @@ export async function proxy(request: NextRequest) {
   // needs it on our own pages; geolocation=() blocked it outright, so "Allow" could never work.
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)')
   response.headers.set('X-DNS-Prefetch-Control', 'on')
+  // A Content-Security-Policy limited to directives that can't break the storefront: no plugin
+  // objects, no <base> hijacking of relative URLs, and no framing by other sites (the modern
+  // form of X-Frame-Options). Scripts aren't restricted here because the tracking pixels and
+  // the card gateway load from third-party hosts the merchant can change in Settings.
+  const frameAncestors = isThemePreview ? "'self'" : "'none'"
+  response.headers.set('Content-Security-Policy', `object-src 'none'; base-uri 'self'; frame-ancestors ${frameAncestors}${process.env.NODE_ENV === 'production' ? '; upgrade-insecure-requests' : ''}`)
 
   if (isApi && hasSession) {
     response.headers.set('Cache-Control', 'private, no-store')
