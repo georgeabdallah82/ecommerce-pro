@@ -6,6 +6,7 @@ import { ArrowLeft, Check, X } from 'lucide-react'
 import { money } from '@/lib/config'
 import styles from './admin-order-edits.module.css'
 import ui from './admin-ui.module.css'
+import { useConfirm } from './admin-confirm'
 
 async function api(path: string, init?: RequestInit) {
   const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
@@ -21,12 +22,13 @@ function statusClass(status: string) {
 }
 
 export default function OrderEditDetail({ initial, canManage }: { initial: any; canManage: boolean }) {
+  const confirm = useConfirm()
   const [edit, setEdit] = useState(initial)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
 
   async function apply() {
-    if (!confirm('Apply this order edit? This will update the order\'s line items and totals.')) return
+    if (!(await confirm({ title: 'Apply this order edit?', message: "This will update the order's line items and totals.", confirmLabel: 'Apply edit', tone: 'default' }))) return
     setBusy(true); setMsg('')
     try {
       const d = await api(`/api/admin/order-edits/${edit.id}`, { method: 'POST' })
@@ -37,7 +39,7 @@ export default function OrderEditDetail({ initial, canManage }: { initial: any; 
   }
 
   async function discard() {
-    if (!confirm('Discard this order edit? This cannot be undone.')) return
+    if (!(await confirm({ title: 'Discard this order edit?', message: 'This cannot be undone.', confirmLabel: 'Discard edit' }))) return
     setBusy(true); setMsg('')
     try {
       await api(`/api/admin/order-edits/${edit.id}`, { method: 'DELETE' })
@@ -64,7 +66,7 @@ export default function OrderEditDetail({ initial, canManage }: { initial: any; 
           {edit.order && <Link className={`${ui.btn} ${ui.btnSecondary}`} href={`/admin/orders/${edit.order.id}`}>Open order</Link>}
           {canManage && edit.status === 'OPEN' && (
             <>
-              <button className={`${ui.btn} ${ui.btnGhost}`} onClick={discard} disabled={busy}><X size={15} /> Discard</button>
+              <button className={`${ui.btn} ${ui.btnDanger}`} onClick={discard} disabled={busy}><X size={15} /> Discard</button>
               <button className={ui.btn} onClick={apply} disabled={busy}><Check size={15} /> {busy ? 'Applying…' : 'Apply edit'}</button>
             </>
           )}

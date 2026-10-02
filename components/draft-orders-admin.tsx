@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ClipboardList, Plus, RefreshCw, Search } from 'lucide-react'
 import { money } from '@/lib/config'
@@ -40,6 +40,15 @@ export default function DraftOrdersAdmin({ initial, canManage }: { initial: Draf
     finally { setLoading(false) }
   }
 
+  // Live filtering: typing (debounced) and the status dropdown reload the list.
+  const appliedFilters = useRef(JSON.stringify([q.trim(), status]))
+  useEffect(() => {
+    const key = JSON.stringify([q.trim(), status])
+    if (key === appliedFilters.current) return
+    const timer = setTimeout(() => { appliedFilters.current = key; void refresh() }, q.trim() ? 300 : 0)
+    return () => clearTimeout(timer)
+  }, [q, status]) // eslint-disable-line react-hooks/exhaustive-deps
+
   return <div className={styles.page}>
     <div className={styles.header}>
       <div><span className={`${ui.muted} ${ui.tiny}`}>COMMERCE</span><h1 className={ui.heading}>Draft orders</h1><p className={ui.muted}>Orders started in the admin before they become real, stock-reserving orders.</p></div>
@@ -52,8 +61,8 @@ export default function DraftOrdersAdmin({ initial, canManage }: { initial: Draf
     {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
 
     <div className={`${ui.card} ${styles.toolbar}`}>
-      <div className={styles.search}><Search size={15} /><input value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && refresh()} placeholder="Search draft order number or email…" /></div>
-      <select className={`${ui.select} ${styles.statusSelect}`} value={status} onChange={e => { setStatus(e.target.value); setTimeout(refresh, 0) }}>
+      <div className={styles.search}><Search size={15} /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search draft order number or email…" /></div>
+      <select className={`${ui.select} ${styles.statusSelect}`} value={status} onChange={e => setStatus(e.target.value)}>
         <option value="">All statuses</option>
         {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
       </select>

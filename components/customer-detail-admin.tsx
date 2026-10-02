@@ -8,6 +8,7 @@ import { money } from '@/lib/config'
 import s from './admin-customer-detail.module.css'
 import ui from './admin-ui.module.css'
 import UnsavedBar from './admin-unsaved-bar'
+import { useConfirm } from './admin-confirm'
 
 async function api(path: string, init?: RequestInit) {
   const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
@@ -37,6 +38,7 @@ function Card({ title, sub, children, action, icon }: { title: string; sub?: str
 }
 
 export default function CustomerDetailAdmin({ initial }: { initial: any }) {
+  const confirm = useConfirm()
   const router = useRouter()
   const [customer, setCustomer] = useState(initial)
   const [deleting, setDeleting] = useState(false)
@@ -148,7 +150,7 @@ export default function CustomerDetailAdmin({ initial }: { initial: any }) {
   }
 
   async function deleteCustomer() {
-    if (!confirm(`Delete ${customer.name}? This permanently removes their account, addresses, reviews and loyalty history. Their past orders are kept but no longer linked to an account.`)) return
+    if (!(await confirm({ title: `Delete ${customer.name}?`, message: 'This permanently removes their account, addresses, reviews and loyalty history. Their past orders are kept but no longer linked to an account.', confirmLabel: 'Delete customer' }))) return
     setDeleting(true); setError('')
     try {
       await api(`/api/admin/customers/${customer.id}`, { method: 'DELETE' })
@@ -172,12 +174,12 @@ export default function CustomerDetailAdmin({ initial }: { initial: any }) {
   return <div className={s.page}>
     <div className={s.topbar}>
       <div className={s.topLeft}>
-        <Link href="/admin/customers" className={ui.iconBtn} onClick={e => { if (dirty && !confirm('Discard unsaved changes?')) e.preventDefault() }}><ArrowLeft size={18}/></Link>
+        <Link href="/admin/customers" className={ui.iconBtn} onClick={async e => { if (!dirty) return; e.preventDefault(); if (await confirm({ title: 'Discard unsaved changes?', message: 'Your edits to this customer will be lost.', confirmLabel: 'Discard' })) router.push('/admin/customers') }}><ArrowLeft size={18}/></Link>
         <div><div className={`${ui.muted} ${ui.tiny}`}>CUSTOMER</div><h1 className={s.title}>{customer.name}</h1></div>
       </div>
       <div className={s.topActions}>
         <span className={`${ui.statusPill} ${customer.isActive ? ui.statusPillSuccess : ''}`}>{customer.isActive ? <UserCheck size={13}/> : <ShieldOff size={13}/>} {customer.isActive ? 'Active' : 'Disabled'}</span>
-        <button className={`${ui.btn} ${ui.btnSecondary} ${s.topActionsBtn}`} onClick={deleteCustomer} disabled={deleting}><Trash2 size={16}/> {deleting ? 'Deleting…' : 'Delete'}</button>
+        <button className={`${ui.btn} ${ui.btnDanger} ${s.topActionsBtn}`} onClick={deleteCustomer} disabled={deleting}><Trash2 size={16}/> {deleting ? 'Deleting…' : 'Delete'}</button>
       </div>
     </div>
     <UnsavedBar dirty={dirty} saving={saving} onDiscard={discard} onSave={save} />

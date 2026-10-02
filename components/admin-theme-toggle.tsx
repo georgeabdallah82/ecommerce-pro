@@ -75,13 +75,13 @@ export default function AdminThemeToggle({ compact }: { compact?: boolean }) {
         html[data-admin-theme='dark'] body:has(.adminShell) .textarea::placeholder{color:#707a73!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .input:focus,
         html[data-admin-theme='dark'] body:has(.adminShell) .textarea:focus,
-        html[data-admin-theme='dark'] body:has(.adminShell) select:focus{border-color:#6d8878!important;box-shadow:0 0 0 3px rgba(102,194,146,.12)!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) select:focus{border-color:var(--admin-accent)!important;box-shadow:0 0 0 3px var(--admin-focus)!important}
 
         /* Product / orders / inventory */
-        html[data-admin-theme='dark'] body:has(.adminShell) .opsTabs button.active{background:#f0f3f1!important;color:#171918!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .opsTabs button.active{background:var(--admin-accent)!important;color:var(--admin-accent-ink)!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .orderViews button{color:#e7ece8!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .orderViews button:hover{background:#262b28!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .orderViews button.active{background:#f0f3f1!important;color:#171918!important}
+        html[data-admin-theme='dark'] body:has(.adminShell) .orderViews button.active{background:var(--admin-accent)!important;color:var(--admin-accent-ink)!important}
 
         /* Empty/error states and live map */
         html[data-admin-theme='dark'] body:has(.adminShell) .empty{background:#191c1a!important;border-color:#3a413c!important;color:#9fa8a1!important}

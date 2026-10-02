@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ArrowUpRight, ChevronLeft, ChevronRight, FileText, PackageCheck, Plus, RefreshCw, Search, Truck, X } from 'lucide-react'
 import { money } from '@/lib/config'
@@ -103,6 +103,16 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone }
     }
   }
 
+  // Live filtering: search (debounced), status and page size reload the list as they change,
+  // like every other admin list. The first render already has the server's rows.
+  const appliedFilters = useRef(JSON.stringify([q.trim(), filter, pageSize]))
+  useEffect(() => {
+    const key = JSON.stringify([q.trim(), filter, pageSize])
+    if (key === appliedFilters.current) return
+    const timer = setTimeout(() => { appliedFilters.current = key; void load(1) }, q.trim() ? 300 : 0)
+    return () => clearTimeout(timer)
+  }, [q, filter, pageSize]) // eslint-disable-line react-hooks/exhaustive-deps
+
   async function update(id: string, data: any, message = 'Order updated.') {
     setBusy(id); setError(''); setNotice('')
     try {
@@ -200,14 +210,13 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone }
       <div className={`${ui.card} ${styles.toolbar}`}>
         <div className={styles.search}>
           <Search size={16} />
-          <input value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void load(1) }} placeholder="Search orders, customers, email…" />
-          {q && <button onClick={() => { setQ(''); void load(1) }} aria-label="Clear search"><X size={14} /></button>}
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search orders, customers, email…" />
+          {q && <button onClick={() => setQ('')} aria-label="Clear search"><X size={14} /></button>}
         </div>
-        <select className={`${ui.select} ${styles.statusSelect}`} value={filter} onChange={e => { setFilter(e.target.value); void load(1) }}>
+        <select className={`${ui.select} ${styles.statusSelect}`} value={filter} onChange={e => setFilter(e.target.value)}>
           <option value="">All statuses</option>
           {statuses.map(s => <option key={s}>{s}</option>)}
         </select>
-        <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => load(1)} disabled={loading}>{loading ? 'Searching…' : 'Apply'}</button>
         <span className={styles.revenue}><span>Revenue (loaded)</span>{money(stats.revenue)}</span>
       </div>
 
@@ -233,7 +242,7 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone }
         <div className={styles.tableTopline}>
           <span>{shown.length} order{shown.length === 1 ? '' : 's'} on this page</span>
           <label className="inline" style={{ gap: 8, fontSize: 12 }}>Rows
-            <select className={`${ui.select} ${styles.compactSelect}`} value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); void load(1) }}>
+            <select className={`${ui.select} ${styles.compactSelect}`} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
               <option value={25}>25</option>
               <option value={50}>50</option>
               <option value={100}>100</option>
@@ -241,7 +250,7 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone }
           </label>
         </div>
         <div className={ui.tableWrap}>
-          <table className={`${ui.table} ${styles.ordersTable}`}>
+          <table className={`${ui.table} ${ui.cardTable} ${styles.ordersTable}`}>
             <thead>
               <tr>
                 <th><input aria-label="Select all" type="checkbox" checked={allShownSelected} onChange={() => setSelected(allShownSelected ? selected.filter(id => !shown.some(o => o.id === id)) : [...new Set([...selected, ...shown.map(o => o.id)])])} /></th>
@@ -260,17 +269,17 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone }
                 const isSelected = selected.includes(o.id)
                 return (
                   <tr key={o.id} className={isSelected ? styles.selectedRow : undefined}>
-                    <td><input aria-label={`Select order ${o.orderNumber}`} type="checkbox" checked={isSelected} onChange={() => setSelected(current => current.includes(o.id) ? current.filter(id => id !== o.id) : [...current, o.id])} /></td>
-                    <td>
+                    <td data-cell="check"><input aria-label={`Select order ${o.orderNumber}`} type="checkbox" checked={isSelected} onChange={() => setSelected(current => current.includes(o.id) ? current.filter(id => id !== o.id) : [...current, o.id])} /></td>
+                    <td data-cell="primary">
                       <Link className={ui.textLink} href={`/admin/orders/${o.id}`}><span className={styles.orderNumber}>#{o.orderNumber}</span></Link>
                       <div className={styles.rowMeta}>{formatAdminDateTime(o.createdAt, storeTimezone)}</div>
                     </td>
-                    <td><strong>{o.user?.name || 'Guest'}</strong><div className={styles.rowMeta}>{o.email}</div></td>
-                    <td>{(o.items || []).reduce((a: number, x: any) => a + x.quantity, 0)}</td>
-                    <td><strong>{money(o.grandTotal, o.currency)}</strong></td>
-                    <td><span className={`${styles.statusPill} ${paymentPillClass(o.paymentStatus)}`}>{o.paymentStatus}</span><div className={styles.rowMeta}>{o.paymentMethod}</div></td>
-                    <td><span className={`${styles.statusPill} ${statusPillClass(o.status)}`}>{o.status}</span>{o.trackingNumber && <div className={styles.rowMeta}>{o.trackingNumber}</div>}</td>
-                    <td>
+                    <td data-label="Customer"><strong>{o.user?.name || 'Guest'}</strong><div className={styles.rowMeta}>{o.email}</div></td>
+                    <td data-label="Items">{(o.items || []).reduce((a: number, x: any) => a + x.quantity, 0)}</td>
+                    <td data-label="Total"><strong>{money(o.grandTotal, o.currency)}</strong></td>
+                    <td data-label="Payment"><span className={`${styles.statusPill} ${paymentPillClass(o.paymentStatus)}`}>{o.paymentStatus}</span><div className={styles.rowMeta}>{o.paymentMethod}</div></td>
+                    <td data-label="Status"><span className={`${styles.statusPill} ${statusPillClass(o.status)}`}>{o.status}</span>{o.trackingNumber && <div className={styles.rowMeta}>{o.trackingNumber}</div>}</td>
+                    <td data-cell="actions">
                       <div className={`inline ${styles.orderActions}`}>
                         <Link className={ui.iconBtn} href={`/admin/orders/${o.id}`} title="Open order"><ArrowUpRight size={15} /></Link>
                         <Link className={ui.iconBtn} href={`/admin/orders/${o.id}/invoice`} title="Invoice"><FileText size={15} /></Link>

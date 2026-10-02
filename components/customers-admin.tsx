@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Eye, Plus, Search, ShieldOff, Tag, Trash2, U
 import { money } from '@/lib/config'
 import ui from './admin-ui.module.css'
 import { useToast } from './admin-toast'
+import { useConfirm } from './admin-confirm'
 
 async function api(path: string, init?: RequestInit) {
   const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
@@ -17,6 +18,7 @@ async function api(path: string, init?: RequestInit) {
 const initials = (name: string) => name.trim().split(/\s+/).slice(0, 2).map(x => x[0]?.toUpperCase() || '').join('') || '?'
 
 export default function CustomersAdmin({ initial }: { initial: any }) {
+  const confirm = useConfirm()
   const toast = useToast()
   const [rows, setRows] = useState<any[]>(initial?.rows || [])
   const [q, setQ] = useState('')
@@ -54,7 +56,7 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
 
   async function bulk(bulkAction: 'ACTIVATE' | 'DISABLE' | 'DELETE') {
     if (!selected.length) return
-    if (bulkAction === 'DELETE' && !confirm(`Delete ${selected.length} customer${selected.length === 1 ? '' : 's'}? This permanently removes their accounts, addresses, reviews and loyalty history. Their past orders are kept but no longer linked to an account.`)) return
+    if (bulkAction === 'DELETE' && !(await confirm({ title: `Delete ${selected.length} customer${selected.length === 1 ? '' : 's'}?`, message: 'This permanently removes their accounts, addresses, reviews and loyalty history. Their past orders are kept but no longer linked to an account.', confirmLabel: 'Delete' }))) return
     const count = selected.length
     setBulkBusy(true)
     try {
@@ -80,7 +82,11 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
     finally { setBulkBusy(false) }
   }
 
-  useEffect(() => { void load(1) }, [status, pageSize, tag])
+  // Live filtering: typing (debounced), status, tag and page size reload the list.
+  useEffect(() => {
+    const timer = setTimeout(() => { void load(1) }, q.trim() ? 300 : 0)
+    return () => clearTimeout(timer)
+  }, [q, status, pageSize, tag]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Active/disabled come straight from the server so the tiles always reflect the true
   // totals for the current search, not just whichever page of rows happens to be loaded.
@@ -101,7 +107,7 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
   }
 
   async function deleteCustomer(customer: { id: string; name: string }) {
-    if (!confirm(`Delete ${customer.name}? This permanently removes their account, addresses, reviews and loyalty history. Their past orders are kept but no longer linked to an account.`)) return
+    if (!(await confirm({ title: `Delete ${customer.name}?`, message: 'This permanently removes their account, addresses, reviews and loyalty history. Their past orders are kept but no longer linked to an account.', confirmLabel: 'Delete customer' }))) return
     try {
       await api(`/api/admin/customers/${customer.id}`, { method: 'DELETE' })
       await load(page)
@@ -124,9 +130,9 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
       <div className="statCard"><span className={ui.muted}>Repeat customers on page</span><strong>{stats.repeat}</strong></div>
     </div>
 
-    <div className={`${ui.card} catalogToolbar`}>
-      <div className="productSearch"><Search size={16}/><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search by name, email or phone…" onKeyDown={e => { if (e.key === 'Enter') void load(1) }}/><button className="searchClear" hidden={!q} onClick={() => { setQ(''); void load(1) }}><X size={14}/></button></div>
-      <div className="catalogFilters open"><select className={ui.input} value={status} onChange={e => setStatus(e.target.value)}><option value="ALL">All customers</option><option value="ACTIVE">Active</option><option value="DISABLED">Disabled</option></select><select className={ui.input} value={tag} onChange={e => setTag(e.target.value)}><option value="">All tags</option>{availableTags.map((t: any) => <option key={t.id} value={t.value}>{t.value}</option>)}</select><button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => load(1)} disabled={loading}>{loading ? 'Loading…' : 'Search'}</button></div>
+    <div className={`${ui.card} catalogToolbar customersToolbar`}>
+      <div className="productSearch"><Search size={16}/><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search by name, email or phone…"/><button className="searchClear" hidden={!q} onClick={() => setQ('')} aria-label="Clear search"><X size={14}/></button></div>
+      <div className="catalogFilters open"><select className={ui.input} value={status} onChange={e => setStatus(e.target.value)}><option value="ALL">All customers</option><option value="ACTIVE">Active</option><option value="DISABLED">Disabled</option></select><select className={ui.input} value={tag} onChange={e => setTag(e.target.value)}><option value="">All tags</option>{availableTags.map((t: any) => <option key={t.id} value={t.value}>{t.value}</option>)}</select></div>
     </div>
 
     {selected.length > 0 && (
@@ -143,19 +149,19 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
 
     <div className={`${ui.card} productTableCard`}>
       <div className="tableTopline"><span className={ui.muted}>{total.toLocaleString()} customers</span><label className={ui.muted}>Rows <select className={`${ui.input} ${ui.inputCompact}`} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}><option>25</option><option>50</option><option>100</option></select></label></div>
-      <div className={ui.tableWrap}><table className={ui.table}><thead><tr><th><input type="checkbox" checked={rows.length > 0 && selected.length === rows.length} onChange={toggleAll} aria-label="Select all customers" /></th><th>Customer</th><th>Contact</th><th>Tags</th><th>Orders</th><th>Reviews</th><th>Spend</th><th>Status</th><th>Joined</th><th></th></tr></thead><tbody>{rows.map(c => <tr key={c.id}>
-        <td><input type="checkbox" checked={selected.includes(c.id)} onChange={() => toggleRow(c.id)} aria-label={`Select ${c.name}`} /></td>
-        <td><Link className="productListName" href={`/admin/customers/${c.id}`}><div className="customerAvatar">{initials(c.name)}</div><div><strong>{c.name}</strong><div className={ui.muted}>{c.email}</div></div></Link></td>
-        <td><span>{c.phone || '—'}</span></td>
-        <td><div className="inline" style={{ flexWrap: 'wrap', gap: 4 }}>{(c.tags || []).map((t: any) => <span className={ui.statusPill} key={t.id}>{t.value}</span>)}{!(c.tags || []).length && <span className={ui.muted}>—</span>}</div></td>
-        <td><strong>{c._count?.orders || 0}</strong></td>
-        <td>{c._count?.reviews || 0}</td>
-        <td><strong>{money(c.totalSpent || 0)}</strong></td>
-        <td><span className={c.isActive ? `${ui.statusPill} ${ui.statusPillSuccess}` : ui.statusPill}>{c.isActive ? <UserCheck size={13}/> : <UserX size={13}/>} {c.isActive ? 'Active' : 'Disabled'}</span></td>
-        <td>{new Date(c.createdAt).toLocaleDateString()}</td>
-        <td><div className="inline">
+      <div className={ui.tableWrap}><table className={`${ui.table} ${ui.cardTable}`}><thead><tr><th><input type="checkbox" checked={rows.length > 0 && selected.length === rows.length} onChange={toggleAll} aria-label="Select all customers" /></th><th>Customer</th><th>Contact</th><th>Tags</th><th>Orders</th><th>Reviews</th><th>Spend</th><th>Status</th><th>Joined</th><th></th></tr></thead><tbody>{rows.map(c => <tr key={c.id}>
+        <td data-cell="check"><input type="checkbox" checked={selected.includes(c.id)} onChange={() => toggleRow(c.id)} aria-label={`Select ${c.name}`} /></td>
+        <td data-cell="primary"><Link className="productListName" href={`/admin/customers/${c.id}`}><div className="customerAvatar">{initials(c.name)}</div><div><strong>{c.name}</strong><div className={ui.muted}>{c.email}</div></div></Link></td>
+        <td data-label="Phone"><span>{c.phone || '—'}</span></td>
+        <td data-label="Tags"><div className="inline" style={{ flexWrap: 'wrap', gap: 4 }}>{(c.tags || []).map((t: any) => <span className={ui.statusPill} key={t.id}>{t.value}</span>)}{!(c.tags || []).length && <span className={ui.muted}>—</span>}</div></td>
+        <td data-label="Orders"><strong>{c._count?.orders || 0}</strong></td>
+        <td data-cell="hide">{c._count?.reviews || 0}</td>
+        <td data-label="Spend"><strong>{money(c.totalSpent || 0)}</strong></td>
+        <td data-label="Status"><span className={c.isActive ? `${ui.statusPill} ${ui.statusPillSuccess}` : ui.statusPill}>{c.isActive ? <UserCheck size={13}/> : <UserX size={13}/>} {c.isActive ? 'Active' : 'Disabled'}</span></td>
+        <td data-label="Joined">{new Date(c.createdAt).toLocaleDateString()}</td>
+        <td data-cell="actions"><div className="inline">
           <Link className={ui.iconBtn} href={`/admin/customers/${c.id}`} title="View customer"><Eye size={16}/></Link>
-          <button className={ui.iconBtn} title="Delete customer" onClick={() => deleteCustomer(c)}><Trash2 size={16}/></button>
+          <button className={`${ui.iconBtn} ${ui.iconBtnDanger}`} title="Delete customer" onClick={() => deleteCustomer(c)}><Trash2 size={16}/></button>
         </div></td>
       </tr>)}</tbody></table></div>
       {!rows.length && <div className={ui.empty}>No customers match your search.</div>}

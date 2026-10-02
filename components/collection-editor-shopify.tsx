@@ -8,6 +8,7 @@ import ui from './admin-ui.module.css'
 import s from './admin-collection-editor.module.css'
 import UnsavedBar from './admin-unsaved-bar'
 import MediaPicker from './media-picker'
+import { useConfirm } from './admin-confirm'
 
 type Product = { id: string; name: string; slug: string; sku?: string | null; status: string; basePrice: number; images?: { url: string }[] }
 type Collection = { id: string; name: string; slug: string; description?: string | null; imageUrl?: string | null; isActive: boolean; products: { product: Product }[] }
@@ -20,6 +21,7 @@ async function api(path: string, init?: RequestInit) {
 }
 
 export default function CollectionEditorShopify({ id }: { id: string }) {
+  const confirm = useConfirm()
   const router = useRouter()
   const [collection, setCollection] = useState<Collection | null>(null)
   const [products, setProducts] = useState<Product[]>([])
@@ -88,7 +90,7 @@ export default function CollectionEditorShopify({ id }: { id: string }) {
   }
 
   async function remove() {
-    if (!collection || !confirm(`Delete "${collection.name}"? This cannot be undone.`)) return
+    if (!collection || !(await confirm({ title: `Delete "${collection.name}"?`, message: 'Products stay in your store; only the collection is removed. This cannot be undone.', confirmLabel: 'Delete collection' }))) return
     setDeleting(true); setError('')
     try {
       await api(`/api/admin/collections/${id}`, { method: 'DELETE' })

@@ -6,6 +6,7 @@ import { ArrowLeft, Ban, PackageCheck, Send } from 'lucide-react'
 import { money } from '@/lib/config'
 import styles from './admin-purchase-orders.module.css'
 import ui from './admin-ui.module.css'
+import { useConfirm } from './admin-confirm'
 
 async function api(path: string, init?: RequestInit) {
   const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
@@ -22,6 +23,7 @@ function statusClass(status: string) {
 }
 
 export default function PurchaseOrderDetail({ initial, canManage }: { initial: any; canManage: boolean }) {
+  const confirm = useConfirm()
   const [po, setPo] = useState(initial)
   const [receiveNow, setReceiveNow] = useState<Record<string, number>>({})
   const [busy, setBusy] = useState(false)
@@ -37,7 +39,7 @@ export default function PurchaseOrderDetail({ initial, canManage }: { initial: a
   }
 
   async function updateStatus(status: string) {
-    if (status === 'CANCELLED' && !confirm('Cancel this purchase order?')) return
+    if (status === 'CANCELLED' && !(await confirm({ title: 'Cancel this purchase order?', confirmLabel: 'Cancel order', cancelLabel: 'Keep order' }))) return
     setBusy(true); setMsg('')
     try {
       const d = await api(`/api/admin/purchase-orders/${po.id}`, { method: 'PATCH', body: JSON.stringify({ status }) })
@@ -76,7 +78,7 @@ export default function PurchaseOrderDetail({ initial, canManage }: { initial: a
         {canManage && !isTerminal && (
           <div className="inline">
             {po.status === 'DRAFT' && <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => updateStatus('ORDERED')} disabled={busy}><Send size={15} /> Mark as ordered</button>}
-            <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => updateStatus('CANCELLED')} disabled={busy}><Ban size={15} /> Cancel</button>
+            <button className={`${ui.btn} ${ui.btnDanger}`} onClick={() => updateStatus('CANCELLED')} disabled={busy}><Ban size={15} /> Cancel</button>
             <button className={ui.btn} onClick={() => updateStatus('RECEIVED')} disabled={busy || !po.location} title={!po.location ? 'A receiving location is required' : undefined}><PackageCheck size={15} /> Mark fully received</button>
           </div>
         )}

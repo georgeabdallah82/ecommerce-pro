@@ -190,7 +190,7 @@ export default function AdminProductsList({ initial }: { initial: any }) {
           </label>
         </div>
         <div className={ui.tableWrap}>
-          <table className={styles.productTable}>
+          <table className={`${styles.productTable} ${ui.cardTable}`}>
             <thead>
               <tr>
                 <th><input aria-label="Select all products" type="checkbox" checked={allSelected} onChange={toggleAll} /></th>
@@ -208,25 +208,25 @@ export default function AdminProductsList({ initial }: { initial: any }) {
                 const stock = stockInfo(product)
                 return (
                   <tr key={product.id} className={selected.includes(product.id) ? styles.selectedRow : undefined}>
-                    <td><input aria-label={`Select ${product.name}`} type="checkbox" checked={selected.includes(product.id)} onChange={() => toggle(product.id)} /></td>
-                    <td>
+                    <td data-cell="check"><input aria-label={`Select ${product.name}`} type="checkbox" checked={selected.includes(product.id)} onChange={() => toggle(product.id)} /></td>
+                    <td data-cell="primary">
                       <Link className={styles.productCell} href={`/admin/products/${product.id}`}>
                         <div className={styles.thumb}>{product.images?.[0]?.url ? <img src={product.images[0].url} alt="" /> : <span aria-hidden="true">◎</span>}</div>
                         <div><strong>{product.name}</strong><span>{product.sku || 'No SKU'}{product.featured ? ' · Featured' : ''}</span></div>
                       </Link>
                     </td>
-                    <td><span className={`${styles.status} ${statusClass[product.status] || ''}`}>{product.status}</span></td>
-                    <td>
+                    <td data-label="Status"><span className={`${styles.status} ${statusClass[product.status] || ''}`}>{product.status}</span></td>
+                    <td data-label="Inventory">
                       {stock.tracked ? (
                         <div className={stock.available <= 5 ? `${styles.stock} ${styles.stockLow}` : styles.stock}>
                           <strong>{stock.available}</strong><span>{stock.reserved ? `${stock.reserved} reserved` : 'available'}</span>
                         </div>
                       ) : <span className={ui.muted}>Not tracked</span>}
                     </td>
-                    <td><strong>{money(product.basePrice)}</strong>{product.compareAtPrice ? <div className={`${ui.muted} strike`}>{money(product.compareAtPrice)}</div> : null}</td>
-                    <td><span className={styles.channel}>Online Store</span></td>
-                    <td>{new Date(product.updatedAt).toLocaleDateString()}</td>
-                    <td><Link className={ui.iconBtn} href={`/admin/products/${product.id}`} title="Open product"><MoreHorizontal size={17} /></Link></td>
+                    <td data-label="Price"><strong>{money(product.basePrice)}</strong>{product.compareAtPrice ? <div className={`${ui.muted} strike`}>{money(product.compareAtPrice)}</div> : null}</td>
+                    <td data-cell="hide"><span className={styles.channel}>Online Store</span></td>
+                    <td data-label="Updated">{new Date(product.updatedAt).toLocaleDateString()}</td>
+                    <td data-cell="hide"><Link className={ui.iconBtn} href={`/admin/products/${product.id}`} title="Open product"><MoreHorizontal size={17} /></Link></td>
                   </tr>
                 )
               })}

@@ -1,11 +1,13 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ArrowLeft, Copy, Eye, Plus, Trash2, X } from 'lucide-react'
 import s from './admin-product-editor.module.css'
 import ui from './admin-ui.module.css'
 import MediaPicker from './media-picker'
 import UnsavedBar from './admin-unsaved-bar'
+import { useConfirm } from './admin-confirm'
 
 type ImageItem = { id?: string; url: string; alt?: string | null }
 type Variant = { id?: string; name: string; sku: string; barcode?: string | null; optionJson: string; price?: number | null; compareAtPrice?: number | null; quantity?: number; lowStockThreshold?: number; locationId?: string | null; weight?: number | null; weightUnit?: string | null; inventory?: any[] }
@@ -61,6 +63,8 @@ function Check({ checked, onChange, title, text }: { checked: boolean; onChange:
 }
 
 export default function ProductEditorV2({ initial, creating, definitions, locations, channels, publications }: { initial: Product; creating: boolean; definitions: any[]; locations?: StoreLocationOption[]; channels?: any[]; publications?: any[] }) {
+  const confirm = useConfirm()
+  const router = useRouter()
   const [product, setProduct] = useState<Product>(initial)
   const [tab, setTab] = useState<typeof tabs[number]>('General')
   const [busy, setBusy] = useState(false)
@@ -140,7 +144,7 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
 
   async function deleteProduct() {
     if (!product.id) return
-    if (!confirm(`Permanently delete "${product.name || 'this product'}"? This cannot be undone.`)) return
+    if (!(await confirm({ title: `Delete "${product.name || 'this product'}"?`, message: 'The product is permanently removed. This cannot be undone.', confirmLabel: 'Delete product' }))) return
     setBusy(true); setError('')
     try {
       await api(`/api/admin/products/${product.id}`, { method: 'DELETE' })
@@ -176,7 +180,7 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
   return <div className={s.page}>
     <div className={s.topbar}>
       <div className={s.topLeft}>
-        <Link href="/admin/products" className={ui.iconBtn} onClick={e => { if (dirty && !confirm('Discard unsaved changes?')) e.preventDefault() }}><ArrowLeft size={18} /></Link>
+        <Link href="/admin/products" className={ui.iconBtn} onClick={async e => { if (!dirty) return; e.preventDefault(); if (await confirm({ title: 'Discard unsaved changes?', message: 'Your edits to this product will be lost.', confirmLabel: 'Discard' })) router.push('/admin/products') }}><ArrowLeft size={18} /></Link>
         <div><div className={`${ui.muted} ${ui.tiny}`}>PRODUCT</div><h1 className={s.title}>{creating ? 'Add product' : product.name || 'Untitled product'}</h1></div>
       </div>
       <div className={s.topActions}>

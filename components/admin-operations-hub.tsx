@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Boxes, ClipboardList, CreditCard, FileEdit, MapPin, Plus, RefreshCw, RotateCcw, ShoppingCart, Truck, UsersRound } from 'lucide-react'
 import styles from './admin-operations-hub.module.css'
 import ui from './admin-ui.module.css'
+import { useConfirm } from './admin-confirm'
 
 async function api(path: string, init?: RequestInit) {
   const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
@@ -26,6 +27,7 @@ function AddToggle({ label, children }: { label: string; children: (close: () =>
 }
 
 function LocationsPanel({ locations, onChange }: { locations: any[]; onChange: () => void }) {
+  const confirm = useConfirm()
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [isDefault, setIsDefault] = useState(false)
@@ -43,6 +45,7 @@ function LocationsPanel({ locations, onChange }: { locations: any[]; onChange: (
   }
 
   async function toggleStatus(loc: any) {
+    if (loc.status === 'ACTIVE' && !(await confirm({ title: `Deactivate ${loc.name}?`, message: 'Stock at this location stops being used for new orders until you activate it again.', confirmLabel: 'Deactivate' }))) return
     setError('')
     try { await api(`/api/admin/locations/${loc.id}`, { method: 'PATCH', body: JSON.stringify({ status: loc.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE' }) }); onChange() }
     catch (e) { setError(e instanceof Error ? e.message : 'Unable to update location') }
@@ -55,7 +58,7 @@ function LocationsPanel({ locations, onChange }: { locations: any[]; onChange: (
   }
 
   async function remove(loc: any) {
-    if (!confirm(`Delete location "${loc.name}"?`)) return
+    if (!(await confirm({ title: `Delete location "${loc.name}"?`, message: 'This cannot be undone.', confirmLabel: 'Delete location' }))) return
     setError('')
     try { await api(`/api/admin/locations/${loc.id}`, { method: 'DELETE' }); onChange() }
     catch (e) { setError(e instanceof Error ? e.message : 'Unable to delete location') }
@@ -72,7 +75,7 @@ function LocationsPanel({ locations, onChange }: { locations: any[]; onChange: (
           <span className={styles.rowMeta}>{x.isDefault ? 'Default' : x.handle}{x.phone ? ` · ${x.phone}` : ''}</span>
           <div className={styles.rowActions}>
             {!x.isDefault && <button type="button" className={ui.textButton} onClick={() => makeDefault(x)}>Make default</button>}
-            <button type="button" className={ui.textButton} onClick={() => toggleStatus(x)}>{x.status === 'ACTIVE' ? 'Disable' : 'Enable'}</button>
+            <button type="button" className={x.status === 'ACTIVE' ? `${ui.textButton} ${ui.textButtonDanger}` : ui.textButton} onClick={() => toggleStatus(x)}>{x.status === 'ACTIVE' ? 'Disable' : 'Enable'}</button>
             <button type="button" className={`${ui.textButton} ${ui.textButtonDanger}`} onClick={() => remove(x)}>Delete</button>
           </div>
         </div>
@@ -95,6 +98,7 @@ function LocationsPanel({ locations, onChange }: { locations: any[]; onChange: (
 }
 
 function SalesChannelsPanel({ channels, onChange }: { channels: any[]; onChange: () => void }) {
+  const confirm = useConfirm()
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -108,6 +112,7 @@ function SalesChannelsPanel({ channels, onChange }: { channels: any[]; onChange:
   }
 
   async function toggleStatus(channel: any) {
+    if (channel.status === 'ACTIVE' && !(await confirm({ title: `Deactivate ${channel.name}?`, message: 'Products published only to this channel stop being available there.', confirmLabel: 'Deactivate' }))) return
     setError('')
     try { await api('/api/admin/sales-channels', { method: 'PATCH', body: JSON.stringify({ id: channel.id, status: channel.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE' }) }); onChange() }
     catch (e) { setError(e instanceof Error ? e.message : 'Unable to update sales channel') }
@@ -122,7 +127,7 @@ function SalesChannelsPanel({ channels, onChange }: { channels: any[]; onChange:
           <strong>{x.name}</strong>
           <span className={`${ui.statusPill} ${x.status === 'ACTIVE' ? ui.statusPillSuccess : ui.statusPillWarning}`}>{x.status}</span>
           <span className={styles.rowMeta}>{x.handle} · {x._count?.publications ?? 0} products</span>
-          <div className={styles.rowActions}><button type="button" className={ui.textButton} onClick={() => toggleStatus(x)}>{x.status === 'ACTIVE' ? 'Disable' : 'Enable'}</button></div>
+          <div className={styles.rowActions}><button type="button" className={x.status === 'ACTIVE' ? `${ui.textButton} ${ui.textButtonDanger}` : ui.textButton} onClick={() => toggleStatus(x)}>{x.status === 'ACTIVE' ? 'Disable' : 'Enable'}</button></div>
         </div>
       ))}
       {!channels.length && <div className="empty">No sales channels configured.</div>}
@@ -143,6 +148,7 @@ function SalesChannelsPanel({ channels, onChange }: { channels: any[]; onChange:
 const WEBHOOK_TOPICS = ['order.created', 'order.updated', 'order.fulfilled', 'product.updated', 'inventory.updated', 'customer.created']
 
 function WebhooksPanel({ webhooks, onChange }: { webhooks: any[]; onChange: () => void }) {
+  const confirm = useConfirm()
   const [topic, setTopic] = useState(WEBHOOK_TOPICS[0])
   const [endpointUrl, setEndpointUrl] = useState('')
   const [busy, setBusy] = useState(false)
@@ -162,6 +168,7 @@ function WebhooksPanel({ webhooks, onChange }: { webhooks: any[]; onChange: () =
   }
 
   async function toggleStatus(hook: any) {
+    if (hook.status === 'ACTIVE' && !(await confirm({ title: 'Disable this webhook?', message: 'It stops receiving events until you enable it again.', confirmLabel: 'Disable webhook' }))) return
     setError('')
     try { await api('/api/admin/webhooks', { method: 'PATCH', body: JSON.stringify({ id: hook.id, status: hook.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE' }) }); onChange() }
     catch (e) { setError(e instanceof Error ? e.message : 'Unable to update webhook') }
@@ -190,7 +197,7 @@ function WebhooksPanel({ webhooks, onChange }: { webhooks: any[]; onChange: () =
           )}
           <div className={styles.rowActions}>
             {x.hasFailedDelivery && <button type="button" className={ui.textButton} disabled={retryingId === x.id} onClick={() => retry(x)}>{retryingId === x.id ? 'Retrying…' : 'Retry delivery'}</button>}
-            <button type="button" className={ui.textButton} onClick={() => toggleStatus(x)}>{x.status === 'ACTIVE' ? 'Disable' : 'Enable'}</button>
+            <button type="button" className={x.status === 'ACTIVE' ? `${ui.textButton} ${ui.textButtonDanger}` : ui.textButton} onClick={() => toggleStatus(x)}>{x.status === 'ACTIVE' ? 'Disable' : 'Enable'}</button>
           </div>
         </div>
       ))}
@@ -219,6 +226,7 @@ function WebhooksPanel({ webhooks, onChange }: { webhooks: any[]; onChange: () =
 const CREDENTIAL_SCOPES = ['store.read', 'store.write', 'orders.read', 'orders.write', 'products.read', 'products.write']
 
 function ApiCredentialsPanel({ credentials, onChange }: { credentials: any[]; onChange: () => void }) {
+  const confirm = useConfirm()
   const [name, setName] = useState('')
   const [scopes, setScopes] = useState<string[]>(['store.read'])
   const [busy, setBusy] = useState(false)
@@ -241,6 +249,7 @@ function ApiCredentialsPanel({ credentials, onChange }: { credentials: any[]; on
   }
 
   async function toggleStatus(cred: any) {
+    if (cred.status === 'ACTIVE' && !(await confirm({ title: `Revoke ${cred.name || 'this API key'}?`, message: 'Anything using this key stops working immediately.', confirmLabel: 'Revoke key' }))) return
     setError('')
     try { await api('/api/admin/api-credentials', { method: 'PATCH', body: JSON.stringify({ id: cred.id, status: cred.status === 'ACTIVE' ? 'REVOKED' : 'ACTIVE' }) }); onChange() }
     catch (e) { setError(e instanceof Error ? e.message : 'Unable to update API credential') }

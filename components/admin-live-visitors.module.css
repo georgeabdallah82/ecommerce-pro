@@ -158,7 +158,7 @@
   .lvDetailGrid { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 480px) {
-  .lvStats { grid-template-columns: 1fr; }
+  .lvStats { grid-template-columns: 1fr 1fr; }
   .lvDetailGrid { grid-template-columns: 1fr; }
   .lvRow { grid-template-columns: 34px minmax(0, 1fr); }
   .lvRowMeta { display: none; }

@@ -28,6 +28,8 @@
 .layout { display: grid; grid-template-columns: 270px minmax(0, 1fr); align-items: start; gap: 20px; }
 
 .nav { display: grid; gap: 4px; position: sticky; top: 24px; }
+.navSelect { display: none; }
+.navSelect span { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--admin-muted); }
 .navButton {
   display: grid;
   grid-template-columns: 22px 1fr 16px;
@@ -98,8 +100,8 @@
 @media (max-width: 800px) {
   .head { align-items: stretch; flex-direction: column; }
   .layout { grid-template-columns: 1fr; }
-  .nav { position: static; display: flex; overflow: auto; padding-bottom: 4px; }
-  .navButton { min-width: 220px; }
+  .nav { display: none; }
+  .navSelect { display: grid; gap: 6px; }
   .search { width: 100%; }
   .marketSummary { grid-template-columns: 1fr; }
   .head :global(.inline) { align-items: stretch; }

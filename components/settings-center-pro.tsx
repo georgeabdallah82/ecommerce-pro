@@ -138,6 +138,13 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
       {notice && <div className={ui.alert} style={{ marginBottom: 14 }}>{notice}</div>}
 
       <div className={styles.layout}>
+        {/* Phones: one dropdown for all settings sections instead of a sideways-scrolling row of cards. */}
+        <label className={styles.navSelect}>
+          <span>Section</span>
+          <select className={ui.input} value={tab} onChange={e => setTab(e.target.value)}>
+            {(filtered.some(g => g.key === tab) ? filtered : [...groups.filter(g => g.key === tab), ...filtered]).map(g => <option key={g.key} value={g.key}>{g.label}</option>)}
+          </select>
+        </label>
         <aside className={styles.nav}>
           {filtered.map(g => {
             const Icon = g.icon

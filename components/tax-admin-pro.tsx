@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { Check, Globe2, Pencil, Percent, Plus, RefreshCw, Trash2, X } from 'lucide-react'
 import ui from './admin-ui.module.css'
+import { useConfirm } from './admin-confirm'
 
 type TaxRateRow = { id: string; name: string; countries: string; rate: number; isActive: boolean }
 
@@ -16,6 +17,7 @@ async function api(path: string, init?: RequestInit) {
 const initialForm = { name: '', countries: '', rate: '0', isActive: true }
 
 export default function TaxAdminPro({ initial }: { initial: TaxRateRow[] }) {
+  const confirm = useConfirm()
   const [rows, setRows] = useState<TaxRateRow[]>(initial || [])
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL')
@@ -50,6 +52,7 @@ export default function TaxAdminPro({ initial }: { initial: TaxRateRow[] }) {
   }
 
   async function toggleRate(row: TaxRateRow) {
+    if (row.isActive && !(await confirm({ title: `Disable "${row.name}"?`, message: 'Checkout stops charging this tax rate until you enable it again.', confirmLabel: 'Disable tax rate' }))) return
     setBusy(row.id); setError('')
     try { await api('/api/admin/tax-rates', { method: 'PATCH', body: JSON.stringify({ id: row.id, isActive: !row.isActive }) }); await refresh() }
     catch (e) { setError(e instanceof Error ? e.message : 'Unable to update tax rate') }
@@ -57,7 +60,7 @@ export default function TaxAdminPro({ initial }: { initial: TaxRateRow[] }) {
   }
 
   async function deleteRate(row: TaxRateRow) {
-    if (!window.confirm(`Delete "${row.name}"?`)) return
+    if (!(await confirm({ title: `Delete "${row.name}"?`, message: 'Checkout stops charging this tax rate.', confirmLabel: 'Delete tax rate' }))) return
     setBusy(row.id); setError('')
     try { await api('/api/admin/tax-rates', { method: 'DELETE', body: JSON.stringify({ id: row.id }) }); await refresh() }
     catch (e) { setError(e instanceof Error ? e.message : 'Unable to delete tax rate') }
@@ -102,7 +105,7 @@ export default function TaxAdminPro({ initial }: { initial: TaxRateRow[] }) {
         <td>{row.countries === '*' ? 'All countries (fallback)' : row.countries}</td>
         <td><strong>{row.rate}%</strong></td>
         <td><span className={`${ui.statusPill} ${row.isActive ? ui.statusPillSuccess : ui.statusPillWarning}`}>{row.isActive ? <><Check size={13}/> Active</> : 'Inactive'}</span></td>
-        <td><div className="inline"><button className={ui.textButton} disabled={busy === row.id} onClick={() => toggleRate(row)}>{row.isActive ? 'Disable' : 'Enable'}</button><button className={ui.iconBtn} title="Edit tax rate" onClick={() => openEdit(row)}><Pencil size={15}/></button><button className={ui.iconBtn} title="Delete tax rate" disabled={busy === row.id} onClick={() => deleteRate(row)}><Trash2 size={15}/></button></div></td>
+        <td><div className="inline"><button className={row.isActive ? `${ui.textButton} ${ui.textButtonDanger}` : ui.textButton} disabled={busy === row.id} onClick={() => toggleRate(row)}>{row.isActive ? 'Disable' : 'Enable'}</button><button className={ui.iconBtn} title="Edit tax rate" onClick={() => openEdit(row)}><Pencil size={15}/></button><button className={`${ui.iconBtn} ${ui.iconBtnDanger}`} title="Delete tax rate" disabled={busy === row.id} onClick={() => deleteRate(row)}><Trash2 size={15}/></button></div></td>
       </tr>)}
     </tbody></table></div>
     {!filtered.length && <div className={ui.empty}><Percent size={28}/><h3>No tax rates</h3><p className={ui.muted}>Add a tax rate to charge different rates by destination country.</p></div>}

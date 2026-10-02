@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { ArrowRight, Pencil, Plus, RefreshCw, Route, Trash2, X } from 'lucide-react'
 import ui from './admin-ui.module.css'
+import { useConfirm } from './admin-confirm'
 
 type RedirectRow = { id: string; fromPath: string; toPath: string; hits: number; createdAt: string }
 
@@ -16,6 +17,7 @@ async function api(path: string, init?: RequestInit) {
 const initialForm = { fromPath: '', toPath: '' }
 
 export default function RedirectsAdmin({ initial }: { initial: RedirectRow[] }) {
+  const confirm = useConfirm()
   const [rows, setRows] = useState<RedirectRow[]>(initial || [])
   const [query, setQuery] = useState('')
   const [formOpen, setFormOpen] = useState(false)
@@ -47,7 +49,7 @@ export default function RedirectsAdmin({ initial }: { initial: RedirectRow[] }) 
   }
 
   async function remove(row: RedirectRow) {
-    if (!window.confirm(`Delete the redirect from "${row.fromPath}"?`)) return
+    if (!(await confirm({ title: 'Delete this redirect?', message: `Visitors to ${row.fromPath} will no longer be sent on.`, confirmLabel: 'Delete redirect' }))) return
     setBusy(row.id); setError('')
     try { await api('/api/admin/redirects', { method: 'DELETE', body: JSON.stringify({ id: row.id }) }); await refresh() }
     catch (e) { setError(e instanceof Error ? e.message : 'Unable to delete redirect') }
@@ -91,7 +93,7 @@ export default function RedirectsAdmin({ initial }: { initial: RedirectRow[] }) 
         <td><ArrowRight size={14} className={ui.muted}/></td>
         <td><code>{row.toPath}</code></td>
         <td>{row.hits.toLocaleString()}</td>
-        <td><div className="inline"><button className={ui.iconBtn} title="Edit redirect" onClick={() => openEdit(row)}><Pencil size={15}/></button><button className={ui.iconBtn} title="Delete redirect" disabled={busy === row.id} onClick={() => remove(row)}><Trash2 size={15}/></button></div></td>
+        <td><div className="inline"><button className={ui.iconBtn} title="Edit redirect" onClick={() => openEdit(row)}><Pencil size={15}/></button><button className={`${ui.iconBtn} ${ui.iconBtnDanger}`} title="Delete redirect" disabled={busy === row.id} onClick={() => remove(row)}><Trash2 size={15}/></button></div></td>
       </tr>)}
     </tbody></table></div>
     {!filtered.length && <div className={ui.empty}><Route size={28}/><h3>No redirects</h3><p className={ui.muted}>Create a redirect to send visitors from an old URL to a new one.</p></div>}

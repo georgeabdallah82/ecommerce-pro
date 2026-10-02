@@ -156,8 +156,8 @@ export default function AnalyticsAdmin() {
       <div className={`${ui.sectionHead} catalogHead`}>
         <div>
           <span className={ui.muted}>ANALYTICS</span>
-          <h1 className={ui.title}>Analytics</h1>
-          <p className={ui.muted}>Understand sales, customers and inventory at a glance.</p>
+          <h1 className={ui.title}>Analytics & reports</h1>
+          <p className={ui.muted}>Understand sales performance, customers and inventory health.</p>
         </div>
         <div className={styles.controlsRow}>
           <div className={styles.dateControl}>

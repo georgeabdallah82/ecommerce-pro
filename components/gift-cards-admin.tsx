@@ -1,10 +1,11 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { CreditCard, Plus, RefreshCw, Search, Settings2, X } from 'lucide-react'
 import { money } from '@/lib/config'
 import styles from './admin-gift-cards.module.css'
 import ui from './admin-ui.module.css'
+import { useConfirm } from './admin-confirm'
 
 type GiftCard = {
   id: string
@@ -32,6 +33,7 @@ async function api(path: string, init?: RequestInit) {
 }
 
 export default function GiftCardsAdmin({ initial, canManage, defaultCurrency }: { initial: GiftCard[]; canManage: boolean; defaultCurrency: string }) {
+  const confirm = useConfirm()
   const [rows, setRows] = useState<GiftCard[]>(initial || [])
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('ALL')
@@ -72,6 +74,16 @@ export default function GiftCardsAdmin({ initial, canManage, defaultCurrency }: 
     catch (e) { setError(e instanceof Error ? e.message : 'Unable to load gift cards') }
     finally { setLoading(false) }
   }
+
+  // Live filtering: the loaded list filters instantly; a debounced server search also finds
+  // cards beyond the loaded page.
+  const searched = useRef(q.trim())
+  useEffect(() => {
+    const needle = q.trim()
+    if (needle === searched.current) return
+    const timer = setTimeout(() => { searched.current = needle; void search() }, 300)
+    return () => clearTimeout(timer)
+  }, [q]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function openCreate() {
     setCreateOpen(true); setAmount(''); setCurrency(defaultCurrency); setCode(''); setCustomerId(''); setExpiresAt(''); setNote(''); setCreateError('')
@@ -125,6 +137,7 @@ export default function GiftCardsAdmin({ initial, canManage, defaultCurrency }: 
   }
 
   async function changeStatus(nextStatus: string) {
+    if (nextStatus === 'DISABLED' && manageCard && !(await confirm({ title: `Disable gift card ending ${manageCard.last4}?`, message: 'It can no longer be used at checkout until you set it back to Active.', confirmLabel: 'Disable gift card' }))) return
     if (!manageCard || nextStatus === manageCard.status) return
     setManageBusy(true); setManageError('')
     try {
@@ -161,12 +174,11 @@ export default function GiftCardsAdmin({ initial, canManage, defaultCurrency }: 
     {(error || notice) && <div className={`${ui.alert} ${error ? ui.alertDanger : ''}`}>{error || notice}</div>}
 
     <div className={`${ui.card} ${styles.toolbar}`}>
-      <div className={styles.search}><Search size={15} /><input value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && search()} placeholder="Search by code or last 4 digits…" /></div>
+      <div className={styles.search}><Search size={15} /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search by code or last 4 digits…" /></div>
       <select className={`${ui.select} ${ui.selectCompact}`} value={status} onChange={e => setStatus(e.target.value)}>
         <option value="ALL">All statuses</option>
         {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
       </select>
-      <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={search} disabled={loading}>Search</button>
     </div>
 
     <div className={ui.card}>

@@ -210,7 +210,6 @@
   .header > a { width: 100%; justify-content: center; }
   .title { font-size: 29px; }
   .viewBar { align-items: stretch; flex-direction: column; }
-  .views { width: 100%; }
+  .views { width: 100%; flex-wrap: wrap; overflow: visible; }
   .view { flex: 1; justify-content: center; }
-  .productTable { min-width: 980px; }
 }

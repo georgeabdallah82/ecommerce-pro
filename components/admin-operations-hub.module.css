@@ -55,7 +55,9 @@
 a.row { cursor: pointer; }
 
 @media (max-width: 1100px) { .grid { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 760px) { .grid, .grid.wide { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .grid.wide { grid-template-columns: 1fr; } }
+/* Stat tiles stay two per row on phones, with the icon above the number. */
+@media (max-width: 520px) { .tile { flex-direction: column; align-items: flex-start; gap: 8px; padding: 14px; } }
 
 /* Entity management rows (locations, sales channels, webhooks, API
    credentials) -- like .row above but with a trailing actions column,
