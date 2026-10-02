@@ -3878,7 +3878,6 @@ body > .footer {
 .aliLegalPage ul{margin:0 0 14px;padding-left:20px;line-height:1.7;color:var(--focal-ink)}
 .aliLegalPage li{margin-bottom:6px}
 .aliLegalPage a{color:var(--focal-primary);text-decoration:underline}
-.aliLegalPlaceholder{background:var(--focal-soft);color:var(--focal-primary);padding:1px 5px;border-radius:5px;font-weight:700}
 
 /* Coming soon / under construction gate */
 .aliComingSoon{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--focal-bg);padding:24px}

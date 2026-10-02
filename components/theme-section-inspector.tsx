@@ -259,7 +259,7 @@ function mediaPanels(type: 'video' | 'slideshow'): PanelSchema[] {
 // -- neither reads showShipping, which is what this panel used to expose.
 function mainProductPanel(): PanelSchema[] {
   return [{ title: 'Product page', fields: [
-    textarea('Shipping & returns text', 'shippingText', 'Free standard delivery is automatically applied to orders over $50. Tracked shipping worldwide.'),
+    textarea('Shipping & returns text', 'shippingText', 'Leave empty to show your free-delivery amount and a link to your Refund Policy.'),
   ] }]
 }
 function mainCollectionGridPanel(): PanelSchema[] {

@@ -18,6 +18,7 @@ import { getStoreCurrency } from '@/lib/store-currency'
 import { discountAmount, misconfigured, taxableAmountAfterRewards, zeroSplit, type DiscountSplit, type LineItem } from '@/lib/discounts'
 import { PaymentMethod } from '@prisma/client'
 import { ZodError } from 'zod'
+import { newOrderNumber } from '@/lib/order-number'
 
 function stableSerialize(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value)
@@ -290,7 +291,7 @@ export async function POST(req: Request) {
     // redemption above which only ever discounts the merchandise subtotal --
     // matching how a real gift card is applied at the register.
     const grandTotal = Math.max(0, preGiftCardTotal - giftCardDiscount)
-    const orderNumber = `ORD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(0, 6).toUpperCase()}`
+    const orderNumber = newOrderNumber()
     const fingerprint = checkoutFingerprint(user?.id ?? null, input, merged)
 
     const result = await db.$transaction(async tx => {

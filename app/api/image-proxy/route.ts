@@ -71,7 +71,10 @@ async function fetchSafeImage(initial:string){
 
 export async function GET(req:Request){
   try{
-    const limit=consumeRateLimit(`image-proxy:${clientIp(req.headers)}`,30,60*1000)
+    // Generous on purpose: one product grid can be 20+ images, browsers fetch them in parallel,
+    // and mobile carriers put many shoppers behind one IP (CGNAT). It only has to stop the
+    // proxy being used as a bulk downloader; responses are CDN-cached below.
+    const limit=consumeRateLimit(`image-proxy:${clientIp(req.headers)}`,300,60*1000)
     if(!limit.allowed) return new NextResponse('Too many image requests',{status:429,headers:{...NO_STORE,'Retry-After':String(limit.retryAfterSeconds)}})
 
     const raw=new URL(req.url).searchParams.get('url')||''

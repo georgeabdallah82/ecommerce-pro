@@ -3,6 +3,7 @@ import { getMaintenanceConfig } from '@/lib/maintenance'
 import { config } from '@/lib/config'
 import { getContactInfo } from '@/lib/store-contact'
 import { CountdownTimer } from '@/components/countdown-timer'
+import { whatsappUrl } from '@/lib/links'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -19,7 +20,7 @@ export default async function ComingSoon() {
         <p>{maintenance.message}</p>
         <CountdownTimer launchAt={maintenance.launchAt} />
         {contact.phone && (
-          <a className="aliComingSoonContact" href={`https://wa.me/${contact.phone.replace(/[^\d+]/g, '')}`} target="_blank" rel="noopener noreferrer">
+          <a className="aliComingSoonContact" href={whatsappUrl(contact.phone, contact.country)} target="_blank" rel="noopener noreferrer">
             Message us on WhatsApp
           </a>
         )}
