@@ -85,6 +85,8 @@
 .search input { min-width: 0; flex: 1 1 auto; border: 0; outline: 0; background: transparent; font: inherit; color: var(--admin-ink); }
 .search button { border: 0; background: transparent; color: var(--admin-muted); display: grid; place-items: center; cursor: pointer; }
 .statusSelect { min-width: 170px; }
+/* ui.select is width:100%, which pushed the dropdown onto its own row; keep it beside the search. */
+.toolbar .statusSelect { width: auto; flex: 0 0 200px; }
 /* Was globals.css's `.input.compact`, height/min-width set only via a
    `body:has(.adminShell) .tableTopline .input.compact` rule in app/admin/layout.tsx --
    but that literal `.tableTopline` selector can never match this module's hashed
@@ -240,6 +242,7 @@
    */
   .toolbar { flex-direction: column; align-items: stretch; }
   .search { flex: 0 0 auto; }
+  .toolbar .statusSelect { flex: 0 0 auto; width: 100%; }
   .revenue { margin-left: 0; text-align: left; }
 }
 @media (max-width: 600px) {
