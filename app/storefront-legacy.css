@@ -2337,7 +2337,7 @@ body > .footer {
     padding: 0 14px !important;
     margin: 0 !important;
     display: grid !important;
-    grid-template-columns: 44px minmax(0,1fr) 44px !important;
+    grid-template-columns: 44px minmax(0,1fr) auto !important;
     align-items: center !important;
     gap: 8px !important;
   }
@@ -2369,11 +2369,15 @@ body > .footer {
     max-height: 34px !important;
   }
   .focalNavLinks { display: none !important; }
+  /* Search + cart sit side by side. This used to be a 40x40 block, which stacked the
+     cart icon under the search icon and let it hang below the header. */
   .focalNavActions {
     justify-self: end !important;
-    width: 40px !important;
+    width: auto !important;
     height: 40px !important;
-    display: block !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
   }
   .focalNavActions > .focalNavIcon { display: none !important; }
   .focalNavActions > .focalNavIcon:last-child,
@@ -2852,7 +2856,7 @@ body > .footer {
     height: 62px !important;
     min-height: 62px !important;
     padding-inline: 12px !important;
-    grid-template-columns: 40px minmax(0,1fr) 40px !important;
+    grid-template-columns: 40px minmax(0,1fr) auto !important;
   }
   .focalNavMobile,
   .focalNavActions > .focalNavIcon:last-child,
