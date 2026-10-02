@@ -31,7 +31,7 @@ function themeCssVars(theme: Record<string, any>): React.CSSProperties {
   const animations = theme.animations || {}
   return {
     '--store-bg': colors.background, '--store-surface': colors.surface, '--store-text': colors.text, '--store-muted': colors.muted,
-    '--store-primary': colors.primary, '--store-secondary': colors.secondary, '--store-accent': colors.accent,
+    '--store-primary': colors.primary, '--store-secondary': colors.secondary, '--store-accent': colors.accent, '--store-sale': colors.sale,
     '--store-button-text': colors.buttonText, '--store-border': colors.border, '--store-max': layout.maxWidth ? `${layout.maxWidth}px` : undefined,
     '--store-announcement-bg': colors.announcementBg, '--store-announcement-text': colors.announcementText,
     '--store-section-space': layout.sectionSpacing ? `${layout.sectionSpacing}px` : undefined,

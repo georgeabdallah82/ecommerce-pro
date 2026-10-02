@@ -56,7 +56,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   ])
   const vars = {
     '--store-bg': theme.colors.background, '--store-surface': theme.colors.surface, '--store-text': theme.colors.text, '--store-muted': theme.colors.muted,
-    '--store-primary': theme.colors.primary, '--store-secondary': theme.colors.secondary, '--store-accent': theme.colors.accent,
+    '--store-primary': theme.colors.primary, '--store-secondary': theme.colors.secondary, '--store-accent': theme.colors.accent, '--store-sale': theme.colors.sale,
     '--store-button-text': theme.colors.buttonText, '--store-border': theme.colors.border, '--store-max': `${theme.layout.maxWidth}px`,
     '--store-announcement-bg': theme.colors.announcementBg, '--store-announcement-text': theme.colors.announcementText,
     '--store-section-space': `${theme.layout.sectionSpacing}px`, '--store-card-radius': `${theme.cards.radius}px`, '--store-button-radius': `${theme.buttons.radius}px`,

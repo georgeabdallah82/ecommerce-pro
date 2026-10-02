@@ -3342,7 +3342,7 @@ body > .footer {
 .focalStorefront .focalCollectionCard:hover{transform:none}
 
 /* Badges: solid ink fill, warm-light text, tight corners */
-.focalStorefront .focalBadge{background:var(--store-text,#242219)!important;color:var(--store-background,#faf9f6)!important;border-radius:2px!important;text-transform:uppercase;letter-spacing:.03em;font-weight:600!important}
+.focalStorefront .focalBadge{background:var(--store-text,#242219)!important;color:var(--store-bg,#faf9f6)!important;border-radius:2px!important;text-transform:uppercase;letter-spacing:.03em;font-weight:600!important}
 
 /* Footer: accent-color link hover, no forced case change */
 .focalStorefront .focalFooter a{transition:color .16s ease}
