@@ -357,14 +357,21 @@
   .drawer { width: min(390px, 92vw); }
 }
 @media (max-width: 760px) {
-  .editor { grid-template-rows: auto 1fr; }
-  .top { padding: 10px; align-items: flex-start; flex-direction: column; }
-  .topRight { width: 100%; flex-wrap: wrap; justify-content: flex-start; }
+  /* One pane at a time: the section list or the preview, switched from the bottom bar. */
+  .editor { grid-template-rows: auto minmax(0, 1fr) auto; }
+  .top { padding: 8px 10px; align-items: stretch; flex-direction: column; gap: 8px; }
+  .topRight { width: 100%; flex-wrap: nowrap; justify-content: flex-start; }
+  .topRight .btn { flex: 1; justify-content: center; padding: 0 10px; }
+  .deviceGroup { display: none; }
   .body { grid-template-columns: 1fr; }
-  .side { max-height: 220px; border-right: 0; border-bottom: 1px solid var(--admin-border); }
-  .preview { padding: 10px; }
+  .side { max-height: none; border-right: 0; min-height: 0; }
+  .showPreview .side { display: none; }
+  .showSections .canvas { display: none; }
+  .preview { padding: 8px; }
   .drawer { top: 0; width: 100%; border-left: 0; }
   .drawerTabs { top: 0; }
+  .editor .mobileSwitch { display: grid; }
+  .notice { bottom: 70px; border-radius: 14px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .drawer { animation: none; }
@@ -373,7 +380,9 @@
 
 .saveStatus { font-size: 11.5px; font-weight: 600; color: var(--admin-muted); white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
 .saveStatusError { color: var(--admin-danger, #b42318); }
-@media (max-width: 1050px) { .saveStatus { display: none; } }
+/* Hidden on narrow screens to save room -- except a failed save, which must stay visible. */
+@media (max-width: 1050px) { .saveStatus:not(.saveStatusError) { display: none; } }
+@media (max-width: 760px) { .saveStatus.saveStatusError { white-space: normal; max-width: none; } }
 
 .pagePicker { margin: 0 12px 10px; display: grid; gap: 8px; }
 .pagePickerRow { display: flex; align-items: center; gap: 6px; }
@@ -392,3 +401,8 @@
 .presetCard strong { font-size: 13px; font-weight: 800; }
 .presetCard span { font-size: 11.5px; color: var(--admin-muted); line-height: 1.45; }
 .presetCard small { font-size: 10.5px; font-weight: 700; color: var(--admin-accent-strong); }
+
+/* Phone-only Sections / Preview switch (hidden elsewhere, so it takes no grid row). */
+.mobileSwitch { display: none; grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); background: var(--admin-surface); border-top: 1px solid var(--admin-border); }
+.mobileSwitch button { height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm); background: var(--admin-surface); color: var(--admin-ink); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.mobileSwitch button.active { background: var(--admin-accent-soft); border-color: var(--admin-accent); color: var(--admin-accent-strong); }
