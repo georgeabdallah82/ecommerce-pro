@@ -3917,19 +3917,66 @@ a.aliSpecListItem:hover{opacity:.8}
 .aliFlash.align-center .aliViewAll{margin-left:0}
 .aliFlash.align-right .aliFlashHead{flex-direction:row-reverse}
 .aliFlash.align-right .aliViewAll{margin-left:0;margin-right:auto}
-.aliCategoryStrip.align-center .aliCategoryRow{justify-content:center}
-.aliCategoryStrip.align-right .aliCategoryRow{justify-content:flex-end}
-.focalStorefront .align-center .focalNewsletter{grid-template-columns:1fr;justify-items:center;text-align:center}
-.focalStorefront .align-right .focalNewsletter{grid-template-columns:1fr;justify-items:end;text-align:right}
-.focalStorefront .focalType-collection_grid.align-center .focalCollectionGrid,
-.focalStorefront .focalType-collection_grid.align-right .focalCollectionGrid{display:flex!important;flex-wrap:wrap;gap:24px 14px}
-.focalStorefront .focalType-collection_grid.align-center .focalCollectionGrid{justify-content:center}
-.focalStorefront .focalType-collection_grid.align-right .focalCollectionGrid{justify-content:flex-end}
-.focalStorefront .focalType-collection_grid.align-center .focalCollectionCard,
-.focalStorefront .focalType-collection_grid.align-right .focalCollectionCard{flex:0 0 100px;width:100px}
+.focalStorefront .align-center .focalNewsletter{text-align:center}
+.focalStorefront .align-right .focalNewsletter{text-align:right}
 @media(max-width:700px){
   .focalStorefront .align-right .focalSectionHead,
   .focalStorefront .align-right .aliSectionHead{flex-direction:column;align-items:flex-end}
-  .focalStorefront .focalType-collection_grid.align-center .focalCollectionCard,
-  .focalStorefront .focalType-collection_grid.align-right .focalCollectionCard{flex-basis:78px;width:78px}
+}
+
+/* ===== Section width + position, and card position =====
+   Section width narrows the content box (the section's background stays page-wide) and
+   Section position puts that box left / center / right. Card position moves rows of cards
+   that don't fill the row (one product in a four-column grid, a few collections...). */
+.has-sec-w .focalContainer,.has-sec-w .aliContainer{width:min(var(--sec-w),calc(100% - 44px))!important}
+.has-sec-w.sec-left .focalContainer,.has-sec-w.sec-left .aliContainer{margin-left:max(22px,calc((100% - 1280px)/2));margin-right:auto}
+.has-sec-w.sec-right .focalContainer,.has-sec-w.sec-right .aliContainer{margin-right:max(22px,calc((100% - 1280px)/2));margin-left:auto}
+@media(max-width:600px){.has-sec-w .focalContainer,.has-sec-w .aliContainer{width:min(var(--sec-w),calc(100% - 24px))!important}.has-sec-w.sec-left .focalContainer,.has-sec-w.sec-left .aliContainer{margin-left:12px}.has-sec-w.sec-right .focalContainer,.has-sec-w.sec-right .aliContainer{margin-right:12px}}
+
+.focalStorefront .block-center .focalProductGrid,.focalStorefront .block-right .focalProductGrid,
+.focalStorefront .block-center .aliDenseGrid,.focalStorefront .block-right .aliDenseGrid,
+.focalStorefront .block-center .focalPromoGrid,.focalStorefront .block-right .focalPromoGrid,
+.focalStorefront .block-center .focalTestimonialGrid,.focalStorefront .block-right .focalTestimonialGrid{display:flex!important;flex-wrap:wrap;gap:26px 18px!important;--c:var(--cols,4)}
+.focalStorefront .block-center .aliDenseGrid,.focalStorefront .block-right .aliDenseGrid{--c:6;gap:14px!important}
+.focalStorefront .block-center .focalTestimonialGrid,.focalStorefront .block-right .focalTestimonialGrid{--c:3;gap:20px!important}
+.focalStorefront .block-center .focalPromoGrid,.focalStorefront .block-right .focalPromoGrid{--c:var(--cols,3);gap:20px!important}
+.focalStorefront .block-center .focalProductGrid>*,.focalStorefront .block-right .focalProductGrid>*,
+.focalStorefront .block-center .aliDenseGrid>*,.focalStorefront .block-right .aliDenseGrid>*,
+.focalStorefront .block-center .focalPromoGrid>*,.focalStorefront .block-right .focalPromoGrid>*,
+.focalStorefront .block-center .focalTestimonialGrid>*,.focalStorefront .block-right .focalTestimonialGrid>*{flex:0 0 calc((100% - (var(--c) - 1) * var(--gap-x,18px)) / var(--c));min-width:0}
+.focalStorefront .block-center .aliDenseGrid,.focalStorefront .block-right .aliDenseGrid{--gap-x:14px}
+.focalStorefront .block-center .focalPromoGrid,.focalStorefront .block-right .focalPromoGrid,
+.focalStorefront .block-center .focalTestimonialGrid,.focalStorefront .block-right .focalTestimonialGrid{--gap-x:20px}
+.focalStorefront .block-center .focalProductGrid,.focalStorefront .block-center .aliDenseGrid,.focalStorefront .block-center .focalPromoGrid,.focalStorefront .block-center .focalTestimonialGrid{justify-content:center}
+.focalStorefront .block-right .focalProductGrid,.focalStorefront .block-right .aliDenseGrid,.focalStorefront .block-right .focalPromoGrid,.focalStorefront .block-right .focalTestimonialGrid{justify-content:flex-end}
+.focalStorefront .block-center .aliFlashGrid,.focalStorefront .block-center .aliCategoryRow{justify-content:safe center}
+.focalStorefront .block-right .aliFlashGrid,.focalStorefront .block-right .aliCategoryRow{justify-content:safe flex-end}
+.aliFlash.block-center .aliFlashGrid,.aliCategoryStrip.block-center .aliCategoryRow{justify-content:safe center}
+.aliFlash.block-right .aliFlashGrid,.aliCategoryStrip.block-right .aliCategoryRow{justify-content:safe flex-end}
+.focalStorefront .focalType-collection_grid.block-center .focalCollectionGrid,.focalStorefront .focalType-collection_grid.block-right .focalCollectionGrid{display:flex!important;flex-wrap:wrap;gap:24px 14px}
+.focalStorefront .focalType-collection_grid.block-center .focalCollectionGrid{justify-content:center}
+.focalStorefront .focalType-collection_grid.block-right .focalCollectionGrid{justify-content:flex-end}
+.focalStorefront .focalType-collection_grid.block-center .focalCollectionCard,.focalStorefront .focalType-collection_grid.block-right .focalCollectionCard{flex:0 0 100px;width:100px}
+.aliTrustStrip.block-center .aliTrustRow,.aliTrustStrip.block-right .aliTrustRow{grid-template-columns:repeat(auto-fit,minmax(180px,240px))}
+.aliTrustStrip.block-center .aliTrustRow{justify-content:center}
+.aliTrustStrip.block-right .aliTrustRow{justify-content:end}
+.focalStorefront .block-center .focalNewsletter{max-width:860px;margin-inline:auto}
+.focalStorefront .block-right .focalNewsletter{max-width:860px;margin-left:auto}
+@media(max-width:1000px){
+  .focalStorefront .block-center .focalProductGrid,.focalStorefront .block-right .focalProductGrid{--c:min(var(--cols,4),3)}
+  .focalStorefront .block-center .aliDenseGrid,.focalStorefront .block-right .aliDenseGrid{--c:4}
+  .focalStorefront .block-center .focalTestimonialGrid,.focalStorefront .block-right .focalTestimonialGrid{--c:2}
+}
+@media(max-width:760px){
+  .focalStorefront .block-center .aliDenseGrid,.focalStorefront .block-right .aliDenseGrid{--c:2;--gap-x:10px;gap:10px!important}
+  .focalStorefront .focalType-collection_grid.block-center .focalCollectionCard,.focalStorefront .focalType-collection_grid.block-right .focalCollectionCard{flex-basis:78px;width:78px}
+}
+@media(max-width:700px){
+  .focalStorefront .block-center .focalProductGrid,.focalStorefront .block-right .focalProductGrid{--c:2;--gap-x:11px;gap:20px 11px!important}
+  .focalStorefront .block-center .focalPromoGrid,.focalStorefront .block-right .focalPromoGrid{--c:2;--gap-x:12px}
+  .focalStorefront .block-center .focalTestimonialGrid,.focalStorefront .block-right .focalTestimonialGrid{--c:2;--gap-x:12px}
+}
+@media(max-width:480px){
+  .focalStorefront .block-center .focalPromoGrid,.focalStorefront .block-right .focalPromoGrid,
+  .focalStorefront .block-center .focalTestimonialGrid,.focalStorefront .block-right .focalTestimonialGrid{--c:1}
 }

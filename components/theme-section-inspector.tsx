@@ -159,13 +159,22 @@ export const color = (label: string, name: string, fallback: string): FieldSchem
   ({ kind: 'color', label, get: s => s[name] || fallback, set: value => ({ [name]: value }) })
 export const blocks = (label: string, blockType: string): FieldSchema => ({ kind: 'blocks', label, blockType })
 
+// Where a section's cards sit when the row isn't full, and an optional narrower section box
+// placed left / center / right on the page. All default to the old look (cards left, full width).
+export const boxFields: Array<FieldSchema | FieldSchema[]> = [[
+  select('Card position', 'blockAlign', ['left', 'center', 'right'], 'left'),
+  select('Section width', 'sectionWidth', [{ value: '', label: 'Full width' }, { value: '1100', label: 'Wide' }, { value: '900', label: 'Medium' }, { value: '700', label: 'Narrow' }, { value: '520', label: 'Compact' }], ''),
+  select('Section position', 'sectionPosition', ['center', 'left', 'right'], 'center'),
+]]
+export const boxPanel: PanelSchema = { title: 'Section layout', fields: boxFields }
+
 export const commonLayoutPanel: PanelSchema = {
   title: 'Layout & appearance',
   fields: [[
     { kind: 'select', label: 'Background', options: ['default','surface','secondary','dark','primary','gradient'], get: s => s.background || 'default', set: value => ({ background: value === 'default' ? '' : value }) },
     select('Text alignment', 'textAlign', ['left','center','right'], 'left'),
     range('Spacing', 'spacing', 0, 160, 72),
-  ]],
+  ], ...boxFields],
 }
 
 // Every product-list section (grid, carousel, featured, recommendations) renders the
@@ -208,7 +217,7 @@ function collectionTypePanels(): PanelSchema[] {
 // New arrivals / best sellers: heading, item count and the View all link are the
 // settings those blocks read (their layout is fixed AliExpress-style markup).
 function homeGridPanel(defaultHeading: string): PanelSchema[] {
-  return [{ title: 'Content', fields: [text('Heading', 'heading', defaultHeading), range('Products shown', 'limit', 4, 20, 12), toggle('Show View all', 'showViewAll', true), select('Text alignment', 'textAlign', ['left','center','right'], 'left')] }]
+  return [{ title: 'Content', fields: [text('Heading', 'heading', defaultHeading), range('Products shown', 'limit', 4, 20, 12), toggle('Show View all', 'showViewAll', true), select('Text alignment', 'textAlign', ['left','center','right'], 'left')] }, boxPanel]
 }
 
 function richTextPanels(): PanelSchema[] {
@@ -306,9 +315,9 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
   product_recommendations: () => productTypePanels(),
   collection_grid: () => collectionTypePanels(),
   collection_carousel: () => collectionTypePanels(),
-  category_strip: () => [{ title: 'Content', fields: [range('Collections shown', 'limit', 4, 16, 12), select('Text alignment', 'textAlign', ['left','center','right'], 'left')] }, { title: 'Collections', fields: [
+  category_strip: () => [{ title: 'Content', fields: [range('Collections shown', 'limit', 4, 16, 12)] }, { title: 'Collections', fields: [
     { kind: 'picker', label: 'Choose collections', source: 'collections', hint: 'Leave empty to show collections automatically.', get: s => (Array.isArray(s.collectionIds) ? s.collectionIds : []), set: ids => ({ collectionIds: ids }) },
-  ] }],
+  ] }, boxPanel],
   flash_deals: () => [
     { title: 'Content', fields: [text('Heading', 'heading', 'Flash Deals'), range('Products shown', 'limit', 4, 20, 12), toggle('Show View all', 'showViewAll', true), select('Text alignment', 'textAlign', ['left','center','right'], 'left')] },
     { title: 'Countdown', fields: [
@@ -317,6 +326,7 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
       select('Timer runs until', 'countdownMode', [{ value: 'daily', label: 'Midnight, every day' }, { value: 'date', label: 'A specific date & time' }], 'daily'),
       text('End date & time', 'endDate', 'YYYY-MM-DDTHH:mm, e.g. 2026-12-31T23:59'),
     ] },
+    boxPanel,
   ],
   new_arrivals: () => homeGridPanel('New Arrivals'),
   best_sellers: () => homeGridPanel('Best Sellers'),
@@ -347,6 +357,7 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
   newsletter: () => [
     { title: 'Content', fields: [text('Eyebrow', 'eyebrow', 'NEWSLETTER'), text('Heading', 'heading'), textarea('Text', 'text'), text('Button label', 'buttonLabel'), text('Email placeholder', 'placeholder', 'Email address'), text('Success message', 'successMessage', 'Thanks for subscribing!')] },
     { title: 'Appearance', fields: [select('Background', 'background', ['primary','secondary','surface','dark'], 'primary'), select('Text alignment', 'textAlign', ['left','center','right'], 'left'), range('Spacing', 'spacing', 0, 160, 72)] },
+    boxPanel,
   ],
   rich_text: () => richTextPanels(),
   // Not richTextPanels() -- that panel's Button label/URL fields are dead here:
@@ -364,6 +375,7 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
   trust_strip: () => [
     { title: 'Items', fields: [blocks('Items', 'trust_item')] },
     { title: 'Layout', fields: [select('Text alignment', 'textAlign', ['center','left','right'], 'center')] },
+    boxPanel,
   ],
   trust_badges: () => [
     { title: 'Badges', fields: [blocks('Badges', 'badge')] },

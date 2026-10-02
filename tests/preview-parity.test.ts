@@ -51,11 +51,20 @@ describe('section text alignment', () => {
     const renderer = read('components/storefront-sections.tsx')
     const css = read('app/storefront-legacy.css')
     // Headings used to ignore it (the heading box shrink-wraps its text), so the setting looked dead.
-    for (const selector of ['.align-center .focalSectionHead', '.align-center .aliSectionHead', '.aliFlash.align-center', '.aliCategoryStrip.align-center', '.align-center .focalNewsletter', '.focalType-collection_grid.align-center']) {
+    for (const selector of ['.align-center .focalSectionHead', '.align-center .aliSectionHead', '.aliFlash.align-center', '.align-center .focalNewsletter']) {
       assert.ok(css.includes(selector), `storefront-legacy.css has no rule for ${selector}`)
     }
-    for (const marker of ["aliSection${alignClass(s)}", "aliCategoryStrip${alignClass(s)}", "aliFlash${alignClass(s)}", "${s.fullBleed===false?'contained':''}${alignClass(s)}"]) {
+    for (const marker of ["aliSection${alignClass(s)}", "aliFlash${alignClass(s)}", "${s.fullBleed===false?'contained':''}${alignClass(s)}"]) {
       assert.ok(renderer.includes(marker), `storefront-sections.tsx does not apply the alignment class: ${marker}`)
     }
+  })
+
+  it('section width, section position and card position are wired from the setting to the CSS', () => {
+    const renderer = read('components/storefront-sections.tsx')
+    const css = read('app/storefront-legacy.css')
+    const panels = read('components/theme-section-inspector.tsx')
+    for (const key of ["'blockAlign'", "'sectionWidth'", "'sectionPosition'"]) assert.ok(panels.includes(key), `no studio control for ${key}`)
+    for (const marker of ['block-center', 'block-right', 'has-sec-w', 'sec-${', "'--sec-w'"]) assert.ok(renderer.includes(marker), `renderer never emits ${marker}`)
+    for (const selector of ['.has-sec-w .focalContainer', '.has-sec-w.sec-left', '.has-sec-w.sec-right', '.block-center .focalProductGrid', '.block-right .focalProductGrid', '.block-center .aliDenseGrid', '.focalType-collection_grid.block-center']) assert.ok(css.includes(selector), `no CSS for ${selector}`)
   })
 })
