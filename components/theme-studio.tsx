@@ -77,7 +77,7 @@ type AnyMap = Record<string, any>
 type Section = { id: string; type: string; enabled?: boolean; settings?: AnyMap; blocks?: AnyMap[] }
 type PageRow = { id: string; title: string; handle: string; bodyHtml: string | null; status: string; seoTitle?: string | null; seoDescription?: string | null }
 type Snapshot = { theme: AnyMap; templates: Record<string, Section[]>; page: string; selectedId: string }
-type Props = { initial: { theme: AnyMap; sections: Section[]; navigation: any[]; draft: boolean; legacyBlocks?: LegacyBlock[]; openPage?: string } }
+type Props = { initial: { theme: AnyMap; sections: Section[]; navigation: any[]; draft: boolean; legacyBlocks?: LegacyBlock[]; openPage?: string; products?: any[]; collections?: any[]; dataError?: string } }
 
 // The four page templates the editor manages. Home is a full section builder;
 // the other three append a merchant-editable content zone below that page's own
@@ -395,10 +395,12 @@ export default function ThemeStudio({ initial }: Props) {
   const [mobileView, setMobileView] = useState<'sections' | 'preview'>('sections')
   const [message, setMessage] = useState(initialState.migrated ? 'Your homepage announcement bar and trust strip are now sections below. Save and publish to apply.' : '')
   const [saveError, setSaveError] = useState('')
-  const [dataError, setDataError] = useState('')
+  const [dataError, setDataError] = useState(initial.dataError || '')
   const [messageIsError, setMessageIsError] = useState(false)
-  const [products, setProducts] = useState<any[]>([])
-  const [collections, setCollections] = useState<any[]>([])
+  // Loaded on the server with the page (same request that loads the theme), so the pickers
+  // and the preview never depend on a second request from the browser.
+  const [products, setProducts] = useState<any[]>(initial.products || [])
+  const [collections, setCollections] = useState<any[]>(initial.collections || [])
   const [dragId, setDragId] = useState<string | null>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   // A counter rather than a boolean: the iframe can legitimately send a second
@@ -461,22 +463,32 @@ export default function ThemeStudio({ initial }: Props) {
   }, [])
 
   useEffect(() => {
-    // Preferred: one call that runs the live storefront's own queries. If it fails, fall back
-    // to the older public/admin endpoints, and if nothing loads say so (the pickers would
-    // otherwise claim there are no products or collections).
-    const legacy = () => Promise.all([
-      fetch('/api/products', { cache: 'no-store' }).then(r => (r.ok ? r.json() : Promise.reject(new Error(`products ${r.status}`)))),
-      fetch('/api/admin/collections', { cache: 'no-store' }).then(r => (r.ok ? r.json() : Promise.reject(new Error(`collections ${r.status}`)))),
-    ]).then(([productData, collectionData]) => ({ products: rows(productData), collections: rows(collectionData).filter((collection: any) => collection.isActive !== false) }))
+    // Fallback only: the page normally hands products and collections over already
+    // (initial.products / initial.collections, loaded on the server with the theme). If the
+    // server couldn't load them, try the API once more and, if that fails too, show every
+    // reason in the pickers so the failure is never mistaken for an empty store.
+    if (initial.products && !initial.dataError) return
+    const reasons: string[] = initial.dataError ? [`server: ${initial.dataError}`] : []
+    const reason = (label: string) => async (r: Response) => {
+      if (r.ok) return r.json()
+      const body = await r.json().catch(() => ({}))
+      throw new Error(`${label} ${r.status}${body?.error ? ` ${body.error}` : ''}`)
+    }
     fetch('/api/admin/theme/preview-data', { cache: 'no-store' })
-      .then(async r => {
-        const data = await r.json().catch(() => ({}))
-        if (!r.ok) throw new Error(data.error || `preview data ${r.status}`)
-        return { products: rows(data.products), collections: rows(data.collections) }
+      .then(reason('preview data'))
+      .then(data => ({ products: rows(data.products), collections: rows(data.collections) }))
+      .catch(error => {
+        reasons.push(error instanceof Error ? error.message : String(error))
+        return Promise.all([
+          fetch('/api/products', { cache: 'no-store' }).then(reason('products')),
+          fetch('/api/admin/collections', { cache: 'no-store' }).then(reason('collections')),
+        ]).then(([productData, collectionData]) => ({ products: rows(productData), collections: rows(collectionData).filter((collection: any) => collection.isActive !== false) }))
       })
-      .catch(legacy)
-      .then(({ products, collections }) => { setProducts(products); setCollections(collections) })
-      .catch(error => setDataError(error instanceof Error ? error.message : 'Unable to load products and collections'))
+      .then(({ products, collections }) => { setProducts(products); setCollections(collections); setDataError('') })
+      .catch(error => {
+        reasons.push(error instanceof Error ? error.message : String(error))
+        setDataError(reasons.join('; '))
+      })
   }, [])
 
   // The iframe's src is set imperatively here instead of as a static JSX prop
