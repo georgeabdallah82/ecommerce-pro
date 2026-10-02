@@ -400,6 +400,8 @@ export default function ThemeStudio({ initial }: Props) {
   const [dirty, setDirty] = useState(initialState.migrated)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState(initialState.migrated ? 'Your homepage announcement bar and trust strip are now sections below. Save and publish to apply.' : '')
+  const [saveError, setSaveError] = useState('')
+  const [messageIsError, setMessageIsError] = useState(false)
   const [products, setProducts] = useState<any[]>([])
   const [collections, setCollections] = useState<any[]>([])
   const [dragId, setDragId] = useState<string | null>(null)
@@ -418,6 +420,14 @@ export default function ThemeStudio({ initial }: Props) {
   const [confirmState, setConfirmState] = useState<{ message: string; onConfirm: () => void } | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
   const confirmAction = (message: string, onConfirm: () => void) => setConfirmState({ message, onConfirm })
+  // The toast used to stay on screen until the next action; it now clears itself, and
+  // failures stay up longer than confirmations so they can be read.
+  const flash = (text: string, isError = false) => { setMessageIsError(isError); setMessage(text) }
+  useEffect(() => {
+    if (!message) return
+    const timer = window.setTimeout(() => { setMessage(''); setMessageIsError(false) }, messageIsError ? 8000 : 4500)
+    return () => window.clearTimeout(timer)
+  }, [message, messageIsError])
   const [hasDraft, setHasDraft] = useState(initial.draft)
   const [publishing, setPublishing] = useState(false)
   const [publishMessage, setPublishMessage] = useState('')
@@ -574,7 +584,7 @@ export default function ThemeStudio({ initial }: Props) {
     commit(withPage(list))
     // Select the last section so the next addition lands after the whole group, not inside it.
     setSelectedId(made[made.length - 1].id)
-    setMessage(`Added “${preset.label}” (${made.length} section${made.length === 1 ? '' : 's'}). Undo removes it all.`)
+    flash(`Added “${preset.label}” (${made.length} section${made.length === 1 ? '' : 's'}). Undo removes it all.`)
     closePicker()
   }
   const removeSection = () => {
@@ -663,9 +673,9 @@ export default function ThemeStudio({ initial }: Props) {
       setPages(list => [data.page, ...list])
       setNewPageTitle(null)
       switchPage(pageTemplateKey(data.page.id))
-      setMessage(`Page created as a draft. Build it below; make it visible when it's ready.`)
+      flash(`Page created as a draft. Build it below; make it visible when it's ready.`)
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to create page')
+      flash(error instanceof Error ? error.message : 'Unable to create page', true)
     } finally { setPageBusy(false) }
   }
   const setPageStatus = async (status: 'PUBLISHED' | 'DRAFT') => {
@@ -676,9 +686,9 @@ export default function ThemeStudio({ initial }: Props) {
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data.error || 'Unable to update page')
       setPages(list => list.map(row => (row.id === activePage.id ? { ...row, status: data.page?.status || status } : row)))
-      setMessage(status === 'PUBLISHED' ? 'Page is visible to visitors (publish your theme to show its sections).' : 'Page hidden from visitors.')
+      flash(status === 'PUBLISHED' ? 'Page is visible to visitors (publish your theme to show its sections).' : 'Page hidden from visitors.')
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to update page')
+      flash(error instanceof Error ? error.message : 'Unable to update page', true)
     } finally { setPageBusy(false) }
   }
   const openCategory = (key: string) => {
@@ -689,6 +699,7 @@ export default function ThemeStudio({ initial }: Props) {
   const save = async (): Promise<boolean> => {
     setSaving(true)
     setMessage('')
+    setSaveError('')
     try {
       const editorTemplates = { ...(theme.editorTemplates || {}), ...clone(templates) }
       const nextTheme = { ...theme, editorTemplates, editorTemplateKey: page }
@@ -702,10 +713,12 @@ export default function ThemeStudio({ initial }: Props) {
       setTheme(data.theme || nextTheme)
       setDirty(false)
       setHasDraft(true)
-      setMessage('Theme saved')
+      flash('Draft saved')
       return true
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to save theme')
+      const reason = error instanceof Error ? error.message : 'Unable to save theme'
+      setSaveError(`Couldn't save: ${reason}`)
+      flash(`Couldn't save your changes: ${reason}. They are still here -- try again.`, true)
       return false
     } finally {
       setSaving(false)
@@ -802,7 +815,7 @@ export default function ThemeStudio({ initial }: Props) {
       const response = await fetch(`/api/admin/theme/versions/${id}/restore`, { method: 'POST' })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data.error || 'Unable to restore theme version')
-      setMessage('Version restored to draft — reloading…')
+      flash('Version restored to draft — reloading…')
       window.setTimeout(() => window.location.reload(), 600)
     } catch (error) {
       setVersionsError(error instanceof Error ? error.message : 'Unable to restore theme version')
@@ -853,8 +866,8 @@ export default function ThemeStudio({ initial }: Props) {
               </button>
             ))}
           </div>
-          <span className={`${styles.saveStatus} ${publishError ? styles.saveStatusError : ''}`} role="status" aria-live="polite">
-            {publishError || (publishing ? 'Publishing…' : saving ? 'Saving…' : dirty ? 'Unsaved changes' : publishMessage || (hasDraft ? 'Saved — not published yet' : 'Published'))}
+          <span className={`${styles.saveStatus} ${publishError || (saveError && dirty) ? styles.saveStatusError : ''}`} role="status" aria-live="polite">
+            {publishError || (saveError && dirty && !saving && !publishing ? saveError : null) || (publishing ? 'Publishing…' : saving ? 'Saving…' : dirty ? 'Unsaved changes' : publishMessage || (hasDraft ? 'Saved — not published yet' : 'Published'))}
           </span>
           <button className={styles.btn} disabled={!dirty || saving || publishing} onClick={save} title="Save draft (Ctrl/Cmd+S)">
             <Save size={14} />
@@ -1175,7 +1188,12 @@ export default function ThemeStudio({ initial }: Props) {
         </div>
       )}
 
-      {message && <div className={styles.notice}>{message}</div>}
+      {message && (
+        <div className={`${styles.notice} ${messageIsError ? styles.noticeError : ''}`} role={messageIsError ? 'alert' : 'status'}>
+          <span>{message}</span>
+          <button type="button" onClick={() => { setMessage(''); setMessageIsError(false) }} aria-label="Dismiss message">×</button>
+        </div>
+      )}
 
     </div>
   )
