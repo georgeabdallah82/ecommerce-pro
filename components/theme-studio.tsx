@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowDown,
   ArrowLeft,
@@ -351,6 +351,12 @@ const THEME_CATEGORIES: ThemeCategory[] = [
   { key: 'layout', label: 'Layout', icon: Columns3, group: 'layout', panels: [
     { title: 'Layout', fields: [range('Section spacing', 'sectionSpacing', 32, 160, 84, undefined, 'px'), range('Max page width', 'maxWidth', 960, 1600, 1360, 20, 'px')] },
   ] },
+]
+// How the Theme tab groups its categories (display only; order here is the order shown).
+const THEME_GROUPS: { label: string; hint: string; keys: string[] }[] = [
+  { label: 'Store', hint: 'Name, logo, links', keys: ['branding', 'social'] },
+  { label: 'Pages & layout', hint: 'Header, footer, page options', keys: ['header', 'footer', 'productPage', 'collectionPage', 'cart'] },
+  { label: 'Look & feel', hint: 'Applies everywhere', keys: ['colors', 'typography', 'buttons', 'cards', 'layout'] },
 ]
 
 export default function ThemeStudio({ initial }: Props) {
@@ -994,17 +1000,22 @@ export default function ThemeStudio({ initial }: Props) {
                 </div>
               </div>
               <div className={styles.rows}>
-                {THEME_CATEGORIES.map(category => {
-                  const Icon = category.icon
-                  return (
-                    <div key={category.key} className={`${styles.row} ${activeCategoryKey === category.key && drawerMode === 'theme' ? styles.active : ''}`}>
-                      <button className={styles.rowMain} onClick={() => openCategory(category.key)}>
-                        <Icon size={15} className={styles.rowIcon} />
-                        <span>{category.label}</span>
-                      </button>
-                    </div>
-                  )
-                })}
+                {THEME_GROUPS.map(group => (
+                  <Fragment key={group.label}>
+                    <div className={styles.groupLabel}><span>{group.label}</span><small>{group.hint}</small></div>
+                    {group.keys.map(key => THEME_CATEGORIES.find(c => c.key === key)).filter((c): c is ThemeCategory => !!c).map(category => {
+                      const Icon = category.icon
+                      return (
+                        <div key={category.key} className={`${styles.row} ${activeCategoryKey === category.key && drawerMode === 'theme' ? styles.active : ''}`}>
+                          <button className={styles.rowMain} onClick={() => openCategory(category.key)}>
+                            <Icon size={15} className={styles.rowIcon} />
+                            <span>{category.label}</span>
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </Fragment>
+                ))}
               </div>
             </>
           ) : (
