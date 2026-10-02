@@ -145,6 +145,10 @@ export function adminBrandVars(colors: BrandColors | null | undefined): AdminAcc
     light['--admin-shadow-sm'] = `0 1px 2px rgba(${ink.map(Math.round).join(',')},.045)`
     light['--admin-shadow-md'] = `0 8px 24px rgba(${ink.map(Math.round).join(',')},.07)`
     light['--admin-shadow-lg'] = `0 26px 80px rgba(${ink.map(Math.round).join(',')},.18)`
+    // The dark sidebar is the brand's own ink, kept very dark so its light text stays readable.
+    const sidebar = luminance(text) <= 0.03 ? text : untilContrast(text, BLACK, WHITE, 15)
+    light['--admin-sidebar-bg'] = toHex(sidebar)
+    light['--admin-sidebar-hover'] = toHex(mix(sidebar, WHITE, 0.88))
   }
   const muted = parseHex(colors.muted)
   if (muted && luminance(muted) < 0.45) {

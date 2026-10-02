@@ -1,0 +1,131 @@
+/* Admin Dashboard: a brand-coloured welcome band (bleeding to the edges of the page) with the
+   stat cards overlapping its bottom edge, then sales, attention items, orders and products. */
+
+.page { max-width: none; margin: -28px -36px 0; }
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 26px 36px 104px;
+  background:
+    radial-gradient(120% 160% at 88% -10%, color-mix(in srgb, var(--admin-accent) 70%, #fff) 0%, transparent 45%),
+    linear-gradient(180deg, var(--admin-accent) 0%, color-mix(in srgb, var(--admin-accent) 82%, #000) 100%);
+  color: var(--admin-accent-ink);
+}
+.hero::after { content: ''; position: absolute; right: -80px; top: -120px; width: 380px; height: 380px; border-radius: 50%; background: rgba(255, 255, 255, .07); pointer-events: none; }
+.heroText { position: relative; z-index: 1; min-width: 0; }
+.eyebrow { font-size: 11px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; opacity: .78; }
+.greeting { margin: 6px 0 0; font-size: 34px; line-height: 1.08; letter-spacing: -.035em; color: inherit !important; }
+.summary { margin: 8px 0 0; font-size: 14px; opacity: .9; }
+.heroActions { position: relative; z-index: 1; display: flex; gap: 8px; flex-wrap: wrap; }
+.heroGhost, .heroGhost:hover:not(:disabled) { background: rgba(255, 255, 255, .14); border-color: rgba(255, 255, 255, .32); color: var(--admin-accent-ink); }
+.heroPrimary, .heroPrimary:hover:not(:disabled) { background: var(--admin-accent-ink); border-color: var(--admin-accent-ink); color: var(--admin-accent); }
+
+.body { position: relative; z-index: 2; display: grid; gap: 16px; margin-top: -76px; padding: 0 36px; }
+
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.kpi {
+  display: grid;
+  gap: 7px;
+  padding: 18px 20px;
+  border-radius: var(--admin-card-radius);
+  background: var(--admin-surface);
+  box-shadow: var(--admin-card-shadow);
+  color: var(--admin-ink);
+  text-decoration: none;
+}
+a.kpi:hover { box-shadow: var(--admin-shadow-md); }
+.kpi span { font-size: 12.5px; font-weight: 600; color: var(--admin-muted); }
+.kpi strong { font-size: 28px; line-height: 1; letter-spacing: -.03em; font-weight: 800; }
+.kpi small { font-size: 11.5px; font-weight: 700; color: var(--admin-muted); }
+.kpi small.up { color: var(--admin-success); }
+.kpi small.down { color: var(--admin-danger); }
+.liveDot { display: inline-block; width: 7px; height: 7px; margin-right: 4px; border-radius: 50%; background: var(--admin-success); box-shadow: 0 0 0 3px var(--admin-success-ring); vertical-align: 1px; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.panel { padding: 20px; border-radius: var(--admin-card-radius); background: var(--admin-surface); box-shadow: var(--admin-card-shadow); min-width: 0; }
+.panelHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.panelHead h2 { margin: 0; font-size: 16px; letter-spacing: -.01em; color: var(--admin-ink); }
+.panelHead a { font-size: 12.5px; font-weight: 700; color: var(--admin-accent-strong); text-decoration: none; }
+.panelHead a:hover { text-decoration: underline; }
+
+/* Sales chart */
+.chart { display: grid; gap: 10px; }
+.chartLegend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12px; color: var(--admin-muted); }
+.chartLegend b { margin-left: 4px; color: var(--admin-ink); }
+.legendCurrent, .legendPrevious { display: inline-block; width: 14px; height: 0; margin-right: 6px; vertical-align: middle; border-top: 2.5px solid var(--chart-current); border-radius: 2px; }
+.legendPrevious { border-top: 2px dashed var(--admin-muted-soft); }
+.chartPlot { position: relative; height: 230px; padding-bottom: 22px; }
+.chartCanvas { position: relative; height: 208px; }
+.chartPlot svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.gridLine { stroke: var(--admin-border-soft); stroke-width: 1; }
+.lineCurrent { fill: none; stroke: var(--chart-current); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.linePrevious { fill: none; stroke: var(--admin-muted-soft); stroke-width: 2; stroke-dasharray: 5 5; }
+.crosshair { stroke: var(--admin-muted-soft); stroke-width: 1; }
+.dot { position: absolute; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; background: var(--admin-surface); border: 2px solid var(--chart-current); pointer-events: none; box-sizing: border-box; }
+.dotToday { width: 12px; height: 12px; margin: -6px 0 0 -6px; background: var(--chart-current); box-shadow: 0 0 0 3px var(--admin-surface); }
+.dotActive { transform: scale(1.35); }
+.chartAxis { position: absolute; left: 0; right: 0; bottom: 0; height: 18px; }
+.chartAxis span { position: absolute; transform: translateX(-50%); font-size: 11px; color: var(--admin-muted); white-space: nowrap; }
+.tooltip { position: absolute; top: 0; transform: translateX(-50%); display: grid; gap: 4px; min-width: 170px; padding: 10px 12px; border-radius: 12px; background: var(--admin-ink); color: var(--admin-surface); font-size: 11.5px; pointer-events: none; box-shadow: var(--admin-shadow-md); z-index: 3; }
+.tooltip strong { font-size: 12px; }
+.tooltip span { display: flex; align-items: center; color: color-mix(in srgb, var(--admin-surface) 78%, transparent); }
+.tooltip b { margin-left: auto; padding-left: 10px; color: var(--admin-surface); }
+
+/* Needs attention */
+.todo { display: grid; gap: 8px; }
+.todo a { display: flex; align-items: center; gap: 11px; padding: 12px; border-radius: 14px; background: var(--admin-bg); color: var(--admin-ink); font-size: 13px; font-weight: 600; text-decoration: none; transition: background .12s ease; }
+.todo a:hover { background: var(--admin-border-soft); }
+.todoCount { display: grid; place-items: center; min-width: 32px; height: 32px; padding: 0 6px; border-radius: 10px; font-weight: 800; font-size: 13px; }
+.todoRed { background: var(--admin-accent-soft); color: var(--admin-accent-strong); }
+.todoAmber { background: var(--admin-warning-soft); color: var(--admin-warning); }
+.todoGreen { background: var(--admin-success-soft); color: var(--admin-success-strong); }
+.todoIcon { color: var(--admin-muted); flex: none; }
+.chev { margin-left: auto; color: var(--admin-muted); flex: none; }
+
+/* Recent orders + top products */
+.ordersTable td { vertical-align: middle; }
+.orderLink { font-weight: 800; color: var(--admin-accent-strong); text-decoration: none; }
+.product { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--admin-border-soft); color: var(--admin-ink); text-decoration: none; font-size: 13px; }
+.product:last-child { border-bottom: 0; }
+.product:hover strong { color: var(--admin-accent-strong); }
+.thumb { display: grid; place-items: center; width: 42px; height: 42px; flex: none; overflow: hidden; border-radius: 12px; background: var(--admin-border-soft); color: var(--admin-muted); }
+.thumb img { width: 100%; height: 100%; object-fit: cover; }
+.productText { display: grid; gap: 2px; min-width: 0; }
+.productText strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.productText small { color: var(--admin-muted); font-size: 11.5px; }
+.product em { margin-left: auto; font-style: normal; font-weight: 800; white-space: nowrap; }
+.product em + .chev { margin-left: 4px; }
+.empty { padding: 26px 12px; text-align: center; color: var(--admin-muted); font-size: 13px; }
+.empty strong { display: block; color: var(--admin-ink); font-size: 14px; }
+.empty p { margin: 6px 0 14px; }
+
+@media (max-width: 1200px) {
+  .grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 1050px) {
+  .page { margin: -24px -22px 0; }
+  .hero { padding: 22px 22px 100px; }
+  .body { padding: 0 22px; }
+}
+@media (max-width: 900px) {
+  .kpis { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 760px) {
+  .page { margin: -18px -14px 0; }
+  .hero { flex-direction: column; align-items: stretch; padding: 18px 14px 92px; }
+  .greeting { font-size: 27px; }
+  .heroActions > * { flex: 1 1 0; justify-content: center; }
+  .body { padding: 0 14px; gap: 14px; margin-top: -72px; }
+  .kpis { gap: 10px; }
+  .kpi { padding: 14px 15px; }
+  .kpi strong { font-size: 23px; }
+  .kpi small { font-size: 10.5px; }
+  .panel { padding: 16px; }
+  .chartPlot { height: 190px; }
+  .chartCanvas { height: 168px; }
+}

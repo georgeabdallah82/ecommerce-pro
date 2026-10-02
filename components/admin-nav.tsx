@@ -1,16 +1,12 @@
 'use client'
 
 /*
- * The admin's whole navigation surface: a full-width top bar (brand, search,
- * notifications, account) stacked above a persistent left sidebar + main
- * content row - Shopify's own admin shell shape. A command-palette-style
- * search reachable by Ctrl/Cmd+K or the search bar, and a full-screen mobile
- * drawer that substitutes for the sidebar below the sidebar breakpoint.
- * Nothing here uses a global !important rule or a body:has() selector:
- * layout comes entirely from CSS Modules (admin-nav.module.css), so there is
- * no specificity race to lose - the exact trap a previous sidebar attempt
- * hit twice (a flex-direction default and a display:grid/none tie, both
- * "two !important rules, whichever has higher specificity wins" bugs).
+ * The admin's whole navigation surface: a full-height dark sidebar (store logo, sections,
+ * signed-in user) beside a column with the sticky top bar (search, notifications, account)
+ * and the page. Below 900px the sidebar becomes a bottom tab bar plus a full menu drawer.
+ * A command-palette search opens from the search bar or Ctrl/Cmd+K. Layout comes entirely
+ * from CSS Modules (admin-nav.module.css): no global !important rule or body:has() selector,
+ * so there is no specificity race to lose.
  */
 
 import Link from 'next/link'
@@ -20,7 +16,7 @@ import { createPortal } from 'react-dom'
 import {
   Activity, ArrowLeftRight, BarChart3, Boxes, ClipboardList, CreditCard, FileEdit, FileSpreadsheet, FileText, Image as ImageIcon, Layers3,
   LayoutDashboard, LogOut, Mail, Megaphone, Menu, MessageSquare, PackageCheck, Palette, Percent, Radio, RotateCcw, Search, Settings2,
-  ShieldCheck, ShoppingBag, Store, Tag, Truck, UserCog, Users, UsersRound, Workflow, X, type LucideIcon,
+  ShoppingBag, MoreHorizontal, Store, Tag, Truck, UserCog, Users, UsersRound, Workflow, X, type LucideIcon,
 } from 'lucide-react'
 import AdminThemeToggle from '@/components/admin-theme-toggle'
 import OrderAlerts from '@/components/order-alerts'
@@ -67,7 +63,7 @@ function useFocusTrap(active: boolean, containerRef: React.RefObject<HTMLElement
   }, [active, containerRef, onClose])
 }
 
-function NavGroups({ groups, pathname, onNavigate }: { groups: AdminSidebarGroup[]; pathname: string; onNavigate?: () => void }) {
+function NavGroups({ groups, pathname, onNavigate, badges = {} }: { groups: AdminSidebarGroup[]; pathname: string; onNavigate?: () => void; badges?: Record<string, string> }) {
   return <>
     {groups.map(group => (
       <div className={styles.sidebarGroup} key={group.id}>
@@ -82,7 +78,7 @@ function NavGroups({ groups, pathname, onNavigate }: { groups: AdminSidebarGroup
               className={`${styles.sidebarItem}${active ? ` ${styles.sidebarItemActive}` : ''}`}
               onClick={onNavigate}
             >
-              <Icon size={16} aria-hidden="true" /><span>{item.label}</span>
+              <Icon size={16} aria-hidden="true" /><span>{item.label}</span>{badges[item.href] && <span className={styles.navBadge}>{badges[item.href]}</span>}
             </Link>
           )
         })}
@@ -91,9 +87,19 @@ function NavGroups({ groups, pathname, onNavigate }: { groups: AdminSidebarGroup
   </>
 }
 
+export type AdminBrand = { name: string; logoUrl?: string; logoDarkUrl?: string; iconUrl?: string }
+
+// Phone bottom bar: the four places used most, plus "More" for the full menu.
+const TAB_HREFS = [
+  { href: '/admin', label: 'Home', icon: 'dashboard' },
+  { href: '/admin/orders', label: 'Orders', icon: 'orders' },
+  { href: '/admin/products', label: 'Products', icon: 'products' },
+  { href: '/admin/customers', label: 'Customers', icon: 'customers' },
+]
+
 export default function AdminNav({
-  groups, name, email, role, vapidPublicKey, children,
-}: { groups: AdminSidebarGroup[]; name: string | null; email: string; role?: string; vapidPublicKey?: string; children: React.ReactNode }) {
+  groups, name, email, role, vapidPublicKey, brand: storeBrand, ordersToFulfill = 0, children,
+}: { groups: AdminSidebarGroup[]; name: string | null; email: string; role?: string; vapidPublicKey?: string; brand?: AdminBrand; ordersToFulfill?: number; children: React.ReactNode }) {
   const pathname = usePathname()
   const [mounted, setMounted] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
@@ -153,63 +159,92 @@ export default function AdminNav({
     [allItems, normalizedQuery],
   )
 
-  const brand = (
-    <span className={styles.brand}>
-      <span className={styles.brandMark}><ShieldCheck size={18} aria-hidden="true" /></span>
-      <span className={styles.brandText}>Control Center</span>
-    </span>
+  const storeName = storeBrand?.name || 'Control Center'
+  const initials = (name || email || 'A').split(/[\s@.]+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase()
+  const allowedHrefs = new Set(allItems.map(item => item.href))
+  const tabs = TAB_HREFS.filter(tab => allowedHrefs.has(tab.href))
+  const badge = ordersToFulfill > 99 ? '99+' : ordersToFulfill > 0 ? String(ordersToFulfill) : ''
+  // Logo for the dark sidebar/drawer (the store's "dark background" logo), and for light surfaces.
+  const darkLogo = storeBrand?.logoDarkUrl
+    ? <img className={styles.logoImg} src={storeBrand.logoDarkUrl} alt={storeName} />
+    : <span className={styles.brandTextDark}>{storeName}</span>
+  const lightLogo = storeBrand?.logoUrl
+    ? <img className={styles.logoImg} src={storeBrand.logoUrl} alt={storeName} />
+    : <span className={styles.brandText}>{storeName}</span>
+  const brand = <span className={styles.brand}>{darkLogo}</span>
+
+  const accountMenu = (
+    <div className={styles.account} ref={accountRef}>
+      <button type="button" className={styles.accountBtn} onClick={() => setAccountOpen(value => !value)} aria-expanded={accountOpen} aria-haspopup="menu" aria-label="Account menu">
+        <span className={styles.avatar}>{initials}</span>
+      </button>
+      {accountOpen && (
+        <div className={styles.accountPanel} role="menu">
+          <div className={styles.accountHead}>
+            <strong>{name || 'Administrator'}</strong>
+            <span>{email}</span>
+            {role && <span className={styles.rolePill}>{role}</span>}
+          </div>
+          <div className={styles.accountThemeRow}><AdminThemeToggle /></div>
+          <Link href="/" className={styles.accountItem} role="menuitem"><Store size={15} aria-hidden="true" /> View storefront</Link>
+          <form action="/api/auth/logout" method="post">
+            <button className={styles.accountItem} type="submit" role="menuitem"><LogOut size={15} aria-hidden="true" /> Sign out</button>
+          </form>
+        </div>
+      )}
+    </div>
   )
 
   return (
     <>
-      <header className={styles.topbar}>
-        <div className={styles.topbarLeft}>
-          <button type="button" className={styles.hamburger} aria-label="Open admin menu" onClick={() => setMobileOpen(true)}><Menu size={19} aria-hidden="true" /></button>
-          <Link href="/admin" className={styles.brand}>
-            <span className={styles.brandMark}><ShieldCheck size={18} aria-hidden="true" /></span>
-            <span className={styles.brandText}>Control Center</span>
-          </Link>
-        </div>
-
-        <button type="button" className={styles.topbarSearch} onClick={() => setSearchOpen(true)}>
-          <Search size={15} aria-hidden="true" />
-          <span>Search admin…</span>
-          <kbd>⌘K</kbd>
-        </button>
-
-        <div className={styles.topbarRight}>
-          <OrderAlerts vapidPublicKey={vapidPublicKey} />
-          <div className={styles.account} ref={accountRef}>
-            <button type="button" className={styles.accountBtn} onClick={() => setAccountOpen(value => !value)} aria-expanded={accountOpen} aria-haspopup="menu" aria-label="Account menu">
-              <span className={styles.avatar}>{(name || email || 'A').slice(0, 1).toUpperCase()}</span>
-            </button>
-            {accountOpen && (
-              <div className={styles.accountPanel} role="menu">
-                <div className={styles.accountHead}>
-                  <strong>{name || 'Administrator'}</strong>
-                  <span>{email}</span>
-                  {role && <span className={styles.rolePill}>{role}</span>}
-                </div>
-                <div className={styles.accountThemeRow}><AdminThemeToggle /></div>
-                <Link href="/" className={styles.accountItem} role="menuitem"><Store size={15} aria-hidden="true" /> View storefront</Link>
-                <form action="/api/auth/logout" method="post">
-                  <button className={styles.accountItem} type="submit" role="menuitem"><LogOut size={15} aria-hidden="true" /> Sign out</button>
-                </form>
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
-
-      <div className={styles.body}>
+      <div className={styles.shell}>
         <aside className={styles.sidebar} aria-label="Admin sections">
+          <Link href="/admin" className={styles.sidebarBrand} aria-label={`${storeName} admin home`}>{darkLogo}</Link>
           <nav className={styles.sidebarNav}>
-            <NavGroups groups={groups} pathname={pathname} />
+            <NavGroups groups={groups} pathname={pathname} badges={{ '/admin/orders': badge }} />
           </nav>
+          <div className={styles.userCard}>
+            <span className={styles.userAvatar}>{initials}</span>
+            <span className={styles.userText}><strong>{name || 'Administrator'}</strong><small>{role ? role.replace(/_/g, ' ').toLowerCase() : email}</small></span>
+            <form action="/api/auth/logout" method="post">
+              <button className={styles.userSignOut} type="submit" aria-label="Sign out" title="Sign out"><LogOut size={15} aria-hidden="true" /></button>
+            </form>
+          </div>
         </aside>
 
-        <main className={`adminMain ${styles.mainCol}`}>{children}</main>
+        <div className={styles.column}>
+          <header className={`${styles.topbar} adminTopbar`}>
+            <Link href="/admin" className={styles.topbarLogo} aria-label={`${storeName} admin home`}><span className="adminLogoLight">{lightLogo}</span><span className="adminLogoDark">{darkLogo}</span></Link>
+            <button type="button" className={styles.topbarSearch} onClick={() => setSearchOpen(true)}>
+              <Search size={15} aria-hidden="true" />
+              <span>Search admin…</span>
+              <kbd>⌘K</kbd>
+            </button>
+            <div className={styles.topbarRight}>
+              <OrderAlerts vapidPublicKey={vapidPublicKey} />
+              {accountMenu}
+            </div>
+          </header>
+          <main className={`adminMain ${styles.mainCol}`}>{children}</main>
+        </div>
       </div>
+
+      <nav className={styles.tabbar} aria-label="Quick navigation">
+        {tabs.map(tab => {
+          const Icon = iconMap[tab.icon] ?? Boxes
+          const active = isActivePath(pathname, tab.href)
+          return (
+            <Link key={tab.href} href={tab.href} className={`${styles.tab}${active ? ` ${styles.tabActive}` : ''}`} aria-current={active ? 'page' : undefined}>
+              <span className={styles.tabIcon}><Icon size={19} aria-hidden="true" />{tab.href === '/admin/orders' && badge && <span className={styles.tabBadge}>{badge}</span>}</span>
+              {tab.label}
+            </Link>
+          )
+        })}
+        <button type="button" className={styles.tab} onClick={() => setMobileOpen(true)} aria-label="More admin sections">
+          <span className={styles.tabIcon}><MoreHorizontal size={19} aria-hidden="true" /></span>
+          More
+        </button>
+      </nav>
 
       {mounted && searchOpen && createPortal(
         <div className={styles.searchOverlay} role="dialog" aria-modal="true" aria-label="Search admin">
@@ -261,7 +296,7 @@ export default function AdminNav({
               <Search size={15} aria-hidden="true" /> Search admin…
             </button>
             <nav className={styles.mobileNav} aria-label="Admin sections">
-              <NavGroups groups={groups} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+              <NavGroups groups={groups} pathname={pathname} onNavigate={() => setMobileOpen(false)} badges={{ '/admin/orders': badge }} />
             </nav>
             <div className={styles.mobileFoot}>
               {role && <span className={styles.rolePill}>{role}</span>}
