@@ -4,6 +4,7 @@ import { json } from '@/lib/utils'
 import { clientIp } from '@/lib/request-ip'
 import { randomUUID } from 'crypto'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
+import { consumeRateLimit } from '@/lib/rate-limit'
 
 const SESSION_COOKIE = 'live_visitor_id'
 const MAX_PATH = 500
@@ -41,6 +42,10 @@ async function geolocate() {
 
 export async function POST(req: Request) {
   try {
+    // Every storefront page view lands here; cap it per IP so a script can't turn it into
+    // unlimited database writes (normal browsing is a handful of views a minute).
+    const limit = consumeRateLimit(`visitor:ip:${clientIp(req.headers)}`, 60, 60 * 1000)
+    if (!limit.allowed) return json({ ok: true, throttled: true }, { status: 202 })
     const body = await req.json().catch(() => ({}))
     const sessionId = getCookie(req) || randomUUID()
     const path = clean(body.path, MAX_PATH) || '/'
@@ -83,7 +88,9 @@ export async function POST(req: Request) {
       },
     })
 
-    await db.liveVisitorSession.deleteMany({ where: { lastSeenAt: { lt: new Date(now.getTime() - 24 * 60 * 60 * 1000) } } })
+    // Pruning day-old sessions scans the whole collection, so do it on ~1 in 50 requests
+    // instead of every page view; stale rows are already excluded from the live view.
+    if (Math.random() < 0.02) await db.liveVisitorSession.deleteMany({ where: { lastSeenAt: { lt: new Date(now.getTime() - 24 * 60 * 60 * 1000) } } })
     const response = json({ ok: true, sessionId })
     setCookie(response, sessionId)
     return response

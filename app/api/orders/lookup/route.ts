@@ -1,11 +1,11 @@
 import { db } from '@/lib/prisma'
-import { consumeRateLimit } from '@/lib/rate-limit'
+import { consumeDurableRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { json } from '@/lib/utils'
 
 export async function POST(request: Request) {
   const ip = clientIp(request.headers)
-  const limit = consumeRateLimit(`order-lookup:ip:${ip}`, 10, 15 * 60 * 1000)
+  const limit = await consumeDurableRateLimit(`order-lookup:ip:${ip}`, 30, 15 * 60 * 1000)
   if (!limit.allowed) {
     return json({ error: 'Too many attempts. Please try again later.' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds), 'Cache-Control': 'no-store' } })
   }

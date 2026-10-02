@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'node:crypto'
 import { db } from '@/lib/prisma'
-import { consumeRateLimit } from '@/lib/rate-limit'
+import { consumeDurableRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { sendPasswordResetEmail } from '@/lib/email'
 import { runInBackground } from '@/lib/background'
 
 const WINDOW_MS = 60 * 60 * 1000
-const MAX_PER_IP = 5
+const MAX_PER_IP = 20
 const MAX_PER_EMAIL = 3
 
 export async function POST(request: NextRequest) {
   const ip = clientIp(request.headers)
-  const ipLimit = consumeRateLimit(`password-recovery:ip:${ip}`, MAX_PER_IP, WINDOW_MS)
+  const ipLimit = await consumeDurableRateLimit(`password-recovery:ip:${ip}`, MAX_PER_IP, WINDOW_MS)
   const headers = { 'Cache-Control': 'private, no-store' }
   if (!ipLimit.allowed) {
     return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429, headers: { ...headers, 'Retry-After': String(ipLimit.retryAfterSeconds) } })
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   const generic = { message: 'If an account exists, recovery instructions have been sent.' }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json(generic, { headers })
 
-  const emailLimit = consumeRateLimit(`password-recovery:email:${email}`, MAX_PER_EMAIL, WINDOW_MS)
+  const emailLimit = await consumeDurableRateLimit(`password-recovery:email:${email}`, MAX_PER_EMAIL, WINDOW_MS)
   if (!emailLimit.allowed) return NextResponse.json(generic, { headers })
 
   const user = await db.user.findUnique({ where: { email }, select: { id: true, email: true, isActive: true } })

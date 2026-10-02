@@ -1,5 +1,6 @@
 import StorefrontSections from '@/components/storefront-sections'
 import { showPageHeader } from '@/lib/custom-pages'
+import { sanitizeRichHtml } from '@/lib/sanitize-html'
 
 type AnyMap = Record<string, any>
 
@@ -11,7 +12,7 @@ export default function CustomPageView({ theme, page, sections, products, collec
       {showPageHeader(page, sections.length) && (
         <div className="aliContainer aliLegalPage">
           <h1>{page.title}</h1>
-          {page.bodyHtml && <div dangerouslySetInnerHTML={{ __html: page.bodyHtml }} />}
+          {page.bodyHtml && <div dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(page.bodyHtml) }} />}
         </div>
       )}
       {sections.length > 0 && <StorefrontSections theme={theme} sections={sections} products={products} collections={collections} />}

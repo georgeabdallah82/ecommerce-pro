@@ -8,6 +8,7 @@ import { Footer } from '@/components/footer'
 import StorefrontSections from '@/components/storefront-sections'
 import { BLOG_TEMPLATE_KEY, zoneSections } from '@/lib/custom-pages'
 import { loadZoneData } from '@/lib/zone-data'
+import { sanitizeRichHtml } from '@/lib/sanitize-html'
 
 function readTags(tagsJson: string | null) {
   const parsed = parseJson<unknown>(tagsJson, [])
@@ -48,7 +49,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ handl
         {post.featuredImage && (
           <img src={post.featuredImage} alt="" style={{ width: '100%', maxHeight: 420, objectFit: 'cover', borderRadius: 14, margin: '0 0 24px', background: 'var(--focal-soft,#f1ebe6)' }} />
         )}
-        {post.bodyHtml && <div dangerouslySetInnerHTML={{ __html: post.bodyHtml }} />}
+        {post.bodyHtml && <div dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(post.bodyHtml) }} />}
         {tags.length > 0 && (
           <span className="aliSpecList" style={{ marginTop: 24 }}>
             {tags.map(t => <Link className="aliSpecListItem" href={`/blog?tag=${encodeURIComponent(t)}`} key={t}>{t}</Link>)}

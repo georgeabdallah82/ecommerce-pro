@@ -2,6 +2,7 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json, parseJson, slugify } from '@/lib/utils'
+import { sanitizeRichHtml } from '@/lib/sanitize-html'
 
 // This storefront only ever exposes one blog (sitemap.ts and /blog/[handle]
 // address a post purely by its own globally-unique handle, with no blog
@@ -67,7 +68,7 @@ export async function POST(req: Request) {
         title,
         handle,
         excerpt: b.excerpt ? String(b.excerpt).trim().slice(0, 500) : null,
-        bodyHtml: b.bodyHtml ? String(b.bodyHtml).slice(0, 200000) : null,
+        bodyHtml: b.bodyHtml ? sanitizeRichHtml(String(b.bodyHtml).slice(0, 200000)) : null,
         featuredImage: b.featuredImage ? String(b.featuredImage).trim().slice(0, 2000) : null,
         status,
         tagsJson: tags.length ? JSON.stringify(tags) : null,
@@ -106,7 +107,7 @@ export async function PATCH(req: Request) {
       data.handle = handle
     }
     if (b.excerpt !== undefined) data.excerpt = b.excerpt ? String(b.excerpt).trim().slice(0, 500) : null
-    if (b.bodyHtml !== undefined) data.bodyHtml = b.bodyHtml ? String(b.bodyHtml).slice(0, 200000) : null
+    if (b.bodyHtml !== undefined) data.bodyHtml = b.bodyHtml ? sanitizeRichHtml(String(b.bodyHtml).slice(0, 200000)) : null
     if (b.featuredImage !== undefined) data.featuredImage = b.featuredImage ? String(b.featuredImage).trim().slice(0, 2000) : null
     if (b.tags !== undefined) { const tags = sanitizeTags(b.tags); data.tagsJson = tags.length ? JSON.stringify(tags) : null }
     if (b.seoTitle !== undefined) data.seoTitle = b.seoTitle ? String(b.seoTitle).trim().slice(0, 200) : null

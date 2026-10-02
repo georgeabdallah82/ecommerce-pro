@@ -14,6 +14,7 @@ import { CartProvider } from '@/components/cart-provider'
 import { TrackingScripts } from '@/components/tracking-scripts'
 import type { Metadata, Viewport } from 'next'
 import { NavProgress } from '@/components/nav-progress'
+import { safeStyleText } from '@/lib/sanitize-html'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -93,5 +94,5 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // client tree from scratch on every /admin/* load -- which was silently breaking the theme
   // editor's live-preview iframe: the fresh re-render recreates the iframe mid-handshake,
   // permanently losing the postMessage exchange that populates the preview pane.
-  return <html lang="en" className={FONT_VARIABLE_CLASSES} suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:adminThemeScript}}/><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/>{theme.faviconUrl ? <link rel="icon" href={theme.faviconUrl}/> : null}{theme.customCss ? <style dangerouslySetInnerHTML={{ __html: theme.customCss }}/> : null}</head><body className={theme.animations?.enabled ? 'animations-enabled' : ''}><TrackingScripts config={tracking}/><CartProvider><NavProgress/><LiveVisitorTracker/><StoreNavRuntime theme={theme} navigation={navigation}/><StoreNavScroll/>{children}</CartProvider></body></html>
+  return <html lang="en" className={FONT_VARIABLE_CLASSES} suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:adminThemeScript}}/><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/>{theme.faviconUrl ? <link rel="icon" href={theme.faviconUrl}/> : null}{theme.customCss ? <style dangerouslySetInnerHTML={{ __html: safeStyleText(theme.customCss) }}/> : null}</head><body className={theme.animations?.enabled ? 'animations-enabled' : ''}><TrackingScripts config={tracking}/><CartProvider><NavProgress/><LiveVisitorTracker/><StoreNavRuntime theme={theme} navigation={navigation}/><StoreNavScroll/>{children}</CartProvider></body></html>
 }

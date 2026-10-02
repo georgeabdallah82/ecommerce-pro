@@ -76,3 +76,17 @@ describe('lib/rate-limit', () => {
     assert.doesNotThrow(() => clearRateLimit(`never-used:${Math.random()}`))
   })
 })
+
+describe('consumeDurableRateLimit', () => {
+  it('keeps counting when a new Worker isolate starts with an empty memory map', async () => {
+    const { consumeDurableRateLimit, clearDurableRateLimit } = await import('@/lib/rate-limit')
+    const key = `test:durable:${Date.now()}`
+    for (let i = 0; i < 3; i++) assert.equal((await consumeDurableRateLimit(key, 3, 60_000)).allowed, true)
+    clearRateLimit(key) // what a fresh isolate looks like: no in-memory history
+    const blocked = await consumeDurableRateLimit(key, 3, 60_000)
+    assert.equal(blocked.allowed, false)
+    assert.ok(blocked.retryAfterSeconds >= 1)
+    await clearDurableRateLimit(key)
+    assert.equal((await consumeDurableRateLimit(key, 3, 60_000)).allowed, true)
+  })
+})

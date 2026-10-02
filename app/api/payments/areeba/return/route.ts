@@ -1,9 +1,8 @@
 import { db } from '@/lib/prisma'
-import { audit } from '@/lib/audit'
-import { releaseOrderReservations } from '@/lib/inventory'
 import { consumeRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { areebaMpgsPaymentProvider, paymentReturnToken, safeTokenEqual } from '@/lib/payments'
+import { markOnlinePaymentFailed, markOnlinePaymentPaid } from '@/lib/payment-outcome'
 
 export async function GET(req: Request) {
   const url = new URL(req.url)
@@ -34,27 +33,12 @@ export async function GET(req: Request) {
     const status = await areebaMpgsPaymentProvider.getPaymentStatus(transaction.externalId, orderNumber)
     if (status === 'paid') {
       if (transaction.amount !== order.grandTotal || transaction.currency !== order.currency) return Response.redirect(new URL(`/order/success?order=${encodeURIComponent(order.orderNumber)}&payment=failed`, url.origin))
-      await db.$transaction(async tx => {
-        const current = await tx.order.findUnique({ where: { id: order.id }, select: { paymentStatus: true } })
-        if (current?.paymentStatus !== 'PAID') await tx.order.update({ where: { id: order.id }, data: { paymentStatus: 'PAID' } })
-        await tx.paymentTransaction.update({ where: { id: transaction.id }, data: { status: 'paid' } })
-      })
-      await audit(null, 'payment.paid', 'Order', order.id, { provider: 'areeba_mpgs', orderNumber: order.orderNumber })
+      await markOnlinePaymentPaid(order, transaction.id, 'return')
       return Response.redirect(new URL(`/order/success?order=${encodeURIComponent(order.orderNumber)}&payment=paid`, url.origin))
     }
 
     if (status === 'failed') {
-      let transitioned = false
-      await db.$transaction(async tx => {
-        const current = await tx.order.findUnique({ where: { id: order.id }, select: { paymentStatus: true, status: true, couponCode: true } })
-        if (!current || ['PAID', 'FAILED', 'REFUNDED', 'PARTIALLY_REFUNDED'].includes(current.paymentStatus)) return
-        await releaseOrderReservations(tx, order.id, 'Online payment failed')
-        if (current.couponCode) await tx.coupon.updateMany({ where: { code: current.couponCode, usedCount: { gt: 0 } }, data: { usedCount: { decrement: 1 } } })
-        await tx.order.update({ where: { id: order.id }, data: { paymentStatus: 'FAILED', status: 'CANCELLED', events: { create: { status: 'CANCELLED', message: 'Online payment failed.' } } } })
-        await tx.paymentTransaction.update({ where: { id: transaction.id }, data: { status: 'failed' } })
-        transitioned = true
-      })
-      if (transitioned) await audit(null, 'payment.failed', 'Order', order.id, { provider: 'areeba_mpgs', orderNumber: order.orderNumber })
+      await markOnlinePaymentFailed(order, transaction.id, 'return')
       return Response.redirect(new URL(`/order/success?order=${encodeURIComponent(order.orderNumber)}&payment=failed`, url.origin))
     }
 

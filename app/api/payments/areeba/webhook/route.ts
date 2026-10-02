@@ -1,21 +1,11 @@
 import { db } from '@/lib/prisma'
 import { audit } from '@/lib/audit'
-import { releaseOrderReservations } from '@/lib/inventory'
 import { consumeRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { areebaMpgsPaymentProvider, areebaWebhookToken, safeTokenEqual } from '@/lib/payments'
-import { sendOrderConfirmationEmail } from '@/lib/email'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
-import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { runInBackground } from '@/lib/background'
-
-function parseCoinsUsed(rawJson: string | null) {
-  if (!rawJson) return 0
-  try {
-    const parsed = JSON.parse(rawJson) as { coinsUsed?: unknown }
-    return Number.isSafeInteger(parsed.coinsUsed) ? Math.max(0, Number(parsed.coinsUsed)) : 0
-  } catch { return 0 }
-}
+import { markOnlinePaymentFailed, markOnlinePaymentPaid, parseCoinsUsed } from '@/lib/payment-outcome'
 
 async function restoreCoinsForOrder(tx: any, order: { id: string; orderNumber: string; grandTotal: number; userId: string | null }, successfulRefundedMinor: number, referenceSuffix: string) {
   if (!order.userId || order.grandTotal <= 0) return 0
@@ -71,48 +61,8 @@ async function processPaymentNotification(orderNumber: string, body: Record<stri
   const transaction = await db.paymentTransaction.findFirst({ where: { orderId: order.id, provider: 'areeba_mpgs', status: { in: ['pending', 'paid', 'failed'] } }, orderBy: { createdAt: 'desc' } })
   if (!transaction?.externalId || transaction.amount !== order.grandTotal || transaction.currency !== order.currency) return false
   const status = await areebaMpgsPaymentProvider.getPaymentStatus(transaction.externalId, orderNumber)
-  if (status === 'paid') {
-    await db.$transaction(async tx => {
-      const current = await tx.order.findUnique({ where: { id: order.id }, select: { paymentStatus: true } })
-      if (current?.paymentStatus !== 'PAID') await tx.order.update({ where: { id: order.id }, data: { paymentStatus: 'PAID' } })
-      await tx.paymentTransaction.update({ where: { id: transaction.id }, data: { status: 'paid' } })
-    })
-    await audit(null, 'payment.paid', 'Order', order.id, { provider: 'areeba_mpgs', orderNumber: order.orderNumber, source: 'webhook' })
-    runInBackground(sendOrderConfirmationEmail(order.id).catch(error => console.error('[email] order confirmation failed', error)))
-    runInBackground(dispatchWebhookEvent('order.updated', { id: order.id, orderNumber: order.orderNumber, paymentStatus: 'PAID' }).catch(error => console.error('[webhook] order.updated dispatch failed', error)))
-  } else if (status === 'failed') {
-    let transitioned = false
-    await db.$transaction(async tx => {
-      const current = await tx.order.findUnique({
-        where: { id: order.id },
-        select: {
-          paymentStatus: true,
-          couponCode: true,
-          userId: true,
-          orderNumber: true,
-          grandTotal: true,
-          paymentTransactions: { where: { provider: 'checkout' }, select: { provider: true, rawJson: true }, orderBy: { createdAt: 'asc' }, take: 1 },
-        },
-      })
-      if (!current || ['PAID', 'FAILED', 'REFUNDED', 'PARTIALLY_REFUNDED'].includes(current.paymentStatus)) return
-      await releaseOrderReservations(tx, order.id, 'Online payment failed')
-      if (current.couponCode) await tx.coupon.updateMany({ where: { code: current.couponCode, usedCount: { gt: 0 } }, data: { usedCount: { decrement: 1 } } })
-      const coinsUsed = parseCoinsUsed(current.paymentTransactions[0]?.rawJson || null)
-      if (coinsUsed > 0 && current.userId) {
-        const reversalId = `coin_${current.orderNumber}_payment_failed_reversal`
-        await tx.coinTransaction.upsert({ where: { id: reversalId }, create: { id: reversalId, userId: current.userId, amount: coinsUsed, type: 'REVERSAL', reason: 'Failed payment coin restoration', referenceId: `coin-reversal:${current.orderNumber}:payment-failed` }, update: {} })
-      }
-      const redeemedGc = redeemedGiftCard(current.paymentTransactions)
-      if (redeemedGc) await restoreGiftCardBalance(tx, order.id, redeemedGc, current.grandTotal, current.grandTotal)
-      await tx.order.update({ where: { id: order.id }, data: { paymentStatus: 'FAILED', status: 'CANCELLED', events: { create: { status: 'CANCELLED', message: 'Online payment failed.' } } } })
-      await tx.paymentTransaction.update({ where: { id: transaction.id }, data: { status: 'failed' } })
-      transitioned = true
-    })
-    if (transitioned) {
-      await audit(null, 'payment.failed', 'Order', order.id, { provider: 'areeba_mpgs', orderNumber: order.orderNumber, source: 'webhook' })
-      runInBackground(dispatchWebhookEvent('order.updated', { id: order.id, orderNumber: order.orderNumber, paymentStatus: 'FAILED' }).catch(error => console.error('[webhook] order.updated dispatch failed', error)))
-    }
-  }
+  if (status === 'paid') await markOnlinePaymentPaid(order, transaction.id, 'webhook')
+  else if (status === 'failed') await markOnlinePaymentFailed(order, transaction.id, 'webhook')
   return true
 }
 

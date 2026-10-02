@@ -646,6 +646,17 @@ model LiveVisitorSession {
   @@index([userId])
 }
 
+// Request counters shared by every Worker instance (lib/rate-limit.ts consumeDurableRateLimit).
+// The in-memory limiter alone resets per isolate, so on Cloudflare it barely slowed attackers.
+model RateLimitBucket {
+  id      String   @id @default(cuid())
+  key     String   @unique
+  count   Int      @default(0)
+  resetAt DateTime
+
+  @@index([resetAt])
+}
+
 model AdminLoginLockout {
   id          String    @id @default(cuid())
   email       String    @unique

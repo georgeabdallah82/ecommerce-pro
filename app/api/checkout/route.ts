@@ -10,7 +10,7 @@ import { getPaymentProvider } from '@/lib/payments'
 import { sendNewOrderPush } from '@/lib/push'
 import { sendOrderConfirmationEmail } from '@/lib/email'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
-import { consumeRateLimit } from '@/lib/rate-limit'
+import { consumeDurableRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { getUnpublishedProductIds } from '@/lib/sales-channels'
@@ -184,7 +184,9 @@ export async function POST(req: Request) {
     const currentIp = clientIp(req.headers)
     const user = await getCurrentUser()
     const limitKey = user?.id ? `checkout:user:${user.id}` : `checkout:ip:${currentIp}`
-    const limit = consumeRateLimit(limitKey, 20, 10 * 60 * 1000)
+    // Signed-in customers are limited per account; guests per IP, set higher because mobile
+    // carriers put many shoppers behind one address.
+    const limit = await consumeDurableRateLimit(limitKey, user?.id ? 20 : 60, 10 * 60 * 1000)
     if (!limit.allowed) return json({ error: 'Too many checkout attempts. Please try again later.' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds), 'Cache-Control': 'no-store' } })
 
     const rawBody = await req.text()
