@@ -28,28 +28,27 @@ const COLLECTION_ZONE_EXCLUDE = new Set(['header', 'announcement', 'footer', 'ma
 
 export default async function CollectionPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const { theme } = await getThemeState()
-  const sections = (theme.editorTemplates?.Collection || []).filter((s: any) => s && !COLLECTION_ZONE_EXCLUDE.has(s.type))
-  const needsCollections = sections.some((s: any) => s.type === 'collection_grid' || s.type === 'collection_carousel')
-  const unpublishedIds = await getUnpublishedProductIds()
-  const collection = await db.collection.findUnique({
+  // Fetched together; products hidden from the storefront channel are filtered out below.
+  const [{ theme }, unpublishedIds, collection] = await Promise.all([getThemeState(), getUnpublishedProductIds(), db.collection.findUnique({
     where: { slug },
     include: {
       products: {
-        where: unpublishedIds.length ? { productId: { notIn: unpublishedIds } } : undefined,
         include: { product: { include: { images: { orderBy: { sortOrder: 'asc' } }, collections: { include: { collection: true } } } } },
         orderBy: { sortOrder: 'asc' },
       },
     },
-  })
+  })])
+  const sections = (theme.editorTemplates?.Collection || []).filter((s: any) => s && !COLLECTION_ZONE_EXCLUDE.has(s.type))
+  const needsCollections = sections.some((s: any) => s.type === 'collection_grid' || s.type === 'collection_carousel')
   if (!collection || !collection.isActive) notFound()
+  const hidden = new Set(unpublishedIds)
   // The admin collection editor lets staff attach any product with no status check, so a
   // DRAFT/ARCHIVED product left in a collection (staged "New Arrivals" before going live, or
   // an old seasonal item never removed) must still be filtered out here -- every other
   // storefront listing (homepage, /shop, the product detail page) already excludes non-ACTIVE
   // products; without this, a collection tile links straight to a 404 (or a checkout rejection
   // if it somehow reaches the cart) that those other pages never expose customers to.
-  const activeItems = collection.products.filter(x => x.product.status === 'ACTIVE')
+  const activeItems = collection.products.filter(x => x.product.status === 'ACTIVE' && !hidden.has(x.productId))
   const [products, zoneCollections] = await Promise.all([
     withProductStats(activeItems.map(x => x.product)),
     needsCollections ? db.collection.findMany({ where: { isActive: true }, take: 12, orderBy: { sortOrder: 'asc' } }) : Promise.resolve([]),

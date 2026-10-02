@@ -2,7 +2,7 @@ import { db } from '@/lib/prisma'
 import { getThemeState } from '@/lib/theme'
 import { getCurrentUser } from '@/lib/auth'
 import { getProductStats, withProductStats } from '@/lib/product-stats'
-import { isProductPublished, getUnpublishedProductIds } from '@/lib/sales-channels'
+import { getUnpublishedProductIds } from '@/lib/sales-channels'
 import { getStoreCurrency } from '@/lib/store-currency'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
@@ -56,9 +56,9 @@ const PRODUCT_ZONE_EXCLUDE = new Set(['header', 'announcement', 'footer', 'main_
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const { theme } = await getThemeState()
-  const sections = (theme.editorTemplates?.Product || []).filter((s: any) => s && !PRODUCT_ZONE_EXCLUDE.has(s.type))
-  const product = await db.product.findUnique({
+  // Theme, product, the hidden-products list and the signed-in user don't depend on each
+  // other, so they're fetched together instead of one after another.
+  const [{ theme }, product, unpublishedIds, currentUser] = await Promise.all([getThemeState(), db.product.findUnique({
     where: { slug },
     include: {
       images: { orderBy: { sortOrder: 'asc' } },
@@ -74,12 +74,13 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       collections: { include: { collection: true } },
       metafields: { include: { definition: true } },
     },
-  })
+  }), getUnpublishedProductIds(), getCurrentUser()])
+  const sections = (theme.editorTemplates?.Product || []).filter((s: any) => s && !PRODUCT_ZONE_EXCLUDE.has(s.type))
 
   if (!product || product.status !== 'ACTIVE') return notFound()
-  if (!(await isProductPublished(product.id))) return notFound()
+  // Same check as isProductPublished(): hidden from the storefront sales channel.
+  if (unpublishedIds.includes(product.id)) return notFound()
 
-  const unpublishedIds = await getUnpublishedProductIds()
   const collectionIds = product.collections.map(c => c.collectionId)
   const relatedRaw = collectionIds.length
     ? await db.product.findMany({
@@ -109,7 +110,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         take: 24,
       })
     : []
-  const currentUser = await getCurrentUser()
   // Only queried when the merchant's appended content zone actually contains
   // a collection_grid/collection_carousel section -- the two default sections
   // there (product_recommendations, newsletter) never need it.
