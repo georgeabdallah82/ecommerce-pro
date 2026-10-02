@@ -35,15 +35,21 @@ export async function getCurrentUser() {
     const user = await db.user.findUnique({ where: { id: payload.sub } })
     if (!user || !user.isActive) return null
 
-    // User.updatedAt changes whenever credentials/profile/security-sensitive account
-    // state changes. Treat tokens issued before that change as stale. A one-second
-    // tolerance accounts for JWT `iat` being second-precision while Prisma timestamps
-    // are millisecond-precision.
-    const updatedAtSeconds = Math.floor(user.updatedAt.getTime() / 1000)
-    if (payload.iat < updatedAtSeconds - 1) return null
+    // Tokens issued before the account's sessions were revoked (password, email or role
+    // change, account disabled) are stale. This used to compare against updatedAt, which
+    // every write bumps -- signing in on a second device, paying with wallet/coins or an
+    // admin adjusting coins logged the user out everywhere. JWT `iat` is whole seconds while
+    // the timestamp has milliseconds, so compare at second precision.
+    if (isSessionRevoked(payload.iat, user.sessionsRevokedAt)) return null
 
     return user
   } catch { return null }
+}
+
+// True when a token issued at `issuedAtSeconds` predates the account's last session revocation.
+export function isSessionRevoked(issuedAtSeconds: number, sessionsRevokedAt: Date | null | undefined) {
+  if (!sessionsRevokedAt) return false
+  return issuedAtSeconds < Math.floor(sessionsRevokedAt.getTime() / 1000)
 }
 
 export async function requireUser() { const user = await getCurrentUser(); if (!user) throw new Error('UNAUTHORIZED'); return user }

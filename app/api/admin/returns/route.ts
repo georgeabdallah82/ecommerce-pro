@@ -8,6 +8,7 @@ import { alreadyReturnedQuantities, normalizeReturnItems, remainingRefundable, h
 import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { sendReturnStatusEmail } from '@/lib/email'
 import { Prisma } from '@prisma/client'
+import { runInBackground } from '@/lib/background'
 
 const RETURN_MESSAGES = new Set([
   'Order not found',
@@ -128,7 +129,7 @@ export async function POST(req: Request) {
       return { order: updated, returnRequest, returnId: returnRequest.id, refund, refundProvider, refundExternalId, items: normalized.map(x => ({ orderItemId: x.orderItemId, quantity: x.quantity })), restocked: restock, restockedInventoryIds: [...restockedInventoryIds] }
     })
 
-    void dispatchWebhookEvent('order.updated', { id: result.order.id, orderNumber: result.order.orderNumber, status: result.order.status, paymentStatus: result.order.paymentStatus }).catch(error => console.error('[webhook] order.updated dispatch failed', error))
+    runInBackground(dispatchWebhookEvent('order.updated', { id: result.order.id, orderNumber: result.order.orderNumber, status: result.order.status, paymentStatus: result.order.paymentStatus }).catch(error => console.error('[webhook] order.updated dispatch failed', error)))
     dispatchInventoryUpdated(result.restockedInventoryIds)
 
     let refundEmailSent = false
@@ -148,7 +149,7 @@ export async function POST(req: Request) {
     // Skip when settleReturnRefund above already sent the REFUNDED email for us -- otherwise
     // (manual/no refund, or a still-pending gateway refund) this return's status is RECEIVED
     // and hasn't been emailed yet.
-    if (!refundEmailSent) void sendReturnStatusEmail(result.returnId, result.order.id).catch(error => console.error('[email] return status email failed', error))
+    if (!refundEmailSent) runInBackground(sendReturnStatusEmail(result.returnId, result.order.id).catch(error => console.error('[email] return status email failed', error)))
 
     return json(result, { status: result.refund && result.refundProvider !== 'manual' && result.refund.status === 'refund_pending' ? 202 : 201 })
   } catch (e) {

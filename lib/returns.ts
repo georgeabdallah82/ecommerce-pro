@@ -3,6 +3,7 @@ import { getPaymentProvider } from '@/lib/payments'
 import { audit } from '@/lib/audit'
 import { sendReturnStatusEmail } from '@/lib/email'
 import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
+import { runInBackground } from '@/lib/background'
 
 // Extended (Accelerate) client payload inference doesn't always widen nested `include`
 // relations correctly, so query results are asserted to the shape actually queried.
@@ -214,7 +215,7 @@ export async function settleReturnRefund(actorId: string, params: { returnId?: s
         if (redeemedGift) await restoreGiftCardBalance(tx, orderRow.id, redeemedGift, successfulRefunds, orderRow.grandTotal)
         await tx.auditLog.create({ data: { actorId, action: `${auditAction}_completed`, entity: 'Order', entityId: orderRow.id, metadataJson: JSON.stringify({ returnId, refundId, amount, provider: refundProvider }) } })
       })
-      if (returnId) void sendReturnStatusEmail(returnId, orderId).catch(error => console.error('[email] return status email failed', error))
+      if (returnId) runInBackground(sendReturnStatusEmail(returnId, orderId).catch(error => console.error('[email] return status email failed', error)))
       return { ok: true as const, completed: true as const }
     }
     await audit(actorId, `${auditAction}_pending`, 'Order', orderId, { returnId, refundId, amount, provider: refundProvider })

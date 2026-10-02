@@ -7,6 +7,7 @@ import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { restoreCoinsForRefund } from '@/lib/returns'
 import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { Prisma } from '@prisma/client'
+import { runInBackground } from '@/lib/background'
 
 const REFUND_MESSAGES = new Set([
   'Order not found',
@@ -129,7 +130,7 @@ export async function POST(req: Request) {
         // Notifications are best-effort and must not turn a committed refund into a failure.
       }
     }
-    void dispatchWebhookEvent('order.updated', { id: result.order.id, orderNumber: result.order.orderNumber, status: result.order.status, paymentStatus: result.order.paymentStatus }).catch(error => console.error('[webhook] order.updated dispatch failed', error))
+    runInBackground(dispatchWebhookEvent('order.updated', { id: result.order.id, orderNumber: result.order.orderNumber, status: result.order.status, paymentStatus: result.order.paymentStatus }).catch(error => console.error('[webhook] order.updated dispatch failed', error)))
     return json({ order: result.order, refund: result.transaction, refundedTotal: result.refundedTotal }, { status: 201 })
   } catch (e) {
     const failure = refundFailure(e)

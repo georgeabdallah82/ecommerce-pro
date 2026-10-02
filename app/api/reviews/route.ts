@@ -4,6 +4,7 @@ import { consumeRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { json } from '@/lib/utils'
 import { sendNewReviewAlert } from '@/lib/push'
+import { runInBackground } from '@/lib/background'
 
 const NO_STORE = { 'Cache-Control': 'private, no-store' }
 
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
         throw error
       }
     })
-    void sendNewReviewAlert({ id: review.id, productName: product.name, rating: review.rating }).catch(error => console.error('[push] new review alert failed', error))
+    runInBackground(sendNewReviewAlert({ id: review.id, productName: product.name, rating: review.rating }).catch(error => console.error('[push] new review alert failed', error)))
     return json({ review }, { status: 201, headers: NO_STORE })
   } catch (e) {
     const message = e instanceof Error ? e.message : ''

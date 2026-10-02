@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     const passwordHash = await hashPassword(password)
     const changed = await tx.user.updateMany({
       where: { id: resetToken.userId, isActive: true },
-      data: { passwordHash },
+      data: { passwordHash, sessionsRevokedAt: new Date() },
     })
     return changed.count === 1
   })

@@ -4,6 +4,7 @@ import { sendOrderConfirmationEmail } from '@/lib/email'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
 import type { PaymentMethod } from '@prisma/client'
 import { newOrderNumber } from '@/lib/order-number'
+import { runInBackground } from '@/lib/background'
 
 // Shared by the admin "Complete order" action (force-completes as COD, staff
 // collects payment separately) and the customer-facing invoice payment flow
@@ -65,9 +66,9 @@ export async function completeDraftOrder(draftId: string, paymentMethod: Payment
   })
 
   if (paymentMethod !== 'CARD' || order.grandTotal === 0) {
-    void sendOrderConfirmationEmail(order.id).catch(error => console.error('[email] order confirmation failed', error))
+    runInBackground(sendOrderConfirmationEmail(order.id).catch(error => console.error('[email] order confirmation failed', error)))
   }
-  void dispatchWebhookEvent('order.created', { id: order.id, orderNumber: order.orderNumber, email: order.email, grandTotal: order.grandTotal, currency: order.currency, status: order.status, paymentStatus: order.paymentStatus }).catch(error => console.error('[webhook] order.created dispatch failed', error))
+  runInBackground(dispatchWebhookEvent('order.created', { id: order.id, orderNumber: order.orderNumber, email: order.email, grandTotal: order.grandTotal, currency: order.currency, status: order.status, paymentStatus: order.paymentStatus }).catch(error => console.error('[webhook] order.created dispatch failed', error)))
 
   return order
 }

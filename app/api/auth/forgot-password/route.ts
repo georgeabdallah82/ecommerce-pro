@@ -4,6 +4,7 @@ import { db } from '@/lib/prisma'
 import { consumeRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { sendPasswordResetEmail } from '@/lib/email'
+import { runInBackground } from '@/lib/background'
 
 const WINDOW_MS = 60 * 60 * 1000
 const MAX_PER_IP = 5
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
     const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL
     if (appUrl) {
       const resetUrl = `${appUrl.replace(/\/$/, '')}/account/reset-password?token=${encodeURIComponent(token)}`
-      void sendPasswordResetEmail(user.email, resetUrl, 30).catch(error => console.error('[password-recovery] email delivery failed', error))
+      runInBackground(sendPasswordResetEmail(user.email, resetUrl, 30).catch(error => console.error('[password-recovery] email delivery failed', error)))
     }
   }
 

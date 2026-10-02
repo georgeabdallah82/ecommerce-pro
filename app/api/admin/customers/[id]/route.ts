@@ -105,6 +105,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (body.phone !== undefined) data.phone = body.phone ? String(body.phone).trim().slice(0, 50) : null
     if (body.isActive !== undefined) data.isActive = Boolean(body.isActive)
 
+    if (data.email !== undefined || data.isActive === false) data.sessionsRevokedAt = new Date()
     const customer = await db.user.update({ where: { id }, data, select: { id: true, name: true, email: true, phone: true, isActive: true } })
     await audit(actor.id, 'customer.updated', 'User', id, { fields: Object.keys(data) })
     return json({ customer }, { headers: { 'Cache-Control': 'private, no-store' } })

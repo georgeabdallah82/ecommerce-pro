@@ -4,6 +4,7 @@ import { audit } from '@/lib/audit'
 import { json, clampInt } from '@/lib/utils'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { checkLowStockAlerts } from '@/lib/push'
+import { runInBackground } from '@/lib/background'
 
 const HISTORY_LIMIT = 50
 
@@ -69,8 +70,8 @@ export async function PATCH(req: Request) {
     })
 
     await audit(actor.id, 'inventory.adjusted', 'InventoryItem', id, { delta, reason, movementType, locationId: requestedLocationId, lowStockThreshold: threshold })
-    void dispatchWebhookEvent('inventory.updated', { id: updated.id, productId: updated.productId, variantId: updated.variantId, quantity: updated.quantity, reserved: updated.reserved, locationId: updated.locationId }).catch(error => console.error('[webhook] inventory.updated dispatch failed', error))
-    if (delta < 0) void checkLowStockAlerts([updated.id]).catch(error => console.error('[push] low stock alert failed', error))
+    runInBackground(dispatchWebhookEvent('inventory.updated', { id: updated.id, productId: updated.productId, variantId: updated.variantId, quantity: updated.quantity, reserved: updated.reserved, locationId: updated.locationId }).catch(error => console.error('[webhook] inventory.updated dispatch failed', error)))
+    if (delta < 0) runInBackground(checkLowStockAlerts([updated.id]).catch(error => console.error('[push] low stock alert failed', error)))
     return json({ item: updated }, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (e) {
     const message = e instanceof Error ? e.message : ''

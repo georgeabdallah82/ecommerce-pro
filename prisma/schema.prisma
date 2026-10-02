@@ -88,6 +88,9 @@ model User {
   isActive         Boolean         @default(true)
   emailVerifiedAt  DateTime?
   lastLoginAt      DateTime?
+  // Sessions issued before this moment are rejected (password/email/role change, account
+  // disabled). Deliberately separate from updatedAt, which changes on every write.
+  sessionsRevokedAt DateTime?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   addresses        Address[]

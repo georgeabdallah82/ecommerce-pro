@@ -11,6 +11,7 @@ import { dispatchWebhookEvent, dispatchInventoryUpdated } from '@/lib/webhooks'
 import { sendFulfillmentEmail, issueAndNotifyGiftCardsForOrder } from '@/lib/email'
 import { checkLowStockAlerts } from '@/lib/push'
 import { OrderStatus, PaymentStatus, Prisma } from '@prisma/client'
+import { runInBackground } from '@/lib/background'
 
 const ORDER_UPDATE_CONFLICT_MESSAGE = 'This order was just modified — please retry.'
 
@@ -232,7 +233,7 @@ export async function PATCH(req: Request) {
           : `Your order is now ${result.updated.status.toLowerCase().replaceAll('_', ' ')}.`
       await db.notification.create({ data: { userId: result.order.userId, title: `Order ${result.order.orderNumber} updated`, body, type: result.cancelRefundAmount > 0 || result.refundToSettle ? 'ORDER_REFUND' : 'ORDER_STATUS' } })
     }
-    if (result.fulfilling) void sendFulfillmentEmail(result.order.id).catch(error => console.error('[email] fulfillment notification failed', error))
+    if (result.fulfilling) runInBackground(sendFulfillmentEmail(result.order.id).catch(error => console.error('[email] fulfillment notification failed', error)))
     if (result.trackingCorrection && result.order.userId) {
       const body = result.trackingCorrection.trackingNumber
         ? `The tracking number for order ${result.trackingCorrection.orderNumber} was updated to ${result.trackingCorrection.trackingNumber}.`
@@ -244,18 +245,18 @@ export async function PATCH(req: Request) {
     // since that additional amount is only a pending manual charge with no automatic payment
     // confirmation -- staff marking the order PAID here is that confirmation.
     if (result.paymentChanged && requestedPayment === PaymentStatus.PAID) {
-      void issueAndNotifyGiftCardsForOrder(result.order.id).catch(error => console.error('[email] gift card issuance on payment confirmation failed', error))
+      runInBackground(issueAndNotifyGiftCardsForOrder(result.order.id).catch(error => console.error('[email] gift card issuance on payment confirmation failed', error)))
     }
     await audit(actor.id, 'order.updated', 'Order', result.order.id, { from: result.order.status, to: result.updated.status, paymentFrom: result.order.paymentStatus, paymentTo: result.updated.paymentStatus, statusChanged: result.statusChanged, paymentChanged: result.paymentChanged, detailsEdited: Object.keys(detailsPatch), fulfillmentId: result.fulfillmentId, cancelRefundAmount: result.cancelRefundAmount || undefined, cancelRefundPending: result.refundToSettle?.amount })
     if (result.statusChanged || result.paymentChanged) {
       const eventPayload = { id: result.updated.id, orderNumber: result.updated.orderNumber, status: result.updated.status, paymentStatus: result.updated.paymentStatus, fulfillmentStatus: result.updated.fulfillmentStatus }
-      void dispatchWebhookEvent('order.updated', eventPayload).catch(error => console.error('[webhook] order.updated dispatch failed', error))
+      runInBackground(dispatchWebhookEvent('order.updated', eventPayload).catch(error => console.error('[webhook] order.updated dispatch failed', error)))
       if (result.statusChanged && (result.updated.status === OrderStatus.SHIPPED || result.updated.status === OrderStatus.DELIVERED)) {
-        void dispatchWebhookEvent('order.fulfilled', eventPayload).catch(error => console.error('[webhook] order.fulfilled dispatch failed', error))
+        runInBackground(dispatchWebhookEvent('order.fulfilled', eventPayload).catch(error => console.error('[webhook] order.fulfilled dispatch failed', error)))
       }
     }
     dispatchInventoryUpdated(result.fulfilledInventoryIds)
-    if (result.fulfilledInventoryIds.length) void checkLowStockAlerts(result.fulfilledInventoryIds).catch(error => console.error('[push] low stock alert failed', error))
+    if (result.fulfilledInventoryIds.length) runInBackground(checkLowStockAlerts(result.fulfilledInventoryIds).catch(error => console.error('[push] low stock alert failed', error)))
 
     if (result.refundToSettle && result.refundToSettle.refundProvider !== 'manual' && result.refundToSettle.refundProvider !== 'wallet') {
       const settled = await settleReturnRefund(actor.id, { orderId: result.updated.id, refundId: result.refundToSettle.refundId, refundProvider: result.refundToSettle.refundProvider, refundExternalId: result.refundToSettle.refundExternalId, amount: result.refundToSettle.amount, currency: result.updated.currency, auditAction: 'order.cancel_refund', keepOrderStatus: true })

@@ -1,5 +1,6 @@
 import { createHmac } from 'node:crypto'
 import { db } from '@/lib/prisma'
+import { runInBackground } from '@/lib/background'
 
 const MAX_DELIVERY_ATTEMPTS = 3
 const RETRY_DELAY_MS = 200
@@ -80,8 +81,8 @@ export async function dispatchWebhookEvent(topic: string, payload: Record<string
  */
 export function dispatchInventoryUpdated(inventoryIds: Iterable<string>) {
   for (const id of inventoryIds) {
-    void db.inventoryItem.findUnique({ where: { id } })
+    runInBackground(db.inventoryItem.findUnique({ where: { id } })
       .then(item => item && dispatchWebhookEvent('inventory.updated', { id: item.id, productId: item.productId, variantId: item.variantId, quantity: item.quantity, reserved: item.reserved, locationId: item.locationId }))
-      .catch(error => console.error('[webhook] inventory.updated dispatch failed', error))
+      .catch(error => console.error('[webhook] inventory.updated dispatch failed', error)))
   }
 }

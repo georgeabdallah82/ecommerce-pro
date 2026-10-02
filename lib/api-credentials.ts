@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import { db } from '@/lib/prisma'
+import { runInBackground } from '@/lib/background'
 
 function hash(value: string) { return createHash('sha256').update(value).digest('hex') }
 
@@ -26,6 +27,6 @@ export async function authenticateApiCredential(req: Request, requiredScope: str
   try { scopes = JSON.parse(credential.scopesJson) } catch { scopes = [] }
   if (!Array.isArray(scopes) || !scopes.includes(requiredScope)) throw new ApiAuthError(`API key is missing the required scope: ${requiredScope}`)
 
-  void db.apiCredential.update({ where: { id: credential.id }, data: { lastUsedAt: new Date() } }).catch(error => console.error('[api-credentials] lastUsedAt update failed', error))
+  runInBackground(db.apiCredential.update({ where: { id: credential.id }, data: { lastUsedAt: new Date() } }).catch(error => console.error('[api-credentials] lastUsedAt update failed', error)))
   return credential
 }

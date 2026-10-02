@@ -8,6 +8,7 @@ import { restockReturnEntries, remainingRefundable, hasPendingRefund, pickRefund
 import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { sendReturnStatusEmail } from '@/lib/email'
 import { Prisma } from '@prisma/client'
+import { runInBackground } from '@/lib/background'
 
 const RETURN_CONFLICT_MESSAGE = 'This order was just modified — please retry.'
 
@@ -55,7 +56,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         return tx.returnRequest.update({ where: { id }, data: { status: 'APPROVED' } })
       })
       await notifyCustomer(updated.orderId, `Your return request was approved`, `Your return request ${updated.id} was approved. Please ship the items back and we'll process it once received.`)
-      void sendReturnStatusEmail(updated.id, updated.orderId).catch(error => console.error('[email] return status email failed', error))
+      runInBackground(sendReturnStatusEmail(updated.id, updated.orderId).catch(error => console.error('[email] return status email failed', error)))
       await audit(actor.id, 'return.approved', 'ReturnRequest', id, {})
       return json({ returnRequest: updated })
     }
@@ -69,7 +70,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         return tx.returnRequest.update({ where: { id }, data: { status: 'REJECTED', notes: note } })
       })
       await notifyCustomer(updated.orderId, `Your return request was declined`, `Your return request ${updated.id} was declined.${note ? ` ${note}` : ''}`)
-      void sendReturnStatusEmail(updated.id, updated.orderId).catch(error => console.error('[email] return status email failed', error))
+      runInBackground(sendReturnStatusEmail(updated.id, updated.orderId).catch(error => console.error('[email] return status email failed', error)))
       await audit(actor.id, 'return.rejected', 'ReturnRequest', id, { note })
       return json({ returnRequest: updated })
     }
@@ -137,7 +138,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         return { order: updatedOrder, returnRequest, refund, refundProvider, refundExternalId, restockedInventoryIds: [...restockedInventoryIds] }
       })
 
-      void dispatchWebhookEvent('order.updated', { id: result.order.id, orderNumber: result.order.orderNumber, status: result.order.status, paymentStatus: result.order.paymentStatus }).catch(error => console.error('[webhook] order.updated dispatch failed', error))
+      runInBackground(dispatchWebhookEvent('order.updated', { id: result.order.id, orderNumber: result.order.orderNumber, status: result.order.status, paymentStatus: result.order.paymentStatus }).catch(error => console.error('[webhook] order.updated dispatch failed', error)))
       dispatchInventoryUpdated(result.restockedInventoryIds)
 
       let refundEmailSent = false
@@ -151,7 +152,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       // Skip when settleReturnRefund above already sent the REFUNDED email for us -- otherwise
       // (manual/no refund, or a still-pending gateway refund) this return's status is RECEIVED
       // and hasn't been emailed yet.
-      if (!refundEmailSent) void sendReturnStatusEmail(result.returnRequest.id, result.order.id).catch(error => console.error('[email] return status email failed', error))
+      if (!refundEmailSent) runInBackground(sendReturnStatusEmail(result.returnRequest.id, result.order.id).catch(error => console.error('[email] return status email failed', error)))
 
       return json(result, { status: result.refund && result.refundProvider !== 'manual' && result.refund.status === 'refund_pending' ? 202 : 200 })
     }

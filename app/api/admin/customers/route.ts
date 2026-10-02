@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs'
 import { deleteCustomerCascade } from '@/lib/customers'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { sumCustomerSpend } from '@/lib/orders'
+import { runInBackground } from '@/lib/background'
 
 export async function GET(req: Request) {
   try {
@@ -97,7 +98,7 @@ export async function POST(req: Request) {
       if (ids.length > 500) return json({ error: 'Too many customers selected' }, { status: 400 })
       const bulkAction = String(body.bulkAction || '')
       if (bulkAction === 'ACTIVATE' || bulkAction === 'DISABLE') {
-        const result = await db.user.updateMany({ where: { id: { in: ids }, role: Role.CUSTOMER }, data: { isActive: bulkAction === 'ACTIVATE' } })
+        const result = await db.user.updateMany({ where: { id: { in: ids }, role: Role.CUSTOMER }, data: bulkAction === 'ACTIVATE' ? { isActive: true } : { isActive: false, sessionsRevokedAt: new Date() } })
         await audit(actor.id, 'customer.bulk_updated', 'User', undefined, { ids, action: bulkAction, count: result.count })
         return json({ ok: true, count: result.count })
       }
@@ -121,7 +122,7 @@ export async function POST(req: Request) {
     const passwordHash = await bcrypt.hash(password || `${crypto.randomUUID()}-${Date.now()}`, 12)
     const customer = await db.user.create({ data: { name, email, phone, passwordHash, role: Role.CUSTOMER, isActive: true } })
     await audit(actor.id, 'customer.created', 'User', customer.id, { email: customer.email })
-    void dispatchWebhookEvent('customer.created', { id: customer.id, name: customer.name, email: customer.email }).catch(error => console.error('[webhook] customer.created dispatch failed', error))
+    runInBackground(dispatchWebhookEvent('customer.created', { id: customer.id, name: customer.name, email: customer.email }).catch(error => console.error('[webhook] customer.created dispatch failed', error)))
     return json({ customer: { id: customer.id, name: customer.name, email: customer.email, phone: customer.phone, isActive: customer.isActive } }, { status: 201 })
   } catch (e) {
     console.error('[admin/customers] POST failed', e)

@@ -7,6 +7,7 @@ import { areebaMpgsPaymentProvider, areebaWebhookToken, safeTokenEqual } from '@
 import { sendOrderConfirmationEmail } from '@/lib/email'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
+import { runInBackground } from '@/lib/background'
 
 function parseCoinsUsed(rawJson: string | null) {
   if (!rawJson) return 0
@@ -56,7 +57,7 @@ async function reconcileRefunds(orderId: string, body: Record<string, any>) {
   })
   if (reconciled) {
     await audit(null, 'order.refund_reconciled', 'Order', orderId, { provider: 'areeba_mpgs', gatewayStatus, gatewayRefunded })
-    void dispatchWebhookEvent('order.updated', webhookPayload!).catch(error => console.error('[webhook] order.updated dispatch failed', error))
+    runInBackground(dispatchWebhookEvent('order.updated', webhookPayload!).catch(error => console.error('[webhook] order.updated dispatch failed', error)))
   }
   return reconciled
 }
@@ -77,8 +78,8 @@ async function processPaymentNotification(orderNumber: string, body: Record<stri
       await tx.paymentTransaction.update({ where: { id: transaction.id }, data: { status: 'paid' } })
     })
     await audit(null, 'payment.paid', 'Order', order.id, { provider: 'areeba_mpgs', orderNumber: order.orderNumber, source: 'webhook' })
-    void sendOrderConfirmationEmail(order.id).catch(error => console.error('[email] order confirmation failed', error))
-    void dispatchWebhookEvent('order.updated', { id: order.id, orderNumber: order.orderNumber, paymentStatus: 'PAID' }).catch(error => console.error('[webhook] order.updated dispatch failed', error))
+    runInBackground(sendOrderConfirmationEmail(order.id).catch(error => console.error('[email] order confirmation failed', error)))
+    runInBackground(dispatchWebhookEvent('order.updated', { id: order.id, orderNumber: order.orderNumber, paymentStatus: 'PAID' }).catch(error => console.error('[webhook] order.updated dispatch failed', error)))
   } else if (status === 'failed') {
     let transitioned = false
     await db.$transaction(async tx => {
@@ -109,7 +110,7 @@ async function processPaymentNotification(orderNumber: string, body: Record<stri
     })
     if (transitioned) {
       await audit(null, 'payment.failed', 'Order', order.id, { provider: 'areeba_mpgs', orderNumber: order.orderNumber, source: 'webhook' })
-      void dispatchWebhookEvent('order.updated', { id: order.id, orderNumber: order.orderNumber, paymentStatus: 'FAILED' }).catch(error => console.error('[webhook] order.updated dispatch failed', error))
+      runInBackground(dispatchWebhookEvent('order.updated', { id: order.id, orderNumber: order.orderNumber, paymentStatus: 'FAILED' }).catch(error => console.error('[webhook] order.updated dispatch failed', error)))
     }
   }
   return true
