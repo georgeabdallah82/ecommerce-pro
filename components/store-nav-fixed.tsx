@@ -307,10 +307,11 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
   const headerSettings = { ...(theme.header || {}), ...(headerSection?.settings || {}) }
   const headerEnabled = theme.header?.enabled !== false && headerSection?.enabled !== false
   const market = theme.design === 'market'
-  // The market header is brand red: a white version of the logo (Theme settings › Logo, dark
-  // background) when there is one, else the normal logo turned white, unless that's switched off.
-  const logoSrc = market && theme.logoUrlDark ? theme.logoUrlDark : theme.logoUrl
-  const logoWhite = market && !theme.logoUrlDark && headerSettings.whiteLogo !== false
+  // The market header is brand red, so the logo is shown in solid white by default (a coloured
+  // logo, even a "dark background" one, can have parts in the same red). Switched off, the
+  // dark-background logo is used as it is, or else the normal one.
+  const logoWhite = market && theme.logoUrl && headerSettings.whiteLogo !== false
+  const logoSrc = market && !logoWhite && theme.logoUrlDark ? theme.logoUrlDark : theme.logoUrl
   const announcementEnabled = theme.announcement?.enabled !== false && announcementSection?.enabled !== false && announcementSection?.settings?.enabled !== false
   
   const { items, updateQty, removeItem, subtotal, count, isOpen: isCartOpen, openCart, closeCart } = useCart()
