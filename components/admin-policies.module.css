@@ -1,0 +1,25 @@
+.page { display: grid; gap: 16px; }
+.head p { margin: 4px 0 0; max-width: 640px; }
+.returnsCard { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 20px !important; }
+.returnsCard strong { font-size: 15px; }
+.returnsCard p { margin: 4px 0 0; max-width: 680px; font-size: 13px; line-height: 1.5; }
+.switch { flex: none; width: 48px; height: 28px; border-radius: 999px; border: 0; background: #d4d4d8; position: relative; cursor: pointer; padding: 0; transition: background .15s ease; }
+.switch i { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .15s ease; }
+.switch.on { background: var(--admin-accent, #d7261e); }
+.switch.on i { transform: translateX(20px); }
+.switch:disabled { opacity: .6; cursor: not-allowed; }
+
+.tabs { display: flex; gap: 6px; overflow-x: auto; border-bottom: 1px solid var(--admin-border); }
+.tabs button { flex: none; display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; font: inherit; font-size: 14px; font-weight: 650; color: var(--admin-muted); cursor: pointer; }
+.tabs .tabOn { color: var(--admin-ink); border-bottom-color: var(--admin-accent, var(--admin-ink)); }
+.badgeCustom, .badgeDefault { padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 750; }
+.badgeCustom { background: var(--admin-success-soft); color: var(--admin-success-strong); }
+.badgeDefault { background: var(--admin-border-soft); color: var(--admin-ink-soft); }
+
+.editorCard { display: grid; gap: 12px; padding: 16px !important; }
+.editorBar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 13px; }
+.editorActions { display: flex; gap: 6px; flex-wrap: wrap; }
+.inlineAlert { margin: 0; }
+.readOnly { padding: 16px; border: 1px solid var(--admin-border-soft); border-radius: 12px; font-size: 14px; line-height: 1.6; }
+.footNote { margin: 0; font-size: 12px; }
+@media (max-width: 640px) { .returnsCard { align-items: flex-start; } }

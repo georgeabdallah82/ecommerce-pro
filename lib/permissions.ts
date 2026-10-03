@@ -35,7 +35,7 @@ export type Permission =
   | 'reports.view'
   | 'settings.view' | 'settings.manage'
 
-const all: Permission[] = [
+export const ALL_PERMISSIONS: Permission[] = [
   'dashboard.view',
   'products.view', 'products.manage',
   'inventory.view', 'inventory.manage',
@@ -72,12 +72,12 @@ const all: Permission[] = [
 ]
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
-  SUPER_ADMIN: all,
+  SUPER_ADMIN: ALL_PERMISSIONS,
   // ADMIN can see who has access (users.view) but can't create/promote/deactivate
   // accounts (users.manage) or touch settings.manage - those stay SUPER_ADMIN-only
   // so a compromised or careless ADMIN account can't escalate its own privileges.
-  ADMIN: all.filter(p => !['settings.manage', 'users.manage'].includes(p)),
-  MANAGER: all.filter(p => ![
+  ADMIN: ALL_PERMISSIONS.filter(p => !['settings.manage', 'users.manage'].includes(p)),
+  MANAGER: ALL_PERMISSIONS.filter(p => ![
     'settings.manage', 'users.view', 'users.manage', 'activity.view',
     'media.manage', 'content.manage', 'themes.manage', 'navigation.manage',
     'apiCredentials.manage'
@@ -107,6 +107,21 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   CUSTOMER: []
 }
 
-export function hasPermission(role: Role, permission: Permission) {
-  return ROLE_PERMISSIONS[role]?.includes(permission) ?? false
+// A staff member on a custom role (Users & roles) carries its permissions, resolved when they
+// are loaded (lib/auth getCurrentUser); otherwise their built-in role decides.
+export type PermissionSubject = Role | { role: Role; permissions?: Permission[] | null }
+
+export function permissionsFor(subject: PermissionSubject): Permission[] {
+  if (typeof subject === 'string') return ROLE_PERMISSIONS[subject] ?? []
+  if (subject.role === 'CUSTOMER') return []
+  if (Array.isArray(subject.permissions)) return subject.permissions
+  return ROLE_PERMISSIONS[subject.role] ?? []
 }
+
+export function hasPermission(subject: PermissionSubject, permission: Permission) {
+  return permissionsFor(subject).includes(permission)
+}
+
+// Custom roles can't hand out staff management: only the owner adds, edits or removes staff,
+// so nobody can grant themselves (or a friend) more access than they were given.
+export const OWNER_ONLY_PERMISSIONS: Permission[] = ['users.manage']

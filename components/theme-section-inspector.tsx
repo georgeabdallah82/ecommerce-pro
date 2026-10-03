@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { parseDeliveryAreas } from '@/lib/storefront-market'
 import { GripVertical, ImagePlus, Plus, Trash2, X } from 'lucide-react'
 import MediaPicker from './media-picker'
 
@@ -76,6 +77,37 @@ export function ImageField({ label, value, onChange, recommended }: { label: str
     </div>
   )
 }
+// Delivery bar areas as a table (area name + delivery time per row) instead of a text box
+// with "Area | time" lines. Stored in the same text format, so nothing else changes. The first
+// row is the area shoppers see until they pick their own.
+const ETA_SUGGESTIONS = ['Today', 'Tomorrow', 'Within 24 hours', 'Within 24–48 hours', 'Within 48 hours', '2–3 days', '3–5 days']
+export function DeliveryAreasField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  const rows = parseDeliveryAreas(value)
+  const write = (next: { name: string; eta: string }[]) => onChange(next.map(r => `${r.name.replace(/\|/g, '/')} | ${r.eta.replace(/\|/g, '/')}`).join('\n'))
+  const [draft, setDraft] = useState<{ name: string; eta: string }[] | null>(null)
+  // Keep half-typed rows (an empty name) while editing; they are dropped when saved.
+  const list = draft ?? rows
+  const update = (next: { name: string; eta: string }[]) => { setDraft(next); write(next.filter(r => r.name.trim())) }
+  const move = (i: number, d: -1 | 1) => { const j = i + d; if (j < 0 || j >= list.length) return; const next = [...list]; [next[i], next[j]] = [next[j], next[i]]; update(next) }
+  return <div className="themeInspectorField deliveryAreas">
+    <span>{label}</span>
+    <datalist id="delivery-eta-suggestions">{ETA_SUGGESTIONS.map(x => <option key={x} value={x} />)}</datalist>
+    <div className="deliveryAreasHead"><em>Area</em><em>Delivery time</em></div>
+    {list.map((row, i) => <div className="deliveryAreasRow" key={i}>
+      <input value={row.name} placeholder="e.g. Beirut" aria-label={`Area ${i + 1}`} maxLength={60} onChange={e => update(list.map((r, n) => n === i ? { ...r, name: e.target.value } : r))} />
+      <input value={row.eta} placeholder="e.g. Tomorrow" aria-label={`Delivery time for ${row.name || `area ${i + 1}`}`} list="delivery-eta-suggestions" maxLength={80} onChange={e => update(list.map((r, n) => n === i ? { ...r, eta: e.target.value } : r))} />
+      <div className="deliveryAreasTools">
+        <button type="button" onClick={() => move(i, -1)} disabled={i === 0} aria-label="Move up">↑</button>
+        <button type="button" onClick={() => move(i, 1)} disabled={i === list.length - 1} aria-label="Move down">↓</button>
+        <button type="button" onClick={() => update(list.filter((_, n) => n !== i))} aria-label={`Remove ${row.name || 'area'}`}>×</button>
+      </div>
+      {i === 0 && <small className="deliveryAreasDefault">Shown first, until a shopper picks their area</small>}
+    </div>)}
+    {!list.length && <small className="deliveryAreasEmpty">No areas yet: the delivery bar is hidden until you add one.</small>}
+    <button type="button" className="deliveryAreasAdd" onClick={() => update([...list, { name: '', eta: '' }])} disabled={list.length >= 40}>+ Add area</button>
+  </div>
+}
+
 export function TextArea({ label, value, onChange, placeholder }: { label: string; value: any; onChange: (value: string) => void; placeholder?: string }) {
   return <label className="themeInspectorField"><span>{label}</span><textarea value={value ?? ''} placeholder={placeholder} onChange={event => onChange(event.target.value)} /></label>
 }
@@ -140,6 +172,7 @@ export type FieldSchema =
   | { kind: 'color'; label: string; get: (s: SettingsMap) => string; set: (value: string) => Record<string, any> }
   | { kind: 'picker'; label: string; source: 'products' | 'collections'; hint?: string; get: (s: SettingsMap) => string[]; set: (ids: string[]) => Record<string, any> }
   | { kind: 'blocks'; label: string; blockType: string }
+  | { kind: 'deliveryAreas'; label: string; get: (s: SettingsMap) => string; set: (value: string) => Record<string, any> }
 
 export type PanelSchema = { title: string; fields: Array<FieldSchema | FieldSchema[]> }
 
@@ -158,6 +191,8 @@ export const range = (label: string, name: string, min: number, max: number, fal
 export const color = (label: string, name: string, fallback: string): FieldSchema =>
   ({ kind: 'color', label, get: s => s[name] || fallback, set: value => ({ [name]: value }) })
 export const blocks = (label: string, blockType: string): FieldSchema => ({ kind: 'blocks', label, blockType })
+export const deliveryAreas = (label: string, name: string): FieldSchema =>
+  ({ kind: 'deliveryAreas', label, get: s => String(s[name] ?? ''), set: value => ({ [name]: value }) })
 
 // Where a section's cards sit when the row isn't full, and an optional narrower section box
 // placed left / center / right on the page. All default to the old look (cards left, full width).
@@ -624,6 +659,8 @@ export function renderField(schema: FieldSchema, ctx: FieldCtx, set: (patch: Rec
       return <ItemPicker key={schema.label} label={schema.label} hint={schema.hint} source={schema.source} items={pickerItems(schema.source, ctx)} value={schema.get(s)} onChange={ids => set(schema.set(ids))} loadError={ctx.loadError} />
     case 'blocks':
       return null
+    case 'deliveryAreas':
+      return <DeliveryAreasField key={schema.label} label={schema.label} value={schema.get(s)} onChange={value => set(schema.set(value))} />
   }
 }
 

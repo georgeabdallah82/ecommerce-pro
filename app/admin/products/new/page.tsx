@@ -4,7 +4,7 @@ import ProductEditorV2 from '@/components/product-editor-v2'
 
 export default async function NewProduct(){
   await requirePermission('products.manage')
-  const [definitions,locations]=await Promise.all([db.metafieldDefinition.findMany({where:{ownerType:'PRODUCT'},orderBy:[{namespace:'asc'},{key:'asc'}]}),db.storeLocation.findMany({orderBy:[{isDefault:'desc'},{name:'asc'}]})])
+  const [definitions,locations,collections]=await Promise.all([db.metafieldDefinition.findMany({where:{ownerType:'PRODUCT'},orderBy:[{namespace:'asc'},{key:'asc'}]}),db.storeLocation.findMany({orderBy:[{isDefault:'desc'},{name:'asc'}]}),db.collection.findMany({orderBy:{name:'asc'},select:{id:true,name:true,isActive:true}})])
   const initial={name:'',slug:'',description:'',shortDescription:'',brand:'',vendor:'',productType:'',basePrice:0,compareAtPrice:null,costPrice:null,sku:'',barcode:'',status:'DRAFT',featured:false,seoTitle:'',seoDescription:'',seoImageUrl:'',weight:null,weightUnit:'kg',requiresShipping:true,taxable:true,trackInventory:true,continueSellingWhenOutOfStock:false,giftCard:false,productTemplate:'product',publishedAt:null,images:[],variants:[],inventory:[{quantity:0,reserved:0,lowStockThreshold:5,locationId:null}],tags:[],metafields:[],sharedInventory:false} as any
-  return <ProductEditorV2 initial={initial} creating definitions={definitions} locations={JSON.parse(JSON.stringify(locations))}/>
+  return <ProductEditorV2 initial={initial} creating definitions={definitions} locations={JSON.parse(JSON.stringify(locations))} collections={collections}/>
 }

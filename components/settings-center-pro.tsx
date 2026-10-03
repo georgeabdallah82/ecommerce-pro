@@ -199,6 +199,7 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
                   <Field label="Report damaged items within (hours)" value={values['policy.damageReportHours']} onChange={v => set('policy.damageReportHours', v.replace(/\D/g, ''))} />
                   <Field label="Refunds arrive within" value={values['policy.refundTime']} onChange={v => set('policy.refundTime', v)} />
                 </div>
+                <span className={ui.fieldHelp}>To rewrite a policy, or to stop accepting returns, go to <a className={ui.textLink} href="/admin/online-store/policies">Online Store › Policies</a>.</span>
               </Card>
 
               <Card title="Search engine listing" desc="Title and description shown by Google and social previews for your homepage and any page that doesn't set its own.">

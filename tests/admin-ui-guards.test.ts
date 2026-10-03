@@ -41,10 +41,15 @@ describe('admin destructive actions', () => {
 
 describe('admin on phones', () => {
   it('turns resource tables into cards instead of clipping columns', () => {
-    for (const path of ['components/orders-admin-shopify.tsx', 'components/admin-products-list.tsx', 'components/customers-admin.tsx', 'components/users-admin-safe.tsx']) {
+    for (const path of ['components/orders-admin-shopify.tsx', 'components/admin-products-list.tsx', 'components/customers-admin.tsx']) {
       assert.match(read(path), /ui\.cardTable/, path)
       assert.match(read(path), /data-cell="primary"/, path)
     }
+  })
+
+  it('lists staff as rows that restack on phones, not a wide table', () => {
+    assert.doesNotMatch(read('components/users-roles-admin.tsx'), /<table/)
+    assert.match(read('components/admin-users.module.css'), /@media \(max-width: 900px\) \{\s*\.userRow \{ grid-template-columns/)
   })
 
   it('keeps stat cards two per row on small phones', () => {

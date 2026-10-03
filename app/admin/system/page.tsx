@@ -5,6 +5,6 @@ import SystemHealthAdmin from '@/components/system-health-admin'
 
 export default async function SystemHealth() {
   const user = await requirePermission('settings.view')
-  const canRepair = hasPermission(user.role, 'settings.manage')
+  const canRepair = hasPermission(user, 'settings.manage')
   return <SystemHealthAdmin initial={await runPlatformHealth()} canRepair={canRepair} />
 }

@@ -2,6 +2,7 @@ import { db } from '@/lib/prisma'
 import { requireUser } from '@/lib/auth'
 import { alreadyReturnedQuantities, normalizeReturnItems, type ReturnableOrder } from '@/lib/returns'
 import { json } from '@/lib/utils'
+import { getReturnsEnabled } from '@/lib/policies'
 import { Prisma } from '@prisma/client'
 
 const RETURN_MESSAGES = new Set([
@@ -30,6 +31,7 @@ function returnFailure(error: unknown) {
 export async function POST(req: Request, { params }: { params: Promise<{ orderNumber: string }> }) {
   try {
     const user = await requireUser()
+    if (!(await getReturnsEnabled())) return json({ error: 'This store does not accept returns. Please contact us if your item arrived damaged or wrong.' }, { status: 403 })
     const { orderNumber } = await params
     const body = await req.json().catch(() => ({}))
     const reason = String(body.reason || '').trim().slice(0, 1000)

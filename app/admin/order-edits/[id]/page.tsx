@@ -16,7 +16,7 @@ export default async function OrderEditDetailPage({ params }: { params: Promise<
   return (
     <OrderEditDetail
       initial={JSON.parse(JSON.stringify({ ...edit, order, items: edit.items.map(i => ({ ...i, product: productById[i.productId] || null })) }))}
-      canManage={hasPermission(user.role, 'orderEdits.manage')}
+      canManage={hasPermission(user, 'orderEdits.manage')}
     />
   )
 }

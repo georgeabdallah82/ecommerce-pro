@@ -172,3 +172,13 @@
   .card { border-radius: var(--admin-radius-md); }
   .tabs { margin-bottom: 10px; }
 }
+
+/* Collections picker (Organization card) */
+.collectionPicker { position: relative; display: grid; gap: 8px; }
+.collectionMenu { position: absolute; z-index: 30; top: 100%; left: 0; right: 0; margin-top: 4px; max-height: 260px; overflow-y: auto; background: var(--admin-surface, #fff); border: 1px solid var(--admin-border, #e5e7eb); border-radius: 12px; box-shadow: 0 14px 36px rgba(15, 23, 42, .14); padding: 6px; }
+.collectionOption { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 13.5px; font-weight: 500; color: var(--admin-ink); }
+.collectionOption:hover { background: var(--admin-border-soft, #f3f4f6); }
+.collectionOption input { width: 16px; height: 16px; accent-color: var(--admin-accent, #d7261e); }
+.collectionOption span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.collectionOption small { font-size: 11px; color: var(--admin-muted, #6b7280); }
+.collectionEmpty { padding: 10px; font-size: 13px; color: var(--admin-muted, #6b7280); }

@@ -9,5 +9,5 @@ export default async function DraftOrderDetailPage({ params }: { params: Promise
   const { id } = await params
   const draft = await db.draftOrder.findUnique({ where: { id }, include: { items: true } })
   if (!draft) return <div className={ui.empty}>Draft order not found.</div>
-  return <DraftOrderDetailAdmin initial={JSON.parse(JSON.stringify(draft))} canManage={hasPermission(user.role, 'draftOrders.manage')} />
+  return <DraftOrderDetailAdmin initial={JSON.parse(JSON.stringify(draft))} canManage={hasPermission(user, 'draftOrders.manage')} />
 }

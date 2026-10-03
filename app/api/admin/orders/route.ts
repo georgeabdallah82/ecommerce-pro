@@ -132,7 +132,7 @@ export async function PATCH(req: Request) {
             // (SUPPORT holds it without orders.refund) is a lower bar -- without this check,
             // cancelling a paid order here was a live bypass of that gate for any role with
             // orders.manage but not orders.refund.
-            if (!hasPermission(actor.role, 'orders.refund')) throw new Error('FORBIDDEN')
+            if (!hasPermission(actor, 'orders.refund')) throw new Error('FORBIDDEN')
             // The remaining-refundable check above is only a snapshot of paymentTransaction rows.
             // Tie it to an atomic conditional write on the order itself (bounded on the updatedAt
             // we just read) so a concurrent cancel/refund/return request that read the same

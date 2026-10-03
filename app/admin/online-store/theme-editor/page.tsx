@@ -7,8 +7,8 @@ import { loadZoneData } from '@/lib/zone-data'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-export default async function ThemeEditorPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
-  const { page: openPage } = await searchParams
+export default async function ThemeEditorPage({ searchParams }: { searchParams: Promise<{ page?: string; settings?: string }> }) {
+  const { page: openPage, settings: openSettings } = await searchParams
   await requirePermission('content.view')
   const state = await getThemeEditorState()
   // Rows from the retired admin "Content" panel, handed to the studio once so it can turn
@@ -35,6 +35,7 @@ export default async function ThemeEditorPage({ searchParams }: { searchParams: 
         navigation: JSON.parse(JSON.stringify(state.navigation)),
         draft: state.draft,
         legacyBlocks: JSON.parse(JSON.stringify(legacyBlocks)),
+        openSettings: typeof openSettings === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(openSettings) ? openSettings : undefined,
         openPage: typeof openPage === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(openPage) ? openPage : undefined,
         products: zone ? JSON.parse(JSON.stringify(zone.products)) : undefined,
         collections: zone ? JSON.parse(JSON.stringify(zone.collections)) : undefined,

@@ -3,6 +3,7 @@ import { SignJWT, jwtVerify } from 'jose'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/prisma'
 import { hasPermission, type Permission } from '@/lib/permissions'
+import { getStaffRoles, resolvePermissions } from '@/lib/staff-roles'
 import { Role } from '@prisma/client'
 import { isSessionRevoked } from '@/lib/session-revocation'
 
@@ -43,7 +44,9 @@ export async function getCurrentUser() {
     // the timestamp has milliseconds, so compare at second precision.
     if (isSessionRevoked(payload.iat, user.sessionsRevokedAt)) return null
 
-    return user
+    // Staff on a custom role: load what that role allows (one settings read, staff only).
+    const permissions = user.role !== 'CUSTOMER' && user.staffRoleId ? resolvePermissions(user, await getStaffRoles()) : null
+    return { ...user, permissions }
   } catch { return null }
 }
 
@@ -51,4 +54,4 @@ export { isSessionRevoked }
 
 export async function requireUser() { const user = await getCurrentUser(); if (!user) throw new Error('UNAUTHORIZED'); return user }
 export async function requireRole(roles: Role[]) { const user = await requireUser(); if (!roles.includes(user.role)) throw new Error('FORBIDDEN'); return user }
-export async function requirePermission(permission: Permission) { const user = await requireUser(); if (!hasPermission(user.role, permission)) throw new Error('FORBIDDEN'); return user }
+export async function requirePermission(permission: Permission) { const user = await requireUser(); if (!hasPermission(user, permission)) throw new Error('FORBIDDEN'); return user }

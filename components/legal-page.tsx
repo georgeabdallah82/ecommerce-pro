@@ -1,5 +1,12 @@
 import { Fragment } from 'react'
 import { whatsappUrl } from '@/lib/links'
+import { getThemeState } from '@/lib/theme'
+import { config } from '@/lib/config'
+import { getContactInfo, getPolicyInfo } from '@/lib/store-contact'
+import { getPolicyHtml, getPolicyVars } from '@/lib/policies'
+import { POLICY_TITLES, type PolicyKind } from '@/lib/policy-templates'
+import { sanitizeRichHtml } from '@/lib/sanitize-html'
+import { Footer } from '@/components/footer'
 
 type Contact = { email: string; phone: string; country: string; address: string }
 
@@ -31,4 +38,20 @@ export function LegalPage({ title, updated, children }: { title: string; updated
       </div>
     </div>
   )
+}
+
+// A whole policy page: the merchant's text (Online Store › Policies) or our default wording,
+// then the store's contact details, which always come from Settings.
+export async function PolicyPage({ kind }: { kind: PolicyKind }) {
+  const [{ theme }, contact, policy] = await Promise.all([getThemeState(), getContactInfo(), getPolicyInfo()])
+  const brand = theme.brandName || config.brand
+  const { html } = await getPolicyHtml(kind, await getPolicyVars(brand, theme.currency))
+  return <>
+    <LegalPage title={POLICY_TITLES[kind]} updated={policy.updated}>
+      <div dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(html) }} />
+      <h2>Contact us</h2>
+      <LegalContact brand={brand} contact={contact}/>
+    </LegalPage>
+    <Footer theme={theme}/>
+  </>
 }

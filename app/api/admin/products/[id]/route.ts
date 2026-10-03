@@ -5,6 +5,7 @@ import { json, slugify } from '@/lib/utils'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { runInBackground } from '@/lib/background'
 import { productInputError } from '@/lib/product-input'
+import { setProductCollections } from '@/lib/product-collections'
 import { cleanBarcode, productConflict, uniqueConflictMessage, variantConflict } from '@/lib/product-uniqueness'
 
 async function getProduct(id:string){
@@ -97,6 +98,7 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
     })
     await audit(actor.id,'product.updated','Product',id,{fields:Object.keys(data),images:Array.isArray(b.images)?b.images.length:undefined,variants:Array.isArray(b.variants)?b.variants.length:undefined,sharedInventory:b.sharedInventory})
     runInBackground(dispatchWebhookEvent('product.updated',{id:product.id,name:product.name,slug:product.slug,status:product.status}).catch(error=>console.error('[webhook] product.updated dispatch failed',error)))
+    await setProductCollections(db,id,b.collectionIds)
     return json({product:await getProduct(id)})
   }catch(e){
     const message=e instanceof Error?e.message:'Unable to update product'

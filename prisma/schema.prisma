@@ -91,6 +91,8 @@ model User {
   // Sessions issued before this moment are rejected (password/email/role change, account
   // disabled). Deliberately separate from updatedAt, which changes on every write.
   sessionsRevokedAt DateTime?
+  // Custom role from Users & roles (lib/staff-roles.ts); null = the built-in role decides.
+  staffRoleId      String?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   addresses        Address[]

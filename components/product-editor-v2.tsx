@@ -23,7 +23,9 @@ type Product = {
   productTemplate?: string | null; publishedAt?: string | null
   images: ImageItem[]; variants: Variant[]; inventory: any[]; tags: any[]; metafields?: any[]
   sharedInventory?: boolean; quantity?: number; lowStockThreshold?: number; locationId?: string | null
+  collections?: { collectionId: string }[]
 }
+type CollectionOption = { id: string; name: string; isActive?: boolean }
 
 const tabs = ['General', 'Inventory', 'Variants', 'Shipping', 'Channels', 'Metafields', 'Search & SEO'] as const
 
@@ -62,7 +64,28 @@ function Check({ checked, onChange, title, text }: { checked: boolean; onChange:
   return <label className={s.checkCard}><input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} /><span><strong>{title}</strong><small>{text}</small></span></label>
 }
 
-export default function ProductEditorV2({ initial, creating, definitions, locations, channels, publications }: { initial: Product; creating: boolean; definitions: any[]; locations?: StoreLocationOption[]; channels?: any[]; publications?: any[] }) {
+// Search-and-tick list of collections, with the chosen ones shown as removable chips.
+function CollectionPicker({ options, value, onChange }: { options: CollectionOption[]; value: string[]; onChange: (ids: string[]) => void }) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const chosen = value.map(id => options.find(o => o.id === id)).filter(Boolean) as CollectionOption[]
+  const q = query.trim().toLowerCase()
+  const matches = options.filter(o => !q || o.name.toLowerCase().includes(q)).slice(0, 60)
+  const toggle = (id: string) => onChange(value.includes(id) ? value.filter(x => x !== id) : [...value, id])
+  if (!options.length) return <p className={ui.muted} style={{ margin: 0 }}>No collections yet. <Link href="/admin/collections" className="textLink">Create one</Link> first.</p>
+  return <div className={s.collectionPicker}>
+    {chosen.length > 0 && <div className={s.tagRow}>{chosen.map(c => <span className={s.tagChip} key={c.id}>{c.name}<button type="button" aria-label={`Remove from ${c.name}`} onClick={() => toggle(c.id)}>×</button></span>)}</div>}
+    <input className={ui.input} placeholder={chosen.length ? 'Add to another collection…' : 'Search collections…'} value={query} onChange={e => { setQuery(e.target.value); setOpen(true) }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)} />
+    {open && <div className={s.collectionMenu} onMouseDown={e => e.preventDefault()}>
+      {matches.length ? matches.map(o => <label key={o.id} className={s.collectionOption}>
+        <input type="checkbox" checked={value.includes(o.id)} onChange={() => toggle(o.id)} />
+        <span>{o.name}</span>{o.isActive === false && <small>hidden</small>}
+      </label>) : <div className={s.collectionEmpty}>No collection matches &ldquo;{query}&rdquo;</div>}
+    </div>}
+  </div>
+}
+
+export default function ProductEditorV2({ initial, creating, definitions, locations, channels, publications, collections = [] }: { initial: Product; creating: boolean; definitions: any[]; locations?: StoreLocationOption[]; channels?: any[]; publications?: any[]; collections?: CollectionOption[] }) {
   const confirm = useConfirm()
   const router = useRouter()
   const [product, setProduct] = useState<Product>(initial)
@@ -74,6 +97,8 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false)
   const [productPublications, setProductPublications] = useState<any[]>(publications || [])
   const [seoMediaPickerOpen, setSeoMediaPickerOpen] = useState(false)
+  const initialCollectionIds = (initial.collections || []).map(c => c.collectionId)
+  const [collectionIds, setCollectionIds] = useState<string[]>(initialCollectionIds)
 
   const initialNames = (() => {
     const set = new Set<string>()
@@ -119,6 +144,7 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
         compareAtPrice: product.compareAtPrice == null ? null : Math.round(Number(product.compareAtPrice)),
         costPrice: product.costPrice == null ? null : Math.round(Number(product.costPrice)),
         tags: (product.tags || []).map((x: any) => typeof x === 'string' ? x : x.value),
+        collectionIds,
       }
       const data = creating ? await api('/api/admin/products', { method: 'POST', body: JSON.stringify(payload) }) : await api(`/api/admin/products/${product.id}`, { method: 'PATCH', body: JSON.stringify(payload) })
       setProduct(data.product); setDirty(false); setMessage('Saved')
@@ -128,6 +154,7 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
 
   function discard() {
     setProduct(initial)
+    setCollectionIds(initialCollectionIds)
     setOptionNames(initialNames)
     setOptionValues(initialNames.map(n => Array.from(new Set((initial.variants || []).map(v => String(parseOptions(v)[n] || '')).filter(Boolean)))))
     setDirty(false); setError(''); setMessage('')
@@ -228,6 +255,10 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
               <Field label="Vendor / brand"><input className={ui.input} value={product.vendor || product.brand || ''} onChange={e => update({ vendor: e.target.value, brand: e.target.value })} /></Field>
               <Field label="Product type"><input className={ui.input} value={product.productType || ''} onChange={e => update({ productType: e.target.value })} /></Field>
               <Field label="Status"><select className={ui.select} value={product.status} onChange={e => update({ status: e.target.value, publishedAt: e.target.value === 'ACTIVE' ? new Date().toISOString() : null })}><option value="DRAFT">Draft</option><option value="ACTIVE">Active</option><option value="ARCHIVED">Archived</option></select></Field>
+            </div>
+            {/* Not a <Field>: that is a <label>, and the picker holds its own labelled checkboxes. */}
+            <div className={s.field}>Collections
+              <CollectionPicker options={collections} value={collectionIds} onChange={ids => { setCollectionIds(ids); setDirty(true); setMessage('') }} />
             </div>
             <Field label="Tags">
               <div className={s.tagRow}>

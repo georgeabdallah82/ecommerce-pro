@@ -13,5 +13,5 @@ export default async function Orders() {
     getStoreTimezone(),
   ])
   const initial = { rows, total, page: 1, pageSize, pages: Math.max(1, Math.ceil(total / pageSize)) }
-  return <OrdersAdminShopify initial={JSON.parse(JSON.stringify(initial))} canRefund={hasPermission(user.role, 'orders.refund')} storeTimezone={storeTimezone} />
+  return <OrdersAdminShopify initial={JSON.parse(JSON.stringify(initial))} canRefund={hasPermission(user, 'orders.refund')} storeTimezone={storeTimezone} />
 }
