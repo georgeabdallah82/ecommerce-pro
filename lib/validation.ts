@@ -25,5 +25,5 @@ export const checkoutSchema = z.object({
     country: z.string().trim().min(2).max(80),
     phone: z.string().trim().max(40).optional().or(z.literal('')),
   }),
-  items: z.array(z.object({ productId: z.string().min(1), variantId: z.string().nullable().optional(), quantity: z.number().int().min(1).max(99) })).min(1).max(100)
+  items: z.array(z.object({ productId: z.string().min(1), variantId: z.string().nullable().optional(), quantity: z.number().int().min(1).max(99), bundleId: z.string().max(64).nullable().optional() })).min(1).max(100)
 })

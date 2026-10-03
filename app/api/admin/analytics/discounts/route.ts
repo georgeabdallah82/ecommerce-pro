@@ -22,10 +22,12 @@ function parseDateParam(value: string | null) {
 function parseRewardDiscount(rawJson: string | null | undefined) {
   if (!rawJson) return 0
   try {
-    const parsed = JSON.parse(rawJson) as { coinDiscount?: unknown; giftCardAmount?: unknown }
+    const parsed = JSON.parse(rawJson) as { coinDiscount?: unknown; giftCardAmount?: unknown; bundles?: unknown }
     const coinDiscount = Number.isSafeInteger(parsed.coinDiscount) ? Math.max(0, Number(parsed.coinDiscount)) : 0
     const giftCardAmount = Number.isSafeInteger(parsed.giftCardAmount) ? Math.max(0, Number(parsed.giftCardAmount)) : 0
-    return coinDiscount + giftCardAmount
+    // Bundle savings (Marketing › Bundles) share the same column too.
+    const bundles = Array.isArray(parsed.bundles) ? parsed.bundles.reduce((sum: number, b: any) => sum + (Number.isSafeInteger(b?.discount) ? Math.max(0, Number(b.discount)) : 0), 0) : 0
+    return coinDiscount + giftCardAmount + bundles
   } catch {
     return 0
   }

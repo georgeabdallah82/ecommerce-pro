@@ -1,0 +1,7 @@
+Stock photos from Unsplash (https://unsplash.com/license) - free to use, commercial use included.
+hero-kitchen.jpg   https://images.unsplash.com/photo-1556911220-bff31c812dba
+hero-rolls.jpg     https://images.unsplash.com/photo-1584556812952-905ffd0c611a
+hero-bottles.jpg   https://images.unsplash.com/photo-1631729371254-42c2892f0e6e
+offer-home.jpg     https://images.unsplash.com/photo-1556228453-efd6c1ff04f6
+offer-care.jpg     https://images.unsplash.com/photo-1620916566398-39f1143ab7be
+spot-cleaning.jpg  https://images.unsplash.com/photo-1563453392212-326f5e854473

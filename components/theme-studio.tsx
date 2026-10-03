@@ -56,6 +56,12 @@ import {
   Video,
   X,
   Zap,
+  Tag,
+  PackagePlus,
+  Rows3,
+  MessageCircle,
+  Truck,
+  BadgePercent,
 } from 'lucide-react'
 import SectionInspector, {
   renderPanel,
@@ -69,6 +75,7 @@ import PageSeoPanel from '@/components/page-seo-panel'
 import { SECTION_PRESETS, type SectionPreset } from '@/lib/section-presets'
 import { isPageTemplateKey, pageIdFromKey, pageTemplateKey } from '@/lib/custom-pages'
 import styles from './theme-studio.module.css'
+import { marketHomeSections, marketSectionDefaults } from '@/lib/storefront-market'
 
 // Deliberately not under /admin -- see app/theme-editor-preview/page.tsx's top comment.
 const PREVIEW_PATH = '/theme-editor-preview'
@@ -129,6 +136,14 @@ const sanitizeHomeSections = (list: Section[]) => {
   return backfilled
 }
 const META: Record<string, string> = {
+  hero_slider: 'Hero slider',
+  offer_banners: 'Offer banners',
+  product_tabs: 'Product tabs (deals / best sellers / new)',
+  product_rail: 'Product row',
+  category_spotlight: 'Category spotlight',
+  shop_by_price: 'Shop by price',
+  recently_viewed: 'Recently viewed',
+  bundles: 'Bundle & save',
   announcement: 'Announcement bar',
   announcement_strip: 'Announcement strip',
   trust_strip: 'Trust strip',
@@ -164,6 +179,14 @@ const META: Record<string, string> = {
   footer: 'Footer',
 }
 const SECTION_ICONS: Record<string, typeof ImageIcon> = {
+  hero_slider: Images,
+  offer_banners: SplitSquareHorizontal,
+  product_tabs: BadgePercent,
+  product_rail: GalleryHorizontalEnd,
+  category_spotlight: PanelTop,
+  shop_by_price: Tag,
+  recently_viewed: History,
+  bundles: PackagePlus,
   announcement: Megaphone,
   announcement_strip: Megaphone,
   trust_strip: ShieldCheck,
@@ -216,7 +239,9 @@ function sectionDefaults(type: string): Section {
     { id: makeId('trust_item'), type: 'trust_item', settings: { heading: 'Secure checkout', text: 'Your order is protected' } },
     { id: makeId('trust_item'), type: 'trust_item', settings: { heading: 'Easy returns', text: 'Hassle-free, within 30 days' } },
   ] }
-  if (type === 'category_strip') return { id: makeId(type), type, enabled: true, settings: { limit: 12 } }
+  const market = marketSectionDefaults(type)
+  if (market) return { id: makeId(type), type, enabled: true, settings: clone(market.settings), blocks: (market.blocks || []).map((b: any) => ({ ...clone(b), id: makeId(b.type) })) }
+  if (type === 'category_strip') return { id: makeId(type), type, enabled: true, settings: { heading: 'Shop by category', limit: 12 } }
   if (type === 'flash_deals') return { id: makeId(type), type, enabled: true, settings: { heading: 'Flash Deals', limit: 12 } }
   if (type === 'new_arrivals') return { id: makeId(type), type, enabled: true, settings: { heading: 'New Arrivals', limit: 12 } }
   if (type === 'best_sellers') return { id: makeId(type), type, enabled: true, settings: { heading: 'Best Sellers', limit: 12 } }
@@ -244,7 +269,7 @@ function sectionDefaults(type: string): Section {
 }
 
 function defaultTemplates(source: Section[]) {
-  const liveDefaults = [sectionDefaults('announcement'), sectionDefaults('header'), sectionDefaults('hero'), sectionDefaults('category_strip'), sectionDefaults('flash_deals'), sectionDefaults('collection_grid'), sectionDefaults('new_arrivals'), sectionDefaults('best_sellers')]
+  const liveDefaults = [sectionDefaults('announcement'), sectionDefaults('header'), ...(marketHomeSections() as Section[]).map(section => ({ ...section, id: makeId(section.type) }))]
   const sanitized = source?.length ? sanitizeHomeSections(clone(source)) : []
   const home = sanitized.length ? sanitized : liveDefaults
   return {
@@ -274,7 +299,37 @@ const THEME_CATEGORIES: ThemeCategory[] = [
     { title: 'Branding', fields: [text('Brand name', 'brandName'), image('Logo', 'logoUrl'), image('Logo (for dark backgrounds, e.g. footer)', 'logoUrlDark'), image('Favicon', 'faviconUrl')] },
   ] },
   { key: 'header', label: 'Header', icon: Menu, group: 'header', panels: [
-    { title: 'Header', fields: [toggle('Show wishlist icon', 'showWishlist', false), toggle('Transparent header', 'transparent', false), toggle('Transparent on homepage only', 'transparentHome', false)] },
+    { title: 'Header', fields: [toggle('Show wishlist icon', 'showWishlist', false), toggle('Transparent header (older design only)', 'transparent', false), toggle('Transparent on homepage only (older design only)', 'transparentHome', false)] },
+    { title: 'Red header', fields: [
+      color('Header colour', 'background', '#d7261e'),
+      toggle('Show the logo in white (uses the dark-background logo when you upload one)', 'whiteLogo', true),
+      text('Search box hint', 'searchPlaceholder', 'Search products…'),
+      toggle('Show category tabs under the header (your Navigation menu)', 'showCategoryTabs', true),
+    ] },
+  ] },
+  { key: 'delivery', label: 'Delivery bar', icon: Truck, group: 'delivery', panels: [
+    { title: 'Delivery bar', fields: [
+      toggle('Show the delivery bar under the header', 'enabled', true),
+      textarea('Delivery areas, one per line: Area | delivery time', 'areas', 'Beirut | Tomorrow\nMetn | Within 24–48 hours'),
+      [text('Label', 'label', 'Delivering to'), text('Time label', 'etaLabel', 'Delivery')],
+      text('Note (computers only)', 'note', 'Cash on delivery'),
+    ] },
+  ] },
+  { key: 'whatsapp', label: 'WhatsApp button', icon: MessageCircle, group: 'whatsapp', panels: [
+    { title: 'Floating WhatsApp button', fields: [
+      toggle('Show the WhatsApp button on every page', 'enabled', false),
+      text('WhatsApp number (empty = the phone in Settings › Store contact)', 'number', '+961 70 000 000'),
+      textarea('Message typed for the shopper', 'message'),
+      text('Button text on computers (empty = icon only)', 'label', 'Chat with us'),
+      select('Side', 'position', [{ value: 'right', label: 'Bottom right' }, { value: 'left', label: 'Bottom left' }], 'right'),
+      toggle('Show on phones', 'showOnMobile', true),
+    ] },
+  ] },
+  { key: 'productCardMarket', label: 'Product cards', icon: Rows3, group: 'productCardMarket', panels: [
+    { title: 'Product cards', fields: [
+      text('Line under the price (empty = hide)', 'deliveryText', 'Cash on delivery'),
+      toggle('Show the Add to cart button', 'showAddToCart', true),
+    ] },
   ] },
   { key: 'productPage', label: 'Product page', icon: Package, group: 'productPage', panels: [
     { title: 'Content', fields: [
@@ -340,7 +395,7 @@ const THEME_CATEGORIES: ThemeCategory[] = [
 // How the Theme tab groups its categories (display only; order here is the order shown).
 const THEME_GROUPS: { label: string; hint: string; keys: string[] }[] = [
   { label: 'Store', hint: 'Name, logo, links', keys: ['branding', 'social'] },
-  { label: 'Pages & layout', hint: 'Header, footer, page options', keys: ['header', 'footer', 'productPage', 'collectionPage', 'cart'] },
+  { label: 'Pages & layout', hint: 'Header, footer, page options', keys: ['header', 'delivery', 'whatsapp', 'productCardMarket', 'footer', 'productPage', 'collectionPage', 'cart'] },
   { label: 'Look & feel', hint: 'Applies everywhere', keys: ['colors', 'typography', 'buttons', 'cards', 'layout'] },
 ]
 
@@ -1166,7 +1221,9 @@ export default function ThemeStudio({ initial }: Props) {
             />
             {(() => {
               const results = Object.entries(META)
-                .filter(([key]) => (isHome ? !['announcement', 'header', 'main_product', 'main_collection_banner', 'main_collection_grid'].includes(key) : !ZONE_HIDDEN_TYPES.has(key)))
+                // Flash deals' daily countdown restarted every midnight (a fake deadline), so it is no
+                // longer offered; a store that already has one keeps it.
+                .filter(([key]) => key !== 'flash_deals' && (isHome ? !['announcement', 'header', 'main_product', 'main_collection_banner', 'main_collection_grid'].includes(key) : !ZONE_HIDDEN_TYPES.has(key)))
                 .filter(([, label]) => label.toLowerCase().includes(pickerQuery.trim().toLowerCase()))
               if (!results.length) return <div className={styles.pickerEmpty}>No sections match &ldquo;{pickerQuery}&rdquo;.</div>
               return (

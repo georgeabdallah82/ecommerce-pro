@@ -73,6 +73,15 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
   const [added, setAdded] = useState(false)
   const [quickProduct, setQuickProduct] = useState<AnyMap | null>(null)
   const [shared, setShared] = useState(false)
+  // Feeds the homepage "Recently viewed" row (this browser only).
+  useEffect(() => {
+    try {
+      const key = 'ecom-recent-products-v1'
+      const raw = JSON.parse(localStorage.getItem(key) || '[]')
+      const list = Array.isArray(raw) ? raw.map(String) : []
+      localStorage.setItem(key, JSON.stringify([product.id, ...list.filter(id => id !== product.id)].slice(0, 12)))
+    } catch {}
+  }, [product.id])
   const pp = theme.productPage || {}
   const showBreadcrumbs = pp.showBreadcrumbs !== false
   const showVendor = pp.showVendor !== false

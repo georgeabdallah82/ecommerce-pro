@@ -5,6 +5,7 @@ import {normalizeNavUrl} from '@/lib/links'
 import {parseJson} from '@/lib/utils'
 import {defaultTheme,defaultSections,defaultNavigation} from './theme-defaults'
 import { setThemeTemplates } from '@/lib/theme-templates'
+import { switchToMarket, isMarket } from '@/lib/storefront-market'
 export type ThemeConfig=typeof defaultTheme
 export {defaultTheme,defaultSections,defaultNavigation}
 
@@ -102,8 +103,13 @@ async function loadThemeState(){
   const themeSetting={value:settings.get('theme.config')},sectionsSetting={value:settings.get('theme.sections')},navigationSetting={value:settings.get('navigation.main')}
 
   const raw=parseJson<any>(themeSetting?.value,{})
-  const theme=deepMerge(defaultTheme,raw)
-  const sections=ensureHomeExtras(normalizeSections(parseJson<any[]>(sectionsSetting?.value,defaultSections),defaultSections))
+  const merged=deepMerge(defaultTheme,raw)
+  const storedSections=normalizeSections(parseJson<any[]>(sectionsSetting?.value,defaultSections),defaultSections)
+  // A store still on the older storefront is shown the new one (until its next publish
+  // saves it); the market homepage never gets the old AliExpress rows appended back.
+  const switched=switchToMarket(merged,storedSections)
+  const theme:any=switched.theme
+  const sections=isMarket(theme)?normalizeSections(switched.sections,[]):ensureHomeExtras(storedSections)
 
   const editorTemplates=(theme.editorTemplates&&typeof theme.editorTemplates==='object')?structuredClone(theme.editorTemplates):{}
   editorTemplates['Home page']=headerFirst(sections)
@@ -157,11 +163,15 @@ export async function getThemeEditorState() {
     db.setting.findUnique({where:{key:'navigation.main'}}), db.setting.findUnique({where:{key:'navigation.draft'}}),
   ])
   const publishedTheme=parseSettingValue(published?.value,defaultTheme)
-  const rawTheme=parseSettingValue(draft?.value,publishedTheme)
+  const storedTheme=parseSettingValue(draft?.value,publishedTheme)
   const publishedHome=headerFirstEditor(normalizeEditorSections(parseSettingValue(publishedSections?.value,defaultSections)))
-  const home=ensureHomeExtras(headerFirstEditor(normalizeEditorSections(parseSettingValue(draftSections?.value,publishedHome))))
+  const storedHome=headerFirstEditor(normalizeEditorSections(parseSettingValue(draftSections?.value,publishedHome)))
+  // Same one-time switch as the live store, so the studio opens on what customers see.
+  const switched=switchToMarket(storedTheme,storedTheme?.editorTemplates?.['Home page']||storedHome)
+  const rawTheme:any=switched.theme
+  const home=switched.switched?headerFirstEditor(normalizeEditorSections(switched.sections)):(isMarket(rawTheme)?storedHome:ensureHomeExtras(storedHome))
   const editorTemplates=normalizeEditorTemplates(rawTheme.editorTemplates)
-  if(!Object.prototype.hasOwnProperty.call(editorTemplates,'Home page')) editorTemplates['Home page']=home
+  if(switched.switched||!Object.prototype.hasOwnProperty.call(editorTemplates,'Home page')) editorTemplates['Home page']=home
   for(const key of Object.keys(editorTemplates)) editorTemplates[key]=headerFirstEditor(editorTemplates[key])
   const theme={...rawTheme,editorTemplates}
   return {theme,sections:home,editorTemplates,navigation:parseSettingValue(draftNavigation?.value,parseSettingValue(navigation?.value,defaultNavigation)),draft:Boolean(draft),publishedTheme}

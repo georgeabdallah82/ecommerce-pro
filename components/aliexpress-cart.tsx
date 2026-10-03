@@ -126,6 +126,7 @@ export default function AliExpressCart({ theme, recommended, sections = [], zone
                   <div className="cartInfoUX">
                     <div className="cartProductName" title={item.name}>{item.name}</div>
                     {item.sku && <span className="sku">SKU {item.sku}</span>}
+                    {item.bundleId && <span className="cartBundleNote">Part of a bundle: the bundle price is applied at checkout</span>}
                     <span className="unitPrice">{money(item.price)} each</span>
                     <span className="cartLineTotal">{money(lineTotal)}</span>
                   </div>
