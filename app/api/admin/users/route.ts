@@ -125,11 +125,12 @@ export async function DELETE(req: Request) {
     if (target.id === actor.id) return json({ error: 'You cannot delete your own account' }, { status: 400 })
     if (target.role === 'SUPER_ADMIN' && actor.role !== 'SUPER_ADMIN') return json({ error: 'Only the super admin can delete a super admin' }, { status: 403 })
     const full = await db.user.findUnique({ where: { id: targetId }, select: { name: true, email: true } })
-    await db.$transaction(async tx => { await deleteStaffCascade(tx, targetId, actor.id, full?.name || 'a removed staff member') })
+    await deleteStaffCascade(db, targetId, actor.id, full?.name || 'a removed staff member')
     await audit(actor.id, 'user.deleted', 'User', target.id, { previousRole: target.role, email: full?.email })
     return json({ success: true }, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (e) {
     const failure = sanitizeFailure(e)
-    return json({ error: failure.error }, { status: failure.status, headers: { 'Cache-Control': 'private, no-store' } })
+    const error = failure.status === 500 ? 'Could not delete this user right now. Please try again, or use Disable to block their access.' : failure.error
+    return json({ error }, { status: failure.status, headers: { 'Cache-Control': 'private, no-store' } })
   }
 }
