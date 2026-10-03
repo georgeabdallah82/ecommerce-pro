@@ -86,6 +86,19 @@ function templateDefaults(type:string){
   return []
 }
 
+// An early draft of templateDefaults() seeded a "You may also like" (product_recommendations)
+// and a newsletter section into the Product and Collection templates. Those pages already show
+// their own related products, so the seeded copy rendered a second "You may also like" once the
+// page zones went live. Only the seeded sections (their fixed ids) are dropped, for the store and
+// the theme editor alike; anything the merchant added has its own id and stays.
+const SEEDED_ZONE_IDS=new Set(['recommendations-template-default','newsletter-template-default'])
+export function dropSeededZoneSections(editorTemplates:Record<string,any>){
+  for(const key of ['Product','Collection']){
+    if(Array.isArray(editorTemplates[key])) editorTemplates[key]=editorTemplates[key].filter((s:any)=>!SEEDED_ZONE_IDS.has(s?.id))
+  }
+  return editorTemplates
+}
+
 function repairTemplate(key:string,value:any){
   const list=headerFirst(Array.isArray(value)?value:[])
   if(key==='Product' && !list.some((s:any)=>s.type==='main_product')) return templateDefaults('Product')
@@ -123,6 +136,7 @@ async function loadThemeState(){
     editorTemplates.Collection=repairTemplate('Collection',editorTemplates.Collection)
     theme.editorTemplateMigrations=3
   }
+  dropSeededZoneSections(editorTemplates)
 
   for(const [key,value] of Object.entries(editorTemplates)){
     if(key!=='Home page') editorTemplates[key]=headerFirst(value as any[])
@@ -172,6 +186,7 @@ export async function getThemeEditorState() {
   const home=switched.switched?headerFirstEditor(normalizeEditorSections(switched.sections)):(isMarket(rawTheme)?storedHome:ensureHomeExtras(storedHome))
   const editorTemplates=normalizeEditorTemplates(rawTheme.editorTemplates)
   if(switched.switched||!Object.prototype.hasOwnProperty.call(editorTemplates,'Home page')) editorTemplates['Home page']=home
+  dropSeededZoneSections(editorTemplates)
   for(const key of Object.keys(editorTemplates)) editorTemplates[key]=headerFirstEditor(editorTemplates[key])
   const theme={...rawTheme,editorTemplates}
   return {theme,sections:home,editorTemplates,navigation:parseSettingValue(draftNavigation?.value,parseSettingValue(navigation?.value,defaultNavigation)),draft:Boolean(draft),publishedTheme}
