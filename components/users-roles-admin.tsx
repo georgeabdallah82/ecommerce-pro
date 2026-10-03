@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Eye, EyeOff, KeyRound, Pencil, Plus, RefreshCw, ShieldCheck, Trash2, UserPlus, X } from 'lucide-react'
 import ui from './admin-ui.module.css'
 import s from './admin-users.module.css'
@@ -76,15 +76,32 @@ export default function UsersRolesAdmin({ initialUsers, initialRoles, currentUse
     setUsers(Array.isArray(u) ? u : []); setRoles(r.roles || [])
   }
 
+  // The phone's Back button (and Next.js' page cache) can bring this screen back exactly as it
+  // was, without the roles or staff changed since. Reload both lists when the screen opens and
+  // whenever it comes back into view, so it always matches what is saved.
+  useEffect(() => {
+    const sync = () => { if (document.visibilityState === 'visible') refresh().catch(() => {}) }
+    sync()
+    window.addEventListener('pageshow', sync)
+    document.addEventListener('visibilitychange', sync)
+    return () => { window.removeEventListener('pageshow', sync); document.removeEventListener('visibilitychange', sync) }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   async function saveStaff(e: React.FormEvent) {
     e.preventDefault(); if (!staffForm) return
     setBusy(true)
     try {
-      if (staffForm.id) await api('/api/admin/users', { method: 'PATCH', body: JSON.stringify({ id: staffForm.id, name: staffForm.name, email: staffForm.email, phone: staffForm.phone, role: staffForm.role }) })
-      else await api('/api/admin/users', { method: 'POST', body: JSON.stringify(staffForm) })
-      await refresh(); setStaffForm(null)
+      const data = staffForm.id
+        ? await api('/api/admin/users', { method: 'PATCH', body: JSON.stringify({ id: staffForm.id, name: staffForm.name, email: staffForm.email, phone: staffForm.phone, role: staffForm.role }) })
+        : await api('/api/admin/users', { method: 'POST', body: JSON.stringify(staffForm) })
+      if (data.user) setUsers(list => [data.user, ...list.filter(u => u.id !== data.user.id)])
+      setStaffForm(null)
       done(staffForm.id ? `${staffForm.name} updated.` : `${staffForm.name} can now sign in at /admin-login with the password you set.`)
-    } catch (err) { fail(err) } finally { setBusy(false) }
+      refresh().catch(() => {})
+    } catch (err) {
+      if (err instanceof Error && /already/.test(err.message)) refresh().catch(() => {})
+      fail(err)
+    } finally { setBusy(false) }
   }
 
   async function savePassword(e: React.FormEvent) {
@@ -98,26 +115,36 @@ export default function UsersRolesAdmin({ initialUsers, initialRoles, currentUse
 
   async function setActive(user: UserRow, isActive: boolean) {
     if (!isActive && !(await confirm({ title: `Disable ${user.name}?`, message: 'They are signed out straight away and cannot sign in until you enable them again. Nothing is deleted.', confirmLabel: 'Disable' }))) return
-    try { await api('/api/admin/users', { method: 'PATCH', body: JSON.stringify({ id: user.id, isActive }) }); await refresh(); done(isActive ? `${user.name} can sign in again.` : `${user.name} is disabled.`) } catch (err) { fail(err) }
+    try { await api('/api/admin/users', { method: 'PATCH', body: JSON.stringify({ id: user.id, isActive }) }); setUsers(list => list.map(u => u.id === user.id ? { ...u, isActive } : u)); done(isActive ? `${user.name} can sign in again.` : `${user.name} is disabled.`); refresh().catch(() => {}) } catch (err) { fail(err) }
   }
 
   async function removeUser(user: UserRow) {
     if (!(await confirm({ title: `Delete ${user.name}?`, message: 'Their account is removed for good. Orders and notes they handled are kept. To only block access for a while, use Disable instead.', confirmLabel: 'Delete for good' }))) return
-    try { await api(`/api/admin/users?id=${encodeURIComponent(user.id)}`, { method: 'DELETE' }); await refresh(); done(`${user.name} was deleted.`) } catch (err) { fail(err) }
+    try { await api(`/api/admin/users?id=${encodeURIComponent(user.id)}`, { method: 'DELETE' }); setUsers(list => list.filter(u => u.id !== user.id)); done(`${user.name} was deleted.`); refresh().catch(() => {}) } catch (err) { fail(err); refresh().catch(() => {}) }
   }
 
   async function saveRole(e: React.FormEvent) {
     e.preventDefault(); if (!roleForm) return
     setBusy(true)
     try {
-      await api('/api/admin/roles', { method: roleForm.id ? 'PATCH' : 'POST', body: JSON.stringify(roleForm) })
-      await refresh(); setRoleForm(null); done(`Role "${roleForm.name}" saved.`)
-    } catch (err) { fail(err) } finally { setBusy(false) }
+      const data = await api('/api/admin/roles', { method: roleForm.id ? 'PATCH' : 'POST', body: JSON.stringify(roleForm) })
+      // Saved: show it straight away, then reload the lists (a failed reload is not a failed save).
+      if (data.role) setRoles(list => [...list.filter(r => r.id !== data.role.id), { users: 0, ...list.find(r => r.id === data.role.id), ...data.role }])
+      setRoleForm(null); done(`Role "${roleForm.name}" saved.`)
+      refresh().catch(() => {})
+    } catch (err) {
+      // Usually an earlier save that did go through; show the list as it really is.
+      if (err instanceof Error && /already exists/.test(err.message)) {
+        await refresh().catch(() => {})
+        setRoleForm(null)
+        setError(`A role called "${roleForm.name}" already exists. It is in the list below: use Edit to change it.`); setNotice('')
+      } else fail(err)
+    } finally { setBusy(false) }
   }
 
   async function removeRole(role: CustomRole) {
     if (!(await confirm({ title: `Delete the role "${role.name}"?`, message: 'Staff members must be moved to another role first.', confirmLabel: 'Delete role' }))) return
-    try { await api(`/api/admin/roles?id=${encodeURIComponent(role.id)}`, { method: 'DELETE' }); await refresh(); done(`Role "${role.name}" deleted.`) } catch (err) { fail(err) }
+    try { await api(`/api/admin/roles?id=${encodeURIComponent(role.id)}`, { method: 'DELETE' }); setRoles(list => list.filter(r => r.id !== role.id)); done(`Role "${role.name}" deleted.`); refresh().catch(() => {}) } catch (err) { fail(err); refresh().catch(() => {}) }
   }
 
   const active = users.filter(u => u.isActive).length
