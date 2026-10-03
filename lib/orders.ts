@@ -4,7 +4,8 @@ const transitions: Record<OrderStatus, OrderStatus[]> = {
   PENDING: ['CONFIRMED','CANCELLED'],
   CONFIRMED: ['PROCESSING','CANCELLED'],
   PROCESSING: ['SHIPPED','CANCELLED'],
-  SHIPPED: ['DELIVERED'],
+  // A shipped parcel can come back (refused cash on delivery, courier couldn't deliver).
+  SHIPPED: ['DELIVERED','CANCELLED'],
   DELIVERED: ['REFUNDED'],
   CANCELLED: [],
   REFUNDED: []

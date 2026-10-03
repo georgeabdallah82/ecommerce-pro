@@ -7,7 +7,9 @@ const NO_STORE = { 'Cache-Control': 'no-store' }
 
 function blockedHost(hostname:string){
   const h=hostname.toLowerCase().replace(/^\[|\]$/g,'')
-  if(h==='localhost'||h==='127.0.0.1'||h==='0.0.0.0'||h==='::1') return true
+  if(h==='localhost'||h.endsWith('.localhost')||h==='::1'||h==='::') return true
+  // Loopback (all of 127/8), "this network" (0/8) and carrier-grade NAT (100.64/10).
+  if(/^127\./.test(h)||/^0\./.test(h)||/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(h)) return true
   if(/^10\./.test(h)||/^192\.168\./.test(h)||/^172\.(1[6-9]|2\d|3[0-1])\./.test(h)) return true
   if(/^169\.254\./.test(h)||h==='169.254.169.254'||h==='metadata.google.internal') return true
   if(h==='::ffff:127.0.0.1'||h.startsWith('fc')||h.startsWith('fd')||h.startsWith('fe80:')) return true
