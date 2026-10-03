@@ -7,7 +7,9 @@ import { Check, ChevronDown, ChevronRight, Heart, Minus, Plus, Share2, ShoppingB
 import { useCart } from '@/components/cart-provider'
 import { useWishlist } from '@/components/use-wishlist'
 import StorefrontSections, { ProductCard, QuickView, StarRow, StoreImage, formatSold, img, money } from '@/components/storefront-sections'
-import { ShippingNote, merchantShippingText } from '@/components/shipping-note'
+import { FreeDeliveryBadge, ShippingNote, merchantShippingText } from '@/components/shipping-note'
+import { DELIVERY_AREA_EVENT, readDeliveryArea } from '@/components/market-chrome'
+import { parseDeliveryAreas } from '@/lib/storefront-market'
 
 type AnyMap = Record<string, any>
 
@@ -67,7 +69,13 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
   const { addItem } = useCart()
   const { wishlist, toggleWish } = useWishlist()
   const router = useRouter()
-  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(product.variants?.[0]?.id || null)
+  // Preselect the first option still for sale.
+  const firstOpenVariant = () => {
+    const list: AnyMap[] = product.variants || []
+    const open = trackInventory && !continueSellingWhenOutOfStock ? list.find((_, i) => (variantAvailability[i]?.available ?? 1) > 0) : list[0]
+    return (open || list[0])?.id || null
+  }
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(firstOpenVariant)
   const [qty, setQty] = useState(1)
   const [activeImgIndex, setActiveImgIndex] = useState(0)
   const [added, setAdded] = useState(false)
@@ -98,7 +106,7 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
   const showQuantity = pp.showQuantity !== false
   const primaryCollection = product.collections?.[0]?.collection
 
-  useEffect(() => { setSelectedVariantId(product.variants?.[0]?.id || null); setQty(1); setActiveImgIndex(0) }, [product.id])
+  useEffect(() => { setSelectedVariantId(firstOpenVariant()); setQty(1); setActiveImgIndex(0) }, [product.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const gallery = product.images?.length ? product.images : [{ url: '/placeholder-product.svg', alt: product.name }]
   const variants = product.variants || []
@@ -110,15 +118,30 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
   const wished = Boolean(wishlist[product.id])
 
   const selectedVariantIndex = variants.findIndex((v: AnyMap) => v.id === selectedVariantId)
+  // Sold-out options stay selectable (so the shopper sees "Out of stock") but look crossed out.
+  const optionSoldOut = (v: AnyMap) => trackInventory && !continueSellingWhenOutOfStock && (variantAvailability[variants.indexOf(v)]?.available ?? 1) <= 0
   const available = variants.length ? (variantAvailability[selectedVariantIndex]?.available ?? productAvailable) : productAvailable
   const canSell = !trackInventory || continueSellingWhenOutOfStock || available > 0
   const purchaseAllowed = canSell && (!trackInventory || continueSellingWhenOutOfStock || qty <= available)
-  const stockLabel = !trackInventory ? 'In stock · Ships within 24 hours' : canSell ? `${available} available · Ships within 24 hours` : 'Out of stock'
+  // The delivery time for the area picked in the delivery bar (Theme settings › Delivery bar),
+  // instead of a fixed promise. "0 available" never shows for items sold while out of stock.
+  const deliveryAreas = theme.design === 'market' && theme.delivery?.enabled !== false ? parseDeliveryAreas(theme.delivery?.areas) : []
+  const [deliveryArea, setDeliveryArea] = useState('')
+  useEffect(() => {
+    const read = () => setDeliveryArea(readDeliveryArea())
+    read()
+    window.addEventListener(DELIVERY_AREA_EVENT, read)
+    return () => window.removeEventListener(DELIVERY_AREA_EVENT, read)
+  }, [])
+  const area = deliveryAreas.find(a => a.name === deliveryArea) || deliveryAreas[0]
+  const deliveryLabel = area?.eta ? `Delivery to ${area.name}: ${area.eta}` : ''
+  const stockLabel = !canSell ? 'Out of stock' : [trackInventory && available > 0 ? `${available} available` : 'In stock', deliveryLabel].filter(Boolean).join(' · ')
 
   const buildItem = () => ({
     productId: product.id,
     variantId: selectedVariant?.id || null,
-    name: product.name,
+    // The chosen option is part of the line's name, so two sizes don't look identical in the cart.
+    name: selectedVariant?.name ? `${product.name} — ${selectedVariant.name}` : product.name,
     sku: selectedVariant?.sku || product.sku || product.slug,
     price: currentPrice,
     image: img(activeImage),
@@ -194,7 +217,7 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
               <span>Options</span>
               <div className="aliVariantList">
                 {variants.map((v: AnyMap) => (
-                  <button key={v.id} className={selectedVariantId === v.id ? 'selected' : ''} onClick={() => setSelectedVariantId(v.id)}>{v.name}</button>
+                  <button key={v.id} className={`${selectedVariantId === v.id ? 'selected' : ''} ${optionSoldOut(v) ? 'soldOut' : ''}`} aria-label={optionSoldOut(v) ? `${v.name} (sold out)` : undefined} onClick={() => setSelectedVariantId(v.id)}>{v.name}</button>
                 ))}
               </div>
             </div>
@@ -238,7 +261,7 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
             <div className="focalTrustGrid">
               <span>✓ Secure checkout</span>
               <span>✓ Easy returns</span>
-              <span>✓ Free shipping &gt; $50</span>
+              <FreeDeliveryBadge />
             </div>
           )}
 

@@ -1,6 +1,7 @@
 import {db} from '@/lib/prisma'
 import {getThemeState} from '@/lib/theme'
 import {withProductStats} from '@/lib/product-stats'
+import { CARD_STOCK_INCLUDE, withCardStock } from '@/lib/card-stock'
 import {getUnpublishedProductIds} from '@/lib/sales-channels'
 import StorefrontSections from '@/components/storefront-sections'
 import {Footer} from '@/components/footer'
@@ -15,7 +16,7 @@ export const metadata: Metadata = { alternates: { canonical: '/' } }
 export default async function Home(){
   const [{theme,sections},unpublishedIds]=await Promise.all([getThemeState(),getUnpublishedProductIds()])
   const [rawProducts,collections,contentBlocks]=await Promise.all([
-    db.product.findMany({where:{status:'ACTIVE',id:{notIn:unpublishedIds}},include:{images:{orderBy:{sortOrder:'asc'}},collections:{include:{collection:true}}},orderBy:[{featured:'desc'},{createdAt:'desc'}],take:60}),
+    db.product.findMany({where:{status:'ACTIVE',id:{notIn:unpublishedIds}},include:{images:{orderBy:{sortOrder:'asc'}},collections:{include:{collection:true}},...CARD_STOCK_INCLUDE},orderBy:[{featured:'desc'},{createdAt:'desc'}],take:60}),
     db.collection.findMany({where:{isActive:true},include:{products:{select:{productId:true}}},take:12,orderBy:{sortOrder:'asc'}}),
     // Legacy: the announcement bar and trust strip used to live in these admin "Content"
     // rows. They are theme-studio sections now (announcement_strip / trust_strip); the
@@ -25,7 +26,7 @@ export default async function Home(){
     // opened the new studio yet) the rows keep rendering exactly as before.
     theme.legacyHomeBlocksMigrated?Promise.resolve([]):db.homepageBlock.findMany({where:{isActive:true,type:{in:['announcement','trust']}},orderBy:{sortOrder:'asc'}}),
   ])
-  const products=await withProductStats(rawProducts)
+  const products=await withProductStats(withCardStock(rawProducts))
   const announcements=contentBlocks.filter((b:any)=>b.type==='announcement')
   const trustItems=contentBlocks.filter((b:any)=>b.type==='trust')
   // Tells Google the store's name and logo, and lets it show a search box for the store.

@@ -11,6 +11,8 @@ import { whatsappUrl } from '@/lib/links'
 import { parseDeliveryAreas } from '@/lib/storefront-market'
 
 export const DELIVERY_AREA_KEY = 'ecom-delivery-area-v1'
+// Fired when the shopper picks another area, so the product page's delivery line follows.
+export const DELIVERY_AREA_EVENT = 'ecom-delivery-area'
 
 export function readDeliveryArea(): string {
   try { return localStorage.getItem(DELIVERY_AREA_KEY) || '' } catch { return '' }
@@ -23,7 +25,7 @@ export function DeliveryBar({ theme }: { theme: any }) {
   useEffect(() => { const saved = readDeliveryArea(); if (saved) setArea(saved) }, [])
   if (d.enabled === false || !areas.length) return null
   const current = areas.find(a => a.name === area) || areas[0]
-  const choose = (name: string) => { setArea(name); try { localStorage.setItem(DELIVERY_AREA_KEY, name) } catch {} }
+  const choose = (name: string) => { setArea(name); try { localStorage.setItem(DELIVERY_AREA_KEY, name) } catch {} window.dispatchEvent(new Event(DELIVERY_AREA_EVENT)) }
   return (
     <div className="mkDelivery">
       <div className="mkWrap mkDeliveryInner">

@@ -7,7 +7,7 @@ import {useCart} from '@/components/cart-provider'
 import NewsletterForm from '@/components/newsletter-form'
 import {StorefrontPreviewContext} from '@/components/preview-context'
 import {useWishlist} from '@/components/use-wishlist'
-import { ShippingNote, merchantShippingText } from '@/components/shipping-note'
+import { FreeDeliveryBadge, ShippingNote, merchantShippingText } from '@/components/shipping-note'
 import { BundlesSection, CategorySpotlight, HeroSlider, OfferBanners, ProductRail, ProductTabs, RecentlyViewed, ShopByPrice } from '@/components/market-sections'
 
 const TRUST_ICONS:Record<string,typeof ShieldCheck>={truck:Truck,shield:ShieldCheck,return:RotateCcw,lock:Lock,support:Headphones,award:Award}
@@ -162,6 +162,7 @@ export function ProductCard({p,theme,onQuickView,preview,onSelect,wishlist,toggl
   const quickAdd=(e:React.MouseEvent)=>{
     e.preventDefault();
     e.stopPropagation();
+    if(p.soldOut)return;
     if(Array.isArray(p.variants)&&p.variants.length){onQuickView(p);return}
     setAdded(true);
     addItem({productId:p.id,variantId:null,name:p.name,sku:p.sku||p.slug,price,image:img(primaryImage),quantity:1});
@@ -185,7 +186,9 @@ export function ProductCard({p,theme,onQuickView,preview,onSelect,wishlist,toggl
           {reviewCount>0&&<div className="mkCardRating"><StarRow rating={Number(p.rating||0)} size={12}/><span>({reviewCount})</span></div>}
           <div className="mkCardPrice"><strong>{money(price,theme.currency||'USD')}</strong>{compare>price&&<del>{money(compare,theme.currency||'USD')}</del>}</div>
           {card.deliveryText!==''&&<span className="mkCardNote"><Truck size={13}/> {card.deliveryText||'Cash on delivery'}</span>}
-          {card.showAddToCart!==false&&<button type="button" className={`mkCardAdd ${added?'done':''}`} onClick={quickAdd}>{added?<><Check size={15}/> Added</>:hasOptions?'Choose options':'Add to cart'}</button>}
+          {card.showAddToCart!==false&&(p.soldOut
+            ?<button type="button" className="mkCardAdd soldOut" disabled>Sold out</button>
+            :<button type="button" className={`mkCardAdd ${added?'done':''}`} onClick={quickAdd}>{added?<><Check size={15}/> Added</>:hasOptions?'Choose options':'Add to cart'}</button>)}
         </div>
       </Link>
     );
@@ -222,14 +225,20 @@ export function QuickView({product,theme,onClose}:{product:AnyMap;theme:AnyMap;o
   const {addItem}=useCart();
   const [qty,setQty]=useState(1);
   const [added,setAdded]=useState(false);
-  const [variantId,setVariantId]=useState<string|null>(product.variants?.[0]?.id||null);
-  useEffect(()=>{setVariantId(product.variants?.[0]?.id||null);setQty(1)},[product?.id]);
+  // Options that are sold out can't be picked; the first one still for sale is preselected.
+  const firstOpen=(product.variants||[]).find((v:any)=>v.available!==0)?.id||product.variants?.[0]?.id||null;
+  const [variantId,setVariantId]=useState<string|null>(firstOpen);
+  useEffect(()=>{setVariantId(firstOpen);setQty(1)},[product?.id]);
   const variant=product.variants?.find((v:any)=>v.id===variantId);
   const value=Number(variant?.price??product.basePrice??0);
   const image=product.images?.[0]?.url||'/placeholder-product.svg';
+  const soldOut=Boolean(product.soldOut)||variant?.available===0;
+  const maxQty=typeof variant?.available==='number'?Math.max(1,variant.available):99;
   const handleAdd=()=>{
+    if(soldOut)return;
     setAdded(true);
-    addItem({productId:product.id,variantId,name:product.name,sku:variant?.sku||product.sku||product.slug,price:value,image:img(image),quantity:qty});
+    if(soldOut)return;
+    addItem({productId:product.id,variantId,name:variant?.name?`${product.name} — ${variant.name}`:product.name,sku:variant?.sku||product.sku||product.slug,price:value,image:img(image),quantity:Math.min(qty,maxQty)});
     setTimeout(()=>{setAdded(false);onClose()},600);
   };
   return (
@@ -242,14 +251,14 @@ export function QuickView({product,theme,onClose}:{product:AnyMap;theme:AnyMap;o
           <h2>{product.name}</h2>
           <div className="focalPrice big">{money(value,theme.currency||'USD')}</div>
           <p>{product.shortDescription||product.description||''}</p>
-          {product.variants?.length>0&&<div className="focalVariantList">{product.variants.map((v:any)=><button key={v.id} className={variantId===v.id?'selected':''} onClick={()=>setVariantId(v.id)}>{v.name}</button>)}</div>}
+          {product.variants?.length>0&&<div className="focalVariantList">{product.variants.map((v:any)=><button key={v.id} className={variantId===v.id?'selected':''} disabled={v.available===0} aria-label={v.available===0?`${v.name} (sold out)`:undefined} onClick={()=>setVariantId(v.id)}>{v.name}{v.available===0?' · Sold out':''}</button>)}</div>}
           <div className="focalQty">
             <button onClick={()=>setQty(Math.max(1,qty-1))} aria-label="Decrease quantity"><Minus size={14}/></button>
             <span>{qty}</span>
-            <button onClick={()=>setQty(Math.min(99,qty+1))} aria-label="Increase quantity"><Plus size={14}/></button>
+            <button onClick={()=>setQty(Math.min(maxQty,qty+1))} aria-label="Increase quantity"><Plus size={14}/></button>
           </div>
-          <button className={`focalButton primary wide ${added?'addedSuccess':''}`} onClick={handleAdd}>
-            {added ? <>Added to cart <Check size={16}/></> : <>Add to cart <ShoppingBag size={16}/></>}
+          <button className={`focalButton primary wide ${added?'addedSuccess':''}`} onClick={handleAdd} disabled={soldOut}>
+            {soldOut ? 'Sold out' : added ? <>Added to cart <Check size={16}/></> : <>Add to cart <ShoppingBag size={16}/></>}
           </button>
           <Link className="focalButton secondary wide" href={`/product/${product.slug}`} onClick={onClose}>View full product</Link>
         </div>
@@ -348,7 +357,7 @@ function MainProductSection({section,theme,product,preview,selected,onSelect,wis
             </div>
           )}
           <div className="focalStock">
-            <span className="focalStockDot"/> In stock · Ships within 24 hours · Free delivery &gt; $50
+            <span className="focalStockDot"/> In stock
           </div>
           <div className="focalPurchaseRow">
             <div className="focalQty">
@@ -370,7 +379,7 @@ function MainProductSection({section,theme,product,preview,selected,onSelect,wis
           <div className="focalTrustGrid">
             <span>✓ Secure checkout</span>
             <span>✓ Easy returns</span>
-            <span>✓ Free shipping &gt; $50</span>
+            <FreeDeliveryBadge />
           </div>
           <div className="focalAccordions">
             <details open><summary>Description<ChevronDown size={16}/></summary><p>{product.description||product.shortDescription||''}</p></details>

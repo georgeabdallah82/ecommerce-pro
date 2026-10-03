@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import { db } from '@/lib/prisma'
 import { PurchaseTracker } from '@/components/purchase-tracker'
+import { StoreFooter } from '@/components/store-footer'
 
 export default async function Success({ searchParams }: { searchParams: Promise<{ order?: string; email?: string; payment?: string }> }) {
   const { order, email, payment } = await searchParams
@@ -20,7 +21,7 @@ export default async function Success({ searchParams }: { searchParams: Promise<
   const processing = !failed && record?.paymentMethod === 'CARD' && record.paymentStatus !== 'PAID'
 
   if (failed) {
-    return <main className="section"><div className="container"><div className="card successCard">
+    return <><main className="section"><div className="container"><div className="card successCard">
       <span className="pill">PAYMENT NOT COMPLETED</span>
       <h1 className="h2">Your payment didn't go through.</h1>
       <p className="body muted">You haven't been charged for order <strong>#{order}</strong>. You can try again with another card or choose cash on delivery.</p>
@@ -28,10 +29,10 @@ export default async function Success({ searchParams }: { searchParams: Promise<
         <Link className="btn" href="/cart">Back to cart</Link>
         <Link className="btn secondary" href="/shop">Continue shopping</Link>
       </div>
-    </div></div></main>
+    </div></div></main><StoreFooter /></>
   }
 
-  return <main className="section"><div className="container"><div className="card successCard">
+  return <><main className="section"><div className="container"><div className="card successCard">
     <span className="pill">{processing ? 'PAYMENT PROCESSING' : 'ORDER CONFIRMED'}</span>
     <h1 className="h2">Thank you for your order.</h1>
     {processing && <p className="body muted">We're waiting for your bank to confirm the payment. You'll get an email as soon as it does.</p>}
@@ -48,5 +49,5 @@ export default async function Success({ searchParams }: { searchParams: Promise<
     currency={record.currency}
     items={record.items.map(i => ({ name: i.name, sku: i.sku, price: i.unitPrice / 100, quantity: i.quantity }))}
   />}
-  </main>
+  </main><StoreFooter /></>
 }

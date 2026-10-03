@@ -78,7 +78,10 @@ export function HeroSlider({ section, preview, selected, click }: Pick<Common, '
             const copy = (
               <div className="mkSlideCopy">
                 {t.tag ? <span className="mkTag">{t.tag}</span> : null}
-                <h2>{t.heading}{t.highlight ? <> <span>{t.highlight}</span></> : null}</h2>
+                {/* The first slide's heading is the page's main heading. */}
+                {i === 0
+                  ? <h1>{t.heading}{t.highlight ? <> <span>{t.highlight}</span></> : null}</h1>
+                  : <h2>{t.heading}{t.highlight ? <> <span>{t.highlight}</span></> : null}</h2>}
                 {t.text ? <p>{t.text}</p> : null}
                 {(t.buttonLabel || t.secondaryLabel) && (
                   <div className="mkBtns">

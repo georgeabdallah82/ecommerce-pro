@@ -14,6 +14,7 @@ import LiveVisitorTracker from '@/components/live-visitor-tracker'
 import { CartProvider } from '@/components/cart-provider'
 import { TrackingScripts } from '@/components/tracking-scripts'
 import type { Metadata, Viewport } from 'next'
+import Script from 'next/script'
 import { NavProgress } from '@/components/nav-progress'
 import { safeStyleText } from '@/lib/sanitize-html'
 import { WhatsAppFloat } from '@/components/market-chrome'
@@ -87,7 +88,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // object and warn on every /admin/* load.
   const rootVarsCss = `:root{${Object.entries(vars).map(([key, value]) => `${key}:${String(value).replace(/[{}<]/g, '')}`).join(';')}}`
   if (isMaintenancePage) {
-    return <html lang="en" className={FONT_VARIABLE_CLASSES}><head><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/>{theme.faviconUrl ? <link rel="icon" href={theme.faviconUrl}/> : null}</head><body>{children}</body></html>
+    return <html lang="en" className={FONT_VARIABLE_CLASSES}><head><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/><link rel="icon" href={theme.faviconUrl || 'data:,'}/></head><body>{children}</body></html>
   }
   // suppressHydrationWarning is required here: adminThemeScript above deliberately sets
   // data-admin-theme and style.colorScheme on this exact element from localStorage before
@@ -96,5 +97,5 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // client tree from scratch on every /admin/* load -- which was silently breaking the theme
   // editor's live-preview iframe: the fresh re-render recreates the iframe mid-handshake,
   // permanently losing the postMessage exchange that populates the preview pane.
-  return <html lang="en" className={FONT_VARIABLE_CLASSES} suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:adminThemeScript}}/><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/>{theme.faviconUrl ? <link rel="icon" href={theme.faviconUrl}/> : null}{theme.customCss ? <style dangerouslySetInnerHTML={{ __html: safeStyleText(theme.customCss) }}/> : null}</head><body className={[theme.animations?.enabled ? 'animations-enabled' : '', theme.design === 'market' ? 'mk' : ''].filter(Boolean).join(' ') || undefined}><TrackingScripts config={tracking}/><CartProvider><NavProgress/><LiveVisitorTracker/><StoreNavRuntime theme={theme} navigation={navigation}/><StoreNavScroll/>{children}<WhatsAppFloat theme={theme}/></CartProvider></body></html>
+  return <html lang="en" className={FONT_VARIABLE_CLASSES} suppressHydrationWarning><head><Script id="admin-theme" strategy="beforeInteractive" dangerouslySetInnerHTML={{__html:adminThemeScript}}/><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/><link rel="icon" href={theme.faviconUrl || 'data:,'}/>{theme.customCss ? <style dangerouslySetInnerHTML={{ __html: safeStyleText(theme.customCss) }}/> : null}</head><body className={[theme.animations?.enabled ? 'animations-enabled' : '', theme.design === 'market' ? 'mk' : ''].filter(Boolean).join(' ') || undefined}><TrackingScripts config={tracking}/><CartProvider><NavProgress/><LiveVisitorTracker/><StoreNavRuntime theme={theme} navigation={navigation}/><StoreNavScroll/>{children}<WhatsAppFloat theme={theme}/></CartProvider></body></html>
 }

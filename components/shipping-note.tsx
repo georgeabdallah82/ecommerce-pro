@@ -11,10 +11,9 @@ export function merchantShippingText(value: unknown): string {
   return text === LEGACY_DEFAULT ? '' : text
 }
 
-// Default "Shipping & returns" text on product pages when the merchant hasn't written their
-// own. Built from the real free-delivery threshold (Settings > Checkout) so it can never
-// promise a different amount than checkout charges.
-export function ShippingNote() {
+// The store's free-delivery amount, formatted ("$100"), or '' when there isn't one. Read
+// from Settings > Checkout so no label can promise a different amount than checkout charges.
+export function useFreeDeliveryAmount() {
   const [free, setFree] = useState('')
   useEffect(() => {
     let active = true
@@ -29,6 +28,19 @@ export function ShippingNote() {
       .catch(() => {})
     return () => { active = false }
   }, [])
+  return free
+}
+
+// Product page trust badge.
+export function FreeDeliveryBadge() {
+  const free = useFreeDeliveryAmount()
+  return <span>✓ {free ? `Free delivery over ${free}` : 'Cash on delivery'}</span>
+}
+
+// Default "Shipping & returns" text on product pages when the merchant hasn't written their
+// own. Built from the real free-delivery threshold (Settings > Checkout).
+export function ShippingNote() {
+  const free = useFreeDeliveryAmount()
   return <>
     {free && <>Free delivery on orders over {free}. </>}
     The delivery fee and estimated delivery time are shown at checkout. See our <Link href="/refund-policy">Refund Policy</Link> for returns.

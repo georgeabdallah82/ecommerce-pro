@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { StoreFooter } from '@/components/store-footer'
 import { login } from './server'
 import { safeNextPath } from '@/lib/links'
 
@@ -10,7 +11,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
   const nextQuery = next === '/account' ? '' : `?next=${encodeURIComponent(next)}`
 
   return (
-    <main className="section">
+    <><main className="section">
       <div className="container" style={{ maxWidth: 520 }}>
         <span className="muted">ACCOUNT</span>
         <h1 className="h2" style={{ fontSize: 46, marginTop: 10 }}>Sign in</h1>
@@ -30,6 +31,6 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
         </form>
         <p className="muted" style={{ marginTop: 16 }}>New here? <Link href={`/account/register${nextQuery}`} style={{ textDecoration: 'underline' }}>Create an account</Link></p>
       </div>
-    </main>
+    </main><StoreFooter /></>
   )
 }
