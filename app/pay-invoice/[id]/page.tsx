@@ -1,10 +1,14 @@
 import { db } from '@/lib/prisma'
 import { getThemeState } from '@/lib/theme'
-import { draftInvoiceToken, safeTokenEqual } from '@/lib/payments'
+import { draftInvoiceToken, safeTokenEqual, getPaymentProvider } from '@/lib/payments'
 import { money } from '@/lib/config'
 import { notFound } from 'next/navigation'
 import { Footer } from '@/components/footer'
 import InvoicePayClient from '@/components/invoice-pay-client'
+import { PaymentInstructions } from '@/components/payment-instructions'
+import { getContactInfo } from '@/lib/store-contact'
+import { getPublicPaymentMethods } from '@/lib/payment-methods-public'
+import { whatsappUrl } from '@/lib/links'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -15,9 +19,14 @@ export default async function PayInvoicePage({ params, searchParams }: { params:
   const { theme } = await getThemeState()
   const draft = await db.draftOrder.findUnique({ where: { id }, include: { items: true } })
   if (!draft || !token || !safeTokenEqual(token, draftInvoiceToken(id))) notFound()
+  // Without a card gateway "Pay now" can only fail, so offer the ways this store does take money.
+  const online = draft.status === 'OPEN' || draft.status === 'DRAFT' ? (await getPaymentProvider().catch(() => null))?.name !== 'manual' : false
+  const bankOn = !online && Boolean((await getPublicPaymentMethods().catch(() => null))?.bank)
+  const contact = online ? null : await getContactInfo()
+  const chat = contact?.phone ? whatsappUrl(contact.phone, contact.country) : ''
 
   return <>
-    <div className="focalStorefront">
+    <main className="focalStorefront">
       <div className="aliContainer aliLegalPage" style={{ maxWidth: 640 }}>
         <h1>Invoice {draft.orderNumber}</h1>
         {draft.status === 'COMPLETED' ? (
@@ -38,11 +47,18 @@ export default async function PayInvoicePage({ params, searchParams }: { params:
               <span>Total due</span>
               <span>{money(draft.grandTotal, draft.currency)}</span>
             </div>
-            <InvoicePayClient draftOrderId={draft.id} token={token} />
+            {online ? <InvoicePayClient draftOrderId={draft.id} token={token} /> : <>
+              {bankOn && <PaymentInstructions method="BANK_TRANSFER" status="PENDING" amount={money(draft.grandTotal, draft.currency)} orderNumber={draft.orderNumber} />}
+              <p className="muted" style={{ marginTop: 16, fontSize: 14 }}>
+                {bankOn ? 'Questions about this invoice? Contact us: ' : 'To pay this invoice, contact us: '}
+                {chat && <><a className="textLink" href={chat} target="_blank" rel="noopener noreferrer">WhatsApp</a>{contact?.email ? ' or ' : ''}</>}
+                {contact?.email && <a className="textLink" href={`mailto:${contact.email}?subject=${encodeURIComponent(`Invoice ${draft.orderNumber}`)}`}>{contact.email}</a>}
+              </p>
+            </>}
           </>
         )}
       </div>
-    </div>
+    </main>
     <Footer theme={theme} />
   </>
 }

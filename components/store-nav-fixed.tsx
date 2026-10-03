@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { keyOf, useCart } from './cart-provider'
 import { CategoryTabs, DeliveryBar } from './market-chrome'
+import { money as formatMoney } from '@/lib/config'
 
 type NavItem = { id: string; label: string; url?: string | null; parentId?: string | null; group?: string | null; imageUrl?: string | null }
 type TreeItem = NavItem & { children: TreeItem[] }
@@ -401,7 +402,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
   }, [search, desktopSearchOpen, searchQuery])
 
   const tree = useMemo(() => buildTree(navigation || []), [navigation])
-  const money = (v: number) => `${theme.currency || 'USD'} ${(v / 100).toFixed(2)}`
+  const money = (v: number) => formatMoney(v, theme.currency || 'USD')
   const transparent = headerSettings.transparent === true || (headerSettings.transparentHome === true && pathname === '/')
   const announcementPosition = announcementSection?.settings?.position ?? theme.announcement?.position ?? 'above'
   const dismissAnnouncement = () => { setAnnouncementClosed(true); try { sessionStorage.setItem('focal-announcement-dismissed', '1') } catch {} }

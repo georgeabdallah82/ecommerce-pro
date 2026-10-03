@@ -4,8 +4,8 @@ import { db } from '@/lib/prisma'
 import { getThemeState } from '@/lib/theme'
 import { notFound } from 'next/navigation'
 import InvoiceActions from '@/components/invoice-actions'
+import { money } from '@/lib/config'
 
-function money(v: number, currency: string) { return `${currency} ${(v / 100).toFixed(2)}` }
 function address(raw: string | null | undefined) {
   if (!raw) return '—'
   try {

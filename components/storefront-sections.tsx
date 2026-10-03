@@ -7,6 +7,7 @@ import {useCart} from '@/components/cart-provider'
 import NewsletterForm from '@/components/newsletter-form'
 import {StorefrontPreviewContext} from '@/components/preview-context'
 import {useWishlist} from '@/components/use-wishlist'
+import { money as formatMoney } from '@/lib/config'
 import { FreeDeliveryBadge, ShippingNote, merchantShippingText } from '@/components/shipping-note'
 import { BundlesSection, CategorySpotlight, HeroSlider, OfferBanners, ProductRail, ProductTabs, RecentlyViewed, ShopByPrice } from '@/components/market-sections'
 
@@ -18,7 +19,10 @@ type AnyMap=Record<string,any>
 const eyebrowOf=(s:AnyMap,fallback:string)=>typeof s.eyebrow==='string'?s.eyebrow:fallback
 type Props={theme:AnyMap;sections:AnyMap[];products?:AnyMap[];collections?:AnyMap[];product?:AnyMap|null;currentCollection?:AnyMap|null;preview?:boolean;selectedId?:string;onSelect?:(id:string)=>void}
 function img(raw:any){const value=String(raw||'').trim();if(!value)return '';if(value.startsWith('/')||value.startsWith('data:')||value.startsWith('blob:'))return value;try{const u=new URL(value);if(u.protocol!=='http:'&&u.protocol!=='https:')return value;if(u.hostname==='drive.google.com'){const id=u.pathname.match(/^\/file\/d\/([^/]+)/)?.[1]||u.searchParams.get('id');if(id)return `/api/image-proxy?url=${encodeURIComponent(`https://drive.google.com/uc?export=download&id=${id}`)}`}if(u.hostname.endsWith('dropbox.com')){u.searchParams.set('dl','1');return `/api/image-proxy?url=${encodeURIComponent(u.toString())}`}return `/api/image-proxy?url=${encodeURIComponent(value)}`}catch{return value}}
-export function money(v:any,currency='USD'){return `${currency} ${(Number(v||0)/100).toFixed(2)}`}
+// Same format as checkout, the cart and order pages: "$1,299.99", not "USD 1299.99".
+export function money(v:any,currency='USD'){return formatMoney(Number(v||0),currency)}
+// Descriptions may hold HTML (CSV imports); short previews show the words, not the tags.
+const plainText=(v:any)=>String(v||'').replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/\s+/g,' ').trim()
 export {img}
 export function StoreImage({src,alt,className,eager=false,width,height}:{src:any;alt:string;className?:string;eager?:boolean;width?:number;height?:number}){const [failed,setFailed]=useState(false);const fallback='/placeholder-product.svg';const source=failed?fallback:(img(src)||fallback);return <img className={className} src={source} alt={alt} width={width} height={height} loading={eager?'eager':'lazy'} decoding="async" onError={()=>setFailed(true)}/>}
 // On mobile, a merchant who never uploaded a dedicated mobile crop gets the
@@ -250,7 +254,7 @@ export function QuickView({product,theme,onClose}:{product:AnyMap;theme:AnyMap;o
           <span className="focalEyebrow">{product.vendor||'PRODUCT'}</span>
           <h2>{product.name}</h2>
           <div className="focalPrice big">{money(value,theme.currency||'USD')}</div>
-          <p>{product.shortDescription||product.description||''}</p>
+          <p>{plainText(product.shortDescription||product.description)}</p>
           {product.variants?.length>0&&<div className="focalVariantList">{product.variants.map((v:any)=><button key={v.id} className={variantId===v.id?'selected':''} disabled={v.available===0} aria-label={v.available===0?`${v.name} (sold out)`:undefined} onClick={()=>setVariantId(v.id)}>{v.name}{v.available===0?' · Sold out':''}</button>)}</div>}
           <div className="focalQty">
             <button onClick={()=>setQty(Math.max(1,qty-1))} aria-label="Decrease quantity"><Minus size={14}/></button>
@@ -343,7 +347,7 @@ function MainProductSection({section,theme,product,preview,selected,onSelect,wis
             {money(currentPrice,theme.currency||'USD')}
             {product.compareAtPrice&&<del>{money(product.compareAtPrice,theme.currency||'USD')}</del>}
           </div>
-          <p>{product.shortDescription||product.description||''}</p>
+          <p>{plainText(product.shortDescription||product.description)}</p>
           {variants.length>0&&(
             <div className="focalProductOptions">
               <div className="focalOptionLabel">Variants & Options</div>
@@ -382,7 +386,7 @@ function MainProductSection({section,theme,product,preview,selected,onSelect,wis
             <FreeDeliveryBadge />
           </div>
           <div className="focalAccordions">
-            <details open><summary>Description<ChevronDown size={16}/></summary><p>{product.description||product.shortDescription||''}</p></details>
+            <details open><summary>Description<ChevronDown size={16}/></summary><p>{plainText(product.description||product.shortDescription)}</p></details>
             <details><summary>Shipping & returns<ChevronDown size={16}/></summary><p>{merchantShippingText(s.shippingText) || <ShippingNote />}</p></details>
             <details><summary>Product information<ChevronDown size={16}/></summary><p>SKU {selectedVariant?.sku||product.sku||'—'}</p></details>
           </div>

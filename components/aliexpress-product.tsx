@@ -266,7 +266,7 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
           )}
 
           <div className="focalAccordions">
-            {showDescription && <details open><summary>Description<ChevronDown size={16} /></summary><p>{product.description || product.shortDescription || ''}</p></details>}
+            {showDescription && product.descriptionHtml && <details open><summary>Description<ChevronDown size={16} /></summary><div className="pdpRichText" dangerouslySetInnerHTML={{ __html: product.descriptionHtml }} /></details>}
             <details><summary>Product information<ChevronDown size={16} /></summary><p>SKU {selectedVariant?.sku || product.sku || '—'}</p></details>
             {showShippingAccordion && (
               <details><summary>Shipping &amp; returns<ChevronDown size={16} /></summary><p>{merchantShippingText(pp.shippingText) || <ShippingNote />}</p></details>
