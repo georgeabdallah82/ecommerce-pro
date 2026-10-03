@@ -123,7 +123,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     const existing = await db.user.findFirst({ where: { id, role: Role.CUSTOMER }, select: { id: true, email: true } })
     if (!existing) return json({ error: 'Customer not found' }, { status: 404 })
 
-    await db.$transaction(async tx => { await deleteCustomerCascade(tx, id) })
+    await deleteCustomerCascade(db, id)
 
     await audit(actor.id, 'customer.deleted', 'User', id, { email: existing.email })
     return json({ ok: true }, { headers: { 'Cache-Control': 'private, no-store' } })

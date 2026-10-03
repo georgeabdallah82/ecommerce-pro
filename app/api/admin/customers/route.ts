@@ -104,7 +104,7 @@ export async function POST(req: Request) {
       }
       if (bulkAction === 'DELETE') {
         const targets = await db.user.findMany({ where: { id: { in: ids }, role: Role.CUSTOMER }, select: { id: true } })
-        await db.$transaction(async tx => { for (const target of targets) await deleteCustomerCascade(tx, target.id) })
+        for (const target of targets) await deleteCustomerCascade(db, target.id)
         await audit(actor.id, 'customer.bulk_deleted', 'User', undefined, { ids: targets.map(t => t.id), count: targets.length })
         return json({ ok: true, count: targets.length })
       }
