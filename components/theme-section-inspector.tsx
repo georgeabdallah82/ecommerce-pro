@@ -108,12 +108,12 @@ export function SectionPanel({ title, children }: { title: string; children: Rea
 
 function BlocksEditor({ section, type, onUpdateBlocks }: { section: Section; type: string; onUpdateBlocks: (blocks: any[]) => void }) {
   const blocks = Array.isArray(section.blocks) ? section.blocks : []
-  const labels: Record<string,string> = { promo: 'Promo card', quote: 'Testimonial', column: 'Column', item: 'Item', question: 'FAQ item', slide: 'Slide', logo: 'Logo', badge: 'Trust badge', trust_item: 'Trust item', stat: 'Stat', photo: 'Photo', message: 'Message' }
+  const labels: Record<string,string> = { promo: 'Promo card', quote: 'Testimonial', column: 'Column', item: 'Item', question: 'FAQ item', slide: 'Slide', logo: 'Logo', badge: 'Trust badge', trust_item: 'Trust item', stat: 'Stat', photo: 'Photo', message: 'Message', hero_slide: 'Slide', offer: 'Banner', price_band: 'Price range' }
   const label = labels[type] || 'Block'
   const add = () => onUpdateBlocks([...blocks, { id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`, type, settings: {} }])
   const update = (index: number, patch: Record<string,any>) => onUpdateBlocks(blocks.map((block,index2) => index===index2 ? {...block,settings:{...(block.settings||{}),...patch}} : block))
   const remove = (index: number) => onUpdateBlocks(blocks.filter((_,index2)=>index!==index2))
-  return <div className="themeBlockList">{blocks.map((block,index)=><div className="themeBlock" key={block.id || index}><div className="themeBlockHeader"><GripVertical size={14}/><strong>{labels[block.type] || label} {index+1}</strong><button type="button" className="themeBlockDelete" onClick={()=>remove(index)} aria-label={`Delete ${label}`}><Trash2 size={14}/></button></div><div className="themeBlockFields">{type==='promo'&&<><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><TextArea label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><ImageField label="Image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Link URL" value={block.settings?.url} onChange={value=>update(index,{url:value})}/></>}{type==='quote'&&<><TextArea label="Quote" value={block.settings?.quote} onChange={value=>update(index,{quote:value})}/><Field label="Author" value={block.settings?.author} onChange={value=>update(index,{author:value})}/><Field label="Role" value={block.settings?.role} onChange={value=>update(index,{role:value})}/><Select label="Rating" value={block.settings?.rating??5} options={['1','2','3','4','5']} onChange={value=>update(index,{rating:Number(value)})}/></>}{type==='column'&&<><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><TextArea label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><ImageField label="Icon / image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/></>}{type==='question'&&<><Field label="Question" value={block.settings?.question||block.settings?.heading} onChange={value=>update(index,{question:value,heading:value})}/><TextArea label="Answer" value={block.settings?.answer||block.settings?.text} onChange={value=>update(index,{answer:value,text:value})}/></>}{type==='slide'&&<><Field label="Eyebrow" value={block.settings?.eyebrow} onChange={value=>update(index,{eyebrow:value})}/><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><TextArea label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><ImageField label="Image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Button URL" value={block.settings?.buttonUrl} onChange={value=>update(index,{buttonUrl:value})}/></>}{type==='logo'&&<><ImageField label="Logo" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Text (shown if no logo image)" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><Field label="Alt text" value={block.settings?.alt} onChange={value=>update(index,{alt:value})}/><Field label="Link URL" value={block.settings?.url} onChange={value=>update(index,{url:value})}/></>}{type==='badge'&&<><Select label="Icon" value={block.settings?.icon||'shield'} options={[{value:'truck',label:'Shipping'},{value:'shield',label:'Secure'},{value:'return',label:'Returns'},{value:'lock',label:'Payment'},{value:'support',label:'Support'},{value:'award',label:'Quality'}]} onChange={value=>update(index,{icon:value})}/><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><Field label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/></>}{type==='trust_item'&&<><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><Field label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/></>}{type==='stat'&&<><Field label="Value" value={block.settings?.value} onChange={value=>update(index,{value:value})}/><Field label="Label" value={block.settings?.label} onChange={value=>update(index,{label:value})}/></>}{type==='photo'&&<><ImageField label="Image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Link URL" value={block.settings?.url} onChange={value=>update(index,{url:value})}/></>}{type==='message'&&<><Field label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><Field label="Link URL" value={block.settings?.link} onChange={value=>update(index,{link:value})}/></>}</div></div>)}<button type="button" className="themeAddBlock" onClick={add}><Plus size={14}/> Add {label}</button></div>
+  return <div className="themeBlockList">{blocks.map((block,index)=><div className="themeBlock" key={block.id || index}><div className="themeBlockHeader"><GripVertical size={14}/><strong>{labels[block.type] || label} {index+1}</strong><button type="button" className="themeBlockDelete" onClick={()=>remove(index)} aria-label={`Delete ${label}`}><Trash2 size={14}/></button></div><div className="themeBlockFields">{type==='promo'&&<><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><TextArea label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><ImageField label="Image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Link URL" value={block.settings?.url} onChange={value=>update(index,{url:value})}/></>}{type==='quote'&&<><TextArea label="Quote" value={block.settings?.quote} onChange={value=>update(index,{quote:value})}/><Field label="Author" value={block.settings?.author} onChange={value=>update(index,{author:value})}/><Field label="Role" value={block.settings?.role} onChange={value=>update(index,{role:value})}/><Select label="Rating" value={block.settings?.rating??5} options={['1','2','3','4','5']} onChange={value=>update(index,{rating:Number(value)})}/></>}{type==='column'&&<><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><TextArea label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><ImageField label="Icon / image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/></>}{type==='question'&&<><Field label="Question" value={block.settings?.question||block.settings?.heading} onChange={value=>update(index,{question:value,heading:value})}/><TextArea label="Answer" value={block.settings?.answer||block.settings?.text} onChange={value=>update(index,{answer:value,text:value})}/></>}{type==='slide'&&<><Field label="Eyebrow" value={block.settings?.eyebrow} onChange={value=>update(index,{eyebrow:value})}/><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><TextArea label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><ImageField label="Image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Button URL" value={block.settings?.buttonUrl} onChange={value=>update(index,{buttonUrl:value})}/></>}{type==='logo'&&<><ImageField label="Logo" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Text (shown if no logo image)" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><Field label="Alt text" value={block.settings?.alt} onChange={value=>update(index,{alt:value})}/><Field label="Link URL" value={block.settings?.url} onChange={value=>update(index,{url:value})}/></>}{type==='badge'&&<><Select label="Icon" value={block.settings?.icon||'shield'} options={[{value:'truck',label:'Shipping'},{value:'shield',label:'Secure'},{value:'return',label:'Returns'},{value:'lock',label:'Payment'},{value:'support',label:'Support'},{value:'award',label:'Quality'}]} onChange={value=>update(index,{icon:value})}/><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><Field label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/></>}{type==='trust_item'&&<><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><Field label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/></>}{type==='stat'&&<><Field label="Value" value={block.settings?.value} onChange={value=>update(index,{value:value})}/><Field label="Label" value={block.settings?.label} onChange={value=>update(index,{label:value})}/></>}{type==='photo'&&<><ImageField label="Image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Link URL" value={block.settings?.url} onChange={value=>update(index,{url:value})}/></>}{type==='hero_slide'&&<><ImageField label="Image" value={block.settings?.imageUrl} recommended={{w:1920,h:800,note:'wide photo; the text sits on the left'}} onChange={value=>update(index,{imageUrl:value})}/><ImageField label="Phone image (optional)" value={block.settings?.mobileImageUrl} recommended={{w:800,h:1000,note:'portrait; if empty the image above is cropped to fit'}} onChange={value=>update(index,{mobileImageUrl:value})}/><Field label="Image description (for screen readers)" value={block.settings?.imageAlt} onChange={value=>update(index,{imageAlt:value})}/><Field label="Tag (small yellow label)" value={block.settings?.tag} onChange={value=>update(index,{tag:value})}/><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><Field label="Highlighted words (yellow, after the heading)" value={block.settings?.highlight} onChange={value=>update(index,{highlight:value})}/><TextArea label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><div className="themeInspectorGrid"><Field label="Button label" value={block.settings?.buttonLabel} onChange={value=>update(index,{buttonLabel:value})}/><Field label="Button link" value={block.settings?.buttonUrl} placeholder="/shop" onChange={value=>update(index,{buttonUrl:value})}/><Field label="Second button label" value={block.settings?.secondaryLabel} onChange={value=>update(index,{secondaryLabel:value})}/><Field label="Second button link" value={block.settings?.secondaryUrl} onChange={value=>update(index,{secondaryUrl:value})}/></div><Field label="Corner badge (e.g. Valid until Sunday)" value={block.settings?.badge} onChange={value=>update(index,{badge:value})}/></>}{type==='offer'&&<><ImageField label="Image" value={block.settings?.imageUrl} recommended={{w:1200,h:460,note:'wide; text sits at the bottom'}} onChange={value=>update(index,{imageUrl:value})}/><Field label="Small label" value={block.settings?.kicker} onChange={value=>update(index,{kicker:value})}/><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><div className="themeInspectorGrid"><Field label="Link text" value={block.settings?.linkLabel} onChange={value=>update(index,{linkLabel:value})}/><Field label="Link" value={block.settings?.url} placeholder="/shop" onChange={value=>update(index,{url:value})}/></div></>}{type==='price_band'&&<><Field label="Label" value={block.settings?.label} placeholder="Under $10" onChange={value=>update(index,{label:value})}/><div className="themeInspectorGrid"><Field label="From ($)" value={block.settings?.min} onChange={value=>update(index,{min:value})}/><Field label="Up to ($, empty = no limit)" value={block.settings?.max||''} onChange={value=>update(index,{max:value})}/></div></>}{type==='message'&&<><Field label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><Field label="Link URL" value={block.settings?.link} onChange={value=>update(index,{link:value})}/></>}</div></div>)}<button type="button" className="themeAddBlock" onClick={add}><Plus size={14}/> Add {label}</button></div>
 }
 
 // ---- Declarative field schema ----
@@ -271,7 +271,73 @@ function mainCollectionGridPanel(): PanelSchema[] {
   ] }]
 }
 
+const collectionOptions = (empty: string) => ({ collections }: FieldCtx) => [{ value: '', label: empty }, ...collections.map((c: any) => ({ value: c.id, label: c.name }))]
+const hideWhen = (label = 'Hide until the store has at least') => range(`${label} (products)`, 'minProducts', 1, 12, 4)
+
+// Sections of the "market" storefront (components/market-sections.tsx).
+const MARKET_PANELS: Record<string, () => PanelSchema[]> = {
+  hero_slider: () => [
+    { title: 'Slides', fields: [blocks('Slides', 'hero_slide')] },
+    { title: 'Style', fields: [
+      select('Layout', 'layout', [{ value: 'full', label: 'Full photo (text on the photo)' }, { value: 'split', label: 'Split (red text panel beside the photo)' }], 'full'),
+      [range('Height on computers', 'height', 360, 760, 560, 10, 'px'), range('Height on phones', 'mobileHeight', 300, 640, 460, 10, 'px')],
+      toggle('Change slides automatically', 'autoplay', true),
+      range('Seconds per slide', 'speed', 3, 12, 5),
+    ] },
+  ],
+  offer_banners: () => [{ title: 'Banners', fields: [blocks('Banners', 'offer')] }],
+  product_tabs: () => [
+    { title: 'Content', fields: [
+      text('Heading', 'heading', "Today's deals"),
+      text('Subheading', 'subheading'),
+      [toggle('Deals tab (products with a compare-at price)', 'showDeals', true), text('Deals tab name', 'dealsLabel', 'Deals')],
+      [toggle('Best sellers tab (shows "Popular" until the first sale)', 'showBest', true), text('Best sellers tab name', 'bestLabel', 'Best sellers')],
+      [toggle('New tab', 'showNew', true), text('New tab name', 'newLabel', 'New')],
+      range('Products shown', 'limit', 4, 20, 10),
+      hideWhen(),
+    ] },
+  ],
+  product_rail: () => [
+    { title: 'Content', fields: [
+      text('Heading', 'heading', 'Best sellers'),
+      text('Subheading', 'subheading'),
+      select('Products', 'source', [{ value: 'best', label: 'Best sellers (by real sales)' }, { value: 'new', label: 'Newest' }, { value: 'sale', label: 'On sale' }, { value: 'collection', label: 'From a collection' }], 'best'),
+      { kind: 'select', label: 'Collection (when "From a collection")', options: collectionOptions('Choose a collection'), get: s => s.collection || '', set: value => ({ collection: value }) },
+      toggle('Show #1, #2… on best sellers', 'showRank', true),
+      text('Heading before the first sale', 'emptyHeading', 'Popular right now'),
+      range('Products shown', 'limit', 4, 24, 12),
+      hideWhen(),
+    ] },
+  ],
+  category_spotlight: () => [
+    { title: 'Collection', fields: [
+      { kind: 'select', label: 'Collection', options: collectionOptions('Automatic (first with enough products)'), get: s => s.collection || '', set: value => ({ collection: value }) },
+      text('Heading (empty = collection name)', 'heading'),
+      range('Products shown', 'limit', 2, 8, 4),
+      range('Hide until the collection has at least (products)', 'minProducts', 1, 8, 2),
+    ] },
+    { title: 'Banner', fields: [
+      image('Banner image', 'imageUrl', { w: 700, h: 820, note: 'tall; if empty the collection image is used' }),
+      text('Small label', 'kicker', 'Featured'),
+      text('Banner heading', 'bannerHeading'),
+      text('Button label', 'buttonLabel', 'Shop now'),
+      select('Banner side', 'bannerPosition', [{ value: 'left', label: 'Left' }, { value: 'right', label: 'Right' }], 'left'),
+    ] },
+  ],
+  shop_by_price: () => [
+    { title: 'Content', fields: [text('Heading', 'heading', 'Shop by price'), range('Products shown', 'limit', 4, 20, 10), range('Hide until the store has at least (products)', 'minProducts', 1, 12, 2)] },
+    { title: 'Price ranges', fields: [blocks('Price ranges', 'price_band')] },
+  ],
+  recently_viewed: () => [
+    { title: 'Content', fields: [text('Heading', 'heading', 'Recently viewed'), range('Products shown', 'limit', 2, 10, 6)] },
+  ],
+  bundles: () => [
+    { title: 'Content', fields: [text('Heading', 'heading', 'Bundle & save'), text('Subheading', 'subheading'), range('Bundles shown', 'limit', 1, 9, 6)] },
+  ],
+}
+
 const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
+  ...MARKET_PANELS,
   hero: () => [
     { title: 'Content', fields: [
       toggle('Show text overlay', 'showContent', true),
@@ -315,7 +381,7 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
   product_recommendations: () => productTypePanels(),
   collection_grid: () => collectionTypePanels(),
   collection_carousel: () => collectionTypePanels(),
-  category_strip: () => [{ title: 'Content', fields: [range('Collections shown', 'limit', 4, 16, 12)] }, { title: 'Collections', fields: [
+  category_strip: () => [{ title: 'Content', fields: [text('Heading (new storefront)', 'heading', 'Shop by category'), range('Collections shown', 'limit', 4, 16, 12)] }, { title: 'Collections', fields: [
     { kind: 'picker', label: 'Choose collections', source: 'collections', hint: 'Leave empty to show collections automatically.', get: s => (Array.isArray(s.collectionIds) ? s.collectionIds : []), set: ids => ({ collectionIds: ids }) },
   ] }, boxPanel],
   flash_deals: () => [

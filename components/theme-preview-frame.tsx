@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { CartProvider } from '@/components/cart-provider'
 import StoreNavFixed from '@/components/store-nav-fixed'
+import { WhatsAppFloat } from '@/components/market-chrome'
 import StorefrontSections from '@/components/storefront-sections'
 import { StorefrontPreviewContext } from '@/components/preview-context'
 import CustomPageView from '@/components/custom-page-view'
@@ -127,6 +128,7 @@ export default function ThemePreviewFrame() {
       if (value === undefined) return
       root.style.setProperty(key, String(value))
     })
+    document.body.classList.toggle('mk', state.theme.design === 'market')
   }, [state?.theme])
 
   // Every visible section renders exactly one top-level node inside the StorefrontSections
@@ -159,6 +161,7 @@ export default function ThemePreviewFrame() {
     <CartProvider>
       <StorefrontPreviewContext.Provider value={{ selectedId: state.selectedId, onSelect: select }}>
       <StoreNavFixed theme={navTheme} navigation={state.navigation} />
+      <WhatsAppFloat theme={{ ...state.theme, __preview: true }} />
       {state.page === 'BlogPages' ? (
         // The blog list with the merchant's published posts, then the editable zone -- the
         // same markup and order as the live /blog route.

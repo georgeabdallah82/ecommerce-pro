@@ -20,6 +20,7 @@ import { PaymentMethod } from '@prisma/client'
 import { ZodError } from 'zod'
 import { newOrderNumber } from '@/lib/order-number'
 import { runInBackground } from '@/lib/background'
+import { bundleDiscount } from '@/lib/bundles'
 
 function stableSerialize(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value)
@@ -34,6 +35,7 @@ function checkoutFingerprint(userId: string | null, input: any, merged: Map<stri
     email: input.email,
     phone: input.phone || null,
     items,
+    bundles: (input.items || []).filter((i: any) => i.bundleId).map((i: any) => `${i.bundleId}:${i.productId}:${i.variantId ?? ''}:${i.quantity}`).sort(),
     couponCode: input.couponCode || null,
     giftCardCode: input.giftCardCode || null,
     paymentMethod: input.paymentMethod,
@@ -265,9 +267,17 @@ export async function POST(req: Request) {
       if (String(input.phone || input.shippingAddress?.phone || '').replace(/\D/g, '').length < 6) throw new Error('A phone number is required so the courier can reach you.')
     }
 
-    const { discount, coupon } = input.couponCode
+    const { discount: couponDiscount, coupon } = input.couponCode
       ? await applyCoupon(input.couponCode, subtotal, normalized)
       : await findAutomaticDiscount(subtotal, user?.id ?? null, normalized)
+    // Bundles (Marketing › Bundles) are priced again here from the bundle itself, never from
+    // the cart; only complete sets get the bundle price.
+    const bundles = await bundleDiscount(input.items.map(item => ({ productId: item.productId, variantId: item.variantId ?? null, quantity: item.quantity, bundleId: item.bundleId ?? null })), normalized)
+    const discount = bundles.total ? {
+      total: Math.min(subtotal, couponDiscount.total + bundles.total),
+      taxable: Math.min(taxableSubtotal, couponDiscount.taxable + bundles.taxable),
+      nonTaxable: couponDiscount.nonTaxable + bundles.nonTaxable,
+    } : couponDiscount
     if (coupon?.firstOrderOnly && !user?.id) throw new Error('This coupon requires a customer account')
     const discountedSubtotal = Math.max(0, subtotal - discount.total)
     const requestedCoins = Math.max(0, Number(input.coinsToUse || 0))
@@ -373,6 +383,7 @@ export async function POST(req: Request) {
       const checkoutTxRaw: Record<string, unknown> = { coinDiscount, coinsUsed: requestedCoins }
       if (idempotencyKey) checkoutTxRaw.fingerprint = fingerprint
       if (giftCard && giftCardDiscount > 0) { checkoutTxRaw.giftCardId = giftCard.id; checkoutTxRaw.giftCardAmount = giftCardDiscount }
+      if (bundles.applied.length) checkoutTxRaw.bundles = bundles.applied
       const order = await tx.order.create({
         data: {
           orderNumber,

@@ -13,6 +13,9 @@ export type CartItem = {
   price: number
   image?: string
   quantity: number
+  // Set when the line was added as part of a bundle (Products › Bundles); checkout prices the
+  // bundle again on the server, so this only groups the lines.
+  bundleId?: string | null
 }
 
 type CartContextValue = {
@@ -45,7 +48,7 @@ type CartContextValue = {
 
 const CartContext = createContext<CartContextValue | null>(null)
 const MAX_QTY = 99
-const keyOf = (i: Pick<CartItem, 'productId' | 'variantId'>) => `${i.productId}:${i.variantId || 'default'}`
+const keyOf = (i: Pick<CartItem, 'productId' | 'variantId' | 'bundleId'>) => `${i.productId}:${i.variantId || 'default'}${i.bundleId ? `:bundle:${i.bundleId}` : ''}`
 
 function sanitizeItems(value: unknown): CartItem[] {
   if (!Array.isArray(value)) return []
@@ -59,6 +62,7 @@ function sanitizeItems(value: unknown): CartItem[] {
       price: Math.max(0, Number.isFinite(Number(item.price)) ? Number(item.price) : 0),
       image: item.image ? String(item.image).slice(0, 2000) : undefined,
       quantity: Math.min(MAX_QTY, Math.max(1, Math.floor(Number(item.quantity) || 1))),
+      bundleId: item.bundleId ? String(item.bundleId).slice(0, 64) : null,
     }))
     .filter(item => item.productId && item.sku)
 }
@@ -142,6 +146,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           ...item,
           productId: String(item.productId).trim(),
           variantId: item.variantId || null,
+          bundleId: item.bundleId ? String(item.bundleId).slice(0, 64) : null,
           name: String(item.name || 'Product').slice(0, 300),
           sku: String(item.sku || '').slice(0, 120),
           price: Math.max(0, Number.isFinite(Number(item.price)) ? Number(item.price) : 0),

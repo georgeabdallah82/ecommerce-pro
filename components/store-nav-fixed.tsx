@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { keyOf, useCart } from './cart-provider'
+import { CategoryTabs, DeliveryBar } from './market-chrome'
 
 type NavItem = { id: string; label: string; url?: string | null; parentId?: string | null; group?: string | null; imageUrl?: string | null }
 type TreeItem = NavItem & { children: TreeItem[] }
@@ -305,6 +306,11 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
   const announcementSection = template?.find((section: any) => section.type === 'announcement')
   const headerSettings = { ...(theme.header || {}), ...(headerSection?.settings || {}) }
   const headerEnabled = theme.header?.enabled !== false && headerSection?.enabled !== false
+  const market = theme.design === 'market'
+  // The market header is brand red: a white version of the logo (Theme settings › Logo, dark
+  // background) when there is one, else the normal logo turned white, unless that's switched off.
+  const logoSrc = market && theme.logoUrlDark ? theme.logoUrlDark : theme.logoUrl
+  const logoWhite = market && !theme.logoUrlDark && headerSettings.whiteLogo !== false
   const announcementEnabled = theme.announcement?.enabled !== false && announcementSection?.enabled !== false && announcementSection?.settings?.enabled !== false
   
   const { items, updateQty, removeItem, subtotal, count, isOpen: isCartOpen, openCart, closeCart } = useCart()
@@ -407,10 +413,10 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
     <style dangerouslySetInnerHTML={{ __html: css }} />
     {announcementEnabled && announcementPosition !== 'below' && <AnnouncementBar theme={theme} announcementSection={announcementSection} closed={announcementClosed} onDismiss={dismissAnnouncement}/>}
 
-    <header className={`focalNav${transparent ? ' focalNavTransparent' : ''}`} style={{ background: transparent ? 'transparent' : theme.colors.surface, borderColor: theme.colors.border, position: headerSettings.sticky ? 'sticky' : 'relative', top: 0 }}>
+    <header className={`focalNav${market ? ' mkHeader' : transparent ? ' focalNavTransparent' : ''}`} style={market ? { position: headerSettings.sticky === false ? 'relative' : 'sticky', top: 0, ...(theme.header?.background ? { '--mk-header-bg': theme.header.background } : {}) } as React.CSSProperties : { background: transparent ? 'transparent' : theme.colors.surface, borderColor: theme.colors.border, position: headerSettings.sticky ? 'sticky' : 'relative', top: 0 }}>
       <div className="focalNavInner focalContainer">
         <button className="focalNavMobile" aria-label="Menu" onClick={() => setMenu(true)}><Menu size={19}/></button>
-        <Link href="/" className="focalLogo" style={{ fontFamily: theme.typography.heading }}>{theme.logoUrl ? <img src={theme.logoUrl} alt={theme.brandName} style={{ maxWidth: headerSettings.logoWidth || 160 }} /> : <span>{theme.brandName}</span>}</Link>
+        <Link href="/" className="focalLogo" style={{ fontFamily: theme.typography.heading }}>{logoSrc ? <img src={logoSrc} alt={theme.brandName} className={logoWhite ? 'mkLogoWhite' : undefined} style={{ maxWidth: headerSettings.logoWidth || 160 }} /> : <span>{theme.brandName}</span>}</Link>
         {headerSettings.showSearch !== false && (
           <form className="aliNavSearchWrap" action="/shop" method="GET" onSubmit={() => setDesktopSearchOpen(false)}>
             <div className="aliNavSearchBar">
@@ -420,10 +426,10 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
                 onChange={e => setSearchQuery(e.target.value)}
                 onFocus={openDesktopSearch}
                 onBlur={closeDesktopSearchDeferred}
-                placeholder="Search products, collections, or materials..."
+                placeholder={market ? (headerSettings.searchPlaceholder || 'Search products…') : 'Search products, collections, or materials...'}
                 aria-label="Search store"
               />
-              <button type="submit" className="aliNavSearchSubmit"><Search size={15}/> Search</button>
+              <button type="submit" className="aliNavSearchSubmit">{market ? null : <Search size={15}/>} Search</button>
             </div>
             {desktopSearchOpen && (
               <div className="aliNavSearchDropdown" onMouseDown={e => e.preventDefault()}>
@@ -452,19 +458,21 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
         )}
         <div className="focalNavActions">
           {headerSettings.showSearch !== false && <button className="focalNavIcon aliNavSearchIconMobile" onClick={() => { setSearch(true); setSearchQuery('') }} aria-label="Search"><Search size={18}/></button>}
-          {headerSettings.showAccount !== false && <Link className="focalNavIcon" href="/account" aria-label="Account"><UserRound size={18}/></Link>}
-          {headerSettings.showWishlist && <Link className="focalNavIcon" href="/wishlist" aria-label="Wishlist"><Heart size={18}/></Link>}
-          {headerSettings.showCart !== false && <button className="focalNavIcon" onClick={openCart} aria-label={`Cart with ${count} items`}><ShoppingBag size={18}/>{count > 0 && <span className="focalCartCount">{count > 99 ? '99+' : count}</span>}</button>}
+          {headerSettings.showAccount !== false && <Link className="focalNavIcon" href="/account" aria-label="Account"><UserRound size={18}/>{market && <span className="mkNavLabel">Account</span>}</Link>}
+          {headerSettings.showWishlist && <Link className="focalNavIcon" href="/wishlist" aria-label="Wishlist"><Heart size={18}/>{market && <span className="mkNavLabel">Wishlist</span>}</Link>}
+          {headerSettings.showCart !== false && <button className="focalNavIcon" onClick={openCart} aria-label={`Cart with ${count} items`}><ShoppingBag size={18}/>{market && <span className="mkNavLabel">Cart</span>}{(count > 0 || market) && <span className="focalCartCount">{count > 99 ? '99+' : count}</span>}</button>}
         </div>
       </div>
-      <div className="focalNavSecondary focalContainer">
+      {!market && <div className="focalNavSecondary focalContainer">
         <div className="focalNavSecondaryInner">
           <nav className="focalNavLinks" aria-label="Main navigation">
             {tree.map(item => <DesktopNode key={item.id} item={item} openId={openId} setOpenId={setOpenId} />)}
           </nav>
         </div>
-      </div>
+      </div>}
     </header>
+    {market && <DeliveryBar theme={theme} />}
+    {market && headerSettings.showCategoryTabs !== false && <CategoryTabs navigation={navigation} />}
     {announcementEnabled && announcementPosition === 'below' && <AnnouncementBar theme={theme} announcementSection={announcementSection} closed={announcementClosed} onDismiss={dismissAnnouncement}/>}
 
     {/* PREDICTIVE LIVE SEARCH OVERLAY */}
@@ -555,6 +563,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
                 <div className="focalCartInfo">
                   <strong>{item.name}</strong>
                   <small>{money(item.price)}</small>
+                  {item.bundleId && <small className="cartBundleNote">Bundle price applied at checkout</small>}
                   <div className="focalCartQty">
                     <button onClick={() => updateQty(keyOf(item), item.quantity - 1)} aria-label="Decrease quantity"><Minus size={11}/></button>
                     <span>{item.quantity}</span>
