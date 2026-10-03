@@ -43,7 +43,9 @@ html body.mk .focalNav.mkHeader .focalNavIcon:hover { background: rgba(255,255,2
 html body.mk .focalNav.mkHeader .focalCartCount { position: static !important; background: var(--mk-yellow) !important; color: #121212 !important; box-shadow: none !important; min-width: 20px !important; height: 20px !important; font-size: 11px !important; font-weight: 800 !important; animation: none !important; }
 html body.mk .focalNav.mkHeader .focalNavMobile { background: rgba(255,255,255,.15) !important; border: 0 !important; color: #fff !important; border-radius: 10px !important; }
 html body.mk .focalNav.mkHeader .aliNavSearchIconMobile { display: none !important; }
-.mkNavLabel { display: none; }
+.mkNavLabel { display: none; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html body.mk .focalNav.mkHeader .navAvatar { width: 24px; height: 24px; font-size: 12px; background: var(--mk-red); color: #fff; }
+html body.mk .focalNav.mkHeader:not(.mkHeaderLight) .navAvatar { background: #fff; color: var(--mk-red); }
 @media (min-width: 900px) { .mkNavLabel { display: inline; } }
 @media (max-width: 900px) {
   html body.mk .focalNav.mkHeader .focalNavInner { grid-template-columns: auto 1fr auto !important; row-gap: 10px !important; padding-block: 10px !important; min-height: 0 !important; }
@@ -159,9 +161,9 @@ html body.mk .focalNav.mkHeader.mkHeaderLight .focalCartCount { background: var(
 .mkMenuScroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 14px 14px 24px; }
 .mkMenuAccount { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 14px; background: var(--mk-page); color: var(--mk-ink); text-decoration: none; }
 .mkMenuAccount > span:nth-child(2) { flex: 1; display: grid; gap: 1px; min-width: 0; }
-.mkMenuAccount b { font-size: 14.5px; }
+.mkMenuAccount b { font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mkMenuAccount small { font-size: 12px; color: var(--mk-muted); }
-.mkMenuAvatar { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; background: var(--mk-red-soft); color: var(--mk-red); }
+.mkMenuAvatar { width: 38px; height: 38px; display: grid; place-items: center; flex: none; border-radius: 50%; background: var(--mk-red-soft); color: var(--mk-red); font-size: 16px; font-weight: 800; }
 .mkMenuSearch { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 0 12px; height: 44px; border: 1.5px solid var(--mk-line); border-radius: 12px; color: var(--mk-muted); }
 .mkMenuSearch:focus-within { border-color: var(--mk-red); }
 .mkMenuSearch input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 15px; color: var(--mk-ink); }

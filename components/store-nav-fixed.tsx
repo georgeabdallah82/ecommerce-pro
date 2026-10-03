@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { keyOf, useCart } from './cart-provider'
 import { CategoryTabs, DeliveryBar, MarketMenu } from './market-chrome'
+import { useShopper } from './use-shopper'
 import { money as formatMoney } from '@/lib/config'
 
 type NavItem = { id: string; label: string; url?: string | null; parentId?: string | null; group?: string | null; imageUrl?: string | null }
@@ -56,6 +57,7 @@ function AnnouncementBar({ theme, announcementSection, closed, onDismiss }: { th
 }
 
 const css = `
+.navAvatar{width:24px;height:24px;border-radius:50%;display:inline-grid;place-items:center;flex:none;background:var(--store-primary,#171717);color:#fff;font-size:12px;font-weight:800;line-height:1}
 .focalNav{z-index:50;border-bottom:1px solid var(--focal-line);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);transition:background-color .3s ease}
 .focalNavInner{height:76px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:28px}
 .focalLogo{font-size:22px;font-weight:900;letter-spacing:-.045em;display:flex;align-items:center;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
@@ -318,6 +320,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
   const announcementEnabled = theme.announcement?.enabled !== false && announcementSection?.enabled !== false && announcementSection?.settings?.enabled !== false
   
   const { items, updateQty, removeItem, subtotal, count, isOpen: isCartOpen, openCart, closeCart } = useCart()
+  const shopper = useShopper()
   const [menu, setMenu] = useState(false)
   const closeMenu = useCallback(() => setMenu(false), [])
   const [search, setSearch] = useState(false)
@@ -463,7 +466,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
         )}
         <div className="focalNavActions">
           {headerSettings.showSearch !== false && <button className="focalNavIcon aliNavSearchIconMobile" onClick={() => { setSearch(true); setSearchQuery('') }} aria-label="Search"><Search size={18}/></button>}
-          {headerSettings.showAccount !== false && <Link className="focalNavIcon" href="/account" aria-label="Account"><UserRound size={18}/>{market && <span className="mkNavLabel">Account</span>}</Link>}
+          {headerSettings.showAccount !== false && <Link className={`focalNavIcon${shopper ? ' navSignedIn' : ''}`} href="/account" aria-label={shopper ? `My account (${shopper.name})` : 'Account'} title={shopper ? shopper.name : undefined}>{shopper ? <span className="navAvatar" aria-hidden="true">{shopper.initial}</span> : <UserRound size={18}/>}{market && <span className="mkNavLabel">{shopper ? `Hi, ${shopper.firstName}` : 'Account'}</span>}</Link>}
           {headerSettings.showWishlist && <Link className="focalNavIcon" href="/wishlist" aria-label="Wishlist"><Heart size={18}/>{market && <span className="mkNavLabel">Wishlist</span>}</Link>}
           {headerSettings.showCart !== false && <button className="focalNavIcon" onClick={openCart} aria-label={`Cart with ${count} items`}><ShoppingBag size={18}/>{market && <span className="mkNavLabel">Cart</span>}{(count > 0 || market) && <span className="focalCartCount">{count > 99 ? '99+' : count}</span>}</button>}
         </div>
@@ -612,7 +615,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
       </aside>
     </div>}
 
-    {market && <MarketMenu open={menu} onClose={closeMenu} navigation={navigation} brand={theme.brandName} logo={logoSrc} logoWhite={!!logoWhite} light={lightHeader} delivery={theme.delivery} />}
+    {market && <MarketMenu open={menu} onClose={closeMenu} navigation={navigation} brand={theme.brandName} logo={logoSrc} logoWhite={!!logoWhite} light={lightHeader} shopper={shopper} delivery={theme.delivery} />}
     {menu && !market && <div className="focalMobileOverlay">
       <div className="zaraMenuPanel">
         <div className="zaraMenuTop">
