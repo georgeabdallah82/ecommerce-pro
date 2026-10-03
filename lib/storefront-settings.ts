@@ -9,6 +9,8 @@ export const STOREFRONT_SETTING_KEYS = [
   'theme.config', 'theme.sections', 'navigation.main',
   'tracking.metaPixelId', 'tracking.gaMeasurementId', 'tracking.tiktokPixelId',
   'seo.title', 'seo.description', 'seo.image', 'store.name',
+  // For the default search description (lib/seo.ts) when the merchant hasn't written one.
+  'store.country', 'store.currency', 'checkout.freeShippingThreshold', 'payment.cod', 'returns.enabled',
 ] as const
 
 export const getStorefrontSettings = cache(async (): Promise<Map<string, string>> => {

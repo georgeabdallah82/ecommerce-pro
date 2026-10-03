@@ -5,7 +5,7 @@ import {normalizeNavUrl} from '@/lib/links'
 import {parseJson} from '@/lib/utils'
 import {defaultTheme,defaultSections,defaultNavigation} from './theme-defaults'
 import { setThemeTemplates } from '@/lib/theme-templates'
-import { switchToMarket, isMarket } from '@/lib/storefront-market'
+import { switchToMarket, isMarket, MARKET_COLORS } from '@/lib/storefront-market'
 export type ThemeConfig=typeof defaultTheme
 export {defaultTheme,defaultSections,defaultNavigation}
 
@@ -99,6 +99,16 @@ export function dropSeededZoneSections(editorTemplates:Record<string,any>){
   return editorTemplates
 }
 
+// The market storefront's first colour preset used yellow (#facc15) as the accent; the preset is
+// now the logo's orange. Stores that still carry the old preset value (it was filled in by the
+// one-time switch to the market storefront, not picked by the merchant) are shown the new one, in
+// the store and the theme editor alike, so the next publish saves it. Any other accent is kept.
+const OLD_PRESET_ACCENT='#facc15'
+export function updatePresetAccent(theme:any){
+  if(theme?.colors&&String(theme.colors.accent||'').toLowerCase()===OLD_PRESET_ACCENT) theme.colors={...theme.colors,accent:MARKET_COLORS.accent}
+  return theme
+}
+
 function repairTemplate(key:string,value:any){
   const list=headerFirst(Array.isArray(value)?value:[])
   if(key==='Product' && !list.some((s:any)=>s.type==='main_product')) return templateDefaults('Product')
@@ -121,7 +131,7 @@ async function loadThemeState(){
   // A store still on the older storefront is shown the new one (until its next publish
   // saves it); the market homepage never gets the old AliExpress rows appended back.
   const switched=switchToMarket(merged,storedSections)
-  const theme:any=switched.theme
+  const theme:any=updatePresetAccent(switched.theme)
   const sections=isMarket(theme)?normalizeSections(switched.sections,[]):ensureHomeExtras(storedSections)
 
   const editorTemplates=(theme.editorTemplates&&typeof theme.editorTemplates==='object')?structuredClone(theme.editorTemplates):{}
@@ -182,7 +192,7 @@ export async function getThemeEditorState() {
   const storedHome=headerFirstEditor(normalizeEditorSections(parseSettingValue(draftSections?.value,publishedHome)))
   // Same one-time switch as the live store, so the studio opens on what customers see.
   const switched=switchToMarket(storedTheme,storedTheme?.editorTemplates?.['Home page']||storedHome)
-  const rawTheme:any=switched.theme
+  const rawTheme:any=updatePresetAccent(switched.theme)
   const home=switched.switched?headerFirstEditor(normalizeEditorSections(switched.sections)):(isMarket(rawTheme)?storedHome:ensureHomeExtras(storedHome))
   const editorTemplates=normalizeEditorTemplates(rawTheme.editorTemplates)
   if(switched.switched||!Object.prototype.hasOwnProperty.call(editorTemplates,'Home page')) editorTemplates['Home page']=home

@@ -47,15 +47,30 @@ export type SiteSeo = { brand: string; title: string; description: string; image
 
 // Store-wide defaults: Settings > General > Search engine listing first, then the theme's
 // brand name, the homepage's first banner image, and the first product photo.
+// Used until the merchant writes their own (Settings > SEO): built from what the store really
+// offers, so search results don't promise returns or delivery terms the store doesn't have.
+function defaultDescription(brand: string, map: Map<string, string>) {
+  const country = (map.get('store.country') || '').trim()
+  const currency = map.get('store.currency') || 'USD'
+  const threshold = Number(map.get('checkout.freeShippingThreshold'))
+  const perks = [
+    map.get('payment.cod') !== 'false' ? 'cash on delivery' : '',
+    Number.isFinite(threshold) && threshold > 0 ? `free delivery on orders over ${currency === 'USD' ? `$${threshold}` : `${threshold} ${currency}`}` : '',
+    map.get('returns.enabled') === 'false' ? '' : 'easy returns',
+  ].filter(Boolean)
+  const lead = `Shop ${brand} online${country ? ` with delivery across ${country}` : ''}.`
+  return perks.length ? `${lead} ${perks.join(', ').replace(/^./, c => c.toUpperCase())}.` : lead
+}
+
 export const getSiteSeo = cache(loadSiteSeo)
 async function loadSiteSeo(): Promise<SiteSeo> {
   const [map, themeState] = await Promise.all([
     getStorefrontSettings().catch(() => new Map<string, string>()),
     getThemeState().catch(() => null),
   ])
-  const brand = themeState?.theme?.brandName || map.get('store.name') || process.env.NEXT_PUBLIC_BRAND_NAME || 'Our store'
+  const brand = String(themeState?.theme?.brandName || map.get('store.name') || process.env.NEXT_PUBLIC_BRAND_NAME || 'Our store').replace(/\s+/g, ' ').trim()
   const title = map.get('seo.title') || brand
-  const description = metaText(map.get('seo.description')) || `Shop ${brand} online. Fast delivery and easy returns.`
+  const description = metaText(map.get('seo.description')) || defaultDescription(brand, map)
   let image = isShareableImage(map.get('seo.image')) ? map.get('seo.image') : firstImageInSections(themeState?.sections)
   if (!image) {
     const products = await db.product.findMany({ where: { status: 'ACTIVE' }, orderBy: { createdAt: 'desc' }, take: 12, select: { images: { orderBy: { sortOrder: 'asc' }, take: 1, select: { url: true } } } }).catch(() => [])
