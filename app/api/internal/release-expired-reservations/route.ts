@@ -1,5 +1,6 @@
 import { db } from '@/lib/prisma'
 import { releaseOrderReservations } from '@/lib/inventory'
+import { restoreUnpaidCheckoutBenefits } from '@/lib/payment-outcome'
 import { OrderStatus, PaymentMethod, PaymentStatus } from '@prisma/client'
 
 const RESERVATION_MINUTES = 30
@@ -34,6 +35,9 @@ export async function GET(req: Request) {
       const reservation = await tx.inventoryMovement.findFirst({ where: { referenceId: order.orderNumber, type: 'SALE_RESERVATION' } })
       if (!reservation) return false
       await releaseOrderReservations(tx, order.id, 'Expired checkout reservation')
+      // Like a failed payment: the customer gets back the coupon use, coins and gift-card
+      // balance this unpaid checkout had taken (they used to be lost when it expired).
+      await restoreUnpaidCheckoutBenefits(tx, order, 'Expired checkout coin restoration')
       await tx.order.update({ where: { id: order.id }, data: { status: OrderStatus.CANCELLED, fulfillmentStatus: 'UNFULFILLED', events: { create: { status: OrderStatus.CANCELLED, message: 'Checkout reservation expired.' } } } })
       return true
     })

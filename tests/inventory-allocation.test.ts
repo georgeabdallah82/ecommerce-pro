@@ -128,8 +128,9 @@ describe('lib/inventory stock allocation', () => {
       const invRows = [{ id: 'inv-1', variantId: null, quantity: 4, reserved: 0 }]
       const tx = makeFakeTx(invRows)
       await assert.rejects(() => reserveStock(tx, product(invRows), null, 10, 'ref-1'), /Not enough stock/)
-      // the 4 units that WERE available still got reserved before the shortfall was detected
-      assert.equal(tx.state.get('inv-1')!.reserved, 4)
+      // the 4 units it reserved before the shortfall was detected are handed back, since the
+      // database client doesn't roll them back on its own (lib/inventory.ts undoReservations)
+      assert.equal(tx.state.get('inv-1')!.reserved, 0)
     })
 
     it('recovers from a lost race on one row by reserving the shortfall from the next row', async () => {

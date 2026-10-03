@@ -69,8 +69,25 @@ export async function reserveStock(tx: any, product: any, variantId: string | nu
     remaining -= canReserve
   }
 
-  if (remaining > 0) throw new Error(`Not enough stock for ${product.name}`)
+  if (remaining > 0) {
+    // Hand back what this call already took from other rows before failing: the database
+    // client doesn't roll these writes back on its own (see undoReservations).
+    await undoReservations(tx, reservations, referenceId, 'Checkout reservation undone (not enough stock)')
+    throw new Error(`Not enough stock for ${product.name}`)
+  }
   return reservations
+}
+
+// Releases reservations made earlier in the same request when a later step of it fails. The
+// store's database client runs `$transaction` callbacks step by step rather than as one
+// all-or-nothing unit (lib/prisma.ts), so a failed checkout would otherwise leave the units it
+// had already reserved locked away with no order to ever release them.
+export async function undoReservations(tx: any, reservations: Array<{ inventoryId: string; quantity: number }>, referenceId: string, reason: string) {
+  for (const r of reservations) {
+    const updated = await tx.inventoryItem.updateMany({ where: { id: r.inventoryId, reserved: { gte: r.quantity } }, data: { reserved: { decrement: r.quantity } } })
+    if (updated.count !== 1) continue
+    await tx.inventoryMovement.create({ data: { inventoryId: r.inventoryId, type: InventoryMovementType.SALE_RELEASE, quantity: r.quantity, reason, referenceId } })
+  }
 }
 
 // Releases up to `quantity` units of reserved stock for a single product/variant, used when an
@@ -249,4 +266,26 @@ export async function fulfillOrderStock(tx: any, orderId: string): Promise<strin
   }
 
   return [...affectedInventoryIds]
+}
+
+// A shipped order that comes back (a refused cash-on-delivery parcel, an address the courier
+// couldn't find) and is cancelled: what was shipped goes back on the shelf it came from.
+// Anything a return already restocked for this order is not counted twice.
+export async function restockShippedOrder(tx: any, orderNumber: string, reason = 'Returned to sender: order cancelled after shipping'): Promise<string[]> {
+  const [shipped, restocked] = (await Promise.all([
+    tx.inventoryMovement.findMany({ where: { referenceId: orderNumber, type: InventoryMovementType.SALE_FULFILLMENT }, select: { inventoryId: true, quantity: true } }),
+    tx.inventoryMovement.findMany({ where: { referenceId: orderNumber, type: InventoryMovementType.RETURN }, select: { inventoryId: true, quantity: true } }),
+  ])) as [InventoryMovementRow[], InventoryMovementRow[]]
+  const remaining = new Map<string, number>()
+  for (const row of shipped) remaining.set(row.inventoryId, (remaining.get(row.inventoryId) ?? 0) + row.quantity)
+  for (const row of restocked) remaining.set(row.inventoryId, (remaining.get(row.inventoryId) ?? 0) - row.quantity)
+  const touched: string[] = []
+  for (const [inventoryId, quantity] of remaining) {
+    if (quantity <= 0) continue
+    const updated = await tx.inventoryItem.updateMany({ where: { id: inventoryId }, data: { quantity: { increment: quantity } } })
+    if (updated.count !== 1) continue
+    await tx.inventoryMovement.create({ data: { inventoryId, type: InventoryMovementType.RETURN, quantity, reason, referenceId: orderNumber } })
+    touched.push(inventoryId)
+  }
+  return touched
 }

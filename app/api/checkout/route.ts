@@ -5,7 +5,7 @@ import { audit } from '@/lib/audit'
 import { checkoutSchema } from '@/lib/validation'
 import { json } from '@/lib/utils'
 import { calculateShipping, getTaxRatePercent } from '@/lib/pricing'
-import { releaseOrderReservations, reserveStock } from '@/lib/inventory'
+import { releaseOrderReservations, reserveStock, undoReservations } from '@/lib/inventory'
 import { getPaymentProvider } from '@/lib/payments'
 import { sendNewOrderPush } from '@/lib/push'
 import { sendOrderConfirmationEmail } from '@/lib/email'
@@ -335,79 +335,98 @@ export async function POST(req: Request) {
         if (existingOrder) throw new Error('This coupon is for first orders only')
       }
 
-      const spendsWalletOrCoins = (user?.id && requestedCoins > 0) || (paymentMethod === PaymentMethod.WALLET && grandTotal > 0)
-      if (user?.id && spendsWalletOrCoins) {
-        // Wallet/coin balances are a running sum over an append-only ledger, not a single
-        // mutable row like coupon.usedCount or giftCard.balance below -- there's no field to
-        // put a WHERE-bounded guard on, so a plain "read the sum, then create a debit row" is a
-        // check-then-act race: two concurrent checkouts (double-click, two tabs, a retry) can
-        // both read the balance before either commits its debit and both pass, double-spending
-        // the same balance. Writing to the user's own document first turns that race into a
-        // real MongoDB write conflict -- two transactions touching the same document can't both
-        // commit, so the loser aborts (surfaced as the generic "please try again" 500 below)
-        // instead of silently letting both debits through.
-        await tx.user.update({ where: { id: user.id }, data: { updatedAt: new Date() } })
-      }
+      // Each write below is matched by an undo, run if a later step fails (stock taken by another
+      // shopper, coupon or gift card used up meanwhile, ...). The store's database client runs
+      // these steps one by one rather than as one all-or-nothing unit (lib/prisma.ts), so without
+      // this a failed checkout kept the customer's coins or wallet money and left stock reserved
+      // with no order to ever release it.
+      const undo: Array<() => Promise<unknown>> = []
+      try {
+        const spendsWalletOrCoins = (user?.id && requestedCoins > 0) || (paymentMethod === PaymentMethod.WALLET && grandTotal > 0)
+        if (user?.id && spendsWalletOrCoins) {
+          // Wallet/coin balances are a running sum over an append-only ledger, not a single
+          // mutable row like coupon.usedCount or giftCard.balance below -- there's no field to
+          // put a WHERE-bounded guard on, so a plain "read the sum, then create a debit row" is a
+          // check-then-act race: two concurrent checkouts (double-click, two tabs, a retry) can
+          // both read the balance before either commits its debit and both pass, double-spending
+          // the same balance. Writing to the user's own document first turns that race into a
+          // real MongoDB write conflict -- two transactions touching the same document can't both
+          // commit, so the loser aborts (surfaced as the generic "please try again" 500 below)
+          // instead of silently letting both debits through. (That protection only holds when
+          // $transaction runs as a real database transaction -- see lib/prisma.ts.)
+          await tx.user.update({ where: { id: user.id }, data: { updatedAt: new Date() } })
+        }
 
-      if (user?.id && requestedCoins > 0) {
-        const coinAggregate = await tx.coinTransaction.aggregate({ where: { userId: user.id }, _sum: { amount: true } })
-        const coinBalance = Math.max(0, Number(coinAggregate._sum.amount || 0))
-        if (requestedCoins > coinBalance) throw new Error('Insufficient coin balance.')
-        await tx.coinTransaction.create({ data: { id: `coin_${user.id}_${orderNumber}_redemption`, userId: user.id, amount: -requestedCoins, type: 'REDEMPTION', reason: 'Checkout coin redemption', referenceId: orderNumber } })
-      }
+        if (user?.id && requestedCoins > 0) {
+          const coinAggregate = await tx.coinTransaction.aggregate({ where: { userId: user.id }, _sum: { amount: true } })
+          const coinBalance = Math.max(0, Number(coinAggregate._sum.amount || 0))
+          if (requestedCoins > coinBalance) throw new Error('Insufficient coin balance.')
+          await tx.coinTransaction.create({ data: { id: `coin_${user.id}_${orderNumber}_redemption`, userId: user.id, amount: -requestedCoins, type: 'REDEMPTION', reason: 'Checkout coin redemption', referenceId: orderNumber } })
+          undo.push(() => tx.coinTransaction.deleteMany({ where: { id: `coin_${user.id}_${orderNumber}_redemption` } }))
+        }
 
-      if (paymentMethod === PaymentMethod.WALLET && grandTotal > 0) {
-        const walletAggregate = await tx.walletTransaction.aggregate({ where: { userId: user!.id, currency: orderCurrency }, _sum: { amount: true } })
-        const walletBalance = Number(walletAggregate._sum.amount || 0)
-        if (walletBalance < grandTotal) throw new Error('Insufficient wallet balance.')
-        await tx.walletTransaction.create({ data: { id: `wal_${user!.id}_${orderNumber}_payment`, userId: user!.id, amount: -grandTotal, currency: orderCurrency, type: 'PAYMENT', reason: 'Wallet checkout payment', referenceId: orderNumber } })
-      }
+        if (paymentMethod === PaymentMethod.WALLET && grandTotal > 0) {
+          const walletAggregate = await tx.walletTransaction.aggregate({ where: { userId: user!.id, currency: orderCurrency }, _sum: { amount: true } })
+          const walletBalance = Number(walletAggregate._sum.amount || 0)
+          if (walletBalance < grandTotal) throw new Error('Insufficient wallet balance.')
+          await tx.walletTransaction.create({ data: { id: `wal_${user!.id}_${orderNumber}_payment`, userId: user!.id, amount: -grandTotal, currency: orderCurrency, type: 'PAYMENT', reason: 'Wallet checkout payment', referenceId: orderNumber } })
+          undo.push(() => tx.walletTransaction.deleteMany({ where: { id: `wal_${user!.id}_${orderNumber}_payment` } }))
+        }
 
-      for (const item of normalized) await reserveStock(tx, byId.get(item.productId)!, item.variantId, item.quantity, orderNumber)
-      if (coupon) {
-        const couponUpdate = await tx.coupon.updateMany({ where: { id: coupon.id, isActive: true, ...(coupon.maxUses !== null ? { usedCount: { lt: coupon.maxUses } } : {}) }, data: { usedCount: { increment: 1 } } })
-        if (couponUpdate.count !== 1) throw new Error('This coupon is no longer available')
-      }
-      if (giftCard && giftCardDiscount > 0) {
-        const giftCardUpdate = await tx.giftCard.updateMany({ where: { id: giftCard.id, status: 'ACTIVE', balance: { gte: giftCardDiscount } }, data: { balance: { decrement: giftCardDiscount } } })
-        if (giftCardUpdate.count !== 1) throw new Error('This gift card is no longer available')
-      }
+        for (const item of normalized) {
+          const reserved = await reserveStock(tx, byId.get(item.productId)!, item.variantId, item.quantity, orderNumber)
+          if (reserved.length) undo.push(() => undoReservations(tx, reserved, orderNumber, 'Checkout failed before the order was placed'))
+        }
+        if (coupon) {
+          const couponUpdate = await tx.coupon.updateMany({ where: { id: coupon.id, isActive: true, ...(coupon.maxUses !== null ? { usedCount: { lt: coupon.maxUses } } : {}) }, data: { usedCount: { increment: 1 } } })
+          if (couponUpdate.count !== 1) throw new Error('This coupon is no longer available')
+          undo.push(() => tx.coupon.updateMany({ where: { id: coupon.id, usedCount: { gt: 0 } }, data: { usedCount: { decrement: 1 } } }))
+        }
+        if (giftCard && giftCardDiscount > 0) {
+          const giftCardUpdate = await tx.giftCard.updateMany({ where: { id: giftCard.id, status: 'ACTIVE', balance: { gte: giftCardDiscount } }, data: { balance: { decrement: giftCardDiscount } } })
+          if (giftCardUpdate.count !== 1) throw new Error('This gift card is no longer available')
+          undo.push(() => tx.giftCard.updateMany({ where: { id: giftCard!.id }, data: { balance: { increment: giftCardDiscount } } }))
+        }
 
-      const paidByWallet = paymentMethod === PaymentMethod.WALLET
-      // A gift card can cover the entire total on its own -- in that case there's
-      // nothing left for CARD to charge, so the order is treated as paid upfront
-      // just like WALLET, and the CARD provider round-trip is skipped below.
-      const paidUpfront = paidByWallet || grandTotal === 0
-      const orderStatus = paidUpfront ? 'CONFIRMED' : 'PENDING'
-      const paymentStatus = paidUpfront ? 'PAID' : 'UNPAID'
-      const checkoutTxRaw: Record<string, unknown> = { coinDiscount, coinsUsed: requestedCoins }
-      if (idempotencyKey) checkoutTxRaw.fingerprint = fingerprint
-      if (giftCard && giftCardDiscount > 0) { checkoutTxRaw.giftCardId = giftCard.id; checkoutTxRaw.giftCardAmount = giftCardDiscount }
-      if (bundles.applied.length) checkoutTxRaw.bundles = bundles.applied
-      const order = await tx.order.create({
-        data: {
-          orderNumber,
-          userId: user?.id ?? null,
-          email: input.email,
-          phone: input.phone || null,
-          subtotal,
-          discountTotal: discount.total + freeShippingDiscount + coinDiscount + giftCardDiscount,
-          shippingTotal,
-          taxTotal,
-          grandTotal,
-          currency: orderCurrency,
-          status: orderStatus,
-          paymentStatus,
-          paymentMethod,
-          shippingAddressJson: JSON.stringify(input.shippingAddress),
-          couponCode: coupon?.code ?? null,
-          shippingMethod: shipping.method,
-          items: { create: normalized.map(({ taxable: _taxable, ...item }) => item) },
-          events: { create: { status: orderStatus, message: paidByWallet ? `Order placed using wallet${coinDiscount ? ` and ${requestedCoins} coins` : ''}.` : paidUpfront ? 'Order placed successfully using a gift card.' : 'Order placed successfully.' } },
-          paymentTransactions: { create: { provider: 'checkout', externalId: idempotencyKey, status: paidUpfront ? 'paid' : 'created', amount: grandTotal, currency: orderCurrency, rawJson: JSON.stringify(checkoutTxRaw) } },
-        },
-      })
-      return { existing: false as const, order }
+        const paidByWallet = paymentMethod === PaymentMethod.WALLET
+        // A gift card can cover the entire total on its own -- in that case there's
+        // nothing left for CARD to charge, so the order is treated as paid upfront
+        // just like WALLET, and the CARD provider round-trip is skipped below.
+        const paidUpfront = paidByWallet || grandTotal === 0
+        const orderStatus = paidUpfront ? 'CONFIRMED' : 'PENDING'
+        const paymentStatus = paidUpfront ? 'PAID' : 'UNPAID'
+        const checkoutTxRaw: Record<string, unknown> = { coinDiscount, coinsUsed: requestedCoins }
+        if (idempotencyKey) checkoutTxRaw.fingerprint = fingerprint
+        if (giftCard && giftCardDiscount > 0) { checkoutTxRaw.giftCardId = giftCard.id; checkoutTxRaw.giftCardAmount = giftCardDiscount }
+        if (bundles.applied.length) checkoutTxRaw.bundles = bundles.applied
+        const order = await tx.order.create({
+          data: {
+            orderNumber,
+            userId: user?.id ?? null,
+            email: input.email,
+            phone: input.phone || null,
+            subtotal,
+            discountTotal: discount.total + freeShippingDiscount + coinDiscount + giftCardDiscount,
+            shippingTotal,
+            taxTotal,
+            grandTotal,
+            currency: orderCurrency,
+            status: orderStatus,
+            paymentStatus,
+            paymentMethod,
+            shippingAddressJson: JSON.stringify(input.shippingAddress),
+            couponCode: coupon?.code ?? null,
+            shippingMethod: shipping.method,
+            items: { create: normalized.map(({ taxable: _taxable, ...item }) => item) },
+            events: { create: { status: orderStatus, message: paidByWallet ? `Order placed using wallet${coinDiscount ? ` and ${requestedCoins} coins` : ''}.` : paidUpfront ? 'Order placed successfully using a gift card.' : 'Order placed successfully.' } },
+            paymentTransactions: { create: { provider: 'checkout', externalId: idempotencyKey, status: paidUpfront ? 'paid' : 'created', amount: grandTotal, currency: orderCurrency, rawJson: JSON.stringify(checkoutTxRaw) } },
+          },
+        })
+        return { existing: false as const, order }
+      } catch (error) {
+        for (const step of undo.reverse()) await step().catch(undoError => console.error('[checkout] undo step failed', undoError))
+        throw error
+      }
     })
 
     if (result.existing) {

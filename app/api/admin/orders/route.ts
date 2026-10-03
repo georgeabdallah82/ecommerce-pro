@@ -3,7 +3,7 @@ import { requirePermission } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
 import { audit } from '@/lib/audit'
 import { canTransitionOrder, canTransitionPayment, collectsCashOnDelivery, fulfillmentForStatus } from '@/lib/orders'
-import { fulfillOrderStock, releaseOrderReservations, pickMajorityLocation } from '@/lib/inventory'
+import { fulfillOrderStock, releaseOrderReservations, pickMajorityLocation, restockShippedOrder } from '@/lib/inventory'
 import { remainingRefundable, pickRefundSource, creditWalletRefund, settleReturnRefund, type ReturnableOrder } from '@/lib/returns'
 import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { json } from '@/lib/utils'
@@ -111,7 +111,32 @@ export async function PATCH(req: Request) {
       const paymentChanged = !!requestedPayment && requestedPayment !== order.paymentStatus
       const cancelling = requestedStatus === OrderStatus.CANCELLED && order.status !== OrderStatus.CANCELLED
       const fulfilling = requestedStatus === OrderStatus.SHIPPED && order.fulfillmentStatus !== 'FULFILLED'
-      if (cancelling) await releaseOrderReservations(tx, order.id, 'Order cancelled')
+      // Everything that can refuse the cancellation is checked before stock is touched: this
+      // client runs the steps one by one (lib/prisma.ts), so refusing after releasing the
+      // reservations used to leave a still-open order with no stock held for it.
+      const refundableOrder = order as unknown as ReturnableOrder
+      const cancelRefundable = cancelling && (order.paymentStatus === PaymentStatus.PAID || order.paymentStatus === PaymentStatus.PARTIALLY_REFUNDED) ? remainingRefundable(refundableOrder) : 0
+      if (cancelRefundable > 0) {
+        // Cancelling a paid order moves money exactly like the dedicated refund/return
+        // endpoints, which gate that on orders.refund specifically because orders.manage
+        // (SUPPORT holds it without orders.refund) is a lower bar.
+        if (!hasPermission(actor, 'orders.refund')) throw new Error('FORBIDDEN')
+        // The remaining-refundable figure is only a snapshot of paymentTransaction rows. Tie it
+        // to an atomic conditional write on the order itself (bounded on the updatedAt we just
+        // read) so a concurrent cancel/refund/return that read the same snapshot loses the race
+        // here instead of both succeeding and together double-refunding.
+        const guardedOrder = await tx.order.updateMany({ where: { id: order.id, updatedAt: order.updatedAt }, data: { updatedAt: new Date() } })
+        if (guardedOrder.count !== 1) throw new Error(ORDER_UPDATE_CONFLICT_MESSAGE)
+      }
+      const returnedToSender = cancelling && order.status === OrderStatus.SHIPPED
+      let restockedInventoryIds: string[] = []
+      if (cancelling) {
+        await releaseOrderReservations(tx, order.id, 'Order cancelled')
+        if (returnedToSender) {
+          restockedInventoryIds = await restockShippedOrder(tx, order.orderNumber)
+          await tx.fulfillment.updateMany({ where: { orderId: order.id, status: { in: ['PENDING', 'PACKED', 'SHIPPED'] } }, data: { status: 'CANCELLED' } })
+        }
+      }
       const fulfilledInventoryIds = fulfilling ? await fulfillOrderStock(tx, order.id) : []
 
       // Cancelling a PAID (or partially-refunded) order leaves that money out of sync unless
@@ -123,34 +148,17 @@ export async function PATCH(req: Request) {
       let cancelRefundAmount = 0
       let cancelRefundProvider: string | null = null
       if (cancelling) {
-        const refundableOrder = order as unknown as ReturnableOrder
-        if (order.paymentStatus === PaymentStatus.PAID || order.paymentStatus === PaymentStatus.PARTIALLY_REFUNDED) {
-          const refundable = remainingRefundable(refundableOrder)
-          if (refundable > 0) {
-            // Cancelling a paid order moves money exactly like the dedicated refund/return
-            // endpoints, which gate that on orders.refund specifically because orders.manage
-            // (SUPPORT holds it without orders.refund) is a lower bar -- without this check,
-            // cancelling a paid order here was a live bypass of that gate for any role with
-            // orders.manage but not orders.refund.
-            if (!hasPermission(actor, 'orders.refund')) throw new Error('FORBIDDEN')
-            // The remaining-refundable check above is only a snapshot of paymentTransaction rows.
-            // Tie it to an atomic conditional write on the order itself (bounded on the updatedAt
-            // we just read) so a concurrent cancel/refund/return request that read the same
-            // snapshot loses the race here instead of both requests succeeding and together
-            // double-refunding -- mirrors the same guard in app/api/admin/refunds/route.ts and
-            // the returns routes, which this cancel-with-refund path never got.
-            const guardedOrder = await tx.order.updateMany({ where: { id: order.id, updatedAt: order.updatedAt }, data: { updatedAt: new Date() } })
-            if (guardedOrder.count !== 1) throw new Error(ORDER_UPDATE_CONFLICT_MESSAGE)
-            const { refundProvider, refundExternalId } = pickRefundSource(refundableOrder)
-            const refundStatus = refundProvider === 'manual' || refundProvider === 'wallet' ? 'refunded' : 'refund_pending'
-            const refund = await tx.paymentTransaction.create({ data: { orderId: order.id, provider: refundProvider, externalId: refundExternalId, status: refundStatus, amount: refundable, currency: order.currency, rawJson: JSON.stringify({ reason: 'Order cancelled by staff', actorId: actor.id }) } })
-            if (refundStatus === 'refunded') {
-              cancelRefundAmount = refundable
-              cancelRefundProvider = refundProvider
-              if (refundProvider === 'wallet') await creditWalletRefund(tx, { userId: order.userId, refundId: refund.id, amount: refundable, currency: order.currency })
-            } else {
-              refundToSettle = { refundId: refund.id, refundProvider, refundExternalId, amount: refundable }
-            }
+        if (cancelRefundable > 0) {
+          const refundable = cancelRefundable
+          const { refundProvider, refundExternalId } = pickRefundSource(refundableOrder)
+          const refundStatus = refundProvider === 'manual' || refundProvider === 'wallet' ? 'refunded' : 'refund_pending'
+          const refund = await tx.paymentTransaction.create({ data: { orderId: order.id, provider: refundProvider, externalId: refundExternalId, status: refundStatus, amount: refundable, currency: order.currency, rawJson: JSON.stringify({ reason: 'Order cancelled by staff', actorId: actor.id }) } })
+          if (refundStatus === 'refunded') {
+            cancelRefundAmount = refundable
+            cancelRefundProvider = refundProvider
+            if (refundProvider === 'wallet') await creditWalletRefund(tx, { userId: order.userId, refundId: refund.id, amount: refundable, currency: order.currency })
+          } else {
+            refundToSettle = { refundId: refund.id, refundProvider, refundExternalId, amount: refundable }
           }
         }
 
@@ -177,10 +185,11 @@ export async function PATCH(req: Request) {
         ...(codCollected ? { paymentStatus: PaymentStatus.PAID } : {}),
         ...(cancelRefundAmount > 0 ? { paymentStatus: PaymentStatus.REFUNDED } : {}),
       }
+      const returnMessage = returnedToSender ? ' Returned to sender: the shipped items were put back in stock.' : ''
       const cancelMessage = cancelRefundAmount > 0
         ? ` A ${(cancelRefundAmount / 100).toFixed(2)} ${order.currency} refund was issued${cancelRefundProvider === 'wallet' ? ' to the customer’s wallet' : ''}.`
         : refundToSettle ? ` A ${(refundToSettle.amount / 100).toFixed(2)} ${order.currency} refund is being processed.` : ''
-      const updated = await tx.order.update({ where: { id: order.id }, data: { ...data, ...(statusChanged ? { events: { create: { status: requestedStatus!, message: `Order moved from ${order.status} to ${requestedStatus}.${cancelMessage}${codCollected ? ' Cash collected on delivery — marked as paid.' : ''}` } } } : {}) } })
+      const updated = await tx.order.update({ where: { id: order.id }, data: { ...data, ...(statusChanged ? { events: { create: { status: requestedStatus!, message: `Order moved from ${order.status} to ${requestedStatus}.${returnMessage}${cancelMessage}${codCollected ? ' Cash collected on delivery — marked as paid.' : ''}` } } } : {}) } })
       // Recording a Fulfillment (with one line per order item) is how this "ship the whole
       // order" action leaves a real shipment record behind -- carrier/tracking-URL metadata a
       // customer-facing tracking page or a future partial-shipment flow can read, rather than
@@ -225,7 +234,7 @@ export async function PATCH(req: Request) {
           trackingCorrection = { orderNumber: order.orderNumber, trackingNumber: detailsPatch.trackingNumber as string | null }
         }
       }
-      return { order, updated, statusChanged, paymentChanged: paymentChanged || codCollected, codCollected, hasOnlyDetails, fulfilledInventoryIds, fulfilling, fulfillmentId: fulfillment?.id, refundToSettle, cancelRefundAmount, trackingCorrection }
+      return { order, updated, statusChanged, paymentChanged: paymentChanged || codCollected, codCollected, hasOnlyDetails, fulfilledInventoryIds, restockedInventoryIds, fulfilling, fulfillmentId: fulfillment?.id, refundToSettle, cancelRefundAmount, trackingCorrection }
     })
     if (result.order.userId && result.statusChanged) {
       const body = result.cancelRefundAmount > 0
@@ -257,7 +266,7 @@ export async function PATCH(req: Request) {
         runInBackground(dispatchWebhookEvent('order.fulfilled', eventPayload).catch(error => console.error('[webhook] order.fulfilled dispatch failed', error)))
       }
     }
-    dispatchInventoryUpdated(result.fulfilledInventoryIds)
+    dispatchInventoryUpdated([...result.fulfilledInventoryIds, ...result.restockedInventoryIds])
     if (result.fulfilledInventoryIds.length) runInBackground(checkLowStockAlerts(result.fulfilledInventoryIds).catch(error => console.error('[push] low stock alert failed', error)))
 
     if (result.refundToSettle && result.refundToSettle.refundProvider !== 'manual' && result.refundToSettle.refundProvider !== 'wallet') {
