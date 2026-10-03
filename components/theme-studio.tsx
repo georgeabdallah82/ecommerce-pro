@@ -302,7 +302,7 @@ const THEME_CATEGORIES: ThemeCategory[] = [
     { title: 'Header', fields: [toggle('Show wishlist icon', 'showWishlist', false), toggle('Transparent header (older design only)', 'transparent', false), toggle('Transparent on homepage only (older design only)', 'transparentHome', false)] },
     { title: 'Red header', fields: [
       color('Header colour', 'background', '#d7261e'),
-      toggle('Show the logo in white (uses the dark-background logo when you upload one)', 'whiteLogo', true),
+      toggle('Show the logo in solid white (off: use the dark-background logo as it is)', 'whiteLogo', true),
       text('Search box hint', 'searchPlaceholder', 'Search products…'),
       toggle('Show category tabs under the header (your Navigation menu)', 'showCategoryTabs', true),
     ] },
