@@ -1,6 +1,7 @@
 import { db } from '@/lib/prisma'
 import { getThemeState } from '@/lib/theme'
 import { withProductStats } from '@/lib/product-stats'
+import { CARD_STOCK_INCLUDE, withCardStock } from '@/lib/card-stock'
 import { getUnpublishedProductIds } from '@/lib/sales-channels'
 import { notFound } from 'next/navigation'
 import { Footer } from '@/components/footer'
@@ -34,7 +35,7 @@ export default async function CollectionPage({ params }: { params: Promise<{ slu
     where: { slug },
     include: {
       products: {
-        include: { product: { include: { images: { orderBy: { sortOrder: 'asc' } }, collections: { include: { collection: true } } } } },
+        include: { product: { include: { images: { orderBy: { sortOrder: 'asc' } }, collections: { include: { collection: true } }, ...CARD_STOCK_INCLUDE } } },
         orderBy: { sortOrder: 'asc' },
       },
     },
@@ -51,7 +52,7 @@ export default async function CollectionPage({ params }: { params: Promise<{ slu
   // if it somehow reaches the cart) that those other pages never expose customers to.
   const activeItems = collection.products.filter(x => x.product.status === 'ACTIVE' && !hidden.has(x.productId))
   const [products, zoneCollections] = await Promise.all([
-    withProductStats(activeItems.map(x => x.product)),
+    withProductStats(withCardStock(activeItems.map(x => x.product))),
     needsCollections ? db.collection.findMany({ where: { isActive: true }, take: 12, orderBy: { sortOrder: 'asc' } }) : Promise.resolve([]),
   ])
   // The raw collection still carries its full product rows (cost price, barcode); send only

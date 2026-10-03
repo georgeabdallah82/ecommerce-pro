@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { db } from '@/lib/prisma'
-import { Footer } from '@/components/footer'
+import { StoreFooter } from '@/components/store-footer'
 import DeliveryTrackingMap from '@/components/delivery-tracking-map'
 
 export default async function DeliveryTrackingPage({ params }: { params: Promise<{ token: string }> }) {
@@ -27,5 +27,5 @@ export default async function DeliveryTrackingPage({ params }: { params: Promise
     pollingSeconds: 15,
   }
 
-  return <><main className="section"><div className="container" style={{maxWidth:960}}><Link className="textLink" href="/account">← Back to account</Link><div style={{marginTop:18}}><DeliveryTrackingMap token={token} initial={initial}/></div></div></main><Footer/></>
+  return <><main className="section"><div className="container" style={{maxWidth:960}}><Link className="textLink" href="/account">← Back to account</Link><div style={{marginTop:18}}><DeliveryTrackingMap token={token} initial={initial}/></div></div></main><StoreFooter /></>
 }

@@ -101,8 +101,8 @@ html body.mk .focalNav.mkHeader .aliNavSearchIconMobile { display: none !importa
 .mkSlidePic img { object-fit: cover; }
 .mkSlidePicEmpty { background: linear-gradient(135deg, #2a2a2a, #121212); }
 .mkSlideCopy { display: grid; gap: 12px; align-content: center; }
-.mkSlideCopy h2 { margin: 0; font-weight: 800; letter-spacing: -.025em; line-height: 1.05; text-wrap: balance; }
-.mkSlideCopy h2 span { color: var(--mk-yellow); }
+.mkSlideCopy h1, .mkSlideCopy h2 { margin: 0; font-weight: 800; letter-spacing: -.025em; line-height: 1.05; text-wrap: balance; }
+.mkSlideCopy h1 span, .mkSlideCopy h2 span { color: var(--mk-yellow); }
 .mkSlideCopy p { margin: 0; }
 .mkSlideBadge { position: absolute; right: 14px; bottom: 14px; background: #fff; color: #121212; border-radius: 10px; padding: 7px 11px; font-size: 12.5px; font-weight: 700; z-index: 2; }
 .mkDots { position: absolute; left: 50%; transform: translateX(-50%); bottom: 18px; display: flex; gap: 7px; z-index: 3; }
@@ -117,14 +117,14 @@ html body.mk .focalNav.mkHeader .aliNavSearchIconMobile { display: none !importa
 .mkHero-full .mkHeroTrack, .mkHero-full .mkSlide { height: 100%; }
 .mkSlideShade { position: absolute; inset: 0; background: linear-gradient(0deg, rgba(0,0,0,.74) 0%, rgba(0,0,0,.35) 52%, rgba(0,0,0,.05) 100%); }
 .mkHero-full .mkSlideInner { position: absolute; inset: 0; display: grid; align-content: end; padding-bottom: 52px; color: #fff; }
-.mkHero-full .mkSlideCopy h2 { font-size: 34px; color: #fff; }
+.mkHero-full .mkSlideCopy h1, .mkHero-full .mkSlideCopy h2 { font-size: 34px; color: #fff; }
 .mkHero-full .mkSlideCopy p { font-size: 15px; color: rgba(255,255,255,.92); max-width: 42ch; }
 @media (min-width: 760px) {
   .mkHero-full .mkHeroFrame { height: var(--mk-hero-h, 560px); }
   .mkSlideShade { background: linear-gradient(90deg, rgba(0,0,0,.7) 0%, rgba(0,0,0,.4) 42%, rgba(0,0,0,0) 74%); }
   .mkHero-full .mkSlideInner { align-content: center; padding-bottom: 0; }
   .mkHero-full .mkSlideCopy { gap: 16px; }
-  .mkHero-full .mkSlideCopy h2 { font-size: clamp(40px, 5vw, 62px); max-width: 16ch; }
+  .mkHero-full .mkSlideCopy h1, .mkHero-full .mkSlideCopy h2 { font-size: clamp(40px, 5vw, 62px); max-width: 16ch; }
   .mkHero-full .mkSlideCopy p { font-size: 18px; }
 }
 
@@ -133,7 +133,7 @@ html body.mk .focalNav.mkHeader .aliNavSearchIconMobile { display: none !importa
 .mkHero-split .mkHeroFrame { width: min(1280px, calc(100% - 32px)); margin: 0 auto; border-radius: 18px; background: #8f1a14; }
 .mkHero-split .mkSlide { display: grid; }
 .mkSplitCopy { background: var(--mk-red); color: #fff; padding: 22px 22px 46px; display: grid; }
-.mkSplitCopy h2 { font-size: 30px; color: #fff; }
+.mkSplitCopy h1, .mkSplitCopy h2 { font-size: 30px; color: #fff; }
 .mkSplitCopy p { font-size: 14.5px; color: rgba(255,255,255,.92); max-width: 34ch; }
 .mkSplitCopy .mkBtnPrimary { background: #fff; color: var(--mk-red); }
 .mkSplitPic { position: relative; min-height: 220px; }
@@ -142,7 +142,7 @@ html body.mk .focalNav.mkHeader .aliNavSearchIconMobile { display: none !importa
   .mkHero-split .mkHeroFrame { width: min(1280px, calc(100% - 48px)); }
   .mkHero-split .mkSlide { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); min-height: min(var(--mk-hero-h, 560px), 480px); }
   .mkSplitCopy { padding: 40px 36px 60px; }
-  .mkSplitCopy h2 { font-size: 44px; }
+  .mkSplitCopy h1, .mkSplitCopy h2 { font-size: 44px; }
   .mkSplitCopy p { font-size: 16px; }
   .mkHero-split .mkDots { left: 36px; bottom: 26px; }
   .mkHero-split .mkArrowPrev { left: auto; right: 66px; top: auto; bottom: 16px; transform: none; }
@@ -327,3 +327,27 @@ html body.mk .aliCartPage { background: var(--mk-page) !important; }
 html body.mk .emptyCartUX { background: var(--mk-card) !important; border-color: var(--mk-line) !important; }
 html body.mk .aliCartRow, html body.mk .cartRowUX { background: var(--mk-card) !important; }
 html body.mk .aliCartRow.unselected { opacity: .7; }
+
+/* ---------------- Shop page on phones: collections as one swipeable row, price behind a button ---------------- */
+.aliFilterToggle { display: none; align-items: center; gap: 6px; height: 38px; padding: 0 14px; border: 1px solid var(--store-border, #e5e5e5); border-radius: 999px; background: var(--store-surface, #fff); color: var(--store-text, #121212); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.aliFilterToggle.active { border-color: var(--store-primary, #d7261e); color: var(--store-primary, #d7261e); }
+@media (max-width: 900px) {
+  .aliShopSidebar { gap: 10px !important; }
+  .aliShopSidebar > .aliShopCollections { flex: 1 1 100% !important; min-width: 0 !important; }
+  .aliShopCollections h3 { display: none; }
+  .aliShopCollections .aliCategoryList { flex-wrap: nowrap !important; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  .aliShopCollections .aliCategoryList::-webkit-scrollbar { display: none; }
+  .aliShopCollections .aliCategoryList li { flex: none; }
+  .aliShopCollections .aliCategoryList a { white-space: nowrap; border-radius: 999px !important; padding: 7px 14px !important; border: 1px solid var(--store-border, #e5e5e5); }
+  .aliShopCollections .aliCategoryList a:not(.active) { background: var(--store-surface, #fff); }
+  .aliShopCollections .aliCategoryList a.active { border-color: var(--store-primary, #d7261e); }
+  .aliFilterToggle { display: inline-flex; }
+  .aliPriceFilter:not(.open) { display: none !important; }
+  .aliPriceFilter.open { flex: 1 1 100% !important; }
+}
+
+/* Sold out: on cards, and for options in quick view */
+.mkCardAdd.soldOut, .mkCardAdd:disabled { background: #e5e7eb !important; color: #6b7280 !important; cursor: not-allowed; }
+.focalVariantList button:disabled { opacity: .45; cursor: not-allowed; text-decoration: line-through; }
+.focalQuickInfo .focalButton:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+.aliVariantList button.soldOut { color: #9ca3af; text-decoration: line-through; border-style: dashed; }

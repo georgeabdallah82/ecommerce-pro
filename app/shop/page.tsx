@@ -1,6 +1,7 @@
 import {db} from '@/lib/prisma'
 import {getThemeState} from '@/lib/theme'
 import {getProductStats,withProductStats} from '@/lib/product-stats'
+import { CARD_STOCK_INCLUDE, withCardStock } from '@/lib/card-stock'
 import {getUnpublishedProductIds} from '@/lib/sales-channels'
 import {ProductStatus} from '@prisma/client'
 import {Footer} from '@/components/footer'
@@ -73,10 +74,10 @@ export default async function Shop({searchParams}:{searchParams:Promise<{q?:stri
   const pages=Math.max(1,Math.ceil(total/PAGE_SIZE))
   const page=Math.min(pages,Math.max(1,Math.floor(Number(sp.page))||1))
   const pageIds=scoped.slice((page-1)*PAGE_SIZE,page*PAGE_SIZE).map(p=>p.id)
-  const pageRows=pageIds.length?await db.product.findMany({where:{id:{in:pageIds}},include:{images:{orderBy:{sortOrder:'asc'}},collections:{include:{collection:true}},variants:{select:{price:true}}}}):[]
+  const pageRows=pageIds.length?await db.product.findMany({where:{id:{in:pageIds}},include:{images:{orderBy:{sortOrder:'asc'}},collections:{include:{collection:true}},...CARD_STOCK_INCLUDE}}):[]
   const rowById=new Map(pageRows.map(p=>[p.id,p]))
   const ordered=pageIds.map(id=>rowById.get(id)).filter((p):p is NonNullable<typeof p>=>Boolean(p)).map(p=>({...p,effectivePrice:effectivePriceCents(p)}))
-  const products=await withProductStats(ordered)
+  const products=await withProductStats(withCardStock(ordered))
   const sections=(themeTemplates(theme).Collection||[]).filter((s:any)=>s&&!COLLECTION_ZONE_EXCLUDE.has(s.type))
   return <><AliExpressShop theme={theme} products={products} collections={collections} query={sp} sections={sections} pagination={{page,pages,total}}/><Footer theme={theme}/></>
 }

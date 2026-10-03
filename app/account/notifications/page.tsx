@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { getCurrentUser } from '@/lib/auth'
 import { db } from '@/lib/prisma'
-import { Footer } from '@/components/footer'
+import { StoreFooter } from '@/components/store-footer'
 import { MarkAllReadButton, MarkReadButton } from '@/components/notification-actions'
 import CustomerPushToggle from '@/components/customer-push-toggle'
 
@@ -9,7 +9,7 @@ const PAGE_SIZE = 20
 
 export default async function Notifications({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const u = await getCurrentUser()
-  if (!u) return <><main className="section"><div className="container"><span className="muted">ACCOUNT</span><h1 className="h2">Notifications</h1><div className="card" style={{ padding: 24, maxWidth: 560 }}><h3>Sign in to view your notifications</h3><div style={{ display: 'flex', gap: 10 }}><Link className="btn" href="/account/login">Sign in</Link></div></div></div></main><Footer /></>
+  if (!u) return <><main className="section"><div className="container"><span className="muted">ACCOUNT</span><h1 className="h2">Notifications</h1><div className="card" style={{ padding: 24, maxWidth: 560 }}><h3>Sign in to view your notifications</h3><div style={{ display: 'flex', gap: 10 }}><Link className="btn" href="/account/login?next=%2Faccount%2Fnotifications">Sign in</Link></div></div></div></main><StoreFooter /></>
 
   const { page: pageParam } = await searchParams
   const requestedPage = Number(pageParam) || 1
@@ -61,5 +61,5 @@ export default async function Notifications({ searchParams }: { searchParams: Pr
         {page < totalPages ? <Link className="btn secondary" href={`/account/notifications?page=${page + 1}`}>Next →</Link> : <span />}
       </div>
     )}
-  </div></main><Footer /></>
+  </div></main><StoreFooter /></>
 }

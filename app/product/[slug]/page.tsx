@@ -2,6 +2,7 @@ import { db } from '@/lib/prisma'
 import { getThemeState } from '@/lib/theme'
 import { getCurrentUser } from '@/lib/auth'
 import { getProductStats, withProductStats } from '@/lib/product-stats'
+import { CARD_STOCK_INCLUDE, withCardStock } from '@/lib/card-stock'
 import { getUnpublishedProductIds } from '@/lib/sales-channels'
 import { getStoreCurrency } from '@/lib/store-currency'
 import { notFound } from 'next/navigation'
@@ -95,6 +96,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           sku: true,
           featured: true,
           vendor: true,
+          trackInventory: true,
+          continueSellingWhenOutOfStock: true,
+          ...CARD_STOCK_INCLUDE,
           images: {
             select: { id: true, url: true, alt: true, sortOrder: true },
             orderBy: { sortOrder: 'asc' },
@@ -116,7 +120,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   // there (product_recommendations, newsletter) never need it.
   const needsCollections = sections.some((s: any) => s.type === 'collection_grid' || s.type === 'collection_carousel')
   const [related, [ownStats], purchase, existingReview, zoneCollections] = await Promise.all([
-    withProductStats(relatedRaw),
+    withProductStats(withCardStock(relatedRaw)),
     getProductStats([product.id]).then(stats => [stats[product.id]]),
     currentUser
       ? db.orderItem.findFirst({

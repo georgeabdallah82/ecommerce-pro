@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Search } from 'lucide-react'
+import { Search, SlidersHorizontal } from 'lucide-react'
 import StorefrontSections, { ProductCard, QuickView } from '@/components/storefront-sections'
 import { useWishlist } from '@/components/use-wishlist'
 
@@ -11,6 +11,9 @@ type AnyMap = Record<string, any>
 export default function AliExpressShop({ theme, products, collections, query, sections = [], pagination }: { theme: AnyMap; products: AnyMap[]; collections: AnyMap[]; query: { q?: string; collection?: string; min?: string; max?: string; sort?: string; page?: string }; sections?: AnyMap[]; pagination?: { page: number; pages: number; total: number } }) {
   const { wishlist, toggleWish } = useWishlist()
   const [quickProduct, setQuickProduct] = useState<AnyMap | null>(null)
+  // On phones the price filter folds away behind a button so products show on the first screen.
+  const priceActive = Boolean(query.min || query.max)
+  const [priceOpen, setPriceOpen] = useState(priceActive)
   const sort = query.sort || 'newest'
   const cp = theme.collectionPage || {}
   const showFilters = cp.showFilters !== false
@@ -32,7 +35,7 @@ export default function AliExpressShop({ theme, products, collections, query, se
       <div className={`aliContainer aliShopLayout ${showFilters ? '' : 'noSidebar'}`}>
         {showFilters && (
           <aside className="aliShopSidebar">
-            <div>
+            <div className="aliShopCollections">
               <h3>Collections</h3>
               <ul className="aliCategoryList">
                 <li><Link href="/shop" className={!query.collection ? 'active' : ''}>All collections</Link></li>
@@ -41,7 +44,10 @@ export default function AliExpressShop({ theme, products, collections, query, se
                 ))}
               </ul>
             </div>
-            <form method="GET" className="aliPriceFilter">
+            <button type="button" className={`aliFilterToggle ${priceActive ? 'active' : ''}`} aria-expanded={priceOpen} aria-controls="shop-price-filter" onClick={() => setPriceOpen(open => !open)}>
+              <SlidersHorizontal size={15} /> {priceActive ? `Price: ${query.min || '0'} – ${query.max || 'any'}` : 'Filter by price'}
+            </button>
+            <form method="GET" id="shop-price-filter" className={`aliPriceFilter ${priceOpen ? 'open' : ''}`}>
               {query.collection && <input type="hidden" name="collection" value={query.collection} />}
               {query.q && <input type="hidden" name="q" value={query.q} />}
               {query.sort && <input type="hidden" name="sort" value={query.sort} />}

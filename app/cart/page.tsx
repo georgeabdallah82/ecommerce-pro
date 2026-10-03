@@ -1,6 +1,7 @@
 import { db } from '@/lib/prisma'
 import { getThemeState } from '@/lib/theme'
 import { withProductStats } from '@/lib/product-stats'
+import { CARD_STOCK_INCLUDE, withCardStock } from '@/lib/card-stock'
 import { getUnpublishedProductIds } from '@/lib/sales-channels'
 import { Footer } from '@/components/footer'
 import AliExpressCart from '@/components/aliexpress-cart'
@@ -22,13 +23,13 @@ export default async function Cart() {
   const [rawRecommended, zoneCollections] = await Promise.all([
     db.product.findMany({
       where: { status: 'ACTIVE', id: { notIn: unpublishedIds } },
-      include: { images: { orderBy: { sortOrder: 'asc' } }, collections: { include: { collection: true } } },
+      include: { images: { orderBy: { sortOrder: 'asc' } }, collections: { include: { collection: true } }, ...CARD_STOCK_INCLUDE },
       orderBy: [{ featured: 'desc' }, { createdAt: 'desc' }],
       take: 12,
     }),
     needsCollections ? db.collection.findMany({ where: { isActive: true }, take: 12, orderBy: { sortOrder: 'asc' } }) : Promise.resolve([]),
   ])
-  const recommended = await withProductStats(rawRecommended)
+  const recommended = await withProductStats(withCardStock(rawRecommended))
   return (
     <>
       <AliExpressCart theme={theme} recommended={recommended} sections={sections} zoneCollections={zoneCollections} />

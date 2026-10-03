@@ -21,7 +21,7 @@ export default async function Collections() {
     getUnpublishedProductIds(),
     db.collection.findMany({
       where: { isActive: true },
-      include: { products: { include: { product: { select: { status: true } } } } },
+      include: { products: { include: { product: { select: { status: true, images: { orderBy: { sortOrder: 'asc' }, take: 1, select: { url: true } } } } } } },
       orderBy: { sortOrder: 'asc' },
     }),
   ])
@@ -30,10 +30,12 @@ export default async function Collections() {
   // DRAFT/ARCHIVED or unpublished-from-storefront product left in a collection must be
   // excluded from the tile count -- the detail page (app/collections/[slug]/page.tsx)
   // already hides these same items, so the index must not advertise a count it can't show.
-  const collections = rawCollections.map(({ products, ...c }) => ({
-    ...c,
-    _count: { products: products.filter(x => x.product?.status === 'ACTIVE' && !unpublished.has(x.productId)).length },
-  }))
+  const collections = rawCollections.map(({ products, ...c }) => {
+    const visible = products.filter(x => x.product?.status === 'ACTIVE' && !unpublished.has(x.productId))
+    // A collection without its own picture shows its first product's photo, not a placeholder.
+    const imageUrl = c.imageUrl || visible.map(x => (x.product as any)?.images?.[0]?.url).find(Boolean) || null
+    return { ...c, imageUrl, _count: { products: visible.length } }
+  })
   return (
     <>
       <AliExpressCollections collections={collections} />
