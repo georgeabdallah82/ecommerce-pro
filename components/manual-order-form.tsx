@@ -7,6 +7,7 @@ import { ArrowLeft } from 'lucide-react'
 import { money } from '@/lib/config'
 import s from './admin-order-detail.module.css'
 import ui from './admin-ui.module.css'
+import { NumInput } from './num-input'
 
 type Product = { id:string; name:string; sku:string; basePrice:number; images?:{url:string}[]; variants?:{id:string;name:string;sku:string;price:number|null}[] }
 type Customer = { id:string; name:string; email:string; phone?:string|null }
@@ -80,8 +81,8 @@ export default function ManualOrderForm({ products, customers }:{ products:Produ
 
           <section className={ui.card}><div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Products</h3></div>
             <div className={s.twoCol}><label className={ui.fieldLabel}>Product<select className={ui.select} value={productId} onChange={e=>{setProductId(e.target.value);setVariantId('')}}><option value="">Select product</option>{products.map(p=><option key={p.id} value={p.id}>{p.name} — {money(p.basePrice)}</option>)}</select></label><label className={ui.fieldLabel}>Variant<select className={ui.select} value={variantId} disabled={!variants.length} onChange={e=>setVariantId(e.target.value)}><option value="">Default / shared stock</option>{variants.map(v=><option key={v.id} value={v.id}>{v.name} — {money(v.price??product?.basePrice??0)}</option>)}</select></label></div>
-            <div className="inline" style={{alignItems:'end'}}><label className={ui.fieldLabel} style={{maxWidth:140}}>Qty<input className={ui.input} type="number" min="1" max="99" value={qty} onChange={e=>setQty(Number(e.target.value)||1)}/></label><button className={`${ui.btn} ${ui.btnSecondary}`} onClick={addLine}>Add item</button></div>
-            <div className={ui.tableWrap}><table className={ui.table}><thead><tr><th>Item</th><th>SKU</th><th>Qty</th><th>Price</th><th></th></tr></thead><tbody>{lines.map((l,i)=><tr key={`${l.productId}:${l.variantId||''}`}><td><strong>{l.name}</strong></td><td>{l.sku}</td><td><input className={ui.inputCompact} style={{width:80}} type="number" min="1" max="99" value={l.quantity} onChange={e=>setLines(lines.map((x,j)=>j===i?{...x,quantity:Math.min(99,Math.max(1,Number(e.target.value)||1))}:x))}/></td><td>{money(l.price*l.quantity)}</td><td><button className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} onClick={()=>setLines(lines.filter((_,j)=>j!==i))}>Remove</button></td></tr>)}</tbody></table></div>
+            <div className="inline" style={{alignItems:'end'}}><label className={ui.fieldLabel} style={{maxWidth:140}}>Qty<NumInput className={ui.input} value={qty} onValue={n=>setQty(Math.min(99,Number(n)||1))}/></label><button className={`${ui.btn} ${ui.btnSecondary}`} onClick={addLine}>Add item</button></div>
+            <div className={ui.tableWrap}><table className={ui.table}><thead><tr><th>Item</th><th>SKU</th><th>Qty</th><th>Price</th><th></th></tr></thead><tbody>{lines.map((l,i)=><tr key={`${l.productId}:${l.variantId||''}`}><td><strong>{l.name}</strong></td><td>{l.sku}</td><td><NumInput className={ui.inputCompact} style={{width:80}} value={l.quantity} onValue={n=>setLines(lines.map((x,j)=>j===i?{...x,quantity:Math.min(99,Math.max(1,Number(n)||1))}:x))}/></td><td>{money(l.price*l.quantity)}</td><td><button className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} onClick={()=>setLines(lines.filter((_,j)=>j!==i))}>Remove</button></td></tr>)}</tbody></table></div>
           </section>
 
           <section className={ui.card}><div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Shipping address</h3></div>

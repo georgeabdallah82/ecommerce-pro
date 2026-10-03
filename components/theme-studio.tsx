@@ -76,6 +76,7 @@ import { SECTION_PRESETS, type SectionPreset } from '@/lib/section-presets'
 import { isPageTemplateKey, pageIdFromKey, pageTemplateKey } from '@/lib/custom-pages'
 import styles from './theme-studio.module.css'
 import { marketHomeSections, marketSectionDefaults } from '@/lib/storefront-market'
+import { NumInput } from './num-input'
 
 // Deliberately not under /admin -- see app/theme-editor-preview/page.tsx's top comment.
 const PREVIEW_PATH = '/theme-editor-preview'
@@ -1156,8 +1157,8 @@ export default function ThemeStudio({ initial }: Props) {
             ) : drawerTab === 'design' ? (
               <div className="themeInspector">
                 <details className="themeInspectorPanel" open><summary>Design</summary><div>
-                  <label className="themeInspectorField"><span>Section spacing</span><input type="number" value={selected.settings?.spacing ?? 72} onChange={event => patch({ spacing: Number(event.target.value) })} /></label>
-                  <label className="themeInspectorField"><span>Content width</span><input type="number" value={selected.settings?.contentWidth ?? 1180} onChange={event => patch({ contentWidth: Number(event.target.value) })} /></label>
+                  <label className="themeInspectorField"><span>Section spacing</span><NumInput value={selected.settings?.spacing ?? 72} empty={0} onValue={n => patch({ spacing: n ?? 0 })} /></label>
+                  <label className="themeInspectorField"><span>Content width</span><NumInput value={selected.settings?.contentWidth ?? 1180} empty={0} onValue={n => patch({ contentWidth: n ?? 0 })} /></label>
                 </div></details>
               </div>
             ) : (

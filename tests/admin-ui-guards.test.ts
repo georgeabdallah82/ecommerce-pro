@@ -56,3 +56,19 @@ describe('admin on phones', () => {
     assert.doesNotMatch(read('app/admin/admin-overhaul.css'), /catalogStats\{grid-template-columns:1fr!important\}/)
   })
 })
+
+// Number boxes bound straight to a number reformat while you type ("1" -> "1.00", a cleared box
+// jumps back to 0 or 1 so "5" reads "05" or "15"). Such boxes use NumInput / MoneyInput
+// (components/num-input.tsx), which keep the typed text until the box loses focus.
+describe('number inputs', () => {
+  const files = [...readdirSync(join(root, 'components')).map(n => `components/${n}`), 'app/checkout/page.tsx']
+    .filter(path => path.endsWith('.tsx'))
+  it('never reformat or coerce the value on every key press', () => {
+    const bad = files.flatMap(path => read(path).split('\n').map((line, i) => ({ line, at: `${path}:${i + 1}` })))
+      .filter(({ line }) => /<input[^\n]*type="number"/.test(line) && (
+        /value=\{[^}]*toFixed\(/.test(line) ||
+        (/Number\((e|event)\.target\.value\)/.test(line) && !/value=\{[^}]*\|\|\s*''\}/.test(line))))
+      .map(({ at }) => at)
+    assert.deepEqual(bad, [])
+  })
+})

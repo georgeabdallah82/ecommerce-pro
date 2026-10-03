@@ -5,6 +5,7 @@ import { PackagePlus, Plus, Trash2, X } from 'lucide-react'
 import ui from './admin-ui.module.css'
 import styles from './admin-bundles.module.css'
 import { useConfirm } from './admin-confirm'
+import { NumInput } from './num-input'
 
 type Variant = { id: string; name: string; price: number | null }
 type Product = { id: string; name: string; basePrice: number; status: string; variants: Variant[] }
@@ -109,7 +110,7 @@ export default function BundlesAdmin({ initial, products, currency, canManage }:
               {p && p.variants.length > 0 && <select className={ui.input} value={it.variantId || ''} disabled={!canManage} onChange={e => patchItem(b.id, i, { variantId: e.target.value || null })} aria-label="Option">
                 {p.variants.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
               </select>}
-              <input className={`${ui.input} ${styles.qty}`} type="number" min={1} max={20} value={it.quantity} disabled={!canManage} onChange={e => patchItem(b.id, i, { quantity: Math.min(20, Math.max(1, Math.floor(Number(e.target.value) || 1))) })} aria-label="Quantity" />
+              <NumInput className={`${ui.input} ${styles.qty}`} value={it.quantity} disabled={!canManage} onValue={n => patchItem(b.id, i, { quantity: Math.min(20, Math.max(1, Math.floor(Number(n) || 1))) })} aria-label="Quantity" />
               <span className={ui.muted}>{unitPrice(it) !== null ? fmt((unitPrice(it) || 0) * it.quantity, currency) : 'Unavailable'}</span>
               {canManage && <button type="button" className={ui.iconBtn} aria-label="Remove product" onClick={() => patch(b.id, { items: b.items.filter((_, j) => j !== i) })}><X size={14} /></button>}
             </div>
