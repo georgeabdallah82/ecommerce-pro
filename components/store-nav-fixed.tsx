@@ -308,11 +308,13 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
   const headerSettings = { ...(theme.header || {}), ...(headerSection?.settings || {}) }
   const headerEnabled = theme.header?.enabled !== false && headerSection?.enabled !== false
   const market = theme.design === 'market'
-  // The market header is brand red, so the logo is shown in solid white by default (a coloured
-  // logo, even a "dark background" one, can have parts in the same red). Switched off, the
+  // The market header is white by default, so the logo shows in its own colours. With the
+  // brand-colour header ('brand'), the logo is shown in solid white by default (a coloured logo,
+  // even a "dark background" one, can have parts in the same red); switched off, the
   // dark-background logo is used as it is, or else the normal one.
-  const logoWhite = market && theme.logoUrl && headerSettings.whiteLogo !== false
-  const logoSrc = market && !logoWhite && theme.logoUrlDark ? theme.logoUrlDark : theme.logoUrl
+  const lightHeader = market && headerSettings.style !== 'brand'
+  const logoWhite = market && !lightHeader && theme.logoUrl && headerSettings.whiteLogo !== false
+  const logoSrc = market && !lightHeader && !logoWhite && theme.logoUrlDark ? theme.logoUrlDark : theme.logoUrl
   const announcementEnabled = theme.announcement?.enabled !== false && announcementSection?.enabled !== false && announcementSection?.settings?.enabled !== false
   
   const { items, updateQty, removeItem, subtotal, count, isOpen: isCartOpen, openCart, closeCart } = useCart()
@@ -416,7 +418,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
     <style dangerouslySetInnerHTML={{ __html: css }} />
     {announcementEnabled && announcementPosition !== 'below' && <AnnouncementBar theme={theme} announcementSection={announcementSection} closed={announcementClosed} onDismiss={dismissAnnouncement}/>}
 
-    <header className={`focalNav${market ? ' mkHeader' : transparent ? ' focalNavTransparent' : ''}`} style={market ? { position: headerSettings.sticky === false ? 'relative' : 'sticky', top: 0, ...(theme.header?.background ? { '--mk-header-bg': theme.header.background } : {}) } as React.CSSProperties : { background: transparent ? 'transparent' : theme.colors.surface, borderColor: theme.colors.border, position: headerSettings.sticky ? 'sticky' : 'relative', top: 0 }}>
+    <header className={`focalNav${market ? ` mkHeader${lightHeader ? ' mkHeaderLight' : ''}` : transparent ? ' focalNavTransparent' : ''}`} style={market ? { position: headerSettings.sticky === false ? 'relative' : 'sticky', top: 0, ...(theme.header?.background ? { '--mk-header-bg': theme.header.background } : {}) } as React.CSSProperties : { background: transparent ? 'transparent' : theme.colors.surface, borderColor: theme.colors.border, position: headerSettings.sticky ? 'sticky' : 'relative', top: 0 }}>
       <div className="focalNavInner focalContainer">
         <button className="focalNavMobile" aria-label="Menu" onClick={() => setMenu(true)}><Menu size={19}/></button>
         <Link href="/" className="focalLogo" style={{ fontFamily: theme.typography.heading }}>{logoSrc ? <img src={logoSrc} alt={theme.brandName} className={logoWhite ? 'mkLogoWhite' : undefined} style={{ maxWidth: headerSettings.logoWidth || 160 }} /> : <span>{theme.brandName}</span>}</Link>
@@ -610,7 +612,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
       </aside>
     </div>}
 
-    {market && <MarketMenu open={menu} onClose={closeMenu} navigation={navigation} brand={theme.brandName} logo={logoSrc} logoWhite={!!logoWhite} delivery={theme.delivery} />}
+    {market && <MarketMenu open={menu} onClose={closeMenu} navigation={navigation} brand={theme.brandName} logo={logoSrc} logoWhite={!!logoWhite} light={lightHeader} delivery={theme.delivery} />}
     {menu && !market && <div className="focalMobileOverlay">
       <div className="zaraMenuPanel">
         <div className="zaraMenuTop">
