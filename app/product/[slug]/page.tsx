@@ -9,6 +9,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { Footer } from '@/components/footer'
 import AliExpressProduct from '@/components/aliexpress-product'
+import { descriptionHtml } from '@/lib/sanitize-html'
 import { absoluteUrl, getSiteSeo, isShareableImage, metaText, shareMeta, siteUrl } from '@/lib/seo'
 import { themeTemplates } from '@/lib/theme-templates'
 
@@ -154,6 +155,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     name: product.name,
     slug: product.slug,
     description: product.description,
+    descriptionHtml: descriptionHtml(product.description || product.shortDescription),
     shortDescription: product.shortDescription,
     brand: product.brand,
     vendor: product.vendor,

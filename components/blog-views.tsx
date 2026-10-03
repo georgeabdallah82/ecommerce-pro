@@ -18,17 +18,18 @@ export function BlogIndexView({ posts, tag }: { posts: BlogListPost[]; tag?: str
       ) : (
         <div style={{ display: 'grid', gap: 24, marginTop: 24 }}>
           {posts.map(post => (
-            <div key={post.id} style={{ display: 'flex', gap: 18, alignItems: 'flex-start' }}>
+            <div key={post.id} className="blogItem">
               {post.featuredImage && (
-                <Link href={`/blog/${post.handle}`}>
-                  <img src={post.featuredImage} alt="" style={{ width: 140, height: 100, objectFit: 'cover', borderRadius: 10, flexShrink: 0, background: 'var(--focal-soft,#f1ebe6)' }} />
+                // The title link below is the labelled one; this is the same link for the mouse.
+                <Link href={`/blog/${post.handle}`} className="blogThumb" aria-hidden="true" tabIndex={-1}>
+                  <img src={post.featuredImage} alt="" loading="lazy" />
                 </Link>
               )}
-              <div>
+              <div className="blogItemBody">
                 <Link href={`/blog/${post.handle}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                   <h2 style={{ fontSize: 20, margin: '0 0 6px' }}>{post.title}</h2>
                   {post.publishedAt && <p style={{ fontSize: 13, color: 'var(--focal-muted,#746b64)', margin: '0 0 8px' }}>{new Date(post.publishedAt).toLocaleDateString()}</p>}
-                  {post.excerpt && <p style={{ margin: 0 }}>{post.excerpt}</p>}
+                  {post.excerpt && <p className="blogExcerpt" style={{ margin: 0 }}>{post.excerpt}</p>}
                 </Link>
                 {post.tags.length > 0 && (
                   <span className="aliSpecList" style={{ marginTop: 8 }}>

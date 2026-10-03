@@ -1504,7 +1504,7 @@ function getMockHandler(model: string) {
       if (model === 'fulfillmentLine') mockFulfillmentLines.push(item)
       if (model === 'walletTransaction') mockWalletTransactions.unshift(item)
       if (model === 'coinTransaction') mockCoinTransactions.unshift(item)
-      if (model === 'giftCard') { item.balance ??= item.initialAmount ?? 0; mockGiftCards.push(item) }
+      if (model === 'giftCard') { item.balance ??= item.initialAmount ?? 0; item.status ??= 'ACTIVE'; mockGiftCards.push(item) }
       if (model === 'inventoryItem') { item.variantId ??= null; item.reserved ??= 0; item.lowStockThreshold ??= 5; mockInventoryItems.push(item) }
       if (model === 'productVariant') {
         // The product-duplication route's per-variant inventory write

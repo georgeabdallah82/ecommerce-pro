@@ -2,8 +2,10 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import { db } from '@/lib/prisma'
+import { money } from '@/lib/config'
 import { PurchaseTracker } from '@/components/purchase-tracker'
 import { StoreFooter } from '@/components/store-footer'
+import { PaymentInstructions } from '@/components/payment-instructions'
 
 export default async function Success({ searchParams }: { searchParams: Promise<{ order?: string; email?: string; payment?: string }> }) {
   const { order, email, payment } = await searchParams
@@ -37,6 +39,7 @@ export default async function Success({ searchParams }: { searchParams: Promise<
     <h1 className="h2">Thank you for your order.</h1>
     {processing && <p className="body muted">We're waiting for your bank to confirm the payment. You'll get an email as soon as it does.</p>}
     <p className="body muted">Your order number is <strong>#{order}</strong>. Keep it for your records.</p>
+    {record && !processing && <PaymentInstructions method={record.paymentMethod} status={record.paymentStatus} amount={money(record.grandTotal, record.currency)} orderNumber={record.orderNumber} />}
     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
       <Link className="btn" href="/shop">Continue shopping</Link>
       {viewOrderHref && <Link className="btn secondary" href={viewOrderHref}>View order</Link>}

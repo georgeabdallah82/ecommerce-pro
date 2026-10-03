@@ -28,6 +28,9 @@ export async function runPlatformHealth(): Promise<{ status: HealthSeverity; che
 
   checks.push({ key: 'auth', label: 'Authentication', severity: severityFor(Boolean(process.env.AUTH_SECRET), true), message: process.env.AUTH_SECRET ? 'AUTH_SECRET is configured.' : 'AUTH_SECRET is missing.' })
   checks.push({ key: 'site-url', label: 'Store URL', severity: severityFor(Boolean(process.env.NEXT_PUBLIC_SITE_URL), false), message: process.env.NEXT_PUBLIC_SITE_URL ? 'NEXT_PUBLIC_SITE_URL is configured.' : 'NEXT_PUBLIC_SITE_URL is not configured.' })
+  // Without these, order confirmations and password resets are silently skipped (lib/email.ts).
+  const emailReady = Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM)
+  checks.push({ key: 'email', label: 'Customer emails', severity: emailReady ? 'ok' : 'warning', message: emailReady ? `Emails are sent from ${process.env.EMAIL_FROM}.` : 'Email sending is not set up (RESEND_API_KEY and EMAIL_FROM): customers get no order confirmations or password-reset emails.' })
   checks.push({ key: 'staff', label: 'Staff access', severity: severityFor(staff > 0, true), message: staff > 0 ? `${staff} active staff account(s) available.` : 'No active staff account exists.', count: staff })
   checks.push({ key: 'catalog', label: 'Catalog', severity: severityFor(products > 0, false), message: `${products} product(s), ${variants} variant(s), ${activeProducts} active.`, meta: { products, variants, activeProducts } })
   checks.push({ key: 'inventory-negative', label: 'Negative inventory', severity: severityFor(negativeInventory.length === 0, true), message: negativeInventory.length ? `${negativeInventory.length} inventory record(s) have negative stock.` : 'No negative inventory balances.', count: negativeInventory.length })

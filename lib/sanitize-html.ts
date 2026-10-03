@@ -38,3 +38,15 @@ export function sanitizeRichHtml(html: unknown): string {
 export function safeStyleText(css: unknown): string {
   return String(css ?? '').replace(/</g, '\\3c ')
 }
+
+const escapeText = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+// Product descriptions are typed in a plain text box, but CSV imports (Shopify's "Body (HTML)")
+// and copy-paste bring HTML. HTML is kept (sanitized); plain text keeps its paragraphs and
+// line breaks instead of collapsing into one block.
+export function descriptionHtml(value: unknown): string {
+  const text = String(value ?? '').trim()
+  if (!text) return ''
+  if (/<\/?(p|br|div|span|ul|ol|li|h[1-6]|strong|b|em|i|u|a|table|img|blockquote)\b[^>]*>/i.test(text)) return sanitizeRichHtml(text)
+  return text.split(/\r?\n\s*\r?\n/).map(p => `<p>${escapeText(p.trim()).replace(/\r?\n/g, '<br>')}</p>`).join('')
+}

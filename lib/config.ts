@@ -8,4 +8,5 @@ export const config = {
   locale: process.env.NEXT_PUBLIC_LOCALE || 'en-US'
 }
 
-export const money = (cents: number, currency = config.currency) => new Intl.NumberFormat(config.locale, { style: 'currency', currency }).format(cents / 100)
+// A mistyped currency code in settings must not crash the page: fall back to "XYZ 12.00".
+export const money = (cents: number, currency = config.currency) => { try { return new Intl.NumberFormat(config.locale, { style: 'currency', currency }).format(cents / 100) } catch { return `${currency} ${(cents / 100).toFixed(2)}` } }

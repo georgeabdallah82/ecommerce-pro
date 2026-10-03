@@ -12,10 +12,6 @@ function siteUrl() {
   return (process.env.NEXT_PUBLIC_SITE_URL || process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '')
 }
 
-function brandName() {
-  return process.env.NEXT_PUBLIC_BRAND_NAME || 'Your Brand'
-}
-
 function money(amount: number, currency: string) {
   return `${currency} ${(amount / 100).toFixed(2)}`
 }
@@ -24,16 +20,53 @@ function escapeHtml(value: string) {
   return String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string))
 }
 
-function layout(bodyHtml: string) {
+// The store's own name, logo and brand colour (Theme settings), so emails look like the shop.
+// Read once per send; falls back to the build-time name if the theme can't be loaded.
+type Brand = { name: string; logo: string; color: string }
+async function emailBrand(): Promise<Brand> {
+  const fallback = { name: process.env.NEXT_PUBLIC_BRAND_NAME || 'Your Brand', logo: '', color: '#d7261e' }
+  try {
+    const { getThemeState } = await import('@/lib/theme')
+    const { theme } = await getThemeState()
+    const absolute = (u: unknown) => {
+      const v = String(u || '').trim()
+      if (/^https:\/\//i.test(v)) return v
+      return v.startsWith('/') && siteUrl() ? `${siteUrl()}${v}` : ''
+    }
+    const color = /^#[0-9a-f]{6}$/i.test(theme?.colors?.primary || '') ? theme.colors.primary : fallback.color
+    // Emails need a light-on-colour logo for the header band: the dark-background logo if
+    // there is one. (SVG logos don't show in Gmail/Outlook, so they fall back to the name.)
+    const logo = absolute(theme?.logoUrlDark || '')
+    return { name: String(theme?.brandName || fallback.name).trim() || fallback.name, logo: /\.svg(\?|$)/i.test(logo) ? '' : logo, color }
+  } catch {
+    return fallback
+  }
+}
+
+function button(href: string, label: string, brand: Brand) {
+  return `<p style="margin:24px 0 0"><a href="${escapeHtml(href)}" style="display:inline-block;background:${brand.color};color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:700">${escapeHtml(label)}</a></p>`
+}
+
+function layout(bodyHtml: string, brand: Brand) {
   const url = siteUrl()
-  return `<!doctype html><html><body style="margin:0;padding:0;background:#f4efe9;font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#242219">
-<table role="presentation" width="100%" style="padding:32px 0"><tr><td align="center">
-<table role="presentation" width="560" style="max-width:92%;background:#fff;border-radius:12px;overflow:hidden">
-<tr><td style="background:#242219;padding:24px 32px"><span style="color:#faf9f6;font-size:15px;font-weight:800;letter-spacing:.04em;text-transform:uppercase">${escapeHtml(brandName())}</span></td></tr>
-<tr><td style="padding:32px">${bodyHtml}</td></tr>
-<tr><td style="padding:20px 32px;border-top:1px solid #eee;font-size:12px;color:#8a8578">${escapeHtml(brandName())}${url ? ` &middot; <a href="${url}" style="color:#8a8578">${url.replace(/^https?:\/\//, '')}</a>` : ''}</td></tr>
+  const head = brand.logo
+    ? `<img src="${escapeHtml(brand.logo)}" alt="${escapeHtml(brand.name)}" height="32" style="display:block;height:32px;width:auto;border:0">`
+    : `<span style="color:#fff;font-size:18px;font-weight:800;letter-spacing:.01em">${escapeHtml(brand.name)}</span>`
+  return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;background:#f6f6f4;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#121212">
+<table role="presentation" width="100%" style="padding:24px 0"><tr><td align="center">
+<table role="presentation" width="560" style="max-width:94%;background:#fff;border-radius:14px;overflow:hidden">
+<tr><td style="background:${brand.color};padding:20px 28px">${url ? `<a href="${url}" style="text-decoration:none">${head}</a>` : head}</td></tr>
+<tr><td style="padding:28px">${bodyHtml}</td></tr>
+<tr><td style="padding:18px 28px;border-top:1px solid #eee;font-size:12px;color:#6b7280">${escapeHtml(brand.name)}${url ? ` &middot; <a href="${url}" style="color:#6b7280">${url.replace(/^https?:\/\//, '')}</a>` : ''}</td></tr>
 </table></td></tr></table>
 </body></html>`
+}
+
+// Guests have no account, so their order link carries the order email (the order page checks it).
+function orderLink(orderNumber: string, email: string, userId?: string | null) {
+  const base = siteUrl()
+  if (!base) return null
+  return `${base}/account/orders/${encodeURIComponent(orderNumber)}${userId ? '' : `?email=${encodeURIComponent(email)}`}`
 }
 
 async function settingEnabled(key: string) {
@@ -66,12 +99,13 @@ export async function sendEmail(to: string, subject: string, html: string, text:
 }
 
 export async function sendPasswordResetEmail(to: string, resetUrl: string, expiresInMinutes: number) {
+  const brand = await emailBrand()
   const html = layout(`
     <h1 style="font-size:20px;margin:0 0 12px">Reset your password</h1>
-    <p style="font-size:14px;line-height:1.6;color:#4a473d">We received a request to reset the password for this account. This link expires in ${expiresInMinutes} minutes.</p>
-    <p style="margin:24px 0"><a href="${escapeHtml(resetUrl)}" style="display:inline-block;background:#6b7a4f;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:700">Reset password</a></p>
-    <p style="font-size:12px;color:#8a8578">If you didn't request this, you can safely ignore this email.</p>
-  `)
+    <p style="font-size:14px;line-height:1.6;color:#3f3f46">We received a request to reset the password for this account. This link expires in ${expiresInMinutes} minutes.</p>
+    <p style="margin:24px 0"><a href="${escapeHtml(resetUrl)}" style="display:inline-block;background:${brand.color};color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:700">Reset password</a></p>
+    <p style="font-size:12px;color:#6b7280">If you didn't request this, you can safely ignore this email.</p>
+  `, brand)
   const text = `Reset your password: ${resetUrl} (expires in ${expiresInMinutes} minutes). If you didn't request this, ignore this email.`
   return sendEmail(to, 'Reset your password', html, text)
 }
@@ -90,33 +124,50 @@ export async function sendOrderConfirmationEmail(orderId: string) {
   // "issued once payment is confirmed" guarantee issueGiftCardsForOrder itself documents.
   const issuedGiftCards = order.paymentStatus === 'PAID' ? await issueGiftCardsForOrder(db, orderId) : []
 
-  const url = siteUrl() ? `${siteUrl()}/account/orders/${order.orderNumber}` : null
+  const url = orderLink(order.orderNumber, order.email, order.userId)
+  // What the customer still has to do to pay, and where it's going.
+  const due = money(order.grandTotal, order.currency)
+  const paymentNote = order.paymentStatus === 'PAID' || order.grandTotal === 0 ? 'Paid in full. Nothing more to pay.'
+    : order.paymentMethod === 'COD' ? `Please have <strong>${due}</strong> ready in cash when your order arrives.`
+    : order.paymentMethod === 'BANK_TRANSFER' ? `Please pay <strong>${due}</strong> by bank transfer. Your order ships once the payment arrives.`
+    : order.paymentMethod === 'CARD' ? 'Your card payment is being confirmed.' : ''
+  let address: Record<string, string> = {}
+  try { address = JSON.parse(order.shippingAddressJson || '{}') || {} } catch { address = {} }
+  const addressLines = [
+    [address.firstName, address.lastName].filter(Boolean).join(' '),
+    [address.line1, address.line2].filter(Boolean).join(', '),
+    [address.city, address.region].filter(Boolean).join(', '),
+    address.phone || order.phone || '',
+  ].map(line => String(line || '').trim()).filter(Boolean)
   const rows = order.items
     .map(
       (item) => `<tr>
-      <td style="padding:8px 0;font-size:13px;color:#242219">${escapeHtml(item.name)} <span style="color:#8a8578">&times; ${item.quantity}</span></td>
-      <td style="padding:8px 0;font-size:13px;text-align:right;color:#242219">${money(item.totalPrice, order.currency)}</td>
+      <td style="padding:8px 0;font-size:13px;color:#121212">${escapeHtml(item.name)} <span style="color:#6b7280">&times; ${item.quantity}</span></td>
+      <td style="padding:8px 0;font-size:13px;text-align:right;color:#121212">${money(item.totalPrice, order.currency)}</td>
     </tr>`
     )
     .join('')
+  const brand = await emailBrand()
   const html = layout(`
     <h1 style="font-size:20px;margin:0 0 4px">Thanks for your order</h1>
-    <p style="font-size:14px;color:#4a473d;margin:0 0 20px">Order ${escapeHtml(order.orderNumber)}</p>
+    <p style="font-size:14px;color:#3f3f46;margin:0 0 20px">Order ${escapeHtml(order.orderNumber)}</p>
     <table role="presentation" width="100%" style="border-collapse:collapse">${rows}</table>
     <table role="presentation" width="100%" style="border-collapse:collapse;border-top:1px solid #eee;margin-top:8px">
-      <tr><td style="padding-top:12px;font-size:13px;color:#8a8578">Subtotal</td><td style="padding-top:12px;text-align:right;font-size:13px">${money(order.subtotal, order.currency)}</td></tr>
-      ${order.discountTotal ? `<tr><td style="font-size:13px;color:#8a8578">Discount</td><td style="text-align:right;font-size:13px">-${money(order.discountTotal, order.currency)}</td></tr>` : ''}
-      <tr><td style="font-size:13px;color:#8a8578">Shipping</td><td style="text-align:right;font-size:13px">${money(order.shippingTotal, order.currency)}</td></tr>
-      <tr><td style="font-size:13px;color:#8a8578">Tax</td><td style="text-align:right;font-size:13px">${money(order.taxTotal, order.currency)}</td></tr>
+      <tr><td style="padding-top:12px;font-size:13px;color:#6b7280">Subtotal</td><td style="padding-top:12px;text-align:right;font-size:13px">${money(order.subtotal, order.currency)}</td></tr>
+      ${order.discountTotal ? `<tr><td style="font-size:13px;color:#6b7280">Discount</td><td style="text-align:right;font-size:13px">-${money(order.discountTotal, order.currency)}</td></tr>` : ''}
+      <tr><td style="font-size:13px;color:#6b7280">Delivery</td><td style="text-align:right;font-size:13px">${order.shippingTotal ? money(order.shippingTotal, order.currency) : 'Free'}</td></tr>
+      ${order.taxTotal ? `<tr><td style="font-size:13px;color:#6b7280">Tax</td><td style="text-align:right;font-size:13px">${money(order.taxTotal, order.currency)}</td></tr>` : ''}
       <tr><td style="padding-top:8px;font-size:15px;font-weight:800">Total</td><td style="padding-top:8px;text-align:right;font-size:15px;font-weight:800">${money(order.grandTotal, order.currency)}</td></tr>
     </table>
-    ${issuedGiftCards.length ? `<table role="presentation" width="100%" style="border-collapse:collapse;background:#f4efe9;border-radius:8px;margin-top:20px"><tr><td style="padding:16px 20px">
+    ${paymentNote ? `<p style="margin:20px 0 0;padding:12px 16px;background:#fdecea;border-radius:10px;font-size:14px;color:#121212">${paymentNote}</p>` : ''}
+    ${addressLines.length ? `<p style="font-size:13px;font-weight:700;margin:20px 0 4px">Delivering to</p><p style="font-size:13px;line-height:1.6;color:#3f3f46;margin:0">${addressLines.map(escapeHtml).join('<br>')}</p>` : ''}
+    ${issuedGiftCards.length ? `<table role="presentation" width="100%" style="border-collapse:collapse;background:#f6f6f4;border-radius:8px;margin-top:20px"><tr><td style="padding:16px 20px">
       <p style="font-size:13px;font-weight:700;margin:0 0 8px">Your gift card${issuedGiftCards.length > 1 ? 's' : ''}</p>
-      ${issuedGiftCards.map((c: any) => `<p style="font-size:16px;font-weight:800;letter-spacing:.04em;margin:0 0 4px">${escapeHtml(c.code)} <span style="font-weight:400;color:#8a8578;font-size:12px">(${money(c.balance, order.currency)})</span></p>`).join('')}
+      ${issuedGiftCards.map((c: any) => `<p style="font-size:16px;font-weight:800;letter-spacing:.04em;margin:0 0 4px">${escapeHtml(c.code)} <span style="font-weight:400;color:#6b7280;font-size:12px">(${money(c.balance, order.currency)})</span></p>`).join('')}
     </td></tr></table>` : ''}
-    ${url ? `<p style="margin:28px 0 0"><a href="${url}" style="display:inline-block;background:#6b7a4f;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:700">View your order</a></p>` : ''}
-  `)
-  const text = `Thanks for your order ${order.orderNumber}. Total: ${money(order.grandTotal, order.currency)}.${issuedGiftCards.length ? ` Gift card code${issuedGiftCards.length > 1 ? 's' : ''}: ${issuedGiftCards.map((c: any) => `${c.code} (${money(c.balance, order.currency)})`).join(', ')}.` : ''}${url ? ` View your order: ${url}` : ''}`
+    ${url ? `<p style="margin:28px 0 0"><a href="${url}" style="display:inline-block;background:${brand.color};color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:700">View your order</a></p>` : ''}
+  `, brand)
+  const text = `Thanks for your order ${order.orderNumber}. Total: ${money(order.grandTotal, order.currency)}.${paymentNote ? ' ' + paymentNote.replace(/<[^>]+>/g, '') : ''}${issuedGiftCards.length ? ` Gift card code${issuedGiftCards.length > 1 ? 's' : ''}: ${issuedGiftCards.map((c: any) => `${c.code} (${money(c.balance, order.currency)})`).join(', ')}.` : ''}${url ? ` View your order: ${url}` : ''}`
   return sendEmail(order.email, `Order confirmed — ${order.orderNumber}`, html, text)
 }
 
@@ -125,14 +176,15 @@ export async function sendFulfillmentEmail(orderId: string) {
   const order = await db.order.findUnique({ where: { id: orderId } })
   if (!order) return { sent: false, skipped: true }
 
-  const url = siteUrl() ? `${siteUrl()}/account/orders/${order.orderNumber}` : null
+  const url = orderLink(order.orderNumber, order.email, order.userId)
+  const brand = await emailBrand()
   const html = layout(`
     <h1 style="font-size:20px;margin:0 0 4px">Your order is on its way</h1>
-    <p style="font-size:14px;color:#4a473d;margin:0 0 20px">Order ${escapeHtml(order.orderNumber)} has shipped.</p>
-    ${order.shippingMethod ? `<p style="font-size:13px;color:#8a8578;margin:0 0 6px">Shipping method: ${escapeHtml(order.shippingMethod)}</p>` : ''}
-    ${order.trackingNumber ? `<p style="font-size:13px;color:#8a8578;margin:0 0 6px">Tracking number: ${escapeHtml(order.trackingNumber)}</p>` : ''}
-    ${url ? `<p style="margin:24px 0 0"><a href="${url}" style="display:inline-block;background:#6b7a4f;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:700">Track your order</a></p>` : ''}
-  `)
+    <p style="font-size:14px;color:#3f3f46;margin:0 0 20px">Order ${escapeHtml(order.orderNumber)} has shipped.</p>
+    ${order.shippingMethod ? `<p style="font-size:13px;color:#6b7280;margin:0 0 6px">Delivery: ${escapeHtml(order.shippingMethod)}</p>` : ''}
+    ${order.trackingNumber ? `<p style="font-size:13px;color:#6b7280;margin:0 0 6px">Tracking number: ${escapeHtml(order.trackingNumber)}</p>` : ''}
+    ${url ? `<p style="margin:24px 0 0"><a href="${url}" style="display:inline-block;background:${brand.color};color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:700">Track your order</a></p>` : ''}
+  `, brand)
   const text = `Order ${order.orderNumber} has shipped.${order.trackingNumber ? ` Tracking number: ${order.trackingNumber}.` : ''}${url ? ` Track your order: ${url}` : ''}`
   return sendEmail(order.email, `Your order has shipped — ${order.orderNumber}`, html, text)
 }
@@ -144,20 +196,21 @@ export async function sendDraftOrderInvoiceEmail(draftOrderId: string, payUrl: s
   const rows = draft.items
     .map(
       (item) => `<tr>
-      <td style="padding:8px 0;font-size:13px;color:#242219">${escapeHtml(item.name)} <span style="color:#8a8578">&times; ${item.quantity}</span></td>
-      <td style="padding:8px 0;font-size:13px;text-align:right;color:#242219">${money(item.totalPrice, draft.currency)}</td>
+      <td style="padding:8px 0;font-size:13px;color:#121212">${escapeHtml(item.name)} <span style="color:#6b7280">&times; ${item.quantity}</span></td>
+      <td style="padding:8px 0;font-size:13px;text-align:right;color:#121212">${money(item.totalPrice, draft.currency)}</td>
     </tr>`
     )
     .join('')
+  const brand = await emailBrand()
   const html = layout(`
     <h1 style="font-size:20px;margin:0 0 4px">Invoice ${escapeHtml(draft.orderNumber)}</h1>
-    <p style="font-size:14px;color:#4a473d;margin:0 0 20px">Please review and pay to complete your order.</p>
+    <p style="font-size:14px;color:#3f3f46;margin:0 0 20px">Please review and pay to complete your order.</p>
     <table role="presentation" width="100%" style="border-collapse:collapse">${rows}</table>
     <table role="presentation" width="100%" style="border-collapse:collapse;border-top:1px solid #eee;margin-top:8px">
       <tr><td style="padding-top:12px;font-size:15px;font-weight:800">Total due</td><td style="padding-top:12px;text-align:right;font-size:15px;font-weight:800">${money(draft.grandTotal, draft.currency)}</td></tr>
     </table>
-    <p style="margin:24px 0 0"><a href="${escapeHtml(payUrl)}" style="display:inline-block;background:#6b7a4f;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:700">Review and pay</a></p>
-  `)
+    <p style="margin:24px 0 0"><a href="${escapeHtml(payUrl)}" style="display:inline-block;background:${brand.color};color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:700">Review and pay</a></p>
+  `, brand)
   const text = `Invoice ${draft.orderNumber}. Total due: ${money(draft.grandTotal, draft.currency)}. Pay online: ${payUrl}`
   return sendEmail(draft.email, `Invoice for your order — ${draft.orderNumber}`, html, text)
 }
@@ -170,13 +223,14 @@ export async function sendGiftCardIssuedEmail(giftCardId: string) {
   if (!customer) return { sent: false, skipped: true }
 
   const url = siteUrl() ? `${siteUrl()}/account` : null
+  const brand = await emailBrand()
   const html = layout(`
     <h1 style="font-size:20px;margin:0 0 4px">You've received a gift card</h1>
-    <p style="font-size:14px;color:#4a473d;margin:0 0 20px">${escapeHtml(brandName())} has issued you a gift card worth ${money(card.initialAmount, card.currency)}.</p>
-    <table role="presentation" width="100%" style="border-collapse:collapse;background:#f4efe9;border-radius:8px"><tr><td style="padding:16px 20px;font-size:18px;font-weight:800;letter-spacing:.04em;text-align:center">${escapeHtml(card.code)}</td></tr></table>
-    ${card.expiresAt ? `<p style="font-size:12px;color:#8a8578;margin:12px 0 0">Expires ${new Date(card.expiresAt).toLocaleDateString()}.</p>` : ''}
-    ${url ? `<p style="margin:24px 0 0"><a href="${url}" style="display:inline-block;background:#6b7a4f;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:700">Use it at checkout</a></p>` : ''}
-  `)
+    <p style="font-size:14px;color:#3f3f46;margin:0 0 20px">${escapeHtml(brand.name)} has issued you a gift card worth ${money(card.initialAmount, card.currency)}.</p>
+    <table role="presentation" width="100%" style="border-collapse:collapse;background:#f6f6f4;border-radius:8px"><tr><td style="padding:16px 20px;font-size:18px;font-weight:800;letter-spacing:.04em;text-align:center">${escapeHtml(card.code)}</td></tr></table>
+    ${card.expiresAt ? `<p style="font-size:12px;color:#6b7280;margin:12px 0 0">Expires ${new Date(card.expiresAt).toLocaleDateString()}.</p>` : ''}
+    ${url ? `<p style="margin:24px 0 0"><a href="${url}" style="display:inline-block;background:${brand.color};color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:700">Use it at checkout</a></p>` : ''}
+  `, brand)
   const text = `You've received a gift card worth ${money(card.initialAmount, card.currency)}. Code: ${card.code}.${card.expiresAt ? ` Expires ${new Date(card.expiresAt).toLocaleDateString()}.` : ''}`
   return sendEmail(customer.email, `You've received a ${money(card.initialAmount, card.currency)} gift card`, html, text)
 }
@@ -214,16 +268,17 @@ export async function sendReturnStatusEmail(returnId: string, orderId: string) {
   if (!returnRequest) return { sent: false, skipped: true }
   const copy = RETURN_STATUS_COPY[returnRequest.status]
   if (!copy) return { sent: false, skipped: true }
-  const order = await db.order.findUnique({ where: { id: orderId }, select: { email: true, orderNumber: true, currency: true } })
+  const order = await db.order.findUnique({ where: { id: orderId }, select: { email: true, orderNumber: true, currency: true, userId: true } })
   if (!order) return { sent: false, skipped: true }
 
   const { subject, heading, message } = copy(returnRequest, order.orderNumber, order.currency)
-  const url = siteUrl() ? `${siteUrl()}/account/orders/${order.orderNumber}` : null
+  const url = orderLink(order.orderNumber, order.email, order.userId)
+  const brand = await emailBrand()
   const html = layout(`
     <h1 style="font-size:20px;margin:0 0 4px">${escapeHtml(heading)}</h1>
-    <p style="font-size:14px;color:#4a473d;margin:0 0 20px">${escapeHtml(message)}</p>
-    ${url ? `<p style="margin:24px 0 0"><a href="${url}" style="display:inline-block;background:#6b7a4f;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:700">View your order</a></p>` : ''}
-  `)
+    <p style="font-size:14px;color:#3f3f46;margin:0 0 20px">${escapeHtml(message)}</p>
+    ${url ? `<p style="margin:24px 0 0"><a href="${url}" style="display:inline-block;background:${brand.color};color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:700">View your order</a></p>` : ''}
+  `, brand)
   const text = `${heading}. ${message}${url ? ` View your order: ${url}` : ''}`
   return sendEmail(order.email, subject, html, text)
 }
@@ -241,7 +296,7 @@ export async function sendReturnStatusEmail(returnId: string, orderId: string) {
 // later confirmed, at which point this same function's gift-card rendering is reused there too.
 export async function sendOrderEditEmail(orderId: string, adjustment: { type: 'refund' | 'charge'; amount: number } | null, issueGiftCards = true) {
   if (!(await settingEnabled('email.orderEdit'))) return { sent: false, skipped: true }
-  const order = await db.order.findUnique({ where: { id: orderId }, select: { email: true, orderNumber: true, currency: true } })
+  const order = await db.order.findUnique({ where: { id: orderId }, select: { email: true, orderNumber: true, currency: true, userId: true } })
   if (!order) return { sent: false, skipped: true }
 
   const issuedGiftCards = issueGiftCards ? await issueGiftCardsForOrder(db, orderId) : []
@@ -252,16 +307,17 @@ export async function sendOrderEditEmail(orderId: string, adjustment: { type: 'r
   const message = adjustment?.type === 'refund' ? `Your order ${order.orderNumber} was updated by our team. A refund of ${money(adjustment.amount, order.currency)} has been issued.`
     : adjustment?.type === 'charge' ? `Your order ${order.orderNumber} was updated by our team and now requires an additional payment of ${money(adjustment.amount, order.currency)}. We'll be in touch about how to complete it.`
     : `Your order ${order.orderNumber} was updated by our team.`
-  const url = siteUrl() ? `${siteUrl()}/account/orders/${order.orderNumber}` : null
+  const url = orderLink(order.orderNumber, order.email, order.userId)
+  const brand = await emailBrand()
   const html = layout(`
     <h1 style="font-size:20px;margin:0 0 4px">${escapeHtml(heading)}</h1>
-    <p style="font-size:14px;color:#4a473d;margin:0 0 20px">${escapeHtml(message)}</p>
-    ${issuedGiftCards.length ? `<table role="presentation" width="100%" style="border-collapse:collapse;background:#f4efe9;border-radius:8px;margin-bottom:20px"><tr><td style="padding:16px 20px">
+    <p style="font-size:14px;color:#3f3f46;margin:0 0 20px">${escapeHtml(message)}</p>
+    ${issuedGiftCards.length ? `<table role="presentation" width="100%" style="border-collapse:collapse;background:#f6f6f4;border-radius:8px;margin-bottom:20px"><tr><td style="padding:16px 20px">
       <p style="font-size:13px;font-weight:700;margin:0 0 8px">Your gift card${issuedGiftCards.length > 1 ? 's' : ''}</p>
-      ${issuedGiftCards.map((c: any) => `<p style="font-size:16px;font-weight:800;letter-spacing:.04em;margin:0 0 4px">${escapeHtml(c.code)} <span style="font-weight:400;color:#8a8578;font-size:12px">(${money(c.balance, order.currency)})</span></p>`).join('')}
+      ${issuedGiftCards.map((c: any) => `<p style="font-size:16px;font-weight:800;letter-spacing:.04em;margin:0 0 4px">${escapeHtml(c.code)} <span style="font-weight:400;color:#6b7280;font-size:12px">(${money(c.balance, order.currency)})</span></p>`).join('')}
     </td></tr></table>` : ''}
-    ${url ? `<p style="margin:24px 0 0"><a href="${url}" style="display:inline-block;background:#6b7a4f;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:700">View your order</a></p>` : ''}
-  `)
+    ${url ? `<p style="margin:24px 0 0"><a href="${url}" style="display:inline-block;background:${brand.color};color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:700">View your order</a></p>` : ''}
+  `, brand)
   const text = `${heading}. ${message}${issuedGiftCards.length ? ` Gift card code${issuedGiftCards.length > 1 ? 's' : ''}: ${issuedGiftCards.map((c: any) => `${c.code} (${money(c.balance, order.currency)})`).join(', ')}.` : ''}${url ? ` View your order: ${url}` : ''}`
   return sendEmail(order.email, `Your order was updated — ${order.orderNumber}`, html, text)
 }
@@ -271,18 +327,19 @@ export async function sendOrderEditEmail(orderId: string, adjustment: { type: 'r
 // deliberately withheld at edit-commit time and lets the customer know via the same template.
 export async function issueAndNotifyGiftCardsForOrder(orderId: string) {
   if (!(await settingEnabled('email.orderEdit'))) return { sent: false, skipped: true }
-  const order = await db.order.findUnique({ where: { id: orderId }, select: { email: true, orderNumber: true, currency: true } })
+  const order = await db.order.findUnique({ where: { id: orderId }, select: { email: true, orderNumber: true, currency: true, userId: true } })
   if (!order) return { sent: false, skipped: true }
   const issuedGiftCards = await issueGiftCardsForOrder(db, orderId)
   if (!issuedGiftCards.length) return { sent: false, skipped: true }
 
+  const brand = await emailBrand()
   const html = layout(`
     <h1 style="font-size:20px;margin:0 0 4px">Your gift card${issuedGiftCards.length > 1 ? 's are' : ' is'} ready</h1>
-    <p style="font-size:14px;color:#4a473d;margin:0 0 20px">Payment for order ${escapeHtml(order.orderNumber)} has been received.</p>
-    <table role="presentation" width="100%" style="border-collapse:collapse;background:#f4efe9;border-radius:8px"><tr><td style="padding:16px 20px">
-      ${issuedGiftCards.map((c: any) => `<p style="font-size:16px;font-weight:800;letter-spacing:.04em;margin:0 0 4px">${escapeHtml(c.code)} <span style="font-weight:400;color:#8a8578;font-size:12px">(${money(c.balance, order.currency)})</span></p>`).join('')}
+    <p style="font-size:14px;color:#3f3f46;margin:0 0 20px">Payment for order ${escapeHtml(order.orderNumber)} has been received.</p>
+    <table role="presentation" width="100%" style="border-collapse:collapse;background:#f6f6f4;border-radius:8px"><tr><td style="padding:16px 20px">
+      ${issuedGiftCards.map((c: any) => `<p style="font-size:16px;font-weight:800;letter-spacing:.04em;margin:0 0 4px">${escapeHtml(c.code)} <span style="font-weight:400;color:#6b7280;font-size:12px">(${money(c.balance, order.currency)})</span></p>`).join('')}
     </td></tr></table>
-  `)
+  `, brand)
   const text = `Payment for order ${order.orderNumber} has been received. Gift card code${issuedGiftCards.length > 1 ? 's' : ''}: ${issuedGiftCards.map((c: any) => `${c.code} (${money(c.balance, order.currency)})`).join(', ')}.`
   return sendEmail(order.email, `Your gift card is ready — ${order.orderNumber}`, html, text)
 }
@@ -297,19 +354,20 @@ export async function sendAbandonedCheckoutEmail(abandonedCheckoutId: string) {
   const rows = items
     .map(
       (item) => `<tr>
-      <td style="padding:8px 0;font-size:13px;color:#242219">${escapeHtml(String(item.name || 'Item'))} <span style="color:#8a8578">&times; ${Number(item.quantity) || 1}</span></td>
-      <td style="padding:8px 0;font-size:13px;text-align:right;color:#242219">${money((Number(item.unitPrice) || 0) * (Number(item.quantity) || 1), checkout.currency)}</td>
+      <td style="padding:8px 0;font-size:13px;color:#121212">${escapeHtml(String(item.name || 'Item'))} <span style="color:#6b7280">&times; ${Number(item.quantity) || 1}</span></td>
+      <td style="padding:8px 0;font-size:13px;text-align:right;color:#121212">${money((Number(item.unitPrice) || 0) * (Number(item.quantity) || 1), checkout.currency)}</td>
     </tr>`
     )
     .join('')
   const url = checkout.recoveryUrl || (siteUrl() ? `${siteUrl()}/checkout` : null)
+  const brand = await emailBrand()
   const html = layout(`
     <h1 style="font-size:20px;margin:0 0 4px">You left something in your cart</h1>
-    <p style="font-size:14px;color:#4a473d;margin:0 0 20px">Pick up right where you left off.</p>
+    <p style="font-size:14px;color:#3f3f46;margin:0 0 20px">Pick up right where you left off.</p>
     <table role="presentation" width="100%" style="border-collapse:collapse">${rows}</table>
     ${checkout.subtotal ? `<table role="presentation" width="100%" style="border-collapse:collapse;border-top:1px solid #eee;margin-top:8px"><tr><td style="padding-top:12px;font-size:15px;font-weight:800">Subtotal</td><td style="padding-top:12px;text-align:right;font-size:15px;font-weight:800">${money(checkout.subtotal, checkout.currency)}</td></tr></table>` : ''}
-    ${url ? `<p style="margin:24px 0 0"><a href="${escapeHtml(url)}" style="display:inline-block;background:#6b7a4f;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:700">Complete your order</a></p>` : ''}
-  `)
+    ${url ? `<p style="margin:24px 0 0"><a href="${escapeHtml(url)}" style="display:inline-block;background:${brand.color};color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:700">Complete your order</a></p>` : ''}
+  `, brand)
   const text = `You left items in your cart.${url ? ` Complete your order: ${url}` : ''}`
   return sendEmail(checkout.email, 'You left something in your cart', html, text)
 }
