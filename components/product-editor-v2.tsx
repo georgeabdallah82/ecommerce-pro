@@ -8,6 +8,7 @@ import ui from './admin-ui.module.css'
 import MediaPicker from './media-picker'
 import UnsavedBar from './admin-unsaved-bar'
 import { useConfirm } from './admin-confirm'
+import { MoneyInput, NumInput } from './num-input'
 
 type ImageItem = { id?: string; url: string; alt?: string | null }
 type Variant = { id?: string; name: string; sku: string; barcode?: string | null; optionJson: string; price?: number | null; compareAtPrice?: number | null; quantity?: number; lowStockThreshold?: number; locationId?: string | null; weight?: number | null; weightUnit?: string | null; inventory?: any[] }
@@ -35,7 +36,6 @@ async function api(path: string, init?: RequestInit) {
   if (!r.ok) throw new Error(data.error || 'Request failed')
   return data
 }
-function moneyValue(cents: number | null | undefined) { return cents == null ? '' : (cents / 100).toFixed(2) }
 function parseOptions(v: Variant) { try { const x = JSON.parse(v.optionJson || '{}'); return x && typeof x === 'object' ? x : {} } catch { return {} } }
 function combos(names: string[], values: string[][]) {
   const active = names.map((name, i) => ({ name: name.trim(), values: (values[i] || []).map(v => v.trim()).filter(Boolean) })).filter(x => x.name && x.values.length)
@@ -58,7 +58,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <label className={s.field}>{label}{children}</label>
 }
 function MoneyField({ label, value, onChange }: { label: string; value?: number | null; onChange: (v: number | null) => void }) {
-  return <Field label={label}><div className={s.moneyInput}><span>$</span><input value={moneyValue(value)} onChange={e => onChange(e.target.value === '' ? null : Math.round(Number(e.target.value || 0) * 100))} /></div></Field>
+  return <Field label={label}><div className={s.moneyInput}><span>$</span><MoneyInput cents={value} onCents={onChange} placeholder="0.00" /></div></Field>
 }
 function Check({ checked, onChange, title, text }: { checked: boolean; onChange: (v: boolean) => void; title: string; text: string }) {
   return <label className={s.checkCard}><input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} /><span><strong>{title}</strong><small>{text}</small></span></label>
@@ -283,7 +283,7 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
             <div className={s.threeCol}>
               <Field label="SKU"><input className={ui.input} value={product.sku} onChange={e => update({ sku: e.target.value })} /></Field>
               <Field label="Barcode"><input className={ui.input} value={product.barcode || ''} onChange={e => update({ barcode: e.target.value })} /></Field>
-              <Field label="Low stock at"><input className={ui.input} type="number" value={product.lowStockThreshold || 5} onChange={e => update({ lowStockThreshold: Number(e.target.value) })} /></Field>
+              <Field label="Low stock at"><NumInput className={ui.input} value={product.lowStockThreshold ?? 5} empty={0} onValue={v => update({ lowStockThreshold: v ?? 0 })} /></Field>
             </div>
             <div className={s.checkGrid}>
               <Check checked={product.trackInventory} onChange={v => update({ trackInventory: v })} title="Track inventory" text="Prevent overselling when stock is exhausted." />
@@ -293,9 +293,9 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
           </Card>
           {(!product.variants.length || product.sharedInventory) && <Card title="Product inventory" sub="Used for non-variant stock or a shared variant pool">
             {productLocationSplit ? <div className={s.notice}><strong>Stock is split across multiple locations</strong><span>{available} units total. Manage quantities per location from the <Link href="/admin/inventory" className={ui.textLink}>Inventory page</Link> instead of here.</span></div> : <div className={s.threeCol}>
-              <Field label="Available"><input className={ui.input} type="number" value={available} onChange={e => update({ quantity: Number(e.target.value) })} /></Field>
+              <Field label="Available"><NumInput className={ui.input} value={available} empty={0} onValue={v => update({ quantity: v ?? 0 })} /></Field>
               <Field label="Location"><select className={ui.select} value={product.locationId ?? product.inventory?.[0]?.locationId ?? ''} onChange={e => update({ locationId: e.target.value || null })}><option value="">Unassigned</option>{(locations || []).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select></Field>
-              <Field label="Low stock"><input className={ui.input} type="number" value={product.lowStockThreshold || product.inventory?.[0]?.lowStockThreshold || 5} onChange={e => update({ lowStockThreshold: Number(e.target.value) })} /></Field>
+              <Field label="Low stock"><NumInput className={ui.input} value={product.lowStockThreshold ?? product.inventory?.[0]?.lowStockThreshold ?? 5} empty={0} onValue={v => update({ lowStockThreshold: v ?? 0 })} /></Field>
             </div>}
           </Card>}
         </>}
@@ -322,8 +322,8 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
             {product.variants.map((v, i) => <div className={s.variantRow} key={v.id || i}>
               <input className={`${ui.input} ${s.variantField}`} value={v.name} onChange={e => updateVariant(i, { name: e.target.value })} />
               <input className={`${ui.input} ${s.variantField}`} value={v.sku} onChange={e => updateVariant(i, { sku: e.target.value })} />
-              <input className={`${ui.input} ${s.variantField}`} value={moneyValue(v.price)} onChange={e => updateVariant(i, { price: Math.round(Number(e.target.value || 0) * 100) })} />
-              {variantLocationSplit(v) ? <span className={`${s.variantField} ${ui.muted}`} title="Stock is split across multiple locations -- manage it from the Inventory page">{variantStock(v)} (split)</span> : <input className={`${ui.input} ${s.variantField}`} type="number" value={variantStock(v)} disabled={Boolean(product.sharedInventory)} onChange={e => updateVariant(i, { quantity: Number(e.target.value) })} />}
+              <MoneyInput className={`${ui.input} ${s.variantField}`} cents={v.price} empty={0} onCents={c => updateVariant(i, { price: c ?? 0 })} />
+              {variantLocationSplit(v) ? <span className={`${s.variantField} ${ui.muted}`} title="Stock is split across multiple locations -- manage it from the Inventory page">{variantStock(v)} (split)</span> : <NumInput className={`${ui.input} ${s.variantField}`} value={variantStock(v)} empty={0} disabled={Boolean(product.sharedInventory)} onValue={q => updateVariant(i, { quantity: q ?? 0 })} />}
               <button className={`${ui.iconBtn} ${s.variantDeleteBtn}`} onClick={() => update({ variants: product.variants.filter((_, n) => n !== i) })}><Trash2 size={16} /></button>
             </div>)}
             {!product.variants.length && <div className={s.emptyInline}>No variants yet.</div>}
@@ -337,7 +337,7 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
             <Check checked={product.giftCard} onChange={v => update({ giftCard: v })} title="Gift card" text="Reserved for gift-card product types." />
           </div>
           <div className={s.threeCol}>
-            <Field label="Weight"><input className={ui.input} type="number" step="0.01" value={product.weight ?? ''} onChange={e => update({ weight: e.target.value === '' ? null : Number(e.target.value) })} /></Field>
+            <Field label="Weight"><NumInput className={ui.input} decimals value={product.weight} onValue={w => update({ weight: w })} /></Field>
             <Field label="Weight unit"><select className={ui.select} value={product.weightUnit || 'kg'} onChange={e => update({ weightUnit: e.target.value })}><option>kg</option><option>g</option><option>lb</option><option>oz</option></select></Field>
             <Field label="Template"><select className={ui.select} value={product.productTemplate || 'product'} onChange={e => update({ productTemplate: e.target.value })}><option value="product">Default product</option><option value="product.featured">Featured product</option><option value="product.minimal">Minimal product</option></select></Field>
           </div>

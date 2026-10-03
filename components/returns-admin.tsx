@@ -6,6 +6,7 @@ import { Check, Plus, RefreshCw, RotateCcw, Search, X, XCircle } from 'lucide-re
 import { money } from '@/lib/config'
 import styles from './admin-returns.module.css'
 import ui from './admin-ui.module.css'
+import { NumInput } from './num-input'
 
 type ReturnItem = { id: string; orderItemId: string; productId: string; variantId: string | null; quantity: number; condition: string | null }
 type OrderSummary = { id: string; orderNumber: string; email: string; grandTotal: number; currency: string; status: string; items?: { id: string; name: string }[] } | null
@@ -254,7 +255,7 @@ export default function ReturnsAdmin({ initial, canManage, canRefund }: { initia
                 <tbody>{(selectedOrder.items || []).map(item => <tr key={item.id}>
                   <td><strong>{item.name}</strong><div className={ui.muted}>{item.sku}</div></td>
                   <td>{item.quantity}</td>
-                  <td><input className={`${ui.input} ${ui.selectCompact} ${styles.qtyInput}`} type="number" min="0" max={item.quantity} value={quantities[item.id] ?? 0} onChange={e => setQuantities(current => ({ ...current, [item.id]: Math.max(0, Math.min(item.quantity, Number(e.target.value) || 0)) }))} /></td>
+                  <td><NumInput className={`${ui.input} ${ui.selectCompact} ${styles.qtyInput}`} value={quantities[item.id] ?? 0} onValue={n => setQuantities(current => ({ ...current, [item.id]: Math.max(0, Math.min(item.quantity, Number(n) || 0)) }))} /></td>
                 </tr>)}</tbody>
               </table>
             </div>

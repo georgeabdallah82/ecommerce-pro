@@ -7,6 +7,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { money } from '@/lib/config'
 import s from './admin-order-detail.module.css'
 import ui from './admin-ui.module.css'
+import { MoneyInput, NumInput } from './num-input'
 
 type Variant = { id: string; name: string; sku: string; price: number | null }
 type Product = { id: string; name: string; sku: string; basePrice: number; variants?: Variant[] }
@@ -103,8 +104,8 @@ export default function OrderEditForm({ order, products }: { order: any; product
                     <tr key={`${l.orderItemId || 'new'}:${l.productId}:${l.variantId || ''}:${i}`}>
                       <td><strong>{l.name}</strong>{!l.orderItemId && <span className={ui.muted} style={{ marginLeft: 6, fontSize: 11 }}>(new)</span>}</td>
                       <td className={ui.muted}>{l.sku}</td>
-                      <td><input className={ui.inputCompact} style={{ width: 72 }} type="number" min="0" max="99" value={l.quantity} onChange={e => updateLine(i, { quantity: Math.min(99, Math.max(0, Number(e.target.value) || 0)) })} /></td>
-                      <td><input className={ui.inputCompact} style={{ width: 100 }} type="number" min="0" step="0.01" value={(l.unitPrice / 100).toFixed(2)} onChange={e => updateLine(i, { unitPrice: Math.max(0, Math.round((Number(e.target.value) || 0) * 100)) })} /></td>
+                      <td><NumInput className={ui.inputCompact} style={{ width: 72 }} value={l.quantity} onValue={n => updateLine(i, { quantity: Math.min(99, Math.max(0, Number(n) || 0)) })} /></td>
+                      <td><MoneyInput className={ui.inputCompact} style={{ width: 100 }} cents={l.unitPrice} empty={0} onCents={c => updateLine(i, { unitPrice: Math.max(0, c ?? 0) })} /></td>
                       <td>{money(l.quantity * l.unitPrice, order.currency)}</td>
                       <td>{!l.orderItemId && <button className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} onClick={() => removeNewLine(i)}><Trash2 size={14} /></button>}</td>
                     </tr>
@@ -119,7 +120,7 @@ export default function OrderEditForm({ order, products }: { order: any; product
               <label className={ui.fieldLabel}>Variant<select className={ui.select} value={variantId} disabled={!variants.length} onChange={e => setVariantId(e.target.value)}><option value="">Default / shared stock</option>{variants.map(v => <option key={v.id} value={v.id}>{v.name} — {money(v.price ?? product?.basePrice ?? 0)}</option>)}</select></label>
             </div>
             <div className="inline" style={{ alignItems: 'end' }}>
-              <label className={ui.fieldLabel} style={{ maxWidth: 140 }}>Qty<input className={ui.input} type="number" min="1" max="99" value={qty} onChange={e => setQty(Math.min(99, Math.max(1, Number(e.target.value) || 1)))} /></label>
+              <label className={ui.fieldLabel} style={{ maxWidth: 140 }}>Qty<NumInput className={ui.input} value={qty} onValue={n => setQty(Math.min(99, Math.max(1, Number(n) || 1)))} /></label>
               <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={addLine}><Plus size={15} /> Add item</button>
             </div>
           </section>

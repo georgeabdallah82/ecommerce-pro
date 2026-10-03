@@ -8,6 +8,7 @@ import { money } from '@/lib/config'
 import StorefrontSections, { ProductCard, QuickView } from '@/components/storefront-sections'
 import { useWishlist } from '@/components/use-wishlist'
 import { CartNotices } from '@/components/cart-notices'
+import { NumInput } from './num-input'
 
 type AnyMap = Record<string, any>
 
@@ -133,7 +134,7 @@ export default function AliExpressCart({ theme, recommended, sections = [], zone
                   <div className="cartControlsUX">
                     <div className="qtyUX" aria-label={`Quantity for ${item.name}`}>
                       <button type="button" onClick={() => updateQty(key, Math.max(1, item.quantity - 1))} aria-label={`Decrease ${item.name} quantity`}><Minus size={15} /></button>
-                      <input aria-label={`Quantity for ${item.name}`} type="number" min="1" max="99" value={item.quantity} onChange={e => updateQty(key, Math.max(1, Math.min(99, Number(e.target.value) || 1)))} />
+                      <NumInput aria-label={`Quantity for ${item.name}`} value={item.quantity} onValue={n => updateQty(key, Math.max(1, Math.min(99, Number(n) || 1)))} />
                       <button type="button" onClick={() => updateQty(key, Math.min(99, item.quantity + 1))} aria-label={`Increase ${item.name} quantity`}><Plus size={15} /></button>
                     </div>
                     <button className="removeUX" type="button" onClick={() => removeItem(key)} aria-label={`Remove ${item.name} from cart`}><Trash2 size={14} /> <span>Remove</span></button>

@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { NumInput } from './num-input'
 
 type OrderItem = { id: string; name: string; quantity: number; remaining: number }
 type ReturnRequest = { id: string; status: string; reason: string; createdAt: string; items: { orderItemId: string; quantity: number }[] }
@@ -86,7 +87,7 @@ export default function RequestReturn({ orderNumber, items, returns }: { orderNu
       <div style={{ display: 'grid', gap: 8 }}>
         {returnable.map(item => <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
           <span>{item.name} <span className="muted">({item.remaining} eligible)</span></span>
-          <input className="input" type="number" min="0" max={item.remaining} style={{ width: 80 }} value={quantities[item.id] ?? 0} onChange={e => setQuantities(current => ({ ...current, [item.id]: Math.max(0, Math.min(item.remaining, Number(e.target.value) || 0)) }))} />
+          <NumInput className="input" style={{ width: 80 }} value={quantities[item.id] ?? 0} onValue={n => setQuantities(current => ({ ...current, [item.id]: Math.max(0, Math.min(item.remaining, Number(n) || 0)) }))} />
         </div>)}
       </div>
       <label className="fieldLabel" style={{ marginTop: 12 }}>Reason for return<textarea className="input" rows={3} value={reason} onChange={e => setReason(e.target.value)} placeholder="Why are you returning these items?" /></label>

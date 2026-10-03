@@ -7,6 +7,7 @@ import { money } from '@/lib/config'
 import styles from './admin-draft-orders.module.css'
 import s from './admin-order-detail.module.css'
 import ui from './admin-ui.module.css'
+import { NumInput } from './num-input'
 
 type Product = { id: string; name: string; sku: string; basePrice: number; variants?: { id: string; name: string; sku: string; price: number | null }[] }
 type Customer = { id: string; name: string; email: string; phone?: string | null }
@@ -121,7 +122,7 @@ export default function DraftOrderForm({ products, customers }: { products: Prod
           <div className={styles.pickerRow}>
             <label className={ui.fieldLabel}>Product<select className={ui.select} value={productId} onChange={e => { setProductId(e.target.value); setVariantId(''); setPrice('') }}><option value="">Select product</option>{products.map(p => <option key={p.id} value={p.id}>{p.name} — {money(p.basePrice)}</option>)}</select></label>
             <label className={ui.fieldLabel}>Variant<select className={ui.select} value={variantId} disabled={!variants.length} onChange={e => setVariantId(e.target.value)}><option value="">Default / shared stock</option>{variants.map(v => <option key={v.id} value={v.id}>{v.name} — {money(v.price ?? product?.basePrice ?? 0)}</option>)}</select></label>
-            <label className={ui.fieldLabel} style={{ maxWidth: 120 }}>Qty<input className={ui.input} type="number" min="1" max="999" value={qty} onChange={e => setQty(Number(e.target.value) || 1)} /></label>
+            <label className={ui.fieldLabel} style={{ maxWidth: 120 }}>Qty<NumInput className={ui.input} value={qty} onValue={n => setQty(Number(n) || 1)} /></label>
             <label className={ui.fieldLabel} style={{ maxWidth: 140 }}>Price<input className={ui.input} type="number" min="0" step="0.01" value={price} onChange={e => setPrice(e.target.value)} placeholder={(defaultUnitPrice / 100).toFixed(2)} /></label>
           </div>
           <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={addLine} disabled={!productId}>Add item</button>
@@ -131,7 +132,7 @@ export default function DraftOrderForm({ products, customers }: { products: Prod
               <tbody>{lines.map((l, i) => <tr key={`${l.productId}:${l.variantId || ''}`}>
                 <td><strong>{l.name}</strong></td>
                 <td>{l.sku}</td>
-                <td><input className={ui.inputCompact} style={{ width: 80 }} type="number" min="1" max="999" value={l.quantity} onChange={e => setLines(lines.map((x, j) => j === i ? { ...x, quantity: Math.min(999, Math.max(1, Number(e.target.value) || 1)) } : x))} /></td>
+                <td><NumInput className={ui.inputCompact} style={{ width: 80 }} value={l.quantity} onValue={n => setLines(lines.map((x, j) => j === i ? { ...x, quantity: Math.min(999, Math.max(1, Number(n) || 1)) } : x))} /></td>
                 <td>{money(l.unitPrice * l.quantity)}</td>
                 <td><button className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} onClick={() => setLines(lines.filter((_, j) => j !== i))}>Remove</button></td>
               </tr>)}</tbody>

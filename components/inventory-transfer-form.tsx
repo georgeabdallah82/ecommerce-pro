@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Plus, Trash2 } from 'lucide-react'
 import s from './admin-order-detail.module.css'
 import ui from './admin-ui.module.css'
+import { NumInput } from './num-input'
 
 type Variant = { id: string; name: string; sku: string }
 type Product = { id: string; name: string; sku: string; variants?: Variant[] }
@@ -93,7 +94,7 @@ export default function InventoryTransferForm({ products, locations }: { product
               <label className={ui.fieldLabel}>Variant<select className={ui.select} value={variantId} disabled={!variants.length} onChange={e => setVariantId(e.target.value)}><option value="">Default / shared stock</option>{variants.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}</select></label>
             </div>
             <div className="inline" style={{ alignItems: 'end' }}>
-              <label className={ui.fieldLabel} style={{ maxWidth: 140 }}>Qty<input className={ui.input} type="number" min="1" value={qty} onChange={e => setQty(Number(e.target.value) || 1)} /></label>
+              <label className={ui.fieldLabel} style={{ maxWidth: 140 }}>Qty<NumInput className={ui.input} value={qty} onValue={n => setQty(Number(n) || 1)} /></label>
               <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={addLine}><Plus size={15} /> Add item</button>
             </div>
             <div className={ui.tableWrap} style={{ marginTop: 14 }}>
@@ -104,7 +105,7 @@ export default function InventoryTransferForm({ products, locations }: { product
                     <tr key={`${l.productId}:${l.variantId || ''}`}>
                       <td><strong>{l.name}</strong></td>
                       <td className={ui.muted}>{l.sku}</td>
-                      <td><input className={ui.inputCompact} style={{ width: 80 }} type="number" min="1" value={l.quantity} onChange={e => setLines(prev => prev.map((x, j) => (j === i ? { ...x, quantity: Math.max(1, Number(e.target.value) || 1) } : x)))} /></td>
+                      <td><NumInput className={ui.inputCompact} style={{ width: 80 }} value={l.quantity} onValue={n => setLines(prev => prev.map((x, j) => (j === i ? { ...x, quantity: Math.max(1, Number(n) || 1) } : x)))} /></td>
                       <td><button className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} onClick={() => setLines(prev => prev.filter((_, j) => j !== i))}><Trash2 size={14} /></button></td>
                     </tr>
                   ))}
