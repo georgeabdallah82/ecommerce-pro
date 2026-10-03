@@ -55,6 +55,26 @@ html body.mk .focalNav.mkHeader .aliNavSearchIconMobile { display: none !importa
   html body.mk .focalNav.mkHeader .focalNavActions .focalNavIcon:nth-child(2) { display: inline-flex !important; }
 }
 
+/* White header (default): the logo keeps its own colours; brand red moves to the search
+   bar outline, the search button and the cart count. */
+html body.mk .focalNav.mkHeader.mkHeaderLight { background: #fff !important; color: var(--mk-ink) !important; border-bottom: 1px solid var(--mk-line) !important; box-shadow: 0 1px 0 rgba(17,17,17,.02) !important; }
+html body.mk .focalNav.mkHeader.mkHeaderLight .focalLogo { color: var(--mk-ink) !important; min-width: 0 !important; }
+html body.mk .focalNav.mkHeader.mkHeaderLight .focalLogo img { width: auto !important; max-width: 100% !important; object-fit: contain !important; }
+html body.mk .focalNav.mkHeader.mkHeaderLight .aliNavSearchBar { box-shadow: inset 0 0 0 2px var(--mk-red) !important; }
+html body.mk .focalNav.mkHeader.mkHeaderLight .focalNavIcon,
+html body.mk .focalNav.mkHeader.mkHeaderLight .focalNavMobile { background: var(--mk-well) !important; color: var(--mk-ink) !important; }
+html body.mk .focalNav.mkHeader.mkHeaderLight .focalNavIcon:hover,
+html body.mk .focalNav.mkHeader.mkHeaderLight .focalNavMobile:hover { background: var(--mk-red-soft) !important; color: var(--mk-red) !important; }
+html body.mk .focalNav.mkHeader.mkHeaderLight .focalCartCount { background: var(--mk-red) !important; color: #fff !important; }
+@media (max-width: 900px) {
+  html body.mk .focalNav.mkHeader.mkHeaderLight .focalNavInner { column-gap: 10px !important; }
+  html body.mk .focalNav.mkHeader.mkHeaderLight .focalLogo img { max-height: 30px !important; }
+}
+/* Small phones: the account link is in the menu, so the logo gets its room. */
+@media (max-width: 379px) {
+  html body.mk .focalNav.mkHeader.mkHeaderLight .focalNavActions .focalNavIcon:nth-child(2) { display: none !important; }
+}
+
 /* Delivery bar + category tabs (not sticky; the red header is) */
 .mkDelivery { background: var(--mk-card); border-bottom: 1px solid var(--mk-line); font-size: 13px; color: var(--mk-ink); }
 .mkDeliveryInner { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding-block: 8px; }
@@ -132,6 +152,9 @@ html body.mk .focalNav.mkHeader .aliNavSearchIconMobile { display: none !importa
 .mkMenuHead { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 14px 14px 18px; background: var(--mk-header-bg, var(--mk-red)); color: #fff; }
 .mkMenuBrand { display: flex; align-items: center; min-width: 0; color: #fff; text-decoration: none; font-size: 19px; font-weight: 800; letter-spacing: -.02em; }
 .mkMenuBrand img { max-height: 34px; max-width: 170px; object-fit: contain; }
+.mkMenuHead.light { background: #fff; color: var(--mk-ink); border-bottom: 1px solid var(--mk-line); }
+.mkMenuHead.light .mkMenuBrand { color: var(--mk-ink); }
+.mkMenuHead.light .mkMenuClose { background: var(--mk-well); color: var(--mk-ink); }
 .mkMenuClose { width: 38px; height: 38px; display: grid; place-items: center; border: 0; border-radius: 10px; background: rgba(255,255,255,.16); color: #fff; cursor: pointer; }
 .mkMenuScroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 14px 14px 24px; }
 .mkMenuAccount { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 14px; background: var(--mk-page); color: var(--mk-ink); text-decoration: none; }
@@ -382,19 +405,21 @@ html body.mk .aliTrustItem span { font-size: 12.5px !important; color: var(--mk-
 @media (min-width: 760px) { html body.mk .aliTrustStrip .aliContainer { width: min(1280px, calc(100% - 48px)) !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; padding: 20px 24px !important; } }
 
 /* ---------------- Footer ---------------- */
-html body.mk .focalFooterHelp { background: var(--mk-ink) !important; }
-html body.mk .focalFooterWhatsapp { color: var(--mk-ink) !important; }
-html body.mk .focalFooter { background: var(--mk-red) !important; color: rgba(255,255,255,.88) !important; margin-top: 32px !important; }
+/* Dark footer (brand ink) so the dark-background logo shows in its own colours, with the
+   "Need help" band above it in brand red. */
+html body.mk .focalFooterHelp { background: var(--mk-red) !important; }
+html body.mk .focalFooterWhatsapp { color: var(--mk-red) !important; }
+html body.mk .focalFooter { background: #151515 !important; color: rgba(255,255,255,.88) !important; margin-top: 32px !important; }
 html body.mk .focalFooterHelp + .focalFooter { margin-top: 0 !important; }
 html body.mk .focalFooter strong { color: #fff !important; }
 html body.mk .focalFooter a { color: rgba(255,255,255,.88) !important; }
 html body.mk .focalFooter a:hover { color: #fff !important; }
-html body.mk .focalFooter .muted { color: rgba(255,255,255,.78) !important; }
-html body.mk .focalFooter .footerLogoCard { background: transparent !important; padding: 0 !important; filter: brightness(0) invert(1) !important; }
-html body.mk .focalFooterSocial a { background: rgba(255,255,255,.16) !important; }
-html body.mk .focalFooterBottom { border-top-color: rgba(255,255,255,.22) !important; }
-html body.mk .focalFooterNewsletterForm button { background: #fff !important; color: var(--mk-red) !important; }
-html body.mk .focalFooterNewsletterForm input { border-color: rgba(255,255,255,.35) !important; background: rgba(255,255,255,.1) !important; }
+html body.mk .focalFooter .muted { color: rgba(255,255,255,.7) !important; }
+html body.mk .focalFooterSocial a { background: rgba(255,255,255,.1) !important; }
+html body.mk .focalFooterSocial a:hover { background: var(--mk-red) !important; }
+html body.mk .focalFooterBottom { border-top-color: rgba(255,255,255,.12) !important; }
+html body.mk .focalFooterNewsletterForm button { background: var(--mk-red) !important; color: #fff !important; }
+html body.mk .focalFooterNewsletterForm input { border-color: rgba(255,255,255,.2) !important; background: rgba(255,255,255,.06) !important; }
 html body.mk .focalFooterHelp:has(+ .focalFooter) { margin-top: 32px !important; }
 
 /* ---------------- Floating WhatsApp ---------------- */

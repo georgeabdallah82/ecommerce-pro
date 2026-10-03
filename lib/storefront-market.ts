@@ -1,4 +1,4 @@
-// The "market" storefront: red header with a delivery bar, a full-photo hero slider, product
+// The "market" storefront: white header (or brand colour) with a delivery bar, a full-photo hero slider, product
 // rows and category blocks. These are its defaults, and the one-time switch that moves a store
 // still on the older storefront onto it (see lib/theme.ts). Everything here stays editable in
 // the theme studio; the switch only runs once (theme.storefrontVersion records it).
@@ -8,7 +8,7 @@ export const STOREFRONT_VERSION = 2
 export const MARKET_COLORS = {
   background: '#f6f6f4', surface: '#ffffff', text: '#121212', muted: '#6b7280',
   primary: '#d7261e', secondary: '#fdecea', buttonText: '#ffffff', border: '#ececec',
-  announcementBg: '#121212', announcementText: '#ffffff', accent: '#facc15',
+  announcementBg: '#121212', announcementText: '#ffffff', accent: '#ff7a1a',
   sale: '#d7261e', success: '#15803d', warning: '#b7791f',
 }
 

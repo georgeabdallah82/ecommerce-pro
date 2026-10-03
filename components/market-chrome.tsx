@@ -178,7 +178,7 @@ export function CategoryTabs({ navigation }: { navigation: NavItem[] }) {
 
 // Phone menu: slides in from the left with the brand bar, account, search, every menu item
 // (sub-items fold open), the store's collections with pictures, and help links.
-export function MarketMenu({ open, onClose, navigation, brand, logo, logoWhite, delivery }: { open: boolean; onClose: () => void; navigation: NavItem[]; brand: string; logo?: string; logoWhite?: boolean; delivery?: any }) {
+export function MarketMenu({ open, onClose, navigation, brand, logo, logoWhite, light, delivery }: { open: boolean; onClose: () => void; navigation: NavItem[]; brand: string; logo?: string; logoWhite?: boolean; light?: boolean; delivery?: any }) {
   const pathname = usePathname() || '/'
   const roots = navTree(navigation)
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -211,7 +211,7 @@ export function MarketMenu({ open, onClose, navigation, brand, logo, logoWhite, 
   return (
     <div className="mkMenuOverlay" onClick={onClose}>
       <aside className="mkMenu" role="dialog" aria-modal="true" aria-label="Menu" ref={panelRef} tabIndex={-1} onClick={e => e.stopPropagation()}>
-        <div className="mkMenuHead">
+        <div className={`mkMenuHead${light ? ' light' : ''}`}>
           <Link href="/" className="mkMenuBrand" onClick={onClose}>{logo ? <img src={logo} alt={brand} className={logoWhite ? 'mkLogoWhite' : undefined} /> : <span>{brand}</span>}</Link>
           <button type="button" className="mkMenuClose" onClick={onClose} aria-label="Close menu"><X size={20} /></button>
         </div>
