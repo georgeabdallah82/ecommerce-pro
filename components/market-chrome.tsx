@@ -9,6 +9,7 @@ import { usePathname } from 'next/navigation'
 import { ChevronDown, ChevronLeft, ChevronRight, FileText, Heart, LayoutGrid, MapPin, MessageCircle, Package, Search, UserRound, X } from 'lucide-react'
 import { whatsappUrl } from '@/lib/links'
 import { parseDeliveryAreas } from '@/lib/storefront-market'
+import type { Shopper } from './use-shopper'
 
 export const DELIVERY_AREA_KEY = 'ecom-delivery-area-v1'
 // Fired when the shopper picks another area, so the product page's delivery line follows.
@@ -178,7 +179,7 @@ export function CategoryTabs({ navigation }: { navigation: NavItem[] }) {
 
 // Phone menu: slides in from the left with the brand bar, account, search, every menu item
 // (sub-items fold open), the store's collections with pictures, and help links.
-export function MarketMenu({ open, onClose, navigation, brand, logo, logoWhite, light, delivery }: { open: boolean; onClose: () => void; navigation: NavItem[]; brand: string; logo?: string; logoWhite?: boolean; light?: boolean; delivery?: any }) {
+export function MarketMenu({ open, onClose, navigation, brand, logo, logoWhite, light, shopper, delivery }: { open: boolean; onClose: () => void; navigation: NavItem[]; brand: string; logo?: string; logoWhite?: boolean; light?: boolean; shopper?: Shopper; delivery?: any }) {
   const pathname = usePathname() || '/'
   const roots = navTree(navigation)
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -217,8 +218,10 @@ export function MarketMenu({ open, onClose, navigation, brand, logo, logoWhite, 
         </div>
         <div className="mkMenuScroll">
           <Link href="/account" className="mkMenuAccount" onClick={onClose}>
-            <span className="mkMenuAvatar"><UserRound size={18} /></span>
-            <span><b>My account</b><small>Sign in, orders and addresses</small></span>
+            <span className="mkMenuAvatar">{shopper ? shopper.initial : <UserRound size={18} />}</span>
+            {shopper
+              ? <span><b>{shopper.name}</b><small>My orders, addresses and wallet</small></span>
+              : <span><b>My account</b><small>Sign in, orders and addresses</small></span>}
             <ChevronRight size={16} />
           </Link>
           <form className="mkMenuSearch" action="/shop" method="GET" onSubmit={onClose}>
