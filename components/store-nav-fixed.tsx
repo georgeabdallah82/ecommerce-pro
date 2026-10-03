@@ -2,10 +2,10 @@
 
 import { ArrowRight, Check, ChevronDown, Clock, Gift, Heart, Megaphone, Menu, Minus, Plus, Search, ShoppingBag, Sparkles, Tag, Trash2, Truck, UserRound, X } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { keyOf, useCart } from './cart-provider'
-import { CategoryTabs, DeliveryBar } from './market-chrome'
+import { CategoryTabs, DeliveryBar, MarketMenu } from './market-chrome'
 import { money as formatMoney } from '@/lib/config'
 
 type NavItem = { id: string; label: string; url?: string | null; parentId?: string | null; group?: string | null; imageUrl?: string | null }
@@ -317,6 +317,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
   
   const { items, updateQty, removeItem, subtotal, count, isOpen: isCartOpen, openCart, closeCart } = useCart()
   const [menu, setMenu] = useState(false)
+  const closeMenu = useCallback(() => setMenu(false), [])
   const [search, setSearch] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<any[]>([])
@@ -609,7 +610,8 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
       </aside>
     </div>}
 
-    {menu && <div className="focalMobileOverlay">
+    {market && <MarketMenu open={menu} onClose={closeMenu} navigation={navigation} brand={theme.brandName} logo={logoSrc} logoWhite={!!logoWhite} delivery={theme.delivery} />}
+    {menu && !market && <div className="focalMobileOverlay">
       <div className="zaraMenuPanel">
         <div className="zaraMenuTop">
           <button className="focalNavIcon" onClick={() => setMenu(false)} aria-label="Close menu"><X size={19}/></button>

@@ -17,6 +17,6 @@ export default async function NewsletterSubscribers() {
         <p className={ui.muted}>Everyone who signed up through the Newsletter section or the footer form. Customers with an account are also tagged &ldquo;Newsletter subscriber&rdquo;.</p>
       </div>
     </div>
-    <NewsletterAdmin initial={subscribers} canManage={hasPermission(user.role, 'customers.manage')} />
+    <NewsletterAdmin initial={subscribers} canManage={hasPermission(user, 'customers.manage')} />
   </div>
 }

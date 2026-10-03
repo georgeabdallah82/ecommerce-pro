@@ -23,7 +23,7 @@ function dollars(cents: number | null) {
   return cents === null ? '' : String(cents / 100)
 }
 
-export default function ShippingAdminPro({ initial }: { initial: Zone[] }) {
+export default function ShippingAdminPro({ initial, deliveryTimes }: { initial: Zone[]; deliveryTimes?: React.ReactNode }) {
   const confirm = useConfirm()
   const [rows, setRows] = useState<Zone[]>(initial || [])
   const [query, setQuery] = useState('')
@@ -161,6 +161,7 @@ export default function ShippingAdminPro({ initial }: { initial: Zone[] }) {
   return <div className="catalogPage">
     <div className={`${ui.sectionHead} catalogHead`}><div><span className={ui.muted}>SETTINGS</span><h1 className={ui.title}>Shipping</h1><p className={ui.muted}>Control where you ship, which rates customers see, and free-shipping thresholds.</p></div><div className="inline"><button className={`${ui.btn} ${ui.btnSecondary}`} onClick={refresh}><RefreshCw size={15}/> Refresh</button><button className={ui.btn} onClick={() => setFormOpen(true)}><Plus size={16}/> Add zone</button></div></div>
     {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
+    {deliveryTimes}
 
     <div className="catalogStats">
       <button className={`statCard ${status === 'ALL' ? 'active' : ''}`} onClick={() => setStatus('ALL')}><span>Shipping zones</span><strong>{rows.length}</strong></button>

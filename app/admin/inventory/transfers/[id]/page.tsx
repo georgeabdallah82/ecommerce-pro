@@ -21,7 +21,7 @@ export default async function InventoryTransferDetailPage({ params }: { params: 
   return (
     <InventoryTransferDetail
       initial={JSON.parse(JSON.stringify({ ...transfer, items }))}
-      canManage={hasPermission(user.role, 'transfers.manage')}
+      canManage={hasPermission(user, 'transfers.manage')}
     />
   )
 }

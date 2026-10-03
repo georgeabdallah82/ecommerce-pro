@@ -19,3 +19,12 @@ export async function deleteCustomerCascade(tx: any, id: string) {
   await tx.auditLog.updateMany({ where: { actorId: id }, data: { actorId: null } })
   await tx.user.delete({ where: { id } })
 }
+
+// Removing a staff account for good. Their order notes are kept (re-attributed to whoever
+// removes them, marked with the original author) and audit history keeps the actions with
+// no actor, so nothing about past orders is lost.
+export async function deleteStaffCascade(tx: any, id: string, removedBy: string, name: string) {
+  const notes = await tx.orderNote.findMany({ where: { userId: id }, select: { id: true, body: true } })
+  for (const note of notes) await tx.orderNote.update({ where: { id: note.id }, data: { userId: removedBy, body: `[${name}] ${note.body}`.slice(0, 5000) } })
+  await deleteCustomerCascade(tx, id)
+}

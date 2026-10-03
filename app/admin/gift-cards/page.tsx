@@ -9,5 +9,5 @@ export default async function GiftCardsPage() {
   const user = await requirePermission('giftCards.view')
   await expireGiftCards(db)
   const rows = await db.giftCard.findMany({ orderBy: { createdAt: 'desc' }, take: 200 })
-  return <GiftCardsAdmin initial={JSON.parse(JSON.stringify(rows))} canManage={hasPermission(user.role, 'giftCards.manage')} defaultCurrency={config.currency} />
+  return <GiftCardsAdmin initial={JSON.parse(JSON.stringify(rows))} canManage={hasPermission(user, 'giftCards.manage')} defaultCurrency={config.currency} />
 }

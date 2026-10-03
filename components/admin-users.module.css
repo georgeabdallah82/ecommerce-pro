@@ -1,0 +1,71 @@
+.page { display: grid; gap: 16px; }
+.head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.head p { margin: 4px 0 0; max-width: 620px; }
+.headActions { display: flex; gap: 8px; }
+
+.tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--admin-border); }
+.tabs button { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; font: inherit; font-size: 14px; font-weight: 650; color: var(--admin-muted); cursor: pointer; }
+.tabs button span { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: var(--admin-border-soft); color: var(--admin-ink-soft); font-size: 11.5px; font-weight: 750; }
+.tabs .tabOn { color: var(--admin-ink); border-bottom-color: var(--admin-accent, var(--admin-ink)); }
+
+.listCard { padding: 0 !important; overflow: hidden; }
+.listMeta { padding: 12px 18px; font-size: 12px; font-weight: 700; letter-spacing: .02em; color: var(--admin-muted); border-bottom: 1px solid var(--admin-border-soft); }
+.userRow { display: grid; grid-template-columns: 40px minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--admin-border-soft); }
+.userRow:last-child { border-bottom: 0; }
+.userOff { background: color-mix(in srgb, var(--admin-border-soft) 45%, transparent); }
+.userOff .userMain, .userOff .avatar { opacity: .6; }
+.avatar { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--admin-accent-soft, var(--admin-border-soft)); color: var(--admin-accent, var(--admin-ink)); font-weight: 800; font-size: 15px; }
+.userMain { display: grid; gap: 2px; min-width: 0; }
+.userMain strong { font-size: 14px; overflow-wrap: anywhere; }
+.userMain em { font-style: normal; font-weight: 600; color: var(--admin-muted); }
+.userMain span { font-size: 12.5px; color: var(--admin-muted); overflow-wrap: anywhere; }
+.userRole :global(svg) { margin-right: 2px; }
+.ownerPill { background: var(--admin-accent-soft, var(--admin-border-soft)) !important; color: var(--admin-accent, var(--admin-ink)) !important; border-color: transparent !important; }
+.userStatus { display: grid; gap: 4px; justify-items: start; }
+.userStatus small { font-size: 11.5px; color: var(--admin-muted); }
+.userActions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+
+.roleGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.roleCard { display: grid; gap: 8px; align-content: start; padding: 18px !important; }
+.roleCard p { margin: 0; font-size: 13px; line-height: 1.5; }
+.roleTop { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.roleTop strong { font-size: 15px; }
+.roleFacts { display: flex; gap: 14px; font-size: 12px; font-weight: 650; color: var(--admin-ink-soft); }
+.roleActions { display: flex; gap: 6px; align-items: center; margin-top: 4px; }
+.roleBuiltIn { background: color-mix(in srgb, var(--admin-border-soft) 35%, var(--admin-surface)) !important; }
+.roleNew { display: grid; gap: 6px; justify-items: start; align-content: center; padding: 18px !important; border: 1.5px dashed var(--admin-border) !important; background: transparent !important; text-align: left; font: inherit; color: var(--admin-ink); cursor: pointer; }
+.roleNew span { font-size: 12.5px; color: var(--admin-muted); line-height: 1.5; }
+.roleNew:hover { border-color: var(--admin-accent, var(--admin-ink)) !important; }
+
+.modal { width: min(560px, 100%); }
+.modalWide { width: min(860px, 100%); }
+.modalBody { padding: 16px 22px 22px; }
+.form { display: grid; gap: 14px; }
+.formActions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
+.passwordRow { display: flex; gap: 6px; align-items: center; }
+.passwordRow input { flex: 1; min-width: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+.permHead { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+/* Block layout, not grid: grid rows would shrink the overflow:hidden sections down to their header. */
+.permSections { display: block; max-height: min(52vh, 560px); overflow-y: auto; padding-right: 4px; }
+.permSection { border: 1px solid var(--admin-border); border-radius: 12px; overflow: hidden; margin-bottom: 12px; }
+.permSection:last-child { margin-bottom: 0; }
+.permSectionHead { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--admin-border-soft); font-size: 13px; }
+.permRow { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 14px; border-top: 1px solid var(--admin-border-soft); }
+.permLabel { display: grid; gap: 2px; min-width: 0; font-size: 13.5px; font-weight: 600; }
+.permLabel small { font-size: 11.5px; font-weight: 500; color: var(--admin-muted); }
+.permChecks { display: flex; gap: 14px; flex-wrap: wrap; justify-content: flex-end; }
+.permChecks label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.permChecks input { width: 16px; height: 16px; accent-color: var(--admin-accent, #d7261e); }
+
+@media (max-width: 900px) {
+  .userRow { grid-template-columns: 40px minmax(0, 1fr) auto; }
+  .userRole { grid-column: 2 / 3; }
+  .userStatus { grid-column: 3 / 4; grid-row: 1; justify-items: end; }
+  .userActions { grid-column: 1 / -1; justify-content: flex-start; }
+}
+@media (max-width: 560px) {
+  .permRow { flex-direction: column; align-items: flex-start; }
+  .permChecks { justify-content: flex-start; }
+  .modalBody { padding: 14px 16px 18px; }
+}

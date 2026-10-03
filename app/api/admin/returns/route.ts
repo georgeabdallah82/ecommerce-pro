@@ -73,7 +73,7 @@ export async function POST(req: Request) {
     // refund endpoint (app/api/admin/refunds/route.ts) -- gate it on the same
     // orders.refund permission rather than letting orders.manage/returns.manage
     // (which SUPPORT holds without orders.refund) issue refunds through here.
-    if (requestedRefund > 0 && !hasPermission(actor.role, 'orders.refund')) throw new Error('FORBIDDEN')
+    if (requestedRefund > 0 && !hasPermission(actor, 'orders.refund')) throw new Error('FORBIDDEN')
 
     const result = await db.$transaction(async tx => {
       const orderRow = await tx.order.findUnique({ where: { id: orderId }, include: { items: true, paymentTransactions: true } })

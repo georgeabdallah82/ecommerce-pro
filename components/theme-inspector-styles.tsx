@@ -65,6 +65,17 @@ export default function ThemeInspectorStyles() {
 .themePickerList li button{width:100%;display:flex;align-items:center;gap:8px;padding:6px 8px;border:0;border-radius:6px;background:transparent;color:var(--admin-ink);cursor:pointer;text-align:left}
 .themePickerList li button:hover{background:var(--admin-surface)}
 .themePickerEmpty{padding:8px;font-size:11.5px;color:var(--admin-muted)}
+.deliveryAreasHead,.deliveryAreasRow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr) auto;gap:6px;align-items:center}
+.deliveryAreasHead em{font-style:normal;font-size:10.5px;font-weight:700;color:var(--admin-muted)}
+.deliveryAreasRow input{padding:8px 9px!important;font-size:13px!important}
+.deliveryAreasTools{display:flex;gap:2px}
+.deliveryAreasTools button{width:26px;height:30px;border:0;border-radius:6px;background:transparent;color:var(--admin-muted);font-size:14px;font-weight:700;cursor:pointer}
+.deliveryAreasTools button:hover:not(:disabled){background:var(--admin-border-soft);color:var(--admin-ink)}
+.deliveryAreasTools button:disabled{opacity:.3;cursor:default}
+.deliveryAreasDefault{grid-column:1/-1;margin-top:-2px;font-size:10.5px;font-weight:650;color:var(--admin-accent)}
+.deliveryAreasEmpty{font-size:12px;color:var(--admin-muted)}
+.deliveryAreasAdd{justify-self:start;border:1px dashed var(--admin-border);border-radius:var(--admin-radius-sm);background:transparent;padding:7px 12px;font:inherit;font-size:12.5px;font-weight:700;color:var(--admin-ink);cursor:pointer}
+.deliveryAreasAdd:hover{border-color:var(--admin-accent);color:var(--admin-accent)}
 .themePickerClear{justify-self:start;border:0;background:transparent;padding:0;font-size:11px;font-weight:700;color:var(--admin-muted);text-decoration:underline;cursor:pointer}
 `}}/>
 }

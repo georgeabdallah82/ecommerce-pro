@@ -14,5 +14,5 @@ export default async function BundlesPage() {
   ])
   // Archived products can't be sold, so they can't go in a bundle either.
   const sellable = products.filter(p => p.status !== 'ARCHIVED')
-  return <BundlesAdmin initial={config} products={JSON.parse(JSON.stringify(sellable))} currency={currency} canManage={hasPermission(user.role, 'products.manage')} />
+  return <BundlesAdmin initial={config} products={JSON.parse(JSON.stringify(sellable))} currency={currency} canManage={hasPermission(user, 'products.manage')} />
 }

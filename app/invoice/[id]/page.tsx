@@ -23,7 +23,7 @@ function address(raw: string | null | undefined) {
 
 export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const viewer = await requireUser()
-  const isStaff = hasPermission(viewer.role, 'orders.view')
+  const isStaff = hasPermission(viewer, 'orders.view')
   const { id } = await params
   const [o, { theme }] = await Promise.all([
     db.order.findFirst({

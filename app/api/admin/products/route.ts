@@ -3,6 +3,7 @@ import { audit } from '@/lib/audit'
 import { db } from '@/lib/prisma'
 import { json, slugify } from '@/lib/utils'
 import { productInputError } from '@/lib/product-input'
+import { setProductCollections } from '@/lib/product-collections'
 import { cleanBarcode, freeProductSlug, productConflict, uniqueConflictMessage, variantConflict } from '@/lib/product-uniqueness'
 
 export async function GET(req: Request) {
@@ -112,6 +113,7 @@ export async function POST(req: Request) {
       return created
     })
 
+    await setProductCollections(db, p.id, b.collectionIds)
     await audit(actor.id, 'product.created', 'Product', p.id, { name: p.name, sharedInventory: sharedPool, variants: variants.length })
     return json({ product: p }, { status: 201 })
   } catch (e) {

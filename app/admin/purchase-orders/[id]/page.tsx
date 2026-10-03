@@ -21,7 +21,7 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
   return (
     <PurchaseOrderDetail
       initial={JSON.parse(JSON.stringify({ ...po, items }))}
-      canManage={hasPermission(user.role, 'purchaseOrders.manage')}
+      canManage={hasPermission(user, 'purchaseOrders.manage')}
     />
   )
 }

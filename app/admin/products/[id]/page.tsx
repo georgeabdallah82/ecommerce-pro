@@ -10,7 +10,7 @@ export default async function ProductEdit({ params }: ProductEditPageProps) {
   await requirePermission('products.view')
   const { id } = await params
   await ensureStorefrontChannel()
-  const [product, definitions, locations, channels, publications] = await Promise.all([
+  const [product, definitions, locations, channels, publications, collections] = await Promise.all([
     db.product.findUnique({
       where: { id },
       include: {
@@ -19,12 +19,14 @@ export default async function ProductEdit({ params }: ProductEditPageProps) {
         inventory: { where: { variantId: null }, include: { location: true } },
         tags: true,
         metafields: { include: { definition: true } },
+        collections: { select: { collectionId: true } },
       },
     }),
     db.metafieldDefinition.findMany({ where: { ownerType: 'PRODUCT' }, orderBy: [{ namespace: 'asc' }, { key: 'asc' }] }),
     db.storeLocation.findMany({ orderBy: [{ isDefault: 'desc' }, { name: 'asc' }] }),
     db.salesChannel.findMany({ where: { status: 'ACTIVE' }, orderBy: { createdAt: 'asc' } }),
     db.productPublication.findMany({ where: { productId: id } }),
+    db.collection.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true, isActive: true } }),
   ])
 
   if (!product) return <div className={ui.empty}>Product not found.</div>
@@ -36,5 +38,5 @@ export default async function ProductEdit({ params }: ProductEditPageProps) {
   const serializedChannels = JSON.parse(JSON.stringify(channels))
   const serializedPublications = JSON.parse(JSON.stringify(publications))
 
-  return <ProductEditorV2 initial={serializedProduct} creating={false} definitions={serializedDefinitions} locations={serializedLocations} channels={serializedChannels} publications={serializedPublications} />
+  return <ProductEditorV2 initial={serializedProduct} creating={false} definitions={serializedDefinitions} locations={serializedLocations} channels={serializedChannels} publications={serializedPublications} collections={collections} />
 }

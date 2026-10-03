@@ -10,5 +10,5 @@ export default async function OrderEditsPage() {
   const orders = orderIds.length ? await db.order.findMany({ where: { id: { in: orderIds } }, select: { id: true, orderNumber: true, currency: true, status: true } }) : []
   const orderById = Object.fromEntries(orders.map(o => [o.id, o]))
   const rows = edits.map(e => ({ ...e, order: orderById[e.orderId] || null }))
-  return <OrderEditsList initial={JSON.parse(JSON.stringify(rows))} canManage={hasPermission(user.role, 'orderEdits.manage')} />
+  return <OrderEditsList initial={JSON.parse(JSON.stringify(rows))} canManage={hasPermission(user, 'orderEdits.manage')} />
 }

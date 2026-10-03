@@ -1,0 +1,13 @@
+.wrap { border: 1px solid var(--admin-border); border-radius: 12px; background: var(--admin-surface); overflow: hidden; }
+.wrap:focus-within { border-color: var(--admin-accent, #8e8e87); box-shadow: 0 0 0 3px color-mix(in srgb, var(--admin-accent, #171717) 12%, transparent); }
+.toolbar { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 2px; padding: 6px; border-bottom: 1px solid var(--admin-border-soft); background: var(--admin-surface); }
+.tool { width: 34px; height: 34px; display: grid; place-items: center; border: 0; border-radius: 8px; background: none; color: var(--admin-ink-soft); cursor: pointer; }
+.tool:hover { background: var(--admin-border-soft); color: var(--admin-ink); }
+.gap { margin-left: 8px; }
+.editor { padding: 18px 20px; outline: none; font-size: 14.5px; line-height: 1.65; color: var(--admin-ink); overflow-wrap: anywhere; }
+.editor h2 { font-size: 19px; margin: 22px 0 8px; }
+.editor h3 { font-size: 16px; margin: 18px 0 6px; }
+.editor h2:first-child, .editor h3:first-child, .editor p:first-child { margin-top: 0; }
+.editor p { margin: 0 0 10px; }
+.editor ul, .editor ol { margin: 0 0 10px; padding-left: 22px; }
+.editor a { color: var(--admin-accent, #d7261e); text-decoration: underline; }

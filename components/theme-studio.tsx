@@ -65,7 +65,7 @@ import {
 } from 'lucide-react'
 import SectionInspector, {
   renderPanel,
-  text, image, textarea, select, toggle, range, color,
+  text, image, textarea, select, toggle, range, color, deliveryAreas,
   type PanelSchema, type FieldCtx,
 } from '@/components/theme-section-inspector'
 import ThemeInspectorStyles from '@/components/theme-inspector-styles'
@@ -84,7 +84,7 @@ type AnyMap = Record<string, any>
 type Section = { id: string; type: string; enabled?: boolean; settings?: AnyMap; blocks?: AnyMap[] }
 type PageRow = { id: string; title: string; handle: string; bodyHtml: string | null; status: string; seoTitle?: string | null; seoDescription?: string | null }
 type Snapshot = { theme: AnyMap; templates: Record<string, Section[]>; page: string; selectedId: string }
-type Props = { initial: { theme: AnyMap; sections: Section[]; navigation: any[]; draft: boolean; legacyBlocks?: LegacyBlock[]; openPage?: string; products?: any[]; collections?: any[]; dataError?: string } }
+type Props = { initial: { theme: AnyMap; sections: Section[]; navigation: any[]; draft: boolean; legacyBlocks?: LegacyBlock[]; openPage?: string; openSettings?: string; products?: any[]; collections?: any[]; dataError?: string } }
 
 // The four page templates the editor manages. Home is a full section builder;
 // the other three append a merchant-editable content zone below that page's own
@@ -310,7 +310,7 @@ const THEME_CATEGORIES: ThemeCategory[] = [
   { key: 'delivery', label: 'Delivery bar', icon: Truck, group: 'delivery', panels: [
     { title: 'Delivery bar', fields: [
       toggle('Show the delivery bar under the header', 'enabled', true),
-      textarea('Delivery areas, one per line: Area | delivery time', 'areas', 'Beirut | Tomorrow\nMetn | Within 24–48 hours'),
+      deliveryAreas('Delivery areas and times', 'areas'),
       [text('Label', 'label', 'Delivering to'), text('Time label', 'etaLabel', 'Delivery')],
       text('Note (computers only)', 'note', 'Cash on delivery'),
     ] },
@@ -434,11 +434,13 @@ export default function ThemeStudio({ initial }: Props) {
   const [pageBusy, setPageBusy] = useState(false)
   const [selectedId, setSelectedId] = useState('')
   const [device, setDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
-  const [sideTab, setSideTab] = useState<'sections' | 'theme' | 'history'>('sections')
-  const [activeCategoryKey, setActiveCategoryKey] = useState('')
-  const [drawerMode, setDrawerMode] = useState<'section' | 'theme'>('section')
+  const [sideTab, setSideTab] = useState<'sections' | 'theme' | 'history'>(THEME_CATEGORIES.some(c => c.key === initial.openSettings) ? 'theme' : 'sections')
+  // ?settings=<key> (e.g. delivery, linked from Shipping) opens that Theme settings panel.
+  const startCategory = THEME_CATEGORIES.some(c => c.key === initial.openSettings) ? initial.openSettings! : ''
+  const [activeCategoryKey, setActiveCategoryKey] = useState(startCategory)
+  const [drawerMode, setDrawerMode] = useState<'section' | 'theme'>(startCategory ? 'theme' : 'section')
   const [drawerTab, setDrawerTab] = useState<'content' | 'design' | 'advanced'>('content')
-  const [drawer, setDrawer] = useState(false)
+  const [drawer, setDrawer] = useState(Boolean(startCategory))
   const [picker, setPicker] = useState(false)
   const [pickerQuery, setPickerQuery] = useState('')
   const [pickerTab, setPickerTab] = useState<'sections' | 'presets'>('sections')

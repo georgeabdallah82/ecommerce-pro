@@ -205,7 +205,7 @@ export default function AdminNav({
           </nav>
           <div className={styles.userCard}>
             <span className={styles.userAvatar}>{initials}</span>
-            <span className={styles.userText}><strong>{name || 'Administrator'}</strong><small>{role ? role.replace(/_/g, ' ').toLowerCase() : email}</small></span>
+            <span className={styles.userText}><strong>{name || 'Administrator'}</strong><small>{role || email}</small></span>
             <form action="/api/auth/logout" method="post">
               <button className={styles.userSignOut} type="submit" aria-label="Sign out" title="Sign out"><LogOut size={15} aria-hidden="true" /></button>
             </form>

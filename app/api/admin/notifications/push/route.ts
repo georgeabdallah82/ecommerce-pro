@@ -5,7 +5,7 @@ import { hasPushSubscription, removePushSubscription, savePushSubscription, send
 
 async function staffUser() {
   const user = await getCurrentUser()
-  if (!user || !hasPermission(user.role, 'orders.view')) return null
+  if (!user || !hasPermission(user, 'orders.view')) return null
   return user
 }
 

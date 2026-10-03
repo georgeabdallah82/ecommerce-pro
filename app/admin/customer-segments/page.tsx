@@ -11,5 +11,5 @@ export default async function CustomerSegmentsPage() {
     : []) as { segmentId: string; _count: { _all: number } }[]
   const countBySegment = Object.fromEntries(counts.map(c => [c.segmentId, c._count._all]))
   const rows = segments.map(segment => ({ ...segment, _count: { members: countBySegment[segment.id] || 0 } }))
-  return <CustomerSegmentsAdmin initial={JSON.parse(JSON.stringify(rows))} canManage={hasPermission(user.role, 'customerSegments.manage')} />
+  return <CustomerSegmentsAdmin initial={JSON.parse(JSON.stringify(rows))} canManage={hasPermission(user, 'customerSegments.manage')} />
 }

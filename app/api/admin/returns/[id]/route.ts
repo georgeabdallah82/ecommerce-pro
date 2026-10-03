@@ -78,7 +78,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (action === 'receive') {
       const requestedRefund = Number(body.refundAmount || 0)
       if (!Number.isInteger(requestedRefund) || requestedRefund < 0) return json({ error: 'refundAmount must be a non-negative integer' }, { status: 400 })
-      if (requestedRefund > 0 && !hasPermission(actor.role, 'orders.refund')) throw new Error('FORBIDDEN')
+      if (requestedRefund > 0 && !hasPermission(actor, 'orders.refund')) throw new Error('FORBIDDEN')
       const itemConditions: Record<string, unknown> = body.itemConditions && typeof body.itemConditions === 'object' ? body.itemConditions : {}
 
       const result = await db.$transaction(async tx => {

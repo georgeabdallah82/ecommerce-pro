@@ -260,7 +260,7 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
           {showTrustBadges && (
             <div className="focalTrustGrid">
               <span>✓ Secure checkout</span>
-              <span>✓ Easy returns</span>
+              {product.returnsEnabled !== false && <span>✓ Easy returns</span>}
               <FreeDeliveryBadge />
             </div>
           )}

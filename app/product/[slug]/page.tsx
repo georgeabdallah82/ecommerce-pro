@@ -10,6 +10,7 @@ import type { Metadata } from 'next'
 import { Footer } from '@/components/footer'
 import AliExpressProduct from '@/components/aliexpress-product'
 import { descriptionHtml } from '@/lib/sanitize-html'
+import { getReturnsEnabled } from '@/lib/policies'
 import { absoluteUrl, getSiteSeo, isShareableImage, metaText, shareMeta, siteUrl } from '@/lib/seo'
 import { themeTemplates } from '@/lib/theme-templates'
 
@@ -156,6 +157,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     slug: product.slug,
     description: product.description,
     descriptionHtml: descriptionHtml(product.description || product.shortDescription),
+    returnsEnabled: await getReturnsEnabled(),
     shortDescription: product.shortDescription,
     brand: product.brand,
     vendor: product.vendor,

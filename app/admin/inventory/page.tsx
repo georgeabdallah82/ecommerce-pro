@@ -17,5 +17,5 @@ export default async function Inventory() {
     }),
     db.storeLocation.findMany({ orderBy: [{ isDefault: 'desc' }, { name: 'asc' }] }),
   ])
-  return <InventoryAdminPro initial={JSON.parse(JSON.stringify(rows))} locations={JSON.parse(JSON.stringify(locations))} canManage={hasPermission(user.role, 'inventory.manage')} />
+  return <InventoryAdminPro initial={JSON.parse(JSON.stringify(rows))} locations={JSON.parse(JSON.stringify(locations))} canManage={hasPermission(user, 'inventory.manage')} />
 }
