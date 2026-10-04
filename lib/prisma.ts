@@ -967,6 +967,14 @@ function getMockHandler(model: string) {
       if (model === 'orderItem') {
         const w = args?.where || {}
         if (w.orderId) return [...(mockOrders.find((o: any) => o.id === w.orderId)?.items || [])]
+        // The product page's "Verified purchase" check: items of one product, from orders by
+        // given customers in given statuses, with the order's userId selected.
+        if (w.productId !== undefined || w.order) {
+          const userIds = w.order?.userId?.in ? new Set(w.order.userId.in) : null
+          return mockOrders
+            .filter((o: any) => (!userIds || userIds.has(o.userId)) && (!w.order?.status?.in || w.order.status.in.includes(o.status)))
+            .flatMap((o: any) => (o.items || []).filter((it: any) => w.productId === undefined || it.productId === w.productId).map((it: any) => ({ ...it, order: { userId: o.userId } })))
+        }
         return mockOrders.flatMap((o: any) => o.items || [])
       }
       if (model === 'productVariant') {

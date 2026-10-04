@@ -31,6 +31,10 @@ export default function Checkout() {
   const router = useRouter()
   const [savedCoupon, setSavedCoupon] = useState('')
   const [recoveredEmail, setRecoveredEmail] = useState('')
+  // Signed-in customers get their account email and name filled in (only into empty boxes).
+  const emailRef = useRef<HTMLInputElement>(null)
+  const firstNameRef = useRef<HTMLInputElement>(null)
+  const lastNameRef = useRef<HTMLInputElement>(null)
   const checkoutToken = useRef('')
   const recoveryStarted = useRef(false)
 
@@ -159,7 +163,7 @@ export default function Checkout() {
       loadStoreSettings(),
       // Wallet and coins belong to an account: only ask for them once we know someone is
       // signed in (guests used to get two 401s logged on every checkout visit).
-      fetch('/api/auth/session',{cache:'no-store'}).then(async response=>{const data=await response.json().catch(()=>({authenticated:false}));return Boolean(response.ok&&data.authenticated)}).catch(()=>false).then(async isAuthenticated=>{
+      fetch('/api/auth/session',{cache:'no-store'}).then(async response=>{const data=await response.json().catch(()=>({authenticated:false}));const ok=Boolean(response.ok&&data.authenticated);if(ok&&active)fillAccountContact(data.user);return ok}).catch(()=>false).then(async isAuthenticated=>{
         if(!isAuthenticated)return [false,null,null] as const
         const read=(url:string)=>fetch(url,{cache:'no-store'}).then(async response=>{if(!response.ok)return null;return response.json().catch(()=>null)})
         const [wallet,coins]=await Promise.all([read('/api/account/wallet'),read('/api/account/coins')])
@@ -168,6 +172,14 @@ export default function Checkout() {
     ]).then(([storeSettings,[isAuthenticated,wallet,coins]])=>{if(active){setSettings(storeSettings);setAuthenticated(isAuthenticated);setSessionLoaded(true);if(isAuthenticated&&wallet){setWalletBalance(Math.max(0,Number(wallet.balance||0)));setWalletCurrency(wallet.currency||'USD')}else{setWalletBalance(0)}if(isAuthenticated&&coins){setCoinBalance(Math.max(0,Number(coins.balance||0)))}else{setCoinBalance(0)}}}).catch(()=>{if(active){setSettings(defaultSettings);setAuthenticated(false);setSessionLoaded(true);setWalletBalance(0);setCoinBalance(0);setSettingsError("We couldn't load the latest checkout options, so cash on delivery is shown. Your order is still checked by the store when you place it.")}})
     return ()=>{active=false}
   },[settingsAttempt])
+
+  function fillAccountContact(user: { email?: string | null; name?: string | null } | null | undefined) {
+    const fill = (input: HTMLInputElement | null, value: string) => { if (input && !input.value.trim() && value) input.value = value }
+    const parts = String(user?.name || '').trim().split(/\s+/).filter(Boolean)
+    fill(emailRef.current, String(user?.email || '').trim())
+    fill(firstNameRef.current, parts[0] || '')
+    fill(lastNameRef.current, parts.slice(1).join(' '))
+  }
 
   useEffect(()=>{
     if(!clientCheckout) return
@@ -245,8 +257,8 @@ export default function Checkout() {
     {!settings && <div className="alert">Loading checkout settings…</div>}
     {guestBlocked && <div className="alert danger">Guest checkout is disabled. <Link className="textLink" href="/account/login?next=%2Fcheckout">Sign in</Link> to continue.</div>}
     {settingsError && <div className="alert">{settingsError} <button type="button" className="textButton" onClick={()=>setSettingsAttempt(n=>n+1)}>Try again</button></div>}
-    <h3>Contact</h3><label className="fieldLabel">Email<input className="input" required name="email" type="email" autoComplete="email" inputMode="email" placeholder="you@example.com" defaultValue={recoveredEmail} key={recoveredEmail} onBlur={e => captureCheckoutProgress(e.target.value.trim())} /></label><label className="fieldLabel">Phone (WhatsApp)<input className="input" required name="phone" type="tel" autoComplete="tel" inputMode="tel" placeholder="e.g. 70 123 456" minLength={6} /><span className="muted" style={{fontSize:12}}>The courier calls this number on delivery.</span></label>
-    <h3>Delivery</h3><div className="grid two"><label className="fieldLabel">First name<input className="input" required name="firstName" autoComplete="given-name" placeholder="First name" /></label><label className="fieldLabel">Last name<input className="input" required name="lastName" autoComplete="family-name" placeholder="Last name" /></label></div>
+    <h3>Contact</h3><label className="fieldLabel">Email<input ref={emailRef} className="input" required name="email" type="email" autoComplete="email" inputMode="email" placeholder="you@example.com" defaultValue={recoveredEmail} key={recoveredEmail} onBlur={e => captureCheckoutProgress(e.target.value.trim())} /></label><label className="fieldLabel">Phone (WhatsApp)<input className="input" required name="phone" type="tel" autoComplete="tel" inputMode="tel" placeholder="e.g. 70 123 456" minLength={6} /><span className="muted" style={{fontSize:12}}>The courier calls this number on delivery.</span></label>
+    <h3>Delivery</h3><div className="grid two"><label className="fieldLabel">First name<input ref={firstNameRef} className="input" required name="firstName" autoComplete="given-name" placeholder="First name" /></label><label className="fieldLabel">Last name<input ref={lastNameRef} className="input" required name="lastName" autoComplete="family-name" placeholder="Last name" /></label></div>
     <label className="fieldLabel">Address<input className="input" required name="line1" autoComplete="address-line1" placeholder="Street address" /></label><label className="fieldLabel">Apartment, floor, etc. <span className="muted">(optional)</span><input className="input" name="line2" autoComplete="address-line2" placeholder="Apartment, floor, etc." /></label>
     <div className="grid two"><label className="fieldLabel">City<input className="input" required name="city" autoComplete="address-level2" placeholder="City" /></label><label className="fieldLabel">Area / region <span className="muted">(optional)</span><input className="input" name="region" autoComplete="address-level1" placeholder="e.g. Metn, Keserwan" key={deliveryArea} defaultValue={deliveryArea} /></label></div><div className={needsPostalCode ? 'grid two' : 'grid'}>{needsPostalCode && <label className="fieldLabel">Postal code <span className="muted">(optional)</span><input className="input" name="postalCode" autoComplete="postal-code" placeholder="Postal code" /></label>}<label className="fieldLabel">Country<input className="input" required name="country" autoComplete="country-name" placeholder="Country" value={country} onChange={e => setCountry(e.target.value)} onBlur={e => loadShippingRates(e.target.value)} /></label></div>
     <h3>Delivery method</h3>{shippingLoading && !shippingRates.length ? <div className="alert">Loading delivery options…</div> : shippingRates.length > 1 ? <div className="grid" style={{gap:8}}>{shippingRates.map(rate => <label className="fieldLabel" key={rate.id || 'standard'} style={{flexDirection:'row',alignItems:'center',gap:10,cursor:'pointer'}}><input type="radio" name="shippingRateOption" checked={selectedRateId===(rate.id||'')} onChange={()=>setSelectedRateId(rate.id||'')} /><span style={{flex:1}}>{rate.name}{rate.estimatedDays?` · ${rate.estimatedDays} day${rate.estimatedDays===1?'':'s'}`:''}</span><strong>{rate.freeAbove!==null && subtotal>=rate.freeAbove ? 'Free' : money(rate.price)}</strong></label>)}</div> : shippingRates[0] ? <p className="muted">{shippingRates[0].name}{shippingRates[0].estimatedDays?` · ${shippingRates[0].estimatedDays} day${shippingRates[0].estimatedDays===1?'':'s'}`:''} — {shippingRates[0].freeAbove!==null && subtotal>=shippingRates[0].freeAbove ? 'Free' : money(shippingRates[0].price)}</p> : null}

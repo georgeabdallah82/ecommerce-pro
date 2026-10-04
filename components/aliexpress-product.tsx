@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Check, ChevronDown, ChevronRight, Heart, MessageSquareText, Minus, Plus, Share2, ShoppingBag, Star } from 'lucide-react'
+import { BadgeCheck, Check, ChevronDown, ChevronRight, Heart, MessageSquareText, Minus, Plus, Share2, ShoppingBag, Star } from 'lucide-react'
 import { useCart } from '@/components/cart-provider'
 import { useWishlist } from '@/components/use-wishlist'
 import StorefrontSections, { ProductCard, QuickView, StarRow, StoreImage, formatSold, img, money } from '@/components/storefront-sections'
@@ -333,7 +333,8 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
                 <div className={`aliReviewItem${r.featured ? ' aliReviewFeatured' : ''}`} key={r.id}>
                   <div className="aliReviewHead">
                     <StarRow rating={Number(r.rating || 0)} size={13} />
-                    <strong>{r.user?.name || 'Verified buyer'}</strong>
+                    <strong>{r.user?.name || 'Customer'}</strong>
+                    {r.verified && <span className="aliReviewVerified"><BadgeCheck size={13} aria-hidden="true" /> Verified purchase</span>}
                     {r.featured && <span className="aliReviewFeaturedBadge">Featured</span>}
                     <span>{new Date(r.createdAt).toLocaleDateString()}</span>
                   </div>
