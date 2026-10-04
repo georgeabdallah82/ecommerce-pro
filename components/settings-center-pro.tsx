@@ -52,7 +52,7 @@ const defaultPaymentConfig: PaymentConfig = {
   apiPassword: '',
 }
 
-export default function SettingsCenterPro({ initial }: { initial: any[] }) {
+export default function SettingsCenterPro({ initial, metaCapiTokenSet = false }: { initial: any[]; metaCapiTokenSet?: boolean }) {
   const map = useMemo(() => new Map(initial.map(x => [x.key, x.value])), [initial])
   const [tab, setTab] = useState('General')
   const [search, setSearch] = useState('')
@@ -78,11 +78,16 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
     'tracking.metaPixelId': map.get('tracking.metaPixelId') || '',
     'tracking.gaMeasurementId': map.get('tracking.gaMeasurementId') || '',
     'tracking.tiktokPixelId': map.get('tracking.tiktokPixelId') || '',
+    'tracking.metaCapiTestCode': map.get('tracking.metaCapiTestCode') || '',
     'maintenance.launchAt': map.get('maintenance.launchAt') || '',
     'maintenance.headline': map.get('maintenance.headline') || "We're launching soon",
     'maintenance.message': map.get('maintenance.message') || "We're putting the finishing touches on something great. Check back soon.",
   })
   const savedPolicy = useRef<Record<string, string>>(values)
+  // The Conversions API token is write-only: typed in to save or replace it, never shown back.
+  const [capiToken, setCapiToken] = useState('')
+  const [capiTokenSaved, setCapiTokenSaved] = useState(metaCapiTokenSet)
+  const [capiCheck, setCapiCheck] = useState('')
   const [flags, setFlags] = useState<Record<string, boolean>>(() => ({
     ...Object.fromEntries([
       'payment.cod', 'payment.card', 'payment.bank', 'payment.wallet',
@@ -117,12 +122,14 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
       const policyKeys = ['store.address', 'contact.email', 'contact.phone', 'store.country', 'policy.returnDays', 'policy.refundTime', 'policy.damageReportHours']
       const policyChanged = policyKeys.some(key => (values[key] || '') !== (savedPolicy.current[key] || ''))
       if (policyChanged) settings['policy.updatedAt'] = new Date().toISOString()
+      if (capiToken.trim()) settings['tracking.metaCapiToken'] = capiToken.trim()
       const [, savedPayment] = await Promise.all([
         api('/api/admin/settings', { method: 'PATCH', body: JSON.stringify({ settings }) }),
         tab === 'Payments' ? api('/api/admin/payment-provider', { method: 'PATCH', body: JSON.stringify(paymentConfig) }) : Promise.resolve(null),
       ])
       if (policyChanged) savedPolicy.current = { ...values }
       if (savedPayment) setPaymentConfig({ ...defaultPaymentConfig, ...savedPayment, apiPassword: '' })
+      if (capiToken.trim()) { setCapiTokenSaved(true); setCapiToken('') }
       setNotice('All settings saved')
     } catch (e) {
       setNotice(e instanceof Error ? e.message : 'Unable to save settings')
@@ -334,6 +341,19 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
                 <Field label="Meta (Facebook) Pixel ID" value={values['tracking.metaPixelId']} onChange={v => set('tracking.metaPixelId', v)} />
                 <Field label="Google Analytics measurement ID" value={values['tracking.gaMeasurementId']} onChange={v => set('tracking.gaMeasurementId', v)} />
                 <Field label="TikTok Pixel ID" value={values['tracking.tiktokPixelId']} onChange={v => set('tracking.tiktokPixelId', v)} />
+              </div>
+            </Card>
+            <Card title="Meta Conversions API (server)" desc="Your store's server also reports each sale straight to Meta, so sales still count when a shopper's browser blocks the pixel. Meta counts each sale once even when both the pixel and the server report it.">
+              <label className={ui.fieldLabel}>Access token
+                <input className={ui.input} type="password" autoComplete="off" value={capiToken} onChange={e => setCapiToken(e.target.value)} placeholder={capiTokenSaved ? 'Saved -- paste a new one to replace it' : 'Paste the token from Events Manager'} />
+              </label>
+              <p className={ui.muted}>Get it in Meta Events Manager › your dataset › Settings › Conversions API › Generate access token.{capiTokenSaved ? ' A token is saved.' : ''}</p>
+              {capiTokenSaved && <button type="button" className={`${ui.btn} ${ui.btnDanger} ${ui.btnSmall}`} onClick={async () => { try { await api('/api/admin/settings', { method: 'PATCH', body: JSON.stringify({ key: 'tracking.metaCapiToken', value: '' }) }); setCapiTokenSaved(false); setCapiCheck('Token removed. The server no longer reports sales to Meta.') } catch (e) { setCapiCheck(e instanceof Error ? e.message : 'Could not remove the token') } }}>Remove token</button>}
+              <Field label="Test event code (optional, for checking)" value={values['tracking.metaCapiTestCode']} onChange={v => set('tracking.metaCapiTestCode', v)} />
+              <p className={ui.muted}>To check the connection: in Events Manager open Test events, copy the test code shown there, paste it here, Save, then press Check connection. Clear the code afterwards so real sales aren't marked as tests.</p>
+              <div className="inline" style={{ gap: 10 }}>
+                <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={async () => { setCapiCheck('Checking…'); try { await api('/api/admin/tracking/meta-test', { method: 'POST' }); setCapiCheck('Sent. A test Purchase should appear in Events Manager › Test events within a minute.') } catch (e) { setCapiCheck(e instanceof Error ? e.message : 'Check failed') } }}>Check connection</button>
+                {capiCheck && <span className={ui.muted}>{capiCheck}</span>}
               </div>
             </Card>
             <ProductFeedCard />

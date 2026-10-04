@@ -20,6 +20,7 @@ import { PaymentMethod } from '@prisma/client'
 import { ZodError } from 'zod'
 import { newOrderNumber } from '@/lib/order-number'
 import { runInBackground } from '@/lib/background'
+import { adContextFromRequest, sendMetaPurchase } from '@/lib/meta-capi'
 import { bundleDiscount } from '@/lib/bundles'
 
 function stableSerialize(value: unknown): string {
@@ -467,6 +468,8 @@ export async function POST(req: Request) {
     runInBackground(sendNewOrderPush({ id: order.id, orderNumber: order.orderNumber, grandTotal: order.grandTotal, currency: order.currency }).catch(error => console.error('[push] new-order notification failed', error)))
     if (paymentMethod !== PaymentMethod.CARD || order.grandTotal === 0) {
       runInBackground(sendOrderConfirmationEmail(order.id).catch(error => console.error('[email] order confirmation failed', error)))
+      // Report the sale to Meta from the server too (card orders are reported once paid).
+      runInBackground(sendMetaPurchase(order.id, { context: adContextFromRequest(req), storeUrl: new URL(req.url).origin }))
     }
     runInBackground(dispatchWebhookEvent('order.created', { id: order.id, orderNumber: order.orderNumber, email: order.email, grandTotal: order.grandTotal, currency: order.currency, status: order.status, paymentStatus: order.paymentStatus }).catch(error => console.error('[webhook] order.created dispatch failed', error)))
     await audit(user?.id, 'order.created', 'Order', order.id, { orderNumber: order.orderNumber, total: grandTotal, paymentMethod, paymentProvider: paymentMethod === PaymentMethod.CARD ? paymentProvider.name : paymentMethod.toLowerCase(), coinsUsed: requestedCoins, coinDiscount, giftCardAmount: giftCardDiscount })
