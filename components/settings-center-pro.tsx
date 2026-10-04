@@ -111,18 +111,18 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
     setSaving(true)
     setNotice('')
     try {
-      for (const [key, value] of Object.entries(values)) await api('/api/admin/settings', { method: 'PATCH', body: JSON.stringify({ key, value }) })
+      // One request for everything; the server writes only what changed.
+      const settings: Record<string, string> = { ...values, ...Object.fromEntries(Object.entries(flags).map(([key, value]) => [key, String(value)])) }
       // The policy pages show "Last updated"; move it forward only when their wording changed.
       const policyKeys = ['store.address', 'contact.email', 'contact.phone', 'store.country', 'policy.returnDays', 'policy.refundTime', 'policy.damageReportHours']
-      if (policyKeys.some(key => (values[key] || '') !== (savedPolicy.current[key] || ''))) {
-        await api('/api/admin/settings', { method: 'PATCH', body: JSON.stringify({ key: 'policy.updatedAt', value: new Date().toISOString() }) })
-        savedPolicy.current = { ...values }
-      }
-      for (const [key, value] of Object.entries(flags)) await api('/api/admin/settings', { method: 'PATCH', body: JSON.stringify({ key, value: String(value) }) })
-      if (tab === 'Payments') {
-        const saved = await api('/api/admin/payment-provider', { method: 'PATCH', body: JSON.stringify(paymentConfig) })
-        setPaymentConfig({ ...defaultPaymentConfig, ...saved, apiPassword: '' })
-      }
+      const policyChanged = policyKeys.some(key => (values[key] || '') !== (savedPolicy.current[key] || ''))
+      if (policyChanged) settings['policy.updatedAt'] = new Date().toISOString()
+      const [, savedPayment] = await Promise.all([
+        api('/api/admin/settings', { method: 'PATCH', body: JSON.stringify({ settings }) }),
+        tab === 'Payments' ? api('/api/admin/payment-provider', { method: 'PATCH', body: JSON.stringify(paymentConfig) }) : Promise.resolve(null),
+      ])
+      if (policyChanged) savedPolicy.current = { ...values }
+      if (savedPayment) setPaymentConfig({ ...defaultPaymentConfig, ...savedPayment, apiPassword: '' })
       setNotice('All settings saved')
     } catch (e) {
       setNotice(e instanceof Error ? e.message : 'Unable to save settings')

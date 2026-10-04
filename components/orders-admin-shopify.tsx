@@ -134,9 +134,18 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone }
     if (!eligible.length) { setError(`No selected orders can move to ${status.toLowerCase()}.`); return }
     setBusy('bulk'); setError(''); setNotice('')
     try {
-      for (const id of eligible) await api('/api/admin/orders', { method: 'PATCH', body: JSON.stringify({ id, status }) })
+      // A few at a time instead of one by one; each order is still updated (and checked) on its own.
+      const queue = [...eligible]
+      const failures: string[] = []
+      await Promise.all(Array.from({ length: Math.min(3, queue.length) }, async () => {
+        for (let id = queue.shift(); id; id = queue.shift()) {
+          try { await api('/api/admin/orders', { method: 'PATCH', body: JSON.stringify({ id, status }) }) } catch (e) { failures.push(e instanceof Error ? e.message : 'Unable to update order') }
+        }
+      }))
       await load(page)
-      setNotice(`${eligible.length} order${eligible.length === 1 ? '' : 's'} updated.`)
+      const done = eligible.length - failures.length
+      if (failures.length) setError(`${failures.length} order${failures.length === 1 ? '' : 's'} could not be updated: ${failures[0]}`)
+      if (done) setNotice(`${done} order${done === 1 ? '' : 's'} updated.`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unable to update selected orders')
     } finally {
