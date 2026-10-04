@@ -3830,6 +3830,9 @@ body > .footer {
 .aliReviewItem p{margin:0;color:var(--store-muted,#746b64);line-height:1.6}
 .aliReviewFeatured{border-color:var(--store-primary,#d42a2a)}
 .aliReviewFeaturedBadge{margin-left:0!important;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--store-primary,#d42a2a)!important;background:var(--store-secondary,#fff0e8);border-radius:999px;padding:2px 8px}
+.aliReviewHead .aliReviewVerified{display:inline-flex;align-items:center;gap:4px;margin-left:0;font-size:12px;font-weight:600;color:#15803d;background:#ecfdf3;border-radius:999px;padding:2px 8px 2px 6px}
+.aliReviewHead .aliReviewVerified svg{color:#15803d;flex:none}
+.aliReviewHead .focalStars{color:var(--store-primary,#d42a2a);margin-left:0;font-size:inherit}
 
 @media(max-width:900px){
   .aliProductLayout{grid-template-columns:1fr;gap:24px}

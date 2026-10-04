@@ -58,6 +58,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 // everything left is genuinely merchant-addable content for this page.
 const PRODUCT_ZONE_EXCLUDE = new Set(['header', 'announcement', 'footer', 'main_product'])
 
+function reviewerName(name: string | null | undefined) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean)
+  if (!parts.length) return ''
+  return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0].toUpperCase()}.` : parts[0]
+}
+
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   // Theme, product, the hidden-products list and the signed-in user don't depend on each
@@ -121,7 +127,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   // a collection_grid/collection_carousel section -- the two default sections
   // there (product_recommendations, newsletter) never need it.
   const needsCollections = sections.some((s: any) => s.type === 'collection_grid' || s.type === 'collection_carousel')
-  const [related, [ownStats], purchase, existingReview, zoneCollections] = await Promise.all([
+  const reviewerIds = [...new Set(product.reviews.map(review => review.userId))]
+  const [related, [ownStats], purchase, existingReview, zoneCollections, reviewerPurchases] = await Promise.all([
     withProductStats(withCardStock(relatedRaw)),
     getProductStats([product.id]).then(stats => [stats[product.id]]),
     currentUser
@@ -132,7 +139,15 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       : null,
     currentUser ? db.review.findFirst({ where: { productId: product.id, userId: currentUser.id }, select: { id: true } }) : null,
     needsCollections ? db.collection.findMany({ where: { isActive: true }, take: 12, orderBy: { sortOrder: 'asc' } }) : Promise.resolve([]),
+    // Which reviewers actually bought this product -- shown as a "Verified purchase" badge.
+    reviewerIds.length
+      ? db.orderItem.findMany({
+          where: { productId: product.id, order: { userId: { in: reviewerIds }, status: { in: ['CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED'] } } },
+          select: { order: { select: { userId: true } } },
+        }).catch(() => []) as Promise<Array<{ order: { userId: string } | null }>>
+      : Promise.resolve([] as Array<{ order: { userId: string } | null }>),
   ])
+  const verifiedBuyers = new Set(reviewerPurchases.map(item => item.order?.userId).filter(Boolean))
   const reviewEligibility: 'guest' | 'not_purchased' | 'already_reviewed' | 'can_review' = !currentUser
     ? 'guest'
     : existingReview
@@ -199,7 +214,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       body: review.body,
       createdAt: review.createdAt,
       featured: review.featured,
-      user: review.user ? { name: review.user.name } : null,
+      verified: verifiedBuyers.has(review.userId),
+      // First name and last initial only ("Maya H.") -- enough for trust, without a full name.
+      user: review.user ? { name: reviewerName(review.user.name) } : null,
     })),
     tags: product.tags.map((tag) => ({ id: tag.id, value: tag.value })),
     collections: product.collections.map((item) => ({
