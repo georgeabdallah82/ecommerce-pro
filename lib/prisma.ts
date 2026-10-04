@@ -991,6 +991,7 @@ function getMockHandler(model: string) {
     },
     findUnique: async (args: any) => {
       const where = args?.where || {}
+      if (model === 'mediaAsset' && where.id) return mockMediaAssets.find((x: any) => x.id === where.id) || null
       if (model === 'paymentTransaction' && where.id) {
         return findMockPaymentTransaction(where)?.transaction || null
       }
@@ -1788,6 +1789,10 @@ function getMockHandler(model: string) {
       return args?.data || {}
     },
     delete: async (args?: any) => {
+      if (model === 'mediaAsset' && args?.where?.id) {
+        const i = mockMediaAssets.findIndex((x: any) => x.id === args.where.id)
+        return i >= 0 ? mockMediaAssets.splice(i, 1)[0] : {}
+      }
       if (model === 'coupon' && args?.where?.id) {
         const i = mockCoupons.findIndex((x: any) => x.id === args.where.id)
         return i >= 0 ? mockCoupons.splice(i, 1)[0] : {}
@@ -2016,7 +2021,7 @@ function getMockHandler(model: string) {
         return list.length
       }
       if (model === 'blogPost') return mockBlogPosts.length
-      if (model === 'mediaAsset') return mockMediaAssets.length
+      if (model === 'mediaAsset') return args?.where?.url !== undefined ? mockMediaAssets.filter((x: any) => x.url === args.where.url).length : mockMediaAssets.length
       // The admin dashboard's "pending reviews" stat tile relies on this -- without where
       // filtering it fell to the generic return 0 below and always showed 0 regardless of how
       // many reviews were actually awaiting moderation.

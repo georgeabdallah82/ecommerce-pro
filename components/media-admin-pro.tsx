@@ -1,9 +1,10 @@
 'use client'
 import { useMemo, useRef, useState } from 'react'
-import { Copy, Grid2X2, Image as ImageIcon, List, Plus, Search, UploadCloud, X } from 'lucide-react'
+import { Copy, Grid2X2, Image as ImageIcon, List, Plus, Search, Trash2, UploadCloud, X } from 'lucide-react'
 import s from './admin-media.module.css'
 import ui from './admin-ui.module.css'
 import { optimizeImage } from '@/lib/optimize-image'
+import { useConfirm } from './admin-confirm'
 
 export default function MediaAdminPro({ initial }: { initial: any[] }) {
   const [rows, setRows] = useState(initial || [])
@@ -17,6 +18,8 @@ export default function MediaAdminPro({ initial }: { initial: any[] }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const fileInput = useRef<HTMLInputElement>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
+  const confirm = useConfirm()
 
   const shown = useMemo(() => rows.filter(x => !q || `${x.name} ${x.alt || ''}`.toLowerCase().includes(q.toLowerCase())), [rows, q])
 
@@ -58,6 +61,24 @@ export default function MediaAdminPro({ initial }: { initial: any[] }) {
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to add asset') } finally { setBusy(false) }
   }
 
+  async function remove(asset: any) {
+    setError('')
+    setDeleting(asset.id)
+    try {
+      // Warn first if the image is still shown somewhere in the store.
+      const u = await fetch(`/api/admin/media/${asset.id}`).then(r => r.ok ? r.json() : { usedIn: [] }).catch(() => ({ usedIn: [] }))
+      const usedIn: string[] = Array.isArray(u.usedIn) ? u.usedIn : []
+      const message = usedIn.length
+        ? `This image is still used in: ${usedIn.join(' · ')}. After deleting, it will no longer show there. This cannot be undone.`
+        : 'It is not used anywhere in your store. This cannot be undone.'
+      if (!(await confirm({ title: `Delete "${asset.name}"?`, message, confirmLabel: usedIn.length ? 'Delete anyway' : 'Delete file' }))) return
+      const r = await fetch(`/api/admin/media/${asset.id}`, { method: 'DELETE' })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(d.error || 'Unable to delete file')
+      setRows(p => p.filter(x => x.id !== asset.id))
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to delete file') } finally { setDeleting(null) }
+  }
+
   function resetForm() { setForm({ url: '', name: '', alt: '' }); setFile(null); setShow(false) }
   function openModal(t: 'upload' | 'url') { setTab(t); setError(''); setShow(true) }
   const copy = async (url: string) => { await navigator.clipboard?.writeText(url) }
@@ -81,11 +102,11 @@ export default function MediaAdminPro({ initial }: { initial: any[] }) {
       ? <div className={s.mediaGrid}>{shown.map(x => <article className={s.mediaCard} key={x.id}>
           <div className={s.mediaThumb}>{x.url ? <img src={x.url} alt={x.alt || x.name || ''} onError={e => { e.currentTarget.style.display = 'none' }} /> : <ImageIcon size={28} />}</div>
           <div className={s.mediaMeta}><strong title={x.name}>{x.name}</strong><span className={ui.muted}>{x.mimeType || 'Image'}</span>
-            <div className={`inline ${s.inline}`}><button className={ui.iconBtn} title="Copy URL" onClick={() => copy(x.url)}><Copy size={14} /></button><a className={ui.iconBtn} href={x.url} target="_blank" rel="noreferrer">↗</a></div>
+            <div className={`inline ${s.inline}`}><button className={ui.iconBtn} title="Copy URL" onClick={() => copy(x.url)}><Copy size={14} /></button><a className={ui.iconBtn} href={x.url} target="_blank" rel="noreferrer">↗</a><button className={`${ui.iconBtn} ${ui.iconBtnDanger}`} title="Delete file" aria-label={`Delete ${x.name}`} disabled={deleting === x.id} onClick={() => remove(x)}><Trash2 size={14} /></button></div>
           </div>
         </article>)}</div>
-      : <div className={ui.card}><table className={ui.table}><thead><tr><th>Preview</th><th>Name</th><th>Alt text</th><th>Type</th><th>URL</th></tr></thead><tbody>
-          {shown.map(x => <tr key={x.id}><td><div className={s.mediaListThumb}><img src={x.url} alt={x.alt || ''} /></div></td><td><strong>{x.name}</strong></td><td>{x.alt || '—'}</td><td>{x.mimeType || 'Image'}</td><td><button className={ui.textButton} onClick={() => copy(x.url)}>Copy URL</button></td></tr>)}
+      : <div className={ui.card}><table className={ui.table}><thead><tr><th>Preview</th><th>Name</th><th>Alt text</th><th>Type</th><th>URL</th><th></th></tr></thead><tbody>
+          {shown.map(x => <tr key={x.id}><td><div className={s.mediaListThumb}><img src={x.url} alt={x.alt || ''} /></div></td><td><strong>{x.name}</strong></td><td>{x.alt || '—'}</td><td>{x.mimeType || 'Image'}</td><td><button className={ui.textButton} onClick={() => copy(x.url)}>Copy URL</button></td><td><button className={`${ui.iconBtn} ${ui.iconBtnDanger}`} title="Delete file" aria-label={`Delete ${x.name}`} disabled={deleting === x.id} onClick={() => remove(x)}><Trash2 size={14} /></button></td></tr>)}
         </tbody></table></div>}
     {!shown.length && <div className={`${ui.card} ${s.mediaEmpty}`}><ImageIcon size={26} /><strong>No files found</strong><span className={ui.muted}>Add a file or try a different search.</span></div>}
 
