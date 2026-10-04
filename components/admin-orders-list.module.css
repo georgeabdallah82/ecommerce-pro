@@ -253,3 +253,6 @@
   /* Every saved view stays visible: wrap instead of a sideways scroll that hides the last tabs. */
   .viewBar { flex-wrap: wrap; overflow: visible; }
 }
+
+.whatsappIcon { color: #1ebe5a; border-color: #b7ebc9; }
+.whatsappIcon:hover { background: #e9f9ef; color: #128c4a; border-color: #25d366; }

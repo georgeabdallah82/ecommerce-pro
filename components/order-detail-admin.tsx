@@ -2,13 +2,14 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, PackageCheck, Mail, Phone, MapPin, Save, Plus, Copy, Check, Pencil, X, FileEdit } from 'lucide-react'
+import { ArrowLeft, PackageCheck, Mail, Phone, MapPin, Save, Plus, Copy, Check, Pencil, X, FileEdit, MessageCircle } from 'lucide-react'
 import { money } from '@/lib/config'
 import { formatAdminDate, formatAdminDateTime } from '@/lib/admin-datetime'
 import { canTransitionOrder, canTransitionPayment } from '@/lib/orders'
 import s from './admin-order-detail.module.css'
 import ui from './admin-ui.module.css'
 import DeliveryTrackingAdmin from './delivery-tracking-admin'
+import { whatsappConfirmLink } from '@/lib/whatsapp-confirm'
 
 async function api(path: string, init?: RequestInit) {
   const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
@@ -47,8 +48,10 @@ function fulfillmentPillClass(status: string) {
   return s.pillNeutral
 }
 
-export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTimezone }: { initial: any; canStartOrderEdit?: boolean; storeTimezone?: string }) {
+export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTimezone, storeName = '', storeCountry = 'Lebanon' }: { initial: any; canStartOrderEdit?: boolean; storeTimezone?: string; storeName?: string; storeCountry?: string }) {
   const [o, setO] = useState(initial)
+  // Opens WhatsApp with a ready "please confirm your order" message to the customer.
+  const whatsappLink = useMemo(() => whatsappConfirmLink(o, storeName, storeCountry, money), [o, storeName, storeCountry])
   const [status, setStatus] = useState(o.status)
   const [paymentStatus, setPaymentStatus] = useState(o.paymentStatus)
   const [tracking, setTracking] = useState(o.trackingNumber || '')
@@ -127,6 +130,7 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
         <p className={ui.muted}>Placed {formatAdminDateTime(o.createdAt, storeTimezone)}</p>
       </div>
       <div className="inline">
+        {whatsappLink&&<a className={`${ui.btn} ${s.whatsappBtn}`} href={whatsappLink} target="_blank" rel="noreferrer"><MessageCircle size={15}/> {o.status==='PENDING'?'Confirm on WhatsApp':'WhatsApp customer'}</a>}
         <Link className={`${ui.btn} ${ui.btnSecondary}`} href={`/admin/orders/${o.id}/invoice`}>Invoice / Print</Link>
         {canStartOrderEdit&&<Link className={`${ui.btn} ${ui.btnSecondary}`} href={`/admin/order-edits/new?orderId=${o.id}`}><FileEdit size={15}/> Start order edit</Link>}
         <span className={`${s.statusPill} ${paymentPillClass(o.paymentStatus)}`}>{o.paymentStatus}</span>

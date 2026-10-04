@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import { internationalPhone } from '@/lib/phone'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
@@ -14,13 +15,9 @@ import { PaymentInstructions } from '@/components/payment-instructions'
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex')
 async function hashedCustomer(email: string | null, phone: string | null) {
   const em = (email || '').trim().toLowerCase()
-  let digits = (phone || '').replace(/\D/g, '').replace(/^00/, '')
-  if (digits && digits.length <= 8) {
-    // A local number (Lebanon: 8 digits, or 7 with the leading 0 dropped) gets the store's code.
-    const country = (await db.setting.findUnique({ where: { key: 'store.country' } }).catch(() => null))?.value?.trim().toLowerCase() || ''
-    if (country === 'lebanon' || country === 'lb') digits = `961${digits.replace(/^0/, '')}`
-  }
-  return { ...(em.includes('@') ? { em: sha256(em) } : {}), ...(digits.length >= 8 ? { ph: sha256(digits) } : {}) }
+  const country = phone ? (await db.setting.findUnique({ where: { key: 'store.country' } }).catch(() => null))?.value : ''
+  const ph = internationalPhone(phone, country)
+  return { ...(em.includes('@') ? { em: sha256(em) } : {}), ...(ph ? { ph: sha256(ph) } : {}) }
 }
 
 export default async function Success({ searchParams }: { searchParams: Promise<{ order?: string; email?: string; payment?: string }> }) {
