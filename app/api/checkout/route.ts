@@ -20,6 +20,8 @@ import { PaymentMethod } from '@prisma/client'
 import { ZodError } from 'zod'
 import { newOrderNumber } from '@/lib/order-number'
 import { runInBackground } from '@/lib/background'
+import { adContextFromRequest, sendMetaPurchase } from '@/lib/meta-capi'
+import { BLOCKED_MESSAGE, BLOCKED_PHONES_KEY, isBlocked, parseBlockedPhones } from '@/lib/blocked-phones'
 import { bundleDiscount } from '@/lib/bundles'
 
 function stableSerialize(value: unknown): string {
@@ -202,7 +204,7 @@ export async function POST(req: Request) {
     const idempotencyKey = req.headers.get('x-idempotency-key')?.trim().slice(0, 190) || null
     const paymentMethod = input.paymentMethod as PaymentMethod
     const paymentProvider = await getPaymentProvider()
-    const settingRows = await db.setting.findMany({ where: { key: { in: ['payment.cod', 'payment.card', 'payment.bank', 'payment.wallet', 'checkout.guestCheckout'] } }, select: { key: true, value: true } })
+    const settingRows = await db.setting.findMany({ where: { key: { in: ['payment.cod', 'payment.card', 'payment.bank', 'payment.wallet', 'checkout.guestCheckout', BLOCKED_PHONES_KEY, 'store.country'] } }, select: { key: true, value: true } })
     const settings = Object.fromEntries(settingRows.map(row => [row.key, row.value]))
     const guestCheckoutEnabled = settings['checkout.guestCheckout'] !== 'false'
     const paymentEnabled: Record<PaymentMethod, boolean> = {
@@ -215,6 +217,8 @@ export async function POST(req: Request) {
     if (paymentMethod === PaymentMethod.WALLET && !user?.id) return json({ error: 'Wallet checkout requires a customer account.' }, { status: 400 })
     if (!paymentEnabled[paymentMethod]) return json({ error: 'This payment method is currently unavailable.' }, { status: 400 })
     if (input.coinsToUse > 0 && !user?.id) return json({ error: 'Sign in to use your coins.' }, { status: 400 })
+    // Numbers the store blocked (repeatedly refused cash-on-delivery packages) can't order online.
+    if (isBlocked(parseBlockedPhones(settings[BLOCKED_PHONES_KEY]), [input.phone, input.shippingAddress.phone], settings['store.country'])) return json({ error: BLOCKED_MESSAGE }, { status: 403 })
 
     const merged = new Map<string, { productId: string; variantId: string | null; quantity: number }>()
     for (const item of input.items) {
@@ -467,6 +471,8 @@ export async function POST(req: Request) {
     runInBackground(sendNewOrderPush({ id: order.id, orderNumber: order.orderNumber, grandTotal: order.grandTotal, currency: order.currency }).catch(error => console.error('[push] new-order notification failed', error)))
     if (paymentMethod !== PaymentMethod.CARD || order.grandTotal === 0) {
       runInBackground(sendOrderConfirmationEmail(order.id).catch(error => console.error('[email] order confirmation failed', error)))
+      // Report the sale to Meta from the server too (card orders are reported once paid).
+      runInBackground(sendMetaPurchase(order.id, { context: adContextFromRequest(req), storeUrl: new URL(req.url).origin }))
     }
     runInBackground(dispatchWebhookEvent('order.created', { id: order.id, orderNumber: order.orderNumber, email: order.email, grandTotal: order.grandTotal, currency: order.currency, status: order.status, paymentStatus: order.paymentStatus }).catch(error => console.error('[webhook] order.created dispatch failed', error)))
     await audit(user?.id, 'order.created', 'Order', order.id, { orderNumber: order.orderNumber, total: grandTotal, paymentMethod, paymentProvider: paymentMethod === PaymentMethod.CARD ? paymentProvider.name : paymentMethod.toLowerCase(), coinsUsed: requestedCoins, coinDiscount, giftCardAmount: giftCardDiscount })

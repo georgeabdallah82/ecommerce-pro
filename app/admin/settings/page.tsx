@@ -9,6 +9,12 @@ const CLIENT_SETTING_KEYS = new Set([
   'store.timezone',
   'contact.email',
   'contact.phone',
+  'store.address',
+  'policy.returnDays',
+  'policy.refundTime',
+  'policy.damageReportHours',
+  'policy.updatedAt',
+  'seo.image',
   'checkout.freeShippingThreshold',
   'checkout.taxRatePercent',
   'seo.title',
@@ -30,6 +36,7 @@ const CLIENT_SETTING_KEYS = new Set([
   'tracking.metaPixelId',
   'tracking.gaMeasurementId',
   'tracking.tiktokPixelId',
+  'tracking.metaCapiTestCode',
   'maintenance.enabled',
   'maintenance.launchAt',
   'maintenance.headline',
@@ -42,5 +49,7 @@ export default async function Settings() {
     where: { key: { in: Array.from(CLIENT_SETTING_KEYS) } },
     orderBy: { key: 'asc' },
   })
-  return <SettingsCenterPro initial={settings} />
+  // The Conversions API token is a secret: the page only learns whether one is saved.
+  const capiToken = await db.setting.findUnique({ where: { key: 'tracking.metaCapiToken' } }).catch(() => null)
+  return <SettingsCenterPro initial={settings} metaCapiTokenSet={!!capiToken?.value} />
 }

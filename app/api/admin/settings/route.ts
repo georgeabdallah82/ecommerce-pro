@@ -5,11 +5,14 @@ import { json } from '@/lib/utils'
 
 const PRIVATE_PREFIXES = ['push.subscription.']
 function isPrivateKey(key: string) { return PRIVATE_PREFIXES.some(prefix => key.startsWith(prefix)) }
+// Write-only secrets: saved through this route but never sent back to the browser.
+const SECRET_KEYS = new Set(['tracking.metaCapiToken'])
+const masked = <T extends { key: string; value: string }>(row: T) => SECRET_KEYS.has(row.key) ? { ...row, value: row.value ? '********' : '' } : row
 
 export async function GET(){
   try {
     await requirePermission('settings.view')
-    return json(await db.setting.findMany({ where: { NOT: { OR: PRIVATE_PREFIXES.map(prefix => ({ key: { startsWith: prefix } })) } }, orderBy:{key:'asc'} }))
+    return json((await db.setting.findMany({ where: { NOT: { OR: PRIVATE_PREFIXES.map(prefix => ({ key: { startsWith: prefix } })) } }, orderBy:{key:'asc'} })).map(masked))
   }catch(e){return json({error:e instanceof Error?e.message:'Forbidden'},{status:403})}
 }
 
@@ -28,12 +31,12 @@ export async function PATCH(req:Request){
       const changed=entries.filter(([k,v])=>current.get(k)!==v)
       const saved=await Promise.all(changed.map(([key,value])=>db.setting.upsert({where:{key},update:{value},create:{key,value}})))
       if(saved.length)await audit(actor.id,'settings.updated','Setting',undefined,{keys:changed.map(([k])=>k)})
-      return json({settings:saved,changed:saved.length})
+      return json({settings:saved.map(masked),changed:saved.length})
     }
     const key=String(b.key||'').trim()
     if(!key)return json({error:'Setting key required'},{status:400})
     if(isPrivateKey(key))return json({error:'Private setting keys cannot be edited here'},{status:403})
     const s=await db.setting.upsert({where:{key},update:{value:String(b.value??'')},create:{key,value:String(b.value??'')}})
-    await audit(actor.id,'setting.updated','Setting',s.id,{key});return json({setting:s})
+    await audit(actor.id,'setting.updated','Setting',s.id,{key});return json({setting:masked(s)})
   }catch(e){return json({error:e instanceof Error?e.message:'Unable to update setting'},{status:400})}
 }

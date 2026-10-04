@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { ArrowUpRight, ChevronLeft, ChevronRight, FileText, PackageCheck, Plus, RefreshCw, Search, Truck, X } from 'lucide-react'
+import { ArrowUpRight, ChevronLeft, ChevronRight, FileText, MessageCircle, PackageCheck, Plus, RefreshCw, Search, Truck, X } from 'lucide-react'
 import { money } from '@/lib/config'
 import { formatAdminDateTime } from '@/lib/admin-datetime'
 import { canTransitionOrder } from '@/lib/orders'
+import { whatsappConfirmLink } from '@/lib/whatsapp-confirm'
 import styles from './admin-orders-list.module.css'
 import ui from './admin-ui.module.css'
 
@@ -51,7 +52,7 @@ function paymentPillClass(status: string) {
   return styles.pillWarning
 }
 
-export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone }: { initial: Initial; canRefund?: boolean; storeTimezone?: string }) {
+export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone, storeName = '', storeCountry = 'Lebanon' }: { initial: Initial; canRefund?: boolean; storeTimezone?: string; storeName?: string; storeCountry?: string }) {
   const [rows, setRows] = useState<Order[]>(initial?.rows || [])
   const [total, setTotal] = useState(Number(initial?.total ?? initial?.rows?.length ?? 0))
   const [page, setPage] = useState(Number(initial?.page || 1))
@@ -290,6 +291,7 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone }
                     <td data-label="Status"><span className={`${styles.statusPill} ${statusPillClass(o.status)}`}>{o.status}</span>{o.trackingNumber && <div className={styles.rowMeta}>{o.trackingNumber}</div>}</td>
                     <td data-cell="actions">
                       <div className={`inline ${styles.orderActions}`}>
+                        {o.status === 'PENDING' && (() => { const wa = whatsappConfirmLink(o, storeName, storeCountry, money); return wa ? <a className={`${ui.iconBtn} ${styles.whatsappIcon}`} href={wa} target="_blank" rel="noreferrer" title="Confirm on WhatsApp" aria-label={`Confirm order ${o.orderNumber} on WhatsApp`}><MessageCircle size={15} /></a> : null })()}
                         <Link className={ui.iconBtn} href={`/admin/orders/${o.id}`} title="Open order"><ArrowUpRight size={15} /></Link>
                         <Link className={ui.iconBtn} href={`/admin/orders/${o.id}/invoice`} title="Invoice"><FileText size={15} /></Link>
                         <button className={ui.iconBtn} onClick={() => { setTrackingNumber(o.trackingNumber || ''); setTrackingCompany(o.trackingCompany || ''); setModal({ type: 'tracking', order: o }) }} disabled={busy === o.id} title="Tracking"><Truck size={15} /></button>

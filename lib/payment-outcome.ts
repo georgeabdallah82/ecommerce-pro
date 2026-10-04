@@ -5,6 +5,7 @@ import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { sendOrderConfirmationEmail } from '@/lib/email'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { runInBackground } from '@/lib/background'
+import { sendMetaPurchase } from '@/lib/meta-capi'
 
 // What happens when the card gateway confirms an order paid or failed. Both the customer's
 // return redirect and the gateway's webhook can deliver the same news, in either order, so
@@ -57,6 +58,7 @@ export async function markOnlinePaymentPaid(order: { id: string; orderNumber: st
   await audit(null, afterCancel ? 'payment.paid_after_cancel' : 'payment.paid', 'Order', order.id, { provider: 'areeba_mpgs', orderNumber: order.orderNumber, source })
   if (afterCancel) return true
   runInBackground(sendOrderConfirmationEmail(order.id).catch(error => console.error('[email] order confirmation failed', error)))
+  runInBackground(sendMetaPurchase(order.id))
   runInBackground(dispatchWebhookEvent('order.updated', { id: order.id, orderNumber: order.orderNumber, paymentStatus: 'PAID' }).catch(error => console.error('[webhook] order.updated dispatch failed', error)))
   return true
 }

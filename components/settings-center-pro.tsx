@@ -52,7 +52,7 @@ const defaultPaymentConfig: PaymentConfig = {
   apiPassword: '',
 }
 
-export default function SettingsCenterPro({ initial }: { initial: any[] }) {
+export default function SettingsCenterPro({ initial, metaCapiTokenSet = false }: { initial: any[]; metaCapiTokenSet?: boolean }) {
   const map = useMemo(() => new Map(initial.map(x => [x.key, x.value])), [initial])
   const [tab, setTab] = useState('General')
   const [search, setSearch] = useState('')
@@ -78,11 +78,16 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
     'tracking.metaPixelId': map.get('tracking.metaPixelId') || '',
     'tracking.gaMeasurementId': map.get('tracking.gaMeasurementId') || '',
     'tracking.tiktokPixelId': map.get('tracking.tiktokPixelId') || '',
+    'tracking.metaCapiTestCode': map.get('tracking.metaCapiTestCode') || '',
     'maintenance.launchAt': map.get('maintenance.launchAt') || '',
     'maintenance.headline': map.get('maintenance.headline') || "We're launching soon",
     'maintenance.message': map.get('maintenance.message') || "We're putting the finishing touches on something great. Check back soon.",
   })
   const savedPolicy = useRef<Record<string, string>>(values)
+  // The Conversions API token is write-only: typed in to save or replace it, never shown back.
+  const [capiToken, setCapiToken] = useState('')
+  const [capiTokenSaved, setCapiTokenSaved] = useState(metaCapiTokenSet)
+  const [capiCheck, setCapiCheck] = useState('')
   const [flags, setFlags] = useState<Record<string, boolean>>(() => ({
     ...Object.fromEntries([
       'payment.cod', 'payment.card', 'payment.bank', 'payment.wallet',
@@ -117,12 +122,14 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
       const policyKeys = ['store.address', 'contact.email', 'contact.phone', 'store.country', 'policy.returnDays', 'policy.refundTime', 'policy.damageReportHours']
       const policyChanged = policyKeys.some(key => (values[key] || '') !== (savedPolicy.current[key] || ''))
       if (policyChanged) settings['policy.updatedAt'] = new Date().toISOString()
+      if (capiToken.trim()) settings['tracking.metaCapiToken'] = capiToken.trim()
       const [, savedPayment] = await Promise.all([
         api('/api/admin/settings', { method: 'PATCH', body: JSON.stringify({ settings }) }),
         tab === 'Payments' ? api('/api/admin/payment-provider', { method: 'PATCH', body: JSON.stringify(paymentConfig) }) : Promise.resolve(null),
       ])
       if (policyChanged) savedPolicy.current = { ...values }
       if (savedPayment) setPaymentConfig({ ...defaultPaymentConfig, ...savedPayment, apiPassword: '' })
+      if (capiToken.trim()) { setCapiTokenSaved(true); setCapiToken('') }
       setNotice('All settings saved')
     } catch (e) {
       setNotice(e instanceof Error ? e.message : 'Unable to save settings')
@@ -315,6 +322,7 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
           )}
 
           {tab === 'Security' && (
+            <>
             <Card title="Security & access" desc="Staff access is enforced server-side with permissions and audit logging.">
               <div className={styles.securityCallout}>
                 <ShieldCheck size={20} />
@@ -325,16 +333,34 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
               </div>
               <a className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/users">Manage users &amp; roles</a>
             </Card>
+            <BlockedPhonesCard />
+            </>
           )}
 
           {tab === 'Tracking' && (
-            <Card title="Tracking & pixels" desc="Fires PageView automatically on every page, plus AddToCart and Purchase (with real order value) once configured. Leave blank to disable a platform.">
+            <>
+            <Card title="Tracking & pixels" desc="Paste each platform's ID (or its whole install code — the ID is picked out of it). The store then reports page views, product views, add to cart, checkout, searches, sign-ups and purchases. Leave blank to turn a platform off.">
               <div className={ui.twoCol}>
                 <Field label="Meta (Facebook) Pixel ID" value={values['tracking.metaPixelId']} onChange={v => set('tracking.metaPixelId', v)} />
                 <Field label="Google Analytics measurement ID" value={values['tracking.gaMeasurementId']} onChange={v => set('tracking.gaMeasurementId', v)} />
                 <Field label="TikTok Pixel ID" value={values['tracking.tiktokPixelId']} onChange={v => set('tracking.tiktokPixelId', v)} />
               </div>
             </Card>
+            <Card title="Meta Conversions API (server)" desc="Your store's server also reports each sale straight to Meta, so sales still count when a shopper's browser blocks the pixel. Meta counts each sale once even when both the pixel and the server report it.">
+              <label className={ui.fieldLabel}>Access token
+                <input className={ui.input} type="password" autoComplete="off" value={capiToken} onChange={e => setCapiToken(e.target.value)} placeholder={capiTokenSaved ? 'Saved — paste a new one to replace it' : 'Paste the token from Events Manager'} />
+              </label>
+              <p className={ui.muted}>Get it in Meta Events Manager › your dataset › Settings › Conversions API › Generate access token.{capiTokenSaved ? ' A token is saved.' : ''}</p>
+              {capiTokenSaved && <button type="button" className={`${ui.btn} ${ui.btnDanger} ${ui.btnSmall}`} onClick={async () => { try { await api('/api/admin/settings', { method: 'PATCH', body: JSON.stringify({ key: 'tracking.metaCapiToken', value: '' }) }); setCapiTokenSaved(false); setCapiCheck('Token removed. The server no longer reports sales to Meta.') } catch (e) { setCapiCheck(e instanceof Error ? e.message : 'Could not remove the token') } }}>Remove token</button>}
+              <Field label="Test event code (optional, for checking)" value={values['tracking.metaCapiTestCode']} onChange={v => set('tracking.metaCapiTestCode', v)} />
+              <p className={ui.muted}>To check the connection: in Events Manager open Test events, copy the test code shown there, paste it here, Save, then press Check connection. Clear the code afterwards so real sales aren't marked as tests.</p>
+              <div className="inline" style={{ gap: 10 }}>
+                <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={async () => { setCapiCheck('Checking…'); try { await api('/api/admin/tracking/meta-test', { method: 'POST' }); setCapiCheck('Sent. A test Purchase should appear in Events Manager › Test events within a minute.') } catch (e) { setCapiCheck(e instanceof Error ? e.message : 'Check failed') } }}>Check connection</button>
+                {capiCheck && <span className={ui.muted}>{capiCheck}</span>}
+              </div>
+            </Card>
+            <ProductFeedCard />
+            </>
           )}
 
           {tab === 'Coming soon' && (
@@ -365,6 +391,56 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
         </main>
       </div>
     </div>
+  )
+}
+
+// Numbers that can't order online (customers who keep refusing cash-on-delivery packages).
+function BlockedPhonesCard() {
+  const [list, setList] = useState<Array<{ phone: string; note?: string; blockedAt: string }> | null>(null)
+  const [phone, setPhone] = useState('')
+  const [msg, setMsg] = useState('')
+  useEffect(() => { api('/api/admin/blocked-phones').then(d => setList(d.blocked || [])).catch(e => { setList([]); setMsg(e instanceof Error ? e.message : 'Could not load the list') }) }, [])
+  async function update(body: Record<string, unknown>, done: string) {
+    setMsg('')
+    try { const d = await api('/api/admin/blocked-phones', { method: 'POST', body: JSON.stringify(body) }); setList(d.blocked || []); setMsg(done); setPhone('') } catch (e) { setMsg(e instanceof Error ? e.message : 'Could not update') }
+  }
+  return (
+    <Card title="Blocked phone numbers" desc="These numbers can't place orders on the store — for customers who keep ordering cash on delivery and refusing the package. You can also block a number from any order's page.">
+      <div className="inline" style={{ gap: 8 }}>
+        <input className={ui.input} value={phone} onChange={e => setPhone(e.target.value)} placeholder="e.g. 70 123 456" inputMode="tel" />
+        <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} disabled={!phone.trim()} onClick={() => update({ phone, note: 'Added in Settings' }, 'Number blocked.')}>Block number</button>
+      </div>
+      {msg && <p className={ui.muted}>{msg}</p>}
+      {list === null ? <p className={ui.muted}>Loading…</p> : list.length === 0 ? <p className={ui.muted}>No blocked numbers.</p> : (
+        <div>{list.map(item => (
+          <div key={item.phone} className="inline" style={{ justifyContent: 'space-between', gap: 8, padding: '8px 0', borderTop: '1px solid var(--admin-border)' }}>
+            <span><strong>+{item.phone}</strong>{item.note ? <span className={ui.muted}> · {item.note}</span> : null}</span>
+            <button type="button" className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} onClick={() => update({ phone: item.phone, unblock: true }, 'Number unblocked.')}>Unblock</button>
+          </div>
+        ))}</div>
+      )}
+    </Card>
+  )
+}
+
+// The catalog feed's address, to paste into Meta Commerce Manager and TikTok Catalog Manager.
+function ProductFeedCard() {
+  const [url, setUrl] = useState('/feeds/products.xml')
+  const [copied, setCopied] = useState(false)
+  useEffect(() => { setUrl(`${window.location.origin}/feeds/products.xml`) }, [])
+  const copy = async () => { try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000) } catch {} }
+  return (
+    <Card title="Product feed for catalog ads" desc="A live list of your products (photos, prices, stock) for Meta and TikTok catalog ads, which show each shopper the products they looked at. It updates by itself as you edit products.">
+      <label className={ui.fieldLabel}>Feed address
+        <div className="inline" style={{ gap: 8 }}>
+          <input className={ui.input} value={url} readOnly onFocus={e => e.currentTarget.select()} />
+          <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={copy}>{copied ? 'Copied' : 'Copy'}</button>
+        </div>
+      </label>
+      <p className={ui.muted}><strong>Meta:</strong> Commerce Manager › your catalog › Data sources › Add items › Data feed › Scheduled feed, paste the address, repeat daily.</p>
+      <p className={ui.muted}><strong>TikTok:</strong> Ads Manager › Assets › Catalogs › your catalog › Add products › Data feed schedule, paste the address.</p>
+      <a className={ui.textLink} href="/feeds/products.xml" target="_blank" rel="noreferrer">Preview the feed</a>
+    </Card>
   )
 }
 
