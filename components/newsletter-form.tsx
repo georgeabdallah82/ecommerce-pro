@@ -1,6 +1,7 @@
 'use client'
 
 import { useContext, useState } from 'react'
+import { trackLead } from '@/lib/tracking-events'
 import { StorefrontPreviewContext } from '@/components/preview-context'
 
 // One signup form shared by the Newsletter section and the footer, so both talk to
@@ -35,6 +36,7 @@ export default function NewsletterForm({
       if (!response.ok) throw new Error(data.error || 'Something went wrong. Please try again.')
       setEmail('')
       setStatus('done')
+      trackLead()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong. Please try again.')
       setStatus('error')
