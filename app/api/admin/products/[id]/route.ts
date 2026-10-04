@@ -20,7 +20,7 @@ export async function GET(_req:Request,{params}:{params:Promise<{id:string}>}){t
 export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
   try{
     const actor=await requirePermission('products.manage');const {id}=await params;const b=await req.json()
-    const existing=await db.product.findUnique({where:{id},include:{variants:{include:{inventory:true,orderItems:true}},images:true,inventory:{where:{variantId:null}},tags:true}})
+    const existing=await db.product.findUnique({where:{id},include:{variants:{include:{inventory:true,orderItems:true}},images:true,inventory:{where:{variantId:null}},tags:true,metafields:{select:{definitionId:true,value:true,ownerType:true}}}})
     if(!existing)return json({error:'Product not found'},{status:404})
     const inputError=productInputError(b);if(inputError)return json({error:inputError},{status:400})
     const existingSharedPool=existing.variants.length>0&&existing.variants.every(v=>v.inventory.length===0)&&existing.inventory.some(x=>x.quantity>0||x.reserved>0)
@@ -57,7 +57,9 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
     const product=await db.$transaction(async tx=>{
       const p=await tx.product.update({where:{id},data})
       if(Array.isArray(b.images)){const images=b.images.slice(0,20);const keptIds=images.filter((x:any)=>x.id).map((x:any)=>String(x.id));if(keptIds.length)await tx.productImage.deleteMany({where:{productId:id,id:{notIn:keptIds}}});else await tx.productImage.deleteMany({where:{productId:id}});const existingImageById=new Map(existing.images.map(img=>[img.id,img]));for(let i=0;i<images.length;i++){const x=images[i];const url=String(x.url||'').trim();if(!url)continue;if(x.id){const alt=x.alt?String(x.alt):null;const cur=existingImageById.get(String(x.id));if(cur&&cur.url===url&&cur.alt===alt&&cur.sortOrder===i)continue;await tx.productImage.update({where:{id:String(x.id)},data:{url,alt,sortOrder:i}})}else await tx.productImage.create({data:{productId:id,url,alt:x.alt?String(x.alt):null,sortOrder:i}})}}
-      if(Array.isArray(b.tags)){await tx.productTag.deleteMany({where:{productId:id}});const tags:string[]=Array.from(new Set<string>(b.tags.map((t:unknown)=>String(t).trim()).filter((t:string)=>t.length>0)));if(tags.length)await tx.productTag.createMany({data:tags.map((value:string)=>({productId:id,value}))})}
+      if(Array.isArray(b.tags)){const tags:string[]=Array.from(new Set<string>(b.tags.map((t:unknown)=>String(t).trim()).filter((t:string)=>t.length>0)));const before=(existing.tags||[]).map(t=>t.value);
+        // The editor sends every tag on every save; rewrite them only when the list changed.
+        if(tags.length!==before.length||tags.some((t,i)=>t!==before[i])){await tx.productTag.deleteMany({where:{productId:id}});if(tags.length)await tx.productTag.createMany({data:tags.map((value:string)=>({productId:id,value}))})}}
       // Only ever true auto-write when stock lives at zero or one location -- a real split
       // across 2+ locations (Purchase Order receiving, an Inventory Transfer) can't be
       // represented by this editor's single blended quantity/location field, and picking an
@@ -66,7 +68,10 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
       // ever runs when the request could actually mean it; a stale request from before a split
       // happened elsewhere is a no-op rather than corrupting whichever row is found first.
       if(b.quantity!==undefined||b.lowStockThreshold!==undefined||b.locationId!==undefined){const rows=await tx.inventoryItem.findMany({where:{productId:id,variantId:null}});if(rows.length<=1){const row=rows[0];const requested=b.quantity!==undefined?Math.max(0,Math.trunc(Number(b.quantity))):row?.quantity??0;if(row)await tx.inventoryItem.update({where:{id:row.id},data:{quantity:Math.max(row.reserved,requested),lowStockThreshold:b.lowStockThreshold!==undefined?Math.max(0,Math.trunc(Number(b.lowStockThreshold))):row.lowStockThreshold,locationId:b.locationId!==undefined?(b.locationId?String(b.locationId):null):row.locationId}});else await tx.inventoryItem.create({data:{productId:id,quantity:requested,lowStockThreshold:Math.max(0,Math.trunc(Number(b.lowStockThreshold)||5)),locationId:b.locationId?String(b.locationId):null}})}}
-      if(Array.isArray(b.metafields)){await tx.metafieldValue.deleteMany({where:{ownerType:'PRODUCT',ownerId:id}});const vals=b.metafields.filter((m:any)=>m.definitionId&&m.value!==undefined&&String(m.value)!=='').map((m:any)=>({definitionId:String(m.definitionId),ownerType:'PRODUCT',ownerId:id,value:typeof m.value==='string'?m.value:JSON.stringify(m.value)}));if(vals.length)await tx.metafieldValue.createMany({data:vals})}
+      if(Array.isArray(b.metafields)){const vals=b.metafields.filter((m:any)=>m.definitionId&&m.value!==undefined&&String(m.value)!=='').map((m:any)=>({definitionId:String(m.definitionId),ownerType:'PRODUCT',ownerId:id,value:typeof m.value==='string'?m.value:JSON.stringify(m.value)}));
+        // Same as tags: skip the delete-and-recreate when the values are unchanged.
+        const sig=(rows:{definitionId:string;value:string}[])=>rows.map(r=>`${r.definitionId}=${r.value}`).sort().join('\n')
+        if(sig((existing.metafields||[]).filter(m=>m.ownerType==='PRODUCT'))!==sig(vals)){await tx.metafieldValue.deleteMany({where:{ownerType:'PRODUCT',ownerId:id}});if(vals.length)await tx.metafieldValue.createMany({data:vals})}}
       if(Array.isArray(b.variants)){
         const sharedPool=b.sharedInventory===true||(b.sharedInventory===undefined&&existingSharedPool)
         const incomingIds=new Set(b.variants.filter((v:any)=>v.id).map((v:any)=>String(v.id)))
