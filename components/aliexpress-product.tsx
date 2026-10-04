@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Check, ChevronDown, ChevronRight, Heart, MessageSquareText, Minus, Plus, Share2, ShoppingBag, Star } from 'lucide-react'
@@ -10,6 +10,7 @@ import StorefrontSections, { ProductCard, QuickView, StarRow, StoreImage, format
 import { FreeDeliveryBadge, ShippingNote, merchantShippingText } from '@/components/shipping-note'
 import { DELIVERY_AREA_EVENT, readDeliveryArea } from '@/components/market-chrome'
 import { parseDeliveryAreas } from '@/lib/storefront-market'
+import { trackViewContent } from '@/lib/tracking-events'
 
 type AnyMap = Record<string, any>
 
@@ -107,6 +108,13 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
   const primaryCollection = product.collections?.[0]?.collection
 
   useEffect(() => { setSelectedVariantId(firstOpenVariant()); setQty(1); setActiveImgIndex(0) }, [product.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Ads: a product view (Meta/TikTok retargeting and catalog ads rely on it).
+  const viewedProduct = useRef<string | null>(null)
+  useEffect(() => {
+    if (viewedProduct.current === String(product.id)) return
+    viewedProduct.current = String(product.id)
+    trackViewContent({ id: String(product.id), name: String(product.name || ''), price: Number(product.basePrice || 0) / 100 }, theme.currency || 'USD')
+  }, [product.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const gallery = product.images?.length ? product.images : [{ url: '/placeholder-product.svg', alt: product.name }]
   const variants = product.variants || []

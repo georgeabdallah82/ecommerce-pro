@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
@@ -7,6 +8,21 @@ import { PurchaseTracker } from '@/components/purchase-tracker'
 import { StoreFooter } from '@/components/store-footer'
 import { PaymentInstructions } from '@/components/payment-instructions'
 
+// Advanced matching for the ad pixels: SHA-256 of the buyer's email and phone, normalised the
+// way Meta and TikTok expect (lower-case email; phone as digits with the country code). Only the
+// hashes reach the browser.
+const sha256 = (value: string) => createHash('sha256').update(value).digest('hex')
+async function hashedCustomer(email: string | null, phone: string | null) {
+  const em = (email || '').trim().toLowerCase()
+  let digits = (phone || '').replace(/\D/g, '').replace(/^00/, '')
+  if (digits && digits.length <= 8) {
+    // A local number (Lebanon: 8 digits, or 7 with the leading 0 dropped) gets the store's code.
+    const country = (await db.setting.findUnique({ where: { key: 'store.country' } }).catch(() => null))?.value?.trim().toLowerCase() || ''
+    if (country === 'lebanon' || country === 'lb') digits = `961${digits.replace(/^0/, '')}`
+  }
+  return { ...(em.includes('@') ? { em: sha256(em) } : {}), ...(digits.length >= 8 ? { ph: sha256(digits) } : {}) }
+}
+
 export default async function Success({ searchParams }: { searchParams: Promise<{ order?: string; email?: string; payment?: string }> }) {
   const { order, email, payment } = await searchParams
   if (!order) notFound()
@@ -15,7 +31,7 @@ export default async function Success({ searchParams }: { searchParams: Promise<
 
   const record = await db.order.findUnique({
     where: { orderNumber: order },
-    select: { orderNumber: true, grandTotal: true, currency: true, status: true, paymentStatus: true, paymentMethod: true, items: { select: { name: true, sku: true, quantity: true, unitPrice: true } } },
+    select: { orderNumber: true, grandTotal: true, currency: true, status: true, paymentStatus: true, paymentMethod: true, email: true, phone: true, items: { select: { productId: true, name: true, quantity: true, unitPrice: true } } },
   })
   // The card gateway sends customers here for every outcome (?payment=paid|failed|pending).
   // A failed or cancelled order must not read as "confirmed" or be reported as a sale.
@@ -50,7 +66,8 @@ export default async function Success({ searchParams }: { searchParams: Promise<
     orderNumber={record.orderNumber}
     value={record.grandTotal / 100}
     currency={record.currency}
-    items={record.items.map(i => ({ name: i.name, sku: i.sku, price: i.unitPrice / 100, quantity: i.quantity }))}
+    items={record.items.map(i => ({ id: String(i.productId), name: i.name, price: i.unitPrice / 100, quantity: i.quantity }))}
+    customer={await hashedCustomer(record.email, record.phone)}
   />}
   </main><StoreFooter /></>
 }

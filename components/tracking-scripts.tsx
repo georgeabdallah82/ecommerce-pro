@@ -8,15 +8,18 @@ import type { TrackingConfig } from '@/lib/tracking'
 function RouteChangePageViews({ config }: { config: TrackingConfig }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const firstRender = useRef(true)
+  // The pixel snippets already count the page they load on, so only a change of address is
+  // reported -- comparing addresses (not "first render") keeps this right even when React runs
+  // the effect twice.
+  const lastPage = useRef<string | null>(null)
 
   useEffect(() => {
-    if (firstRender.current) {
-      firstRender.current = false
-      return
-    }
-    try { window.fbq?.('track', 'PageView') } catch {}
-    try { window.gtag?.('event', 'page_view', { page_path: `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ''}` }) } catch {}
+    const page = `${pathname}?${searchParams.toString()}`
+    if (lastPage.current === null || lastPage.current === page) { lastPage.current = page; return }
+    lastPage.current = page
+    // Only TikTok needs telling about in-site page changes: the Meta pixel and GA4 (enhanced
+    // measurement) already count them on their own, so reporting them here too counted every
+    // page change twice on those two.
     try { window.ttq?.page?.() } catch {}
   }, [pathname, searchParams, config])
 
@@ -30,6 +33,7 @@ export function TrackingScripts({ config }: { config: TrackingConfig }) {
     {anyConfigured && <Suspense fallback={null}><RouteChangePageViews config={config} /></Suspense>}
     {metaPixelId && <Script id="meta-pixel" strategy="afterInteractive" dangerouslySetInnerHTML={{ __html: `
 !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+window.__metaPixelId='${metaPixelId}';
 fbq('init','${metaPixelId}');
 fbq('track','PageView');
 ` }} />}

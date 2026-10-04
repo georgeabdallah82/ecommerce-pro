@@ -20,7 +20,7 @@ export type CartItem = {
 
 type CartContextValue = {
   items: CartItem[]
-  addItem: (item: CartItem, openDrawer?: boolean) => void
+  addItem: (item: CartItem, openDrawer?: boolean, track?: boolean) => void
   updateQty: (key: string, qty: number) => void
   removeItem: (key: string) => void
   clear: () => void
@@ -140,7 +140,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     openCart,
     closeCart,
     toggleCart,
-    addItem: (item: CartItem, openDrawer = true) => {
+    addItem: (item: CartItem, openDrawer = true, track = true) => {
       setItems(prev => {
         const safe: CartItem = {
           ...item,
@@ -158,7 +158,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         if (found) return prev.map(x => keyOf(x) === key ? { ...x, quantity: Math.min(MAX_QTY, x.quantity + safe.quantity) } : x)
         return [...prev, safe]
       })
-      if (item.productId && item.sku) trackAddToCart({ name: item.name, sku: item.sku, price: item.price / 100, quantity: item.quantity }, config.currency)
+      // track=false: restoring a saved cart (abandoned-cart link) isn't the shopper adding anything.
+      if (track && item.productId) trackAddToCart({ id: String(item.productId), name: item.name, price: item.price / 100, quantity: Math.max(1, Math.floor(Number(item.quantity) || 1)) }, config.currency)
       if (openDrawer) setIsOpen(true)
     },
     updateQty: (key, qty) => setItems(prev => {

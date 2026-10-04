@@ -5,7 +5,8 @@ import { readDeliveryArea } from '@/components/market-chrome'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useCart } from '@/components/cart-provider'
-import { money } from '@/lib/config'
+import { config, money } from '@/lib/config'
+import { trackInitiateCheckout } from '@/lib/tracking-events'
 import { CartNotices } from '@/components/cart-notices'
 
 type PaymentDetails = {
@@ -22,6 +23,11 @@ declare global { interface Window { Checkout?: { configure: (options: unknown) =
 export default function Checkout() {
   const { selectedItems: items, selectedSubtotal: subtotal, clearSelected, addItem, ready: cartReady, items: cartItems } = useCart()
   const [recovering, setRecovering] = useState(false)
+  // Ads: the shopper reached checkout with these items (once per visit for the same cart).
+  useEffect(() => {
+    if (!cartReady || recovering || !items.length) return
+    trackInitiateCheckout(items.map(item => ({ id: String(item.productId), name: item.name, price: item.price / 100, quantity: item.quantity })), config.currency)
+  }, [cartReady, recovering, items])
   const router = useRouter()
   const [savedCoupon, setSavedCoupon] = useState('')
   const [recoveredEmail, setRecoveredEmail] = useState('')
@@ -74,7 +80,7 @@ export default function Checkout() {
             sku: productId,
             price: Math.max(0, Number(item.unitPrice) || 0),
             quantity: Math.max(1, Math.trunc(Number(item.quantity) || 1)),
-          }, false)
+          }, false, false)
         }
         if (typeof cart.email === 'string' && cart.email.includes('@')) setRecoveredEmail(cart.email)
         try { localStorage.setItem('ecom-recovered-token', token) } catch {}

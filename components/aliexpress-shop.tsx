@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Search, SlidersHorizontal } from 'lucide-react'
 import StorefrontSections, { ProductCard, QuickView } from '@/components/storefront-sections'
 import { useWishlist } from '@/components/use-wishlist'
+import { SearchTracker } from '@/components/search-tracker'
 
 type AnyMap = Record<string, any>
 
@@ -31,6 +32,7 @@ export default function AliExpressShop({ theme, products, collections, query, se
 
   return (
     <div className="focalStorefront aliShopPage">
+      {query.q ? <SearchTracker query={query.q} /> : null}
       <h1 className="srOnly">{query.q ? `Search results for ${query.q}` : collections.find(c => c.slug === query.collection)?.name || 'Shop all products'}</h1>
       <div className={`aliContainer aliShopLayout ${showFilters ? '' : 'noSidebar'}`}>
         {showFilters && (
