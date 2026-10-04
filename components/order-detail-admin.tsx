@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, PackageCheck, Mail, Phone, MapPin, Save, Plus, Copy, Check, Pencil, X, FileEdit, MessageCircle } from 'lucide-react'
+import { ArrowLeft, PackageCheck, Mail, Phone, MapPin, Save, Plus, Copy, Check, Pencil, X, FileEdit, MessageCircle, Ban } from 'lucide-react'
 import { money } from '@/lib/config'
 import { formatAdminDate, formatAdminDateTime } from '@/lib/admin-datetime'
 import { canTransitionOrder, canTransitionPayment } from '@/lib/orders'
@@ -10,6 +10,7 @@ import s from './admin-order-detail.module.css'
 import ui from './admin-ui.module.css'
 import DeliveryTrackingAdmin from './delivery-tracking-admin'
 import { whatsappConfirmLink } from '@/lib/whatsapp-confirm'
+import { useConfirm } from './admin-confirm'
 
 async function api(path: string, init?: RequestInit) {
   const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
@@ -48,8 +49,21 @@ function fulfillmentPillClass(status: string) {
   return s.pillNeutral
 }
 
-export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTimezone, storeName = '', storeCountry = 'Lebanon' }: { initial: any; canStartOrderEdit?: boolean; storeTimezone?: string; storeName?: string; storeCountry?: string }) {
+export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTimezone, storeName = '', storeCountry = 'Lebanon', phoneBlocked = false }: { initial: any; canStartOrderEdit?: boolean; storeTimezone?: string; storeName?: string; storeCountry?: string; phoneBlocked?: boolean }) {
   const [o, setO] = useState(initial)
+  const confirm = useConfirm()
+  const [blocked, setBlocked] = useState(phoneBlocked)
+  const [blockMsg, setBlockMsg] = useState('')
+  const customerPhone = o.phone || parseAddress(o.shippingAddressJson).phone
+  // Block a customer who keeps refusing cash-on-delivery packages: their number can't order online.
+  async function toggleBlock() {
+    if (!customerPhone) return
+    if (!blocked && !(await confirm({ title: `Block ${customerPhone}?`, message: "This number won't be able to place new orders on the store. You can unblock it any time in Settings › Security.", confirmLabel: 'Block number' }))) return
+    try {
+      await api('/api/admin/blocked-phones', { method: 'POST', body: JSON.stringify(blocked ? { phone: customerPhone, unblock: true } : { phone: customerPhone, note: `Order #${o.orderNumber}` }) })
+      setBlocked(!blocked); setBlockMsg(blocked ? 'Number unblocked.' : 'Number blocked from ordering.')
+    } catch (e) { setBlockMsg(e instanceof Error ? e.message : 'Could not update') }
+  }
   // Opens WhatsApp with a ready "please confirm your order" message to the customer.
   const whatsappLink = useMemo(() => whatsappConfirmLink(o, storeName, storeCountry, money), [o, storeName, storeCountry])
   const [status, setStatus] = useState(o.status)
@@ -209,7 +223,7 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
           </>}
           {!editing&&<button className={ui.btn} onClick={save} disabled={saving}><Save size={15}/>{saving?'Saving…':'Save changes'}</button>}
         </section>
-        <section className={ui.card}><div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Customer</h3></div><strong>{o.user?.name||o.email}</strong><p className={ui.muted}><Mail size={13}/> {o.email}</p>{o.phone&&<p className={ui.muted}><Phone size={13}/> {o.phone}</p>}{o.user?.id&&<Link className={ui.textLink} href={`/admin/customers/${o.user.id}`}>Open customer</Link>}</section>
+        <section className={ui.card}><div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Customer</h3></div><strong>{o.user?.name||o.email}</strong><p className={ui.muted}><Mail size={13}/> {o.email}</p>{o.phone&&<p className={ui.muted}><Phone size={13}/> {o.phone}</p>}{o.user?.id&&<Link className={ui.textLink} href={`/admin/customers/${o.user.id}`}>Open customer</Link>}{customerPhone&&<div style={{marginTop:10}}>{blocked&&<p className={ui.muted} style={{color:'var(--admin-danger)'}}><Ban size={13}/> This number is blocked from ordering.</p>}<button className={`${ui.btn} ${ui.btnSmall} ${blocked?ui.btnSecondary:ui.btnDanger}`} onClick={toggleBlock}><Ban size={14}/> {blocked?'Unblock number':'Block this number'}</button>{blockMsg&&<p className={ui.muted}>{blockMsg}</p>}</div>}</section>
         {!editing&&<section className={ui.card}><div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Shipping address</h3></div><div className={ui.muted} style={{whiteSpace:'pre-wrap'}}><MapPin size={13}/> {addressText(o.shippingAddressJson)}</div>{o.shippingMethod&&<p className={ui.muted}>Method: {o.shippingMethod}</p>}{o.trackingNumber&&<p className={ui.muted}>Tracking: <strong>{o.trackingNumber}</strong></p>}</section>}
         {!editing&&<section className={ui.card}><div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Billing address</h3></div><div className={ui.muted} style={{whiteSpace:'pre-wrap'}}>{addressText(o.billingAddressJson)}</div></section>}
         <section className={ui.card}><div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Payment</h3></div><div className={s.summaryLine}><span>Method</span><strong>{o.paymentMethod}</strong></div><div className={s.summaryLine}><span>Status</span><span className={`${s.statusPill} ${paymentPillClass(o.paymentStatus)}`}>{o.paymentStatus}</span></div>{(o.paymentTransactions||[]).map((t:any)=><div key={t.id} className={s.summaryLine}><span>{t.provider}{t.externalId?` • ${t.externalId}`:''}</span><span>{t.status} · {money(t.amount,t.currency)}</span></div>)}</section>

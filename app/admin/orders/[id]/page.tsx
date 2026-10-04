@@ -3,13 +3,14 @@ import { hasPermission } from '@/lib/permissions'
 import { db } from '@/lib/prisma'
 import { getStoreTimezone } from '@/lib/store-timezone'
 import { getStoreIdentity } from '@/lib/store-identity'
+import { getBlockedPhones, isBlocked } from '@/lib/blocked-phones'
 import OrderDetailAdmin from '@/components/order-detail-admin'
 import ui from '@/components/admin-ui.module.css'
 
 export default async function OrderDetail({params}:{params:Promise<{id:string}>}){
   const user = await requirePermission('orders.view')
   const {id}=await params
-  const [storeTimezone, store] = await Promise.all([getStoreTimezone(), getStoreIdentity()])
+  const [storeTimezone, store, blockedList] = await Promise.all([getStoreTimezone(), getStoreIdentity(), getBlockedPhones().catch(() => [])])
   const order=await db.order.findUnique({
     where:{id},
     include:{
@@ -28,5 +29,5 @@ export default async function OrderDetail({params}:{params:Promise<{id:string}>}
   // GiftCard has no orderId relation -- issueGiftCardsForOrder (lib/gift-cards.ts) tags
   // the ones it mints with a `note` naming this order's number, so that's how they're found again.
   const issuedGiftCards = await db.giftCard.findMany({ where: { note: `Issued from order ${order.orderNumber}` } })
-  return <OrderDetailAdmin initial={JSON.parse(JSON.stringify({ ...order, fulfillments, issuedGiftCards }))} canStartOrderEdit={canStartOrderEdit} storeTimezone={storeTimezone} storeName={store.name} storeCountry={store.country}/>
+  return <OrderDetailAdmin initial={JSON.parse(JSON.stringify({ ...order, fulfillments, issuedGiftCards }))} canStartOrderEdit={canStartOrderEdit} storeTimezone={storeTimezone} storeName={store.name} storeCountry={store.country} phoneBlocked={isBlocked(blockedList, [order.phone, (() => { try { return JSON.parse(order.shippingAddressJson || '{}').phone } catch { return '' } })()], store.country)}/>
 }

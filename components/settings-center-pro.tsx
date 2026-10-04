@@ -322,6 +322,7 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false }:
           )}
 
           {tab === 'Security' && (
+            <>
             <Card title="Security & access" desc="Staff access is enforced server-side with permissions and audit logging.">
               <div className={styles.securityCallout}>
                 <ShieldCheck size={20} />
@@ -332,11 +333,13 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false }:
               </div>
               <a className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/users">Manage users &amp; roles</a>
             </Card>
+            <BlockedPhonesCard />
+            </>
           )}
 
           {tab === 'Tracking' && (
             <>
-            <Card title="Tracking & pixels" desc="Paste each platform's ID (or its whole install code -- the ID is picked out of it). The store then reports page views, product views, add to cart, checkout, searches, sign-ups and purchases. Leave blank to turn a platform off.">
+            <Card title="Tracking & pixels" desc="Paste each platform's ID (or its whole install code — the ID is picked out of it). The store then reports page views, product views, add to cart, checkout, searches, sign-ups and purchases. Leave blank to turn a platform off.">
               <div className={ui.twoCol}>
                 <Field label="Meta (Facebook) Pixel ID" value={values['tracking.metaPixelId']} onChange={v => set('tracking.metaPixelId', v)} />
                 <Field label="Google Analytics measurement ID" value={values['tracking.gaMeasurementId']} onChange={v => set('tracking.gaMeasurementId', v)} />
@@ -345,7 +348,7 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false }:
             </Card>
             <Card title="Meta Conversions API (server)" desc="Your store's server also reports each sale straight to Meta, so sales still count when a shopper's browser blocks the pixel. Meta counts each sale once even when both the pixel and the server report it.">
               <label className={ui.fieldLabel}>Access token
-                <input className={ui.input} type="password" autoComplete="off" value={capiToken} onChange={e => setCapiToken(e.target.value)} placeholder={capiTokenSaved ? 'Saved -- paste a new one to replace it' : 'Paste the token from Events Manager'} />
+                <input className={ui.input} type="password" autoComplete="off" value={capiToken} onChange={e => setCapiToken(e.target.value)} placeholder={capiTokenSaved ? 'Saved — paste a new one to replace it' : 'Paste the token from Events Manager'} />
               </label>
               <p className={ui.muted}>Get it in Meta Events Manager › your dataset › Settings › Conversions API › Generate access token.{capiTokenSaved ? ' A token is saved.' : ''}</p>
               {capiTokenSaved && <button type="button" className={`${ui.btn} ${ui.btnDanger} ${ui.btnSmall}`} onClick={async () => { try { await api('/api/admin/settings', { method: 'PATCH', body: JSON.stringify({ key: 'tracking.metaCapiToken', value: '' }) }); setCapiTokenSaved(false); setCapiCheck('Token removed. The server no longer reports sales to Meta.') } catch (e) { setCapiCheck(e instanceof Error ? e.message : 'Could not remove the token') } }}>Remove token</button>}
@@ -388,6 +391,35 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false }:
         </main>
       </div>
     </div>
+  )
+}
+
+// Numbers that can't order online (customers who keep refusing cash-on-delivery packages).
+function BlockedPhonesCard() {
+  const [list, setList] = useState<Array<{ phone: string; note?: string; blockedAt: string }> | null>(null)
+  const [phone, setPhone] = useState('')
+  const [msg, setMsg] = useState('')
+  useEffect(() => { api('/api/admin/blocked-phones').then(d => setList(d.blocked || [])).catch(e => { setList([]); setMsg(e instanceof Error ? e.message : 'Could not load the list') }) }, [])
+  async function update(body: Record<string, unknown>, done: string) {
+    setMsg('')
+    try { const d = await api('/api/admin/blocked-phones', { method: 'POST', body: JSON.stringify(body) }); setList(d.blocked || []); setMsg(done); setPhone('') } catch (e) { setMsg(e instanceof Error ? e.message : 'Could not update') }
+  }
+  return (
+    <Card title="Blocked phone numbers" desc="These numbers can't place orders on the store — for customers who keep ordering cash on delivery and refusing the package. You can also block a number from any order's page.">
+      <div className="inline" style={{ gap: 8 }}>
+        <input className={ui.input} value={phone} onChange={e => setPhone(e.target.value)} placeholder="e.g. 70 123 456" inputMode="tel" />
+        <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} disabled={!phone.trim()} onClick={() => update({ phone, note: 'Added in Settings' }, 'Number blocked.')}>Block number</button>
+      </div>
+      {msg && <p className={ui.muted}>{msg}</p>}
+      {list === null ? <p className={ui.muted}>Loading…</p> : list.length === 0 ? <p className={ui.muted}>No blocked numbers.</p> : (
+        <div>{list.map(item => (
+          <div key={item.phone} className="inline" style={{ justifyContent: 'space-between', gap: 8, padding: '8px 0', borderTop: '1px solid var(--admin-border)' }}>
+            <span><strong>+{item.phone}</strong>{item.note ? <span className={ui.muted}> · {item.note}</span> : null}</span>
+            <button type="button" className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} onClick={() => update({ phone: item.phone, unblock: true }, 'Number unblocked.')}>Unblock</button>
+          </div>
+        ))}</div>
+      )}
+    </Card>
   )
 }
 
