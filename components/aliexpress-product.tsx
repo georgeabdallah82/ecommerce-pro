@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Check, ChevronDown, ChevronRight, Heart, Minus, Plus, Share2, ShoppingBag, Star } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, Heart, MessageSquareText, Minus, Plus, Share2, ShoppingBag, Star } from 'lucide-react'
 import { useCart } from '@/components/cart-provider'
 import { useWishlist } from '@/components/use-wishlist'
 import StorefrontSections, { ProductCard, QuickView, StarRow, StoreImage, formatSold, img, money } from '@/components/storefront-sections'
@@ -203,7 +203,7 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
           <h1>{product.name}</h1>
           <div className="aliProductMeta">
             <span className="aliProductRating"><StarRow rating={avgRating} size={14} /> {avgRating > 0 && avgRating.toFixed(1)}</span>
-            <span>{reviews.length} review{reviews.length === 1 ? '' : 's'}</span>
+            <a href="#reviews" className="aliProductReviewsLink">{reviews.length} review{reviews.length === 1 ? '' : 's'}{reviewEligibility !== 'already_reviewed' && reviewEligibility !== 'not_purchased' ? ' · Write a review' : ''}</a>
             {Number(product.soldCount || 0) > 0 && <span>{formatSold(Number(product.soldCount))}</span>}
           </div>
           <div className="aliProductPrice">
@@ -299,11 +299,26 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
       </div>
 
       {showReviews && (
-        <div className="aliContainer aliReviewsSection">
+        <div className="aliContainer aliReviewsSection" id="reviews">
           <h2>Customer Reviews {reviews.length > 0 && <span className="aliReviewAvg"><StarRow rating={avgRating} size={16} /> {avgRating.toFixed(1)} ({reviews.length})</span>}</h2>
           {reviewEligibility === 'can_review' && <ReviewForm productId={product.id} />}
           {reviewEligibility === 'already_reviewed' && <p className="aliReviewFormNote">You've already reviewed this product — thanks for the feedback.</p>}
-          {reviewEligibility === 'guest' && <p className="aliReviewFormNote"><Link href="/account/login">Sign in</Link> to write a review after your order is delivered.</p>}
+          {reviewEligibility === 'guest' && (() => {
+            // Bring the customer straight back to this product's reviews after signing in.
+            const back = encodeURIComponent(`/product/${product.slug}#reviews`)
+            return <div className="aliReviewSignIn" role="note">
+              <span className="aliReviewSignInIcon" aria-hidden="true"><MessageSquareText size={22} /></span>
+              <div className="aliReviewSignInText">
+                <strong>Bought this product? Share your review</strong>
+                <p>Sign in to rate it and write a review. You can review it once your order is confirmed.</p>
+              </div>
+              <div className="aliReviewSignInActions">
+                <Link className="aliReviewSignInBtn" href={`/account/login?next=${back}`}>Sign in to review</Link>
+                <Link className="aliReviewSignInAlt" href={`/account/register?next=${back}`}>Create an account</Link>
+              </div>
+            </div>
+          })()}
+          {reviewEligibility === 'not_purchased' && <p className="aliReviewFormNote">Only customers who bought this product can review it. You can write one once your order is confirmed.</p>}
           {reviews.length > 0 ? (
             <div className="aliReviewList">
               {reviews.map((r: AnyMap) => (

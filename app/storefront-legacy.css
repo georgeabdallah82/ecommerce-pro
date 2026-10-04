@@ -3813,6 +3813,19 @@ body > .footer {
 .aliReviewFormError{color:#c0392b;font-size:13px;margin:0}
 .aliReviewFormDone{display:flex;align-items:center;gap:8px;padding:14px 18px;border-radius:12px;background:var(--store-secondary,#fff0e8);color:var(--store-text,#191512);font-weight:600;margin-bottom:28px;max-width:480px}
 .aliReviewFormNote{color:var(--store-muted,#746b64);font-size:14px;margin-bottom:28px}
+.aliProductReviewsLink{color:inherit;text-decoration:underline;text-underline-offset:3px}
+.aliProductReviewsLink:hover{color:var(--store-primary,#d42a2a)}
+.aliReviewsSection{scroll-margin-top:120px}
+.aliReviewSignIn{display:flex;align-items:center;gap:14px 16px;flex-wrap:wrap;max-width:720px;padding:16px 18px;margin-bottom:28px;border:1px solid color-mix(in srgb,var(--store-primary,#d42a2a) 28%,transparent);border-radius:14px;background:color-mix(in srgb,var(--store-primary,#d42a2a) 6%,#fff)}
+.aliReviewSignInIcon{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--store-primary,#d42a2a);color:#fff}
+.aliReviewSignInText{flex:1;min-width:200px}
+.aliReviewSignInText strong{display:block;font-size:15.5px;color:var(--store-text,#191512)}
+.aliReviewSignInText p{margin:3px 0 0;font-size:13.5px;color:var(--store-muted,#746b64)}
+.aliReviewSignInActions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.aliReviewSignInBtn{display:inline-flex;align-items:center;height:42px;padding:0 18px;border-radius:10px;background:var(--store-primary,#d42a2a);color:#fff!important;font-weight:700;font-size:14px;text-decoration:none}
+.aliReviewSignInBtn:hover{filter:brightness(.94)}
+.aliReviewSignInAlt{color:var(--store-primary,#d42a2a);font-weight:700;font-size:14px}
+@media (max-width:560px){.aliReviewSignInActions{width:100%}.aliReviewSignInBtn{flex:1;justify-content:center}}
 .aliReviewFormNote a{color:var(--store-primary,#d42a2a);font-weight:700}
 .aliReviewItem p{margin:0;color:var(--store-muted,#746b64);line-height:1.6}
 .aliReviewFeatured{border-color:var(--store-primary,#d42a2a)}
