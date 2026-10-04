@@ -2611,12 +2611,84 @@ try {
 // This fallback (including the seeded mock admin account) must never be reachable in
 // production — a misconfigured DATABASE_URL there fails the deployment loudly instead of
 // silently serving fake data behind a known default login.
+// ---- All-or-nothing writes ($transaction) ----------------------------------------------------
+// `db.$transaction(async tx => ...)` runs as a real database transaction: if anything inside
+// throws, every write it made is undone. (Until this was fixed it ran step by step in production
+// too -- the stand-in below was meant for the offline mock only.)
+//
+// The database sits behind Prisma Accelerate, whose interactive transactions can be cut off by
+// a time limit (5 s by default, raised in the Prisma Console) or be unavailable for a moment.
+// When that happens the transaction has been rolled back -- nothing it did is kept -- so the
+// same steps are run once more, one by one, exactly as the store worked before. A store that
+// can't run transactions therefore never gets worse than it was; one that can gets the safety.
+const TX_OPTIONS = { maxWait: 5_000, timeout: 15_000 }
+const TX_COOLDOWN_MS = 10 * 60 * 1000
+let customTimeoutRejected = false
+let transactionsUnavailableUntil = 0
+
+const errorCode = (error: unknown) => (error && typeof error === 'object' && 'code' in error ? String((error as any).code) : '')
+// Failures of the transaction machinery itself (timed out, closed, couldn't start, the proxy
+// refused it), as opposed to errors thrown by the work inside it (bad input, out of stock, a
+// unique-constraint clash), which must reach the caller unchanged.
+function isTransactionInfrastructureError(error: unknown) {
+  const code = errorCode(error)
+  if (code === 'P2028' || code === 'P2031' || /^P[56]\d{3}$/.test(code)) return true
+  const name = error instanceof Error ? error.name : ''
+  const message = error instanceof Error ? error.message : ''
+  return name.startsWith('PrismaClient') && !code && /transaction/i.test(message)
+}
+
+export async function runInteractiveTransaction(client: any, fn: (tx: any) => Promise<any>, options?: any): Promise<any> {
+  if (Date.now() >= transactionsUnavailableUntil) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      let started = false
+      let finished = false
+      try {
+        return await client.$transaction(async (tx: any) => {
+          started = true
+          const result = await fn(tx)
+          finished = true
+          return result
+        }, { ...(customTimeoutRejected ? {} : TX_OPTIONS), ...options })
+      } catch (error) {
+        // Two transactions touched the same record: the loser was rolled back, so try again.
+        if (errorCode(error) === 'P2034' && attempt < 2) continue
+        if (!isTransactionInfrastructureError(error)) throw error
+        // The work completed but the commit's answer was lost: it may have been saved, so it
+        // must not be run again. Surface the error (callers show "please try again"). An expired
+        // transaction (P2028) was never committed, so that one is safe to run step by step.
+        if (finished && errorCode(error) !== 'P2028') throw error
+        if (!started && !customTimeoutRejected && !options?.timeout) {
+          // Accelerate refused to start it, most likely because the 15 s limit is above what the
+          // Prisma Console allows: use its default limit from now on.
+          customTimeoutRejected = true
+          console.warn('[db] transaction refused with a 15 s limit; using the default limit', errorCode(error))
+          continue
+        }
+        if (!started) transactionsUnavailableUntil = Date.now() + TX_COOLDOWN_MS
+        console.warn('[db] transaction unavailable or timed out; ran the steps one by one instead', errorCode(error) || (error as Error)?.message)
+        break
+      }
+    }
+  }
+  return fn(createResilientPrismaClient())
+}
+
+// For tests: forget a remembered refusal or cool-down.
+export function resetTransactionState() { customTimeoutRejected = false; transactionsUnavailableUntil = 0 }
+
 function createResilientPrismaClient(): any {
   return new Proxy(realPrisma || {}, {
     get(target, prop: string | symbol) {
       if (typeof prop !== 'string') return Reflect.get(target, prop)
 
       if (prop === '$connect' || prop === '$disconnect') return async () => {}
+      if (prop === '$transaction' && realPrisma) {
+        const client = realPrisma as any
+        return (arg: any, options?: any) => typeof arg === 'function'
+          ? runInteractiveTransaction(client, arg, options)
+          : client.$transaction(arg, options)
+      }
       if (prop === '$transaction') {
         return async (arg: any) => {
           if (typeof arg === 'function') return arg(createResilientPrismaClient())
