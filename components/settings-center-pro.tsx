@@ -328,13 +328,16 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
           )}
 
           {tab === 'Tracking' && (
-            <Card title="Tracking & pixels" desc="Fires PageView automatically on every page, plus AddToCart and Purchase (with real order value) once configured. Leave blank to disable a platform.">
+            <>
+            <Card title="Tracking & pixels" desc="Paste each platform's ID (or its whole install code -- the ID is picked out of it). The store then reports page views, product views, add to cart, checkout, searches, sign-ups and purchases. Leave blank to turn a platform off.">
               <div className={ui.twoCol}>
                 <Field label="Meta (Facebook) Pixel ID" value={values['tracking.metaPixelId']} onChange={v => set('tracking.metaPixelId', v)} />
                 <Field label="Google Analytics measurement ID" value={values['tracking.gaMeasurementId']} onChange={v => set('tracking.gaMeasurementId', v)} />
                 <Field label="TikTok Pixel ID" value={values['tracking.tiktokPixelId']} onChange={v => set('tracking.tiktokPixelId', v)} />
               </div>
             </Card>
+            <ProductFeedCard />
+            </>
           )}
 
           {tab === 'Coming soon' && (
@@ -365,6 +368,27 @@ export default function SettingsCenterPro({ initial }: { initial: any[] }) {
         </main>
       </div>
     </div>
+  )
+}
+
+// The catalog feed's address, to paste into Meta Commerce Manager and TikTok Catalog Manager.
+function ProductFeedCard() {
+  const [url, setUrl] = useState('/feeds/products.xml')
+  const [copied, setCopied] = useState(false)
+  useEffect(() => { setUrl(`${window.location.origin}/feeds/products.xml`) }, [])
+  const copy = async () => { try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000) } catch {} }
+  return (
+    <Card title="Product feed for catalog ads" desc="A live list of your products (photos, prices, stock) for Meta and TikTok catalog ads, which show each shopper the products they looked at. It updates by itself as you edit products.">
+      <label className={ui.fieldLabel}>Feed address
+        <div className="inline" style={{ gap: 8 }}>
+          <input className={ui.input} value={url} readOnly onFocus={e => e.currentTarget.select()} />
+          <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={copy}>{copied ? 'Copied' : 'Copy'}</button>
+        </div>
+      </label>
+      <p className={ui.muted}><strong>Meta:</strong> Commerce Manager › your catalog › Data sources › Add items › Data feed › Scheduled feed, paste the address, repeat daily.</p>
+      <p className={ui.muted}><strong>TikTok:</strong> Ads Manager › Assets › Catalogs › your catalog › Add products › Data feed schedule, paste the address.</p>
+      <a className={ui.textLink} href="/feeds/products.xml" target="_blank" rel="noreferrer">Preview the feed</a>
+    </Card>
   )
 }
 

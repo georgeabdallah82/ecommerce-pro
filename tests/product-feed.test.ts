@@ -1,0 +1,29 @@
+import assert from 'node:assert/strict'
+import { describe, it } from 'node:test'
+import { plainText, productFeedXml } from '@/lib/product-feed'
+
+const store = { name: 'Yalla Haul', url: 'https://shop.example', currency: 'USD' }
+const base = { id: 'p1', name: 'Baloo tissues', slug: 'baloo-tissues', basePrice: 450, soldOut: false, images: [{ url: '/api/media/1.webp' }, { url: 'https://cdn.example/2.jpg' }] }
+
+describe('product feed', () => {
+  it('lists products with the pixel id, link, absolute images, price and stock', () => {
+    const out = productFeedXml([{ ...base, description: '<p>Soft &amp; strong</p>', brand: 'Baloo' }], store)
+    for (const part of ['<g:id>p1</g:id>', '<g:title>Baloo tissues</g:title>', '<g:description>Soft &amp; strong</g:description>',
+      '<g:link>https://shop.example/product/baloo-tissues</g:link>', '<g:image_link>https://shop.example/api/media/1.webp</g:image_link>',
+      '<g:additional_image_link>https://cdn.example/2.jpg</g:additional_image_link>', '<g:availability>in stock</g:availability>',
+      '<g:price>4.50 USD</g:price>', '<g:brand>Baloo</g:brand>', '<g:condition>new</g:condition>']) assert.ok(out.includes(part), part)
+    assert.ok(!out.includes('sale_price'))
+  })
+  it('shows a sale, sold-out stock and falls back to the store as brand', () => {
+    const out = productFeedXml([{ ...base, compareAtPrice: 600, soldOut: true }], store)
+    assert.ok(out.includes('<g:price>6.00 USD</g:price>') && out.includes('<g:sale_price>4.50 USD</g:sale_price>'))
+    assert.ok(out.includes('<g:availability>out of stock</g:availability>') && out.includes('<g:brand>Yalla Haul</g:brand>'))
+  })
+  it('skips products without a usable photo and escapes text', () => {
+    const out = productFeedXml([{ ...base, images: [{ url: '/logo.svg' }] }, { ...base, id: 'p2', name: 'Cups <6 pack> & "more"' }], store)
+    assert.ok(!out.includes('<g:id>p1</g:id>') && out.includes('<g:title>Cups &lt;6 pack&gt; &amp; &quot;more&quot;</g:title>'))
+  })
+  it('turns descriptions into plain text', () => {
+    assert.equal(plainText('<h2>Size</h2><p>Big&nbsp;one<br>Two</p><script>x()</script>'), 'Size\nBig one\nTwo')
+  })
+})

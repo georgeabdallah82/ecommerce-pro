@@ -5,6 +5,6 @@
 // page they can never actually visit.
 export const RESERVED_HANDLES = new Set([
   'account', 'admin', 'admin-login', 'api', 'app', 'blog', 'cart', 'checkout',
-  'collections', 'coming-soon', 'invoice', 'order', 'orders', 'pay-invoice', 'privacy-policy',
+  'collections', 'feeds', 'coming-soon', 'invoice', 'order', 'orders', 'pay-invoice', 'privacy-policy',
   'product', 'refund-policy', 'shop', 'terms-of-service', 'theme-editor-preview', 'track', 'wishlist',
 ])
