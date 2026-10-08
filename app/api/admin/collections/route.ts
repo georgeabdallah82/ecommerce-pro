@@ -48,7 +48,7 @@ export async function POST(req: Request) {
 
     const name = String(b.name || '').trim()
     if (!name) return json({ error: 'Name required' }, { status: 400 })
-    const c = await db.collection.create({ data: { name, slug: slugify(String(b.slug || name)), description: b.description || null, imageUrl: b.imageUrl || null, sortOrder: Number(b.sortOrder) || 0 } })
+    const c = await db.collection.create({ data: { name, slug: slugify(String(b.slug || '')) || slugify(String(name)) || `collection-${Date.now().toString(36)}`, description: b.description || null, imageUrl: b.imageUrl || null, sortOrder: Number(b.sortOrder) || 0 } })
     if (Array.isArray(b.productIds) && b.productIds.length) await db.collectionProduct.createMany({ data: b.productIds.map((productId: string, i: number) => ({ collectionId: c.id, productId, sortOrder: i })) })
     await audit(actor.id, 'collection.created', 'Collection', c.id, { name })
     return json({ collection: c }, { status: 201 })

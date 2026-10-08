@@ -77,7 +77,7 @@ export async function POST(req: Request) {
     const conflict = await productConflict(db, { sku, barcode }) || await variantConflict(db, variants.map((v: any) => ({ sku: String(v.sku || '').trim().slice(0, 120), barcode: cleanBarcode(v.barcode) })))
     if (conflict) return json({ error: conflict }, { status: 409 })
     // Two products can share a name; give the second one "name-2" rather than failing.
-    const slug = await freeProductSlug(db, slugify(String(b.slug || name)).slice(0, 200) || `product-${Date.now()}`)
+    const slug = await freeProductSlug(db, (slugify(String(b.slug || '')) || slugify(String(name))).slice(0, 200).replace(/-$/, '') || `product-${Date.now().toString(36)}`)
 
     const p = await db.$transaction(async tx => {
       const created = await tx.product.create({ data: {

@@ -38,7 +38,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       if (!name) return json({ error: 'Name required' }, { status: 400 })
       data.name = name
     }
-    if (b.slug !== undefined) data.slug = slugify(String(b.slug || b.name || existing.name))
+    // An unchanged handle is kept as-is so a live address never moves on its own; a typed one is
+    // cleaned, falling back to the name when it cleans to nothing (non-Latin names used to).
+    if (b.slug !== undefined && !(String(b.slug) === existing.slug && slugify(existing.slug))) data.slug = slugify(String(b.slug || '')) || slugify(String(b.name || existing.name)) || existing.slug
     if (b.description !== undefined) data.description = b.description ? String(b.description) : null
     if (b.imageUrl !== undefined) data.imageUrl = b.imageUrl ? String(b.imageUrl) : null
     if (b.isActive !== undefined) data.isActive = Boolean(b.isActive)

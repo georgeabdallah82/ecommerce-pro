@@ -1,7 +1,5 @@
 import { GENERIC_SERVER_ERROR, isInternalErrorMessage } from '@/lib/error-classify'
-export function slugify(input: string) {
-  return input.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-')
-}
+export { slugify } from '@/lib/slug'
 
 // requireUser/requirePermission throw 'UNAUTHORIZED' / 'FORBIDDEN', and many routes pass any
 // caught error's message straight into json({ error }, { status: 400 }). Normalising here gives
