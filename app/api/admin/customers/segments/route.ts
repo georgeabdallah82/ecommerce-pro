@@ -9,9 +9,10 @@ export async function GET() {
   try {
     await requirePermission('customerSegments.view')
     const segments = await db.customerSegment.findMany({ orderBy: { updatedAt: 'desc' } })
-    const counts = (segments.length
+    const grouped = segments.length
       ? await db.customerSegmentMember.groupBy({ by: ['segmentId'], _count: { _all: true }, where: { segmentId: { in: segments.map(s => s.id) } } })
-      : []) as { segmentId: string; _count: { _all: number } }[]
+      : []
+    const counts: { segmentId: string; _count: { _all: number } }[] = grouped
     const countBySegment = Object.fromEntries(counts.map(c => [c.segmentId, c._count._all]))
     const rows = segments.map(segment => ({ ...segment, _count: { members: countBySegment[segment.id] || 0 } }))
     return json(rows)
