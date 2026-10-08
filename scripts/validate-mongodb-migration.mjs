@@ -5,7 +5,7 @@ import { resolve } from 'node:path'
 const root = process.cwd()
 const tmpRoot = resolve(root, '.migration-tmp')
 const manifestPath = resolve(tmpRoot, 'manifest.json')
-const targetSchemaPath = resolve(root, 'prisma/mongodb-schema/schema.prisma')
+const targetSchemaPath = resolve(root, 'prisma-mongodb/schema.prisma')
 const rawTargetUrl = process.env.TARGET_DATABASE_URL
 if (!rawTargetUrl) throw new Error('TARGET_DATABASE_URL is required')
 

@@ -52,7 +52,7 @@ jobs:
         run: node scripts/prepare-mongodb-schema.mjs
 
       - name: Generate MongoDB Prisma client
-        run: npx prisma generate --schema=prisma/mongodb-schema
+        run: npx prisma generate --schema=prisma-mongodb
 
       - name: Build application against MongoDB
         run: npm run build

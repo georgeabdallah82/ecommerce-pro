@@ -7,7 +7,8 @@ node_modules
 .dev.vars
 prisma/*.db
 prisma/*.db-journal
-prisma/mongodb-schema
+prisma-mongodb
 coverage
 .DS_Store
 *.tsbuildinfo
+.migration-tmp

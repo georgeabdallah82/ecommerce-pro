@@ -48,13 +48,13 @@ jobs:
       - name: Generate MongoDB Prisma client
         env:
           DATABASE_URL: ${{ env.TARGET_DATABASE_URL }}
-        run: npx prisma generate --schema=prisma/mongodb-schema
+        run: npx prisma generate --schema=prisma-mongodb
 
       - name: Verify production target safety gates
         run: node scripts/verify-production-migration-target.mjs
 
       - name: Push MongoDB schema to production target
-        run: DATABASE_URL="$TARGET_DATABASE_URL" npx prisma db push --schema=prisma/mongodb-schema
+        run: DATABASE_URL="$TARGET_DATABASE_URL" npx prisma db push --schema=prisma-mongodb
 
       - name: Re-check production target is empty
         run: node scripts/assert-mongodb-target-empty.mjs

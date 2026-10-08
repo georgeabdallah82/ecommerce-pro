@@ -32,11 +32,11 @@ jobs:
       - name: Prisma generate
         env:
           DATABASE_URL: mongodb://127.0.0.1:27017/ecommerce_staging?replicaSet=rs0&directConnection=true
-        run: npx prisma generate --schema=prisma/mongodb-schema
+        run: npx prisma generate --schema=prisma-mongodb
       - name: Prisma schema push
         env:
           DATABASE_URL: mongodb://127.0.0.1:27017/ecommerce_staging?replicaSet=rs0&directConnection=true
-        run: npx prisma db push --schema=prisma/mongodb-schema
+        run: npx prisma db push --schema=prisma-mongodb
       - name: Barcode index repair (scripts/fix-barcode-indexes.mjs)
         env:
           DATABASE_URL: mongodb://127.0.0.1:27017/ecommerce_staging?replicaSet=rs0&directConnection=true

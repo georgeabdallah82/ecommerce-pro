@@ -42,7 +42,7 @@ jobs:
       - name: Push MongoDB schema
         env:
           DATABASE_URL: ${{ env.NORMALIZED_TARGET_DATABASE_URL }}
-        run: npx prisma db push --schema=prisma/mongodb-schema
+        run: npx prisma db push --schema=prisma-mongodb
       - name: Export PostgreSQL snapshot
         run: npm run db:migrate:export
       - name: Import snapshot into staging MongoDB

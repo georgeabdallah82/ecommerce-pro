@@ -27,7 +27,7 @@ jobs:
         run: node scripts/prepare-mongodb-schema.mjs
 
       - name: Prisma generate (production MongoDB schema, Accelerate no-engine client)
-        run: ./node_modules/.bin/prisma generate --no-engine --schema=prisma/mongodb-schema
+        run: ./node_modules/.bin/prisma generate --no-engine --schema=prisma-mongodb
 
       - name: Typecheck
         run: npm run typecheck

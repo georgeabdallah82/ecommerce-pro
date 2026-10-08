@@ -1,0 +1,122 @@
+name: PostgreSQL migration (MongoDB -> Neon)
+
+# Moves the store off MongoDB + Prisma Accelerate (retired by Prisma on 2026-12-01) onto Neon
+# PostgreSQL. MongoDB is only read. scripts/migrate-mongodb-to-postgres.mjs does the copy and
+# refuses to overwrite a database the store is already running on.
+#
+# rehearsal: copy + fingerprint check, then build the PostgreSQL version of the store (app_ref),
+#            run it on this runner against the copy and drive it end to end with a browser
+#            (scripts/e2e/write-path.mjs). The live store is not touched.
+# final:     the switch-over copy. Needs maintenance mode on and the typed confirmation.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: rehearsal (practice copy + full test) or final (switch-over copy)
+        type: choice
+        options: [rehearsal, final]
+        default: rehearsal
+      confirmation:
+        description: Final only -- type COPY-PRODUCTION
+        required: false
+        type: string
+      app_ref:
+        description: Rehearsal only -- branch whose PostgreSQL version of the store is tested (default: this run's branch)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: postgres-migration
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      MONGODB_URL: ${{ secrets.MIGRATION_PRODUCTION_TARGET_DATABASE_URL }}
+      NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+    steps:
+      - name: Check inputs and secrets
+        run: |
+          if [ "${{ inputs.mode }}" = "final" ] && [ "${{ inputs.confirmation }}" != "COPY-PRODUCTION" ]; then
+            echo "::error::Final copy needs the confirmation COPY-PRODUCTION"; exit 1
+          fi
+          test -n "$MONGODB_URL" || { echo "::error::Secret MIGRATION_PRODUCTION_TARGET_DATABASE_URL (the MongoDB store) is missing"; exit 1; }
+          test -n "$NEON_DATABASE_URL" || { echo "::error::Secret NEON_DATABASE_URL is missing"; exit 1; }
+          case "$NEON_DATABASE_URL" in postgres://*|postgresql://*) ;; *) echo "::error::NEON_DATABASE_URL must start with postgresql://"; exit 1 ;; esac
+          # Migrations and the copy need a direct connection; the app uses the pooled one.
+          echo "TARGET_DATABASE_URL=${NEON_DATABASE_URL/-pooler./.}" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.2
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Create / update the PostgreSQL tables
+        run: DATABASE_URL="$TARGET_DATABASE_URL" npx prisma migrate deploy
+
+      - name: Rehearsal login for the e2e test
+        if: inputs.mode == 'rehearsal'
+        run: |
+          password="$(openssl rand -base64 24 | tr -d '/+=')Aa1!"
+          echo "::add-mask::$password"
+          echo "E2E_ADMIN_EMAIL=rehearsal-e2e@yallahaul.test" >> "$GITHUB_ENV"
+          echo "E2E_ADMIN_PASSWORD=$password" >> "$GITHUB_ENV"
+
+      - name: Copy MongoDB -> PostgreSQL and verify
+        run: node scripts/migrate-mongodb-to-postgres.mjs --mode "${{ inputs.mode }}"
+
+      - name: Product for the e2e checkout
+        if: inputs.mode == 'rehearsal'
+        run: echo "PRODUCT_PATH=$(node -p "require('./.migration-tmp/e2e.json').productPath")" >> "$GITHUB_ENV"
+
+      # ---- Rehearsal: run the PostgreSQL version of the store against the copy ----------------
+      - name: Check out the store to test
+        if: inputs.mode == 'rehearsal'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.app_ref || github.ref_name }}
+          path: app
+
+      - name: Build the store (Cloudflare target)
+        if: inputs.mode == 'rehearsal'
+        working-directory: app
+        env:
+          AUTH_SECRET: ci-build-only-secret-do-not-use-in-production
+          DATABASE_URL: postgresql://build:build@127.0.0.1:5432/build
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build:cloudflare
+
+      - name: Start the store against the rehearsal copy
+        if: inputs.mode == 'rehearsal'
+        working-directory: app
+        run: |
+          {
+            echo "NEON_DATABASE_URL=$NEON_DATABASE_URL"
+            echo "AUTH_SECRET=$(openssl rand -hex 32)"
+            echo "NEXT_PUBLIC_SITE_URL=http://127.0.0.1:8787"
+          } > .dev.vars
+          nohup npx wrangler dev --port 8787 --ip 127.0.0.1 > ../wrangler.log 2>&1 &
+          for i in $(seq 1 90); do grep -q "Ready on" ../wrangler.log && exit 0; sleep 2; done
+          cat ../wrangler.log; exit 1
+
+      - name: End-to-end test (browser)
+        if: inputs.mode == 'rehearsal'
+        run: |
+          npm install --no-save --no-audit --no-fund playwright-core@1
+          npx playwright-core install --with-deps chromium
+          BASE=http://127.0.0.1:8787 ADMIN_EMAIL="$E2E_ADMIN_EMAIL" ADMIN_PASSWORD="$E2E_ADMIN_PASSWORD" node scripts/e2e/write-path.mjs
+
+      - name: Store log (errors only)
+        if: always() && inputs.mode == 'rehearsal'
+        run: grep -E "ERROR|Error" wrangler.log | grep -v "Duplicate key" | head -50 || true

@@ -41,7 +41,7 @@ jobs:
         run: node scripts/prepare-mongodb-schema.mjs
 
       - name: Generate MongoDB Prisma client
-        run: DATABASE_URL="$TARGET_DATABASE_URL" npx prisma generate --schema=prisma/mongodb-schema
+        run: DATABASE_URL="$TARGET_DATABASE_URL" npx prisma generate --schema=prisma-mongodb
 
       - name: Build application against MongoDB
         run: DATABASE_URL="$TARGET_DATABASE_URL" npm run build

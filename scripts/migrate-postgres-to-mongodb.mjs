@@ -10,7 +10,7 @@ const tmpRoot = resolve(root, '.migration-tmp')
 const sourceSchema = resolve(tmpRoot, 'source-schema.prisma')
 const exportRoot = resolve(tmpRoot, 'export')
 const manifestPath = resolve(tmpRoot, 'manifest.json')
-const targetSchemaDir = resolve(root, 'prisma/mongodb-schema')
+const targetSchemaDir = resolve(root, 'prisma-mongodb')
 const DEFAULT_STAGING_DATABASE = 'ecommerce_staging'
 
 function runPrisma(args, env) {

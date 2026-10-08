@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 
 const sourceRoot = new URL('../prisma/', import.meta.url)
-const targetRoot = new URL('../prisma/mongodb-schema/', import.meta.url)
+const targetRoot = new URL('../prisma-mongodb/', import.meta.url)
 
 await mkdir(new URL('./models/', targetRoot), { recursive: true })
 
