@@ -1,0 +1,83 @@
+name: PostgreSQL staging validation
+
+# Every pull request: build the tables from prisma/migrations on a real PostgreSQL, prove they
+# match prisma/schema.prisma (a schema change without its migration fails here), seed the starter
+# store, build the Cloudflare Worker, run it (wrangler dev) and drive it end to end with a browser.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-staging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: shop
+          POSTGRES_PASSWORD: shop
+          POSTGRES_DB: shop
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U shop"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://shop:shop@127.0.0.1:5432/shop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.2
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+
+      - name: Migrations match the schema
+        run: npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma --exit-code
+
+      - name: Seed the starter store
+        run: npx tsx prisma/seed.ts
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Backend audit
+        run: npm run backend:audit
+
+      - name: Build (Cloudflare target)
+        env:
+          AUTH_SECRET: ci-build-only-secret-do-not-use-in-production
+        run: npm run build:cloudflare
+
+      - name: Start the store
+        run: |
+          {
+            echo "DATABASE_URL=$DATABASE_URL"
+            echo "AUTH_SECRET=$(openssl rand -hex 32)"
+            echo "NEXT_PUBLIC_SITE_URL=http://127.0.0.1:8787"
+          } > .dev.vars
+          nohup npx wrangler dev --port 8787 --ip 127.0.0.1 > wrangler.log 2>&1 &
+          for i in $(seq 1 90); do grep -q "Ready on" wrangler.log && exit 0; sleep 2; done
+          cat wrangler.log; exit 1
+
+      # The seeded admin (prisma/seed.ts default) exists only in this throwaway database.
+      - name: End-to-end test (browser)
+        run: |
+          npm install --no-save --no-audit --no-fund playwright-core@1
+          npx playwright-core install --with-deps chromium
+          BASE=http://127.0.0.1:8787 ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD='ChangeMe123!' node scripts/e2e/write-path.mjs
+
+      - name: Store log (errors only)
+        if: always()
+        run: grep -E "ERROR|Error" wrangler.log | grep -v "Duplicate key" | head -50 || true
