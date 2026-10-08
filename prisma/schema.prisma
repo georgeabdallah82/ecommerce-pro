@@ -4,10 +4,7 @@ datasource db {
 }
 
 generator client {
-  provider   = "prisma-client-js"
-  // Rust-free client: a small WebAssembly query compiler plus a driver adapter (lib/prisma.ts),
-  // which is what runs on Cloudflare Workers.
-  engineType = "client"
+  provider = "prisma-client-js"
 }
 
 enum Role {
