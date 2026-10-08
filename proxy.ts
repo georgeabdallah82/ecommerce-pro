@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextFetchEvent, NextRequest } from 'next/server'
 import { jwtVerify } from 'jose'
-import { db } from '@/lib/prisma'
+import { countRedirectHit, findRedirect, getSettingValue, getStaffAccess } from '@/lib/edge-db'
 import { isSessionRevoked } from '@/lib/session-revocation'
 import { contentSecurityPolicy } from '@/lib/csp'
 
@@ -25,7 +25,7 @@ async function isStaffSession(sessionToken: string | undefined) {
   try {
     const { payload } = await jwtVerify(sessionToken, new TextEncoder().encode(process.env.AUTH_SECRET))
     if (!payload.sub || typeof payload.sub !== 'string') return false
-    const user = await db.user.findUnique({ where: { id: payload.sub } })
+    const user = await getStaffAccess(payload.sub)
     // Same rule as getCurrentUser: a staff session revoked (password/role change, disabled)
     // must not keep previewing the store behind "coming soon".
     if (typeof payload.iat !== 'number' || isSessionRevoked(payload.iat, user?.sessionsRevokedAt)) return false
@@ -90,20 +90,20 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   // unhandled, it turned every page and API call into a bare 500 -- checkout showed "Unable
   // to load checkout settings". Treat it as "no redirect" / "not in maintenance" instead.
   const [redirect, maintenanceSetting] = await Promise.all([
-    needsRedirectCheck ? db.redirect.findUnique({ where: { fromPath: pathname } }).catch(() => null) : null,
-    needsMaintenanceCheck ? db.setting.findUnique({ where: { key: 'maintenance.enabled' } }).catch(() => null) : null,
+    needsRedirectCheck ? findRedirect(pathname).catch(() => null) : null,
+    needsMaintenanceCheck ? getSettingValue('maintenance.enabled').catch(() => null) : null,
   ])
   if (needsRedirectCheck) {
     if (redirect) {
       // waitUntil keeps the Worker alive for the counter write after the redirect is sent.
-      event.waitUntil(db.redirect.update({ where: { id: redirect.id }, data: { hits: { increment: 1 } } }).then(() => undefined, () => undefined))
+      event.waitUntil(countRedirectHit(redirect.id).then(() => undefined, () => undefined))
       const destination = /^https?:\/\//i.test(redirect.toPath) ? redirect.toPath : new URL(redirect.toPath, request.url)
       return NextResponse.redirect(destination, 308)
     }
   }
 
   if (needsMaintenanceCheck) {
-    if (maintenanceSetting?.value === 'true' && !(await isStaffSession(request.cookies.get('session')?.value))) {
+    if (maintenanceSetting === 'true' && !(await isStaffSession(request.cookies.get('session')?.value))) {
       // Rewriting to /coming-soon is meaningless to an API client, and simply exempting the
       // whole '/api' prefix (as this used to) left checkout/orders/wishlist/reviews fully
       // reachable for non-staff visitors while every storefront page claimed the site wasn't

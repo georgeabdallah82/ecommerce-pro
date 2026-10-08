@@ -23,12 +23,6 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Prepare MongoDB Prisma schema
-        run: node scripts/prepare-mongodb-schema.mjs
-
-      - name: Prisma generate (production MongoDB schema, Accelerate no-engine client)
-        run: ./node_modules/.bin/prisma generate --no-engine --schema=prisma-mongodb
-
       - name: Typecheck
         run: npm run typecheck
 
@@ -83,7 +77,7 @@ jobs:
         if: success()
         env:
           AUTH_SECRET: ci-build-only-secret-do-not-use-in-production
-          DATABASE_URL: mongodb://127.0.0.1:27017/ci-build
+          DATABASE_URL: postgresql://build:build@127.0.0.1:5432/build
         run: npm run build:cloudflare
 
       - name: Enforce dependency audit result
@@ -117,14 +111,40 @@ jobs:
             exit 1
           fi
 
-      # These are build-time placeholders only (the production values are already configured as
-      # persistent Cloudflare Worker secrets via `wrangler secret put`, per PRODUCTION-OPS.md, and
-      # are read from the Worker's real runtime env, not from this build step) -- same values the
-      # "quality" job above already builds successfully with.
-      - name: Deploy
+      - name: Check the database secret is configured
+        env:
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: |
+          case "$NEON_DATABASE_URL" in
+            postgres://*|postgresql://*) ;;
+            *) echo "::error::NEON_DATABASE_URL repo secret is missing or not a postgresql:// address -- the Worker would have no database."; exit 1 ;;
+          esac
+
+      # Build-time placeholders only (the same values the "quality" job builds with): the Worker
+      # reads its real AUTH_SECRET (a persistent Cloudflare secret, per PRODUCTION-OPS.md) and
+      # NEON_DATABASE_URL (uploaded with the version below) at runtime.
+      - name: Build
         env:
           AUTH_SECRET: ci-build-only-secret-do-not-use-in-production
-          DATABASE_URL: mongodb://127.0.0.1:27017/ci-build
+          DATABASE_URL: postgresql://build:build@127.0.0.1:5432/build
+        run: npm run build:cloudflare
+
+      # Before the new code goes live, so it never runs against tables it doesn't know.
+      # Migrations need Neon's direct (not pooled) address.
+      - name: Apply database migrations
+        env:
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: DATABASE_URL="${NEON_DATABASE_URL/-pooler./.}" npx prisma migrate deploy
+
+      - name: Deploy
+        env:
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: npm run deploy
+        run: |
+          # The database address goes up with this version rather than as a separate secret
+          # change, which would first restart the code that is currently live.
+          secrets="$RUNNER_TEMP/worker-secrets.json"
+          node -e 'require("fs").writeFileSync(process.argv[1], JSON.stringify({ NEON_DATABASE_URL: process.env.NEON_DATABASE_URL }))' "$secrets"
+          npx opennextjs-cloudflare deploy -- --secrets-file "$secrets"
+          rm -f "$secrets"
