@@ -2592,14 +2592,16 @@ function getMockHandler(model: string) {
 // ---- Database connection ------------------------------------------------------------------
 // Production runs on Cloudflare Workers against Neon (PostgreSQL), through Prisma's driver
 // adapters (engineType = "client": no Rust engine, a small WebAssembly query compiler):
-// - Reads go through Neon's HTTP endpoint. Each query is a plain HTTPS request, so one client
-//   is safely shared by every request the Worker handles.
+// - Reads go through Neon's HTTP endpoint: one HTTPS request per query, no connection to set up.
 // - Writes and transactions need a real connection (Prisma also wraps nested writes in a
-//   transaction, which HTTP can't do), so they use a WebSocket pool. A Worker may not reuse a
-//   socket opened while handling another request, so that client is created per request (keyed
-//   by the request's ExecutionContext) and its socket closes when the request ends.
-// Any other PostgreSQL URL (local development, CI) uses node-postgres for both, with the same
-// one-connection-per-request rule on Workers.
+//   transaction, which HTTP can't do), so they use a WebSocket pool.
+// Any other PostgreSQL URL (local development, CI) uses node-postgres for both.
+// On Workers both clients are created per request (keyed by the request's ExecutionContext) and
+// never shared between requests: a Worker may not reuse a socket opened while handling another
+// request, and one request must never wait on another's I/O. Prisma batches findUnique calls
+// made within the same timer tick into one query, so a client shared by concurrent requests
+// would send one request's lookup inside another request's fetch, and the runtime cancels the
+// waiting request as hung (seen as random 500s under concurrent traffic).
 // NEON_DATABASE_URL is read first so the Worker's old DATABASE_URL (the retired Prisma
 // Accelerate prisma:// address) can't be picked up by mistake.
 const databaseUrl = [process.env.NEON_DATABASE_URL, process.env.DATABASE_URL].find(url => !!url && /^postgres(ql)?:\/\//.test(url)) || ''
@@ -2611,25 +2613,28 @@ function createConnectionClient() {
   return new PrismaClient({ adapter: isNeon ? new PrismaNeon({ connectionString: databaseUrl }) : new PrismaPg({ connectionString: databaseUrl }) })
 }
 
-let httpReadClient: PrismaClient | null = null
-let processClient: PrismaClient | null = null
-const requestClients = new WeakMap<object, PrismaClient>()
-// On Workers: one connection client per request (see above). Elsewhere: one per process.
-function getConnectionClient(): PrismaClient {
-  if (!onWorkers) return (processClient ??= createConnectionClient())
+type Clients = { read?: PrismaClient; write?: PrismaClient }
+const processClients: Clients = {}
+const requestClients = new WeakMap<object, Clients>()
+// On Workers: the current request's clients (see above), each created on first use. Elsewhere
+// (Node: local development, scripts): one set per process.
+function currentClients(): Clients {
+  if (!onWorkers) return processClients
   let ctx: object | null = null
   try { ctx = getCloudflareContext().ctx as object } catch { ctx = null }
-  if (!ctx) return createConnectionClient()
-  let client = requestClients.get(ctx)
-  if (!client) { client = createConnectionClient(); requestClients.set(ctx, client) }
-  return client
-}
-function getReadClient(): PrismaClient {
-  if (isNeon) return (httpReadClient ??= new PrismaClient({ adapter: new PrismaNeonHTTP(databaseUrl, {}) }))
-  return getConnectionClient()
+  if (!ctx) return {}
+  let clients = requestClients.get(ctx)
+  if (!clients) { clients = {}; requestClients.set(ctx, clients) }
+  return clients
 }
 function getWriteClient(): PrismaClient {
-  return getConnectionClient()
+  const clients = currentClients()
+  return (clients.write ??= createConnectionClient())
+}
+function getReadClient(): PrismaClient {
+  if (!isNeon) return getWriteClient()
+  const clients = currentClients()
+  return (clients.read ??= new PrismaClient({ adapter: new PrismaNeonHTTP(databaseUrl, {}) }))
 }
 
 // Model operations that only read; everything else on a model is a write.
