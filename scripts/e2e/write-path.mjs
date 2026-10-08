@@ -63,8 +63,10 @@ for (const name of regInputs) {
   else if (/name/i.test(name)) await el.fill('PG Customer')
 }
 await regForm.locator('button', { hasText: 'Create account' }).first().click()
-await cp.waitForLoadState('networkidle'); await cp.waitForTimeout(1000)
-const session = await cp.evaluate(async () => (await (await fetch('/api/auth/session')).json()))
+// The form posts in the background and then redirects to the account page; the session cookie
+// is set by that response, so wait for the redirect rather than a fixed delay.
+await cp.waitForURL(u => !u.pathname.startsWith('/account/register'), { timeout: 60000 }).catch(() => {})
+const session = await cp.evaluate(async () => { const r = await fetch('/api/auth/session'); return r.json().catch(() => ({ status: r.status })) })
 step('customer registration + session', !!session?.user?.email, `fields=${regInputs.join(',')} user=${session?.user?.email || JSON.stringify(session).slice(0, 80)}`)
 const productId = await cp.evaluate(async path => { const r = await fetch('/api/products?limit=50'); const j = await r.json().catch(() => null); const list = j?.products || j?.rows || j || []; const slug = path.split('/').pop(); return (list.find?.(p => p.slug === slug) || list[0])?.id || '' }, productPath)
 const wish = await cp.evaluate(async id => { const r = await fetch('/api/wishlist', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ productId: id }) }); return r.status + ' ' + (await r.text()).slice(0, 80) }, productId)
@@ -79,6 +81,17 @@ await ap.goto(B + '/admin-login', { waitUntil: 'networkidle' })
 await ap.locator('input[name=email]').fill(ADMIN.email); await ap.locator('input[name=password]').fill(ADMIN.password); await ap.locator('button.adminLoginSubmit').click()
 await ap.waitForURL(/\/admin(?!-login)/, { timeout: 60000 }); step('admin login', true)
 const api = (url, method = 'GET', body) => ap.evaluate(async ([url, method, body]) => { const r = await fetch(url, { method, headers: body ? { 'content-type': 'application/json' } : undefined, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, body: await r.json().catch(() => null) } }, [url, method, body])
+
+// Many requests at once, the way the admin and a busy storefront load: each request must only
+// ever wait on its own database queries (a database client shared between requests let one
+// request's lookup ride on another's and the Worker runtime cancelled it as hung).
+const burst = await ap.evaluate(async productPath => {
+  const urls = []
+  for (let i = 0; i < 6; i++) urls.push('/api/auth/session', '/api/admin/pages', '/api/admin/collections', '/api/admin/coupons', productPath)
+  const results = await Promise.all(urls.map(u => fetch(u, { cache: 'no-store' }).then(r => r.status, () => 0)))
+  return results.map((status, i) => [urls[i], status]).filter(([, status]) => status !== 200)
+}, productPath)
+step('concurrent requests (30 at once)', burst.length === 0, burst.map(([u, s]) => `${u}=${s}`).join(' '))
 
 for (const p of ['/admin', '/admin/orders', '/admin/products', '/admin/customers', '/admin/reports', '/admin/inventory', '/admin/settings', '/admin/online-store/theme-editor', '/admin/customer-segments']) {
   const r = await ap.goto(B + p, { waitUntil: 'networkidle' }).catch(() => null)
@@ -149,3 +162,4 @@ if (customer) {
 step('no browser errors', !shopErrors.length && !adminErrors.length, [...shopErrors, ...adminErrors].join(' | '))
 await b.close()
 console.log(failures ? `\n${failures} failure(s)` : '\nall passed')
+process.exit(failures ? 1 : 0)
