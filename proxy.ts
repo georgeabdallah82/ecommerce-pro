@@ -3,6 +3,7 @@ import type { NextFetchEvent, NextRequest } from 'next/server'
 import { jwtVerify } from 'jose'
 import { db } from '@/lib/prisma'
 import { isSessionRevoked } from '@/lib/session-revocation'
+import { contentSecurityPolicy } from '@/lib/csp'
 
 // '/api' is deliberately NOT in this list (see the maintenance check below) -- API requests get
 // their own, narrower bypass so mutations to non-admin/auth/internal/webhook endpoints are
@@ -64,10 +65,18 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   }
 
   const pathname = request.nextUrl.pathname
+  const nonce = btoa(crypto.randomUUID())
+  const isThemePreview = pathname === '/theme-editor-preview'
+  // The theme editor's live preview (components/theme-preview-frame.tsx) embeds this one route
+  // in a same-origin <iframe>; every other route refuses to be framed.
+  const csp = contentSecurityPolicy(nonce, isThemePreview ? "'self'" : "'none'")
+  const withNonce = (headers: Headers) => { headers.set('x-nonce', nonce); headers.set('Content-Security-Policy', csp); return headers }
   if (pathname === '/admin/login') {
     const rewriteUrl = request.nextUrl.clone()
     rewriteUrl.pathname = '/admin-login'
-    return NextResponse.rewrite(rewriteUrl)
+    const rewrite = NextResponse.rewrite(rewriteUrl, { request: { headers: withNonce(new Headers(request.headers)) } })
+    rewrite.headers.set('Content-Security-Policy', csp)
+    return rewrite
   }
 
   const needsRedirectCheck = !REDIRECT_BYPASS_PREFIXES.some(p => pathname.startsWith(p)) && !isStaticAsset(pathname)
@@ -108,9 +117,11 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
           return NextResponse.json({ error: 'The store is temporarily unavailable.' }, { status: 503, headers: { 'Cache-Control': 'no-store' } })
         }
       } else {
-        const requestHeaders = new Headers(request.headers)
+        const requestHeaders = withNonce(new Headers(request.headers))
         requestHeaders.set('x-maintenance-active', '1')
-        return NextResponse.rewrite(new URL('/coming-soon', request.url), { request: { headers: requestHeaders } })
+        const rewrite = NextResponse.rewrite(new URL('/coming-soon', request.url), { request: { headers: requestHeaders } })
+        rewrite.headers.set('Content-Security-Policy', csp)
+        return rewrite
       }
     }
   }
@@ -122,23 +133,15 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     return NextResponse.json({ error: 'Cross-site request blocked' }, { status: 403, headers: { 'Cache-Control': 'no-store' } })
   }
 
-  const response = NextResponse.next()
+  const response = NextResponse.next({ request: { headers: withNonce(new Headers(request.headers)) } })
   response.headers.set('X-Content-Type-Options', 'nosniff')
-  // The theme editor's live preview (components/theme-preview-frame.tsx) embeds
-  // this one route in a same-origin <iframe>; every other route stays DENY.
-  const isThemePreview = pathname === '/theme-editor-preview'
   response.headers.set('X-Frame-Options', isThemePreview ? 'SAMEORIGIN' : 'DENY')
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   // geolocation=(self): the storefront's opt-in live-map location prompt (components/live-visitor-tracker.tsx)
   // needs it on our own pages; geolocation=() blocked it outright, so "Allow" could never work.
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)')
   response.headers.set('X-DNS-Prefetch-Control', 'on')
-  // A Content-Security-Policy limited to directives that can't break the storefront: no plugin
-  // objects, no <base> hijacking of relative URLs, and no framing by other sites (the modern
-  // form of X-Frame-Options). Scripts aren't restricted here because the tracking pixels and
-  // the card gateway load from third-party hosts the merchant can change in Settings.
-  const frameAncestors = isThemePreview ? "'self'" : "'none'"
-  response.headers.set('Content-Security-Policy', `object-src 'none'; base-uri 'self'; frame-ancestors ${frameAncestors}${process.env.NODE_ENV === 'production' ? '; upgrade-insecure-requests' : ''}`)
+  response.headers.set('Content-Security-Policy', csp)
 
   if (isApi && hasSession) {
     response.headers.set('Cache-Control', 'private, no-store')
