@@ -7,7 +7,7 @@
     "postinstall": "node scripts/prepare-mongodb-schema.mjs && prisma generate --no-engine --schema=prisma/mongodb-schema",
     "dev": "next dev -p 3000 -H 0.0.0.0",
     "build": "node scripts/prepare-mongodb-schema.mjs && prisma generate --no-engine --schema=prisma/mongodb-schema && next build",
-    "build:cloudflare": "node scripts/prepare-mongodb-schema.mjs && prisma generate --no-engine --schema=prisma/mongodb-schema && opennextjs-cloudflare build",
+    "build:cloudflare": "node scripts/prepare-mongodb-schema.mjs && prisma generate --no-engine --schema=prisma/mongodb-schema && opennextjs-cloudflare build && node scripts/check-worker-charset.mjs",
     "start": "next start -H 0.0.0.0 -p 3000",
     "preview": "npm run build:cloudflare && opennextjs-cloudflare preview",
     "deploy": "npm run build:cloudflare && opennextjs-cloudflare deploy",
