@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { createHash, randomBytes } from 'node:crypto'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
@@ -11,7 +12,7 @@ export async function GET() {
     await requirePermission('apiCredentials.view')
     const rows = await db.apiCredential.findMany({ orderBy: { createdAt: 'desc' } })
     return json(rows.map(r => ({ ...r, keyHash: undefined })))
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 }) }
+  } catch (e) { return routeError(e, 'Forbidden', 403) }
 }
 
 export async function POST(req: Request) {
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
     const credential = await db.apiCredential.create({ data: { name, keyPrefix: prefix, keyHash: hash(secret), scopesJson: JSON.stringify(Array.isArray(b.scopes) ? b.scopes : ['store.read']), expiresAt: b.expiresAt ? new Date(b.expiresAt) : null } })
     await audit(actor.id, 'api_credential.created', 'ApiCredential', credential.id, { name, prefix, scopes: b.scopes })
     return json({ credential: { ...credential, keyHash: undefined }, secret }, { status: 201 })
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to create API credential' }, { status: 400 }) }
+  } catch (e) { return routeError(e, 'Unable to create API credential', 400) }
 }
 
 export async function PATCH(req: Request) {
@@ -37,5 +38,5 @@ export async function PATCH(req: Request) {
     const credential = await db.apiCredential.update({ where: { id }, data: { ...(b.status ? { status: b.status } : {}), ...(b.expiresAt !== undefined ? { expiresAt: b.expiresAt ? new Date(b.expiresAt) : null } : {}) } })
     await audit(actor.id, 'api_credential.updated', 'ApiCredential', id, { fields: Object.keys(b) })
     return json({ credential: { ...credential, keyHash: undefined } })
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to update API credential' }, { status: 400 }) }
+  } catch (e) { return routeError(e, 'Unable to update API credential', 400) }
 }

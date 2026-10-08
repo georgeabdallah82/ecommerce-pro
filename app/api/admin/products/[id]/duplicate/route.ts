@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { db } from '@/lib/prisma'
@@ -104,6 +105,6 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     await audit(actor.id, 'product.duplicated', 'Product', duplicate.id, { sourceProductId: source.id, sourceSku: source.sku })
     return json({ product: duplicate }, { status: 201 })
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Unable to duplicate product' }, { status: 400 })
+    return routeError(e, 'Unable to duplicate product', 400)
   }
 }

@@ -231,7 +231,8 @@ export default function Checkout() {
         localStorage.removeItem('ecom-recovered-token')
       } catch {}
       if(output.payment?.type==='mpgs'){setClientCheckout(output.payment as ClientCheckout);setLoading(false);return}
-      const successUrl = authenticated ? `/order/success?order=${encodeURIComponent(output.order.orderNumber)}` : `/order/success?order=${encodeURIComponent(output.order.orderNumber)}&email=${encodeURIComponent(data.email)}`
+      // The server signs the thank-you link (lib/order-access.ts); the order number alone shows nothing.
+      const successUrl = typeof output.order.successPath === 'string' && output.order.successPath.startsWith('/order/success?') ? output.order.successPath : `/order/success?order=${encodeURIComponent(output.order.orderNumber)}`
       router.push(successUrl)
     } catch(e){setError(e instanceof Error?e.message:'Unable to place order');setLoading(false)}
   }

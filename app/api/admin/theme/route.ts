@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
@@ -13,7 +14,7 @@ export async function GET() {
     await requirePermission('content.view')
     const state = await getThemeEditorState()
     return json(state, { headers: { 'cache-control': 'no-store' } })
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 }) }
+  } catch (e) { return routeError(e, 'Forbidden', 403) }
 }
 
 export async function PATCH(req: Request) {
@@ -36,5 +37,5 @@ export async function PATCH(req: Request) {
     ])
     await audit(actor.id, 'theme.draft.updated', 'Theme', 'theme.draft', { templateKey, templates: Object.keys(templates).length, activeSections: activeSections.length, navigationUpdated: navigationProvided })
     return json({ theme, sections: activeSections, homeSections, editorTemplates: templates, navigation: currentNavigation, draft: true }, { headers: { 'cache-control': 'no-store' } })
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to save theme draft' }, { status: 400 }) }
+  } catch (e) { return routeError(e, 'Unable to save theme draft', 400) }
 }

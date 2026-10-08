@@ -4,13 +4,12 @@ import { getCurrentUser } from '@/lib/auth'
 import { getProductStats, withProductStats } from '@/lib/product-stats'
 import { CARD_STOCK_INCLUDE, withCardStock } from '@/lib/card-stock'
 import { getUnpublishedProductIds } from '@/lib/sales-channels'
-import { getStoreCurrency } from '@/lib/store-currency'
+import { getStorefrontSettings } from '@/lib/storefront-settings'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { Footer } from '@/components/footer'
 import AliExpressProduct from '@/components/aliexpress-product'
 import { descriptionHtml } from '@/lib/sanitize-html'
-import { getReturnsEnabled } from '@/lib/policies'
 import { absoluteUrl, getSiteSeo, isShareableImage, metaText, shareMeta, siteUrl } from '@/lib/seo'
 import { themeTemplates } from '@/lib/theme-templates'
 
@@ -172,7 +171,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     slug: product.slug,
     description: product.description,
     descriptionHtml: descriptionHtml(product.description || product.shortDescription),
-    returnsEnabled: await getReturnsEnabled(),
+    // From the settings this request already loaded (getThemeState reads them) -- no extra query.
+    returnsEnabled: (await getStorefrontSettings()).get('returns.enabled') !== 'false',
     shortDescription: product.shortDescription,
     brand: product.brand,
     vendor: product.vendor,
@@ -234,6 +234,20 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       .map((m) => ({ name: m.definition.name, type: m.definition.type, isList: m.definition.isList, value: m.value })),
   }
 
+  // Search engines get the real prices: one offer per option when options differ in price or
+  // stock, otherwise one offer (audit ME-01).
+  const storeCurrency = (await getStorefrontSettings()).get('store.currency')?.trim() || process.env.NEXT_PUBLIC_CURRENCY || 'USD'
+  const productUrl = `${siteUrl()}/product/${product.slug}`
+  const offerFor = (price: number, inStock: boolean, sku?: string) => ({
+    '@type': 'Offer', url: productUrl, priceCurrency: storeCurrency, price: (price / 100).toFixed(2), ...(sku ? { sku } : {}),
+    availability: inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock', itemCondition: 'https://schema.org/NewCondition',
+  })
+  const sellsWithoutStock = !product.trackInventory || product.continueSellingWhenOutOfStock
+  const variantOffers = product.variants.map((variant) => {
+    const stock = variantAvailability.find((v) => v.sku === variant.sku)?.available ?? 0
+    return offerFor(variant.price ?? product.basePrice, sellsWithoutStock || stock > 0, variant.sku)
+  })
+  const variesByOption = variantOffers.length > 1 && new Set(variantOffers.map((o) => `${o.price}|${o.availability}`)).size > 1
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'Product',
@@ -242,15 +256,10 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     sku: product.sku,
     image: product.images.map((image) => absoluteUrl(image.url)),
     brand: product.brand ? { '@type': 'Brand', name: product.brand } : undefined,
-    url: `${siteUrl()}/product/${product.slug}`,
-    offers: {
-      '@type': 'Offer',
-      url: `${siteUrl()}/product/${product.slug}`,
-      priceCurrency: await getStoreCurrency(),
-      price: (product.basePrice / 100).toFixed(2),
-      availability: isAvailable ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-      itemCondition: 'https://schema.org/NewCondition',
-    },
+    url: productUrl,
+    offers: variesByOption
+      ? variantOffers
+      : offerFor(product.variants[0]?.price ?? product.basePrice, isAvailable),
   }
 
   return (

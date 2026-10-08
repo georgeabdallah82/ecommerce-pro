@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
@@ -8,7 +9,7 @@ export async function GET() {
     await requirePermission('collections.view')
     return json(await db.collection.findMany({ include: { _count: { select: { products: true } } }, orderBy: { sortOrder: 'asc' } }))
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 })
+    return routeError(e, 'Forbidden', 403)
   }
 }
 
@@ -52,6 +53,6 @@ export async function POST(req: Request) {
     await audit(actor.id, 'collection.created', 'Collection', c.id, { name })
     return json({ collection: c }, { status: 201 })
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Unable to create collection' }, { status: 400 })
+    return routeError(e, 'Unable to create collection', 400)
   }
 }

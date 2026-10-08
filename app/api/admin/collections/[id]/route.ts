@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
@@ -19,7 +20,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     if (!collection) return json({ error: 'Collection not found' }, { status: 404 })
     return json({ collection })
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 })
+    return routeError(e, 'Forbidden', 403)
   }
 }
 
@@ -82,6 +83,6 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     await audit(actor.id, 'collection.deleted', 'Collection', id, { name: existing.name })
     return json({ ok: true })
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Unable to delete collection' }, { status: 400 })
+    return routeError(e, 'Unable to delete collection', 400)
   }
 }

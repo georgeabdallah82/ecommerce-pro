@@ -21,6 +21,7 @@ import { ZodError } from 'zod'
 import { newOrderNumber } from '@/lib/order-number'
 import { runInBackground } from '@/lib/background'
 import { adContextFromRequest, sendMetaPurchase } from '@/lib/meta-capi'
+import { orderSuccessPath } from '@/lib/order-access'
 import { BLOCKED_MESSAGE, BLOCKED_PHONES_KEY, isBlocked, parseBlockedPhones } from '@/lib/blocked-phones'
 import { bundleDiscount } from '@/lib/bundles'
 
@@ -76,6 +77,12 @@ async function findAutomaticDiscount(subtotal: number, userId: string | null, it
   const now = new Date()
   const candidates = await db.coupon.findMany({ where: { isActive: true, isAutomatic: true } })
   let best: { discount: DiscountSplit; coupon: any } | null = null
+  // "First order only" needs to know whether this customer has ordered before; asked once, not
+  // once per such discount (audit ME-03).
+  let priorOrder: Promise<boolean> | null = null
+  const hasPriorOrder = () => (priorOrder ??= userId
+    ? db.order.findFirst({ where: { userId, status: { not: 'CANCELLED' } }, select: { id: true } }).then(Boolean)
+    : Promise.resolve(false))
   for (const coupon of candidates) {
     if (misconfigured(coupon)) continue
     if (coupon.startsAt && coupon.startsAt > now) continue
@@ -84,8 +91,7 @@ async function findAutomaticDiscount(subtotal: number, userId: string | null, it
     if (coupon.minSubtotal !== null && subtotal < coupon.minSubtotal) continue
     if (coupon.firstOrderOnly) {
       if (!userId) continue
-      const existingOrder = await db.order.findFirst({ where: { userId, status: { not: 'CANCELLED' } }, select: { id: true } })
-      if (existingOrder) continue
+      if (await hasPriorOrder()) continue
     }
     const discount = await discountAmount(coupon, items)
     if (discount.total === 0 && coupon.type !== 'FREE_SHIPPING') continue
@@ -437,7 +443,7 @@ export async function POST(req: Request) {
       const providerTx = paymentMethod === PaymentMethod.CARD
         ? await db.paymentTransaction.findFirst({ where: { orderId: result.order.id, provider: paymentProvider.name }, orderBy: { createdAt: 'desc' } })
         : null
-      return json({ order: { id: result.order.id, orderNumber: result.order.orderNumber, total: result.order.grandTotal }, payment: providerCheckout(providerTx?.rawJson || null) }, { status: 200, headers: { 'Cache-Control': 'no-store' } })
+      return json({ order: { id: result.order.id, orderNumber: result.order.orderNumber, total: result.order.grandTotal, successPath: orderSuccessPath(result.order.orderNumber) }, payment: providerCheckout(providerTx?.rawJson || null) }, { status: 200, headers: { 'Cache-Control': 'no-store' } })
     }
 
     const order = result.order
@@ -476,7 +482,7 @@ export async function POST(req: Request) {
     }
     runInBackground(dispatchWebhookEvent('order.created', { id: order.id, orderNumber: order.orderNumber, email: order.email, grandTotal: order.grandTotal, currency: order.currency, status: order.status, paymentStatus: order.paymentStatus }).catch(error => console.error('[webhook] order.created dispatch failed', error)))
     await audit(user?.id, 'order.created', 'Order', order.id, { orderNumber: order.orderNumber, total: grandTotal, paymentMethod, paymentProvider: paymentMethod === PaymentMethod.CARD ? paymentProvider.name : paymentMethod.toLowerCase(), coinsUsed: requestedCoins, coinDiscount, giftCardAmount: giftCardDiscount })
-    return json({ order: { id: order.id, orderNumber: order.orderNumber, total: order.grandTotal }, payment: clientCheckout, rewards: { coinsUsed: requestedCoins, coinDiscount, giftCardAmount: giftCardDiscount } }, { status: 201, headers: { 'Cache-Control': 'no-store' } })
+    return json({ order: { id: order.id, orderNumber: order.orderNumber, total: order.grandTotal, successPath: orderSuccessPath(order.orderNumber) }, payment: clientCheckout, rewards: { coinsUsed: requestedCoins, coinDiscount, giftCardAmount: giftCardDiscount } }, { status: 201, headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {
     const failure = checkoutFailure(error)
     return json({ error: failure.message }, { status: failure.status, headers: { 'Cache-Control': 'no-store' } })

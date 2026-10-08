@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
@@ -11,7 +12,7 @@ export async function GET(req: Request) {
       return new Response(subscribersToCsv(rows), { headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': 'attachment; filename="newsletter-subscribers.csv"', 'cache-control': 'no-store' } })
     }
     return json({ subscribers: rows })
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 }) }
+  } catch (e) { return routeError(e, 'Forbidden', 403) }
 }
 
 export async function DELETE(req: Request) {
@@ -22,5 +23,5 @@ export async function DELETE(req: Request) {
     await removeSubscriber(email)
     await audit(actor.id, 'newsletter.subscriber.removed', 'NewsletterSubscriber', email)
     return json({ ok: true })
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to remove subscriber' }, { status: 400 }) }
+  } catch (e) { return routeError(e, 'Unable to remove subscriber', 400) }
 }

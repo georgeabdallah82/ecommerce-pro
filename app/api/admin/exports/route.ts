@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
@@ -34,5 +35,5 @@ export async function GET(request: Request) {
     } else return NextResponse.json({ error: 'Unsupported export type' }, { status: 400 })
     await db.auditLog.create({ data: { actorId: actor.id, action: 'ADMIN_EXPORT', entity: type, metadataJson: JSON.stringify({ ids: ids.length, collectionId, rowCount: body.split('\n').length - 2 }) } })
     return new NextResponse(body, { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="${filename}"`, 'Cache-Control': 'private, no-store' } })
-  } catch (error) { const message = error instanceof Error ? error.message : 'UNAUTHORIZED'; return NextResponse.json({ error: message === 'FORBIDDEN' ? 'Forbidden' : 'Unauthorized' }, { status: message === 'FORBIDDEN' ? 403 : 401 }) }
+  } catch (error) { return routeError(error, 'Export failed', 400) }
 }

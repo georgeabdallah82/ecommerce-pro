@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { requirePermission } from '@/lib/auth'
 import { json } from '@/lib/utils'
 
@@ -39,6 +40,6 @@ export async function GET() {
     const configured = capabilities.filter(c => c.state === 'configured' || c.state === 'ready').length
     return json({ total: capabilities.length, configured, setupRequired: capabilities.length - configured, capabilities })
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 })
+    return routeError(e, 'Forbidden', 403)
   }
 }

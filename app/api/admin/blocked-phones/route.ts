@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
@@ -7,7 +8,7 @@ export async function GET() {
   try {
     await requirePermission('orders.view')
     return json({ blocked: await getBlockedPhones() })
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 }) }
+  } catch (e) { return routeError(e, 'Forbidden', 403) }
 }
 
 // {phone, note?} blocks a number; {phone, unblock: true} lets it order again.
@@ -20,5 +21,5 @@ export async function POST(req: Request) {
     const result = b.unblock ? await unblockPhone(phone) : await blockPhone(phone, b.note ? String(b.note) : undefined)
     await audit(actor.id, b.unblock ? 'customer.unblocked' : 'customer.blocked', 'Setting', undefined, { phone: result.phone })
     return json({ phone: result.phone, blocked: result.list })
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to update blocked numbers' }, { status: 400 }) }
+  } catch (e) { return routeError(e, 'Unable to update blocked numbers', 400) }
 }

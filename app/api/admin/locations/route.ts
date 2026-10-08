@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
@@ -7,7 +8,7 @@ export async function GET() {
   try {
     await requirePermission('inventory.view')
     return json(await db.storeLocation.findMany({ orderBy: [{ isDefault: 'desc' }, { name: 'asc' }] }))
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 }) }
+  } catch (e) { return routeError(e, 'Forbidden', 403) }
 }
 
 export async function POST(req: Request) {

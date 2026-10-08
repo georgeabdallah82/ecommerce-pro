@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { db } from '@/lib/prisma'
@@ -26,6 +27,6 @@ export async function POST() {
     const health = await runPlatformHealth()
     return json({ ok: true, repairs, health })
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Unable to repair platform state' }, { status: 400 })
+    return routeError(e, 'Unable to repair platform state', 400)
   }
 }

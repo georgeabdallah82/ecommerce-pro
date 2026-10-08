@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { json } from '@/lib/utils'
@@ -16,5 +17,5 @@ export async function GET() {
         createdBy: v.createdBy ? authorNames.get(v.createdBy) || 'Unknown' : null,
       })),
     }, { headers: { 'cache-control': 'no-store' } })
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 }) }
+  } catch (e) { return routeError(e, 'Forbidden', 403) }
 }

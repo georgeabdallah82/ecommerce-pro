@@ -1,12 +1,12 @@
 import { json } from '@/lib/utils'
-import { consumeRateLimit } from '@/lib/rate-limit'
+import { consumeDurableRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { normalizeEmail, subscribeToNewsletter } from '@/lib/newsletter'
 
 // Public endpoint behind the storefront Newsletter section and the footer form.
 export async function POST(req: Request) {
   try {
-    const limit = consumeRateLimit(`newsletter:${clientIp(req.headers)}`, 8, 10 * 60 * 1000)
+    const limit = await consumeDurableRateLimit(`newsletter:${clientIp(req.headers)}`, 8, 10 * 60 * 1000)
     if (!limit.allowed) return json({ error: 'Too many attempts. Please try again in a few minutes.' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } })
     const body = await req.json().catch(() => ({}))
     // Hidden "company" field: real visitors never see or fill it, bots do. Answer exactly

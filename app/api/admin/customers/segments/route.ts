@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
@@ -14,7 +15,7 @@ export async function GET() {
     const countBySegment = Object.fromEntries(counts.map(c => [c.segmentId, c._count._all]))
     const rows = segments.map(segment => ({ ...segment, _count: { members: countBySegment[segment.id] || 0 } }))
     return json(rows)
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 }) }
+  } catch (e) { return routeError(e, 'Forbidden', 403) }
 }
 
 export async function POST(req: Request) {
@@ -37,5 +38,5 @@ export async function POST(req: Request) {
     const ruleMatched = rules.conditions.length ? await recomputeSegmentMembership(segment.id) : 0
     await audit(actor.id, 'customer_segment.created', 'CustomerSegment', segment.id, { name, customerCount: customerIds.length, ruleConditions: rules.conditions.length, ruleMatched })
     return json({ segment, ruleMatched }, { status: 201 })
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to create customer segment' }, { status: 400 }) }
+  } catch (e) { return routeError(e, 'Unable to create customer segment', 400) }
 }

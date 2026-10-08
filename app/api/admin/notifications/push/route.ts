@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { getCurrentUser } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
 import { json } from '@/lib/utils'
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
     if (!subscribed) return json({ error: 'Push subscription was not saved' }, { status: 500 })
     return json({ ok: true, subscribed: true })
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Unable to save push subscription' }, { status: 400 })
+    return routeError(e, 'Unable to save push subscription', 400)
   }
 }
 
@@ -40,6 +41,6 @@ export async function DELETE(req: Request) {
     await removePushSubscription(user.id, endpoint)
     return json({ ok: true })
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Unable to remove push subscription' }, { status: 400 })
+    return routeError(e, 'Unable to remove push subscription', 400)
   }
 }

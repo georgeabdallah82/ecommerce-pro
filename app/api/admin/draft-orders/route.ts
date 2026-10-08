@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
@@ -12,7 +13,7 @@ export async function GET(req: Request) {
     const q = params.get('q')?.trim() || ''
     const rows = await db.draftOrder.findMany({ where: { ...(status ? { status: status as any } : {}), ...(q ? { OR: [{ orderNumber: { contains: q, mode: 'insensitive' } }, { email: { contains: q, mode: 'insensitive' } }] } : {}) }, include: { items: true }, orderBy: { updatedAt: 'desc' }, take: 100 })
     return json(rows)
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 }) }
+  } catch (e) { return routeError(e, 'Forbidden', 403) }
 }
 
 export async function POST(req: Request) {
@@ -57,5 +58,5 @@ export async function POST(req: Request) {
     }, include: { items: true } })
     await audit(actor.id, 'draft_order.created', 'DraftOrder', draft.id, { orderNumber: draft.orderNumber, total: draft.grandTotal })
     return json({ draftOrder: draft }, { status: 201 })
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to create draft order' }, { status: 400 }) }
+  } catch (e) { return routeError(e, 'Unable to create draft order', 400) }
 }

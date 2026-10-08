@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
@@ -22,7 +23,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }, include: { items: true } })
     await audit(actor.id, 'draft_order.updated', 'DraftOrder', id, { fields: Object.keys(b) })
     return json({ draftOrder: updated })
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to update draft order' }, { status: 400 }) }
+  } catch (e) { return routeError(e, 'Unable to update draft order', 400) }
 }
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -32,7 +33,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     const result = await completeDraftOrder(id, 'COD')
     await audit(actor.id, 'draft_order.completed', 'DraftOrder', id, { orderId: result.id, orderNumber: result.orderNumber })
     return json({ order: result })
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to complete draft order' }, { status: 400 }) }
+  } catch (e) { return routeError(e, 'Unable to complete draft order', 400) }
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -45,5 +46,5 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     await db.draftOrder.update({ where: { id }, data: { status: 'CANCELLED' } })
     await audit(actor.id, 'draft_order.cancelled', 'DraftOrder', id, { orderNumber: draft.orderNumber })
     return json({ ok: true })
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to cancel draft order' }, { status: 400 }) }
+  } catch (e) { return routeError(e, 'Unable to cancel draft order', 400) }
 }

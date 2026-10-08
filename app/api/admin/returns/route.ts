@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
@@ -41,7 +42,7 @@ export async function GET(req: Request) {
     const orderById = new Map(orders.map(o => [o.id, o]))
     return json(rows.map(r => ({ ...r, order: orderById.get(r.orderId) || null })))
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 })
+    return routeError(e, 'Forbidden', 403)
   }
 }
 

@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
@@ -50,7 +51,7 @@ export async function GET() {
     await requirePermission('settings.view')
     return json(await getConfig())
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 })
+    return routeError(e, 'Forbidden', 403)
   }
 }
 
@@ -104,6 +105,6 @@ export async function PATCH(req: Request) {
     })
     return json(await getConfig())
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Unable to update payment provider' }, { status: 400 })
+    return routeError(e, 'Unable to update payment provider', 400)
   }
 }

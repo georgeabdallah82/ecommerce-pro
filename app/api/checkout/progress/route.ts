@@ -1,7 +1,7 @@
 import { db } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { json } from '@/lib/utils'
-import { consumeRateLimit } from '@/lib/rate-limit'
+import { consumeDurableRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { getStoreCurrency } from '@/lib/store-currency'
 
@@ -14,7 +14,7 @@ import { getStoreCurrency } from '@/lib/store-currency'
 
 export async function POST(req: Request) {
   try {
-    const limit = consumeRateLimit(`checkout-progress:${clientIp(req.headers)}`, 60, 10 * 60 * 1000)
+    const limit = await consumeDurableRateLimit(`checkout-progress:${clientIp(req.headers)}`, 60, 10 * 60 * 1000)
     if (!limit.allowed) return json({ ok: false }, { status: 429 })
 
     const b = await req.json().catch(() => ({}))
@@ -25,13 +25,31 @@ export async function POST(req: Request) {
     // Nothing worth recording yet -- not an error, just too early to capture.
     if (!email || !email.includes('@') || !items.length) return json({ ok: true })
 
-    const cartItems = items.map((item: any) => ({
-      productId: String(item.productId || ''),
-      variantId: item.variantId ? String(item.variantId) : null,
-      name: String(item.name || ''),
-      quantity: Math.max(1, Math.trunc(Number(item.quantity) || 1)),
-      unitPrice: Math.max(0, Math.trunc(Number(item.unitPrice) || 0)),
-    })).filter((item: any) => item.productId)
+    // Names and prices come from the catalogue, not the browser (audit ME-04): the admin's
+    // abandoned-cart list and the recovered cart must show real prices, whatever was sent.
+    type Requested = { productId: string; variantId: string | null; quantity: number }
+    const requested: Requested[] = items.map((item: any) => ({
+      productId: String(item.productId || '').slice(0, 100),
+      variantId: item.variantId ? String(item.variantId).slice(0, 100) : null,
+      quantity: Math.min(99, Math.max(1, Math.trunc(Number(item.quantity) || 1))),
+    })).filter((item: Requested) => item.productId)
+    if (!requested.length) return json({ ok: true })
+    const productIds = [...new Set(requested.map(i => i.productId))]
+    const variantIds = [...new Set(requested.map(i => i.variantId).filter((v): v is string => !!v))]
+    const [products, variants] = await Promise.all([
+      db.product.findMany({ where: { id: { in: productIds }, status: 'ACTIVE' }, select: { id: true, name: true, basePrice: true } }),
+      variantIds.length ? db.productVariant.findMany({ where: { id: { in: variantIds } }, select: { id: true, productId: true, name: true, price: true } }) : Promise.resolve([]),
+    ])
+    const productById = new Map(products.map(p => [p.id, p]))
+    const variantById = new Map(variants.map(v => [v.id, v]))
+    const cartItems = requested.flatMap(item => {
+      const product = productById.get(item.productId)
+      if (!product) return []
+      const variant = item.variantId ? variantById.get(item.variantId) : null
+      if (item.variantId && (!variant || variant.productId !== product.id)) return []
+      const name = variant && variant.name && variant.name !== 'Default Title' ? `${product.name} – ${variant.name}` : product.name
+      return [{ productId: product.id, variantId: variant?.id ?? null, name, quantity: item.quantity, unitPrice: Math.max(0, variant?.price ?? product.basePrice) }]
+    })
     if (!cartItems.length) return json({ ok: true })
 
     const subtotal = cartItems.reduce((sum: number, item: any) => sum + item.unitPrice * item.quantity, 0)

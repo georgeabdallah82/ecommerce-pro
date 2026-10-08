@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
@@ -8,7 +9,7 @@ export async function GET() {
   try {
     await requirePermission('purchaseOrders.view')
     return json(await db.purchaseOrder.findMany({ include: { items: true, location: true }, orderBy: { createdAt: 'desc' }, take: 200 }))
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 }) }
+  } catch (e) { return routeError(e, 'Forbidden', 403) }
 }
 
 export async function POST(req: Request) {
@@ -26,5 +27,5 @@ export async function POST(req: Request) {
     const po = await db.purchaseOrder.create({ data: { number: `PO-${Date.now().toString(36).toUpperCase()}`, supplierName: b.supplierName ? String(b.supplierName) : null, locationId: b.locationId ? String(b.locationId) : null, currency: String(b.currency || await getStoreCurrency()), totalCost, notes: b.notes ? String(b.notes) : null, items: { create: normalized } }, include: { items: true, location: true } })
     await audit(actor.id, 'purchase_order.created', 'PurchaseOrder', po.id, { number: po.number, totalCost })
     return json({ purchaseOrder: po }, { status: 201 })
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to create purchase order' }, { status: 400 }) }
+  } catch (e) { return routeError(e, 'Unable to create purchase order', 400) }
 }

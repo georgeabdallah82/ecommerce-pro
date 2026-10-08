@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
@@ -85,6 +86,6 @@ export async function POST(req: Request) {
 
     return json({ error: 'Unknown import action' }, { status: 400 })
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Import failed' }, { status: 400 })
+    return routeError(e, 'Import failed', 400)
   }
 }

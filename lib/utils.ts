@@ -1,3 +1,4 @@
+import { GENERIC_SERVER_ERROR, isInternalErrorMessage } from '@/lib/error-classify'
 export function slugify(input: string) {
   return input.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-')
 }
@@ -13,6 +14,13 @@ export function json<T>(data: T, init?: ResponseInit) {
   const error = (data as { error?: unknown } | null)?.error
   const auth = typeof error === 'string' ? AUTH_ERRORS[error] : undefined
   if (auth) return Response.json({ ...(data as object), error: auth.message }, { ...init, status: auth.status })
+  // Last line of defence: an error reply whose text looks like an internal failure (database,
+  // network or code error) is logged here and replaced with a generic message and a 5xx status,
+  // whichever route produced it.
+  if (typeof error === 'string' && (init?.status ?? 200) >= 400 && isInternalErrorMessage(error)) {
+    console.error('[api] internal error hidden from response:', error)
+    return Response.json({ ...(data as object), error: GENERIC_SERVER_ERROR }, { ...init, status: (init?.status ?? 500) >= 500 ? init!.status : 500 })
+  }
   return Response.json(data, init)
 }
 

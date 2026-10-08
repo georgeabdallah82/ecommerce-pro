@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
@@ -16,7 +17,7 @@ export async function GET() {
     await requirePermission('shipping.view')
     return json(await db.shippingZone.findMany({ include: { rates: true }, orderBy: { name: 'asc' } }))
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 })
+    return routeError(e, 'Forbidden', 403)
   }
 }
 

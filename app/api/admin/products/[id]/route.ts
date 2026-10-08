@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
@@ -15,7 +16,7 @@ async function getProduct(id:string){
   return {...product,sharedInventory}
 }
 
-export async function GET(_req:Request,{params}:{params:Promise<{id:string}>}){try{await requirePermission('products.view');const {id}=await params;const product=await getProduct(id);if(!product)return json({error:'Product not found'},{status:404});return json({product})}catch(e){return json({error:e instanceof Error?e.message:'Forbidden'},{status:403})}}
+export async function GET(_req:Request,{params}:{params:Promise<{id:string}>}){try{await requirePermission('products.view');const {id}=await params;const product=await getProduct(id);if(!product)return json({error:'Product not found'},{status:404});return json({product})}catch(e){return routeError(e, 'Forbidden', 403)}}
 
 export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
   try{
@@ -137,6 +138,6 @@ export async function DELETE(_req:Request,{params}:{params:Promise<{id:string}>}
     await audit(actor.id,'product.deleted','Product',id,{name:existing.name,sku:existing.sku})
     return json({ok:true})
   }catch(e){
-    return json({error:e instanceof Error?e.message:'Unable to delete product'},{status:400})
+    return routeError(e, 'Unable to delete product', 400)
   }
 }

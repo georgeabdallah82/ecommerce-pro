@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { db } from '@/lib/prisma'
 import { hashPassword, requireUser, setSession, verifyPassword } from '@/lib/auth'
 import { consumeDurableRateLimit } from '@/lib/rate-limit'
@@ -20,6 +21,6 @@ export async function POST(req: Request) {
     await setSession(user.id)
     return json({ ok: true })
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Unable to change password' }, { status: 400 })
+    return routeError(e, 'Unable to change password', 400)
   }
 }
