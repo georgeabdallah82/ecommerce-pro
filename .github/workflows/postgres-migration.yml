@@ -13,16 +13,16 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: rehearsal (practice copy + full test) or final (switch-over copy)
+        description: "rehearsal (practice copy + full test) or final (switch-over copy)"
         type: choice
         options: [rehearsal, final]
         default: rehearsal
       confirmation:
-        description: Final only -- type COPY-PRODUCTION
+        description: "Final only -- type COPY-PRODUCTION"
         required: false
         type: string
       app_ref:
-        description: Rehearsal only -- branch whose PostgreSQL version of the store is tested (default: this run's branch)
+        description: "Rehearsal only -- branch whose PostgreSQL version of the store is tested (default: this run's branch)"
         required: false
         type: string
 
