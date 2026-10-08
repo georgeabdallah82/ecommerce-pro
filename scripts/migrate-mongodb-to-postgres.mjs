@@ -141,19 +141,26 @@ async function readAll(client, model) {
 }
 
 // ---- Safety ------------------------------------------------------------------------------------
-async function guardTarget(target, models) {
+async function guardTarget(source, target, models) {
   const counts = await Promise.all(models.map(m => target[m.delegate].count()))
   if (counts.every(c => c === 0)) return
   const marker = await target.setting.findUnique({ where: { key: MARKER_KEY } })
   if (!marker) throw new Error('The PostgreSQL database already holds data this tool did not write. Refusing to replace it.')
   const info = JSON.parse(marker.value)
   if (info.mode === 'final') {
-    // After the final copy only a repeat of the final copy may replace it, and only while nothing
-    // has happened on PostgreSQL since: no order and no admin action (the store went live).
-    if (mode !== 'final') throw new Error('The final copy is already in place; rehearsals are over. Refusing to replace it.')
+    // After the final copy a new copy may replace it only while nothing has happened on
+    // PostgreSQL since: no order, no admin action, no new account (the store went live on it).
     const since = { gt: new Date(info.copiedAt) }
-    const [newOrders, newActions] = await Promise.all([target.order.count({ where: { createdAt: since } }), target.auditLog.count({ where: { createdAt: since } })])
-    if (newOrders || newActions) throw new Error(`PostgreSQL has ${newOrders} order(s) and ${newActions} admin action(s) after the final copy -- the store is running on it. Refusing to replace it.`)
+    const [newOrders, newActions, newUsers] = await Promise.all([target.order.count({ where: { createdAt: since } }), target.auditLog.count({ where: { createdAt: since } }), target.user.count({ where: { createdAt: since } })])
+    if (newOrders || newActions || newUsers) throw new Error(`PostgreSQL has ${newOrders} order(s), ${newActions} admin action(s) and ${newUsers} new account(s) after the final copy -- the store is running on it. Refusing to replace it.`)
+    // A rehearsal additionally needs the store to be back on MongoDB (a rolled-back switch-over):
+    // maintenance mode was turned off there, which only the MongoDB version of the store can do.
+    // While the store runs on PostgreSQL, MongoDB keeps the "on" it had at the final copy.
+    if (mode !== 'final') {
+      const maintenance = await source.setting.findUnique({ where: { key: 'maintenance.enabled' } })
+      if (maintenance?.value === 'true') throw new Error('The final copy is in place and the store has not gone back to MongoDB; rehearsals are over. Refusing to replace it.')
+      console.log('[copy] the final copy never went live (the store is back on MongoDB); rehearsing again')
+    }
   }
   console.log(`[copy] replacing the previous ${info.mode} copy from ${info.copiedAt}`)
 }
@@ -169,7 +176,7 @@ const report = { mode, startedAt: new Date().toISOString(), models: {}, nullifie
 let failed = false
 try {
   if (mode === 'final') await assertMaintenanceOn(source)
-  await guardTarget(target, models)
+  await guardTarget(source, target, models)
   const tables = models.map(m => `"${m.name}"`).join(', ')
   await target.$executeRawUnsafe(`TRUNCATE ${tables} CASCADE`)
 

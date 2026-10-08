@@ -60,10 +60,14 @@ jobs:
           AUTH_SECRET: ci-build-only-secret-do-not-use-in-production
         run: npm run build:cloudflare
 
+      # Settings shaped like the live Worker's: the database address in NEON_DATABASE_URL and the
+      # retired Accelerate address still in DATABASE_URL (Prisma refuses to start if it reads that
+      # next to a driver adapter, which broke the first switch-over).
       - name: Start the store
         run: |
           {
-            echo "DATABASE_URL=$DATABASE_URL"
+            echo "NEON_DATABASE_URL=$DATABASE_URL"
+            echo "DATABASE_URL=prisma://accelerate.prisma-data.net/?api_key=ci-placeholder"
             echo "AUTH_SECRET=$(openssl rand -hex 32)"
             echo "NEXT_PUBLIC_SITE_URL=http://127.0.0.1:8787"
           } > .dev.vars

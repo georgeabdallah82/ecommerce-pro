@@ -100,9 +100,12 @@ jobs:
       - name: Start the store against the rehearsal copy
         if: inputs.mode == 'rehearsal'
         working-directory: app
+        # Settings shaped like the live Worker's, including the retired Accelerate address it still
+        # carries in DATABASE_URL (Prisma refuses to start if it reads that next to a driver adapter).
         run: |
           {
             echo "NEON_DATABASE_URL=$NEON_DATABASE_URL"
+            echo "DATABASE_URL=prisma://accelerate.prisma-data.net/?api_key=rehearsal-placeholder"
             echo "AUTH_SECRET=$(openssl rand -hex 32)"
             echo "NEXT_PUBLIC_SITE_URL=http://127.0.0.1:8787"
           } > .dev.vars

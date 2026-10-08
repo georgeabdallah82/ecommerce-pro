@@ -2608,9 +2608,18 @@ const databaseUrl = [process.env.NEON_DATABASE_URL, process.env.DATABASE_URL].fi
 const isNeon = (() => { try { return new URL(databaseUrl).hostname.endsWith('.neon.tech') } catch { return false } })()
 const onWorkers = typeof navigator !== 'undefined' && navigator.userAgent === 'Cloudflare-Workers'
 
+// Prisma also reads DATABASE_URL (the schema's datasource) whenever a client is created, and
+// refuses to start when that is a prisma:// (Accelerate) address next to a driver adapter. The
+// live Worker still carries the retired Accelerate address under that name (kept so a rollback
+// to the MongoDB version keeps working), so it is pointed at the database actually used first.
+function newPrismaClient(adapter: PrismaNeon | PrismaNeonHTTP | PrismaPg) {
+  if (process.env.DATABASE_URL !== databaseUrl) process.env.DATABASE_URL = databaseUrl
+  return new PrismaClient({ adapter })
+}
+
 // A client holding a real connection (Neon WebSocket pool, or node-postgres for other databases).
 function createConnectionClient() {
-  return new PrismaClient({ adapter: isNeon ? new PrismaNeon({ connectionString: databaseUrl }) : new PrismaPg({ connectionString: databaseUrl }) })
+  return newPrismaClient(isNeon ? new PrismaNeon({ connectionString: databaseUrl }) : new PrismaPg({ connectionString: databaseUrl }))
 }
 
 type Clients = { read?: PrismaClient; write?: PrismaClient }
@@ -2634,7 +2643,7 @@ function getWriteClient(): PrismaClient {
 function getReadClient(): PrismaClient {
   if (!isNeon) return getWriteClient()
   const clients = currentClients()
-  return (clients.read ??= new PrismaClient({ adapter: new PrismaNeonHTTP(databaseUrl, {}) }))
+  return (clients.read ??= newPrismaClient(new PrismaNeonHTTP(databaseUrl, {})))
 }
 
 // Model operations that only read; everything else on a model is a write.
