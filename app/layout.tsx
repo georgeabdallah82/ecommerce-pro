@@ -42,7 +42,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const isMaintenancePage = (await headers()).get('x-maintenance-active') === '1'
+  const requestHeaders = await headers()
+  const isMaintenancePage = requestHeaders.get('x-maintenance-active') === '1'
+  // proxy.ts puts a fresh nonce in the Content-Security-Policy for every request; scripts we write
+  // ourselves must carry it or the browser refuses to run them (Next.js adds it to its own).
+  const nonce = requestHeaders.get('x-nonce') || undefined
   // Every page on the site (storefront and admin alike) renders through this
   // root layout, so a transient database hiccup here -- momentary network
   // blip talking to Prisma Accelerate, a cold connection, anything short of
@@ -97,5 +101,5 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // client tree from scratch on every /admin/* load -- which was silently breaking the theme
   // editor's live-preview iframe: the fresh re-render recreates the iframe mid-handshake,
   // permanently losing the postMessage exchange that populates the preview pane.
-  return <html lang="en" className={FONT_VARIABLE_CLASSES} suppressHydrationWarning><head><Script id="admin-theme" strategy="beforeInteractive" dangerouslySetInnerHTML={{__html:adminThemeScript}}/><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/><link rel="icon" href={theme.faviconUrl || 'data:,'}/>{theme.customCss ? <style dangerouslySetInnerHTML={{ __html: safeStyleText(theme.customCss) }}/> : null}</head><body className={[theme.animations?.enabled ? 'animations-enabled' : '', theme.design === 'market' ? 'mk' : ''].filter(Boolean).join(' ') || undefined}><TrackingScripts config={tracking}/><CartProvider><NavProgress/><LiveVisitorTracker/><StoreNavRuntime theme={theme} navigation={navigation}/><StoreNavScroll/>{children}<WhatsAppFloat theme={theme}/></CartProvider></body></html>
+  return <html lang="en" className={FONT_VARIABLE_CLASSES} suppressHydrationWarning><head><Script id="admin-theme" strategy="beforeInteractive" nonce={nonce} dangerouslySetInnerHTML={{__html:adminThemeScript}}/><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/><link rel="icon" href={theme.faviconUrl || 'data:,'}/>{theme.customCss ? <style dangerouslySetInnerHTML={{ __html: safeStyleText(theme.customCss) }}/> : null}</head><body className={[theme.animations?.enabled ? 'animations-enabled' : '', theme.design === 'market' ? 'mk' : ''].filter(Boolean).join(' ') || undefined}><TrackingScripts config={tracking} nonce={nonce} /><CartProvider><NavProgress/><LiveVisitorTracker/><StoreNavRuntime theme={theme} navigation={navigation}/><StoreNavScroll/>{children}<WhatsAppFloat theme={theme}/></CartProvider></body></html>
 }
