@@ -25,7 +25,7 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
     if(!existing)return json({error:'Product not found'},{status:404})
     const inputError=productInputError(b);if(inputError)return json({error:inputError},{status:400})
     const existingSharedPool=existing.variants.length>0&&existing.variants.every(v=>v.inventory.length===0)&&existing.inventory.some(x=>x.quantity>0||x.reserved>0)
-    const slug=b.slug!==undefined?(slugify(String(b.slug||b.name||existing.name))||`product-${Date.now()}`):undefined
+    const slug=b.slug!==undefined?(slugify(String(b.slug||''))||slugify(String(b.name||existing.name))||`product-${Date.now().toString(36)}`):undefined
     const data:any={};const textFields=['name','brand','vendor','productType','description','shortDescription','seoTitle','seoDescription','seoImageUrl','weightUnit','productTemplate','salesChannelsJson']
     for(const k of textFields)if(b[k]!==undefined)data[k]=b[k]===null?'':String(b[k])
     if(b.slug!==undefined)data.slug=slug

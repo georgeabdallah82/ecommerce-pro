@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { slugify } from '@/lib/slug'
 
 export type SeoPageRow = { id: string; title: string; handle: string; status: string; seoTitle?: string | null; seoDescription?: string | null; bodyHtml?: string | null }
 
 const TITLE_MAX = 60
 const DESC_MAX = 160
-const slugify = (value: string) => value.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
 
 // "Page details & search listing" for the theme studio's Pages tab: the page's name, its
 // URL and what Google shows for it, with a live preview of that listing. These belong to

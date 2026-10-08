@@ -38,7 +38,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       if (!name) return json({ error: 'Name required' }, { status: 400 })
       data.name = name
     }
-    if (b.slug !== undefined) data.slug = slugify(String(b.slug || b.name || existing.name))
+    if (b.slug !== undefined) data.slug = slugify(String(b.slug || '')) || slugify(String(b.name || existing.name)) || existing.slug
     if (b.description !== undefined) data.description = b.description ? String(b.description) : null
     if (b.imageUrl !== undefined) data.imageUrl = b.imageUrl ? String(b.imageUrl) : null
     if (b.isActive !== undefined) data.isActive = Boolean(b.isActive)
