@@ -159,6 +159,13 @@ if (customer) {
   step('delete customer (with wishlist)', del.status === 200, `http=${del.status} ${del.body?.error || ''}`)
 } else step('find registered customer in admin', false, JSON.stringify(cs.body).slice(0, 120))
 
+// The scheduled job that releases stock held by abandoned card checkouts (database reads and
+// transactions outside any browser session). Only when the store was started with a CRON_SECRET.
+if (process.env.CRON_SECRET) {
+  const cron = await fetch(B + '/api/internal/release-expired-reservations', { headers: { authorization: `Bearer ${process.env.CRON_SECRET}` } })
+  step('scheduled job: release expired reservations', cron.status === 200, `http=${cron.status} ${(await cron.text()).slice(0, 80)}`)
+}
+
 step('no browser errors', !shopErrors.length && !adminErrors.length, [...shopErrors, ...adminErrors].join(' | '))
 await b.close()
 console.log(failures ? `\n${failures} failure(s)` : '\nall passed')

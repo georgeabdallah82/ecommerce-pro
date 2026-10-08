@@ -246,6 +246,9 @@ try {
       await target.setting.updateMany({ where: { key }, data: { value: '' } })
     }
     await target.webhookEndpoint.updateMany({ data: { status: 'DISABLED' } })
+    // Saved push subscriptions are real staff and customer devices; the rehearsal store runs with
+    // push keys of its own and must never reach them.
+    await target.setting.deleteMany({ where: { OR: [{ key: { startsWith: 'push.subscription.' } }, { key: { startsWith: 'push.customer.subscription.' } }] } })
     const email = process.env.E2E_ADMIN_EMAIL, password = process.env.E2E_ADMIN_PASSWORD
     if (email && password) {
       const passwordHash = await bcrypt.hash(password, 10)

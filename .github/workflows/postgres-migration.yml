@@ -100,14 +100,24 @@ jobs:
       - name: Start the store against the rehearsal copy
         if: inputs.mode == 'rehearsal'
         working-directory: app
-        # Settings shaped like the live Worker's, including the retired Accelerate address it still
-        # carries in DATABASE_URL (Prisma refuses to start if it reads that next to a driver adapter).
+        # The same settings the live Worker has, with throwaway values: the retired Accelerate address
+        # it still carries in DATABASE_URL (Prisma refuses to start if it reads that next to a driver
+        # adapter), cron/webhook secrets and push keys (the copy holds no push subscriptions).
         run: |
+          cron_secret="$(openssl rand -hex 24)"
+          echo "::add-mask::$cron_secret"
+          echo "CRON_SECRET=$cron_secret" >> "$GITHUB_ENV"
+          vapid="$(npx --no-install web-push generate-vapid-keys --json)"
           {
             echo "NEON_DATABASE_URL=$NEON_DATABASE_URL"
             echo "DATABASE_URL=prisma://accelerate.prisma-data.net/?api_key=rehearsal-placeholder"
             echo "AUTH_SECRET=$(openssl rand -hex 32)"
             echo "NEXT_PUBLIC_SITE_URL=http://127.0.0.1:8787"
+            echo "CRON_SECRET=$cron_secret"
+            echo "PAYMENT_WEBHOOK_SECRET=$(openssl rand -hex 24)"
+            echo "VAPID_PUBLIC_KEY=$(node -p 'JSON.parse(process.argv[1]).publicKey' "$vapid")"
+            echo "VAPID_PRIVATE_KEY=$(node -p 'JSON.parse(process.argv[1]).privateKey' "$vapid")"
+            echo "VAPID_SUBJECT=mailto:rehearsal@yallahaul.test"
           } > .dev.vars
           nohup npx wrangler dev --port 8787 --ip 127.0.0.1 > ../wrangler.log 2>&1 &
           for i in $(seq 1 90); do grep -q "Ready on" ../wrangler.log && exit 0; sleep 2; done
