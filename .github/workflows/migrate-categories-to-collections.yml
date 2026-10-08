@@ -44,7 +44,7 @@ jobs:
         run: node scripts/prepare-mongodb-schema.mjs
 
       - name: Generate MongoDB Prisma client
-        run: npx prisma generate --schema=prisma/mongodb-schema
+        run: npx prisma generate --schema=prisma-mongodb
 
       - name: Run migration
         # inputs.dry_run is a real boolean (type: boolean above), not a string -- comparing it to the

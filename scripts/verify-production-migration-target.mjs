@@ -37,7 +37,7 @@ if (source.parsed.hostname === target.parsed.hostname && source.dbName === targe
 console.log(`[production-preflight] target database: ${target.dbName}`)
 console.log('[production-preflight] source/target database safety check passed')
 
-const schemaPath = resolve(process.cwd(), 'prisma/mongodb-schema/schema.prisma')
+const schemaPath = resolve(process.cwd(), 'prisma-mongodb/schema.prisma')
 const schema = await readFile(schemaPath, 'utf8')
 const models = [...schema.matchAll(/model\s+(\w+)\s*\{/g)].map(match => match[1])
 

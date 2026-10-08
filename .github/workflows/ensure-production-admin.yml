@@ -41,7 +41,7 @@ jobs:
         run: node scripts/prepare-mongodb-schema.mjs
 
       - name: Generate MongoDB Prisma client
-        run: npx prisma generate --schema=prisma/mongodb-schema/schema.prisma
+        run: npx prisma generate --schema=prisma-mongodb/schema.prisma
 
       - name: Ensure production admin
         run: npm run db:ensure-admin
