@@ -58,7 +58,8 @@ Order confirmations and password reset emails are sent through [Resend](https://
 
 - Order confirmation sends once a payment method's order is truly placed: immediately for COD, bank transfer, and wallet orders, and on the `PAID` webhook event for card orders. It respects the "Order confirmation" toggle in Admin → Settings → Email (`email.customerOrder`, enabled by default).
 - Password reset emails send unconditionally when `APP_URL`/`NEXT_PUBLIC_SITE_URL` is set, independent of that toggle (a security-relevant flow, not a marketing one).
-- "Fulfillment / tracking" and "Abandoned checkout recovery" toggles exist in Admin → Settings → Email but have no sending logic wired up yet — they're the next things to build on top of `lib/email.ts`.
+- "Fulfillment / tracking" (`email.fulfillment`): `sendFulfillmentEmail` goes out when an order is marked shipped/fulfilled from the admin (with its tracking details).
+- "Abandoned checkout recovery" (`email.abandonedCheckout`): `sendAbandonedCheckoutEmail` sends the "pick up where you left off" email with the cart-restoring link. It is sent by staff from Admin → Abandoned checkouts (not on a timer); the toggle turns that sending off entirely.
 
 ## Outbound webhooks
 
