@@ -9,6 +9,10 @@ import { config, money } from '@/lib/config'
 import { trackInitiateCheckout } from '@/lib/tracking-events'
 import { CartNotices } from '@/components/cart-notices'
 
+// "Lebanon" in English or Arabic. Written as escapes so the server bundle stays Latin-only
+// (see scripts/check-worker-charset.mjs).
+const LEBANON = new RegExp('^(lebanon|lb|\\u0644\\u0628\\u0646\\u0627\\u0646)$', 'i')
+
 type PaymentDetails = {
   bank: { bankName:string; accountName:string; iban:string; instructions:string } | null
   wallet: { provider:string; accountName:string; accountNumber:string; instructions:string } | null
@@ -242,7 +246,7 @@ export default function Checkout() {
   const selectedRate = shippingRates.find(rate => (rate.id || '') === selectedRateId) || shippingRates[0]
   const deliveryCost = selectedRate ? (selectedRate.freeAbove !== null && subtotal >= selectedRate.freeAbove ? 0 : selectedRate.price) : null
   // Lebanon doesn't use postal codes in practice; the field only shows for other countries.
-  const needsPostalCode = !/^(lebanon|lb|لبنان)$/i.test(country.trim())
+  const needsPostalCode = !LEBANON.test(country.trim())
   const paymentNotes: Record<string, string> = { COD: 'Pay in cash when your order arrives.', CARD: 'Pay securely by card on the next step.', BANK_TRANSFER: 'Transfer to our bank account; we ship once it arrives.', WALLET: 'Use your store wallet balance.' }
   const showBankDetails = paymentMethod==='BANK_TRANSFER' && bankDetails
 

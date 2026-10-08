@@ -3,6 +3,10 @@
 // that allow it), or the "Import to store" browser button reading the page the admin is looking
 // at -- needed for AliExpress, Shein and Alibaba, which show servers a captcha instead.
 
+// " - AliExpress ..." (hyphen, pipe or en dash) at the end of a title. The en dash is written as an
+// escape so the server bundle stays Latin-only (see scripts/check-worker-charset.mjs).
+const SHOP_SUFFIX = new RegExp('\\s*[-|\\u2013]\\s*(AliExpress|Alibaba\\.com|SHEIN[^|]*)(\\s.*)?$', 'i')
+
 export type ImportOption = { name: string; values: string[] }
 export type ImportedProduct = {
   title: string
@@ -97,7 +101,7 @@ export function normalizeImport(raw: any): ImportedProduct {
     values: Array.from(new Set((Array.isArray(o?.values) ? o.values : []).map((v: unknown) => text(v, 60)).filter(Boolean))).slice(0, 40) as string[],
   })).filter((o: ImportOption) => o.values.length > 1)
   const title = text(raw?.title, 200)
-    .replace(/\s*[-|–]\s*(AliExpress|Alibaba\.com|SHEIN[^|]*)(\s.*)?$/i, '') // "Lamp - AliExpress 39" → "Lamp"
+    .replace(SHOP_SUFFIX, '') // "Lamp - AliExpress 39" -> "Lamp"
   return {
     title,
     description: text(raw?.description, 8000),
