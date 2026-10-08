@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Archive, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Plus, Search, Star, StarOff, Tag, X } from 'lucide-react'
+import { Archive, CheckCircle2, ChevronDown, Download, ChevronLeft, ChevronRight, MoreHorizontal, Plus, Search, Star, StarOff, Tag, X } from 'lucide-react'
 import { money } from '@/lib/config'
 import styles from './admin-products-list.module.css'
 import ui from './admin-ui.module.css'
@@ -107,7 +107,10 @@ export default function AdminProductsList({ initial }: { initial: any }) {
             <span className={styles.countPill}>{total.toLocaleString()}</span>
           </div>
         </div>
-        <Link className={ui.btn} href="/admin/products/new"><Plus size={16} /> Add product</Link>
+        <div className="inline" style={{ gap: 8 }}>
+          <Link className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/products/import"><Download size={16} /> Import</Link>
+          <Link className={ui.btn} href="/admin/products/new"><Plus size={16} /> Add product</Link>
+        </div>
       </div>
 
       {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
