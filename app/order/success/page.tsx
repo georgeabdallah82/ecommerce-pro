@@ -8,6 +8,7 @@ import { money } from '@/lib/config'
 import { PurchaseTracker } from '@/components/purchase-tracker'
 import { StoreFooter } from '@/components/store-footer'
 import { PaymentInstructions } from '@/components/payment-instructions'
+import { canViewOrder, orderViewToken } from '@/lib/order-access'
 
 // Advanced matching for the ad pixels: SHA-256 of the buyer's email and phone, normalised the
 // way Meta and TikTok expect (lower-case email; phone as digits with the country code). Only the
@@ -20,20 +21,39 @@ async function hashedCustomer(email: string | null, phone: string | null) {
   return { ...(em.includes('@') ? { em: sha256(em) } : {}), ...(ph ? { ph: sha256(ph) } : {}) }
 }
 
-export default async function Success({ searchParams }: { searchParams: Promise<{ order?: string; email?: string; payment?: string }> }) {
-  const { order, email, payment } = await searchParams
+export default async function Success({ searchParams }: { searchParams: Promise<{ order?: string; email?: string; payment?: string; t?: string }> }) {
+  const { order, email, payment, t } = await searchParams
   if (!order) notFound()
   const user = await getCurrentUser()
-  const viewOrderHref = user ? `/account/orders/${encodeURIComponent(order)}` : email ? `/account/orders/${encodeURIComponent(order)}?email=${encodeURIComponent(email)}` : null
 
   const record = await db.order.findUnique({
     where: { orderNumber: order },
-    select: { orderNumber: true, grandTotal: true, currency: true, status: true, paymentStatus: true, paymentMethod: true, email: true, phone: true, items: { select: { productId: true, name: true, quantity: true, unitPrice: true } } },
+    select: { orderNumber: true, userId: true, grandTotal: true, currency: true, status: true, paymentStatus: true, paymentMethod: true, email: true, phone: true, items: { select: { productId: true, name: true, quantity: true, unitPrice: true } } },
   })
+  // An order number alone shows nothing: details need the owner's session, the view code in the
+  // link checkout gave, or the order's email (lib/order-access.ts). Without one the page reads the
+  // same whether or not the order exists, so it can't be used to probe order numbers either.
+  if (!record || !canViewOrder(record, { userId: user?.id, token: t, email })) {
+    return <><main className="section"><div className="container"><div className="card successCard">
+      <span className="pill">ORDER</span>
+      <h1 className="h2">Thank you for shopping with us.</h1>
+      <p className="body muted">If you just placed an order, your confirmation is on its way to your email. To see an order's details, look it up with the email you used at checkout{user ? ' or open your account' : ''}.</p>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <Link className="btn" href="/orders/lookup">Look up an order</Link>
+        {user ? <Link className="btn secondary" href="/account">View account</Link> : <Link className="btn secondary" href="/shop">Continue shopping</Link>}
+      </div>
+    </div></div></main><StoreFooter /></>
+  }
+
+  const isOwner = !!user?.id && record.userId === user.id
+  const viewOrderHref = isOwner
+    ? `/account/orders/${encodeURIComponent(order)}`
+    : `/account/orders/${encodeURIComponent(order)}?t=${encodeURIComponent(orderViewToken(record.orderNumber))}`
+
   // The card gateway sends customers here for every outcome (?payment=paid|failed|pending).
   // A failed or cancelled order must not read as "confirmed" or be reported as a sale.
-  const failed = payment === 'failed' || record?.paymentStatus === 'FAILED' || record?.status === 'CANCELLED'
-  const processing = !failed && record?.paymentMethod === 'CARD' && record.paymentStatus !== 'PAID'
+  const failed = payment === 'failed' || record.paymentStatus === 'FAILED' || record.status === 'CANCELLED'
+  const processing = !failed && record.paymentMethod === 'CARD' && record.paymentStatus !== 'PAID'
 
   if (failed) {
     return <><main className="section"><div className="container"><div className="card successCard">
@@ -52,14 +72,14 @@ export default async function Success({ searchParams }: { searchParams: Promise<
     <h1 className="h2">Thank you for your order.</h1>
     {processing && <p className="body muted">We're waiting for your bank to confirm the payment. You'll get an email as soon as it does.</p>}
     <p className="body muted">Your order number is <strong>#{order}</strong>. Keep it for your records.</p>
-    {record && !processing && <PaymentInstructions method={record.paymentMethod} status={record.paymentStatus} amount={money(record.grandTotal, record.currency)} orderNumber={record.orderNumber} />}
+    {!processing && <PaymentInstructions method={record.paymentMethod} status={record.paymentStatus} amount={money(record.grandTotal, record.currency)} orderNumber={record.orderNumber} />}
     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
       <Link className="btn" href="/shop">Continue shopping</Link>
-      {viewOrderHref && <Link className="btn secondary" href={viewOrderHref}>View order</Link>}
+      <Link className="btn secondary" href={viewOrderHref}>View order</Link>
       {user ? <Link className="btn secondary" href="/account">View account</Link> : <Link className="btn secondary" href="/account/register">Create an account to track future orders</Link>}
     </div>
   </div></div>
-  {record && !processing && <PurchaseTracker
+  {!processing && <PurchaseTracker
     orderNumber={record.orderNumber}
     value={record.grandTotal / 100}
     currency={record.currency}
