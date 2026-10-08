@@ -242,7 +242,7 @@ try {
     const email = process.env.E2E_ADMIN_EMAIL, password = process.env.E2E_ADMIN_PASSWORD
     if (email && password) {
       const passwordHash = await bcrypt.hash(password, 10)
-      await target.user.upsert({ where: { email }, update: { passwordHash, role: 'SUPER_ADMIN', isActive: true }, create: { email, name: 'Rehearsal test', passwordHash, role: 'SUPER_ADMIN' } })
+      await target.user.upsert({ where: { email }, update: { passwordHash, role: 'ADMIN', isActive: true }, create: { email, name: 'Rehearsal test', passwordHash, role: 'ADMIN' } })
     }
     // An active product with stock, for the e2e checkout.
     const stock = new Map()

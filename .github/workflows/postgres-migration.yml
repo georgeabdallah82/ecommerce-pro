@@ -119,4 +119,4 @@ jobs:
 
       - name: Store log (errors only)
         if: always() && inputs.mode == 'rehearsal'
-        run: grep -E "ERROR|Error|Warning|hung|different request| 5[0-9][0-9] " wrangler.log | grep -v "Duplicate key" | head -80 || true
+        run: grep -E "ERROR|Error" wrangler.log | grep -v "Duplicate key" | head -50 || true
