@@ -66,7 +66,7 @@ await regForm.locator('button', { hasText: 'Create account' }).first().click()
 // The form posts in the background and then redirects to the account page; the session cookie
 // is set by that response, so wait for the redirect rather than a fixed delay.
 await cp.waitForURL(u => !u.pathname.startsWith('/account/register'), { timeout: 60000 }).catch(() => {})
-const session = await cp.evaluate(async () => (await (await fetch('/api/auth/session')).json()))
+const session = await cp.evaluate(async () => { const r = await fetch('/api/auth/session'); return r.json().catch(() => ({ status: r.status })) })
 step('customer registration + session', !!session?.user?.email, `fields=${regInputs.join(',')} user=${session?.user?.email || JSON.stringify(session).slice(0, 80)}`)
 const productId = await cp.evaluate(async path => { const r = await fetch('/api/products?limit=50'); const j = await r.json().catch(() => null); const list = j?.products || j?.rows || j || []; const slug = path.split('/').pop(); return (list.find?.(p => p.slug === slug) || list[0])?.id || '' }, productPath)
 const wish = await cp.evaluate(async id => { const r = await fetch('/api/wishlist', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ productId: id }) }); return r.status + ' ' + (await r.text()).slice(0, 80) }, productId)
