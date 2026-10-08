@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
@@ -17,6 +18,6 @@ export async function POST(req: Request) {
     await audit(actor.id, 'media.uploaded', 'MediaAsset', asset.id, { name: file.name, size: file.size })
     return json({ asset }, { status: 201 })
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Unable to upload image' }, { status: 400 })
+    return routeError(e, 'Unable to upload image', 400)
   }
 }

@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
@@ -22,5 +23,5 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
     await audit(actor.id, 'theme.version.restored', 'Theme', id, { restoredAt: new Date().toISOString() })
     return json({ ok: true, restored: true }, { headers: { 'cache-control': 'no-store' } })
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to restore theme version' }, { status: 400 }) }
+  } catch (e) { return routeError(e, 'Unable to restore theme version', 400) }
 }

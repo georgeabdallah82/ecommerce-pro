@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { db } from '@/lib/prisma'; import { requirePermission } from '@/lib/auth'; import { audit } from '@/lib/audit'; import { json } from '@/lib/utils'
 function scope(input: any) { return ['ALL_PRODUCTS', 'SPECIFIC_PRODUCTS', 'SPECIFIC_COLLECTIONS'].includes(input) ? input : 'ALL_PRODUCTS' }
 function ids(input: any) { return Array.isArray(input) ? input.map(String).filter(Boolean).slice(0, 200) : [] }
@@ -29,7 +30,7 @@ function saveError(e: unknown, fallback: string) {
   return json({ error: message || fallback }, { status: 400 })
 }
 
-export async function GET(){try{await requirePermission('coupons.view');return json(await db.coupon.findMany({orderBy:{createdAt:'desc'},take:500}))}catch(e){return json({error:e instanceof Error?e.message:'Forbidden'},{status:403})}}
+export async function GET(){try{await requirePermission('coupons.view');return json(await db.coupon.findMany({orderBy:{createdAt:'desc'},take:500}))}catch(e){return routeError(e, 'Forbidden', 403)}}
 export async function POST(req: Request) {
   try {
     const actor = await requirePermission('coupons.manage'); const b = await req.json()

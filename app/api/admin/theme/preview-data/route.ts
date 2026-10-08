@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { requirePermission } from '@/lib/auth'
 import { loadZoneData } from '@/lib/zone-data'
 import { json } from '@/lib/utils'
@@ -12,6 +13,6 @@ export async function GET() {
     const { products, collections } = await loadZoneData()
     return json({ products, collections }, { headers: { 'cache-control': 'no-store' } })
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Unable to load preview data' }, { status: 400 })
+    return routeError(e, 'Unable to load preview data', 400)
   }
 }

@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { json } from '@/lib/utils'
@@ -9,5 +10,5 @@ export async function GET(req: Request) {
     if (!orderId) return json({ error: 'orderId is required' }, { status: 400 })
     const fulfillments = await db.fulfillment.findMany({ where: { orderId }, include: { lines: true }, orderBy: { createdAt: 'desc' } })
     return json({ fulfillments })
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 }) }
+  } catch (e) { return routeError(e, 'Forbidden', 403) }
 }

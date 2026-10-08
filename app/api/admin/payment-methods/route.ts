@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { db } from '@/lib/prisma'
@@ -12,7 +13,7 @@ const fields = [
 
 export async function GET() {
   try { await requirePermission('settings.view'); return json(await getPaymentMethodConfig()) }
-  catch (e) { return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 }) }
+  catch (e) { return routeError(e, 'Forbidden', 403) }
 }
 
 export async function PATCH(req: Request) {
@@ -32,5 +33,5 @@ export async function PATCH(req: Request) {
     for (const [key,value] of Object.entries(updates)) await db.setting.upsert({ where:{key}, update:{value}, create:{key,value} })
     await audit(actor.id, 'payment_methods.updated', 'PaymentSettings', 'methods', { keys: Object.keys(updates) })
     return json(await getPaymentMethodConfig())
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to update payment methods' }, { status: 400 }) }
+  } catch (e) { return routeError(e, 'Unable to update payment methods', 400) }
 }

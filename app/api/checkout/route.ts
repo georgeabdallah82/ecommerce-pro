@@ -77,6 +77,12 @@ async function findAutomaticDiscount(subtotal: number, userId: string | null, it
   const now = new Date()
   const candidates = await db.coupon.findMany({ where: { isActive: true, isAutomatic: true } })
   let best: { discount: DiscountSplit; coupon: any } | null = null
+  // "First order only" needs to know whether this customer has ordered before; asked once, not
+  // once per such discount (audit ME-03).
+  let priorOrder: Promise<boolean> | null = null
+  const hasPriorOrder = () => (priorOrder ??= userId
+    ? db.order.findFirst({ where: { userId, status: { not: 'CANCELLED' } }, select: { id: true } }).then(Boolean)
+    : Promise.resolve(false))
   for (const coupon of candidates) {
     if (misconfigured(coupon)) continue
     if (coupon.startsAt && coupon.startsAt > now) continue
@@ -85,8 +91,7 @@ async function findAutomaticDiscount(subtotal: number, userId: string | null, it
     if (coupon.minSubtotal !== null && subtotal < coupon.minSubtotal) continue
     if (coupon.firstOrderOnly) {
       if (!userId) continue
-      const existingOrder = await db.order.findFirst({ where: { userId, status: { not: 'CANCELLED' } }, select: { id: true } })
-      if (existingOrder) continue
+      if (await hasPriorOrder()) continue
     }
     const discount = await discountAmount(coupon, items)
     if (discount.total === 0 && coupon.type !== 'FREE_SHIPPING') continue

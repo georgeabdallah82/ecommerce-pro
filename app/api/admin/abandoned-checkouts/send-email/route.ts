@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
@@ -17,5 +18,5 @@ export async function POST(req: Request) {
     if (!result.sent) return json({ error: result.skipped ? 'Recovery emails are turned off in settings' : 'Unable to send recovery email' }, { status: 400 })
     await audit(actor.id, 'abandoned_checkout.recovery_email_sent', 'AbandonedCheckout', id, { email: checkout.email })
     return json({ ok: true })
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to send recovery email' }, { status: 400 }) }
+  } catch (e) { return routeError(e, 'Unable to send recovery email', 400) }
 }

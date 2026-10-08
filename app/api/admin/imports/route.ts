@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
@@ -121,5 +122,5 @@ export async function POST(request: Request) {
     })
     await db.auditLog.create({ data: { actorId: actor.id, action: 'ADMIN_IMPORT', entity: type, metadataJson: JSON.stringify({ filename: file.name, rowCount: rows.length, created, updated }) } })
     return NextResponse.json({ ok: true, created, updated, errors: [] })
-  } catch (error) { const message = error instanceof Error ? error.message : 'Import failed'; const status = message === 'FORBIDDEN' ? 403 : message === 'UNAUTHORIZED' ? 401 : 400; return NextResponse.json({ error: status === 403 ? 'Forbidden' : status === 401 ? 'Unauthorized' : message }, { status }) }
+  } catch (error) { return routeError(error, 'Import failed', 400) }
 }

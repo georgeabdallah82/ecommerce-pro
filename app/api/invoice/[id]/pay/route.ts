@@ -2,7 +2,7 @@ import { db } from '@/lib/prisma'
 import { completeDraftOrder } from '@/lib/draft-orders'
 import { releaseOrderReservations } from '@/lib/inventory'
 import { getPaymentProvider, draftInvoiceToken, safeTokenEqual } from '@/lib/payments'
-import { consumeRateLimit } from '@/lib/rate-limit'
+import { consumeDurableRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { json } from '@/lib/utils'
 import { PaymentMethod } from '@prisma/client'
@@ -14,7 +14,7 @@ import { PaymentMethod } from '@prisma/client'
 // createPayment/webhook/return machinery checkout already relies on.
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const limit = consumeRateLimit(`invoice-pay:${clientIp(req.headers)}`, 10, 10 * 60 * 1000)
+    const limit = await consumeDurableRateLimit(`invoice-pay:${clientIp(req.headers)}`, 10, 10 * 60 * 1000)
     if (!limit.allowed) return json({ error: 'Too many attempts. Please try again later.' }, { status: 429 })
 
     const { id } = await params

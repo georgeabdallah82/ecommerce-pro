@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
@@ -49,5 +50,5 @@ export async function POST() {
     for (const path of ['/', '/shop', '/collections', '/cart', '/blog', '/about']) revalidatePath(path)
     await audit(actor.id, 'theme.published', 'Theme', 'theme.config', { publishedAt: new Date().toISOString() })
     return json({ ok: true, published: true }, { headers: { 'cache-control': 'no-store' } })
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to publish theme' }, { status: 400 }) }
+  } catch (e) { return routeError(e, 'Unable to publish theme', 400) }
 }

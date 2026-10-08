@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
@@ -23,5 +24,5 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     const updated = await db.draftOrder.update({ where: { id }, data: { invoiceSentAt: new Date() } })
     await audit(actor.id, 'draft_order.invoice_sent', 'DraftOrder', id, { email: draft.email })
     return json({ draftOrder: updated })
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to send invoice' }, { status: 400 }) }
+  } catch (e) { return routeError(e, 'Unable to send invoice', 400) }
 }

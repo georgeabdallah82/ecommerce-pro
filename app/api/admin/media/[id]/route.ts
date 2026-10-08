@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { unlink } from 'fs/promises'
 import path from 'path'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
@@ -16,7 +17,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     if (!asset) return json({ error: 'File not found' }, { status: 404 })
     return json({ usedIn: await findMediaUsage(asset.url) })
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 })
+    return routeError(e, 'Forbidden', 403)
   }
 }
 
@@ -47,6 +48,6 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     await audit(actor.id, 'media.deleted', 'MediaAsset', id, { name: asset.name, url: asset.url })
     return json({ ok: true })
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Unable to delete file' }, { status: 400 })
+    return routeError(e, 'Unable to delete file', 400)
   }
 }

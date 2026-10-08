@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
@@ -48,7 +49,7 @@ export async function GET(req: Request) {
     ])
     return json({ rows, pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total/limit)) } })
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 })
+    return routeError(e, 'Forbidden', 403)
   }
 }
 

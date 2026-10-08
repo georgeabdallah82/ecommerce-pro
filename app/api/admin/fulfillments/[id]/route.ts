@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
@@ -59,5 +60,5 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     return json({ fulfillment: updated, order: orderEvent ? { id: orderEvent.orderId, status: OrderStatus.DELIVERED, fulfillmentStatus: fulfillmentForStatus(OrderStatus.DELIVERED) } : undefined })
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to update fulfillment' }, { status: 400 }) }
+  } catch (e) { return routeError(e, 'Unable to update fulfillment', 400) }
 }

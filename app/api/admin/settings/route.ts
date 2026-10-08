@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
@@ -13,7 +14,7 @@ export async function GET(){
   try {
     await requirePermission('settings.view')
     return json((await db.setting.findMany({ where: { NOT: { OR: PRIVATE_PREFIXES.map(prefix => ({ key: { startsWith: prefix } })) } }, orderBy:{key:'asc'} })).map(masked))
-  }catch(e){return json({error:e instanceof Error?e.message:'Forbidden'},{status:403})}
+  }catch(e){return routeError(e, 'Forbidden', 403)}
 }
 
 // Saves one setting ({key, value}) or many at once ({settings: {key: value, ...}}). The Settings
@@ -38,5 +39,5 @@ export async function PATCH(req:Request){
     if(isPrivateKey(key))return json({error:'Private setting keys cannot be edited here'},{status:403})
     const s=await db.setting.upsert({where:{key},update:{value:String(b.value??'')},create:{key,value:String(b.value??'')}})
     await audit(actor.id,'setting.updated','Setting',s.id,{key});return json({setting:masked(s)})
-  }catch(e){return json({error:e instanceof Error?e.message:'Unable to update setting'},{status:400})}
+  }catch(e){return routeError(e, 'Unable to update setting', 400)}
 }

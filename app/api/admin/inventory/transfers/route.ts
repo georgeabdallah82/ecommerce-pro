@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
@@ -7,7 +8,7 @@ export async function GET() {
   try {
     await requirePermission('transfers.view')
     return json(await db.inventoryTransfer.findMany({ include: { items: true, fromLocation: true, toLocation: true }, orderBy: { createdAt: 'desc' }, take: 200 }))
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 }) }
+  } catch (e) { return routeError(e, 'Forbidden', 403) }
 }
 
 export async function POST(req: Request) {
@@ -26,5 +27,5 @@ export async function POST(req: Request) {
     }, include: { items: true } })
     await audit(actor.id, 'inventory.transfer.created', 'InventoryTransfer', transfer.id, { reference: transfer.reference, itemCount: items.length })
     return json({ transfer }, { status: 201 })
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to create inventory transfer' }, { status: 400 }) }
+  } catch (e) { return routeError(e, 'Unable to create inventory transfer', 400) }
 }

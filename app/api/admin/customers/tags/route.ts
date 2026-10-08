@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
@@ -9,7 +10,7 @@ export async function GET() {
     const tags = await db.customerTag.findMany({ orderBy: { value: 'asc' } })
     const rows = await Promise.all(tags.map(async tag => ({ ...tag, _count: { customers: await db.customerTagMember.count({ where: { tagId: tag.id } }) } })))
     return json(rows)
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Forbidden' }, { status: 403 }) }
+  } catch (e) { return routeError(e, 'Forbidden', 403) }
 }
 
 export async function POST(req: Request) {
@@ -27,5 +28,5 @@ export async function POST(req: Request) {
     }
     await audit(actor.id, 'customer_tag.updated', 'CustomerTag', tag.id, { customerCount: customerIds.length })
     return json({ tag, customers: await db.customerTagMember.findMany({ where: { tagId: tag.id } }) })
-  } catch (e) { return json({ error: e instanceof Error ? e.message : 'Unable to save customer tag' }, { status: 400 }) }
+  } catch (e) { return routeError(e, 'Unable to save customer tag', 400) }
 }
