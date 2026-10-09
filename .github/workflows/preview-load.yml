@@ -53,9 +53,21 @@ jobs:
           npm ci --no-audit --no-fund
           npm run build:cloudflare
 
+      # Preview URLs are a Worker-wide switch that real deploys turn off (wrangler.jsonc keeps them
+      # off): on for the length of this test only, then off again in the last step. workers.dev --
+      # the live store's address -- stays on throughout.
+      - name: Switch on preview URLs for the test
+        run: |
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/ecommerce-pro/subdomain"
+          before="$(curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Cloudflare-Workers-Script-Api-Date: 2025-08-01' "$api")"
+          echo "before: $(jq -c '.result' <<<"$before")"
+          [ "$(jq -r '.result.enabled' <<<"$before")" = true ] || { echo "::error::workers.dev is not on for the Worker; not touching its settings"; exit 1; }
+          echo "PREVIEWS_SWITCHED=1" >> "$GITHUB_ENV"
+          after="$(curl -sS -X POST -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' -H 'Cloudflare-Workers-Script-Api-Date: 2025-08-01' --data '{"enabled":true,"previews_enabled":true}' "$api")"
+          echo "after: $(jq -c '.result' <<<"$after")"
+          [ "$(jq -r '.result.enabled' <<<"$after")" = true ] && [ "$(jq -r '.result.previews_enabled' <<<"$after")" = true ] || { echo "::error::Cloudflare did not switch on preview URLs"; exit 1; }
+
       # (OpenNext hands these arguments to a shell unquoted: keep the message free of spaces and brackets.)
-      # Preview URLs are switched on for this upload only; the repository's wrangler.jsonc keeps
-      # them off, so the next real deploy turns them off again.
       - name: Upload the store to Cloudflare as a preview version (not deployed)
         run: |
           node -e 'const f="wrangler.jsonc",fs=require("fs"),c=JSON.parse(fs.readFileSync(f,"utf8"));c.preview_urls=true;fs.writeFileSync(f,JSON.stringify(c,null,2))'
@@ -95,3 +107,11 @@ jobs:
           jq -c 'select(.outcome != "ok" or ((.event.response.status // 200) >= 500) or ((.exceptions // []) | length > 0) or ([(.logs // [])[] | select(.level == "error")] | length > 0)) | {url: .event.request.url, status: .event.response.status, outcome, exceptions: [(.exceptions // [])[] | ((.name // "") + ": " + ((.message // "") | tostring))[0:400]], errors: [(.logs // [])[] | select(.level == "error") | (.message | tostring)[0:600]]}' tail.log | head -40 || true
           echo "--- outcomes:"; jq -r '.outcome' tail.log 2>/dev/null | sort | uniq -c || true
           echo "--- tail messages:"; grep -v '^\s*$' tail.err | head -10 || true
+
+      - name: Switch preview URLs off again
+        if: always() && env.PREVIEWS_SWITCHED == '1'
+        run: |
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/ecommerce-pro/subdomain"
+          after="$(curl -sS -X POST -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' -H 'Cloudflare-Workers-Script-Api-Date: 2025-08-01' --data '{"enabled":true,"previews_enabled":false}' "$api")"
+          echo "after: $(jq -c '.result' <<<"$after")"
+          [ "$(jq -r '.result.enabled' <<<"$after")" = true ] && [ "$(jq -r '.result.previews_enabled' <<<"$after")" = false ] || { echo "::error::Preview URLs may still be on: check Workers > ecommerce-pro > Settings > Domains & Routes"; exit 1; }
