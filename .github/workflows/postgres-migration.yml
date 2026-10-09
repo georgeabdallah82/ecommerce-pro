@@ -170,6 +170,13 @@ jobs:
           for i in $(seq 1 30); do [ "$(curl -s -o /dev/null -w '%{http_code}' "$url/api/health")" = 200 ] && exit 0; sleep 5; done
           echo "::error::The preview version did not answer"; exit 1
 
+      # Before the e2e: the same side-by-side load against a fresh preview (reported, not judged),
+      # to tell what the admin workload in the e2e changes.
+      - name: Load test on the fresh preview, side by side with the live store (report)
+        if: inputs.mode == 'rehearsal' && inputs.run_on == 'cloudflare-preview'
+        continue-on-error: true
+        run: node scripts/e2e/load-compare.mjs "$PREVIEW_URL" https://ecommerce-pro.georgeabdallah82.workers.dev "$PRODUCT_PATH"
+
       - name: End-to-end test (browser)
         if: inputs.mode == 'rehearsal'
         run: |
@@ -180,8 +187,8 @@ jobs:
 
       # Read-only page views against the preview and the live store at the same moments: the new
       # version must not fail more often than the store customers use today.
-      - name: Load test, side by side with the live store
-        if: inputs.mode == 'rehearsal' && inputs.run_on == 'cloudflare-preview'
+      - name: Load test after the e2e, side by side with the live store
+        if: always() && inputs.mode == 'rehearsal' && inputs.run_on == 'cloudflare-preview'
         run: node scripts/e2e/load-compare.mjs "$PREVIEW_URL" https://ecommerce-pro.georgeabdallah82.workers.dev "$PRODUCT_PATH"
 
       - name: Preview version log (failed requests and errors only)
