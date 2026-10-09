@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 import { PrismaNeon, PrismaNeonHTTP } from '@prisma/adapter-neon'
 import { PrismaPg } from '@prisma/adapter-pg'
+import type { SqlDriverAdapter, SqlDriverAdapterFactory } from '@prisma/driver-adapter-utils'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { defaultTheme, defaultSections, defaultNavigation } from './theme-defaults'
 
@@ -2591,48 +2592,26 @@ function getMockHandler(model: string) {
 
 // ---- Database connection ------------------------------------------------------------------
 // Production runs on Cloudflare Workers against Neon (PostgreSQL), through Prisma's driver
-// adapters (engineType = "client": no Rust engine, a small WebAssembly query compiler):
-// - Reads go through Neon's HTTP endpoint: one HTTPS request per query, no connection to set up.
-// - Writes and transactions need a real connection (Prisma also wraps nested writes in a
-//   transaction, which HTTP can't do), so they use a WebSocket pool.
-// Any other PostgreSQL URL (local development, CI) uses node-postgres for both.
-// On Workers a client belongs to one request at a time (keyed by the request's ExecutionContext):
-// a Worker may not reuse a socket opened while handling another request, and one request must
-// never wait on another's I/O. Prisma batches findUnique calls made within the same timer tick
-// into one query, so a client shared by concurrent requests would send one request's lookup
-// inside another request's fetch, and the runtime cancels the waiting request as hung (seen as
-// random 500s under concurrent traffic). When the request ends its clients are released (see
-// worker.ts), which frees their query compilers.
+// adapters (engineType = "client": no Rust engine, a WebAssembly query compiler). Two runtime
+// limits shape this:
+// - Memory. Every Prisma client carries its own query compiler (about 1 MB), and WebAssembly memory
+//   never shrinks. A client per request left isolates near the 128 MB limit after a burst of
+//   traffic and they failed with error 1102, so a Worker isolate has exactly one client.
+// - I/O isolation. A Worker may not use a connection opened while handling another request, and a
+//   request must never wait on another's I/O (the runtime cancels it as hung). So the shared
+//   client's adapter (requestScopedAdapter) sends every query through the current request's own
+//   connections, opened on first use and closed when the request ends (worker.ts):
+//   - Neon: plain queries over Neon's HTTP endpoint (one HTTPS request per query); transactions
+//     (Prisma also wraps nested writes in one) on a WebSocket pool.
+//   - Any other PostgreSQL URL (local development, CI): a node-postgres pool for both.
+//   Prisma also batches findUnique calls made within the same timer tick into one query, which
+//   would run one request's lookup inside another request's I/O; unique lookups are therefore
+//   sent as findFirst (see modelDelegate).
 // NEON_DATABASE_URL is read first so the Worker's old DATABASE_URL (the retired Prisma
 // Accelerate prisma:// address) can't be picked up by mistake.
 const databaseUrl = [process.env.NEON_DATABASE_URL, process.env.DATABASE_URL].find(url => !!url && /^postgres(ql)?:\/\//.test(url)) || ''
 const isNeon = (() => { try { return new URL(databaseUrl).hostname.endsWith('.neon.tech') } catch { return false } })()
 const onWorkers = typeof navigator !== 'undefined' && navigator.userAgent === 'Cloudflare-Workers'
-
-// Prisma also reads DATABASE_URL (the schema's datasource) whenever a client is created, and
-// refuses to start when that is a prisma:// (Accelerate) address next to a driver adapter. The
-// live Worker still carries the retired Accelerate address under that name (kept so a rollback
-// to the MongoDB version keeps working), so it is pointed at the database actually used first.
-// Kept on globalThis like `db` below: Next bundles routes separately, and every bundle's copy of
-// this module must see the same counts.
-const clientState: { created: number; released: number } = ((globalThis as any).__yallahaulDbClients ??= { created: 0, released: 0 })
-function newPrismaClient(adapter: PrismaNeon | PrismaNeonHTTP | PrismaPg) {
-  if (process.env.DATABASE_URL !== databaseUrl) process.env.DATABASE_URL = databaseUrl
-  clientState.created++
-  return new PrismaClient({ adapter })
-}
-// Every client carries its own Prisma query compiler, about 1 MB of WebAssembly memory that is
-// only given back by $disconnect(). (Without this, each request leaked its compiler and a
-// 128 MB Worker isolate failed with error 1102 after roughly a hundred requests.)
-function releaseClient(client: PrismaClient) {
-  clientState.released++
-  return client.$disconnect().catch(() => undefined)
-}
-
-// A client holding a real connection (Neon WebSocket pool, or node-postgres for other databases).
-function createConnectionClient() {
-  return newPrismaClient(isNeon ? new PrismaNeon({ connectionString: databaseUrl }) : new PrismaPg({ connectionString: databaseUrl }))
-}
 
 // worker.ts (the Worker entry) runs these once a request has completely finished: response body
 // sent and every waitUntil() task (after(), background emails and webhooks) settled.
@@ -2644,67 +2623,143 @@ function onRequestEnd(ctx: object, hook: () => unknown) {
   else hooks.set(ctx, [hook])
 }
 
-type Clients = { read?: PrismaClient; write?: PrismaClient }
-const processClients: Clients = {}
-const requestClients = new WeakMap<object, Clients>()
+// Kept on globalThis like `db` below: Next bundles routes separately, and every bundle's copy of
+// this module must see the same client and counts.
+const shared: { client: PrismaClient | null; poolsOpened: number; poolsClosed: number } = ((globalThis as any).__yallahaulDb ??= { client: null, poolsOpened: 0, poolsClosed: 0 })
+
+type Connections = { http?: Promise<SqlDriverAdapter>; pool?: Promise<SqlDriverAdapter> }
+const processConnections: Connections = {}
+const requestConnections = new WeakMap<object, Connections>()
 let warnedNoContext = false
-// On Workers: the current request's clients, created on first use and released when the request
-// ends. They are never handed on to another request: on the real Cloudflare runtime a client
-// reused by a later request broke and then failed every request that got it (a preview-version
-// rehearsal), although workerd on its own allowed it. Elsewhere (Node: local development,
-// scripts): one set per process.
-function currentClients(): Clients {
-  if (!onWorkers) return processClients
+// On Workers: the current request's connections, opened on first use and closed when it ends.
+// Elsewhere (Node: local development, scripts): one set per process.
+function currentConnections(): Connections {
+  if (!onWorkers) return processConnections
   let ctx: object | null = null
   try { ctx = getCloudflareContext().ctx as object } catch { ctx = null }
   if (!ctx) {
     // Not expected: every request runs inside OpenNext's request context.
-    if (!warnedNoContext) { warnedNoContext = true; console.warn('[db] database used outside a request context; sharing one set of clients') }
-    return processClients
+    if (!warnedNoContext) { warnedNoContext = true; console.warn('[db] database used outside a request context; sharing one set of connections') }
+    return processConnections
   }
-  let clients = requestClients.get(ctx)
-  if (!clients) {
-    const created: Clients = (clients = {})
-    requestClients.set(ctx, created)
+  let connections = requestConnections.get(ctx)
+  if (!connections) {
+    const opened: Connections = (connections = {})
+    requestConnections.set(ctx, opened)
     onRequestEnd(ctx, async () => {
-      requestClients.delete(ctx)
-      await Promise.all([created.read, created.write].filter((client, i, all): client is PrismaClient => !!client && all.indexOf(client) === i).map(releaseClient))
+      requestConnections.delete(ctx)
+      if (opened.pool) {
+        shared.poolsClosed++
+        await opened.pool.then(pool => pool.dispose()).catch(() => undefined)
+      }
     })
   }
-  return clients
+  return connections
 }
-function getWriteClient(): PrismaClient {
-  const clients = currentClients()
-  return (clients.write ??= createConnectionClient())
+function poolConnection(): Promise<SqlDriverAdapter> {
+  const connections = currentConnections()
+  if (!connections.pool) {
+    shared.poolsOpened++
+    // A request rarely needs more than a few connections at once; node-postgres' default of 10 per
+    // request ran a 100-connection database out under bursts of concurrent requests.
+    connections.pool = (isNeon ? new PrismaNeon({ connectionString: databaseUrl, max: 3 }) : new PrismaPg({ connectionString: databaseUrl, max: 3 })).connect()
+  }
+  return connections.pool
 }
-function getReadClient(): PrismaClient {
-  if (!isNeon) return getWriteClient()
-  const clients = currentClients()
-  return (clients.read ??= newPrismaClient(new PrismaNeonHTTP(databaseUrl, {})))
+function queryConnection(): Promise<SqlDriverAdapter> {
+  if (!isNeon) return poolConnection()
+  const connections = currentConnections()
+  return (connections.http ??= new PrismaNeonHTTP(databaseUrl, {}).connect())
 }
 
-// For the internal runtime-stats endpoint: how many clients were created, released and are open.
+// The adapter the shared client is built with: each call goes to the calling request's own
+// connection (Prisma runs a query's I/O in the caller's async context).
+const requestScopedAdapter: SqlDriverAdapter = {
+  provider: 'postgres',
+  adapterName: isNeon ? '@prisma/adapter-neon' : '@prisma/adapter-pg',
+  queryRaw: async query => (await queryConnection()).queryRaw(query),
+  executeRaw: async query => (await queryConnection()).executeRaw(query),
+  executeScript: async script => (await poolConnection()).executeScript(script),
+  startTransaction: async isolationLevel => (await poolConnection()).startTransaction(isolationLevel),
+  // What the underlying query adapter reports: Neon's HTTP adapter reports nothing, node-postgres
+  // supports relation joins.
+  ...(isNeon ? {} : { getConnectionInfo: () => ({ supportsRelationJoins: true }) }),
+  dispose: async () => {},
+}
+const requestScopedAdapterFactory: SqlDriverAdapterFactory = {
+  provider: 'postgres',
+  adapterName: requestScopedAdapter.adapterName,
+  connect: async () => requestScopedAdapter,
+}
+
+// Prisma also reads DATABASE_URL (the schema's datasource) when a client is created, and refuses
+// to start when that is a prisma:// (Accelerate) address next to a driver adapter. The live
+// Worker still carries the retired Accelerate address under that name (kept so a rollback to the
+// MongoDB version keeps working), so it is pointed at the database actually used first.
+function getClient(): PrismaClient {
+  if (!shared.client) {
+    if (process.env.DATABASE_URL !== databaseUrl) process.env.DATABASE_URL = databaseUrl
+    shared.client = new PrismaClient({ adapter: requestScopedAdapterFactory })
+  }
+  return shared.client
+}
+
+// For the internal runtime-stats endpoint: per-request connection pools opened and closed.
 export function databaseClientStats() {
-  return { created: clientState.created, released: clientState.released, open: clientState.created - clientState.released }
+  return { clients: shared.client ? 1 : 0, poolsOpened: shared.poolsOpened, poolsClosed: shared.poolsClosed, open: shared.poolsOpened - shared.poolsClosed }
 }
 
-// Model operations that only read; everything else on a model is a write.
-const READ_OPERATIONS = new Set(['findUnique', 'findUniqueOrThrow', 'findFirst', 'findFirstOrThrow', 'findMany', 'count', 'aggregate', 'groupBy'])
-const routedModels = new Map<string, any>()
-function routedModel(model: string) {
-  let routed = routedModels.get(model)
-  if (!routed) {
-    routed = new Proxy({}, {
+// A findUnique `where` as the same filter for findFirst, or null when it can't be one: a key left
+// undefined or null (findUnique rejects that, findFirst would match any row) or nothing to filter
+// on. Compound keys ({ userId_productId: { userId, productId } }) become their fields.
+export function uniqueWhereAsFilter(where: unknown): Record<string, unknown> | null {
+  if (!isPlainObject(where)) return null
+  const filter: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(where)) {
+    if (value === undefined || value === null) return null
+    const parts = key.split('_')
+    if (parts.length > 1 && isPlainObject(value) && Object.keys(value).length === parts.length && parts.every(part => part in value)) {
+      for (const part of parts) {
+        const fieldValue = (value as Record<string, unknown>)[part]
+        if (fieldValue === undefined || fieldValue === null) return null
+        filter[part] = fieldValue
+      }
+    } else {
+      filter[key] = value
+    }
+  }
+  return Object.keys(filter).length ? filter : null
+}
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const proto = Object.getPrototypeOf(value)
+  return proto === Object.prototype || proto === null
+}
+
+// A model on the shared client, with unique lookups sent as findFirst (never batched, see above).
+const UNIQUE_AS_FIRST: Record<string, string> = { findUnique: 'findFirst', findUniqueOrThrow: 'findFirstOrThrow' }
+const modelDelegates = new Map<string, any>()
+function modelDelegate(model: string) {
+  let proxied = modelDelegates.get(model)
+  if (!proxied) {
+    proxied = new Proxy({}, {
       get(_target, operation: string | symbol) {
         if (typeof operation !== 'string') return undefined
-        const delegate = (READ_OPERATIONS.has(operation) ? getReadClient() : getWriteClient() as any)[model]
+        const delegate = (getClient() as any)[model]
+        const asFirst = UNIQUE_AS_FIRST[operation]
+        if (asFirst && delegate) {
+          return (args: any) => {
+            const filter = uniqueWhereAsFilter(args?.where)
+            return filter ? delegate[asFirst]({ ...args, where: filter }) : delegate[operation](args)
+          }
+        }
         const value = delegate?.[operation]
         return typeof value === 'function' ? value.bind(delegate) : value
       },
     })
-    routedModels.set(model, routed)
+    modelDelegates.set(model, proxied)
   }
-  return routed
+  return proxied
 }
 
 const isProduction = process.env.NODE_ENV === 'production'
@@ -2809,15 +2864,15 @@ function createResilientPrismaClient(): any {
 
       if (prop === '$transaction') {
         return (arg: any, options?: any) => typeof arg === 'function'
-          ? runInteractiveTransaction(getWriteClient(), arg, options)
-          : (getWriteClient() as any).$transaction(arg, options)
+          ? runInteractiveTransaction(getClient(), arg, options)
+          : (getClient() as any).$transaction(arg, options)
       }
       if (prop.startsWith('$')) {
-        const client: any = prop.startsWith('$queryRaw') ? getReadClient() : getWriteClient()
+        const client: any = getClient()
         const value = client[prop]
         return typeof value === 'function' ? value.bind(client) : value
       }
-      return routedModel(prop)
+      return modelDelegate(prop)
     },
   })
 }
