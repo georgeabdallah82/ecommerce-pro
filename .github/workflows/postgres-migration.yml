@@ -153,9 +153,10 @@ jobs:
           if [ -z "$url" ] || [ -z "$version" ]; then echo "::error::Cloudflare did not return a preview URL and version"; exit 1; fi
           echo "PREVIEW_URL=$url" >> "$GITHUB_ENV"
           echo "PREVIEW_VERSION=$version" >> "$GITHUB_ENV"
-          # The preview version's own log (live traffic runs another version and is not included).
-          nohup npx wrangler tail ecommerce-pro --version-id "$version" --format json > ../tail.log 2> ../tail.err &
-          for i in $(seq 1 30); do [ "$(curl -s -o /dev/null -w '%{http_code}' "$url/api/health")" = 200 ] && { sleep 5; exit 0; }; sleep 5; done
+          # The Worker's log for requests from this runner only (customers' requests are not included).
+          nohup npx wrangler tail ecommerce-pro --ip self --format json > ../tail.log 2> ../tail.err &
+          for i in $(seq 1 30); do grep -qi "connected\|waiting for logs" ../tail.log ../tail.err 2>/dev/null && break; sleep 2; done
+          for i in $(seq 1 30); do [ "$(curl -s -o /dev/null -w '%{http_code}' "$url/api/health")" = 200 ] && exit 0; sleep 5; done
           echo "::error::The preview version did not answer"; exit 1
 
       - name: End-to-end test (browser)
@@ -171,7 +172,7 @@ jobs:
           sleep 10
           echo "events logged: $(grep -c '"outcome"' tail.log || true)"
           jq -c 'select(.outcome != "ok" or ((.event.response.status // 200) >= 500) or ((.exceptions // []) | length > 0) or ([(.logs // [])[] | select(.level == "error")] | length > 0)) | {url: .event.request.url, status: .event.response.status, outcome, exceptions: [(.exceptions // [])[] | ((.name // "") + ": " + ((.message // "") | tostring))[0:400]], errors: [(.logs // [])[] | select(.level == "error") | (.message | tostring)[0:600]]}' tail.log | head -40 || true
-          tail -5 tail.err || true
+          echo "--- tail messages:"; grep -v '^\s*$' tail.err | head -10 || true
 
       - name: Store log (errors only)
         if: always() && inputs.mode == 'rehearsal' && inputs.run_on != 'cloudflare-preview'

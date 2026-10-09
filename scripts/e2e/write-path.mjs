@@ -169,7 +169,7 @@ if (process.env.CRON_SECRET) {
 // Memory: every database client carries about 1 MB that a 128 MB Worker only gets back when the
 // client is given back at the end of its request (it used to keep one per request, until error
 // 1102). 160 page loads must all succeed; with CRON_SECRET the store's own counters must also show
-// no more clients than its small idle pool afterwards.
+// every client released afterwards.
 {
   const stats = async () => { if (!process.env.CRON_SECRET) return null; const r = await fetch(B + '/api/internal/runtime-stats', { headers: { authorization: `Bearer ${process.env.CRON_SECRET}` } }); return r.ok ? (await r.json()).database : null }
   const load = async path => { const r = await fetch(B + path); await r.arrayBuffer(); return r.status === 200 ? 200 : `${path}=${r.status}` }
@@ -179,8 +179,8 @@ if (process.env.CRON_SECRET) {
   for (let i = 0; i < 100; i++) { const status = await load(pages[i % pages.length]); if (status !== 200) failures.push(status) }
   for (let round = 0; round < 3; round++) failures.push(...(await Promise.all(pages.flatMap(p => [p, p, p, p]).map(load))).filter(s => s !== 200))
   let after = await stats()
-  for (let i = 0; i < 20 && after && after.open > after.idleReadClients; i++) { await new Promise(r => setTimeout(r, 500)); after = await stats() }
-  const clientsOk = !process.env.CRON_SECRET || (!!after && after.open === after.idleReadClients)
+  for (let i = 0; i < 20 && after && after.open > 0; i++) { await new Promise(r => setTimeout(r, 500)); after = await stats() }
+  const clientsOk = !process.env.CRON_SECRET || (!!after && after.open === 0)
   step(process.env.CRON_SECRET ? '160 page loads, database clients given back' : '160 page loads', failures.length === 0 && clientsOk, `failed=${failures.length}${failures.length ? ' [' + failures.join(',') + ']' : ''}${process.env.CRON_SECRET ? ` before=${JSON.stringify(before)} after=${JSON.stringify(after)}` : ''}`)
 }
 
