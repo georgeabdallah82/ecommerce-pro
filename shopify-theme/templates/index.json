@@ -3,16 +3,16 @@
     "bento": {
       "type": "yh-bento",
       "settings": {
-        "row_height": 170
+        "row_height": 180
       },
       "blocks": {
         "hero": {
           "type": "hero",
           "settings": {
-            "size": "big",
+            "size": "wide",
             "heading": "Yalla! Your home haul.",
             "text": "Essentials for every room, delivered in 2-3 days.",
-            "button": "Start shopping",
+            "button": "Shop now",
             "link": "shopify://collections/all"
           }
         },
@@ -33,59 +33,14 @@
             "size": "small",
             "icon": "truck",
             "title": "Free delivery over $50",
-            "text": ""
-          }
-        },
-        "tissues": {
-          "type": "photo",
-          "settings": {
-            "size": "small",
-            "stock": "hero-rolls",
-            "title": "Tissues",
-            "text": "Stock up & save",
-            "link": "shopify://collections/all"
-          }
-        },
-        "cleaning": {
-          "type": "photo",
-          "settings": {
-            "size": "tall",
-            "stock": "spot-cleaning",
-            "title": "Cleaning",
-            "text": "Fresh home, fast",
-            "link": "shopify://collections/all"
-          }
-        },
-        "cash": {
-          "type": "note",
-          "settings": {
-            "size": "small",
-            "icon": "cash",
-            "title": "Pay cash at your door",
-            "text": "",
-            "c_bg": "#fff1e6",
-            "c_text": "#171717",
-            "c_accent": "#d42a2a"
-          }
-        },
-        "whatsapp": {
-          "type": "whatsapp",
-          "settings": {
-            "size": "wide",
-            "title": "Questions? WhatsApp us",
-            "text": "We reply fast",
-            "button": "Chat now"
+            "text": "Cash on delivery"
           }
         }
       },
       "block_order": [
         "hero",
         "deal",
-        "delivery",
-        "tissues",
-        "cleaning",
-        "cash",
-        "whatsapp"
+        "delivery"
       ]
     },
     "popular": {
@@ -95,7 +50,7 @@
         "heading": "Popular right now",
         "icon": "none",
         "link_label": "See all",
-        "limit": 10,
+        "limit": 12,
         "columns": 5,
         "timer": false,
         "show_chips": true,

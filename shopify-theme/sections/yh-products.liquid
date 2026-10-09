@@ -1,6 +1,7 @@
 {%- comment -%}
-  "Popular right now": heading, "See all", a row of category chips (links to collections) and a
-  grid of product cards (five across on computers, two on phones).
+  "Popular right now": heading, "See all", a row of category chips (links to collections; hidden
+  until there is a category to show) and a grid of product cards (five across on computers, two on
+  phones).
 {%- endcomment -%}
 {%- liquid
   assign c = section.settings.collection
@@ -40,7 +41,20 @@
       {%- endif -%}
     </div>
 
-    {%- if section.settings.show_chips -%}
+    {%- liquid
+      assign chip_count = 0
+      if chip_menu.links.size > 0
+        assign chip_count = chip_menu.links.size
+      else
+        for col in collections limit: 50
+          if col.handle == 'all' or col.handle == 'frontpage' or col.all_products_count == 0 or col.handle == c.handle
+            continue
+          endif
+          assign chip_count = chip_count | plus: 1
+        endfor
+      endif
+    -%}
+    {%- if section.settings.show_chips and chip_count > 0 -%}
       <div class="yh-chips">
         {%- if section.settings.all_chip != blank -%}
           <a href="{{ c.url | default: routes.all_products_collection_url }}" class="yh-chip is-active">{{ section.settings.all_chip | escape }}</a>
@@ -93,7 +107,7 @@
       "default": "none"
     },
     { "type": "text", "id": "link_label", "label": "\"See all\" link", "default": "See all" },
-    { "type": "range", "id": "limit", "label": "Products", "min": 2, "max": 24, "step": 1, "default": 10 },
+    { "type": "range", "id": "limit", "label": "Products", "min": 2, "max": 24, "step": 1, "default": 12 },
     { "type": "range", "id": "columns", "label": "Products per row on computers", "min": 3, "max": 6, "step": 1, "default": 5 },
     { "type": "checkbox", "id": "timer", "label": "Show a countdown to midnight", "default": false },
     { "type": "text", "id": "timer_label", "label": "Countdown name (screen readers)", "default": "Time left today" },

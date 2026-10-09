@@ -39,7 +39,8 @@ body { color: var(--yh-ink); letter-spacing: 0; }
 .announcement-bar__message { font-size: 12.5px; font-weight: 600; letter-spacing: 0; padding-block: 8px; min-height: 0; }
 
 /* ---------- Header: rounded top bar and nav bar ---------- */
-.yh-header-section { position: sticky; top: 0; z-index: 60; }
+.yh-header-section { position: relative; z-index: 60; }
+@media (min-width: 750px) { .yh-header-section { position: sticky; top: 0; } }
 .yh-header { padding: 12px 0 6px; background: linear-gradient(var(--yh-h-strip, var(--yh-page, #fbf6f1)) 72%, transparent); }
 .yh-bar { display: flex; align-items: center; gap: 16px; padding: 10px 10px 10px 24px; border-radius: 999px; background: var(--yh-h-bg, #fff); color: var(--yh-h-text, var(--yh-ink)); box-shadow: var(--yh-shadow); }
 .yh-logo { flex: none; display: flex; align-items: center; color: inherit; text-decoration: none; }
@@ -82,7 +83,7 @@ shopify-account.yh-account { --shopify-account-font-body: var(--font-body-family
 }
 
 /* ---------- Bento tiles ---------- */
-.yh-bento { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: var(--yh-bento-row, 170px); grid-auto-flow: dense; gap: 14px; }
+.yh-bento { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: minmax(var(--yh-bento-row, 180px), auto); grid-auto-flow: dense; gap: 14px; }
 .yh-tile { position: relative; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 10px; padding: 22px; border-radius: calc(var(--yh-radius) + 4px); overflow: hidden; background: var(--yh-t-bg, var(--yh-card)); color: var(--yh-t-text, var(--yh-ink)); text-decoration: none; isolation: isolate; box-sizing: border-box; }
 a.yh-tile:hover { color: var(--yh-t-text, var(--yh-ink)); }
 .yh-tile--wide { grid-column: span 2; }
@@ -97,6 +98,11 @@ a.yh-tile:hover { color: var(--yh-t-text, var(--yh-ink)); }
 .yh-tile__btn { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; height: 50px; padding: 0 24px; border-radius: var(--yh-btn-radius); background: var(--yh-t-btn, #fff); color: var(--yh-t-btn-text, var(--yh-red)); font-weight: 800; font-size: 15px; text-decoration: none; white-space: nowrap; transition: filter .15s ease; }
 .yh-tile__btn:hover { color: var(--yh-t-btn-text, var(--yh-red)); filter: brightness(.95); }
 .yh-tile--hero { padding: 34px; }
+.yh-tile--hero.yh-tile--wide, .yh-tile--hero.yh-tile--small, .yh-tile--hero.yh-tile--tall { padding: 26px; }
+.yh-tile--hero.yh-tile--wide .yh-tile__title, .yh-tile--hero.yh-tile--small .yh-tile__title, .yh-tile--hero.yh-tile--tall .yh-tile__title { max-width: 12ch; font-size: clamp(26px, 2.6vw, 36px); }
+.yh-tile--hero.yh-tile--wide .yh-tile__text, .yh-tile--hero.yh-tile--small .yh-tile__text { margin-top: 4px; font-size: 15px; }
+.yh-tile--hero.yh-tile--wide .yh-tile__btn, .yh-tile--hero.yh-tile--small .yh-tile__btn { height: 44px; padding: 0 20px; font-size: 14.5px; }
+.yh-tile--hero.yh-tile--wide .yh-tile__art, .yh-tile--hero.yh-tile--small .yh-tile__art { width: 110px; right: 26px; bottom: 26px; }
 .yh-tile__label { color: var(--yh-t-accent, var(--yh-accent)); font-size: 13px; font-weight: 800; letter-spacing: .08em; }
 .yh-tile__big { font-family: var(--font-heading-family); font-size: 40px; font-weight: 800; line-height: 1; }
 .yh-timer--tile b { min-width: 0; padding: 2px 7px; border-radius: 8px; background: var(--yh-t-btn, #fff); color: var(--yh-t-btn-text, var(--yh-ink)); font-size: 15px; }
@@ -114,19 +120,26 @@ a.yh-tile:hover { color: var(--yh-t-text, var(--yh-ink)); }
 .yh-tile--whatsapp.yh-tile--small, .yh-tile--whatsapp.yh-tile--tall { flex-direction: column; align-items: flex-start; }
 .yh-tile--whatsapp.yh-tile--small .yh-tile__btn, .yh-tile--whatsapp.yh-tile--tall .yh-tile__btn { align-self: flex-start; margin-left: 0; }
 @media (max-width: 749px) {
-  .yh-bento { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: calc(var(--yh-bento-row, 170px) - 20px); gap: 12px; }
-  .yh-tile { padding: 18px; }
-  .yh-tile--hero { padding: 24px; }
-  .yh-tile__title { font-size: 38px; }
-  .yh-tile__art { width: 92px; right: 20px; bottom: 24px; }
-  .yh-tile__big { font-size: 30px; }
-  .yh-tile__heading { font-size: 18px; }
+  .yh-bento { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(calc(var(--yh-bento-row, 180px) - 60px), auto); gap: 10px; }
+  .yh-tile { padding: 16px; gap: 8px; }
+  .yh-tile--hero, .yh-tile--hero.yh-tile--wide, .yh-tile--hero.yh-tile--small, .yh-tile--hero.yh-tile--tall { padding: 20px; }
+  .yh-tile__title, .yh-tile--hero.yh-tile--wide .yh-tile__title, .yh-tile--hero.yh-tile--small .yh-tile__title, .yh-tile--hero.yh-tile--tall .yh-tile__title { font-size: 26px; }
+  .yh-tile__text { font-size: 14px; }
+  .yh-tile--hero.yh-tile--wide .yh-tile__text, .yh-tile--hero.yh-tile--small .yh-tile__text { display: none; }
+  .yh-tile__btn, .yh-tile--hero.yh-tile--wide .yh-tile__btn { height: 40px; padding: 0 16px; font-size: 14px; }
+  .yh-tile__art, .yh-tile--hero.yh-tile--wide .yh-tile__art { width: 70px; right: 18px; bottom: 18px; }
+  .yh-tile__big { font-size: 28px; }
+  .yh-tile__heading { font-size: 16px; }
+  .yh-tile__icon .yh-icon { width: 28px; height: 28px; }
+  .yh-timer--tile b { font-size: 13px; padding: 2px 5px; }
+  .yh-section--products { padding-top: 22px; }
+  .yh-head { margin-bottom: 12px; }
   .yh-tile--whatsapp { flex-wrap: wrap; gap: 10px; }
   .yh-tile--whatsapp .yh-tile__btn { align-self: flex-start; margin-left: 0; }
 }
 
 /* ---------- Products: chips, grid, cards ---------- */
-.yh-section--products { padding-top: 40px; }
+.yh-section--products { padding-top: 32px; }
 .yh-chips { display: flex; gap: 10px; margin-bottom: 18px; overflow-x: auto; scrollbar-width: none; }
 .yh-chips::-webkit-scrollbar { display: none; }
 .yh-chip { flex: none; padding: 10px 18px; border-radius: 999px; background: var(--yh-p-chip, #fff); color: var(--yh-p-chip-text, var(--yh-ink)); font-size: 14.5px; font-weight: 600; text-decoration: none; white-space: nowrap; }
