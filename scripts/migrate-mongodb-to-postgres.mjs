@@ -1,7 +1,7 @@
 // Copies the store from MongoDB (the Prisma Accelerate era) into PostgreSQL (Neon) and proves the
 // copy is exact. Run by .github/workflows/postgres-migration.yml; MongoDB is only read.
 //
-//   node scripts/migrate-mongodb-to-postgres.mjs --mode rehearsal|final
+//   node scripts/migrate-mongodb-to-postgres.mjs --mode rehearsal|final [--discard-after-rollback]
 //
 // Env: MONGODB_URL (source), TARGET_DATABASE_URL (PostgreSQL, a direct -- not pooled -- address),
 //      E2E_ADMIN_EMAIL / E2E_ADMIN_PASSWORD (rehearsal only: a throwaway staff login for the e2e test).
@@ -26,7 +26,11 @@ import bcrypt from 'bcryptjs'
 const root = process.cwd()
 const modeArg = process.argv.indexOf('--mode')
 const mode = modeArg > -1 ? process.argv[modeArg + 1] : ''
-if (!['rehearsal', 'final'].includes(mode)) throw new Error('Usage: --mode rehearsal|final')
+if (!['rehearsal', 'final'].includes(mode)) throw new Error('Usage: --mode rehearsal|final [--discard-after-rollback]')
+// After a rolled-back switch-over the store ran on PostgreSQL for a while. What happened there
+// (admin actions, new accounts -- never orders) may be thrown away on purpose with this flag, so
+// the copy can be rehearsed again. See guardTarget.
+const discardAfterRollback = process.argv.includes('--discard-after-rollback')
 const MONGODB_URL = process.env.MONGODB_URL || ''
 const TARGET_URL = process.env.TARGET_DATABASE_URL || ''
 if (!/^mongodb(\+srv)?:\/\//.test(MONGODB_URL)) throw new Error('MONGODB_URL must be a mongodb:// connection string')
@@ -141,19 +145,38 @@ async function readAll(client, model) {
 }
 
 // ---- Safety ------------------------------------------------------------------------------------
-async function guardTarget(target, models) {
+async function guardTarget(source, target, models) {
   const counts = await Promise.all(models.map(m => target[m.delegate].count()))
   if (counts.every(c => c === 0)) return
   const marker = await target.setting.findUnique({ where: { key: MARKER_KEY } })
   if (!marker) throw new Error('The PostgreSQL database already holds data this tool did not write. Refusing to replace it.')
   const info = JSON.parse(marker.value)
   if (info.mode === 'final') {
-    // After the final copy only a repeat of the final copy may replace it, and only while nothing
-    // has happened on PostgreSQL since: no order and no admin action (the store went live).
-    if (mode !== 'final') throw new Error('The final copy is already in place; rehearsals are over. Refusing to replace it.')
+    // Is the store back on MongoDB (a rolled-back switch-over)? Maintenance mode was turned off
+    // there, which only the MongoDB version of the store can do. While the store runs on
+    // PostgreSQL, MongoDB keeps the "on" it had at the final copy.
+    const maintenance = await source.setting.findUnique({ where: { key: 'maintenance.enabled' } })
+    const backOnMongo = maintenance?.value !== 'true'
+    // After the final copy a new copy may replace it only while nothing has happened on
+    // PostgreSQL since: no order, no admin action, no new account (the store went live on it) --
+    // unless the switch-over was rolled back and that activity is discarded on purpose. Orders
+    // are never discarded: they must be carried over to MongoDB by hand first.
     const since = { gt: new Date(info.copiedAt) }
-    const [newOrders, newActions] = await Promise.all([target.order.count({ where: { createdAt: since } }), target.auditLog.count({ where: { createdAt: since } })])
-    if (newOrders || newActions) throw new Error(`PostgreSQL has ${newOrders} order(s) and ${newActions} admin action(s) after the final copy -- the store is running on it. Refusing to replace it.`)
+    const [newOrders, newActions, newUsers] = await Promise.all([target.order.count({ where: { createdAt: since } }), target.auditLog.count({ where: { createdAt: since } }), target.user.count({ where: { createdAt: since } })])
+    if (newOrders || newActions || newUsers) {
+      const summary = `PostgreSQL has ${newOrders} order(s), ${newActions} admin action(s) and ${newUsers} new account(s) after the final copy`
+      if (!backOnMongo) throw new Error(`${summary} -- the store is running on it. Refusing to replace it.`)
+      if (newOrders) throw new Error(`${summary}. Those orders exist only in PostgreSQL: carry them over to MongoDB by hand first. Refusing to replace it.`)
+      if (!discardAfterRollback) throw new Error(`${summary}. The store is back on MongoDB; if the switch-over was rolled back, run again with --discard-after-rollback to throw that away. Refusing to replace it.`)
+      console.log(`[copy] rolled-back switch-over: discarding what happened on PostgreSQL after ${info.copiedAt} -- ${summary.slice(15)}:`)
+      const actions = await target.auditLog.findMany({ where: { createdAt: since }, select: { action: true, entity: true, createdAt: true }, orderBy: { createdAt: 'asc' } })
+      for (const a of actions) console.log(`[copy]   ${a.createdAt.toISOString()} ${a.action} (${a.entity})`)
+    }
+    // A rehearsal additionally needs the store to be back on MongoDB.
+    if (mode !== 'final') {
+      if (!backOnMongo) throw new Error('The final copy is in place and the store has not gone back to MongoDB; rehearsals are over. Refusing to replace it.')
+      console.log('[copy] the final copy is not in use (the store is back on MongoDB); rehearsing again')
+    }
   }
   console.log(`[copy] replacing the previous ${info.mode} copy from ${info.copiedAt}`)
 }
@@ -169,7 +192,7 @@ const report = { mode, startedAt: new Date().toISOString(), models: {}, nullifie
 let failed = false
 try {
   if (mode === 'final') await assertMaintenanceOn(source)
-  await guardTarget(target, models)
+  await guardTarget(source, target, models)
   const tables = models.map(m => `"${m.name}"`).join(', ')
   await target.$executeRawUnsafe(`TRUNCATE ${tables} CASCADE`)
 
@@ -239,10 +262,13 @@ try {
       await target.setting.updateMany({ where: { key }, data: { value: '' } })
     }
     await target.webhookEndpoint.updateMany({ data: { status: 'DISABLED' } })
+    // Saved push subscriptions are real staff and customer devices; the rehearsal store runs with
+    // push keys of its own and must never reach them.
+    await target.setting.deleteMany({ where: { OR: [{ key: { startsWith: 'push.subscription.' } }, { key: { startsWith: 'push.customer.subscription.' } }] } })
     const email = process.env.E2E_ADMIN_EMAIL, password = process.env.E2E_ADMIN_PASSWORD
     if (email && password) {
       const passwordHash = await bcrypt.hash(password, 10)
-      await target.user.upsert({ where: { email }, update: { passwordHash, role: 'ADMIN', isActive: true }, create: { email, name: 'Rehearsal test', passwordHash, role: 'ADMIN' } })
+      await target.user.upsert({ where: { email }, update: { passwordHash, role: 'SUPER_ADMIN', isActive: true }, create: { email, name: 'Rehearsal test', passwordHash, role: 'SUPER_ADMIN' } })
     }
     // An active product with stock, for the e2e checkout.
     const stock = new Map()

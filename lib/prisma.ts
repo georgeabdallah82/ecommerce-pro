@@ -1,5 +1,8 @@
-import { PrismaClient } from '@prisma/client/edge'
-import { withAccelerate } from '@prisma/extension-accelerate'
+import { PrismaClient } from '@prisma/client'
+import { PrismaNeon, PrismaNeonHTTP } from '@prisma/adapter-neon'
+import { PrismaPg } from '@prisma/adapter-pg'
+import type { SqlDriverAdapter, SqlDriverAdapterFactory } from '@prisma/driver-adapter-utils'
+import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { defaultTheme, defaultSections, defaultNavigation } from './theme-defaults'
 
 const globalForPrisma = globalThis as unknown as { prisma?: any }
@@ -2587,53 +2590,195 @@ function getMockHandler(model: string) {
   }
 }
 
-// Create the real PrismaClient instance. This runs on Cloudflare Workers, which cannot open
-// raw TCP connections to MongoDB, so it must go through Prisma Accelerate (an HTTPS proxy) —
-// DATABASE_URL is expected to be an Accelerate connection string (prisma://...), not a direct
-// mongodb:// URL. The edge client works identically in Node.js (local dev), so this is the one
-// client used everywhere.
-function createExtendedClient() {
-  return new PrismaClient().$extends(withAccelerate())
+// ---- Database connection ------------------------------------------------------------------
+// Production runs on Cloudflare Workers against Neon (PostgreSQL), through Prisma's driver
+// adapters (engineType = "client": no Rust engine, a WebAssembly query compiler). Two runtime
+// limits shape this:
+// - Memory. Every Prisma client carries its own query compiler (about 1 MB), and WebAssembly memory
+//   never shrinks. A client per request left isolates near the 128 MB limit after a burst of
+//   traffic and they failed with error 1102, so a Worker isolate has exactly one client.
+// - I/O isolation. A Worker may not use a connection opened while handling another request, and a
+//   request must never wait on another's I/O (the runtime cancels it as hung). So the shared
+//   client's adapter (requestScopedAdapter) sends every query through the current request's own
+//   connections, opened on first use and closed when the request ends (worker.ts):
+//   - Neon: plain queries over Neon's HTTP endpoint (one HTTPS request per query); transactions
+//     (Prisma also wraps nested writes in one) on a WebSocket pool.
+//   - Any other PostgreSQL URL (local development, CI): a node-postgres pool for both.
+//   Prisma also batches findUnique calls made within the same timer tick into one query, which
+//   would run one request's lookup inside another request's I/O; unique lookups are therefore
+//   sent as findFirst (see modelDelegate).
+// NEON_DATABASE_URL is read first so the Worker's old DATABASE_URL (the retired Prisma
+// Accelerate prisma:// address) can't be picked up by mistake.
+const databaseUrl = [process.env.NEON_DATABASE_URL, process.env.DATABASE_URL].find(url => !!url && /^postgres(ql)?:\/\//.test(url)) || ''
+const isNeon = (() => { try { return new URL(databaseUrl).hostname.endsWith('.neon.tech') } catch { return false } })()
+const onWorkers = typeof navigator !== 'undefined' && navigator.userAgent === 'Cloudflare-Workers'
+
+// worker.ts (the Worker entry) runs these once a request has completely finished: response body
+// sent and every waitUntil() task (after(), background emails and webhooks) settled.
+const REQUEST_END_HOOKS = Symbol.for('yallahaul.requestEndHooks')
+function onRequestEnd(ctx: object, hook: () => unknown) {
+  const hooks: WeakMap<object, Array<() => unknown>> = ((globalThis as any)[REQUEST_END_HOOKS] ??= new WeakMap())
+  const list = hooks.get(ctx)
+  if (list) list.push(hook)
+  else hooks.set(ctx, [hook])
 }
-// Extended clients lose their generated type unless captured explicitly like this — without it,
-// db falls back to `any` and every query loses select/include payload inference project-wide.
-type ExtendedPrismaClient = ReturnType<typeof createExtendedClient>
+
+// Kept on globalThis like `db` below: Next bundles routes separately, and every bundle's copy of
+// this module must see the same client and counts.
+const shared: { client: PrismaClient | null; poolsOpened: number; poolsClosed: number } = ((globalThis as any).__yallahaulDb ??= { client: null, poolsOpened: 0, poolsClosed: 0 })
+
+type Connections = { http?: Promise<SqlDriverAdapter>; pool?: Promise<SqlDriverAdapter> }
+const processConnections: Connections = {}
+const requestConnections = new WeakMap<object, Connections>()
+let warnedNoContext = false
+// On Workers: the current request's connections, opened on first use and closed when it ends.
+// Elsewhere (Node: local development, scripts): one set per process.
+function currentConnections(): Connections {
+  if (!onWorkers) return processConnections
+  let ctx: object | null = null
+  try { ctx = getCloudflareContext().ctx as object } catch { ctx = null }
+  if (!ctx) {
+    // Not expected: every request runs inside OpenNext's request context.
+    if (!warnedNoContext) { warnedNoContext = true; console.warn('[db] database used outside a request context; sharing one set of connections') }
+    return processConnections
+  }
+  let connections = requestConnections.get(ctx)
+  if (!connections) {
+    const opened: Connections = (connections = {})
+    requestConnections.set(ctx, opened)
+    onRequestEnd(ctx, async () => {
+      requestConnections.delete(ctx)
+      if (opened.pool) {
+        shared.poolsClosed++
+        await opened.pool.then(pool => pool.dispose()).catch(() => undefined)
+      }
+    })
+  }
+  return connections
+}
+function poolConnection(): Promise<SqlDriverAdapter> {
+  const connections = currentConnections()
+  if (!connections.pool) {
+    shared.poolsOpened++
+    // A request rarely needs more than a few connections at once; node-postgres' default of 10 per
+    // request ran a 100-connection database out under bursts of concurrent requests.
+    connections.pool = (isNeon ? new PrismaNeon({ connectionString: databaseUrl, max: 3 }) : new PrismaPg({ connectionString: databaseUrl, max: 3 })).connect()
+  }
+  return connections.pool
+}
+function queryConnection(): Promise<SqlDriverAdapter> {
+  if (!isNeon) return poolConnection()
+  const connections = currentConnections()
+  return (connections.http ??= new PrismaNeonHTTP(databaseUrl, {}).connect())
+}
+
+// The adapter the shared client is built with: each call goes to the calling request's own
+// connection (Prisma runs a query's I/O in the caller's async context).
+const requestScopedAdapter: SqlDriverAdapter = {
+  provider: 'postgres',
+  adapterName: isNeon ? '@prisma/adapter-neon' : '@prisma/adapter-pg',
+  queryRaw: async query => (await queryConnection()).queryRaw(query),
+  executeRaw: async query => (await queryConnection()).executeRaw(query),
+  executeScript: async script => (await poolConnection()).executeScript(script),
+  startTransaction: async isolationLevel => (await poolConnection()).startTransaction(isolationLevel),
+  // What the underlying query adapter reports: Neon's HTTP adapter reports nothing, node-postgres
+  // supports relation joins.
+  ...(isNeon ? {} : { getConnectionInfo: () => ({ supportsRelationJoins: true }) }),
+  dispose: async () => {},
+}
+const requestScopedAdapterFactory: SqlDriverAdapterFactory = {
+  provider: 'postgres',
+  adapterName: requestScopedAdapter.adapterName,
+  connect: async () => requestScopedAdapter,
+}
+
+// Prisma also reads DATABASE_URL (the schema's datasource) when a client is created, and refuses
+// to start when that is a prisma:// (Accelerate) address next to a driver adapter. The live
+// Worker still carries the retired Accelerate address under that name (kept so a rollback to the
+// MongoDB version keeps working), so it is pointed at the database actually used first.
+function getClient(): PrismaClient {
+  if (!shared.client) {
+    if (process.env.DATABASE_URL !== databaseUrl) process.env.DATABASE_URL = databaseUrl
+    shared.client = new PrismaClient({ adapter: requestScopedAdapterFactory })
+  }
+  return shared.client
+}
+
+// For the internal runtime-stats endpoint: per-request connection pools opened and closed.
+export function databaseClientStats() {
+  return { clients: shared.client ? 1 : 0, poolsOpened: shared.poolsOpened, poolsClosed: shared.poolsClosed, open: shared.poolsOpened - shared.poolsClosed }
+}
+
+// A findUnique `where` as the same filter for findFirst, or null when it can't be one: a key left
+// undefined or null (findUnique rejects that, findFirst would match any row) or nothing to filter
+// on. Compound keys ({ userId_productId: { userId, productId } }) become their fields.
+export function uniqueWhereAsFilter(where: unknown): Record<string, unknown> | null {
+  if (!isPlainObject(where)) return null
+  const filter: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(where)) {
+    if (value === undefined || value === null) return null
+    const parts = key.split('_')
+    if (parts.length > 1 && isPlainObject(value) && Object.keys(value).length === parts.length && parts.every(part => part in value)) {
+      for (const part of parts) {
+        const fieldValue = (value as Record<string, unknown>)[part]
+        if (fieldValue === undefined || fieldValue === null) return null
+        filter[part] = fieldValue
+      }
+    } else {
+      filter[key] = value
+    }
+  }
+  return Object.keys(filter).length ? filter : null
+}
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const proto = Object.getPrototypeOf(value)
+  return proto === Object.prototype || proto === null
+}
+
+// A model on the shared client, with unique lookups sent as findFirst (never batched, see above).
+const UNIQUE_AS_FIRST: Record<string, string> = { findUnique: 'findFirst', findUniqueOrThrow: 'findFirstOrThrow' }
+const modelDelegates = new Map<string, any>()
+function modelDelegate(model: string) {
+  let proxied = modelDelegates.get(model)
+  if (!proxied) {
+    proxied = new Proxy({}, {
+      get(_target, operation: string | symbol) {
+        if (typeof operation !== 'string') return undefined
+        const delegate = (getClient() as any)[model]
+        const asFirst = UNIQUE_AS_FIRST[operation]
+        if (asFirst && delegate) {
+          return (args: any) => {
+            const filter = uniqueWhereAsFilter(args?.where)
+            return filter ? delegate[asFirst]({ ...args, where: filter }) : delegate[operation](args)
+          }
+        }
+        const value = delegate?.[operation]
+        return typeof value === 'function' ? value.bind(delegate) : value
+      },
+    })
+    modelDelegates.set(model, proxied)
+  }
+  return proxied
+}
 
 const isProduction = process.env.NODE_ENV === 'production'
-let realPrisma: ExtendedPrismaClient | null = null
-try {
-  // `new PrismaClient()` returns synchronously even when DATABASE_URL is
-  // missing or invalid — it only discovers that when a query actually runs,
-  // as an unhandled promise rejection this try/catch can never observe (it
-  // isn't awaited here). Checking the env var directly, before constructing
-  // the client at all, is what actually lets a missing DATABASE_URL reach
-  // the production-throws / non-production-falls-back-to-mock branch below
-  // instead of silently leaving realPrisma set to a client that will fail
-  // every real query later.
-  if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not set')
-  realPrisma = createExtendedClient()
-} catch (error) {
-  if (isProduction) {
-    throw new Error('Failed to initialize the database client. DATABASE_URL must be configured as a valid Prisma Accelerate connection string in production.', { cause: error })
-  }
-  console.warn('[AI Studio] Database client initialization warning — using resilient proxy for local development')
+// A production deployment without a database fails loudly instead of silently serving the
+// in-memory mock store (and its well-known mock admin login).
+if (!databaseUrl && isProduction) {
+  throw new Error('Failed to initialize the database client. NEON_DATABASE_URL (or DATABASE_URL) must be a PostgreSQL connection string in production.')
 }
+if (!databaseUrl) console.warn('[AI Studio] No PostgreSQL DATABASE_URL -- using the in-memory mock store for local development')
 
-// Create a safe proxy that executes real queries when a real DB is connected,
-// and falls back immediately and gracefully to in-memory mock data if offline or unreachable.
-// This fallback (including the seeded mock admin account) must never be reachable in
-// production — a misconfigured DATABASE_URL there fails the deployment loudly instead of
-// silently serving fake data behind a known default login.
 // ---- All-or-nothing writes ($transaction) ----------------------------------------------------
 // `db.$transaction(async tx => ...)` runs as a real database transaction: if anything inside
 // throws, every write it made is undone. (Until this was fixed it ran step by step in production
 // too -- the stand-in below was meant for the offline mock only.)
 //
-// The database sits behind Prisma Accelerate, whose interactive transactions can be cut off by
-// a time limit (5 s by default, raised in the Prisma Console) or be unavailable for a moment.
-// When that happens the transaction has been rolled back -- nothing it did is kept -- so the
-// same steps are run once more, one by one, exactly as the store worked before. A store that
-// can't run transactions therefore never gets worse than it was; one that can gets the safety.
+// A transaction can still be cut off by its time limit or fail to start (a dropped connection).
+// When that happens it has been rolled back -- nothing it did is kept -- so the same steps are
+// run once more, one by one, exactly as the store worked before transactions were available.
+// The store therefore never gets worse than that; normally every transaction simply succeeds.
 const TX_OPTIONS = { maxWait: 5_000, timeout: 15_000 }
 const TX_COOLDOWN_MS = 10 * 60 * 1000
 let customTimeoutRejected = false
@@ -2672,8 +2817,8 @@ export async function runInteractiveTransaction(client: any, fn: (tx: any) => Pr
         // transaction (P2028) was never committed, so that one is safe to run step by step.
         if (finished && errorCode(error) !== 'P2028') throw error
         if (!started && !customTimeoutRejected && !options?.timeout) {
-          // Accelerate refused to start it, most likely because the 15 s limit is above what the
-          // Prisma Console allows: use its default limit from now on.
+          // The database refused to start it, possibly over the 15 s limit: use the default
+          // limit from now on.
           customTimeoutRejected = true
           console.warn('[db] transaction refused with a 15 s limit; using the default limit', errorCode(error))
           continue
@@ -2690,45 +2835,49 @@ export async function runInteractiveTransaction(client: any, fn: (tx: any) => Pr
 // For tests: forget a remembered refusal or cool-down.
 export function resetTransactionState() { customTimeoutRejected = false; transactionsUnavailableUntil = 0 }
 
+// The exported `db`: real queries (reads and writes routed as described above) when a database is
+// configured, or the in-memory mock store in local development without one. The mock (and its
+// seeded mock admin account) is never reachable in production -- a missing database URL there
+// fails the deployment loudly instead of silently serving fake data behind a known login.
 function createResilientPrismaClient(): any {
-  return new Proxy(realPrisma || {}, {
-    get(target, prop: string | symbol) {
-      if (typeof prop !== 'string') return Reflect.get(target, prop)
-
+  return new Proxy({}, {
+    get(_target, prop: string | symbol) {
+      if (typeof prop !== 'string') return undefined
       if (prop === '$connect' || prop === '$disconnect') return async () => {}
-      if (prop === '$transaction' && realPrisma) {
-        const client = realPrisma as any
-        return (arg: any, options?: any) => typeof arg === 'function'
-          ? runInteractiveTransaction(client, arg, options)
-          : client.$transaction(arg, options)
-      }
-      if (prop === '$transaction') {
-        return async (arg: any) => {
-          if (typeof arg === 'function') return arg(createResilientPrismaClient())
-          if (Array.isArray(arg)) return Promise.all(arg)
-          return []
+
+      if (!databaseUrl) {
+        // Local development without a database: the in-memory mock store.
+        if (prop === '$transaction') {
+          return async (arg: any) => {
+            if (typeof arg === 'function') return arg(createResilientPrismaClient())
+            if (Array.isArray(arg)) return Promise.all(arg)
+            return []
+          }
         }
+        // Every model gets a generic in-memory mock. This used to be an explicit allowlist
+        // that had to be updated by hand every time a route queried a new Prisma model, and
+        // every miss was the same "Cannot read properties of undefined" crash. getMockHandler's
+        // generic fallbacks (empty list / null / create-or-update echo) are always safe for a
+        // model with no special-cased mock data.
+        return getMockHandler(prop)
       }
 
-      if (prop in target) return Reflect.get(target, prop)
-      // Any model prop not already resolved above (no real client, or the
-      // real client doesn't have it) gets a generic in-memory mock in
-      // non-production. This used to be an explicit allowlist that had to
-      // be updated by hand every time a route queried a new Prisma model
-      // without DATABASE_URL configured, and every miss was the same
-      // "Cannot read properties of undefined" crash -- adminLoginLockout,
-      // auditLog, liveVisitorSession and inventoryItem all hit it before
-      // being added one at a time. getMockHandler's generic fallbacks
-      // (empty list / null / create-or-update echo) are always safe for a
-      // model with no special-cased mock data, so there's nothing left for
-      // an allowlist to gate.
-      if (!isProduction) return getMockHandler(prop)
-      return Reflect.get(target, prop)
+      if (prop === '$transaction') {
+        return (arg: any, options?: any) => typeof arg === 'function'
+          ? runInteractiveTransaction(getClient(), arg, options)
+          : (getClient() as any).$transaction(arg, options)
+      }
+      if (prop.startsWith('$')) {
+        const client: any = getClient()
+        const value = client[prop]
+        return typeof value === 'function' ? value.bind(client) : value
+      }
+      return modelDelegate(prop)
     },
   })
 }
 
-const db: ExtendedPrismaClient = (globalForPrisma.prisma ?? createResilientPrismaClient()) as ExtendedPrismaClient
+const db: PrismaClient = (globalForPrisma.prisma ?? createResilientPrismaClient()) as PrismaClient
 globalForPrisma.prisma = db
 
 export const prisma = db
