@@ -15,6 +15,8 @@ const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: pr
 let failures = 0
 const step = (name, ok, note = '') => { if (!ok) failures++; console.log(ok ? 'PASS' : 'FAIL', name, note) }
 const stamp = Date.now().toString(36)
+// Rehearsal diagnostics on a preview version (PROBE_DB=1): the database error, if any, in full.
+const probe = async label => { if (!process.env.PROBE_DB) return; const r = await fetch(B + '/api/internal/db-probe').catch(e => null); console.log(`db probe (${label}):`, r ? r.status : 'no answer', r ? (await r.text()).slice(0, 3000) : '') }
 
 // ---------- Shopper: add to cart, cash-on-delivery checkout
 const shop = await b.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
@@ -63,8 +65,10 @@ for (const name of regInputs) {
   else if (/name/i.test(name)) await el.fill('PG Customer')
 }
 await regForm.locator('button', { hasText: 'Create account' }).first().click()
-await cp.waitForLoadState('networkidle'); await cp.waitForTimeout(1000)
-const session = await cp.evaluate(async () => (await (await fetch('/api/auth/session')).json()))
+// The form posts in the background and then redirects to the account page; the session cookie
+// is set by that response, so wait for the redirect rather than a fixed delay.
+await cp.waitForURL(u => !u.pathname.startsWith('/account/register'), { timeout: 60000 }).catch(() => {})
+const session = await cp.evaluate(async () => { const r = await fetch('/api/auth/session'); return r.json().catch(() => ({ status: r.status })) })
 step('customer registration + session', !!session?.user?.email, `fields=${regInputs.join(',')} user=${session?.user?.email || JSON.stringify(session).slice(0, 80)}`)
 const productId = await cp.evaluate(async path => { const r = await fetch('/api/products?limit=50'); const j = await r.json().catch(() => null); const list = j?.products || j?.rows || j || []; const slug = path.split('/').pop(); return (list.find?.(p => p.slug === slug) || list[0])?.id || '' }, productPath)
 const wish = await cp.evaluate(async id => { const r = await fetch('/api/wishlist', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ productId: id }) }); return r.status + ' ' + (await r.text()).slice(0, 80) }, productId)
@@ -79,6 +83,18 @@ await ap.goto(B + '/admin-login', { waitUntil: 'networkidle' })
 await ap.locator('input[name=email]').fill(ADMIN.email); await ap.locator('input[name=password]').fill(ADMIN.password); await ap.locator('button.adminLoginSubmit').click()
 await ap.waitForURL(/\/admin(?!-login)/, { timeout: 60000 }); step('admin login', true)
 const api = (url, method = 'GET', body) => ap.evaluate(async ([url, method, body]) => { const r = await fetch(url, { method, headers: body ? { 'content-type': 'application/json' } : undefined, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, body: await r.json().catch(() => null) } }, [url, method, body])
+
+// Many requests at once, the way the admin and a busy storefront load: each request must only
+// ever wait on its own database queries (a database client shared between requests let one
+// request's lookup ride on another's and the Worker runtime cancelled it as hung).
+const burst = await ap.evaluate(async productPath => {
+  const urls = []
+  for (let i = 0; i < 6; i++) urls.push('/api/auth/session', '/api/admin/pages', '/api/admin/collections', '/api/admin/coupons', productPath)
+  const results = await Promise.all(urls.map(u => fetch(u, { cache: 'no-store' }).then(r => r.status, () => 0)))
+  return results.map((status, i) => [urls[i], status]).filter(([, status]) => status !== 200)
+}, productPath)
+step('concurrent requests (30 at once)', burst.length === 0, burst.map(([u, s]) => `${u}=${s}`).join(' '))
+await probe('after 30 concurrent requests')
 
 for (const p of ['/admin', '/admin/orders', '/admin/products', '/admin/customers', '/admin/reports', '/admin/inventory', '/admin/settings', '/admin/online-store/theme-editor', '/admin/customer-segments']) {
   const r = await ap.goto(B + p, { waitUntil: 'networkidle' }).catch(() => null)
@@ -146,6 +162,37 @@ if (customer) {
   step('delete customer (with wishlist)', del.status === 200, `http=${del.status} ${del.body?.error || ''}`)
 } else step('find registered customer in admin', false, JSON.stringify(cs.body).slice(0, 120))
 
+// The scheduled job that releases stock held by abandoned card checkouts (database reads and
+// transactions outside any browser session). Only when the store was started with a CRON_SECRET.
+if (process.env.CRON_SECRET) {
+  const cron = await fetch(B + '/api/internal/release-expired-reservations', { headers: { authorization: `Bearer ${process.env.CRON_SECRET}` } })
+  step('scheduled job: release expired reservations', cron.status === 200, `http=${cron.status} ${(await cron.text()).slice(0, 80)}`)
+}
+
+// Memory: every database client carries about 1 MB that a 128 MB Worker only gets back when the
+// client is given back at the end of its request (it used to keep one per request, until error
+// 1102). 160 page loads must all succeed; with CRON_SECRET the store's own counters must also show
+// every client released afterwards.
+{
+  const stats = async () => { if (!process.env.CRON_SECRET) return null; const r = await fetch(B + '/api/internal/runtime-stats', { headers: { authorization: `Bearer ${process.env.CRON_SECRET}` } }); return r.ok ? (await r.json()).database : null }
+  const load = async path => { try { const r = await fetch(B + path, { signal: AbortSignal.timeout(60000) }); await r.arrayBuffer(); return r.status === 200 ? 200 : `${path}=${r.status}` } catch (e) { return `${path}=${e?.name === 'TimeoutError' ? 'no answer in 60s' : 'network error'}` } }
+  const pages = ['/', '/shop', productPath, '/cart', '/collections']
+  const before = await stats()
+  const failures = []
+  for (let i = 0; i < 100; i++) { const status = await load(pages[i % pages.length]); if (status !== 200) failures.push(status) }
+  for (let round = 0; round < 3; round++) failures.push(...(await Promise.all(pages.flatMap(p => [p, p, p, p]).map(load))).filter(s => s !== 200))
+  let after = await stats()
+  for (let i = 0; i < 20 && after && after.open > 0; i++) { await new Promise(r => setTimeout(r, 500)); after = await stats() }
+  const clientsOk = !process.env.CRON_SECRET || (!!after && after.open === 0)
+  const note = `failed=${failures.length}${failures.length ? ' [' + failures.join(',') + ']' : ''}${process.env.CRON_SECRET ? ` before=${JSON.stringify(before)} after=${JSON.stringify(after)}` : ''}`
+  // On a Cloudflare preview the load verdict comes from scripts/e2e/load-compare.mjs (the same load
+  // against the live store); here it is only reported.
+  if (process.env.LOAD_REPORT_ONLY) console.log('INFO 160 page loads (judged by load-compare)', note)
+  else step(process.env.CRON_SECRET ? '160 page loads, database clients given back' : '160 page loads', failures.length === 0 && clientsOk, note)
+}
+
+await probe('end')
 step('no browser errors', !shopErrors.length && !adminErrors.length, [...shopErrors, ...adminErrors].join(' | '))
 await b.close()
 console.log(failures ? `\n${failures} failure(s)` : '\nall passed')
+process.exit(failures ? 1 : 0)
