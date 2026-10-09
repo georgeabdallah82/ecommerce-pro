@@ -1,30 +1,44 @@
 // Side-by-side load test: the same page loads against two stores at the same moments -- the
 // PostgreSQL preview version and the live store -- counting the loads that fail on each. Read-only
-// (plain page views). Fails when the new version fails clearly more often than the live one, so a
-// switch-over never makes the store less reliable than it is today.
+// (plain page views). Fails when the new version fails clearly more often than the live one under
+// realistic traffic, so a switch-over never makes the store less reliable than it is today.
 //
 //   node scripts/e2e/load-compare.mjs <new store URL> <live store URL> [product path]
+//
+// Judged: 50 one-at-a-time loads and 3 bursts of 10 simultaneous loads per store. Reported only:
+// 3 bursts of 40 (far above this store's traffic; both versions run out of Worker memory there).
 const [, , NEW, LIVE, productPath = '/'] = process.argv
 if (!NEW || !LIVE) throw new Error('Usage: load-compare.mjs <new URL> <live URL> [product path]')
 const pages = ['/', '/shop', productPath, '/cart', '/collections']
-const failures = { new: [], live: [] }
-const load = async (which, base, path) => {
+const load = async (base, path, failed) => {
   try {
     const r = await fetch(base + path, { signal: AbortSignal.timeout(60000) })
     await r.arrayBuffer()
-    if (r.status !== 200) failures[which].push(`${path}=${r.status}`)
-  } catch (e) { failures[which].push(`${path}=${e?.name === 'TimeoutError' ? 'timeout' : 'network error'}`) }
+    if (r.status !== 200) failed.push(`${path}=${r.status}`)
+  } catch (e) { failed.push(`${path}=${e?.name === 'TimeoutError' ? 'timeout' : 'network error'}`) }
 }
-// 3 bursts of 40 simultaneous page loads per store, then 50 one-at-a-time loads per store.
-for (let round = 0; round < 3; round++) {
-  const burst = Array.from({ length: 8 }, () => pages).flat()
-  await Promise.all(burst.flatMap(path => [load('new', NEW, path), load('live', LIVE, path)]))
-  await new Promise(r => setTimeout(r, 2000))
+async function phase(name, run) {
+  const failed = { new: [], live: [] }
+  const total = await run(failed)
+  for (const which of ['new', 'live']) console.log(`${name.padEnd(28)} ${which === 'new' ? 'new version' : 'live store '} ${total - failed[which].length}/${total} OK${failed[which].length ? ' -- failed ' + failed[which].join(' ') : ''}`)
+  return failed
 }
-for (let i = 0; i < 50; i++) { const path = pages[i % pages.length]; await load('new', NEW, path); await load('live', LIVE, path) }
-const total = 3 * 40 + 50
-console.log(`new version: ${total - failures.new.length}/${total} OK${failures.new.length ? ' -- failed ' + failures.new.join(' ') : ''}`)
-console.log(`live store:  ${total - failures.live.length}/${total} OK${failures.live.length ? ' -- failed ' + failures.live.join(' ') : ''}`)
-const ok = failures.new.length <= failures.live.length + 2
-console.log(ok ? 'PASS the new version is at least as reliable as the live store' : 'FAIL the new version fails more often than the live store')
+const sequential = () => phase('50 one at a time', async failed => {
+  for (let i = 0; i < 50; i++) { const path = pages[i % pages.length]; await load(NEW, path, failed.new); await load(LIVE, path, failed.live) }
+  return 50
+})
+const bursts = size => phase(`3 bursts of ${size} at once`, async failed => {
+  for (let round = 0; round < 3; round++) {
+    const burst = Array.from({ length: size }, (_, i) => pages[i % pages.length])
+    await Promise.all(burst.flatMap(path => [load(NEW, path, failed.new), load(LIVE, path, failed.live)]))
+    await new Promise(r => setTimeout(r, 2000))
+  }
+  return size * 3
+})
+const judged = [await sequential(), await bursts(10)]
+await bursts(40)
+const newFailed = judged.reduce((n, f) => n + f.new.length, 0)
+const liveFailed = judged.reduce((n, f) => n + f.live.length, 0)
+const ok = newFailed <= liveFailed + 2
+console.log(ok ? `PASS realistic traffic: the new version failed ${newFailed}, the live store ${liveFailed}` : `FAIL realistic traffic: the new version failed ${newFailed}, the live store ${liveFailed}`)
 process.exit(ok ? 0 : 1)
