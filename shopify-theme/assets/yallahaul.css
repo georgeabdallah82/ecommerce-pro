@@ -47,6 +47,7 @@ body { color: var(--yh-ink); letter-spacing: 0; }
 .yh-logo { flex: none; display: flex; align-items: center; text-decoration: none; }
 .yh-logo img { display: block; width: auto; height: 30px; max-width: var(--yh-logo-width, 200px); object-fit: contain; object-position: left center; }
 .yh-logo--white img { filter: brightness(0) invert(1); }
+.yh-logo__text { color: #fff; font-family: var(--font-heading-family); font-size: 22px; font-weight: 900; line-height: 1.1; letter-spacing: .01em; white-space: nowrap; }
 .yh-search { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 4px 0 14px; border-radius: var(--yh-btn-radius); background: #fff; color: var(--yh-muted); box-sizing: border-box; transition: box-shadow .15s ease; }
 .yh-search:focus-within { box-shadow: 0 0 0 3px color-mix(in srgb, var(--yh-accent) 70%, transparent); }
 .yh-search input[type="search"] { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; padding: 0; font: inherit; font-size: 15px; color: var(--yh-ink); -webkit-appearance: none; appearance: none; }
@@ -71,6 +72,7 @@ shopify-account.yh-account { color: #fff; --shopify-account-font-body: var(--fon
   .yh-header__inner { flex-wrap: wrap; gap: 8px; min-height: 0; padding-block: 10px; }
   .yh-logo { margin-right: auto; }
   .yh-logo img { height: 24px; max-width: min(var(--yh-logo-width, 200px), 50vw); }
+  .yh-logo__text { font-size: 19px; }
   .yh-hlink { padding: 0 6px; }
   .yh-hlink__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   body.yh-has-tabbar .yh-account { display: none; }
@@ -175,6 +177,7 @@ shopify-account.yh-account { color: #fff; --shopify-account-font-body: var(--fon
 .yh-footer strong { display: block; color: #fff; font-size: 15px; margin-bottom: 14px; }
 .yh-footer__top { display: grid; gap: 30px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .yh-footer__brand { grid-column: 1 / -1; display: grid; gap: 14px; align-content: start; }
+.yh-footer__name { color: #fff; font-family: var(--font-heading-family); font-size: 22px; font-weight: 900; }
 .yh-footer__logo img { display: block; width: 180px; max-width: 100%; height: auto; }
 .yh-footer__about { margin: 0; font-size: 14px; max-width: 38ch; }
 .yh-footer__social { display: flex; gap: 10px; }

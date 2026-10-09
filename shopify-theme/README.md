@@ -26,8 +26,9 @@ Yalla Haul parts are the `yh-*` files.
 Brand colours (logo red #D42A2A, orange #FF7A1A, black #171717, cream #FFF1E6), corners, the
 card note, WhatsApp and the phone bottom bar are under **Theme settings > Yalla Haul**. The page
 background is Colors > Scheme 1 (#F6F4F2); panels, cards and the cart drawer use Scheme 2
-(white). Font: Figtree. Built-in photos are Unsplash (free for commercial use), see
-`public/stock/CREDITS.txt`.
+(white). Font: Figtree. The logo and favicon are uploaded in the theme editor (Theme settings >
+Logo; the footer has its own logo for dark backgrounds); until then the store name is shown.
+Built-in photos are Unsplash (free for commercial use), see `public/stock/CREDITS.txt`.
 
 ## Install
 

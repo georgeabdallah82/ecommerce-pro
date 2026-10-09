@@ -1,5 +1,5 @@
 {%- comment -%}
-  Red marketplace header: white logo, search with an orange button, Account and Cart. Sticks
+  Red marketplace header: logo (in white), search with an orange button, Account and Cart. Sticks
   to the top. The red category tabs under it are the "Yalla Haul category tabs" section.
 {%- endcomment -%}
 {%- liquid
@@ -13,7 +13,7 @@
         {%- assign logo_2x = settings.logo_width | times: 2 -%}
         {{ logo | image_url: width: logo_2x | image_tag: alt: logo_alt, loading: 'eager', fetchpriority: 'high' }}
       {%- else -%}
-        <img src="{{ 'yh-logo.svg' | asset_url }}" alt="{{ logo_alt }}" width="909" height="142" fetchpriority="high">
+        <span class="yh-logo__text">{{ shop.name | escape }}</span>
       {%- endif -%}
     </a>
 
@@ -89,7 +89,7 @@
       "type": "image_picker",
       "id": "logo",
       "label": "Logo on the red header",
-      "info": "Empty = the logo from Theme settings > Logo, or the built-in Yalla Haul logo. Width: Theme settings > Logo."
+      "info": "Empty = the logo from Theme settings > Logo, or the store name. Width: Theme settings > Logo."
     },
     {
       "type": "checkbox",

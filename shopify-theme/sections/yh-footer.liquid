@@ -18,7 +18,7 @@
           {%- elsif settings.logo != blank and section.settings.use_header_logo -%}
             {{ settings.logo | image_url: width: 480 | image_tag: alt: shop.name, loading: 'lazy' }}
           {%- else -%}
-            <img src="{{ 'yh-logo-dark.svg' | asset_url }}" alt="{{ shop.name | escape }}" width="909" height="142" loading="lazy">
+            <span class="yh-footer__name">{{ shop.name | escape }}</span>
           {%- endif -%}
         </a>
         {%- if section.settings.about != blank -%}<p class="yh-footer__about">{{ section.settings.about | escape }}</p>{%- endif -%}
@@ -101,7 +101,7 @@
   "name": "Yalla Haul footer",
   "max_blocks": 3,
   "settings": [
-    { "type": "image_picker", "id": "logo", "label": "Footer logo (light version for the dark footer)" },
+    { "type": "image_picker", "id": "logo", "label": "Footer logo (the version for dark backgrounds)", "info": "Empty = the store name." },
     { "type": "checkbox", "id": "use_header_logo", "label": "Use the header logo when no footer logo is set", "default": false },
     { "type": "text", "id": "about", "label": "Line under the logo" },
     {
