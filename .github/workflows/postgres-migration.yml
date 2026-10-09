@@ -61,6 +61,17 @@ jobs:
           # Migrations and the copy need a direct connection; the app uses the pooled one.
           echo "TARGET_DATABASE_URL=${NEON_DATABASE_URL/-pooler./.}" >> "$GITHUB_ENV"
 
+      # Read-only: the Worker's usage model and CPU limit (the preview rehearsal measures against them).
+      - name: Cloudflare limits for the Worker
+        if: inputs.mode == 'rehearsal' && inputs.run_on == 'cloudflare-preview'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers"
+          curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api/account-settings" | jq -c '{account_settings: .result, errors: [.errors[]?.message]}' || true
+          curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api/scripts/ecommerce-pro/settings" | jq -c '{usage_model: .result.usage_model, limits: .result.limits, placement: .result.placement, errors: [.errors[]?.message]}' || true
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
