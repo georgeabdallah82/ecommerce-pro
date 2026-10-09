@@ -30,7 +30,7 @@
     "yh-header": {
       "type": "yh-header",
       "settings": {
-        "logo_white": true,
+        "logo_white": false,
         "search_placeholder": "What are you looking for?",
         "search_button": "Search",
         "account_label": "Account"
