@@ -1,8 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "ecommerce-pro",
-  "main": "worker.ts",
-  "preview_urls": false,
+  "main": ".open-next/worker.js",
   "compatibility_date": "2026-09-08",
   "compatibility_flags": [
     "nodejs_compat",

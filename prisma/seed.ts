@@ -1,8 +1,7 @@
-import { Role, DiscountType, ProductStatus } from '@prisma/client'
+import { PrismaClient, Role, DiscountType, ProductStatus } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import {defaultTheme,defaultSections,defaultNavigation} from '../lib/theme-defaults'
-// lib/prisma picks the right driver adapter for DATABASE_URL (Neon or any other PostgreSQL).
-import { db } from '../lib/prisma'
+const db=new PrismaClient()
 async function main(){
  const isProduction=process.env.NODE_ENV==='production'
  const configuredAdminPassword=process.env.SEED_ADMIN_PASSWORD
