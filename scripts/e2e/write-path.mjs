@@ -175,7 +175,7 @@ if (process.env.CRON_SECRET) {
 // every client released afterwards.
 {
   const stats = async () => { if (!process.env.CRON_SECRET) return null; const r = await fetch(B + '/api/internal/runtime-stats', { headers: { authorization: `Bearer ${process.env.CRON_SECRET}` } }); return r.ok ? (await r.json()).database : null }
-  const load = async path => { const r = await fetch(B + path); await r.arrayBuffer(); return r.status === 200 ? 200 : `${path}=${r.status}` }
+  const load = async path => { try { const r = await fetch(B + path, { signal: AbortSignal.timeout(60000) }); await r.arrayBuffer(); return r.status === 200 ? 200 : `${path}=${r.status}` } catch (e) { return `${path}=${e?.name === 'TimeoutError' ? 'no answer in 60s' : 'network error'}` } }
   const pages = ['/', '/shop', productPath, '/cart', '/collections']
   const before = await stats()
   const failures = []

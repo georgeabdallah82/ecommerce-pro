@@ -180,7 +180,16 @@ jobs:
 
       - name: Preview version log (failed requests and errors only)
         if: always() && inputs.mode == 'rehearsal' && inputs.run_on == 'cloudflare-preview'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
+          # Cloudflare's own statistics for the preview version (read-only): outcome, CPU and wall time.
+          since="$(date -u -d '-40 minutes' +%Y-%m-%dT%H:%M:%SZ)"; until="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          query='query($acct: string!, $since: Time!, $until: Time!, $version: string!) { viewer { accounts(filter: {accountTag: $acct}) { workersInvocationsAdaptive(limit: 20, filter: {scriptName: "ecommerce-pro", scriptVersion: $version, datetime_geq: $since, datetime_leq: $until}) { sum { requests errors subrequests } quantiles { cpuTimeP50 cpuTimeP90 cpuTimeP99 cpuTimeP999 wallTimeP50 wallTimeP99 } dimensions { status } } } } }'
+          jq -n --arg q "$query" --arg acct "$CLOUDFLARE_ACCOUNT_ID" --arg since "$since" --arg until "$until" --arg version "$PREVIEW_VERSION" '{query: $q, variables: {acct: $acct, since: $since, until: $until, version: $version}}' \
+            | curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data @- https://api.cloudflare.com/client/v4/graphql \
+            | jq -c '.errors // .data.viewer.accounts[0].workersInvocationsAdaptive[]' || true
           sleep 10
           echo "events logged: $(grep -c '"outcome"' tail.log || true)"
           jq -c 'select(.outcome != "ok" or ((.event.response.status // 200) >= 500) or ((.exceptions // []) | length > 0) or ([(.logs // [])[] | select(.level == "error")] | length > 0)) | {url: .event.request.url, status: .event.response.status, outcome, exceptions: [(.exceptions // [])[] | ((.name // "") + ": " + ((.message // "") | tostring))[0:400]], errors: [(.logs // [])[] | select(.level == "error") | (.message | tostring)[0:600]]}' tail.log | head -40 || true
