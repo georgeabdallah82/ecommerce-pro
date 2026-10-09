@@ -1,7 +1,7 @@
 // Copies the store from MongoDB (the Prisma Accelerate era) into PostgreSQL (Neon) and proves the
 // copy is exact. Run by .github/workflows/postgres-migration.yml; MongoDB is only read.
 //
-//   node scripts/migrate-mongodb-to-postgres.mjs --mode rehearsal|final
+//   node scripts/migrate-mongodb-to-postgres.mjs --mode rehearsal|final [--discard-after-rollback]
 //
 // Env: MONGODB_URL (source), TARGET_DATABASE_URL (PostgreSQL, a direct -- not pooled -- address),
 //      E2E_ADMIN_EMAIL / E2E_ADMIN_PASSWORD (rehearsal only: a throwaway staff login for the e2e test).
@@ -26,7 +26,11 @@ import bcrypt from 'bcryptjs'
 const root = process.cwd()
 const modeArg = process.argv.indexOf('--mode')
 const mode = modeArg > -1 ? process.argv[modeArg + 1] : ''
-if (!['rehearsal', 'final'].includes(mode)) throw new Error('Usage: --mode rehearsal|final')
+if (!['rehearsal', 'final'].includes(mode)) throw new Error('Usage: --mode rehearsal|final [--discard-after-rollback]')
+// After a rolled-back switch-over the store ran on PostgreSQL for a while. What happened there
+// (admin actions, new accounts -- never orders) may be thrown away on purpose with this flag, so
+// the copy can be rehearsed again. See guardTarget.
+const discardAfterRollback = process.argv.includes('--discard-after-rollback')
 const MONGODB_URL = process.env.MONGODB_URL || ''
 const TARGET_URL = process.env.TARGET_DATABASE_URL || ''
 if (!/^mongodb(\+srv)?:\/\//.test(MONGODB_URL)) throw new Error('MONGODB_URL must be a mongodb:// connection string')
@@ -148,18 +152,30 @@ async function guardTarget(source, target, models) {
   if (!marker) throw new Error('The PostgreSQL database already holds data this tool did not write. Refusing to replace it.')
   const info = JSON.parse(marker.value)
   if (info.mode === 'final') {
+    // Is the store back on MongoDB (a rolled-back switch-over)? Maintenance mode was turned off
+    // there, which only the MongoDB version of the store can do. While the store runs on
+    // PostgreSQL, MongoDB keeps the "on" it had at the final copy.
+    const maintenance = await source.setting.findUnique({ where: { key: 'maintenance.enabled' } })
+    const backOnMongo = maintenance?.value !== 'true'
     // After the final copy a new copy may replace it only while nothing has happened on
-    // PostgreSQL since: no order, no admin action, no new account (the store went live on it).
+    // PostgreSQL since: no order, no admin action, no new account (the store went live on it) --
+    // unless the switch-over was rolled back and that activity is discarded on purpose. Orders
+    // are never discarded: they must be carried over to MongoDB by hand first.
     const since = { gt: new Date(info.copiedAt) }
     const [newOrders, newActions, newUsers] = await Promise.all([target.order.count({ where: { createdAt: since } }), target.auditLog.count({ where: { createdAt: since } }), target.user.count({ where: { createdAt: since } })])
-    if (newOrders || newActions || newUsers) throw new Error(`PostgreSQL has ${newOrders} order(s), ${newActions} admin action(s) and ${newUsers} new account(s) after the final copy -- the store is running on it. Refusing to replace it.`)
-    // A rehearsal additionally needs the store to be back on MongoDB (a rolled-back switch-over):
-    // maintenance mode was turned off there, which only the MongoDB version of the store can do.
-    // While the store runs on PostgreSQL, MongoDB keeps the "on" it had at the final copy.
+    if (newOrders || newActions || newUsers) {
+      const summary = `PostgreSQL has ${newOrders} order(s), ${newActions} admin action(s) and ${newUsers} new account(s) after the final copy`
+      if (!backOnMongo) throw new Error(`${summary} -- the store is running on it. Refusing to replace it.`)
+      if (newOrders) throw new Error(`${summary}. Those orders exist only in PostgreSQL: carry them over to MongoDB by hand first. Refusing to replace it.`)
+      if (!discardAfterRollback) throw new Error(`${summary}. The store is back on MongoDB; if the switch-over was rolled back, run again with --discard-after-rollback to throw that away. Refusing to replace it.`)
+      console.log(`[copy] rolled-back switch-over: discarding what happened on PostgreSQL after ${info.copiedAt} -- ${summary.slice(15)}:`)
+      const actions = await target.auditLog.findMany({ where: { createdAt: since }, select: { action: true, entity: true, createdAt: true }, orderBy: { createdAt: 'asc' } })
+      for (const a of actions) console.log(`[copy]   ${a.createdAt.toISOString()} ${a.action} (${a.entity})`)
+    }
+    // A rehearsal additionally needs the store to be back on MongoDB.
     if (mode !== 'final') {
-      const maintenance = await source.setting.findUnique({ where: { key: 'maintenance.enabled' } })
-      if (maintenance?.value === 'true') throw new Error('The final copy is in place and the store has not gone back to MongoDB; rehearsals are over. Refusing to replace it.')
-      console.log('[copy] the final copy never went live (the store is back on MongoDB); rehearsing again')
+      if (!backOnMongo) throw new Error('The final copy is in place and the store has not gone back to MongoDB; rehearsals are over. Refusing to replace it.')
+      console.log('[copy] the final copy is not in use (the store is back on MongoDB); rehearsing again')
     }
   }
   console.log(`[copy] replacing the previous ${info.mode} copy from ${info.copiedAt}`)

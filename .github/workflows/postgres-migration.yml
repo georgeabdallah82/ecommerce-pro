@@ -18,7 +18,7 @@ on:
         options: [rehearsal, final]
         default: rehearsal
       confirmation:
-        description: "Final only -- type COPY-PRODUCTION"
+        description: "Final -- type COPY-PRODUCTION. Rehearsal after a rolled-back switch-over -- type DISCARD-NEON-AFTER-ROLLBACK"
         required: false
         type: string
       app_ref:
@@ -73,7 +73,10 @@ jobs:
           echo "E2E_ADMIN_PASSWORD=$password" >> "$GITHUB_ENV"
 
       - name: Copy MongoDB -> PostgreSQL and verify
-        run: node scripts/migrate-mongodb-to-postgres.mjs --mode "${{ inputs.mode }}"
+        run: |
+          flags=""
+          if [ "${{ inputs.mode }}" = "rehearsal" ] && [ "${{ inputs.confirmation }}" = "DISCARD-NEON-AFTER-ROLLBACK" ]; then flags="--discard-after-rollback"; fi
+          node scripts/migrate-mongodb-to-postgres.mjs --mode "${{ inputs.mode }}" $flags
 
       - name: Product for the e2e checkout
         if: inputs.mode == 'rehearsal'
