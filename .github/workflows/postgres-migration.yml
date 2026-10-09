@@ -5,8 +5,12 @@ name: PostgreSQL migration (MongoDB -> Neon)
 # refuses to overwrite a database the store is already running on.
 #
 # rehearsal: copy + fingerprint check, then build the PostgreSQL version of the store (app_ref),
-#            run it on this runner against the copy and drive it end to end with a browser
-#            (scripts/e2e/write-path.mjs). The live store is not touched.
+#            run it against the copy and drive it end to end with a browser
+#            (scripts/e2e/write-path.mjs). run_on = local runs it on this runner (wrangler dev);
+#            run_on = cloudflare-preview uploads it to the live Worker as a version that is NOT
+#            deployed and tests its private preview URL: real Cloudflare limits and the live
+#            Worker's real settings (whose NEON_DATABASE_URL is the copy). Customers keep getting the
+#            deployed version either way.
 # final:     the switch-over copy. Needs maintenance mode on and the typed confirmation.
 
 on:
@@ -25,6 +29,11 @@ on:
         description: "Rehearsal only -- branch whose PostgreSQL version of the store is tested (default: this run's branch)"
         required: false
         type: string
+      run_on:
+        description: "Rehearsal only -- local (wrangler dev on the runner) or cloudflare-preview (an uploaded, not deployed, version of the live Worker)"
+        type: choice
+        options: [local, cloudflare-preview]
+        default: local
 
 permissions:
   contents: read
@@ -101,7 +110,7 @@ jobs:
           npm run build:cloudflare
 
       - name: Start the store against the rehearsal copy
-        if: inputs.mode == 'rehearsal'
+        if: inputs.mode == 'rehearsal' && inputs.run_on != 'cloudflare-preview'
         working-directory: app
         # The same settings the live Worker has, with throwaway values: the retired Accelerate address
         # it still carries in DATABASE_URL (Prisma refuses to start if it reads that next to a driver
@@ -126,13 +135,31 @@ jobs:
           for i in $(seq 1 90); do grep -q "Ready on" ../wrangler.log && exit 0; sleep 2; done
           cat ../wrangler.log; exit 1
 
+      # The preview runs with the live Worker's own settings (its CRON_SECRET is not known here, so
+      # the e2e skips the steps that need it). Preview URLs are switched on for this upload only;
+      # the repository's wrangler.jsonc keeps them off, so the next real deploy turns them off again.
+      - name: Upload the store to Cloudflare as a preview version (not deployed)
+        if: inputs.mode == 'rehearsal' && inputs.run_on == 'cloudflare-preview'
+        working-directory: app
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node -e 'const f="wrangler.jsonc",fs=require("fs"),c=JSON.parse(fs.readFileSync(f,"utf8"));c.preview_urls=true;fs.writeFileSync(f,JSON.stringify(c,null,2))'
+          npx opennextjs-cloudflare upload -- --message "PostgreSQL rehearsal preview (not deployed)" 2>&1 | tee ../upload.log
+          url="$(grep -o 'Version Preview URL: https://[^ ]*' ../upload.log | head -1 | sed 's/Version Preview URL: //')"
+          if [ -z "$url" ]; then echo "::error::Cloudflare did not return a preview URL"; exit 1; fi
+          echo "PREVIEW_URL=$url" >> "$GITHUB_ENV"
+          for i in $(seq 1 30); do [ "$(curl -s -o /dev/null -w '%{http_code}' "$url/api/health")" = 200 ] && exit 0; sleep 5; done
+          echo "::error::The preview version did not answer"; exit 1
+
       - name: End-to-end test (browser)
         if: inputs.mode == 'rehearsal'
         run: |
           npm install --no-save --no-audit --no-fund playwright-core@1
           npx playwright-core install --with-deps chromium
-          BASE=http://127.0.0.1:8787 ADMIN_EMAIL="$E2E_ADMIN_EMAIL" ADMIN_PASSWORD="$E2E_ADMIN_PASSWORD" node scripts/e2e/write-path.mjs
+          BASE="${PREVIEW_URL:-http://127.0.0.1:8787}" ADMIN_EMAIL="$E2E_ADMIN_EMAIL" ADMIN_PASSWORD="$E2E_ADMIN_PASSWORD" node scripts/e2e/write-path.mjs
 
       - name: Store log (errors only)
-        if: always() && inputs.mode == 'rehearsal'
+        if: always() && inputs.mode == 'rehearsal' && inputs.run_on != 'cloudflare-preview'
         run: grep -E "ERROR|Error|Warning|hung|different request| 5[0-9][0-9] " wrangler.log | grep -v "Duplicate key" | head -80 || true
