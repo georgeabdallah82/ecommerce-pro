@@ -135,6 +135,7 @@ jobs:
           for i in $(seq 1 90); do grep -q "Ready on" ../wrangler.log && exit 0; sleep 2; done
           cat ../wrangler.log; exit 1
 
+      # (OpenNext hands these arguments to a shell unquoted: keep the message free of spaces and brackets.)
       # The preview runs with the live Worker's own settings (its CRON_SECRET is not known here, so
       # the e2e skips the steps that need it). Preview URLs are switched on for this upload only;
       # the repository's wrangler.jsonc keeps them off, so the next real deploy turns them off again.
@@ -146,7 +147,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           node -e 'const f="wrangler.jsonc",fs=require("fs"),c=JSON.parse(fs.readFileSync(f,"utf8"));c.preview_urls=true;fs.writeFileSync(f,JSON.stringify(c,null,2))'
-          npx opennextjs-cloudflare upload -- --message "PostgreSQL rehearsal preview (not deployed)" 2>&1 | tee ../upload.log
+          npx opennextjs-cloudflare upload -- --message postgres-rehearsal-preview-not-deployed 2>&1 | tee ../upload.log
           url="$(grep -o 'Version Preview URL: https://[^ ]*' ../upload.log | head -1 | sed 's/Version Preview URL: //')"
           if [ -z "$url" ]; then echo "::error::Cloudflare did not return a preview URL"; exit 1; fi
           echo "PREVIEW_URL=$url" >> "$GITHUB_ENV"
