@@ -1,0 +1,57 @@
+name: Cloudflare health (read-only)
+
+# What Cloudflare saw for the store's Worker over the last hours, read-only: requests and failures
+# per version (the live one and any hidden test versions), with CPU and wall time, and -- from
+# Workers Logs -- whether failed requests ran out of CPU time or of memory. Also which Workers plan
+# the account is on (the Free plan stops a request after about 10 ms of CPU time; Paid allows 30 s).
+on:
+  workflow_dispatch:
+    inputs:
+      hours:
+        description: "How many hours back to look (Workers Logs keep 3 days on the Free plan)"
+        required: false
+        default: "6"
+
+permissions:
+  contents: read
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      HOURS: ${{ inputs.hours }}
+    steps:
+      - name: Workers plan
+        run: |
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID"
+          # Plan names only (no billing details); the token may not be allowed to read them.
+          curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api/subscriptions" \
+            | jq -c '{plans: [.result[]? | {plan: (.rate_plan.public_name // .rate_plan.id), product: (.component_values // [] | map(.name))}], errors: [.errors[]?.message]}' || true
+          curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api/workers/account-settings" | jq -c '{account_settings: .result, errors: [.errors[]?.message]}' || true
+
+      - name: Requests per version and outcome (Cloudflare analytics)
+        run: |
+          since="$(date -u -d "-$HOURS hours" +%Y-%m-%dT%H:%M:%SZ)"; until="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          query='query($acct: string!, $since: Time!, $until: Time!) { viewer { accounts(filter: {accountTag: $acct}) { workersInvocationsAdaptive(limit: 100, filter: {scriptName: "ecommerce-pro", datetime_geq: $since, datetime_leq: $until}) { sum { requests errors } quantiles { cpuTimeP50 cpuTimeP90 cpuTimeP99 wallTimeP50 } dimensions { scriptVersion status } } } } }'
+          jq -n --arg q "$query" --arg acct "$CLOUDFLARE_ACCOUNT_ID" --arg since "$since" --arg until "$until" '{query: $q, variables: {acct: $acct, since: $since, until: $until}}' \
+            | curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data @- https://api.cloudflare.com/client/v4/graphql \
+            | jq -r '.errors // (.data.viewer.accounts[0].workersInvocationsAdaptive | sort_by(.dimensions.scriptVersion, .dimensions.status)[] | "\(.dimensions.scriptVersion[0:8]) \(.dimensions.status): \(.sum.requests) requests, CPU ms p50/p90/p99 \(.quantiles.cpuTimeP50/1000)/\(.quantiles.cpuTimeP90/1000)/\(.quantiles.cpuTimeP99/1000), wall ms p50 \(.quantiles.wallTimeP50/1000)")' || true
+          echo "--- deployed version now:"
+          curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/ecommerce-pro/deployments" \
+            | jq -c '[.result.deployments[0]?.versions[]? | {version: .version_id[0:8], percentage}]' || true
+
+      - name: Why failed requests stopped (Workers Logs)
+        run: |
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/observability/telemetry"
+          to=$(( $(date +%s) * 1000 )); from=$(( to - HOURS * 3600 * 1000 ))
+          echo "--- log fields about outcome, version, CPU and memory:"
+          jq -n --argjson from "$from" --argjson to "$to" '{timeframe: {from: $from, to: $to}, limit: 1000}' \
+            | curl -sS -X POST -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data @- "$api/keys" \
+            | jq -c '.errors // [.result[]? | .key | select(test("outcome|version|cpu|wall|memory|scriptName|service"; "i"))]' || true
+          echo "--- invocations by outcome:"
+          jq -n --argjson from "$from" --argjson to "$to" '{queryId: "outcomes", view: "calculations", timeframe: {from: $from, to: $to}, parameters: {calculations: [{operator: "count", alias: "invocations"}], filters: [{key: "$workers.scriptName", operation: "eq", type: "string", value: "ecommerce-pro"}], groupBys: [{type: "string", value: "$workers.outcome"}, {type: "string", value: "$workers.scriptVersion.id"}], limit: 100}}' \
+            | curl -sS -X POST -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data @- "$api/query" \
+            | jq -c '.errors // .result.calculations // .result' | cut -c1-4000 || true
