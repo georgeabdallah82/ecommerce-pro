@@ -1,96 +1,7 @@
-/* Yalla Haul theme behaviour: delivery area picker, banner slider, deals countdown, and the
-   phone bottom bar (its cart button opens the cart drawer and shows the same count as the
-   header). Works again after the theme editor re-renders a section (shopify:section:load). */
+/* Yalla Haul theme behaviour: deals countdown and the optional phone bottom bar (its cart
+   button opens the cart drawer and shows the same count as the header). Works again after
+   the theme editor re-renders a section (shopify:section:load). */
 (() => {
-  const AREA_KEY = 'yh-delivery-area';
-
-  function initDelivery(root) {
-    root.querySelectorAll('[data-yh-area]').forEach((select) => {
-      if (select.dataset.yhReady) return;
-      select.dataset.yhReady = '1';
-      try {
-        const saved = localStorage.getItem(AREA_KEY);
-        if (saved && [...select.options].some((o) => o.value === saved)) select.value = saved;
-      } catch (e) {}
-      select.addEventListener('change', () => {
-        try {
-          localStorage.setItem(AREA_KEY, select.value);
-        } catch (e) {}
-      });
-    });
-  }
-
-  function initSlider(root) {
-    root.querySelectorAll('[data-yh-slider]').forEach((slider) => {
-      if (slider.dataset.yhReady) return;
-      slider.dataset.yhReady = '1';
-      const track = slider.querySelector('[data-yh-track]');
-      const slides = track ? [...track.children] : [];
-      if (slides.length < 2) return;
-      const dots = [...slider.querySelectorAll('[data-yh-dot]')];
-      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const seconds = Number(slider.dataset.autoplay || 0);
-      let index = 0;
-      let timer = null;
-
-      const go = (next) => {
-        index = (next + slides.length) % slides.length;
-        track.style.transform = `translateX(-${index * 100}%)`;
-        slides.forEach((slide, i) => {
-          slide.setAttribute('aria-hidden', String(i !== index));
-          slide.querySelectorAll('a').forEach((a) => (a.tabIndex = i === index ? 0 : -1));
-        });
-        dots.forEach((dot, i) => dot.setAttribute('aria-current', String(i === index)));
-      };
-      const stop = () => {
-        clearInterval(timer);
-        timer = null;
-      };
-      const start = () => {
-        if (!seconds || reduced || window.Shopify?.designMode) return;
-        stop();
-        timer = setInterval(() => go(index + 1), seconds * 1000);
-      };
-
-      dots.forEach((dot) => dot.addEventListener('click', () => { go(Number(dot.dataset.yhDot)); start(); }));
-      slider.addEventListener('mouseenter', stop);
-      slider.addEventListener('mouseleave', start);
-      slider.addEventListener('focusin', stop);
-      slider.addEventListener('focusout', start);
-
-      let startX = null;
-      let startY = null;
-      track.addEventListener('pointerdown', (event) => {
-        if (event.pointerType === 'mouse') return;
-        startX = event.clientX;
-        startY = event.clientY;
-      });
-      track.addEventListener('pointerup', (event) => {
-        if (startX === null) return;
-        const dx = event.clientX - startX;
-        const dy = event.clientY - startY;
-        startX = null;
-        if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
-          go(dx < 0 ? index + 1 : index - 1);
-          start();
-        }
-      });
-      track.addEventListener('pointercancel', () => (startX = null));
-
-      document.addEventListener('shopify:block:select', (event) => {
-        if (!slider.contains(event.target)) return;
-        const i = slides.findIndex((slide) => slide === event.target || slide.contains(event.target));
-        if (i >= 0) {
-          stop();
-          go(i);
-        }
-      });
-
-      go(0);
-      start();
-    });
-  }
-
   // Counts down to midnight (shopper's time): "today's deals".
   function initTimers(root) {
     root.querySelectorAll('[data-yh-timer]').forEach((el) => {
@@ -135,8 +46,6 @@
   }
 
   function init(root = document) {
-    initDelivery(root);
-    initSlider(root);
     initTimers(root);
     initTabbar();
   }

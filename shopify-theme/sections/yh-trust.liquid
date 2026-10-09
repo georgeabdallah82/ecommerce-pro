@@ -1,12 +1,12 @@
 {%- comment -%}
-  Reasons to buy, as four soft cards with an icon each.
+  Reasons to buy, as four white cards with a red icon each.
 {%- endcomment -%}
 <div class="yh-section">
   <div class="yh-wrap">
     <div class="yh-trust">
       {%- for block in section.blocks -%}
         <div class="yh-trust__item" {{ block.shopify_attributes }}>
-          <span class="yh-trust__icon">{%- render 'yh-icon', icon: block.settings.icon, size: 21 -%}</span>
+          <span class="yh-trust__icon">{%- render 'yh-icon', icon: block.settings.icon, size: 26 -%}</span>
           <span class="yh-trust__text">
             <b>{{ block.settings.title | escape }}</b>
             {%- if block.settings.text != blank -%}<span>{{ block.settings.text | escape }}</span>{%- endif -%}
@@ -38,7 +38,9 @@
             { "value": "lock", "label": "Lock" },
             { "value": "chat", "label": "Chat" },
             { "value": "package", "label": "Box" },
-            { "value": "check", "label": "Check mark" }
+            { "value": "check", "label": "Check mark" },
+            { "value": "bolt", "label": "Lightning" },
+            { "value": "tag", "label": "Price tag" }
           ],
           "default": "truck"
         },
@@ -54,7 +56,7 @@
         { "type": "item" },
         { "type": "item", "settings": { "icon": "cash", "title": "Cash on delivery", "text": "Pay at your door" } },
         { "type": "item", "settings": { "icon": "return", "title": "Easy returns", "text": "Changed your mind?" } },
-        { "type": "item", "settings": { "icon": "lock", "title": "Secure checkout", "text": "Powered by Shopify" } }
+        { "type": "item", "settings": { "icon": "chat", "title": "WhatsApp support", "text": "We reply fast" } }
       ]
     }
   ]

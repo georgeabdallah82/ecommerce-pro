@@ -25,16 +25,30 @@
           }
         }
       },
-      "block_order": ["announcement-bar-0"]
+      "block_order": [
+        "announcement-bar-0"
+      ]
     },
     "yh-header": {
       "type": "yh-header",
       "settings": {
-        "show_area": true,
-        "show_menu": false,
-        "menu": "main-menu"
+        "logo_white": true,
+        "search_placeholder": "What are you looking for?",
+        "search_button": "Search",
+        "account_label": "Account"
+      }
+    },
+    "yh-subnav": {
+      "type": "yh-subnav",
+      "settings": {
+        "label": "Categories",
+        "all_label": "All"
       }
     }
   },
-  "order": ["announcement-bar", "yh-header"]
+  "order": [
+    "announcement-bar",
+    "yh-header",
+    "yh-subnav"
+  ]
 }

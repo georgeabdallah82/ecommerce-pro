@@ -1,0 +1,38 @@
+{%- comment -%}
+  Darker red row of category tabs under the header. Uses a menu (Online Store > Navigation);
+  with an empty menu it lists the collections that have products.
+{%- endcomment -%}
+{%- assign menu = linklists[section.settings.menu] -%}
+<nav class="yh-subnav" aria-label="{{ section.settings.label | escape }}">
+  <div class="yh-wrap yh-subnav__track">
+    {%- if section.settings.all_label != blank -%}
+      <a href="{{ routes.all_products_collection_url }}" class="yh-subnav__link{% if collection.handle == 'all' or request.page_type == 'index' %} is-active{% endif %}">{{ section.settings.all_label | escape }}</a>
+    {%- endif -%}
+    {%- if menu.links.size > 0 -%}
+      {%- for link in menu.links -%}
+        <a href="{{ link.url }}" class="yh-subnav__link{% if link.active or link.child_active %} is-active{% endif %}"{% if link.active %} aria-current="page"{% endif %}>{{ link.title | escape }}</a>
+      {%- endfor -%}
+    {%- else -%}
+      {%- for c in collections limit: 20 -%}
+        {%- if c.handle == 'all' or c.handle == 'frontpage' or c.all_products_count == 0 -%}{%- continue -%}{%- endif -%}
+        <a href="{{ c.url }}" class="yh-subnav__link{% if collection.handle == c.handle %} is-active{% endif %}">{{ c.title | escape }}</a>
+      {%- endfor -%}
+    {%- endif -%}
+  </div>
+</nav>
+
+{% schema %}
+{
+  "name": "Yalla Haul category tabs",
+  "settings": [
+    { "type": "text", "id": "label", "label": "Name for screen readers", "default": "Categories" },
+    { "type": "text", "id": "all_label", "label": "First tab (all products; empty hides it)", "default": "All" },
+    {
+      "type": "link_list",
+      "id": "menu",
+      "label": "Menu",
+      "info": "Empty menu = your collections are shown automatically."
+    }
+  ]
+}
+{% endschema %}

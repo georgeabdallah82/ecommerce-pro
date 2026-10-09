@@ -1,48 +1,24 @@
 {%- comment -%}
-  App-style header: logo, "Deliver to" area picker, search, account and cart. Sticks to the top.
-  On phones: logo, cart and area on the first row, search under it; the bottom tab bar
-  (snippets/yh-tabbar.liquid) takes the rest of the navigation.
+  Red marketplace header: white logo, search with an orange button, Account and Cart. Sticks
+  to the top. The red category tabs under it are the "Yalla Haul category tabs" section.
 {%- endcomment -%}
 {%- liquid
   assign logo_alt = shop.name | escape
-  assign areas = settings.yh_delivery_area | newline_to_br | split: '<br />'
-  assign first_area = areas | first | strip
-  assign first_name = first_area | split: '|' | first | strip
+  assign logo = section.settings.logo | default: settings.logo
 -%}
 <div class="yh-header" data-yh-header>
   <div class="yh-wrap yh-header__inner">
-    <a href="{{ routes.root_url }}" class="yh-logo" style="--yh-logo-width: {{ settings.logo_width }}px">
-      {%- if settings.logo != blank -%}
+    <a href="{{ routes.root_url }}" class="yh-logo{% if section.settings.logo_white %} yh-logo--white{% endif %}" style="--yh-logo-width: {{ settings.logo_width }}px">
+      {%- if logo != blank -%}
         {%- assign logo_2x = settings.logo_width | times: 2 -%}
-        {{ settings.logo | image_url: width: logo_2x | image_tag: alt: logo_alt, loading: 'eager', fetchpriority: 'high' }}
+        {{ logo | image_url: width: logo_2x | image_tag: alt: logo_alt, loading: 'eager', fetchpriority: 'high' }}
       {%- else -%}
         <img src="{{ 'yh-logo.svg' | asset_url }}" alt="{{ logo_alt }}" width="909" height="142" fetchpriority="high">
       {%- endif -%}
     </a>
 
-    {%- if section.settings.show_area and first_area != blank -%}
-      <label class="yh-area" data-yh-delivery>
-        <span class="yh-area__label">{%- render 'yh-icon', icon: 'pin', size: 13 -%}{{ settings.yh_delivery_label | escape }}</span>
-        {%- if areas.size > 1 -%}
-          <select class="yh-area__select" data-yh-area aria-label="{{ settings.yh_delivery_label | escape }}">
-            {%- for area in areas -%}
-              {%- assign a = area | strip -%}
-              {%- if a == blank -%}{%- continue -%}{%- endif -%}
-              {%- assign a_name = a | split: '|' | first | strip -%}
-              {%- assign a_eta = '' -%}
-              {%- if a contains '|' -%}{%- assign a_eta = a | split: '|' | last | strip -%}{%- endif -%}
-              <option value="{{ a_name | escape }}" data-eta="{{ a_eta | escape }}">{{ a_name | escape }}</option>
-            {%- endfor -%}
-          </select>
-          {%- render 'yh-icon', icon: 'chevron-down', size: 14 -%}
-        {%- else -%}
-          <b class="yh-area__name">{{ first_name | escape }}</b>
-        {%- endif -%}
-      </label>
-    {%- endif -%}
-
     <form action="{{ routes.search_url }}" method="get" role="search" class="yh-search">
-      {%- render 'yh-icon', icon: 'search', size: 19 -%}
+      {%- render 'yh-icon', icon: 'search', size: 18 -%}
       <input type="hidden" name="type" value="product">
       <input
         type="search"
@@ -51,36 +27,29 @@
         placeholder="{{ section.settings.search_placeholder | escape }}"
         aria-label="{{ 'general.search.search' | t }}"
       >
+      <button type="submit" class="yh-search__btn">{{ section.settings.search_button | escape }}</button>
     </form>
 
     <div class="yh-header__actions">
       {%- if shop.customer_accounts_enabled -%}
         <shopify-account
           menu="{{ settings.customer_account_menu | default: 'customer-account-main-menu' }}"
-          class="yh-iconbtn yh-account"
+          class="yh-hlink yh-account"
         >
-          <span slot="signed-out-avatar" class="yh-account__inner">
+          <span slot="signed-out-avatar" class="yh-hlink__inner">
             {%- render 'yh-icon', icon: 'user', size: 20 -%}
-            <span class="visually-hidden">{{ 'customer.log_in' | t }}</span>
+            <span class="yh-hlink__label">{{ section.settings.account_label | escape }}</span>
           </span>
         </shopify-account>
       {%- endif -%}
-      <a href="{{ routes.cart_url }}" class="yh-iconbtn yh-cartbtn" id="cart-icon-bubble">
+      <a href="{{ routes.cart_url }}" class="yh-hlink yh-cartbtn" id="cart-icon-bubble">
         {%- render 'yh-icon', icon: 'cart', size: 20 -%}
+        <span class="yh-hlink__label">{{ 'templates.cart.cart' | t }}</span>
         <span class="yh-cart-count{% if cart.item_count == 0 %} is-empty{% endif %}" aria-hidden="true">{{ cart.item_count | at_most: 99 }}</span>
         <span class="visually-hidden">{{ 'sections.header.cart_count' | t: count: cart.item_count }}</span>
       </a>
     </div>
   </div>
-
-  {%- assign menu = linklists[section.settings.menu] -%}
-  {%- if section.settings.show_menu and menu.links.size > 0 -%}
-    <nav class="yh-wrap yh-nav" aria-label="{{ 'sections.header.menu' | t }}">
-      {%- for link in menu.links -%}
-        <a href="{{ link.url }}" class="yh-nav__link{% if link.active or link.child_active %} is-active{% endif %}"{% if link.active %} aria-current="page"{% endif %}>{{ link.title | escape }}</a>
-      {%- endfor -%}
-    </nav>
-  {%- endif -%}
 </div>
 
 <script type="application/ld+json">
@@ -117,14 +86,21 @@
   "class": "yh-header-section",
   "settings": [
     {
-      "type": "paragraph",
-      "content": "Logo, logo width and favicon: Theme settings > Logo. Delivery areas and WhatsApp: Theme settings > Yalla Haul."
+      "type": "image_picker",
+      "id": "logo",
+      "label": "Logo on the red header",
+      "info": "Empty = the logo from Theme settings > Logo, or the built-in Yalla Haul logo. Width: Theme settings > Logo."
     },
-    { "type": "checkbox", "id": "show_area", "label": "Show \"Deliver to\" area", "default": true },
-    { "type": "text", "id": "search_placeholder", "label": "Search box text", "default": "Search for tissues, care, cleaning..." },
-    { "type": "header", "content": "Menu links (computers)" },
-    { "type": "checkbox", "id": "show_menu", "label": "Show a row of menu links under the header", "default": false },
-    { "type": "link_list", "id": "menu", "label": "Menu", "default": "main-menu" }
+    {
+      "type": "checkbox",
+      "id": "logo_white",
+      "label": "Show the logo in white",
+      "info": "Turns any logo white so it reads on red. Turn off for a logo made for red backgrounds.",
+      "default": true
+    },
+    { "type": "text", "id": "search_placeholder", "label": "Search box text", "default": "What are you looking for?" },
+    { "type": "text", "id": "search_button", "label": "Search button", "default": "Search" },
+    { "type": "text", "id": "account_label", "label": "Account link", "default": "Account" }
   ]
 }
 {% endschema %}

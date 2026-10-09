@@ -1,97 +1,121 @@
 {
   "sections": {
-    "promo": {
-      "type": "yh-promo",
+    "flash": {
+      "type": "yh-flash",
       "blocks": {
-        "slide-1": {
-          "type": "slide",
+        "coupon": {
+          "type": "coupon",
           "settings": {
-            "stock": "hero-kitchen",
-            "tag": "Delivery in 2–3 days",
-            "heading": "Your home essentials, one tap away.",
-            "text": "Cash on delivery all over Lebanon. Free delivery over $50.",
-            "button": "Shop now",
-            "link": "shopify://collections/all"
+            "label": "FREE DELIVERY",
+            "title": "On orders over $50",
+            "text": "Applied at checkout",
+            "link": ""
           }
         },
-        "slide-2": {
-          "type": "slide",
-          "settings": {
-            "stock": "hero-rolls",
-            "tag": "Stock up",
-            "heading": "Tissues & paper, in bulk.",
-            "text": "Big packs for the whole family, delivered to your door.",
-            "button": "Shop tissues",
-            "link": "shopify://collections/all"
-          }
-        },
-        "slide-3": {
-          "type": "slide",
-          "settings": {
-            "stock": "hero-bottles",
-            "tag": "Personal care",
-            "heading": "Fresh picks for your routine.",
-            "text": "Shampoo, body care and more.",
-            "button": "Discover",
-            "link": "shopify://collections/all"
-          }
-        },
-        "tile-1": {
-          "type": "tile",
-          "settings": {
-            "stock": "hero-rolls",
-            "title": "Stock up on tissues",
-            "text": "Up to 33% off",
-            "link": "shopify://collections/all"
-          }
-        },
-        "tile-2": {
+        "tile": {
           "type": "tile",
           "settings": {
             "stock": "offer-care",
             "title": "Personal care",
-            "text": "For the whole family",
+            "text": "",
             "link": "shopify://collections/all"
           }
         }
       },
-      "block_order": ["slide-1", "slide-2", "slide-3", "tile-1", "tile-2"],
-      "settings": { "label": "Offers", "autoplay": 6 }
+      "block_order": [
+        "coupon",
+        "tile"
+      ],
+      "settings": {
+        "stock": "hero-rolls",
+        "chip": "FLASH DEALS",
+        "heading": "Up to 33% off home essentials",
+        "highlight": "33% off",
+        "text": "",
+        "timer": true,
+        "timer_label": "Deals end in",
+        "button": "Shop the deals",
+        "link": "shopify://collections/all"
+      }
     },
     "categories": {
       "type": "yh-categories",
       "settings": {
-        "heading": "Categories",
+        "heading": "",
         "link_label": "See all",
-        "deals_label": "Deals",
-        "deals_link": "shopify://collections/all"
+        "deals_label": "Flash deals",
+        "deals_link": "shopify://collections/all",
+        "all_label": "All"
       }
     },
     "deals": {
       "type": "yh-products",
       "settings": {
         "collection": "",
-        "heading": "Today's deals",
+        "heading": "Today's best deals",
+        "icon": "bolt",
         "link_label": "See all",
-        "limit": 10,
-        "timer": true
+        "limit": 12,
+        "columns": 6,
+        "timer": false,
+        "timer_label": "Time left today"
       }
     },
     "trust": {
       "type": "yh-trust",
       "blocks": {
-        "trust-1": { "type": "item", "settings": { "icon": "truck", "title": "2–3 day delivery", "text": "All over Lebanon" } },
-        "trust-2": { "type": "item", "settings": { "icon": "cash", "title": "Cash on delivery", "text": "Pay at your door" } },
-        "trust-3": { "type": "item", "settings": { "icon": "return", "title": "Easy returns", "text": "Changed your mind?" } },
-        "trust-4": { "type": "item", "settings": { "icon": "lock", "title": "Secure checkout", "text": "Powered by Shopify" } }
+        "trust-1": {
+          "type": "item",
+          "settings": {
+            "icon": "truck",
+            "title": "2–3 day delivery",
+            "text": "All over Lebanon"
+          }
+        },
+        "trust-2": {
+          "type": "item",
+          "settings": {
+            "icon": "cash",
+            "title": "Cash on delivery",
+            "text": "Pay at your door"
+          }
+        },
+        "trust-3": {
+          "type": "item",
+          "settings": {
+            "icon": "return",
+            "title": "Easy returns",
+            "text": "Changed your mind?"
+          }
+        },
+        "trust-4": {
+          "type": "item",
+          "settings": {
+            "icon": "chat",
+            "title": "WhatsApp support",
+            "text": "We reply fast"
+          }
+        }
       },
-      "block_order": ["trust-1", "trust-2", "trust-3", "trust-4"],
+      "block_order": [
+        "trust-1",
+        "trust-2",
+        "trust-3",
+        "trust-4"
+      ],
       "settings": {}
     },
     "help": {
       "type": "yh-help",
+      "disabled": true,
       "settings": {}
     }
   },
-  "order": ["promo", "categories", "deals", "trust", "help"]
+  "order": [
+    "flash",
+    "categories",
+    "deals",
+    "trust",
+    "help"
+  ]
 }

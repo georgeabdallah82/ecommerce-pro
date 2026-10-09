@@ -2,7 +2,7 @@
   {
     "name": "theme_info",
     "theme_name": "Yalla Haul",
-    "theme_version": "2.0.0",
+    "theme_version": "3.0.0",
     "theme_author": "Yalla Haul (based on Dawn by Shopify)",
     "theme_documentation_url": "https://help.shopify.com/manual/online-store/themes",
     "theme_support_url": "https://support.shopify.com/"
@@ -17,50 +17,48 @@
       {
         "type": "color",
         "id": "yh_red",
-        "label": "Main colour (buttons, prices, search bar)",
+        "label": "Main colour (header, prices, buttons)",
         "default": "#d42a2a"
       },
       {
         "type": "color",
         "id": "yh_accent",
-        "label": "Accent colour (tags, discount badges)",
+        "label": "Accent colour (search button, highlights, cart count)",
         "default": "#ff7a1a"
       },
       {
-        "type": "color",
-        "id": "yh_page",
-        "label": "Page background",
-        "default": "#ffffff"
+        "type": "paragraph",
+        "content": "Page background: Colors > Scheme 1 (background). Panels, cards and the cart use Scheme 2."
       },
       {
         "type": "color",
         "id": "yh_soft",
-        "label": "Soft background (search, tiles, panels)",
-        "default": "#fff4ec"
+        "label": "Cream background (photos, coupon, circles)",
+        "default": "#fff1e6"
       },
       {
         "type": "color",
         "id": "yh_card",
-        "label": "Cards",
+        "label": "Panels and cards",
         "default": "#ffffff"
       },
       {
         "type": "color",
         "id": "yh_ink",
-        "label": "Text",
+        "label": "Text, banner and footer",
         "default": "#171717"
       },
       {
         "type": "color",
         "id": "yh_muted",
         "label": "Light text",
-        "default": "#6b6460"
+        "default": "#6f655e"
       },
       {
         "type": "color",
         "id": "yh_line",
         "label": "Borders",
-        "default": "#f0e8e1"
+        "default": "#ece6e0"
       },
       {
         "type": "range",
@@ -70,7 +68,7 @@
         "max": 24,
         "step": 1,
         "unit": "px",
-        "default": 20
+        "default": 16
       },
       {
         "type": "range",
@@ -80,24 +78,11 @@
         "max": 24,
         "step": 1,
         "unit": "px",
-        "default": 14
+        "default": 10
       },
       {
         "type": "header",
-        "content": "Delivery"
-      },
-      {
-        "type": "text",
-        "id": "yh_delivery_label",
-        "label": "Delivery area label",
-        "default": "Deliver to"
-      },
-      {
-        "type": "textarea",
-        "id": "yh_delivery_area",
-        "label": "Delivery areas",
-        "info": "One per line: area | delivery time. With more than one line, shoppers can pick their area.",
-        "default": "Beirut | 2–3 days"
+        "content": "Product cards"
       },
       {
         "type": "text",
@@ -152,7 +137,7 @@
         "type": "checkbox",
         "id": "yh_tabbar",
         "label": "Show the bottom bar on phones (Home, Categories, Cart, Account)",
-        "default": true
+        "default": false
       },
       {
         "type": "text",

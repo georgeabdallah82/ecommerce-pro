@@ -1,0 +1,167 @@
+{%- comment -%}
+  Top of the home page: a black "Flash deals" banner (photo on the right, countdown to
+  midnight, button) and, next to it, a dashed coupon card and a photo tile (blocks).
+  On phones the banner comes first with the photo on top, then the two cards side by side.
+{%- endcomment -%}
+{%- liquid
+  assign heading = section.settings.heading | escape
+  assign highlight = section.settings.highlight | escape
+  if highlight != blank and heading contains highlight
+    assign highlight_html = '<span>' | append: highlight | append: '</span>'
+    assign heading = heading | replace_first: highlight, highlight_html
+  endif
+  assign has_photo = false
+  if section.settings.image != blank or section.settings.stock != 'none'
+    assign has_photo = true
+  endif
+  assign has_side = false
+  if section.blocks.size > 0
+    assign has_side = true
+  endif
+-%}
+<div class="yh-section yh-section--top">
+  <div class="yh-wrap">
+    <div class="yh-top{% unless has_side %} yh-top--solo{% endunless %}">
+      <div class="yh-flash{% if has_photo %} yh-flash--photo{% endif %}">
+        {%- render 'yh-photo',
+          image: section.settings.image,
+          stock: section.settings.stock,
+          class: 'yh-flash__img',
+          widths: '600, 900, 1200, 1600',
+          sizes: '(min-width: 990px) 560px, 100vw',
+          eager: true
+        -%}
+        {%- if section.settings.chip != blank -%}
+          <span class="yh-flash__chip">{%- render 'yh-icon', icon: 'bolt', size: 15 -%}{{ section.settings.chip | escape }}</span>
+        {%- endif -%}
+        <h1 class="yh-flash__title">{{ heading }}</h1>
+        {%- if section.settings.text != blank -%}
+          <p class="yh-flash__text">{{ section.settings.text | escape }}</p>
+        {%- endif -%}
+        {%- if section.settings.timer -%}
+          <span class="yh-timer yh-timer--big" data-yh-timer role="timer" aria-label="{{ section.settings.timer_label | escape }}">
+            <b data-h>00</b><b data-m>00</b><b data-s>00</b>
+          </span>
+        {%- endif -%}
+        {%- if section.settings.button != blank -%}
+          <a href="{{ section.settings.link | default: routes.all_products_collection_url }}" class="yh-btn yh-btn--primary">{{ section.settings.button | escape }}</a>
+        {%- endif -%}
+      </div>
+
+      {%- if has_side -%}
+        <div class="yh-top__side">
+          {%- for block in section.blocks -%}
+            {%- case block.type -%}
+              {%- when 'coupon' -%}
+                {%- if block.settings.link != blank -%}
+                  <a href="{{ block.settings.link }}" class="yh-coupon" {{ block.shopify_attributes }}>
+                {%- else -%}
+                  <div class="yh-coupon" {{ block.shopify_attributes }}>
+                {%- endif -%}
+                  {%- if block.settings.label != blank -%}<small>{{ block.settings.label | escape }}</small>{%- endif -%}
+                  <b>{{ block.settings.title | escape }}</b>
+                  {%- if block.settings.text != blank -%}<span>{{ block.settings.text | escape }}</span>{%- endif -%}
+                {%- if block.settings.link != blank -%}</a>{%- else -%}</div>{%- endif -%}
+              {%- when 'tile' -%}
+                <a href="{{ block.settings.link | default: routes.all_products_collection_url }}" class="yh-mini" {{ block.shopify_attributes }}>
+                  {%- render 'yh-photo',
+                    image: block.settings.image,
+                    stock: block.settings.stock,
+                    class: 'yh-cover',
+                    widths: '300, 450, 600, 900',
+                    sizes: '(min-width: 990px) 400px, 50vw'
+                  -%}
+                  <b>{{ block.settings.title | escape }}</b>
+                  {%- if block.settings.text != blank -%}<span>{{ block.settings.text | escape }}</span>{%- endif -%}
+                </a>
+            {%- endcase -%}
+          {%- endfor -%}
+        </div>
+      {%- endif -%}
+    </div>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Yalla Haul flash deals",
+  "tag": "section",
+  "max_blocks": 2,
+  "settings": [
+    { "type": "image_picker", "id": "image", "label": "Photo" },
+    {
+      "type": "select",
+      "id": "stock",
+      "label": "Built-in photo (when there is no photo)",
+      "options": [
+        { "value": "none", "label": "None" },
+        { "value": "hero-rolls", "label": "Paper rolls" },
+        { "value": "hero-kitchen", "label": "Kitchen" },
+        { "value": "hero-bottles", "label": "Bottles" },
+        { "value": "offer-home", "label": "Living room" },
+        { "value": "offer-care", "label": "Personal care" },
+        { "value": "spot-cleaning", "label": "Cleaning" }
+      ],
+      "default": "hero-rolls"
+    },
+    { "type": "text", "id": "chip", "label": "Orange label (empty hides it)", "default": "FLASH DEALS" },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Up to 33% off home essentials" },
+    {
+      "type": "text",
+      "id": "highlight",
+      "label": "Words in orange",
+      "info": "Must appear in the heading exactly as written.",
+      "default": "33% off"
+    },
+    { "type": "text", "id": "text", "label": "Text under the heading" },
+    { "type": "checkbox", "id": "timer", "label": "Show a countdown to midnight", "default": true },
+    { "type": "text", "id": "timer_label", "label": "Countdown name for screen readers", "default": "Deals end in" },
+    { "type": "text", "id": "button", "label": "Button (empty hides it)", "default": "Shop the deals" },
+    { "type": "url", "id": "link", "label": "Button link (empty = all products)" }
+  ],
+  "blocks": [
+    {
+      "type": "coupon",
+      "name": "Coupon card",
+      "limit": 1,
+      "settings": [
+        { "type": "text", "id": "label", "label": "Small red label", "default": "FREE DELIVERY" },
+        { "type": "text", "id": "title", "label": "Title", "default": "On orders over $50" },
+        { "type": "text", "id": "text", "label": "Text", "default": "Applied at checkout" },
+        { "type": "url", "id": "link", "label": "Link (optional)" }
+      ]
+    },
+    {
+      "type": "tile",
+      "name": "Photo tile",
+      "settings": [
+        { "type": "image_picker", "id": "image", "label": "Photo" },
+        {
+          "type": "select",
+          "id": "stock",
+          "label": "Built-in photo (when there is no photo)",
+          "options": [
+            { "value": "none", "label": "None" },
+            { "value": "offer-care", "label": "Personal care" },
+            { "value": "offer-home", "label": "Living room" },
+            { "value": "hero-rolls", "label": "Paper rolls" },
+            { "value": "spot-cleaning", "label": "Cleaning" },
+            { "value": "hero-bottles", "label": "Bottles" },
+            { "value": "hero-kitchen", "label": "Kitchen" }
+          ],
+          "default": "offer-care"
+        },
+        { "type": "text", "id": "title", "label": "Title", "default": "Personal care" },
+        { "type": "text", "id": "text", "label": "Text" },
+        { "type": "url", "id": "link", "label": "Link (empty = all products)" }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Yalla Haul flash deals",
+      "blocks": [{ "type": "coupon" }, { "type": "tile" }]
+    }
+  ]
+}
+{% endschema %}
