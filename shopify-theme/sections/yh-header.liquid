@@ -6,7 +6,17 @@
   assign logo_alt = shop.name | escape
   assign logo = section.settings.logo | default: settings.logo
 -%}
-<div class="yh-header" data-yh-header>
+{%- capture yh_style -%}
+  {%- render 'yh-var', name: '--yh-h-bg', value: section.settings.c_bg -%}
+  {%- render 'yh-var', name: '--yh-h-text', value: section.settings.c_text -%}
+  {%- render 'yh-var', name: '--yh-h-search', value: section.settings.c_search -%}
+  {%- render 'yh-var', name: '--yh-h-search-text', value: section.settings.c_search_text -%}
+  {%- render 'yh-var', name: '--yh-h-btn', value: section.settings.c_btn -%}
+  {%- render 'yh-var', name: '--yh-h-btn-text', value: section.settings.c_btn_text -%}
+  {%- render 'yh-var', name: '--yh-h-count', value: section.settings.c_count -%}
+  {%- render 'yh-var', name: '--yh-h-count-text', value: section.settings.c_count_text -%}
+{%- endcapture -%}
+<div class="yh-header" data-yh-header style="{{ yh_style }}">
   <div class="yh-wrap yh-header__inner">
     <a href="{{ routes.root_url }}" class="yh-logo{% if section.settings.logo_white %} yh-logo--white{% endif %}" style="--yh-logo-width: {{ settings.logo_width }}px">
       {%- if logo != blank -%}
@@ -98,9 +108,76 @@
       "info": "Turns any logo white so it reads on red. Turn off for a logo made for red backgrounds.",
       "default": true
     },
-    { "type": "text", "id": "search_placeholder", "label": "Search box text", "default": "What are you looking for?" },
-    { "type": "text", "id": "search_button", "label": "Search button", "default": "Search" },
-    { "type": "text", "id": "account_label", "label": "Account link", "default": "Account" }
+    {
+      "type": "text",
+      "id": "search_placeholder",
+      "label": "Search box text",
+      "default": "What are you looking for?"
+    },
+    {
+      "type": "text",
+      "id": "search_button",
+      "label": "Search button",
+      "default": "Search"
+    },
+    {
+      "type": "text",
+      "id": "account_label",
+      "label": "Account link",
+      "default": "Account"
+    },
+    {
+      "type": "header",
+      "content": "Colours"
+    },
+    {
+      "type": "color",
+      "id": "c_bg",
+      "label": "Background",
+      "default": "#d42a2a"
+    },
+    {
+      "type": "color",
+      "id": "c_text",
+      "label": "Text and icons",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "c_search",
+      "label": "Search box",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "c_search_text",
+      "label": "Search box text",
+      "default": "#171717"
+    },
+    {
+      "type": "color",
+      "id": "c_btn",
+      "label": "Search button",
+      "default": "#ff7a1a"
+    },
+    {
+      "type": "color",
+      "id": "c_btn_text",
+      "label": "Search button text",
+      "default": "#171717"
+    },
+    {
+      "type": "color",
+      "id": "c_count",
+      "label": "Cart count",
+      "default": "#ff7a1a"
+    },
+    {
+      "type": "color",
+      "id": "c_count_text",
+      "label": "Cart count text",
+      "default": "#171717"
+    }
   ]
 }
 {% endschema %}

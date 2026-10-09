@@ -19,7 +19,18 @@
     assign has_side = true
   endif
 -%}
-<div class="yh-section yh-section--top">
+{%- capture yh_style -%}
+  {%- render 'yh-var', name: '--yh-f-bg', value: section.settings.c_bg -%}
+  {%- render 'yh-var', name: '--yh-f-text', value: section.settings.c_text -%}
+  {%- render 'yh-var', name: '--yh-f-hl', value: section.settings.c_highlight -%}
+  {%- render 'yh-var', name: '--yh-f-chip', value: section.settings.c_chip -%}
+  {%- render 'yh-var', name: '--yh-f-chip-text', value: section.settings.c_chip_text -%}
+  {%- render 'yh-var', name: '--yh-f-timer', value: section.settings.c_timer -%}
+  {%- render 'yh-var', name: '--yh-f-timer-text', value: section.settings.c_timer_text -%}
+  {%- render 'yh-var', name: '--yh-f-btn', value: section.settings.c_btn -%}
+  {%- render 'yh-var', name: '--yh-f-btn-text', value: section.settings.c_btn_text -%}
+{%- endcapture -%}
+<div class="yh-section yh-section--top" style="{{ yh_style }}">
   <div class="yh-wrap">
     <div class="yh-top{% unless has_side %} yh-top--solo{% endunless %}">
       <div class="yh-flash{% if has_photo %} yh-flash--photo{% endif %}">
@@ -53,17 +64,19 @@
           {%- for block in section.blocks -%}
             {%- case block.type -%}
               {%- when 'coupon' -%}
+                {%- capture yh_block_style -%}{%- render 'yh-var', name: '--yh-cp-bg', value: block.settings.c_bg -%}{%- render 'yh-var', name: '--yh-cp-border', value: block.settings.c_border -%}{%- render 'yh-var', name: '--yh-cp-label', value: block.settings.c_label -%}{%- render 'yh-var', name: '--yh-cp-text', value: block.settings.c_text -%}{%- endcapture -%}
                 {%- if block.settings.link != blank -%}
-                  <a href="{{ block.settings.link }}" class="yh-coupon" {{ block.shopify_attributes }}>
+                  <a href="{{ block.settings.link }}" class="yh-coupon" style="{{ yh_block_style }}" {{ block.shopify_attributes }}>
                 {%- else -%}
-                  <div class="yh-coupon" {{ block.shopify_attributes }}>
+                  <div class="yh-coupon" style="{{ yh_block_style }}" {{ block.shopify_attributes }}>
                 {%- endif -%}
                   {%- if block.settings.label != blank -%}<small>{{ block.settings.label | escape }}</small>{%- endif -%}
                   <b>{{ block.settings.title | escape }}</b>
                   {%- if block.settings.text != blank -%}<span>{{ block.settings.text | escape }}</span>{%- endif -%}
                 {%- if block.settings.link != blank -%}</a>{%- else -%}</div>{%- endif -%}
               {%- when 'tile' -%}
-                <a href="{{ block.settings.link | default: routes.all_products_collection_url }}" class="yh-mini" {{ block.shopify_attributes }}>
+                {%- capture yh_block_style -%}{%- render 'yh-var', name: '--yh-t-text', value: block.settings.c_text -%}{%- endcapture -%}
+                <a href="{{ block.settings.link | default: routes.all_products_collection_url }}" class="yh-mini" style="{{ yh_block_style }}" {{ block.shopify_attributes }}>
                   {%- render 'yh-photo',
                     image: block.settings.image,
                     stock: block.settings.stock,
@@ -88,24 +101,59 @@
   "tag": "section",
   "max_blocks": 2,
   "settings": [
-    { "type": "image_picker", "id": "image", "label": "Photo" },
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "Photo"
+    },
     {
       "type": "select",
       "id": "stock",
       "label": "Built-in photo (when there is no photo)",
       "options": [
-        { "value": "none", "label": "None" },
-        { "value": "hero-rolls", "label": "Paper rolls" },
-        { "value": "hero-kitchen", "label": "Kitchen" },
-        { "value": "hero-bottles", "label": "Bottles" },
-        { "value": "offer-home", "label": "Living room" },
-        { "value": "offer-care", "label": "Personal care" },
-        { "value": "spot-cleaning", "label": "Cleaning" }
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "hero-rolls",
+          "label": "Paper rolls"
+        },
+        {
+          "value": "hero-kitchen",
+          "label": "Kitchen"
+        },
+        {
+          "value": "hero-bottles",
+          "label": "Bottles"
+        },
+        {
+          "value": "offer-home",
+          "label": "Living room"
+        },
+        {
+          "value": "offer-care",
+          "label": "Personal care"
+        },
+        {
+          "value": "spot-cleaning",
+          "label": "Cleaning"
+        }
       ],
       "default": "hero-rolls"
     },
-    { "type": "text", "id": "chip", "label": "Orange label (empty hides it)", "default": "FLASH DEALS" },
-    { "type": "text", "id": "heading", "label": "Heading", "default": "Up to 33% off home essentials" },
+    {
+      "type": "text",
+      "id": "chip",
+      "label": "Orange label (empty hides it)",
+      "default": "FLASH DEALS"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Up to 33% off home essentials"
+    },
     {
       "type": "text",
       "id": "highlight",
@@ -113,11 +161,92 @@
       "info": "Must appear in the heading exactly as written.",
       "default": "33% off"
     },
-    { "type": "text", "id": "text", "label": "Text under the heading" },
-    { "type": "checkbox", "id": "timer", "label": "Show a countdown to midnight", "default": true },
-    { "type": "text", "id": "timer_label", "label": "Countdown name for screen readers", "default": "Deals end in" },
-    { "type": "text", "id": "button", "label": "Button (empty hides it)", "default": "Shop the deals" },
-    { "type": "url", "id": "link", "label": "Button link (empty = all products)" }
+    {
+      "type": "text",
+      "id": "text",
+      "label": "Text under the heading"
+    },
+    {
+      "type": "checkbox",
+      "id": "timer",
+      "label": "Show a countdown to midnight",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "timer_label",
+      "label": "Countdown name for screen readers",
+      "default": "Deals end in"
+    },
+    {
+      "type": "text",
+      "id": "button",
+      "label": "Button (empty hides it)",
+      "default": "Shop the deals"
+    },
+    {
+      "type": "url",
+      "id": "link",
+      "label": "Button link (empty = all products)"
+    },
+    {
+      "type": "header",
+      "content": "Colours"
+    },
+    {
+      "type": "color",
+      "id": "c_bg",
+      "label": "Banner background",
+      "default": "#171717"
+    },
+    {
+      "type": "color",
+      "id": "c_text",
+      "label": "Banner text",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "c_highlight",
+      "label": "Highlighted words",
+      "default": "#ff7a1a"
+    },
+    {
+      "type": "color",
+      "id": "c_chip",
+      "label": "Label",
+      "default": "#ff7a1a"
+    },
+    {
+      "type": "color",
+      "id": "c_chip_text",
+      "label": "Label text",
+      "default": "#171717"
+    },
+    {
+      "type": "color",
+      "id": "c_timer",
+      "label": "Countdown boxes",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "c_timer_text",
+      "label": "Countdown numbers",
+      "default": "#171717"
+    },
+    {
+      "type": "color",
+      "id": "c_btn",
+      "label": "Button",
+      "default": "#d42a2a"
+    },
+    {
+      "type": "color",
+      "id": "c_btn_text",
+      "label": "Button text",
+      "default": "#ffffff"
+    }
   ],
   "blocks": [
     {
@@ -125,42 +254,144 @@
       "name": "Coupon card",
       "limit": 1,
       "settings": [
-        { "type": "text", "id": "label", "label": "Small red label", "default": "FREE DELIVERY" },
-        { "type": "text", "id": "title", "label": "Title", "default": "On orders over $50" },
-        { "type": "text", "id": "text", "label": "Text", "default": "Applied at checkout" },
-        { "type": "url", "id": "link", "label": "Link (optional)" }
+        {
+          "type": "text",
+          "id": "label",
+          "label": "Small red label",
+          "default": "FREE DELIVERY"
+        },
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Title",
+          "default": "On orders over $50"
+        },
+        {
+          "type": "text",
+          "id": "text",
+          "label": "Text",
+          "default": "Applied at checkout"
+        },
+        {
+          "type": "url",
+          "id": "link",
+          "label": "Link (optional)"
+        },
+        {
+          "type": "header",
+          "content": "Colours"
+        },
+        {
+          "type": "color",
+          "id": "c_bg",
+          "label": "Background",
+          "default": "#fff1e6"
+        },
+        {
+          "type": "color",
+          "id": "c_border",
+          "label": "Dashed border",
+          "default": "#d42a2a"
+        },
+        {
+          "type": "color",
+          "id": "c_label",
+          "label": "Small label",
+          "default": "#d42a2a"
+        },
+        {
+          "type": "color",
+          "id": "c_text",
+          "label": "Text",
+          "default": "#171717"
+        }
       ]
     },
     {
       "type": "tile",
       "name": "Photo tile",
       "settings": [
-        { "type": "image_picker", "id": "image", "label": "Photo" },
+        {
+          "type": "image_picker",
+          "id": "image",
+          "label": "Photo"
+        },
         {
           "type": "select",
           "id": "stock",
           "label": "Built-in photo (when there is no photo)",
           "options": [
-            { "value": "none", "label": "None" },
-            { "value": "offer-care", "label": "Personal care" },
-            { "value": "offer-home", "label": "Living room" },
-            { "value": "hero-rolls", "label": "Paper rolls" },
-            { "value": "spot-cleaning", "label": "Cleaning" },
-            { "value": "hero-bottles", "label": "Bottles" },
-            { "value": "hero-kitchen", "label": "Kitchen" }
+            {
+              "value": "none",
+              "label": "None"
+            },
+            {
+              "value": "offer-care",
+              "label": "Personal care"
+            },
+            {
+              "value": "offer-home",
+              "label": "Living room"
+            },
+            {
+              "value": "hero-rolls",
+              "label": "Paper rolls"
+            },
+            {
+              "value": "spot-cleaning",
+              "label": "Cleaning"
+            },
+            {
+              "value": "hero-bottles",
+              "label": "Bottles"
+            },
+            {
+              "value": "hero-kitchen",
+              "label": "Kitchen"
+            }
           ],
           "default": "offer-care"
         },
-        { "type": "text", "id": "title", "label": "Title", "default": "Personal care" },
-        { "type": "text", "id": "text", "label": "Text" },
-        { "type": "url", "id": "link", "label": "Link (empty = all products)" }
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Title",
+          "default": "Personal care"
+        },
+        {
+          "type": "text",
+          "id": "text",
+          "label": "Text"
+        },
+        {
+          "type": "url",
+          "id": "link",
+          "label": "Link (empty = all products)"
+        },
+        {
+          "type": "header",
+          "content": "Colours"
+        },
+        {
+          "type": "color",
+          "id": "c_text",
+          "label": "Text",
+          "default": "#ffffff"
+        }
       ]
     }
   ],
   "presets": [
     {
       "name": "Yalla Haul flash deals",
-      "blocks": [{ "type": "coupon" }, { "type": "tile" }]
+      "blocks": [
+        {
+          "type": "coupon"
+        },
+        {
+          "type": "tile"
+        }
+      ]
     }
   ]
 }

@@ -21,10 +21,15 @@ Yalla Haul parts are the `yh-*` files.
 | `snippets/yh-tabbar.liquid` | Optional phone bottom bar: Home, Categories, Cart, Account (off by default) |
 | `snippets/yh-photo.liquid` | Uploaded photo or one of the built-in `assets/yh-*.jpg` photos |
 | `snippets/yh-icon.liquid`, `snippets/yh-whatsapp-float.liquid` | Icons, floating WhatsApp button |
+| `snippets/yh-var.liquid` | Writes one section colour as a CSS variable (skipped when empty) |
 | `assets/yallahaul.css`, `assets/yallahaul.js` | Styles and behaviour (countdown to midnight, bottom bar) |
 
-Brand colours (logo red #D42A2A, orange #FF7A1A, black #171717, cream #FFF1E6), corners, the
-card note, WhatsApp and the phone bottom bar are under **Theme settings > Yalla Haul**. The page
+Every Yalla Haul section has its own **Colours** settings (header, category tabs, flash banner and
+its blocks, categories, products, trust cards, help card, footer), so each part's colours are
+changed by clicking it in the theme editor; `snippets/yh-var.liquid` passes them to the CSS.
+Product-card colours (prices, discount label, "Add to cart"), brand colours used by the Dawn pages
+(logo red #D42A2A, orange #FF7A1A, black #171717, cream #FFF1E6), corners, the card note,
+WhatsApp and the phone bottom bar are under **Theme settings > Yalla Haul**. The page
 background is Colors > Scheme 1 (#F6F4F2); panels, cards and the cart drawer use Scheme 2
 (white). Font: Figtree. The logo and favicon are uploaded in the theme editor (Theme settings >
 Logo; the footer has its own logo for dark backgrounds); until then the store name is shown.

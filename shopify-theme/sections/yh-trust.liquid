@@ -1,7 +1,13 @@
 {%- comment -%}
   Reasons to buy, as four white cards with a red icon each.
 {%- endcomment -%}
-<div class="yh-section">
+{%- capture yh_style -%}
+  {%- render 'yh-var', name: '--yh-tr-card', value: section.settings.c_card -%}
+  {%- render 'yh-var', name: '--yh-tr-icon', value: section.settings.c_icon -%}
+  {%- render 'yh-var', name: '--yh-tr-title', value: section.settings.c_title -%}
+  {%- render 'yh-var', name: '--yh-tr-text', value: section.settings.c_text -%}
+{%- endcapture -%}
+<div class="yh-section" style="{{ yh_style }}">
   <div class="yh-wrap">
     <div class="yh-trust">
       {%- for block in section.blocks -%}
@@ -32,20 +38,57 @@
           "id": "icon",
           "label": "Icon",
           "options": [
-            { "value": "truck", "label": "Delivery truck" },
-            { "value": "cash", "label": "Cash" },
-            { "value": "return", "label": "Return arrow" },
-            { "value": "lock", "label": "Lock" },
-            { "value": "chat", "label": "Chat" },
-            { "value": "package", "label": "Box" },
-            { "value": "check", "label": "Check mark" },
-            { "value": "bolt", "label": "Lightning" },
-            { "value": "tag", "label": "Price tag" }
+            {
+              "value": "truck",
+              "label": "Delivery truck"
+            },
+            {
+              "value": "cash",
+              "label": "Cash"
+            },
+            {
+              "value": "return",
+              "label": "Return arrow"
+            },
+            {
+              "value": "lock",
+              "label": "Lock"
+            },
+            {
+              "value": "chat",
+              "label": "Chat"
+            },
+            {
+              "value": "package",
+              "label": "Box"
+            },
+            {
+              "value": "check",
+              "label": "Check mark"
+            },
+            {
+              "value": "bolt",
+              "label": "Lightning"
+            },
+            {
+              "value": "tag",
+              "label": "Price tag"
+            }
           ],
           "default": "truck"
         },
-        { "type": "text", "id": "title", "label": "Title", "default": "2–3 day delivery" },
-        { "type": "text", "id": "text", "label": "Text", "default": "All over Lebanon" }
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Title",
+          "default": "2–3 day delivery"
+        },
+        {
+          "type": "text",
+          "id": "text",
+          "label": "Text",
+          "default": "All over Lebanon"
+        }
       ]
     }
   ],
@@ -53,11 +96,64 @@
     {
       "name": "Yalla Haul trust cards",
       "blocks": [
-        { "type": "item" },
-        { "type": "item", "settings": { "icon": "cash", "title": "Cash on delivery", "text": "Pay at your door" } },
-        { "type": "item", "settings": { "icon": "return", "title": "Easy returns", "text": "Changed your mind?" } },
-        { "type": "item", "settings": { "icon": "chat", "title": "WhatsApp support", "text": "We reply fast" } }
+        {
+          "type": "item"
+        },
+        {
+          "type": "item",
+          "settings": {
+            "icon": "cash",
+            "title": "Cash on delivery",
+            "text": "Pay at your door"
+          }
+        },
+        {
+          "type": "item",
+          "settings": {
+            "icon": "return",
+            "title": "Easy returns",
+            "text": "Changed your mind?"
+          }
+        },
+        {
+          "type": "item",
+          "settings": {
+            "icon": "chat",
+            "title": "WhatsApp support",
+            "text": "We reply fast"
+          }
+        }
       ]
+    }
+  ],
+  "settings": [
+    {
+      "type": "header",
+      "content": "Colours"
+    },
+    {
+      "type": "color",
+      "id": "c_card",
+      "label": "Cards",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "c_icon",
+      "label": "Icons",
+      "default": "#d42a2a"
+    },
+    {
+      "type": "color",
+      "id": "c_title",
+      "label": "Titles",
+      "default": "#171717"
+    },
+    {
+      "type": "color",
+      "id": "c_text",
+      "label": "Text",
+      "default": "#6f655e"
     }
   ]
 }

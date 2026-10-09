@@ -290,6 +290,12 @@
         --yh-line: {{ settings.yh_line | default: '#ece6e0' }};
         --yh-radius: {{ settings.yh_card_radius | default: 16 }}px;
         --yh-btn-radius: {{ settings.yh_button_radius | default: 10 }}px;
+        --yh-price: {{ settings.yh_price | default: '#d42a2a' }};
+        --yh-badge: {{ settings.yh_badge | default: '#d42a2a' }};
+        --yh-badge-text: {{ settings.yh_badge_text | default: '#ffffff' }};
+        --yh-card-btn: {{ settings.yh_card_btn | default: '#171717' }};
+        --yh-card-btn-text: {{ settings.yh_card_btn_text | default: '#ffffff' }};
+        --yh-card-btn-hover: {{ settings.yh_card_btn_hover | default: '#d42a2a' }};
       }
     {%- endstyle -%}
     {{ 'yallahaul.css' | asset_url | stylesheet_tag }}

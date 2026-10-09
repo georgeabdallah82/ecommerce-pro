@@ -188,7 +188,31 @@
           "color_scheme": "scheme-1"
         }
       }
-    }
+    },
+    "yh_red": "#d42a2a",
+    "yh_accent": "#ff7a1a",
+    "yh_soft": "#fff1e6",
+    "yh_card": "#ffffff",
+    "yh_ink": "#171717",
+    "yh_muted": "#6f655e",
+    "yh_line": "#ece6e0",
+    "yh_card_radius": 16,
+    "yh_button_radius": 10,
+    "yh_card_note": "Cash on delivery",
+    "yh_price": "#d42a2a",
+    "yh_badge": "#d42a2a",
+    "yh_badge_text": "#ffffff",
+    "yh_card_btn": "#171717",
+    "yh_card_btn_text": "#ffffff",
+    "yh_card_btn_hover": "#d42a2a",
+    "yh_whatsapp_number": "+96179137663",
+    "yh_whatsapp_message": "Hi! I would like to order.",
+    "yh_whatsapp_float": true,
+    "yh_whatsapp_position": "right",
+    "yh_tabbar": false,
+    "yh_tab_home": "Home",
+    "yh_tab_categories": "Categories",
+    "yh_tab_account": "Account"
   },
   "presets": {
     "Yalla Haul": {
@@ -380,7 +404,31 @@
             "color_scheme": "scheme-1"
           }
         }
-      }
+      },
+      "yh_red": "#d42a2a",
+      "yh_accent": "#ff7a1a",
+      "yh_soft": "#fff1e6",
+      "yh_card": "#ffffff",
+      "yh_ink": "#171717",
+      "yh_muted": "#6f655e",
+      "yh_line": "#ece6e0",
+      "yh_card_radius": 16,
+      "yh_button_radius": 10,
+      "yh_card_note": "Cash on delivery",
+      "yh_price": "#d42a2a",
+      "yh_badge": "#d42a2a",
+      "yh_badge_text": "#ffffff",
+      "yh_card_btn": "#171717",
+      "yh_card_btn_text": "#ffffff",
+      "yh_card_btn_hover": "#d42a2a",
+      "yh_whatsapp_number": "+96179137663",
+      "yh_whatsapp_message": "Hi! I would like to order.",
+      "yh_whatsapp_float": true,
+      "yh_whatsapp_position": "right",
+      "yh_tabbar": false,
+      "yh_tab_home": "Home",
+      "yh_tab_categories": "Categories",
+      "yh_tab_account": "Account"
     }
   }
 }

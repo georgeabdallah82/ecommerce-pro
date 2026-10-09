@@ -2,8 +2,8 @@
   {
     "name": "theme_info",
     "theme_name": "Yalla Haul",
-    "theme_version": "3.0.1",
-    "theme_author": "Yalla Haul (based on Dawn by Shopify)",
+    "theme_version": "3.1.0",
+    "theme_author": "Yalla Haul",
     "theme_documentation_url": "https://help.shopify.com/manual/online-store/themes",
     "theme_support_url": "https://support.shopify.com/"
   },
@@ -17,23 +17,23 @@
       {
         "type": "color",
         "id": "yh_red",
-        "label": "Main colour (header, prices, buttons)",
+        "label": "Main colour",
         "default": "#d42a2a"
       },
       {
         "type": "color",
         "id": "yh_accent",
-        "label": "Accent colour (search button, highlights, cart count)",
+        "label": "Accent colour",
         "default": "#ff7a1a"
       },
       {
         "type": "paragraph",
-        "content": "Page background: Colors > Scheme 1 (background). Panels, cards and the cart use Scheme 2."
+        "content": "Each part of the store (header, category tabs, banner, footer and so on) has its own colours: click it in the editor. Page background: Colors, scheme 1."
       },
       {
         "type": "color",
         "id": "yh_soft",
-        "label": "Cream background (photos, coupon, circles)",
+        "label": "Cream background",
         "default": "#fff1e6"
       },
       {
@@ -45,7 +45,7 @@
       {
         "type": "color",
         "id": "yh_ink",
-        "label": "Text, banner and footer",
+        "label": "Dark colour",
         "default": "#171717"
       },
       {
@@ -91,6 +91,42 @@
         "default": "Cash on delivery"
       },
       {
+        "type": "color",
+        "id": "yh_price",
+        "label": "Prices",
+        "default": "#d42a2a"
+      },
+      {
+        "type": "color",
+        "id": "yh_badge",
+        "label": "Discount label",
+        "default": "#d42a2a"
+      },
+      {
+        "type": "color",
+        "id": "yh_badge_text",
+        "label": "Discount label text",
+        "default": "#ffffff"
+      },
+      {
+        "type": "color",
+        "id": "yh_card_btn",
+        "label": "Add to cart button",
+        "default": "#171717"
+      },
+      {
+        "type": "color",
+        "id": "yh_card_btn_text",
+        "label": "Add to cart text",
+        "default": "#ffffff"
+      },
+      {
+        "type": "color",
+        "id": "yh_card_btn_hover",
+        "label": "Add to cart on hover",
+        "default": "#d42a2a"
+      },
+      {
         "type": "header",
         "content": "WhatsApp"
       },
@@ -110,7 +146,7 @@
       {
         "type": "checkbox",
         "id": "yh_whatsapp_float",
-        "label": "Show the floating WhatsApp button",
+        "label": "Show floating WhatsApp button",
         "default": true
       },
       {
@@ -136,7 +172,7 @@
       {
         "type": "checkbox",
         "id": "yh_tabbar",
-        "label": "Show the bottom bar on phones (Home, Categories, Cart, Account)",
+        "label": "Show bottom bar on phones",
         "default": false
       },
       {

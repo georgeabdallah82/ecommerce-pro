@@ -3,7 +3,14 @@
   with an empty menu it lists the collections that have products.
 {%- endcomment -%}
 {%- assign menu = linklists[section.settings.menu] -%}
-<nav class="yh-subnav" aria-label="{{ section.settings.label | escape }}">
+{%- capture yh_style -%}
+  {%- render 'yh-var', name: '--yh-s-bg', value: section.settings.c_bg -%}
+  {%- render 'yh-var', name: '--yh-s-tab', value: section.settings.c_tab -%}
+  {%- render 'yh-var', name: '--yh-s-tab-text', value: section.settings.c_tab_text -%}
+  {%- render 'yh-var', name: '--yh-s-active', value: section.settings.c_active -%}
+  {%- render 'yh-var', name: '--yh-s-active-text', value: section.settings.c_active_text -%}
+{%- endcapture -%}
+<nav class="yh-subnav" aria-label="{{ section.settings.label | escape }}" style="{{ yh_style }}">
   <div class="yh-wrap yh-subnav__track">
     {%- if section.settings.all_label != blank -%}
       <a href="{{ routes.all_products_collection_url }}" class="yh-subnav__link{% if collection.handle == 'all' or request.page_type == 'index' %} is-active{% endif %}">{{ section.settings.all_label | escape }}</a>
@@ -25,13 +32,57 @@
 {
   "name": "Yalla Haul category tabs",
   "settings": [
-    { "type": "text", "id": "label", "label": "Name for screen readers", "default": "Categories" },
-    { "type": "text", "id": "all_label", "label": "First tab (all products; empty hides it)", "default": "All" },
+    {
+      "type": "text",
+      "id": "label",
+      "label": "Name for screen readers",
+      "default": "Categories"
+    },
+    {
+      "type": "text",
+      "id": "all_label",
+      "label": "First tab (all products; empty hides it)",
+      "default": "All"
+    },
     {
       "type": "link_list",
       "id": "menu",
       "label": "Menu",
       "info": "Empty menu = your collections are shown automatically."
+    },
+    {
+      "type": "header",
+      "content": "Colours"
+    },
+    {
+      "type": "color",
+      "id": "c_bg",
+      "label": "Background",
+      "default": "#b81f1f"
+    },
+    {
+      "type": "color",
+      "id": "c_tab",
+      "label": "Tabs",
+      "default": "#c03a3a"
+    },
+    {
+      "type": "color",
+      "id": "c_tab_text",
+      "label": "Tab text",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "c_active",
+      "label": "Selected tab",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "c_active_text",
+      "label": "Selected tab text",
+      "default": "#d42a2a"
     }
   ]
 }

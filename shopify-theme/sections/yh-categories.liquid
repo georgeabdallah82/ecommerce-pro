@@ -4,7 +4,15 @@
   Add collections as blocks to choose them and their order; with no blocks, every collection
   that has products is shown.
 {%- endcomment -%}
-<div class="yh-section">
+{%- capture yh_style -%}
+  {%- render 'yh-var', name: '--yh-p-bg', value: section.settings.c_panel -%}
+  {%- render 'yh-var', name: '--yh-p-heading', value: section.settings.c_heading -%}
+  {%- render 'yh-var', name: '--yh-p-link', value: section.settings.c_link -%}
+  {%- render 'yh-var', name: '--yh-k-circle', value: section.settings.c_circle -%}
+  {%- render 'yh-var', name: '--yh-k-icon', value: section.settings.c_icon -%}
+  {%- render 'yh-var', name: '--yh-k-text', value: section.settings.c_text -%}
+{%- endcapture -%}
+<div class="yh-section" style="{{ yh_style }}">
   <div class="yh-wrap">
     <div class="yh-panel">
       {%- if section.settings.heading != blank -%}
@@ -75,39 +83,143 @@
   "name": "Yalla Haul categories",
   "tag": "section",
   "settings": [
-    { "type": "text", "id": "heading", "label": "Heading (empty hides it)" },
-    { "type": "text", "id": "link_label", "label": "\"See all\" link next to the heading", "default": "See all" },
-    { "type": "text", "id": "deals_label", "label": "Lightning circle (empty hides it)", "default": "Flash deals" },
-    { "type": "url", "id": "deals_link", "label": "Lightning circle link (empty = all products)" },
-    { "type": "text", "id": "all_label", "label": "Last circle, all products (empty hides it)", "default": "All" }
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading (empty hides it)"
+    },
+    {
+      "type": "text",
+      "id": "link_label",
+      "label": "\"See all\" link next to the heading",
+      "default": "See all"
+    },
+    {
+      "type": "text",
+      "id": "deals_label",
+      "label": "Lightning circle (empty hides it)",
+      "default": "Flash deals"
+    },
+    {
+      "type": "url",
+      "id": "deals_link",
+      "label": "Lightning circle link (empty = all products)"
+    },
+    {
+      "type": "text",
+      "id": "all_label",
+      "label": "Last circle, all products (empty hides it)",
+      "default": "All"
+    },
+    {
+      "type": "header",
+      "content": "Colours"
+    },
+    {
+      "type": "color",
+      "id": "c_panel",
+      "label": "Panel background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "c_heading",
+      "label": "Heading",
+      "default": "#171717"
+    },
+    {
+      "type": "color",
+      "id": "c_link",
+      "label": "\"See all\" link",
+      "default": "#d42a2a"
+    },
+    {
+      "type": "color",
+      "id": "c_circle",
+      "label": "Circles",
+      "default": "#fff1e6"
+    },
+    {
+      "type": "color",
+      "id": "c_icon",
+      "label": "Circle icons",
+      "default": "#d42a2a"
+    },
+    {
+      "type": "color",
+      "id": "c_text",
+      "label": "Names",
+      "default": "#171717"
+    }
   ],
   "blocks": [
     {
       "type": "collection",
       "name": "Category",
       "settings": [
-        { "type": "collection", "id": "collection", "label": "Collection" },
-        { "type": "text", "id": "title", "label": "Name (empty = the collection's name)" },
-        { "type": "image_picker", "id": "image", "label": "Photo (empty = the collection's photo)" },
+        {
+          "type": "collection",
+          "id": "collection",
+          "label": "Collection"
+        },
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Name (empty = the collection's name)"
+        },
+        {
+          "type": "image_picker",
+          "id": "image",
+          "label": "Photo (empty = the collection's photo)"
+        },
         {
           "type": "select",
           "id": "stock",
           "label": "Built-in photo (when there is no photo)",
           "options": [
-            { "value": "none", "label": "None" },
-            { "value": "offer-home", "label": "Living room" },
-            { "value": "offer-care", "label": "Personal care" },
-            { "value": "hero-rolls", "label": "Paper rolls" },
-            { "value": "spot-cleaning", "label": "Cleaning" },
-            { "value": "hero-bottles", "label": "Bottles" },
-            { "value": "hero-kitchen", "label": "Kitchen" }
+            {
+              "value": "none",
+              "label": "None"
+            },
+            {
+              "value": "offer-home",
+              "label": "Living room"
+            },
+            {
+              "value": "offer-care",
+              "label": "Personal care"
+            },
+            {
+              "value": "hero-rolls",
+              "label": "Paper rolls"
+            },
+            {
+              "value": "spot-cleaning",
+              "label": "Cleaning"
+            },
+            {
+              "value": "hero-bottles",
+              "label": "Bottles"
+            },
+            {
+              "value": "hero-kitchen",
+              "label": "Kitchen"
+            }
           ],
           "default": "none"
         },
-        { "type": "url", "id": "link", "label": "Link (empty = the collection)" }
+        {
+          "type": "url",
+          "id": "link",
+          "label": "Link (empty = the collection)"
+        }
       ]
     }
   ],
-  "presets": [{ "name": "Yalla Haul categories" }]
+  "presets": [
+    {
+      "name": "Yalla Haul categories"
+    }
+  ]
 }
 {% endschema %}
