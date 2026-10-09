@@ -12,7 +12,7 @@ export async function runPlatformHealth(): Promise<{ status: HealthSeverity; che
   const checks: HealthCheck[] = []
   try {
     await db.$connect()
-    checks.push({ key: 'database', label: 'Database', severity: 'ok', message: 'MongoDB is reachable.' })
+    checks.push({ key: 'database', label: 'Database', severity: 'ok', message: 'The database is reachable.' })
   } catch (error) {
     checks.push({ key: 'database', label: 'Database', severity: 'critical', message: error instanceof Error ? error.message : 'Database is unreachable.' })
   }
