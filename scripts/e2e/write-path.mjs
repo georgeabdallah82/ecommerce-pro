@@ -172,7 +172,7 @@ if (process.env.CRON_SECRET) {
 // no more clients than its small idle pool afterwards.
 {
   const stats = async () => { if (!process.env.CRON_SECRET) return null; const r = await fetch(B + '/api/internal/runtime-stats', { headers: { authorization: `Bearer ${process.env.CRON_SECRET}` } }); return r.ok ? (await r.json()).database : null }
-  const load = async path => { const r = await fetch(B + path); await r.arrayBuffer(); return r.status }
+  const load = async path => { const r = await fetch(B + path); await r.arrayBuffer(); return r.status === 200 ? 200 : `${path}=${r.status}` }
   const pages = ['/', '/shop', productPath, '/cart', '/collections']
   const before = await stats()
   const failures = []
