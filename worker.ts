@@ -12,9 +12,13 @@ type ExecutionContext = { waitUntil(promise: Promise<unknown>): void; passThroug
 
 const REQUEST_END_HOOKS = Symbol.for('yallahaul.requestEndHooks')
 const hooks: WeakMap<object, Array<() => unknown>> = ((globalThis as any)[REQUEST_END_HOOKS] ??= new WeakMap())
+// Requests this isolate has started and completely finished (read by /api/internal/runtime-stats):
+// a gap that keeps growing means requests whose work never ends, holding their memory.
+const requestCounts: { started: number; finished: number } = ((globalThis as any)[Symbol.for('yallahaul.requestCounts')] ??= { started: 0, finished: 0 })
 
 export default {
   async fetch(request: Request, env: unknown, ctx: ExecutionContext): Promise<Response> {
+    requestCounts.started++
     const pending: Promise<unknown>[] = []
     // The context OpenNext and the app see: the same, except that waitUntil() tasks are tracked.
     const requestCtx: ExecutionContext = new Proxy(ctx, {
@@ -30,6 +34,7 @@ export default {
       const requestHooks = hooks.get(requestCtx) ?? []
       hooks.delete(requestCtx)
       await Promise.allSettled(requestHooks.map(hook => Promise.resolve().then(hook)))
+      requestCounts.finished++
     }
 
     let response: Response

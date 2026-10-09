@@ -5,8 +5,9 @@
 //
 //   node scripts/e2e/load-compare.mjs <new store URL> <live store URL> [product path]
 //
-// 50 one-at-a-time loads and 3 bursts of 10 simultaneous loads per store: realistic traffic, kept
-// light because it also reaches the live store (bursts of 40 caused errors there for customers).
+// 50 one-at-a-time loads, 3 bursts of 10 simultaneous loads, and one shopper browsing a page every
+// 2 seconds on one kept-alive connection (the pattern that failed live on 2026-10-09), per store:
+// realistic traffic, kept light because it also reaches the live store.
 const [, , NEW, LIVE, productPath = '/'] = process.argv
 if (!NEW || !LIVE) throw new Error('Usage: load-compare.mjs <new URL> <live URL> [product path]')
 const pages = ['/', '/shop', productPath, '/cart', '/collections']
@@ -35,7 +36,22 @@ const bursts = size => phase(`3 bursts of ${size} at once`, async failed => {
   }
   return size * 3
 })
-const judged = [await sequential(), await bursts(10)]
+// One shopper: a single kept-alive connection (like a browser), a page every 2 seconds. On the
+// preview the store's own counters are printed every 10 pages (db-probe exists only there).
+const shopper = () => phase('a shopper, a page every 2s', async failed => {
+  const pagesSeen = ['/', '/shop', productPath, '/cart', '/collections', '/checkout']
+  for (let i = 0; i < 40; i++) {
+    const path = pagesSeen[i % pagesSeen.length]
+    await Promise.all([load(NEW, path, failed.new), load(LIVE, path, failed.live)])
+    if (i % 10 === 9) {
+      const probe = await fetch(NEW + '/api/internal/db-probe', { signal: AbortSignal.timeout(30000) }).then(async r => r.status === 200 ? (await r.json()).clients : `http ${r.status}`).catch(() => 'no answer')
+      console.log(`  after ${i + 1} shopper pages, new version isolate:`, JSON.stringify(probe))
+    }
+    await new Promise(r => setTimeout(r, 2000))
+  }
+  return 40
+})
+const judged = [await sequential(), await bursts(10), await shopper()]
 const newFailed = judged.reduce((n, f) => n + f.new.length, 0)
 const liveFailed = judged.reduce((n, f) => n + f.live.length, 0)
 const ok = newFailed <= liveFailed + 2

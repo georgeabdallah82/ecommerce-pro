@@ -2696,7 +2696,24 @@ const requestScopedAdapterFactory: SqlDriverAdapterFactory = {
 // to start when that is a prisma:// (Accelerate) address next to a driver adapter. The live
 // Worker still carries the retired Accelerate address under that name (kept so a rollback to the
 // MongoDB version keeps working), so it is pointed at the database actually used first.
+// Rehearsal diagnostics (only on a preview uploaded with REHEARSAL_ERROR_DETAILS=1): keep a handle
+// on the query compiler's WebAssembly memory so its size can be reported.
+function watchWasmMemory() {
+  const g = globalThis as any
+  if (process.env.REHEARSAL_ERROR_DETAILS !== '1' || g.__yallahaulWasmMemories) return
+  g.__yallahaulWasmMemories = []
+  const Instance = WebAssembly.Instance
+  const Watched: any = function (module: WebAssembly.Module, imports?: WebAssembly.Imports) {
+    const instance = new Instance(module, imports)
+    if (instance.exports.memory instanceof WebAssembly.Memory) g.__yallahaulWasmMemories.push(instance.exports.memory)
+    return instance
+  }
+  Watched.prototype = Instance.prototype
+  ;(WebAssembly as any).Instance = Watched
+}
+
 function getClient(): PrismaClient {
+  watchWasmMemory()
   if (!shared.client) {
     if (process.env.DATABASE_URL !== databaseUrl) process.env.DATABASE_URL = databaseUrl
     shared.client = new PrismaClient({ adapter: requestScopedAdapterFactory })
@@ -2706,7 +2723,13 @@ function getClient(): PrismaClient {
 
 // For the internal runtime-stats endpoint: per-request connection pools opened and closed.
 export function databaseClientStats() {
-  return { clients: shared.client ? 1 : 0, poolsOpened: shared.poolsOpened, poolsClosed: shared.poolsClosed, open: shared.poolsOpened - shared.poolsClosed }
+  const requests = (globalThis as any)[Symbol.for('yallahaul.requestCounts')] as { started: number; finished: number } | undefined
+  const wasm = (globalThis as any).__yallahaulWasmMemories as WebAssembly.Memory[] | undefined
+  return {
+    clients: shared.client ? 1 : 0, poolsOpened: shared.poolsOpened, poolsClosed: shared.poolsClosed, open: shared.poolsOpened - shared.poolsClosed,
+    ...(requests ? { requestsStarted: requests.started, requestsUnfinished: requests.started - requests.finished } : {}),
+    ...(wasm ? { wasmMemoryMB: Math.round(wasm.reduce((n, m) => n + m.buffer.byteLength, 0) / 104857.6) / 10 } : {}),
+  }
 }
 
 // A findUnique `where` as the same filter for findFirst, or null when it can't be one: a key left
