@@ -1,0 +1,231 @@
+{%- comment -%}
+  Bento tiles at the top of the home page. Each tile is a block (welcome, flash deal, note,
+  photo, WhatsApp) with a size: small (1x1), wide (2x1), tall (1x2) or big (2x2). Tiles fill a
+  four-column grid on computers and a two-column grid on phones, in block order.
+{%- endcomment -%}
+{%- liquid
+  assign wa_digits = settings.yh_whatsapp_number | remove: '+' | remove: ' ' | remove: '-' | remove: '(' | remove: ')'
+  assign wa_text = settings.yh_whatsapp_message | url_encode
+-%}
+<div class="yh-section yh-section--top">
+  <div class="yh-wrap">
+    <div class="yh-bento" style="--yh-bento-row: {{ section.settings.row_height }}px">
+      {%- for block in section.blocks -%}
+        {%- capture yh_tile_style -%}
+          {%- render 'yh-var', name: '--yh-t-bg', value: block.settings.c_bg -%}
+          {%- render 'yh-var', name: '--yh-t-text', value: block.settings.c_text -%}
+          {%- render 'yh-var', name: '--yh-t-accent', value: block.settings.c_accent -%}
+          {%- render 'yh-var', name: '--yh-t-btn', value: block.settings.c_btn -%}
+          {%- render 'yh-var', name: '--yh-t-btn-text', value: block.settings.c_btn_text -%}
+        {%- endcapture -%}
+        {%- assign tile_class = 'yh-tile yh-tile--' | append: block.type | append: ' yh-tile--' | append: block.settings.size -%}
+        {%- case block.type -%}
+          {%- when 'hero' -%}
+            <div class="{{ tile_class }}" style="{{ yh_tile_style }}" {{ block.shopify_attributes }}>
+              {%- if block.settings.image != blank -%}
+                {{ block.settings.image | image_url: width: 600 | image_tag: class: 'yh-tile__art', loading: 'eager', alt: '', widths: '200, 300, 400, 600', sizes: '220px' }}
+              {%- else -%}
+                <span class="yh-tile__art yh-tile__art--icon">{%- render 'yh-icon', icon: 'cart', size: 150 -%}</span>
+              {%- endif -%}
+              <div class="yh-tile__copy">
+                <h1 class="yh-tile__title">{{ block.settings.heading | escape }}</h1>
+                {%- if block.settings.text != blank -%}<p class="yh-tile__text">{{ block.settings.text | escape }}</p>{%- endif -%}
+              </div>
+              {%- if block.settings.button != blank -%}
+                <a href="{{ block.settings.link | default: routes.all_products_collection_url }}" class="yh-tile__btn">
+                  {{- block.settings.button | escape -}}{%- render 'yh-icon', icon: 'arrow', size: 18 -%}
+                </a>
+              {%- endif -%}
+            </div>
+          {%- when 'deal' -%}
+            <a href="{{ block.settings.link | default: routes.all_products_collection_url }}" class="{{ tile_class }}" style="{{ yh_tile_style }}" {{ block.shopify_attributes }}>
+              {%- if block.settings.label != blank -%}<small class="yh-tile__label">{{ block.settings.label | escape }}</small>{%- endif -%}
+              <b class="yh-tile__big">{{ block.settings.big_text | escape }}</b>
+              {%- if block.settings.timer -%}
+                <span class="yh-timer yh-timer--tile" data-yh-timer role="timer" aria-label="{{ block.settings.timer_label | escape }}">
+                  <b data-h>00</b><b data-m>00</b><b data-s>00</b>
+                </span>
+              {%- endif -%}
+            </a>
+          {%- when 'note' -%}
+            {%- if block.settings.link != blank -%}
+              <a href="{{ block.settings.link }}" class="{{ tile_class }}" style="{{ yh_tile_style }}" {{ block.shopify_attributes }}>
+            {%- else -%}
+              <div class="{{ tile_class }}" style="{{ yh_tile_style }}" {{ block.shopify_attributes }}>
+            {%- endif -%}
+              <span class="yh-tile__icon">{%- render 'yh-icon', icon: block.settings.icon, size: 34 -%}</span>
+              <span class="yh-tile__copy">
+                <b class="yh-tile__heading">{{ block.settings.title | escape }}</b>
+                {%- if block.settings.text != blank -%}<span class="yh-tile__sub">{{ block.settings.text | escape }}</span>{%- endif -%}
+              </span>
+            {%- if block.settings.link != blank -%}</a>{%- else -%}</div>{%- endif -%}
+          {%- when 'photo' -%}
+            <a href="{{ block.settings.link | default: routes.all_products_collection_url }}" class="{{ tile_class }}" style="{{ yh_tile_style }}" {{ block.shopify_attributes }}>
+              {%- render 'yh-photo',
+                image: block.settings.image,
+                stock: block.settings.stock,
+                class: 'yh-cover',
+                widths: '300, 450, 600, 900, 1200',
+                sizes: '(min-width: 990px) 600px, 100vw'
+              -%}
+              <span class="yh-tile__copy">
+                <b class="yh-tile__heading">{{ block.settings.title | escape }}</b>
+                {%- if block.settings.text != blank -%}<span class="yh-tile__sub">{{ block.settings.text | escape }}</span>{%- endif -%}
+              </span>
+            </a>
+          {%- when 'whatsapp' -%}
+            {%- if wa_digits != blank -%}
+              <div class="{{ tile_class }}" style="{{ yh_tile_style }}" {{ block.shopify_attributes }}>
+                <span class="yh-tile__icon">{%- render 'yh-icon', icon: 'chat', size: 40 -%}</span>
+                <span class="yh-tile__copy">
+                  <b class="yh-tile__heading">{{ block.settings.title | escape }}</b>
+                  {%- if block.settings.text != blank -%}<span class="yh-tile__sub">{{ block.settings.text | escape }}</span>{%- endif -%}
+                </span>
+                <a href="https://wa.me/{{ wa_digits }}{% if wa_text != blank %}?text={{ wa_text }}{% endif %}" target="_blank" rel="noopener" class="yh-tile__btn">{{ block.settings.button | escape }}</a>
+              </div>
+            {%- endif -%}
+        {%- endcase -%}
+      {%- endfor -%}
+    </div>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Yalla Haul bento tiles",
+  "tag": "section",
+  "max_blocks": 12,
+  "settings": [
+    { "type": "range", "id": "row_height", "label": "Tile height", "min": 120, "max": 260, "step": 10, "unit": "px", "default": 170 },
+    {
+      "type": "paragraph",
+      "content": "Each tile has a size. Tiles fill 4 columns on computers and 2 on phones, in the order of the list."
+    }
+  ],
+  "blocks": [
+    {
+      "type": "hero",
+      "name": "Welcome tile",
+      "settings": [
+        { "type": "select", "id": "size", "label": "Size", "options": [
+          { "value": "small", "label": "Small" }, { "value": "wide", "label": "Wide" },
+          { "value": "tall", "label": "Tall" }, { "value": "big", "label": "Big" }
+        ], "default": "big" },
+        { "type": "text", "id": "heading", "label": "Heading", "default": "Yalla! Your home haul." },
+        { "type": "text", "id": "text", "label": "Text", "default": "Essentials for every room, delivered in 2-3 days." },
+        { "type": "text", "id": "button", "label": "Button (empty hides it)", "default": "Start shopping" },
+        { "type": "url", "id": "link", "label": "Button link (empty = all products)" },
+        { "type": "image_picker", "id": "image", "label": "Picture (empty = a bag icon)" },
+        { "type": "header", "content": "Colours" },
+        { "type": "color", "id": "c_bg", "label": "Background", "default": "#d42a2a" },
+        { "type": "color", "id": "c_text", "label": "Text", "default": "#ffffff" },
+        { "type": "color", "id": "c_btn", "label": "Button", "default": "#ffffff" },
+        { "type": "color", "id": "c_btn_text", "label": "Button text", "default": "#d42a2a" }
+      ]
+    },
+    {
+      "type": "deal",
+      "name": "Flash deal tile",
+      "settings": [
+        { "type": "select", "id": "size", "label": "Size", "options": [
+          { "value": "small", "label": "Small" }, { "value": "wide", "label": "Wide" },
+          { "value": "tall", "label": "Tall" }, { "value": "big", "label": "Big" }
+        ], "default": "small" },
+        { "type": "text", "id": "label", "label": "Small label", "default": "FLASH DEALS" },
+        { "type": "text", "id": "big_text", "label": "Big text", "default": "-33%" },
+        { "type": "checkbox", "id": "timer", "label": "Show a countdown to midnight", "default": true },
+        { "type": "text", "id": "timer_label", "label": "Countdown name (screen readers)", "default": "Deals end in" },
+        { "type": "url", "id": "link", "label": "Link (empty = all products)" },
+        { "type": "header", "content": "Colours" },
+        { "type": "color", "id": "c_bg", "label": "Background", "default": "#171717" },
+        { "type": "color", "id": "c_text", "label": "Text", "default": "#ffffff" },
+        { "type": "color", "id": "c_accent", "label": "Small label", "default": "#ff7a1a" },
+        { "type": "color", "id": "c_btn", "label": "Countdown boxes", "default": "#ffffff" },
+        { "type": "color", "id": "c_btn_text", "label": "Countdown numbers", "default": "#171717" }
+      ]
+    },
+    {
+      "type": "note",
+      "name": "Note tile",
+      "settings": [
+        { "type": "select", "id": "size", "label": "Size", "options": [
+          { "value": "small", "label": "Small" }, { "value": "wide", "label": "Wide" },
+          { "value": "tall", "label": "Tall" }, { "value": "big", "label": "Big" }
+        ], "default": "small" },
+        { "type": "select", "id": "icon", "label": "Icon", "options": [
+          { "value": "truck", "label": "Delivery truck" }, { "value": "cash", "label": "Cash" },
+          { "value": "return", "label": "Return arrow" }, { "value": "lock", "label": "Lock" },
+          { "value": "chat", "label": "Chat" }, { "value": "package", "label": "Box" },
+          { "value": "check", "label": "Check mark" }, { "value": "bolt", "label": "Lightning" },
+          { "value": "tag", "label": "Price tag" }
+        ], "default": "truck" },
+        { "type": "text", "id": "title", "label": "Title", "default": "Free delivery over $50" },
+        { "type": "text", "id": "text", "label": "Text" },
+        { "type": "url", "id": "link", "label": "Link (optional)" },
+        { "type": "header", "content": "Colours" },
+        { "type": "color", "id": "c_bg", "label": "Background", "default": "#ff7a1a" },
+        { "type": "color", "id": "c_text", "label": "Text", "default": "#171717" },
+        { "type": "color", "id": "c_accent", "label": "Icon", "default": "#171717" }
+      ]
+    },
+    {
+      "type": "photo",
+      "name": "Photo tile",
+      "settings": [
+        { "type": "select", "id": "size", "label": "Size", "options": [
+          { "value": "small", "label": "Small" }, { "value": "wide", "label": "Wide" },
+          { "value": "tall", "label": "Tall" }, { "value": "big", "label": "Big" }
+        ], "default": "small" },
+        { "type": "image_picker", "id": "image", "label": "Photo" },
+        { "type": "select", "id": "stock", "label": "Built-in photo (when there is no photo)", "options": [
+          { "value": "none", "label": "None" }, { "value": "hero-rolls", "label": "Paper rolls" },
+          { "value": "spot-cleaning", "label": "Cleaning" }, { "value": "hero-kitchen", "label": "Kitchen" },
+          { "value": "hero-bottles", "label": "Bottles" }, { "value": "offer-home", "label": "Living room" },
+          { "value": "offer-care", "label": "Personal care" }
+        ], "default": "hero-rolls" },
+        { "type": "text", "id": "title", "label": "Title", "default": "Tissues" },
+        { "type": "text", "id": "text", "label": "Text", "default": "Stock up & save" },
+        { "type": "url", "id": "link", "label": "Link (empty = all products)" },
+        { "type": "header", "content": "Colours" },
+        { "type": "color", "id": "c_bg", "label": "Background (behind the photo)", "default": "#171717" },
+        { "type": "color", "id": "c_text", "label": "Text", "default": "#ffffff" }
+      ]
+    },
+    {
+      "type": "whatsapp",
+      "name": "WhatsApp tile",
+      "limit": 1,
+      "settings": [
+        { "type": "select", "id": "size", "label": "Size", "options": [
+          { "value": "small", "label": "Small" }, { "value": "wide", "label": "Wide" },
+          { "value": "tall", "label": "Tall" }, { "value": "big", "label": "Big" }
+        ], "default": "wide" },
+        { "type": "paragraph", "content": "Uses the WhatsApp number in Theme settings > Yalla Haul (hidden when empty)." },
+        { "type": "text", "id": "title", "label": "Title", "default": "Questions? WhatsApp us" },
+        { "type": "text", "id": "text", "label": "Text", "default": "We reply fast" },
+        { "type": "text", "id": "button", "label": "Button", "default": "Chat now" },
+        { "type": "header", "content": "Colours" },
+        { "type": "color", "id": "c_bg", "label": "Background", "default": "#ffffff" },
+        { "type": "color", "id": "c_text", "label": "Text", "default": "#171717" },
+        { "type": "color", "id": "c_accent", "label": "Icon", "default": "#25d366" },
+        { "type": "color", "id": "c_btn", "label": "Button", "default": "#25d366" },
+        { "type": "color", "id": "c_btn_text", "label": "Button text", "default": "#ffffff" }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Yalla Haul bento tiles",
+      "blocks": [
+        { "type": "hero" },
+        { "type": "deal" },
+        { "type": "note" },
+        { "type": "photo" },
+        { "type": "photo", "settings": { "size": "tall", "stock": "spot-cleaning", "title": "Cleaning", "text": "Fresh home, fast" } },
+        { "type": "note", "settings": { "icon": "cash", "title": "Pay cash at your door", "c_bg": "#fff1e6", "c_accent": "#d42a2a" } },
+        { "type": "whatsapp" }
+      ]
+    }
+  ]
+}
+{% endschema %}

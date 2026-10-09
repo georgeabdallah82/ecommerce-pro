@@ -1,68 +1,110 @@
 {
   "sections": {
-    "flash": {
-      "type": "yh-flash",
+    "bento": {
+      "type": "yh-bento",
+      "settings": {
+        "row_height": 170
+      },
       "blocks": {
-        "coupon": {
-          "type": "coupon",
+        "hero": {
+          "type": "hero",
           "settings": {
-            "label": "FREE DELIVERY",
-            "title": "On orders over $50",
-            "text": "Applied at checkout",
-            "link": ""
+            "size": "big",
+            "heading": "Yalla! Your home haul.",
+            "text": "Essentials for every room, delivered in 2-3 days.",
+            "button": "Start shopping",
+            "link": "shopify://collections/all"
           }
         },
-        "tile": {
-          "type": "tile",
+        "deal": {
+          "type": "deal",
           "settings": {
-            "stock": "offer-care",
-            "title": "Personal care",
-            "text": "",
+            "size": "small",
+            "label": "FLASH DEALS",
+            "big_text": "-33%",
+            "timer": true,
+            "timer_label": "Deals end in",
             "link": "shopify://collections/all"
+          }
+        },
+        "delivery": {
+          "type": "note",
+          "settings": {
+            "size": "small",
+            "icon": "truck",
+            "title": "Free delivery over $50",
+            "text": ""
+          }
+        },
+        "tissues": {
+          "type": "photo",
+          "settings": {
+            "size": "small",
+            "stock": "hero-rolls",
+            "title": "Tissues",
+            "text": "Stock up & save",
+            "link": "shopify://collections/all"
+          }
+        },
+        "cleaning": {
+          "type": "photo",
+          "settings": {
+            "size": "tall",
+            "stock": "spot-cleaning",
+            "title": "Cleaning",
+            "text": "Fresh home, fast",
+            "link": "shopify://collections/all"
+          }
+        },
+        "cash": {
+          "type": "note",
+          "settings": {
+            "size": "small",
+            "icon": "cash",
+            "title": "Pay cash at your door",
+            "text": "",
+            "c_bg": "#fff1e6",
+            "c_text": "#171717",
+            "c_accent": "#d42a2a"
+          }
+        },
+        "whatsapp": {
+          "type": "whatsapp",
+          "settings": {
+            "size": "wide",
+            "title": "Questions? WhatsApp us",
+            "text": "We reply fast",
+            "button": "Chat now"
           }
         }
       },
       "block_order": [
-        "coupon",
-        "tile"
-      ],
-      "settings": {
-        "stock": "hero-rolls",
-        "chip": "FLASH DEALS",
-        "heading": "Up to 33% off home essentials",
-        "highlight": "33% off",
-        "text": "",
-        "timer": true,
-        "timer_label": "Deals end in",
-        "button": "Shop the deals",
-        "link": "shopify://collections/all"
-      }
+        "hero",
+        "deal",
+        "delivery",
+        "tissues",
+        "cleaning",
+        "cash",
+        "whatsapp"
+      ]
     },
-    "categories": {
-      "type": "yh-categories",
-      "settings": {
-        "heading": "",
-        "link_label": "See all",
-        "deals_label": "Flash deals",
-        "deals_link": "shopify://collections/all",
-        "all_label": "All"
-      }
-    },
-    "deals": {
+    "popular": {
       "type": "yh-products",
       "settings": {
         "collection": "",
-        "heading": "Today's best deals",
-        "icon": "bolt",
+        "heading": "Popular right now",
+        "icon": "none",
         "link_label": "See all",
-        "limit": 12,
-        "columns": 6,
+        "limit": 10,
+        "columns": 5,
         "timer": false,
-        "timer_label": "Time left today"
+        "show_chips": true,
+        "all_chip": "All"
       }
     },
     "trust": {
       "type": "yh-trust",
+      "disabled": true,
       "blocks": {
         "trust-1": {
           "type": "item",
@@ -112,9 +154,8 @@
     }
   },
   "order": [
-    "flash",
-    "categories",
-    "deals",
+    "bento",
+    "popular",
     "trust",
     "help"
   ]

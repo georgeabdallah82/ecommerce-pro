@@ -31,22 +31,20 @@
       "type": "yh-header",
       "settings": {
         "logo_white": false,
-        "search_placeholder": "What are you looking for?",
-        "search_button": "Search",
-        "account_label": "Account"
-      }
-    },
-    "yh-subnav": {
-      "type": "yh-subnav",
-      "settings": {
-        "label": "Categories",
-        "all_label": "All"
+        "search_placeholder": "Search tissues, cleaning, kitchen...",
+        "account_label": "Account",
+        "show_nav": true,
+        "home_label": "Home",
+        "all_label": "Shop all",
+        "deals_label": "Flash deals",
+        "deals_link": "shopify://collections/all",
+        "contact_label": "Contact us",
+        "nav_label": "Main menu"
       }
     }
   },
   "order": [
     "announcement-bar",
-    "yh-header",
-    "yh-subnav"
+    "yh-header"
   ]
 }

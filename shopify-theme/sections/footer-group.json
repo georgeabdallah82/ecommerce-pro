@@ -9,7 +9,8 @@
         "newsletter": true,
         "news_heading": "Get the deals first",
         "news_text": "Flash deals and new arrivals, straight to your inbox.",
-        "news_button": "Join"
+        "news_button": "Join",
+        "show_wordmark": true
       },
       "blocks": {
         "shop": {

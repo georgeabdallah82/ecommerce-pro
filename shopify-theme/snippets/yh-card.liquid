@@ -1,7 +1,7 @@
 {%- comment -%}
-  Deals card: photo with a red discount ribbon, name, red price with the old price struck
-  through, a "Cash on delivery" note, and a black "Add to cart" button. One-option products are
-  added to the cart without leaving the page; products with options open the product page.
+  Bento product card: white rounded card, photo with an orange discount label, name, price with
+  the old price struck through, and a round "+" button. One-option products are added to the
+  cart without leaving the page; products with options open the product page.
 
   Accepts:
   - card_product: {Object} product (blank shows a sample card, for the theme editor)
@@ -19,9 +19,10 @@
   <div class="yh-card yh-card--sample">
     <div class="yh-card__media">{{ 'product-1' | placeholder_svg_tag: 'yh-placeholder' }}</div>
     <h3 class="yh-card__title">{{ 'onboarding.product_title' | t }}</h3>
-    <span class="yh-card__price"><strong>{{ 1999 | money }}</strong></span>
-    {%- if settings.yh_card_note != blank -%}<span class="yh-card__note">{{ settings.yh_card_note | escape }}</span>{%- endif -%}
-    <span class="yh-card__add" aria-hidden="true">{{ 'products.product.add_to_cart' | t }}</span>
+    <div class="yh-card__foot">
+      <span class="yh-card__price"><strong>{{ 1999 | money }}</strong></span>
+      <span class="yh-card__add" aria-hidden="true">{%- render 'yh-icon', icon: 'plus', size: 20 -%}</span>
+    </div>
   </div>
 {%- else -%}
   {%- liquid
@@ -40,7 +41,7 @@
           | image_url: width: 600
           | image_tag:
             widths: '200, 300, 400, 600',
-            sizes: '(min-width: 990px) 200px, (min-width: 750px) 30vw, 46vw',
+            sizes: '(min-width: 990px) 230px, (min-width: 750px) 30vw, 46vw',
             loading: loading,
             alt: p.featured_media.alt
         }}
@@ -54,38 +55,38 @@
       {%- endif -%}
     </a>
     <h3 class="yh-card__title"><a href="{{ p.url }}">{{ p.title | escape }}</a></h3>
-    <span class="yh-card__price">
-      <strong>
-        {%- if p.price_varies -%}{{ 'products.product.price.from_price_html' | t: price: '' }}{%- endif -%}
-        {{- p.price | money -}}
-      </strong>
-      {%- if p.compare_at_price > p.price -%}<del>{{ p.compare_at_price | money }}</del>{%- endif -%}
-    </span>
     {%- if settings.yh_card_note != blank -%}<span class="yh-card__note">{{ settings.yh_card_note | escape }}</span>{%- endif -%}
-    {%- if p.has_only_default_variant and v.available -%}
-      <product-form data-section-id="{{ section_id }}" class="yh-card__form">
-        {%- form 'product', p, id: form_id, novalidate: 'novalidate', data-type: 'add-to-cart-form' -%}
-          <input type="hidden" name="id" value="{{ v.id }}" class="product-variant-id">
-          <button
-            id="{{ form_id }}-submit"
-            type="submit"
-            name="add"
-            class="yh-card__add"
-            aria-label="{{ 'products.product.add_to_cart' | t }}: {{ p.title | escape }}"
-            data-sold-out-message="true"
-          >
-            <span>{{ 'products.product.add_to_cart' | t }}</span>
-            <span class="sold-out-message hidden">{{ 'products.product.sold_out' | t }}</span>
-            {%- render 'loading-spinner' -%}
-          </button>
-        {%- endform -%}
-      </product-form>
-    {%- elsif p.available -%}
-      <a href="{{ p.url }}" class="yh-card__add yh-card__add--options" aria-label="{{ 'products.product.choose_options' | t }}: {{ p.title | escape }}">
-        {{- 'products.product.choose_options' | t -}}
-      </a>
-    {%- else -%}
-      <span class="yh-card__add yh-card__add--off" aria-hidden="true">{{ 'products.product.sold_out' | t }}</span>
-    {%- endif -%}
+    <div class="yh-card__foot">
+      <span class="yh-card__price">
+        <strong>
+          {%- if p.price_varies -%}{{ 'products.product.price.from_price_html' | t: price: '' }}{%- endif -%}
+          {{- p.price | money -}}
+        </strong>
+        {%- if p.compare_at_price > p.price -%}<del>{{ p.compare_at_price | money }}</del>{%- endif -%}
+      </span>
+      {%- if p.has_only_default_variant and v.available -%}
+        <product-form data-section-id="{{ section_id }}" class="yh-card__form">
+          {%- form 'product', p, id: form_id, novalidate: 'novalidate', data-type: 'add-to-cart-form' -%}
+            <input type="hidden" name="id" value="{{ v.id }}" class="product-variant-id">
+            <button
+              id="{{ form_id }}-submit"
+              type="submit"
+              name="add"
+              class="yh-card__add"
+              aria-label="{{ 'products.product.add_to_cart' | t }}: {{ p.title | escape }}"
+              data-sold-out-message="true"
+            >
+              <span>{%- render 'yh-icon', icon: 'plus', size: 20 -%}</span>
+              <span class="sold-out-message hidden">{%- render 'yh-icon', icon: 'x', size: 16 -%}</span>
+              {%- render 'loading-spinner' -%}
+            </button>
+          {%- endform -%}
+        </product-form>
+      {%- elsif p.available -%}
+        <a href="{{ p.url }}" class="yh-card__add" aria-label="{{ 'products.product.choose_options' | t }}: {{ p.title | escape }}">
+          {%- render 'yh-icon', icon: 'plus', size: 20 -%}
+        </a>
+      {%- endif -%}
+    </div>
   </div>
 {%- endif -%}

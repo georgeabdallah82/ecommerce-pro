@@ -1,64 +1,109 @@
 {%- comment -%}
-  Red marketplace header: logo (in white), search with an orange button, Account and Cart. Sticks
-  to the top. The red category tabs under it are the "Yalla Haul category tabs" section.
+  Bento header: a white rounded bar (logo, search, account, cart) and under it a rounded nav bar
+  (Home, Shop all, Flash deals, the menu links, Contact us on WhatsApp). Both stick to the top.
+  Menu links come from the chosen menu (Online Store > Navigation); with an empty menu the
+  collections that have products are listed.
 {%- endcomment -%}
 {%- liquid
   assign logo_alt = shop.name | escape
   assign logo = section.settings.logo | default: settings.logo
+  assign menu = linklists[section.settings.menu]
+  assign wa_digits = settings.yh_whatsapp_number | remove: '+' | remove: ' ' | remove: '-' | remove: '(' | remove: ')'
+  assign wa_text = settings.yh_whatsapp_message | url_encode
 -%}
 {%- capture yh_style -%}
+  {%- render 'yh-var', name: '--yh-h-strip', value: section.settings.c_strip -%}
   {%- render 'yh-var', name: '--yh-h-bg', value: section.settings.c_bg -%}
   {%- render 'yh-var', name: '--yh-h-text', value: section.settings.c_text -%}
   {%- render 'yh-var', name: '--yh-h-search', value: section.settings.c_search -%}
   {%- render 'yh-var', name: '--yh-h-search-text', value: section.settings.c_search_text -%}
-  {%- render 'yh-var', name: '--yh-h-btn', value: section.settings.c_btn -%}
-  {%- render 'yh-var', name: '--yh-h-btn-text', value: section.settings.c_btn_text -%}
+  {%- render 'yh-var', name: '--yh-h-icon-bg', value: section.settings.c_icon_bg -%}
+  {%- render 'yh-var', name: '--yh-h-cart', value: section.settings.c_cart -%}
+  {%- render 'yh-var', name: '--yh-h-cart-text', value: section.settings.c_cart_text -%}
   {%- render 'yh-var', name: '--yh-h-count', value: section.settings.c_count -%}
   {%- render 'yh-var', name: '--yh-h-count-text', value: section.settings.c_count_text -%}
+  {%- render 'yh-var', name: '--yh-n-bg', value: section.settings.c_nav -%}
+  {%- render 'yh-var', name: '--yh-n-text', value: section.settings.c_nav_text -%}
+  {%- render 'yh-var', name: '--yh-n-active', value: section.settings.c_nav_active -%}
+  {%- render 'yh-var', name: '--yh-n-active-text', value: section.settings.c_nav_active_text -%}
+  {%- render 'yh-var', name: '--yh-n-deals', value: section.settings.c_nav_deals -%}
+  {%- render 'yh-var', name: '--yh-n-contact', value: section.settings.c_nav_contact -%}
 {%- endcapture -%}
 <div class="yh-header" data-yh-header style="{{ yh_style }}">
-  <div class="yh-wrap yh-header__inner">
-    <a href="{{ routes.root_url }}" class="yh-logo{% if section.settings.logo_white %} yh-logo--white{% endif %}" style="--yh-logo-width: {{ settings.logo_width }}px">
-      {%- if logo != blank -%}
-        {%- assign logo_2x = settings.logo_width | times: 2 -%}
-        {{ logo | image_url: width: logo_2x | image_tag: alt: logo_alt, loading: 'eager', fetchpriority: 'high' }}
-      {%- else -%}
-        <span class="yh-logo__text">{{ shop.name | escape }}</span>
-      {%- endif -%}
-    </a>
-
-    <form action="{{ routes.search_url }}" method="get" role="search" class="yh-search">
-      {%- render 'yh-icon', icon: 'search', size: 18 -%}
-      <input type="hidden" name="type" value="product">
-      <input
-        type="search"
-        name="q"
-        value="{{ search.terms | escape }}"
-        placeholder="{{ section.settings.search_placeholder | escape }}"
-        aria-label="{{ 'general.search.search' | t }}"
-      >
-      <button type="submit" class="yh-search__btn">{{ section.settings.search_button | escape }}</button>
-    </form>
-
-    <div class="yh-header__actions">
-      {%- if shop.customer_accounts_enabled -%}
-        <shopify-account
-          menu="{{ settings.customer_account_menu | default: 'customer-account-main-menu' }}"
-          class="yh-hlink yh-account"
-        >
-          <span slot="signed-out-avatar" class="yh-hlink__inner">
-            {%- render 'yh-icon', icon: 'user', size: 20 -%}
-            <span class="yh-hlink__label">{{ section.settings.account_label | escape }}</span>
-          </span>
-        </shopify-account>
-      {%- endif -%}
-      <a href="{{ routes.cart_url }}" class="yh-hlink yh-cartbtn" id="cart-icon-bubble">
-        {%- render 'yh-icon', icon: 'cart', size: 20 -%}
-        <span class="yh-hlink__label">{{ 'templates.cart.cart' | t }}</span>
-        <span class="yh-cart-count{% if cart.item_count == 0 %} is-empty{% endif %}" aria-hidden="true">{{ cart.item_count | at_most: 99 }}</span>
-        <span class="visually-hidden">{{ 'sections.header.cart_count' | t: count: cart.item_count }}</span>
+  <div class="yh-wrap">
+    <div class="yh-bar">
+      <a href="{{ routes.root_url }}" class="yh-logo{% if section.settings.logo_white %} yh-logo--white{% endif %}" style="--yh-logo-width: {{ settings.logo_width }}px">
+        {%- if logo != blank -%}
+          {%- assign logo_2x = settings.logo_width | times: 2 -%}
+          {{ logo | image_url: width: logo_2x | image_tag: alt: logo_alt, loading: 'eager', fetchpriority: 'high' }}
+        {%- else -%}
+          <span class="yh-logo__text">{{ shop.name | escape }}</span>
+        {%- endif -%}
       </a>
+
+      <form action="{{ routes.search_url }}" method="get" role="search" class="yh-search">
+        {%- render 'yh-icon', icon: 'search', size: 18 -%}
+        <input type="hidden" name="type" value="product">
+        <input
+          type="search"
+          name="q"
+          value="{{ search.terms | escape }}"
+          placeholder="{{ section.settings.search_placeholder | escape }}"
+          aria-label="{{ 'general.search.search' | t }}"
+        >
+      </form>
+
+      <div class="yh-bar__actions">
+        {%- if shop.customer_accounts_enabled -%}
+          <shopify-account
+            menu="{{ settings.customer_account_menu | default: 'customer-account-main-menu' }}"
+            class="yh-roundbtn yh-account"
+          >
+            <span slot="signed-out-avatar" class="yh-roundbtn__inner">
+              {%- render 'yh-icon', icon: 'user', size: 20 -%}
+              <span class="visually-hidden">{{ section.settings.account_label | escape }}</span>
+            </span>
+          </shopify-account>
+        {%- endif -%}
+        <a href="{{ routes.cart_url }}" class="yh-cartbtn" id="cart-icon-bubble">
+          {%- render 'yh-icon', icon: 'cart', size: 19 -%}
+          <span class="yh-cartbtn__label">{{ 'templates.cart.cart' | t }}</span>
+          <span class="yh-cart-count{% if cart.item_count == 0 %} is-empty{% endif %}" aria-hidden="true">{{ cart.item_count | at_most: 99 }}</span>
+          <span class="visually-hidden">{{ 'sections.header.cart_count' | t: count: cart.item_count }}</span>
+        </a>
+      </div>
     </div>
+
+    {%- if section.settings.show_nav -%}
+      <nav class="yh-nav" aria-label="{{ section.settings.nav_label | escape }}">
+        {%- if section.settings.home_label != blank -%}
+          <a href="{{ routes.root_url }}" class="yh-nav__link{% if request.page_type == 'index' %} is-active{% endif %}"{% if request.page_type == 'index' %} aria-current="page"{% endif %}>{{ section.settings.home_label | escape }}</a>
+        {%- endif -%}
+        {%- if section.settings.all_label != blank -%}
+          <a href="{{ routes.all_products_collection_url }}" class="yh-nav__link{% if collection.handle == 'all' %} is-active{% endif %}">{{ section.settings.all_label | escape }}</a>
+        {%- endif -%}
+        {%- if section.settings.deals_label != blank -%}
+          <a href="{{ section.settings.deals_link | default: routes.all_products_collection_url }}" class="yh-nav__link yh-nav__link--deals">
+            {%- render 'yh-icon', icon: 'bolt', size: 16 -%}{{ section.settings.deals_label | escape }}
+          </a>
+        {%- endif -%}
+        {%- if menu.links.size > 0 -%}
+          {%- for link in menu.links -%}
+            <a href="{{ link.url }}" class="yh-nav__link{% if link.active or link.child_active %} is-active{% endif %}"{% if link.active %} aria-current="page"{% endif %}>{{ link.title | escape }}</a>
+          {%- endfor -%}
+        {%- else -%}
+          {%- for c in collections limit: 12 -%}
+            {%- if c.handle == 'all' or c.handle == 'frontpage' or c.all_products_count == 0 -%}{%- continue -%}{%- endif -%}
+            <a href="{{ c.url }}" class="yh-nav__link{% if collection.handle == c.handle %} is-active{% endif %}">{{ c.title | escape }}</a>
+          {%- endfor -%}
+        {%- endif -%}
+        {%- if section.settings.contact_label != blank and wa_digits != blank -%}
+          <a href="https://wa.me/{{ wa_digits }}{% if wa_text != blank %}?text={{ wa_text }}{% endif %}" target="_blank" rel="noopener" class="yh-nav__link yh-nav__link--contact">
+            {%- render 'yh-icon', icon: 'chat', size: 16 -%}{{ section.settings.contact_label | escape }}
+          </a>
+        {%- endif -%}
+      </nav>
+    {%- endif -%}
   </div>
 </div>
 
@@ -98,86 +143,55 @@
     {
       "type": "image_picker",
       "id": "logo",
-      "label": "Logo on the red header",
+      "label": "Logo",
       "info": "Empty = the logo from Theme settings > Logo, or the store name. Width: Theme settings > Logo."
     },
     {
       "type": "checkbox",
       "id": "logo_white",
       "label": "Make the logo all white",
-      "info": "Turns the whole logo white (for a red or dark header). Turn off to show your logo in its own colours.",
+      "info": "For a dark header background. Off = your logo in its own colours.",
       "default": false
     },
+    { "type": "text", "id": "search_placeholder", "label": "Search box text", "default": "Search tissues, cleaning, kitchen..." },
+    { "type": "text", "id": "account_label", "label": "Account button name (screen readers)", "default": "Account" },
+    { "type": "header", "content": "Nav bar" },
+    { "type": "checkbox", "id": "show_nav", "label": "Show the nav bar", "default": true },
+    {
+      "type": "link_list",
+      "id": "menu",
+      "label": "Menu",
+      "info": "Links shown after Flash deals. Empty menu = your collections."
+    },
+    { "type": "text", "id": "home_label", "label": "Home link (empty hides it)", "default": "Home" },
+    { "type": "text", "id": "all_label", "label": "All products link (empty hides it)", "default": "Shop all" },
+    { "type": "text", "id": "deals_label", "label": "Lightning link (empty hides it)", "default": "Flash deals" },
+    { "type": "url", "id": "deals_link", "label": "Lightning link goes to (empty = all products)" },
     {
       "type": "text",
-      "id": "search_placeholder",
-      "label": "Search box text",
-      "default": "What are you looking for?"
+      "id": "contact_label",
+      "label": "WhatsApp link on the right (empty hides it)",
+      "info": "Uses the WhatsApp number in Theme settings > Yalla Haul.",
+      "default": "Contact us"
     },
-    {
-      "type": "text",
-      "id": "search_button",
-      "label": "Search button",
-      "default": "Search"
-    },
-    {
-      "type": "text",
-      "id": "account_label",
-      "label": "Account link",
-      "default": "Account"
-    },
-    {
-      "type": "header",
-      "content": "Colours"
-    },
-    {
-      "type": "color",
-      "id": "c_bg",
-      "label": "Background",
-      "default": "#d42a2a"
-    },
-    {
-      "type": "color",
-      "id": "c_text",
-      "label": "Text and icons",
-      "default": "#ffffff"
-    },
-    {
-      "type": "color",
-      "id": "c_search",
-      "label": "Search box",
-      "default": "#ffffff"
-    },
-    {
-      "type": "color",
-      "id": "c_search_text",
-      "label": "Search box text",
-      "default": "#171717"
-    },
-    {
-      "type": "color",
-      "id": "c_btn",
-      "label": "Search button",
-      "default": "#ff7a1a"
-    },
-    {
-      "type": "color",
-      "id": "c_btn_text",
-      "label": "Search button text",
-      "default": "#171717"
-    },
-    {
-      "type": "color",
-      "id": "c_count",
-      "label": "Cart count",
-      "default": "#ff7a1a"
-    },
-    {
-      "type": "color",
-      "id": "c_count_text",
-      "label": "Cart count text",
-      "default": "#171717"
-    }
+    { "type": "text", "id": "nav_label", "label": "Nav bar name (screen readers)", "default": "Main menu" },
+    { "type": "header", "content": "Colours" },
+    { "type": "color", "id": "c_strip", "label": "Behind the bars", "default": "#fbf6f1" },
+    { "type": "color", "id": "c_bg", "label": "Top bar", "default": "#ffffff" },
+    { "type": "color", "id": "c_text", "label": "Top bar text and icons", "default": "#171717" },
+    { "type": "color", "id": "c_search", "label": "Search box", "default": "#fbf6f1" },
+    { "type": "color", "id": "c_search_text", "label": "Search box text", "default": "#171717" },
+    { "type": "color", "id": "c_icon_bg", "label": "Account button", "default": "#fbf6f1" },
+    { "type": "color", "id": "c_cart", "label": "Cart button", "default": "#d42a2a" },
+    { "type": "color", "id": "c_cart_text", "label": "Cart button text", "default": "#ffffff" },
+    { "type": "color", "id": "c_count", "label": "Cart count", "default": "#ffffff" },
+    { "type": "color", "id": "c_count_text", "label": "Cart count text", "default": "#d42a2a" },
+    { "type": "color", "id": "c_nav", "label": "Nav bar", "default": "#ffffff" },
+    { "type": "color", "id": "c_nav_text", "label": "Nav links", "default": "#171717" },
+    { "type": "color", "id": "c_nav_active", "label": "Current page link", "default": "#171717" },
+    { "type": "color", "id": "c_nav_active_text", "label": "Current page link text", "default": "#ffffff" },
+    { "type": "color", "id": "c_nav_deals", "label": "Lightning link", "default": "#d42a2a" },
+    { "type": "color", "id": "c_nav_contact", "label": "WhatsApp link", "default": "#1a9e4b" }
   ]
 }
 {% endschema %}

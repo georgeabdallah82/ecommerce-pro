@@ -1,6 +1,7 @@
 {%- comment -%}
-  Dark footer: logo and social links, up to three menu columns, newsletter signup, and a
-  bottom line with the copyright and a "Cash on delivery" pill.
+  Dark footer with rounded top corners: logo and social links, up to three menu columns,
+  newsletter signup, a bottom line with the copyright and a pill, and the store name in big
+  letters (first word white, the rest red).
 {%- endcomment -%}
 {%- capture yh_style -%}
   {%- render 'yh-var', name: '--yh-ft-bg', value: section.settings.c_bg -%}
@@ -8,6 +9,8 @@
   {%- render 'yh-var', name: '--yh-ft-heading', value: section.settings.c_heading -%}
   {%- render 'yh-var', name: '--yh-ft-btn', value: section.settings.c_btn -%}
   {%- render 'yh-var', name: '--yh-ft-btn-text', value: section.settings.c_btn_text -%}
+  {%- render 'yh-var', name: '--yh-ft-word1', value: section.settings.c_word1 -%}
+  {%- render 'yh-var', name: '--yh-ft-word2', value: section.settings.c_word2 -%}
 {%- endcapture -%}
 <footer class="yh-footer" style="{{ yh_style }}">
   <div class="yh-wrap">
@@ -96,6 +99,14 @@
       {%- endif -%}
     </div>
 
+    {%- if section.settings.show_wordmark -%}
+      {%- liquid
+        assign word = section.settings.wordmark | default: shop.name | strip
+        assign first_word = word | split: ' ' | first
+        assign rest = word | remove_first: first_word | strip
+      -%}
+      <div class="yh-footer__word" aria-hidden="true"><span>{{ first_word | escape }}</span>{% if rest != blank %} <span>{{ rest | escape }}</span>{% endif %}</div>
+    {%- endif -%}
     <div class="yh-footer__bottom">
       <span>&copy; {{ 'now' | date: '%Y' }} · {{ shop.name | escape }} · {{ section.settings.rights | escape }}</span>
       {%- if section.settings.pill != blank -%}<span class="yh-footer__pill">{{ section.settings.pill | escape }}</span>{%- endif -%}
@@ -175,6 +186,21 @@
     },
     {
       "type": "header",
+      "content": "Big name"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_wordmark",
+      "label": "Show the store name in big letters",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "wordmark",
+      "label": "Big name (empty = store name)"
+    },
+    {
+      "type": "header",
       "content": "Colours"
     },
     {
@@ -199,13 +225,25 @@
       "type": "color",
       "id": "c_btn",
       "label": "Join button",
-      "default": "#d42a2a"
+      "default": "#ff7a1a"
     },
     {
       "type": "color",
       "id": "c_btn_text",
       "label": "Join button text",
+      "default": "#171717"
+    },
+    {
+      "type": "color",
+      "id": "c_word1",
+      "label": "Big name, first word",
       "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "c_word2",
+      "label": "Big name, other words",
+      "default": "#d42a2a"
     }
   ],
   "blocks": [
