@@ -2596,12 +2596,13 @@ function getMockHandler(model: string) {
 // - Writes and transactions need a real connection (Prisma also wraps nested writes in a
 //   transaction, which HTTP can't do), so they use a WebSocket pool.
 // Any other PostgreSQL URL (local development, CI) uses node-postgres for both.
-// On Workers both clients are created per request (keyed by the request's ExecutionContext) and
-// never shared between requests: a Worker may not reuse a socket opened while handling another
-// request, and one request must never wait on another's I/O. Prisma batches findUnique calls
-// made within the same timer tick into one query, so a client shared by concurrent requests
-// would send one request's lookup inside another request's fetch, and the runtime cancels the
-// waiting request as hung (seen as random 500s under concurrent traffic).
+// On Workers a client belongs to one request at a time (keyed by the request's ExecutionContext):
+// a Worker may not reuse a socket opened while handling another request, and one request must
+// never wait on another's I/O. Prisma batches findUnique calls made within the same timer tick
+// into one query, so a client shared by concurrent requests would send one request's lookup
+// inside another request's fetch, and the runtime cancels the waiting request as hung (seen as
+// random 500s under concurrent traffic). When the request ends its clients are given back (see
+// worker.ts): connection clients are closed, HTTP read clients are reused by later requests.
 // NEON_DATABASE_URL is read first so the Worker's old DATABASE_URL (the retired Prisma
 // Accelerate prisma:// address) can't be picked up by mistake.
 const databaseUrl = [process.env.NEON_DATABASE_URL, process.env.DATABASE_URL].find(url => !!url && /^postgres(ql)?:\/\//.test(url)) || ''
@@ -2612,9 +2613,20 @@ const onWorkers = typeof navigator !== 'undefined' && navigator.userAgent === 'C
 // refuses to start when that is a prisma:// (Accelerate) address next to a driver adapter. The
 // live Worker still carries the retired Accelerate address under that name (kept so a rollback
 // to the MongoDB version keeps working), so it is pointed at the database actually used first.
+// Kept on globalThis like `db` below: Next bundles routes separately, and every bundle's copy of
+// this module must see the same counts and idle clients.
+const clientState: { created: number; released: number; idleReadClients: PrismaClient[] } = ((globalThis as any).__yallahaulDbClients ??= { created: 0, released: 0, idleReadClients: [] })
 function newPrismaClient(adapter: PrismaNeon | PrismaNeonHTTP | PrismaPg) {
   if (process.env.DATABASE_URL !== databaseUrl) process.env.DATABASE_URL = databaseUrl
+  clientState.created++
   return new PrismaClient({ adapter })
+}
+// Every client carries its own Prisma query compiler, about 1 MB of WebAssembly memory that is
+// only given back by $disconnect(). (Without this, each request leaked its compiler and a
+// 128 MB Worker isolate failed with error 1102 after roughly a hundred requests.)
+function releaseClient(client: PrismaClient) {
+  clientState.released++
+  return client.$disconnect().catch(() => undefined)
 }
 
 // A client holding a real connection (Neon WebSocket pool, or node-postgres for other databases).
@@ -2622,18 +2634,50 @@ function createConnectionClient() {
   return newPrismaClient(isNeon ? new PrismaNeon({ connectionString: databaseUrl }) : new PrismaPg({ connectionString: databaseUrl }))
 }
 
+// Neon HTTP read clients hold no connection, so a finished request's client is kept and handed
+// to the next request instead of building a new compiler every time. A client is only ever used
+// by one request at a time: Prisma's batching (see above) never mixes two requests' lookups.
+const MAX_IDLE_READ_CLIENTS = 4
+function returnReadClient(client: PrismaClient) {
+  if (clientState.idleReadClients.length < MAX_IDLE_READ_CLIENTS) clientState.idleReadClients.push(client)
+  else void releaseClient(client)
+}
+
+// worker.ts (the Worker entry) runs these once a request has completely finished: response body
+// sent and every waitUntil() task (after(), background emails and webhooks) settled.
+const REQUEST_END_HOOKS = Symbol.for('yallahaul.requestEndHooks')
+function onRequestEnd(ctx: object, hook: () => unknown) {
+  const hooks: WeakMap<object, Array<() => unknown>> = ((globalThis as any)[REQUEST_END_HOOKS] ??= new WeakMap())
+  const list = hooks.get(ctx)
+  if (list) list.push(hook)
+  else hooks.set(ctx, [hook])
+}
+
 type Clients = { read?: PrismaClient; write?: PrismaClient }
 const processClients: Clients = {}
 const requestClients = new WeakMap<object, Clients>()
-// On Workers: the current request's clients (see above), each created on first use. Elsewhere
-// (Node: local development, scripts): one set per process.
+let warnedNoContext = false
+// On Workers: the current request's clients, created on first use and given back when the
+// request ends. Elsewhere (Node: local development, scripts): one set per process.
 function currentClients(): Clients {
   if (!onWorkers) return processClients
   let ctx: object | null = null
   try { ctx = getCloudflareContext().ctx as object } catch { ctx = null }
-  if (!ctx) return {}
+  if (!ctx) {
+    // Not expected: every request runs inside OpenNext's request context.
+    if (!warnedNoContext) { warnedNoContext = true; console.warn('[db] database used outside a request context; sharing one set of clients') }
+    return processClients
+  }
   let clients = requestClients.get(ctx)
-  if (!clients) { clients = {}; requestClients.set(ctx, clients) }
+  if (!clients) {
+    const created: Clients = (clients = {})
+    requestClients.set(ctx, created)
+    onRequestEnd(ctx, async () => {
+      requestClients.delete(ctx)
+      if (created.read && created.read !== created.write) returnReadClient(created.read)
+      if (created.write) await releaseClient(created.write)
+    })
+  }
   return clients
 }
 function getWriteClient(): PrismaClient {
@@ -2643,7 +2687,12 @@ function getWriteClient(): PrismaClient {
 function getReadClient(): PrismaClient {
   if (!isNeon) return getWriteClient()
   const clients = currentClients()
-  return (clients.read ??= newPrismaClient(new PrismaNeonHTTP(databaseUrl, {})))
+  return (clients.read ??= clientState.idleReadClients.pop() ?? newPrismaClient(new PrismaNeonHTTP(databaseUrl, {})))
+}
+
+// For the internal runtime-stats endpoint: how many clients exist and how many are idle.
+export function databaseClientStats() {
+  return { created: clientState.created, released: clientState.released, open: clientState.created - clientState.released, idleReadClients: clientState.idleReadClients.length }
 }
 
 // Model operations that only read; everything else on a model is a write.

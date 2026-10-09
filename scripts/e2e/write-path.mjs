@@ -166,6 +166,22 @@ if (process.env.CRON_SECRET) {
   step('scheduled job: release expired reservations', cron.status === 200, `http=${cron.status} ${(await cron.text()).slice(0, 80)}`)
 }
 
+// Memory: every database client carries about 1 MB that a 128 MB Worker only gets back when the
+// client is given back at the end of its request. After a burst of page loads the store must hold
+// no more clients than its small idle pool (it used to keep one per request, until error 1102).
+if (process.env.CRON_SECRET) {
+  const stats = async () => { const r = await fetch(B + '/api/internal/runtime-stats', { headers: { authorization: `Bearer ${process.env.CRON_SECRET}` } }); return r.ok ? (await r.json()).database : null }
+  const load = async path => { const r = await fetch(B + path); await r.arrayBuffer(); return r.status }
+  const pages = ['/', '/shop', productPath, '/cart', '/collections']
+  const before = await stats()
+  let failed = 0
+  for (let i = 0; i < 100; i++) if (await load(pages[i % pages.length]) !== 200) failed++
+  for (let round = 0; round < 3; round++) failed += (await Promise.all(pages.flatMap(p => [p, p, p, p]).map(load))).filter(s => s !== 200).length
+  let after = await stats()
+  for (let i = 0; i < 20 && after && after.open > after.idleReadClients; i++) { await new Promise(r => setTimeout(r, 500)); after = await stats() }
+  step('database clients given back after 160 page loads', !!after && failed === 0 && after.open === after.idleReadClients, `failed=${failed} before=${JSON.stringify(before)} after=${JSON.stringify(after)}`)
+}
+
 step('no browser errors', !shopErrors.length && !adminErrors.length, [...shopErrors, ...adminErrors].join(' | '))
 await b.close()
 console.log(failures ? `\n${failures} failure(s)` : '\nall passed')
