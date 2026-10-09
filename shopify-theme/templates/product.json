@@ -50,7 +50,7 @@
         "points": {
           "type": "custom_liquid",
           "settings": {
-            "custom_liquid": "<ul class=\"yh-pdp-points\"><li>&#10003; Cash on delivery</li><li>&#10003; Free delivery over $50</li><li>&#10003; Secure checkout</li></ul>"
+            "custom_liquid": "<ul class=\"yh-pdp-points\"><li>&#128666; 2–3 day delivery</li><li>&#128181; Cash on delivery</li><li>&#8617;&#65039; Easy returns</li></ul>"
           }
         },
         "description": {

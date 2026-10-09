@@ -1,5 +1,5 @@
 {%- comment -%}
-  Yalla Haul line icons (Lucide shapes, same as the old store).
+  Yalla Haul line icons (Lucide shapes).
   Usage: {% render 'yh-icon', icon: 'cart', size: 18 %}
 {%- endcomment -%}
 {%- liquid
@@ -17,26 +17,30 @@
     {%- endcase -%}
   </svg>
 {%- else -%}
-  <svg class="yh-icon yh-icon--{{ icon }}" viewBox="0 0 24 24" width="{{ s }}" height="{{ s }}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+  <svg class="yh-icon yh-icon--{{ icon }}" viewBox="0 0 24 24" width="{{ s }}" height="{{ s }}" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
     {%- case icon -%}
       {%- when 'menu' -%}<path d="M4 6h16M4 12h16M4 18h16"/>
       {%- when 'search' -%}<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
-      {%- when 'user' -%}<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>
-      {%- when 'cart' -%}<path d="M16 10a4 4 0 0 1-8 0"/><path d="M3.1 6h17.8"/><path d="M3.4 5.5 5 3h14l1.6 2.5"/><path d="M3.1 6 4.2 19.7A2 2 0 0 0 6.2 21.5h11.6a2 2 0 0 0 2-1.8L20.9 6"/>
+      {%- when 'user' -%}<circle cx="12" cy="8" r="4.5"/><path d="M20 21a8 8 0 0 0-16 0"/>
+      {%- when 'cart' -%}<path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>
+      {%- when 'home' -%}<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/>
+      {%- when 'grid' -%}<rect width="7" height="7" x="3" y="3" rx="1.5"/><rect width="7" height="7" x="14" y="3" rx="1.5"/><rect width="7" height="7" x="14" y="14" rx="1.5"/><rect width="7" height="7" x="3" y="14" rx="1.5"/>
       {%- when 'pin' -%}<path d="M20 10c0 4.99-5.54 10.19-7.4 11.8a1 1 0 0 1-1.2 0C9.54 20.19 4 14.99 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>
       {%- when 'chevron-down' -%}<path d="m6 9 6 6 6-6"/>
       {%- when 'chevron-left' -%}<path d="m15 18-6-6 6-6"/>
       {%- when 'chevron-right' -%}<path d="m9 18 6-6-6-6"/>
       {%- when 'x' -%}<path d="M18 6 6 18M6 6l12 12"/>
-      {%- when 'grid' -%}<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>
+      {%- when 'plus' -%}<path d="M12 5v14M5 12h14"/>
       {%- when 'truck' -%}<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>
-      {%- when 'package' -%}<path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><path d="m3.3 7 8.7 5 8.7-5"/>
-      {%- when 'file' -%}<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 13h4M10 17h4"/>
+      {%- when 'cash' -%}<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/>
+      {%- when 'return' -%}<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>
+      {%- when 'lock' -%}<rect width="16" height="11" x="4" y="11" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>
       {%- when 'chat' -%}<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>
+      {%- when 'clock' -%}<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
+      {%- when 'fire' -%}<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
       {%- when 'instagram' -%}<rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><path d="M17.5 6.5h.01"/>
+      {%- when 'package' -%}<path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><path d="m3.3 7 8.7 5 8.7-5"/>
       {%- when 'check' -%}<path d="M20 6 9 17l-5-5"/>
-      {%- when 'shield' -%}<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>
-      {%- when 'arrow-right' -%}<path d="M5 12h14M12 5l7 7-7 7"/>
     {%- endcase -%}
   </svg>
 {%- endif -%}

@@ -1,134 +1,16 @@
 {%- comment -%}
-  Yalla Haul header: logo, big search bar, account and cart buttons; on phones a menu button
-  opens a side menu. Sticks to the top of the screen. The delivery bar and the category tabs
-  under it are the separate "Delivery bar & categories" section.
+  App-style header: logo, "Deliver to" area picker, search, account and cart. Sticks to the top.
+  On phones: logo, cart and area on the first row, search under it; the bottom tab bar
+  (snippets/yh-tabbar.liquid) takes the rest of the navigation.
 {%- endcomment -%}
 {%- liquid
   assign logo_alt = shop.name | escape
-  assign wa_digits = settings.yh_whatsapp_number | remove: '+' | remove: ' ' | remove: '-' | remove: '(' | remove: ')'
+  assign areas = settings.yh_delivery_area | newline_to_br | split: '<br />'
+  assign first_area = areas | first | strip
+  assign first_name = first_area | split: '|' | first | strip
 -%}
-<div class="yh-header{% if section.settings.style == 'red' %} yh-header--red{% endif %}" data-yh-header>
+<div class="yh-header" data-yh-header>
   <div class="yh-wrap yh-header__inner">
-    <details class="yh-menu" data-yh-menu>
-      <summary class="yh-iconbtn yh-header__burger" aria-label="{{ 'sections.header.menu' | t }}">
-        {%- render 'yh-icon', icon: 'menu', size: 20 -%}
-      </summary>
-      <div class="yh-menu__overlay" data-yh-menu-close></div>
-      <aside class="yh-menu__panel" role="dialog" aria-modal="true" aria-label="{{ 'sections.header.menu' | t }}">
-        <div class="yh-menu__head">
-          <a href="{{ routes.root_url }}" class="yh-menu__brand">
-            {%- if settings.logo != blank -%}
-              {{ settings.logo | image_url: width: 400 | image_tag: alt: logo_alt, loading: 'lazy' }}
-            {%- else -%}
-              <img src="{{ 'yh-logo.svg' | asset_url }}" alt="{{ logo_alt }}" width="909" height="142" loading="lazy">
-            {%- endif -%}
-          </a>
-          <button type="button" class="yh-menu__close" data-yh-menu-close aria-label="{{ 'accessibility.close' | t }}">
-            {%- render 'yh-icon', icon: 'x', size: 20 -%}
-          </button>
-        </div>
-        <div class="yh-menu__scroll">
-          {%- if shop.customer_accounts_enabled -%}
-            <a href="{{ routes.account_url }}" class="yh-menu__account">
-              <span class="yh-menu__avatar">{%- render 'yh-icon', icon: 'user', size: 18 -%}</span>
-              <span>
-                {%- if customer -%}
-                  <b>{{ customer.first_name | default: customer.email }}</b><small>{{ section.settings.menu_account_signed_in }}</small>
-                {%- else -%}
-                  <b>{{ 'customer.log_in' | t }}</b><small>{{ section.settings.menu_account_signed_out }}</small>
-                {%- endif -%}
-              </span>
-              {%- render 'yh-icon', icon: 'chevron-right', size: 16 -%}
-            </a>
-          {%- endif -%}
-          <form action="{{ routes.search_url }}" method="get" role="search" class="yh-menu__search">
-            {%- render 'yh-icon', icon: 'search', size: 17 -%}
-            <input type="hidden" name="type" value="product">
-            <input type="search" name="q" placeholder="{{ section.settings.search_placeholder | escape }}" aria-label="{{ 'general.search.search' | t }}">
-          </form>
-
-          {%- assign menu = linklists[section.settings.menu] -%}
-          {%- if menu.links.size > 0 -%}
-            <div class="yh-menu__label">{{ section.settings.menu_heading }}</div>
-            <ul class="yh-menu__list">
-              {%- for link in menu.links -%}
-                <li>
-                  {%- if link.links.size > 0 -%}
-                    <details class="yh-menu__group">
-                      <summary class="yh-menu__row">
-                        <span>{{ link.title | escape }}</span>{%- render 'yh-icon', icon: 'chevron-down', size: 16 -%}
-                      </summary>
-                      <ul class="yh-menu__sub">
-                        <li><a href="{{ link.url }}">{{ section.settings.shop_all_prefix }} {{ link.title | escape }}</a></li>
-                        {%- for child in link.links -%}
-                          <li>
-                            <a href="{{ child.url }}">{{ child.title | escape }}</a>
-                            {%- if child.links.size > 0 -%}
-                              <ul>
-                                {%- for grandchild in child.links -%}
-                                  <li><a href="{{ grandchild.url }}">{{ grandchild.title | escape }}</a></li>
-                                {%- endfor -%}
-                              </ul>
-                            {%- endif -%}
-                          </li>
-                        {%- endfor -%}
-                      </ul>
-                    </details>
-                  {%- else -%}
-                    <a href="{{ link.url }}" class="yh-menu__row{% if link.active %} is-active{% endif %}">
-                      <span>{{ link.title | escape }}</span>{%- render 'yh-icon', icon: 'chevron-right', size: 16 -%}
-                    </a>
-                  {%- endif -%}
-                </li>
-              {%- endfor -%}
-            </ul>
-          {%- endif -%}
-
-          {%- if section.settings.show_menu_collections -%}
-            <div class="yh-menu__label">{{ section.settings.menu_collections_heading }}</div>
-            <div class="yh-menu__tiles">
-              {%- for c in collections limit: 12 -%}
-                {%- if c.handle == 'all' or c.handle == 'frontpage' or c.all_products_count == 0 -%}{%- continue -%}{%- endif -%}
-                <a href="{{ c.url }}" class="yh-menu__tile">
-                  <span class="yh-menu__tile-img">
-                    {%- assign c_image = c.featured_image | default: c.products.first.featured_image -%}
-                    {%- if c_image -%}
-                      {{ c_image | image_url: width: 200 | image_tag: loading: 'lazy', alt: c.title }}
-                    {%- else -%}
-                      {%- render 'yh-icon', icon: 'grid', size: 22 -%}
-                    {%- endif -%}
-                  </span>
-                  <span>{{ c.title | escape }}</span>
-                </a>
-              {%- endfor -%}
-            </div>
-          {%- endif -%}
-
-          <div class="yh-menu__label">{{ section.settings.menu_help_heading }}</div>
-          <ul class="yh-menu__list yh-menu__help">
-            {%- if shop.customer_accounts_enabled -%}
-              <li><a href="{{ routes.account_url }}" class="yh-menu__row">{%- render 'yh-icon', icon: 'package', size: 17 -%}<span>{{ section.settings.menu_orders_label }}</span>{%- render 'yh-icon', icon: 'chevron-right', size: 16 -%}</a></li>
-            {%- endif -%}
-            {%- if wa_digits != blank -%}
-              <li><a href="https://wa.me/{{ wa_digits }}" target="_blank" rel="noopener" class="yh-menu__row">{%- render 'yh-icon', icon: 'chat', size: 17 -%}<span>{{ section.settings.menu_whatsapp_label }}</span>{%- render 'yh-icon', icon: 'chevron-right', size: 16 -%}</a></li>
-            {%- endif -%}
-            {%- if shop.refund_policy != blank -%}
-              <li><a href="{{ shop.refund_policy.url }}" class="yh-menu__row">{%- render 'yh-icon', icon: 'file', size: 17 -%}<span>{{ shop.refund_policy.title | escape }}</span>{%- render 'yh-icon', icon: 'chevron-right', size: 16 -%}</a></li>
-            {%- endif -%}
-            {%- if shop.shipping_policy != blank -%}
-              <li><a href="{{ shop.shipping_policy.url }}" class="yh-menu__row">{%- render 'yh-icon', icon: 'truck', size: 17 -%}<span>{{ shop.shipping_policy.title | escape }}</span>{%- render 'yh-icon', icon: 'chevron-right', size: 16 -%}</a></li>
-            {%- endif -%}
-          </ul>
-        </div>
-        {%- if settings.yh_delivery_area != blank -%}
-          <div class="yh-menu__foot">
-            {%- render 'yh-icon', icon: 'pin', size: 15 -%}
-            <span>{{ settings.yh_delivery_label }} <b data-yh-area-name>{{ settings.yh_delivery_area | split: '|' | first | strip }}</b></span>
-          </div>
-        {%- endif -%}
-      </aside>
-    </details>
-
     <a href="{{ routes.root_url }}" class="yh-logo" style="--yh-logo-width: {{ settings.logo_width }}px">
       {%- if settings.logo != blank -%}
         {%- assign logo_2x = settings.logo_width | times: 2 -%}
@@ -138,7 +20,29 @@
       {%- endif -%}
     </a>
 
+    {%- if section.settings.show_area and first_area != blank -%}
+      <label class="yh-area" data-yh-delivery>
+        <span class="yh-area__label">{%- render 'yh-icon', icon: 'pin', size: 13 -%}{{ settings.yh_delivery_label | escape }}</span>
+        {%- if areas.size > 1 -%}
+          <select class="yh-area__select" data-yh-area aria-label="{{ settings.yh_delivery_label | escape }}">
+            {%- for area in areas -%}
+              {%- assign a = area | strip -%}
+              {%- if a == blank -%}{%- continue -%}{%- endif -%}
+              {%- assign a_name = a | split: '|' | first | strip -%}
+              {%- assign a_eta = '' -%}
+              {%- if a contains '|' -%}{%- assign a_eta = a | split: '|' | last | strip -%}{%- endif -%}
+              <option value="{{ a_name | escape }}" data-eta="{{ a_eta | escape }}">{{ a_name | escape }}</option>
+            {%- endfor -%}
+          </select>
+          {%- render 'yh-icon', icon: 'chevron-down', size: 14 -%}
+        {%- else -%}
+          <b class="yh-area__name">{{ first_name | escape }}</b>
+        {%- endif -%}
+      </label>
+    {%- endif -%}
+
     <form action="{{ routes.search_url }}" method="get" role="search" class="yh-search">
+      {%- render 'yh-icon', icon: 'search', size: 19 -%}
       <input type="hidden" name="type" value="product">
       <input
         type="search"
@@ -147,7 +51,6 @@
         placeholder="{{ section.settings.search_placeholder | escape }}"
         aria-label="{{ 'general.search.search' | t }}"
       >
-      <button type="submit" class="yh-search__btn">{{ section.settings.search_button }}</button>
     </form>
 
     <div class="yh-header__actions">
@@ -157,19 +60,27 @@
           class="yh-iconbtn yh-account"
         >
           <span slot="signed-out-avatar" class="yh-account__inner">
-            {%- render 'yh-icon', icon: 'user', size: 18 -%}
-            <span class="yh-label">{{ section.settings.account_label }}</span>
+            {%- render 'yh-icon', icon: 'user', size: 20 -%}
+            <span class="visually-hidden">{{ 'customer.log_in' | t }}</span>
           </span>
         </shopify-account>
       {%- endif -%}
       <a href="{{ routes.cart_url }}" class="yh-iconbtn yh-cartbtn" id="cart-icon-bubble">
-        {%- render 'yh-icon', icon: 'cart', size: 18 -%}
-        <span class="yh-label">{{ 'templates.cart.cart' | t }}</span>
-        <span class="yh-cart-count" aria-hidden="true">{{ cart.item_count | at_most: 99 }}</span>
+        {%- render 'yh-icon', icon: 'cart', size: 20 -%}
+        <span class="yh-cart-count{% if cart.item_count == 0 %} is-empty{% endif %}" aria-hidden="true">{{ cart.item_count | at_most: 99 }}</span>
         <span class="visually-hidden">{{ 'sections.header.cart_count' | t: count: cart.item_count }}</span>
       </a>
     </div>
   </div>
+
+  {%- assign menu = linklists[section.settings.menu] -%}
+  {%- if section.settings.show_menu and menu.links.size > 0 -%}
+    <nav class="yh-wrap yh-nav" aria-label="{{ 'sections.header.menu' | t }}">
+      {%- for link in menu.links -%}
+        <a href="{{ link.url }}" class="yh-nav__link{% if link.active or link.child_active %} is-active{% endif %}"{% if link.active %} aria-current="page"{% endif %}>{{ link.title | escape }}</a>
+      {%- endfor -%}
+    </nav>
+  {%- endif -%}
 </div>
 
 <script type="application/ld+json">
@@ -207,32 +118,13 @@
   "settings": [
     {
       "type": "paragraph",
-      "content": "Logo, logo width and favicon are under Theme settings > Logo. The WhatsApp number is under Theme settings > Yalla Haul."
+      "content": "Logo, logo width and favicon: Theme settings > Logo. Delivery areas and WhatsApp: Theme settings > Yalla Haul."
     },
-    {
-      "type": "select",
-      "id": "style",
-      "label": "Header colour",
-      "options": [
-        { "value": "white", "label": "White (red search bar)" },
-        { "value": "red", "label": "Red" }
-      ],
-      "default": "white"
-    },
-    { "type": "text", "id": "search_placeholder", "label": "Search box text", "default": "Search products..." },
-    { "type": "text", "id": "search_button", "label": "Search button", "default": "Search" },
-    { "type": "text", "id": "account_label", "label": "Account button", "default": "Account" },
-    { "type": "header", "content": "Phone menu" },
-    { "type": "link_list", "id": "menu", "label": "Menu", "default": "main-menu" },
-    { "type": "text", "id": "menu_heading", "label": "Menu heading", "default": "Menu" },
-    { "type": "text", "id": "shop_all_prefix", "label": "Text before a category's own link", "default": "Shop all" },
-    { "type": "checkbox", "id": "show_menu_collections", "label": "Show collections as photo tiles", "default": true },
-    { "type": "text", "id": "menu_collections_heading", "label": "Collections heading", "default": "Shop by category" },
-    { "type": "text", "id": "menu_help_heading", "label": "Help heading", "default": "Help" },
-    { "type": "text", "id": "menu_orders_label", "label": "Orders link", "default": "My orders" },
-    { "type": "text", "id": "menu_whatsapp_label", "label": "WhatsApp link", "default": "WhatsApp us" },
-    { "type": "text", "id": "menu_account_signed_out", "label": "Account line (signed out)", "default": "Orders, addresses and more" },
-    { "type": "text", "id": "menu_account_signed_in", "label": "Account line (signed in)", "default": "Your orders and account" }
+    { "type": "checkbox", "id": "show_area", "label": "Show \"Deliver to\" area", "default": true },
+    { "type": "text", "id": "search_placeholder", "label": "Search box text", "default": "Search for tissues, care, cleaning..." },
+    { "type": "header", "content": "Menu links (computers)" },
+    { "type": "checkbox", "id": "show_menu", "label": "Show a row of menu links under the header", "default": false },
+    { "type": "link_list", "id": "menu", "label": "Menu", "default": "main-menu" }
   ]
 }
 {% endschema %}

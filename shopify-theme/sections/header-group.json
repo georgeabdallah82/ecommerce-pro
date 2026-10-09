@@ -4,6 +4,7 @@
   "sections": {
     "announcement-bar": {
       "type": "announcement-bar",
+      "disabled": true,
       "settings": {
         "color_scheme": "scheme-3",
         "show_line_separator": false,
@@ -29,20 +30,11 @@
     "yh-header": {
       "type": "yh-header",
       "settings": {
-        "style": "white",
+        "show_area": true,
+        "show_menu": false,
         "menu": "main-menu"
-      }
-    },
-    "yh-subheader": {
-      "type": "yh-subheader",
-      "settings": {
-        "show_delivery": true,
-        "note": "Cash on delivery",
-        "show_categories": true,
-        "menu": "main-menu",
-        "show_all_panel": true
       }
     }
   },
-  "order": ["announcement-bar", "yh-header", "yh-subheader"]
+  "order": ["announcement-bar", "yh-header"]
 }

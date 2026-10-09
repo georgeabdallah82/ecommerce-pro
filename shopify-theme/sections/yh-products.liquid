@@ -1,5 +1,6 @@
 {%- comment -%}
-  A row of product cards from a collection: five across on computers, swipeable on phones.
+  A row of product cards from a collection ("Today's deals"): five across on computers,
+  swipeable on phones. The optional timer counts down to midnight (deals of the day).
 {%- endcomment -%}
 {%- liquid
   assign c = section.settings.collection
@@ -11,15 +12,19 @@
 <div class="yh-section">
   <div class="yh-wrap">
     <div class="yh-head">
-      <div>
+      <div class="yh-head__title">
         <h2>{{ section.settings.heading | default: c.title | escape }}</h2>
-        {%- if section.settings.subheading != blank -%}<p>{{ section.settings.subheading | escape }}</p>{%- endif -%}
+        {%- if section.settings.timer -%}
+          <span class="yh-timer" data-yh-timer aria-label="{{ section.settings.timer_label | escape }}">
+            <b data-h>00</b><b data-m>00</b><b data-s>00</b>
+          </span>
+        {%- endif -%}
       </div>
       {%- if section.settings.link_label != blank -%}
         <a href="{{ c.url | default: routes.all_products_collection_url }}" class="yh-link">{{ section.settings.link_label | escape }}</a>
       {%- endif -%}
     </div>
-    <div class="yh-grid">
+    <div class="yh-row">
       {%- if c.products_count > 0 -%}
         {%- for product in c.products limit: limit -%}
           {%- render 'yh-card', card_product: product, section_id: section.id -%}
@@ -39,11 +44,12 @@
   "name": "Yalla Haul product row",
   "tag": "section",
   "settings": [
-    { "type": "collection", "id": "collection", "label": "Collection" },
-    { "type": "text", "id": "heading", "label": "Heading (empty = collection name)" },
-    { "type": "text", "id": "subheading", "label": "Line under the heading" },
-    { "type": "text", "id": "link_label", "label": "\"Shop all\" link", "default": "Shop all" },
-    { "type": "range", "id": "limit", "label": "Products", "min": 2, "max": 20, "step": 1, "default": 10 }
+    { "type": "collection", "id": "collection", "label": "Collection (empty = all products)" },
+    { "type": "text", "id": "heading", "label": "Heading (empty = collection name)", "default": "Today's deals" },
+    { "type": "text", "id": "link_label", "label": "\"See all\" link", "default": "See all" },
+    { "type": "range", "id": "limit", "label": "Products", "min": 2, "max": 20, "step": 1, "default": 10 },
+    { "type": "checkbox", "id": "timer", "label": "Show a countdown to midnight", "default": false },
+    { "type": "text", "id": "timer_label", "label": "Countdown name for screen readers", "default": "Time left today" }
   ],
   "presets": [{ "name": "Yalla Haul product row" }]
 }

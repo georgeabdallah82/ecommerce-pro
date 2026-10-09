@@ -286,6 +286,7 @@
         --yh-red: {{ settings.yh_red }};
         --yh-accent: {{ settings.yh_accent }};
         --yh-page: {{ settings.yh_page }};
+        --yh-soft: {{ settings.yh_soft }};
         --yh-card: {{ settings.yh_card }};
         --yh-ink: {{ settings.yh_ink }};
         --yh-muted: {{ settings.yh_muted }};
@@ -338,7 +339,7 @@
     </script>
   </head>
 
-  <body class="gradient{% if settings.animations_hover_elements != 'none' %} animate--hover-{{ settings.animations_hover_elements }}{% endif %}">
+  <body class="gradient{% if settings.animations_hover_elements != 'none' %} animate--hover-{{ settings.animations_hover_elements }}{% endif %}{% if settings.yh_tabbar %} yh-has-tabbar{% endif %}">
     <a class="skip-to-content-link button visually-hidden" href="#MainContent">
       {{ 'accessibility.skip_to_text' | t }}
     </a>
@@ -419,6 +420,7 @@
       <script src="{{ 'cart-drawer.js' | asset_url }}" defer="defer"></script>
     {%- endif -%}
 
+    {%- render 'yh-tabbar' -%}
     {%- render 'yh-whatsapp-float' -%}
   </body>
 </html>

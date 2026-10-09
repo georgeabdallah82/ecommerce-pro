@@ -1,18 +1,17 @@
 {%- comment -%}
-  Reasons to buy (cash on delivery, delivery all over Lebanon...), on a white strip.
+  Reasons to buy, as four soft cards with an icon each.
 {%- endcomment -%}
-<div class="yh-section yh-trust-sec">
+<div class="yh-section">
   <div class="yh-wrap">
     <div class="yh-trust">
       {%- for block in section.blocks -%}
-        {%- if block.settings.link != blank -%}
-          <a href="{{ block.settings.link }}" class="yh-trust__item" {{ block.shopify_attributes }}>
-        {%- else -%}
-          <div class="yh-trust__item" {{ block.shopify_attributes }}>
-        {%- endif -%}
-          <strong>{{ block.settings.title | escape }}</strong>
-          {%- if block.settings.text != blank -%}<span>{{ block.settings.text | escape }}</span>{%- endif -%}
-        {%- if block.settings.link != blank -%}</a>{%- else -%}</div>{%- endif -%}
+        <div class="yh-trust__item" {{ block.shopify_attributes }}>
+          <span class="yh-trust__icon">{%- render 'yh-icon', icon: block.settings.icon, size: 21 -%}</span>
+          <span class="yh-trust__text">
+            <b>{{ block.settings.title | escape }}</b>
+            {%- if block.settings.text != blank -%}<span>{{ block.settings.text | escape }}</span>{%- endif -%}
+          </span>
+        </div>
       {%- endfor -%}
     </div>
   </div>
@@ -20,28 +19,42 @@
 
 {% schema %}
 {
-  "name": "Yalla Haul trust strip",
+  "name": "Yalla Haul trust cards",
   "tag": "section",
   "max_blocks": 4,
   "blocks": [
     {
       "type": "item",
-      "name": "Item",
+      "name": "Card",
       "settings": [
-        { "type": "text", "id": "title", "label": "Title", "default": "Cash on delivery" },
-        { "type": "text", "id": "text", "label": "Text", "default": "Pay when your order arrives" },
-        { "type": "url", "id": "link", "label": "Link (optional)" }
+        {
+          "type": "select",
+          "id": "icon",
+          "label": "Icon",
+          "options": [
+            { "value": "truck", "label": "Delivery truck" },
+            { "value": "cash", "label": "Cash" },
+            { "value": "return", "label": "Return arrow" },
+            { "value": "lock", "label": "Lock" },
+            { "value": "chat", "label": "Chat" },
+            { "value": "package", "label": "Box" },
+            { "value": "check", "label": "Check mark" }
+          ],
+          "default": "truck"
+        },
+        { "type": "text", "id": "title", "label": "Title", "default": "2–3 day delivery" },
+        { "type": "text", "id": "text", "label": "Text", "default": "All over Lebanon" }
       ]
     }
   ],
   "presets": [
     {
-      "name": "Yalla Haul trust strip",
+      "name": "Yalla Haul trust cards",
       "blocks": [
         { "type": "item" },
-        { "type": "item", "settings": { "title": "Delivery all over Lebanon", "text": "Fast and tracked" } },
-        { "type": "item", "settings": { "title": "Easy returns", "text": "See our refund policy" } },
-        { "type": "item", "settings": { "title": "WhatsApp support", "text": "Questions? Message us" } }
+        { "type": "item", "settings": { "icon": "cash", "title": "Cash on delivery", "text": "Pay at your door" } },
+        { "type": "item", "settings": { "icon": "return", "title": "Easy returns", "text": "Changed your mind?" } },
+        { "type": "item", "settings": { "icon": "lock", "title": "Secure checkout", "text": "Powered by Shopify" } }
       ]
     }
   ]

@@ -2,7 +2,7 @@
   {
     "name": "theme_info",
     "theme_name": "Yalla Haul",
-    "theme_version": "1.0.0",
+    "theme_version": "2.0.0",
     "theme_author": "Yalla Haul (based on Dawn by Shopify)",
     "theme_documentation_url": "https://help.shopify.com/manual/online-store/themes",
     "theme_support_url": "https://support.shopify.com/"
@@ -18,7 +18,7 @@
         "type": "color",
         "id": "yh_red",
         "label": "Main colour (buttons, prices, search bar)",
-        "default": "#d7261e"
+        "default": "#d42a2a"
       },
       {
         "type": "color",
@@ -30,31 +30,37 @@
         "type": "color",
         "id": "yh_page",
         "label": "Page background",
-        "default": "#f6f6f4"
+        "default": "#ffffff"
+      },
+      {
+        "type": "color",
+        "id": "yh_soft",
+        "label": "Soft background (search, tiles, panels)",
+        "default": "#fff4ec"
       },
       {
         "type": "color",
         "id": "yh_card",
-        "label": "Cards and panels",
+        "label": "Cards",
         "default": "#ffffff"
       },
       {
         "type": "color",
         "id": "yh_ink",
         "label": "Text",
-        "default": "#121212"
+        "default": "#171717"
       },
       {
         "type": "color",
         "id": "yh_muted",
         "label": "Light text",
-        "default": "#6b7280"
+        "default": "#6b6460"
       },
       {
         "type": "color",
         "id": "yh_line",
         "label": "Borders",
-        "default": "#ececec"
+        "default": "#f0e8e1"
       },
       {
         "type": "range",
@@ -64,7 +70,7 @@
         "max": 24,
         "step": 1,
         "unit": "px",
-        "default": 14
+        "default": 20
       },
       {
         "type": "range",
@@ -74,7 +80,7 @@
         "max": 24,
         "step": 1,
         "unit": "px",
-        "default": 10
+        "default": 14
       },
       {
         "type": "header",
@@ -84,7 +90,7 @@
         "type": "text",
         "id": "yh_delivery_label",
         "label": "Delivery area label",
-        "default": "Delivering to"
+        "default": "Deliver to"
       },
       {
         "type": "textarea",
@@ -137,6 +143,34 @@
           }
         ],
         "default": "right"
+      },
+      {
+        "type": "header",
+        "content": "Phone bottom bar"
+      },
+      {
+        "type": "checkbox",
+        "id": "yh_tabbar",
+        "label": "Show the bottom bar on phones (Home, Categories, Cart, Account)",
+        "default": true
+      },
+      {
+        "type": "text",
+        "id": "yh_tab_home",
+        "label": "\"Home\" label",
+        "default": "Home"
+      },
+      {
+        "type": "text",
+        "id": "yh_tab_categories",
+        "label": "\"Categories\" label",
+        "default": "Categories"
+      },
+      {
+        "type": "text",
+        "id": "yh_tab_account",
+        "label": "\"Account\" label",
+        "default": "Account"
       }
     ]
   },

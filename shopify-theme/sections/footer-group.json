@@ -2,23 +2,22 @@
   "name": "t:sections.footer.name",
   "type": "footer",
   "sections": {
-    "yh-help-bar": {
-      "type": "yh-help-bar",
-      "settings": {}
-    },
     "yh-footer": {
       "type": "yh-footer",
       "settings": {
         "about": "Everything you need for your home and personal care.",
-        "newsletter": true
+        "newsletter": true,
+        "news_heading": "Get offers first",
+        "news_text": "Deals and new arrivals, straight to your inbox.",
+        "news_button": "Join"
       },
       "blocks": {
         "shop": { "type": "shop_links", "settings": {} },
-        "account": { "type": "account_links", "settings": {} },
+        "account": { "type": "account_links", "settings": { "heading": "Help" } },
         "legal": { "type": "policy_links", "settings": {} }
       },
       "block_order": ["shop", "account", "legal"]
     }
   },
-  "order": ["yh-help-bar", "yh-footer"]
+  "order": ["yh-footer"]
 }

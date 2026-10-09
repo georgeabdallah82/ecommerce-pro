@@ -1,74 +1,21 @@
-/* Yalla Haul theme behaviour: phone menu, "All categories" panel, delivery area picker, photo
-   slider. Works again after the theme editor re-renders a section (shopify:section:load). */
+/* Yalla Haul theme behaviour: delivery area picker, banner slider, deals countdown, and the
+   phone bottom bar (its cart button opens the cart drawer and shows the same count as the
+   header). Works again after the theme editor re-renders a section (shopify:section:load). */
 (() => {
   const AREA_KEY = 'yh-delivery-area';
-
-  function initMenu(root) {
-    root.querySelectorAll('[data-yh-menu]').forEach((menu) => {
-      if (menu.dataset.yhReady) return;
-      menu.dataset.yhReady = '1';
-      const close = () => {
-        menu.removeAttribute('open');
-      };
-      menu.addEventListener('toggle', () => {
-        document.documentElement.classList.toggle('yh-locked', menu.open);
-        if (menu.open) menu.querySelector('.yh-menu__close')?.focus();
-      });
-      menu.querySelectorAll('[data-yh-menu-close]').forEach((el) => el.addEventListener('click', close));
-      menu.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') {
-          close();
-          menu.querySelector('summary')?.focus();
-        }
-      });
-    });
-  }
-
-  function initCats(root) {
-    root.querySelectorAll('[data-yh-cats]').forEach((nav) => {
-      if (nav.dataset.yhReady) return;
-      nav.dataset.yhReady = '1';
-      const toggle = nav.querySelector('[data-yh-cats-toggle]');
-      const panel = nav.querySelector('[data-yh-cats-panel]');
-      if (!toggle || !panel) return;
-      const set = (open) => {
-        toggle.setAttribute('aria-expanded', String(open));
-        panel.hidden = !open;
-      };
-      toggle.addEventListener('click', () => set(panel.hidden));
-      document.addEventListener('click', (event) => {
-        if (!panel.hidden && !nav.contains(event.target)) set(false);
-      });
-      document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && !panel.hidden) {
-          set(false);
-          toggle.focus();
-        }
-      });
-    });
-  }
 
   function initDelivery(root) {
     root.querySelectorAll('[data-yh-area]').forEach((select) => {
       if (select.dataset.yhReady) return;
       select.dataset.yhReady = '1';
-      const bar = select.closest('[data-yh-delivery]');
-      const apply = () => {
-        const option = select.selectedOptions[0];
-        const eta = bar?.querySelector('[data-yh-eta]');
-        if (eta && option?.dataset.eta) eta.textContent = option.dataset.eta;
-        document.querySelectorAll('[data-yh-area-name]').forEach((el) => (el.textContent = select.value));
-      };
       try {
         const saved = localStorage.getItem(AREA_KEY);
         if (saved && [...select.options].some((o) => o.value === saved)) select.value = saved;
       } catch (e) {}
-      apply();
       select.addEventListener('change', () => {
         try {
           localStorage.setItem(AREA_KEY, select.value);
         } catch (e) {}
-        apply();
       });
     });
   }
@@ -89,8 +36,10 @@
       const go = (next) => {
         index = (next + slides.length) % slides.length;
         track.style.transform = `translateX(-${index * 100}%)`;
-        slides.forEach((slide, i) => slide.setAttribute('aria-hidden', String(i !== index)));
-        slides.forEach((slide, i) => slide.querySelectorAll('a').forEach((a) => (a.tabIndex = i === index ? 0 : -1)));
+        slides.forEach((slide, i) => {
+          slide.setAttribute('aria-hidden', String(i !== index));
+          slide.querySelectorAll('a').forEach((a) => (a.tabIndex = i === index ? 0 : -1));
+        });
         dots.forEach((dot, i) => dot.setAttribute('aria-current', String(i === index)));
       };
       const stop = () => {
@@ -103,15 +52,12 @@
         timer = setInterval(() => go(index + 1), seconds * 1000);
       };
 
-      slider.querySelector('[data-yh-prev]')?.addEventListener('click', () => { go(index - 1); start(); });
-      slider.querySelector('[data-yh-next]')?.addEventListener('click', () => { go(index + 1); start(); });
       dots.forEach((dot) => dot.addEventListener('click', () => { go(Number(dot.dataset.yhDot)); start(); }));
       slider.addEventListener('mouseenter', stop);
       slider.addEventListener('mouseleave', start);
       slider.addEventListener('focusin', stop);
       slider.addEventListener('focusout', start);
 
-      // Swipe on touch screens.
       let startX = null;
       let startY = null;
       track.addEventListener('pointerdown', (event) => {
@@ -131,10 +77,10 @@
       });
       track.addEventListener('pointercancel', () => (startX = null));
 
-      // Theme editor: show the slide being edited.
       document.addEventListener('shopify:block:select', (event) => {
-        const i = slides.findIndex((slide) => slide.contains(event.target) || slide === event.target);
-        if (i >= 0 && slider.contains(event.target)) {
+        if (!slider.contains(event.target)) return;
+        const i = slides.findIndex((slide) => slide === event.target || slide.contains(event.target));
+        if (i >= 0) {
           stop();
           go(i);
         }
@@ -145,11 +91,54 @@
     });
   }
 
+  // Counts down to midnight (shopper's time): "today's deals".
+  function initTimers(root) {
+    root.querySelectorAll('[data-yh-timer]').forEach((el) => {
+      if (el.dataset.yhReady) return;
+      el.dataset.yhReady = '1';
+      const pad = (n) => String(n).padStart(2, '0');
+      const tick = () => {
+        const now = new Date();
+        const end = new Date(now);
+        end.setHours(24, 0, 0, 0);
+        const left = Math.max(0, Math.floor((end - now) / 1000));
+        el.querySelector('[data-h]').textContent = pad(Math.floor(left / 3600));
+        el.querySelector('[data-m]').textContent = pad(Math.floor((left % 3600) / 60));
+        el.querySelector('[data-s]').textContent = pad(left % 60);
+      };
+      tick();
+      setInterval(tick, 1000);
+    });
+  }
+
+  function initTabbar() {
+    const tabCart = document.querySelector('[data-yh-tab-cart]');
+    if (!tabCart || tabCart.dataset.yhReady) return;
+    tabCart.dataset.yhReady = '1';
+    tabCart.addEventListener('click', (event) => {
+      const drawer = document.querySelector('cart-drawer');
+      if (!drawer || typeof drawer.open !== 'function') return;
+      event.preventDefault();
+      drawer.open(tabCart);
+    });
+    // Mirror the header's cart count, which Dawn re-renders after every cart change.
+    const headerCart = document.getElementById('cart-icon-bubble');
+    const tabCount = tabCart.querySelector('[data-yh-tab-count]');
+    if (!headerCart || !tabCount) return;
+    const sync = () => {
+      const count = headerCart.querySelector('.yh-cart-count');
+      if (!count) return;
+      tabCount.textContent = count.textContent;
+      tabCount.classList.toggle('is-empty', count.classList.contains('is-empty'));
+    };
+    new MutationObserver(sync).observe(headerCart, { childList: true, subtree: true, characterData: true });
+  }
+
   function init(root = document) {
-    initMenu(root);
-    initCats(root);
     initDelivery(root);
     initSlider(root);
+    initTimers(root);
+    initTabbar();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => init());

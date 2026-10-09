@@ -2,68 +2,68 @@
   "current": "Yalla Haul",
   "presets": {
     "Yalla Haul": {
-      "logo_width": 260,
+      "logo_width": 200,
       "customer_account_menu": "customer-account-main-menu",
       "color_schemes": {
         "scheme-1": {
           "settings": {
-            "background": "#F6F6F4",
+            "background": "#FFFFFF",
             "background_gradient": "",
-            "text": "#121212",
-            "button": "#D7261E",
+            "text": "#171717",
+            "button": "#D42A2A",
             "button_label": "#FFFFFF",
-            "secondary_button_label": "#121212",
-            "shadow": "#121212"
+            "secondary_button_label": "#171717",
+            "shadow": "#171717"
           }
         },
         "scheme-2": {
           "settings": {
-            "background": "#FFFFFF",
+            "background": "#FFF4EC",
             "background_gradient": "",
-            "text": "#121212",
-            "button": "#D7261E",
+            "text": "#171717",
+            "button": "#D42A2A",
             "button_label": "#FFFFFF",
-            "secondary_button_label": "#121212",
-            "shadow": "#121212"
+            "secondary_button_label": "#171717",
+            "shadow": "#171717"
           }
         },
         "scheme-3": {
           "settings": {
-            "background": "#121212",
+            "background": "#171717",
             "background_gradient": "",
             "text": "#FFFFFF",
-            "button": "#FFFFFF",
-            "button_label": "#121212",
+            "button": "#FF7A1A",
+            "button_label": "#171717",
             "secondary_button_label": "#FFFFFF",
-            "shadow": "#121212"
+            "shadow": "#171717"
           }
         },
         "scheme-4": {
           "settings": {
-            "background": "#D7261E",
+            "background": "#D42A2A",
             "background_gradient": "",
             "text": "#FFFFFF",
             "button": "#FFFFFF",
-            "button_label": "#D7261E",
+            "button_label": "#D42A2A",
             "secondary_button_label": "#FFFFFF",
-            "shadow": "#121212"
+            "shadow": "#171717"
           }
         },
         "scheme-5": {
           "settings": {
-            "background": "#151515",
+            "background": "#171717",
             "background_gradient": "",
             "text": "#FFFFFF",
-            "button": "#D7261E",
+            "button": "#D42A2A",
             "button_label": "#FFFFFF",
             "secondary_button_label": "#FFFFFF",
-            "shadow": "#121212"
+            "shadow": "#171717"
           }
         }
       },
-      "type_header_font": "dm_sans_n7",
+      "type_header_font": "plus_jakarta_sans_n8",
       "heading_scale": 100,
-      "type_body_font": "dm_sans_n4",
+      "type_body_font": "plus_jakarta_sans_n4",
       "body_scale": 100,
       "page_width": 1400,
       "spacing_sections": 0,
@@ -73,21 +73,21 @@
       "animations_hover_elements": "none",
       "buttons_border_thickness": 0,
       "buttons_border_opacity": 0,
-      "buttons_radius": 10,
+      "buttons_radius": 14,
       "buttons_shadow_opacity": 0,
       "buttons_shadow_horizontal_offset": 0,
       "buttons_shadow_vertical_offset": 4,
       "buttons_shadow_blur": 5,
       "variant_pills_border_thickness": 1,
       "variant_pills_border_opacity": 55,
-      "variant_pills_radius": 10,
+      "variant_pills_radius": 12,
       "variant_pills_shadow_opacity": 0,
       "variant_pills_shadow_horizontal_offset": 0,
       "variant_pills_shadow_vertical_offset": 4,
       "variant_pills_shadow_blur": 5,
       "inputs_border_thickness": 1,
       "inputs_border_opacity": 30,
-      "inputs_radius": 10,
+      "inputs_radius": 14,
       "inputs_shadow_opacity": 0,
       "inputs_shadow_horizontal_offset": 0,
       "inputs_shadow_vertical_offset": 4,
@@ -95,10 +95,10 @@
       "card_style": "card",
       "card_image_padding": 0,
       "card_text_alignment": "left",
-      "card_color_scheme": "scheme-2",
-      "card_border_thickness": 0,
+      "card_color_scheme": "scheme-1",
+      "card_border_thickness": 1,
       "card_border_opacity": 10,
-      "card_corner_radius": 14,
+      "card_corner_radius": 20,
       "card_shadow_opacity": 0,
       "card_shadow_horizontal_offset": 0,
       "card_shadow_vertical_offset": 4,
@@ -109,7 +109,7 @@
       "collection_card_color_scheme": "scheme-2",
       "collection_card_border_thickness": 0,
       "collection_card_border_opacity": 10,
-      "collection_card_corner_radius": 14,
+      "collection_card_corner_radius": 20,
       "collection_card_shadow_opacity": 0,
       "collection_card_shadow_horizontal_offset": 0,
       "collection_card_shadow_vertical_offset": 4,
@@ -120,28 +120,28 @@
       "blog_card_color_scheme": "scheme-2",
       "blog_card_border_thickness": 0,
       "blog_card_border_opacity": 10,
-      "blog_card_corner_radius": 14,
+      "blog_card_corner_radius": 20,
       "blog_card_shadow_opacity": 0,
       "blog_card_shadow_horizontal_offset": 0,
       "blog_card_shadow_vertical_offset": 4,
       "blog_card_shadow_blur": 5,
       "text_boxes_border_thickness": 0,
       "text_boxes_border_opacity": 10,
-      "text_boxes_radius": 14,
+      "text_boxes_radius": 20,
       "text_boxes_shadow_opacity": 0,
       "text_boxes_shadow_horizontal_offset": 0,
       "text_boxes_shadow_vertical_offset": 4,
       "text_boxes_shadow_blur": 5,
       "media_border_thickness": 1,
       "media_border_opacity": 0,
-      "media_radius": 14,
+      "media_radius": 16,
       "media_shadow_opacity": 0,
       "media_shadow_horizontal_offset": 0,
       "media_shadow_vertical_offset": 4,
       "media_shadow_blur": 5,
       "popup_border_thickness": 1,
       "popup_border_opacity": 10,
-      "popup_corner_radius": 14,
+      "popup_corner_radius": 20,
       "popup_shadow_opacity": 5,
       "popup_shadow_horizontal_offset": 0,
       "popup_shadow_vertical_offset": 4,
@@ -153,7 +153,7 @@
       "drawer_shadow_vertical_offset": 4,
       "drawer_shadow_blur": 5,
       "badge_position": "top left",
-      "badge_corner_radius": 6,
+      "badge_corner_radius": 8,
       "sale_badge_color_scheme": "scheme-4",
       "sold_out_badge_color_scheme": "scheme-3",
       "brand_headline": "",
@@ -176,7 +176,7 @@
       "show_vendor": false,
       "show_cart_note": false,
       "cart_drawer_collection": "",
-      "cart_color_scheme": "scheme-2",
+      "cart_color_scheme": "scheme-1",
       "sections": {
         "main-password-header": {
           "type": "main-password-header",

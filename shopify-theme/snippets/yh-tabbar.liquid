@@ -1,0 +1,26 @@
+{%- comment -%}
+  Phone bottom bar, like a delivery app: Home, Categories, Cart (opens the cart drawer) and
+  Account. Theme settings > Yalla Haul turns it on or off.
+{%- endcomment -%}
+{%- if settings.yh_tabbar -%}
+  <nav class="yh-tabbar" aria-label="{{ 'sections.header.menu' | t }}">
+    <a href="{{ routes.root_url }}" class="yh-tabbar__item{% if request.page_type == 'index' %} is-active{% endif %}"{% if request.page_type == 'index' %} aria-current="page"{% endif %}>
+      {%- render 'yh-icon', icon: 'home', size: 22 -%}<span>{{ settings.yh_tab_home }}</span>
+    </a>
+    <a href="{{ routes.collections_url }}" class="yh-tabbar__item{% if request.page_type == 'list-collections' or request.page_type == 'collection' %} is-active{% endif %}">
+      {%- render 'yh-icon', icon: 'grid', size: 22 -%}<span>{{ settings.yh_tab_categories }}</span>
+    </a>
+    <a href="{{ routes.cart_url }}" class="yh-tabbar__item{% if request.page_type == 'cart' %} is-active{% endif %}" data-yh-tab-cart>
+      <span class="yh-tabbar__icon">
+        {%- render 'yh-icon', icon: 'cart', size: 22 -%}
+        <span class="yh-cart-count{% if cart.item_count == 0 %} is-empty{% endif %}" data-yh-tab-count aria-hidden="true">{{ cart.item_count | at_most: 99 }}</span>
+      </span>
+      <span>{{ 'templates.cart.cart' | t }}</span>
+    </a>
+    {%- if shop.customer_accounts_enabled -%}
+      <a href="{{ routes.account_url }}" class="yh-tabbar__item">
+        {%- render 'yh-icon', icon: 'user', size: 22 -%}<span>{{ settings.yh_tab_account }}</span>
+      </a>
+    {%- endif -%}
+  </nav>
+{%- endif -%}
