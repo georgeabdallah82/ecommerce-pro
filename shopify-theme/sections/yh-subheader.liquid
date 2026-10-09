@@ -1,0 +1,125 @@
+{%- comment -%}
+  Under the header: the delivery bar (area picker, delivery time, cash on delivery) and the
+  category tabs. On computers, "All categories" opens a panel of every collection; on phones
+  the tabs become a row of swipeable pills.
+{%- endcomment -%}
+{%- liquid
+  assign areas = settings.yh_delivery_area | newline_to_br | split: '<br />'
+  assign first_area = areas | first | strip
+  assign first_name = first_area | split: '|' | first | strip
+  assign first_eta = first_area | split: '|' | last | strip
+  if first_area contains '|'
+  else
+    assign first_eta = ''
+  endif
+  assign menu = linklists[section.settings.menu]
+-%}
+{%- if section.settings.show_delivery and first_area != blank -%}
+  <div class="yh-delivery">
+    <div class="yh-wrap yh-delivery__inner" data-yh-delivery>
+      {%- render 'yh-icon', icon: 'pin', size: 16 -%}
+      <span>
+        {{- settings.yh_delivery_label | escape }}
+        {% if areas.size > 1 -%}
+          <select class="yh-delivery__select" data-yh-area aria-label="{{ settings.yh_delivery_label | escape }}">
+            {%- for area in areas -%}
+              {%- assign a = area | strip -%}
+              {%- if a == blank -%}{%- continue -%}{%- endif -%}
+              {%- assign a_name = a | split: '|' | first | strip -%}
+              {%- assign a_eta = '' -%}
+              {%- if a contains '|' -%}{%- assign a_eta = a | split: '|' | last | strip -%}{%- endif -%}
+              <option value="{{ a_name | escape }}" data-eta="{{ a_eta | escape }}">{{ a_name | escape }}</option>
+            {%- endfor -%}
+          </select>
+        {%- else -%}
+          <b class="yh-delivery__area">{{ first_name | escape }}</b>
+        {%- endif -%}
+      </span>
+      {%- if first_eta != blank -%}
+        <span class="yh-sep" aria-hidden="true">|</span>
+        <span>{{ section.settings.eta_label }}: <b data-yh-eta>{{ first_eta | escape }}</b></span>
+      {%- endif -%}
+      {%- if section.settings.note != blank -%}
+        <span class="yh-sep" aria-hidden="true">|</span>
+        <span class="yh-delivery__note">{{ section.settings.note | escape }}</span>
+      {%- endif -%}
+    </div>
+  </div>
+{%- endif -%}
+
+{%- if section.settings.show_categories -%}
+  <nav class="yh-cats" aria-label="{{ section.settings.all_label | escape }}" data-yh-cats>
+    <div class="yh-wrap yh-cats__inner">
+      {%- if section.settings.show_all_panel -%}
+        <button type="button" class="yh-cats__all" aria-expanded="false" aria-controls="YhCatsPanel" data-yh-cats-toggle>
+          {%- render 'yh-icon', icon: 'grid', size: 16 -%}
+          {{ section.settings.all_label | escape }}
+          <span class="yh-cats__chevron">{%- render 'yh-icon', icon: 'chevron-down', size: 14 -%}</span>
+        </button>
+      {%- endif -%}
+      <div class="yh-cats__scroller">
+        <div class="yh-cats__track">
+          {%- for link in menu.links -%}
+            <a href="{{ link.url }}" class="yh-cats__link{% if link.active or link.child_active %} is-active{% endif %}"{% if link.active %} aria-current="page"{% endif %}>
+              {{- link.title | escape -}}
+            </a>
+          {%- endfor -%}
+        </div>
+      </div>
+    </div>
+    {%- if section.settings.show_all_panel -%}
+      <div class="yh-cats__panel" id="YhCatsPanel" hidden data-yh-cats-panel>
+        <div class="yh-wrap">
+          <div class="yh-cats__panel-head">
+            <strong>{{ section.settings.panel_heading | escape }}</strong>
+            <a href="{{ routes.collections_url }}">{{ section.settings.panel_link | escape }} {% render 'yh-icon', icon: 'chevron-right', size: 14 %}</a>
+          </div>
+          <div class="yh-cats__grid">
+            {%- for c in collections limit: 24 -%}
+              {%- if c.handle == 'all' or c.handle == 'frontpage' or c.all_products_count == 0 -%}{%- continue -%}{%- endif -%}
+              <a href="{{ c.url }}" class="yh-cats__tile">
+                <span class="yh-cats__tile-img">
+                  {%- assign c_image = c.featured_image | default: c.products.first.featured_image -%}
+                  {%- if c_image -%}
+                    {{ c_image | image_url: width: 120 | image_tag: loading: 'lazy', alt: '' }}
+                  {%- else -%}
+                    {%- render 'yh-icon', icon: 'grid', size: 20 -%}
+                  {%- endif -%}
+                </span>
+                <span class="yh-cats__tile-text">
+                  <b>{{ c.title | escape }}</b>
+                  <small>{{ c.all_products_count }} {% if c.all_products_count == 1 %}{{ section.settings.product_word }}{% else %}{{ section.settings.products_word }}{% endif %}</small>
+                </span>
+              </a>
+            {%- endfor -%}
+          </div>
+        </div>
+      </div>
+    {%- endif -%}
+  </nav>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Delivery bar & categories",
+  "settings": [
+    { "type": "header", "content": "Delivery bar" },
+    { "type": "checkbox", "id": "show_delivery", "label": "Show delivery bar", "default": true },
+    {
+      "type": "paragraph",
+      "content": "Delivery areas and their delivery times are under Theme settings > Yalla Haul."
+    },
+    { "type": "text", "id": "eta_label", "label": "Delivery time label", "default": "Delivery" },
+    { "type": "text", "id": "note", "label": "Extra note", "default": "Cash on delivery" },
+    { "type": "header", "content": "Category tabs" },
+    { "type": "checkbox", "id": "show_categories", "label": "Show category tabs", "default": true },
+    { "type": "link_list", "id": "menu", "label": "Tabs menu", "default": "main-menu" },
+    { "type": "checkbox", "id": "show_all_panel", "label": "Show the \"All categories\" button", "default": true },
+    { "type": "text", "id": "all_label", "label": "\"All categories\" button", "default": "All categories" },
+    { "type": "text", "id": "panel_heading", "label": "Panel heading", "default": "Shop by category" },
+    { "type": "text", "id": "panel_link", "label": "Panel link", "default": "See all collections" },
+    { "type": "text", "id": "product_word", "label": "Word for 1 product", "default": "product" },
+    { "type": "text", "id": "products_word", "label": "Word for several products", "default": "products" }
+  ]
+}
+{% endschema %}

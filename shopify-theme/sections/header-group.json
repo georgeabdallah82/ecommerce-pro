@@ -1,0 +1,48 @@
+{
+  "name": "t:sections.header.name",
+  "type": "header",
+  "sections": {
+    "announcement-bar": {
+      "type": "announcement-bar",
+      "settings": {
+        "color_scheme": "scheme-3",
+        "show_line_separator": false,
+        "show_social": false,
+        "auto_rotate": false,
+        "change_slides_speed": 5,
+        "enable_country_selector": false,
+        "enable_language_selector": false
+      },
+      "blocks": {
+        "announcement-bar-0": {
+          "type": "announcement",
+          "settings": {
+            "text": "Free delivery on orders over $50",
+            "text_alignment": "center",
+            "color_scheme": "scheme-3",
+            "link": ""
+          }
+        }
+      },
+      "block_order": ["announcement-bar-0"]
+    },
+    "yh-header": {
+      "type": "yh-header",
+      "settings": {
+        "style": "white",
+        "menu": "main-menu"
+      }
+    },
+    "yh-subheader": {
+      "type": "yh-subheader",
+      "settings": {
+        "show_delivery": true,
+        "note": "Cash on delivery",
+        "show_categories": true,
+        "menu": "main-menu",
+        "show_all_panel": true
+      }
+    }
+  },
+  "order": ["announcement-bar", "yh-header", "yh-subheader"]
+}

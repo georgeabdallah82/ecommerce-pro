@@ -1,0 +1,128 @@
+{
+  "sections": {
+    "hero": {
+      "type": "yh-hero",
+      "blocks": {
+        "slide-1": {
+          "type": "slide",
+          "settings": {
+            "stock": "hero-kitchen",
+            "tag": "Home essentials",
+            "heading": "Everything for your home,",
+            "highlight": "delivered",
+            "text": "Cash on delivery anywhere in Lebanon.",
+            "button_1": "Shop now",
+            "link_1": "shopify://collections/all",
+            "button_2": "Browse collections",
+            "link_2": ""
+          }
+        },
+        "slide-2": {
+          "type": "slide",
+          "settings": {
+            "stock": "hero-rolls",
+            "tag": "Stock up",
+            "heading": "Tissues & paper,",
+            "highlight": "in bulk",
+            "text": "Big packs for the whole family, delivered to your door.",
+            "button_1": "Shop tissues",
+            "link_1": "shopify://collections/all",
+            "button_2": "",
+            "link_2": ""
+          }
+        },
+        "slide-3": {
+          "type": "slide",
+          "settings": {
+            "stock": "hero-bottles",
+            "tag": "Personal care",
+            "heading": "Fresh picks for your",
+            "highlight": "routine",
+            "text": "Shampoo, body care and more.",
+            "button_1": "Discover",
+            "link_1": "shopify://collections/all",
+            "button_2": "",
+            "link_2": ""
+          }
+        }
+      },
+      "block_order": ["slide-1", "slide-2", "slide-3"],
+      "settings": {
+        "label": "Featured",
+        "height_desktop": 560,
+        "height_mobile": 460,
+        "autoplay": 5
+      }
+    },
+    "offers": {
+      "type": "yh-offers",
+      "blocks": {
+        "offer-1": {
+          "type": "offer",
+          "settings": {
+            "stock": "offer-home",
+            "tag": "Home",
+            "title": "Everyday home essentials",
+            "link_label": "Shop now",
+            "link": "shopify://collections/all"
+          }
+        },
+        "offer-2": {
+          "type": "offer",
+          "settings": {
+            "stock": "offer-care",
+            "tag": "Personal care",
+            "title": "Care for the whole family",
+            "link_label": "Shop now",
+            "link": "shopify://collections/all"
+          }
+        }
+      },
+      "block_order": ["offer-1", "offer-2"],
+      "settings": {}
+    },
+    "categories": {
+      "type": "yh-categories",
+      "settings": {
+        "heading": "Shop by category"
+      }
+    },
+    "spotlight": {
+      "type": "yh-spotlight",
+      "settings": {
+        "collection": "home-goods",
+        "heading": "",
+        "link_label": "Shop all",
+        "limit": 4,
+        "banner_side": "left",
+        "stock": "spot-cleaning",
+        "tag": "Featured",
+        "title": "A cleaner home in one order",
+        "button": "Shop now"
+      }
+    },
+    "best-sellers": {
+      "type": "yh-products",
+      "disabled": true,
+      "settings": {
+        "collection": "",
+        "heading": "Best sellers",
+        "subheading": "What customers are ordering",
+        "link_label": "Shop all",
+        "limit": 10
+      }
+    },
+    "trust": {
+      "type": "yh-trust",
+      "blocks": {
+        "trust-1": { "type": "item", "settings": { "title": "Cash on delivery", "text": "Pay when your order arrives", "link": "" } },
+        "trust-2": { "type": "item", "settings": { "title": "Delivery all over Lebanon", "text": "Fast and tracked", "link": "" } },
+        "trust-3": { "type": "item", "settings": { "title": "Easy returns", "text": "See our refund policy", "link": "" } },
+        "trust-4": { "type": "item", "settings": { "title": "WhatsApp support", "text": "Questions? Message us", "link": "" } }
+      },
+      "block_order": ["trust-1", "trust-2", "trust-3", "trust-4"],
+      "settings": {}
+    }
+  },
+  "order": ["hero", "offers", "categories", "spotlight", "best-sellers", "trust"]
+}

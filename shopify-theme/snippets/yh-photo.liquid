@@ -1,0 +1,41 @@
+{%- comment -%}
+  A section photo: the uploaded image if there is one, otherwise one of the theme's built-in
+  photos (the ones the old store used), otherwise an empty grey/dark box.
+
+  Accepts:
+  - image: {Object} image setting
+  - stock: {String} built-in photo name ('none' or e.g. 'hero-kitchen')
+  - widths: {String} srcset widths
+  - sizes: {String}
+  - class: {String}
+  - eager: {Boolean}
+{%- endcomment -%}
+{%- liquid
+  assign loading = 'lazy'
+  if eager
+    assign loading = 'eager'
+  endif
+-%}
+{%- if image != blank -%}
+  {{
+    image
+    | image_url: width: 2400
+    | image_tag: widths: widths, sizes: sizes, class: class, loading: loading, alt: image.alt
+  }}
+{%- elsif stock != blank and stock != 'none' -%}
+  {%- liquid
+    assign stock_file = 'yh-' | append: stock | append: '.jpg'
+    case stock
+      when 'offer-home', 'offer-care'
+        assign w = 900
+        assign h = 562
+      when 'spot-cleaning'
+        assign w = 700
+        assign h = 823
+      else
+        assign w = 1600
+        assign h = 666
+    endcase
+  -%}
+  <img src="{{ stock_file | asset_url }}" alt="" class="{{ class }}" loading="{{ loading }}" decoding="async" width="{{ w }}" height="{{ h }}">
+{%- endif -%}

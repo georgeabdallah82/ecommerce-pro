@@ -1,0 +1,16 @@
+{%- comment -%}
+  Floating WhatsApp button (Theme settings > Yalla Haul).
+{%- endcomment -%}
+{%- assign wa_digits = settings.yh_whatsapp_number | remove: '+' | remove: ' ' | remove: '-' | remove: '(' | remove: ')' -%}
+{%- if settings.yh_whatsapp_float and wa_digits != blank -%}
+  {%- assign wa_text = settings.yh_whatsapp_message | url_encode -%}
+  <a
+    href="https://wa.me/{{ wa_digits }}{% if wa_text != blank %}?text={{ wa_text }}{% endif %}"
+    class="yh-whatsapp yh-whatsapp--{{ settings.yh_whatsapp_position }}"
+    target="_blank"
+    rel="noopener"
+    aria-label="WhatsApp"
+  >
+    {%- render 'yh-icon', icon: 'whatsapp', size: 28 -%}
+  </a>
+{%- endif -%}

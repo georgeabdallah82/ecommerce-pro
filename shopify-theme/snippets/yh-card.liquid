@@ -1,0 +1,106 @@
+{%- comment -%}
+  Yalla Haul product card: photo with a discount badge, name, price with the old price struck
+  through, a delivery note, and "Add to cart" (one-option products, added without leaving the
+  page) or "Choose options".
+
+  Accepts:
+  - card_product: {Object} product (blank shows a sample card, for the theme editor)
+  - section_id: {String} id of the section the card is in
+  - eager: {Boolean} load the photo straight away (first cards on the page)
+{%- endcomment -%}
+{%- liquid
+  assign p = card_product
+  assign loading = 'lazy'
+  if eager
+    assign loading = 'eager'
+  endif
+-%}
+{%- if p == blank -%}
+  <div class="yh-card yh-card--sample">
+    <div class="yh-card__media">{{ 'product-1' | placeholder_svg_tag: 'yh-placeholder' }}</div>
+    <div class="yh-card__body">
+      <h3 class="yh-card__title">{{ 'onboarding.product_title' | t }}</h3>
+      <div class="yh-card__price"><strong>{{ 1999 | money }}</strong></div>
+      {%- if settings.yh_card_note != blank -%}
+        <span class="yh-card__note">{%- render 'yh-icon', icon: 'truck', size: 14 -%}{{ settings.yh_card_note | escape }}</span>
+      {%- endif -%}
+      <span class="yh-card__add" aria-disabled="true">{{ 'products.product.add_to_cart' | t }}</span>
+    </div>
+  </div>
+{%- else -%}
+  {%- liquid
+    assign v = p.selected_or_first_available_variant
+    assign pct = 0
+    if p.compare_at_price > p.price
+      assign pct = p.compare_at_price | minus: p.price | times: 100.0 | divided_by: p.compare_at_price | round
+    endif
+    assign form_id = 'yh-add-' | append: section_id | append: '-' | append: p.id
+  -%}
+  <div class="yh-card">
+    <a href="{{ p.url }}" class="yh-card__media" tabindex="-1" aria-hidden="true">
+      {%- if p.featured_media -%}
+        {{
+          p.featured_media
+          | image_url: width: 600
+          | image_tag:
+            widths: '200, 300, 400, 600',
+            sizes: '(min-width: 990px) 240px, (min-width: 750px) 30vw, 46vw',
+            loading: loading,
+            alt: p.featured_media.alt
+        }}
+      {%- else -%}
+        {{ 'product-1' | placeholder_svg_tag: 'yh-placeholder' }}
+      {%- endif -%}
+      {%- if pct > 0 -%}
+        <span class="yh-card__badge">-{{ pct }}%</span>
+      {%- elsif p.available == false -%}
+        <span class="yh-card__badge yh-card__badge--muted">{{ 'products.product.sold_out' | t }}</span>
+      {%- endif -%}
+    </a>
+    <div class="yh-card__body">
+      <h3 class="yh-card__title"><a href="{{ p.url }}">{{ p.title | escape }}</a></h3>
+      <div class="yh-card__price">
+        <strong>
+          {%- if p.price_varies -%}{{ 'products.product.price.from_price_html' | t: price: '' }}{%- endif -%}
+          {{- p.price | money -}}
+        </strong>
+        {%- if p.compare_at_price > p.price -%}
+          <del>{{ p.compare_at_price | money }}</del>
+        {%- endif -%}
+      </div>
+      {%- if settings.yh_card_note != blank -%}
+        <span class="yh-card__note">{%- render 'yh-icon', icon: 'truck', size: 14 -%}{{ settings.yh_card_note | escape }}</span>
+      {%- endif -%}
+      {%- if p.has_only_default_variant -%}
+        <product-form data-section-id="{{ section_id }}" class="yh-card__form">
+          {%- form 'product', p, id: form_id, novalidate: 'novalidate', data-type: 'add-to-cart-form' -%}
+            <input type="hidden" name="id" value="{{ v.id }}" class="product-variant-id"{% unless v.available %} disabled{% endunless %}>
+            <button
+              id="{{ form_id }}-submit"
+              type="submit"
+              name="add"
+              class="yh-card__add"
+              aria-live="polite"
+              data-sold-out-message="true"
+              {% unless v.available %}
+                disabled
+              {% endunless %}
+            >
+              <span>
+                {%- if v.available -%}
+                  {{ 'products.product.add_to_cart' | t }}
+                {%- else -%}
+                  {{ 'products.product.sold_out' | t }}
+                {%- endif -%}
+              </span>
+              <span class="sold-out-message hidden">{{ 'products.product.sold_out' | t }}</span>
+              {%- render 'loading-spinner' -%}
+            </button>
+          {%- endform -%}
+        </product-form>
+      {%- else -%}
+        <a href="{{ p.url }}" class="yh-card__add">{{ 'products.product.choose_options' | t }}</a>
+      {%- endif -%}
+    </div>
+  </div>
+{%- endif -%}

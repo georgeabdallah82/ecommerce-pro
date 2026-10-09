@@ -1,0 +1,114 @@
+{%- comment -%}
+  Full-width photo slider: each slide has a tag, a big heading (the last words can be in the
+  accent colour), a line of text and up to two buttons. Arrows on computers, dots everywhere,
+  swipe on phones, optional auto-play.
+{%- endcomment -%}
+{%- style -%}
+  #shopify-section-{{ section.id }} .yh-hero__frame { --yh-hero-h: {{ section.settings.height_desktop }}px; --yh-hero-hm: {{ section.settings.height_mobile }}px; }
+{%- endstyle -%}
+<section class="yh-hero" data-yh-slider data-autoplay="{{ section.settings.autoplay }}" aria-roledescription="carousel" aria-label="{{ section.settings.label | escape }}">
+  <div class="yh-hero__frame">
+    <div class="yh-hero__track" data-yh-track>
+      {%- for block in section.blocks -%}
+        <div class="yh-slide" role="group" aria-roledescription="slide" aria-label="{{ forloop.index }} / {{ forloop.length }}" {{ block.shopify_attributes }}>
+          <div class="yh-slide__pic">
+            {%- render 'yh-photo',
+              image: block.settings.image,
+              stock: block.settings.stock,
+              widths: '750, 1100, 1500, 1800, 2400',
+              sizes: '100vw',
+              eager: forloop.first
+            -%}
+          </div>
+          <div class="yh-slide__shade"></div>
+          <div class="yh-wrap yh-slide__inner">
+            <div class="yh-slide__copy">
+              {%- if block.settings.tag != blank -%}<span class="yh-tag">{{ block.settings.tag | escape }}</span>{%- endif -%}
+              {%- if block.settings.heading != blank or block.settings.highlight != blank -%}
+                {%- if forloop.first -%}<h1>{%- else -%}<h2>{%- endif -%}
+                {{- block.settings.heading | escape -}}
+                {%- if block.settings.highlight != blank %} <span>{{ block.settings.highlight | escape }}</span>{%- endif -%}
+                {%- if forloop.first -%}</h1>{%- else -%}</h2>{%- endif -%}
+              {%- endif -%}
+              {%- if block.settings.text != blank -%}<p>{{ block.settings.text | escape }}</p>{%- endif -%}
+              {%- if block.settings.button_1 != blank or block.settings.button_2 != blank -%}
+                <div class="yh-btns">
+                  {%- if block.settings.button_1 != blank -%}
+                    <a href="{{ block.settings.link_1 | default: routes.all_products_collection_url }}" class="yh-btn yh-btn--primary">{{ block.settings.button_1 | escape }}</a>
+                  {%- endif -%}
+                  {%- if block.settings.button_2 != blank -%}
+                    <a href="{{ block.settings.link_2 | default: routes.collections_url }}" class="yh-btn yh-btn--ghost">{{ block.settings.button_2 | escape }}</a>
+                  {%- endif -%}
+                </div>
+              {%- endif -%}
+            </div>
+          </div>
+        </div>
+      {%- endfor -%}
+    </div>
+    {%- if section.blocks.size > 1 -%}
+      <button type="button" class="yh-arrow yh-arrow--prev" data-yh-prev aria-label="{{ 'sections.slideshow.previous_slideshow' | t }}">{%- render 'yh-icon', icon: 'chevron-left', size: 20 -%}</button>
+      <button type="button" class="yh-arrow yh-arrow--next" data-yh-next aria-label="{{ 'sections.slideshow.next_slideshow' | t }}">{%- render 'yh-icon', icon: 'chevron-right', size: 20 -%}</button>
+      <div class="yh-dots">
+        {%- for block in section.blocks -%}
+          <button type="button" data-yh-dot="{{ forloop.index0 }}" aria-label="{{ 'sections.slideshow.load_slide' | t }} {{ forloop.index }}"{% if forloop.first %} aria-current="true"{% endif %}></button>
+        {%- endfor -%}
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Yalla Haul photo slider",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "label", "label": "Name for screen readers", "default": "Featured" },
+    { "type": "range", "id": "height_desktop", "label": "Height on computers", "min": 300, "max": 800, "step": 10, "unit": "px", "default": 560 },
+    { "type": "range", "id": "height_mobile", "label": "Height on phones", "min": 240, "max": 700, "step": 10, "unit": "px", "default": 460 },
+    { "type": "range", "id": "autoplay", "label": "Next slide every (0 = off)", "min": 0, "max": 15, "step": 1, "unit": "s", "default": 6 }
+  ],
+  "blocks": [
+    {
+      "type": "slide",
+      "name": "Slide",
+      "limit": 8,
+      "settings": [
+        { "type": "image_picker", "id": "image", "label": "Photo" },
+        {
+          "type": "select",
+          "id": "stock",
+          "label": "Built-in photo (used when no photo is uploaded)",
+          "options": [
+            { "value": "none", "label": "None" },
+            { "value": "hero-kitchen", "label": "Kitchen" },
+            { "value": "hero-rolls", "label": "Paper rolls" },
+            { "value": "hero-bottles", "label": "Bottles" },
+            { "value": "offer-home", "label": "Living room" },
+            { "value": "offer-care", "label": "Personal care" },
+            { "value": "spot-cleaning", "label": "Cleaning" }
+          ],
+          "default": "none"
+        },
+        { "type": "text", "id": "tag", "label": "Tag", "default": "Home essentials" },
+        { "type": "text", "id": "heading", "label": "Heading", "default": "Everything for your home," },
+        { "type": "text", "id": "highlight", "label": "Heading ending (accent colour)", "default": "delivered" },
+        { "type": "text", "id": "text", "label": "Text", "default": "Cash on delivery anywhere in Lebanon." },
+        { "type": "text", "id": "button_1", "label": "Button 1", "default": "Shop now" },
+        { "type": "url", "id": "link_1", "label": "Button 1 link" },
+        { "type": "text", "id": "button_2", "label": "Button 2", "default": "Browse collections" },
+        { "type": "url", "id": "link_2", "label": "Button 2 link" }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Yalla Haul photo slider",
+      "blocks": [
+        { "type": "slide", "settings": { "stock": "hero-kitchen" } },
+        { "type": "slide", "settings": { "stock": "hero-rolls" } }
+      ]
+    }
+  ]
+}
+{% endschema %}

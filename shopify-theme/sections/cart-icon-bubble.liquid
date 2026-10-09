@@ -1,0 +1,8 @@
+{%- comment -%}
+  Inside of the header's cart button (#cart-icon-bubble). The cart drawer re-renders this
+  section after every change, so the count stays right without a page reload.
+{%- endcomment -%}
+{%- render 'yh-icon', icon: 'cart', size: 18 -%}
+<span class="yh-label">{{ 'templates.cart.cart' | t }}</span>
+<span class="yh-cart-count" aria-hidden="true">{{ cart.item_count | at_most: 99 }}</span>
+<span class="visually-hidden">{{ 'sections.header.cart_count' | t: count: cart.item_count }}</span>
