@@ -1,5 +1,22 @@
 {
   "sections": {
+    "hero": {
+      "type": "yh-hero",
+      "disabled": true,
+      "settings": {
+        "layout": "photo",
+        "height": "medium",
+        "align": "left",
+        "stock": "hero-kitchen",
+        "overlay": 45,
+        "label": "DELIVERED ALL OVER LEBANON",
+        "heading": "Make home feel easy.",
+        "highlight": "easy.",
+        "text": "Everyday essentials, delivered in 2-3 days. Pay cash at your door.",
+        "button": "Shop now",
+        "link": "shopify://collections/all"
+      }
+    },
     "bento": {
       "type": "yh-bento",
       "settings": {
@@ -109,6 +126,7 @@
     }
   },
   "order": [
+    "hero",
     "bento",
     "popular",
     "trust",

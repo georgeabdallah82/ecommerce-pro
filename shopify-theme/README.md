@@ -9,6 +9,7 @@ accounts; the Yalla Haul parts are the `yh-*` files.
 | File | What it is |
 | --- | --- |
 | `sections/yh-header.liquid` | Top bar (logo, search, account, cart) and nav bar (Home, Shop all, Flash deals, menu, WhatsApp), sticky |
+| `sections/yh-hero.liquid` | Optional hero banner: photo behind the text or a colour panel beside it, two buttons (hidden on the home page by default) |
 | `sections/yh-bento.liquid` | Home page tiles: welcome, flash deal with countdown, notes, photos, WhatsApp; each small, wide, tall or big |
 | `sections/yh-products.liquid` | "Popular right now": category chips and a product grid, optional countdown |
 | `sections/yh-trust.liquid` | Four reasons-to-buy cards with icons (off on the home page by default) |
