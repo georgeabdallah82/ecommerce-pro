@@ -5,8 +5,8 @@
 //
 //   node scripts/e2e/load-compare.mjs <new store URL> <live store URL> [product path]
 //
-// Judged: 50 one-at-a-time loads and 3 bursts of 10 simultaneous loads per store. Reported only:
-// 3 bursts of 40 (far above this store's traffic; both versions run out of Worker memory there).
+// 50 one-at-a-time loads and 3 bursts of 10 simultaneous loads per store: realistic traffic, kept
+// light because it also reaches the live store (bursts of 40 caused errors there for customers).
 const [, , NEW, LIVE, productPath = '/'] = process.argv
 if (!NEW || !LIVE) throw new Error('Usage: load-compare.mjs <new URL> <live URL> [product path]')
 const pages = ['/', '/shop', productPath, '/cart', '/collections']
@@ -36,7 +36,6 @@ const bursts = size => phase(`3 bursts of ${size} at once`, async failed => {
   return size * 3
 })
 const judged = [await sequential(), await bursts(10)]
-await bursts(40)
 const newFailed = judged.reduce((n, f) => n + f.new.length, 0)
 const liveFailed = judged.reduce((n, f) => n + f.live.length, 0)
 const ok = newFailed <= liveFailed + 2
