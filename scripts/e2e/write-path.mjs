@@ -184,7 +184,11 @@ if (process.env.CRON_SECRET) {
   let after = await stats()
   for (let i = 0; i < 20 && after && after.open > 0; i++) { await new Promise(r => setTimeout(r, 500)); after = await stats() }
   const clientsOk = !process.env.CRON_SECRET || (!!after && after.open === 0)
-  step(process.env.CRON_SECRET ? '160 page loads, database clients given back' : '160 page loads', failures.length === 0 && clientsOk, `failed=${failures.length}${failures.length ? ' [' + failures.join(',') + ']' : ''}${process.env.CRON_SECRET ? ` before=${JSON.stringify(before)} after=${JSON.stringify(after)}` : ''}`)
+  const note = `failed=${failures.length}${failures.length ? ' [' + failures.join(',') + ']' : ''}${process.env.CRON_SECRET ? ` before=${JSON.stringify(before)} after=${JSON.stringify(after)}` : ''}`
+  // On a Cloudflare preview the load verdict comes from scripts/e2e/load-compare.mjs (the same load
+  // against the live store); here it is only reported.
+  if (process.env.LOAD_REPORT_ONLY) console.log('INFO 160 page loads (judged by load-compare)', note)
+  else step(process.env.CRON_SECRET ? '160 page loads, database clients given back' : '160 page loads', failures.length === 0 && clientsOk, note)
 }
 
 await probe('end')

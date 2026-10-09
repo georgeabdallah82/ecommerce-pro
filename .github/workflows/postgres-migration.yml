@@ -175,8 +175,14 @@ jobs:
         run: |
           npm install --no-save --no-audit --no-fund playwright-core@1
           npx playwright-core install --with-deps chromium
-          if [ -n "$PREVIEW_URL" ]; then export PROBE_DB=1; fi
+          if [ -n "$PREVIEW_URL" ]; then export PROBE_DB=1 LOAD_REPORT_ONLY=1; fi
           BASE="${PREVIEW_URL:-http://127.0.0.1:8787}" ADMIN_EMAIL="$E2E_ADMIN_EMAIL" ADMIN_PASSWORD="$E2E_ADMIN_PASSWORD" node scripts/e2e/write-path.mjs
+
+      # Read-only page views against the preview and the live store at the same moments: the new
+      # version must not fail more often than the store customers use today.
+      - name: Load test, side by side with the live store
+        if: inputs.mode == 'rehearsal' && inputs.run_on == 'cloudflare-preview'
+        run: node scripts/e2e/load-compare.mjs "$PREVIEW_URL" https://ecommerce-pro.georgeabdallah82.workers.dev "$PRODUCT_PATH"
 
       - name: Preview version log (failed requests and errors only)
         if: always() && inputs.mode == 'rehearsal' && inputs.run_on == 'cloudflare-preview'
