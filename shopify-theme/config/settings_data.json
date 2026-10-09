@@ -70,7 +70,7 @@
       "spacing_grid_horizontal": 16,
       "spacing_grid_vertical": 16,
       "animations_reveal_on_scroll": false,
-      "animations_hover_elements": "none",
+      "animations_hover_elements": "default",
       "buttons_border_thickness": 0,
       "buttons_border_opacity": 0,
       "buttons_radius": 10,

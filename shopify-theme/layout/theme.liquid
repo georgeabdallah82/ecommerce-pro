@@ -283,15 +283,15 @@
     {{ 'base.css' | asset_url | stylesheet_tag }}
     {%- style -%}
       :root {
-        --yh-red: {{ settings.yh_red }};
-        --yh-accent: {{ settings.yh_accent }};
-        --yh-soft: {{ settings.yh_soft }};
-        --yh-card: {{ settings.yh_card }};
-        --yh-ink: {{ settings.yh_ink }};
-        --yh-muted: {{ settings.yh_muted }};
-        --yh-line: {{ settings.yh_line }};
-        --yh-radius: {{ settings.yh_card_radius }}px;
-        --yh-btn-radius: {{ settings.yh_button_radius }}px;
+        --yh-red: {{ settings.yh_red | default: '#d42a2a' }};
+        --yh-accent: {{ settings.yh_accent | default: '#ff7a1a' }};
+        --yh-soft: {{ settings.yh_soft | default: '#fff1e6' }};
+        --yh-card: {{ settings.yh_card | default: '#ffffff' }};
+        --yh-ink: {{ settings.yh_ink | default: '#171717' }};
+        --yh-muted: {{ settings.yh_muted | default: '#6f655e' }};
+        --yh-line: {{ settings.yh_line | default: '#ece6e0' }};
+        --yh-radius: {{ settings.yh_card_radius | default: 16 }}px;
+        --yh-btn-radius: {{ settings.yh_button_radius | default: 10 }}px;
       }
     {%- endstyle -%}
     {{ 'yallahaul.css' | asset_url | stylesheet_tag }}

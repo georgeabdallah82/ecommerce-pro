@@ -19,8 +19,6 @@
           "type": "announcement",
           "settings": {
             "text": "Free delivery on orders over $50",
-            "text_alignment": "center",
-            "color_scheme": "scheme-3",
             "link": ""
           }
         }
