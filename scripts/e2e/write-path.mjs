@@ -15,6 +15,8 @@ const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: pr
 let failures = 0
 const step = (name, ok, note = '') => { if (!ok) failures++; console.log(ok ? 'PASS' : 'FAIL', name, note) }
 const stamp = Date.now().toString(36)
+// Rehearsal diagnostics on a preview version (PROBE_DB=1): the database error, if any, in full.
+const probe = async label => { if (!process.env.PROBE_DB) return; const r = await fetch(B + '/api/internal/db-probe').catch(e => null); console.log(`db probe (${label}):`, r ? r.status : 'no answer', r ? (await r.text()).slice(0, 3000) : '') }
 
 // ---------- Shopper: add to cart, cash-on-delivery checkout
 const shop = await b.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
@@ -92,6 +94,7 @@ const burst = await ap.evaluate(async productPath => {
   return results.map((status, i) => [urls[i], status]).filter(([, status]) => status !== 200)
 }, productPath)
 step('concurrent requests (30 at once)', burst.length === 0, burst.map(([u, s]) => `${u}=${s}`).join(' '))
+await probe('after 30 concurrent requests')
 
 for (const p of ['/admin', '/admin/orders', '/admin/products', '/admin/customers', '/admin/reports', '/admin/inventory', '/admin/settings', '/admin/online-store/theme-editor', '/admin/customer-segments']) {
   const r = await ap.goto(B + p, { waitUntil: 'networkidle' }).catch(() => null)
@@ -184,6 +187,7 @@ if (process.env.CRON_SECRET) {
   step(process.env.CRON_SECRET ? '160 page loads, database clients given back' : '160 page loads', failures.length === 0 && clientsOk, `failed=${failures.length}${failures.length ? ' [' + failures.join(',') + ']' : ''}${process.env.CRON_SECRET ? ` before=${JSON.stringify(before)} after=${JSON.stringify(after)}` : ''}`)
 }
 
+await probe('end')
 step('no browser errors', !shopErrors.length && !adminErrors.length, [...shopErrors, ...adminErrors].join(' | '))
 await b.close()
 console.log(failures ? `\n${failures} failure(s)` : '\nall passed')

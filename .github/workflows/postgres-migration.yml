@@ -147,7 +147,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           node -e 'const f="wrangler.jsonc",fs=require("fs"),c=JSON.parse(fs.readFileSync(f,"utf8"));c.preview_urls=true;fs.writeFileSync(f,JSON.stringify(c,null,2))'
-          npx opennextjs-cloudflare upload -- --message postgres-rehearsal-preview-not-deployed 2>&1 | tee ../upload.log
+          npx opennextjs-cloudflare upload -- --message postgres-rehearsal-preview-not-deployed --var REHEARSAL_ERROR_DETAILS:1 2>&1 | tee ../upload.log
           url="$(grep -o 'Version Preview URL: https://[^ ]*' ../upload.log | head -1 | sed 's/Version Preview URL: //')"
           version="$(grep -o 'Worker Version ID: [0-9a-f-]*' ../upload.log | head -1 | sed 's/Worker Version ID: //')"
           if [ -z "$url" ] || [ -z "$version" ]; then echo "::error::Cloudflare did not return a preview URL and version"; exit 1; fi
@@ -164,6 +164,7 @@ jobs:
         run: |
           npm install --no-save --no-audit --no-fund playwright-core@1
           npx playwright-core install --with-deps chromium
+          if [ -n "$PREVIEW_URL" ]; then export PROBE_DB=1; fi
           BASE="${PREVIEW_URL:-http://127.0.0.1:8787}" ADMIN_EMAIL="$E2E_ADMIN_EMAIL" ADMIN_PASSWORD="$E2E_ADMIN_PASSWORD" node scripts/e2e/write-path.mjs
 
       - name: Preview version log (failed requests and errors only)
