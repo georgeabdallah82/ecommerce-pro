@@ -70,3 +70,36 @@ test('finds the project of the store among several and reports its hours', async
     process.exitCode = saved.exitCode
   }
 })
+
+test('lists the projects of each organization when Neon wants an organization named', async () => {
+  const saved = { fetch: globalThis.fetch, log: console.log, env: { ...process.env }, exitCode: process.exitCode }
+  const lines: string[] = []
+  try {
+    process.env.NEON_API_KEY = 'key'
+    process.env.NEON_DATABASE_URL = 'postgresql://u:p@ep-store-1.eu.aws.neon.tech/db'
+    delete process.env.GITHUB_STEP_SUMMARY
+    console.log = (...a: unknown[]) => { lines.push(a.join(' ')) }
+    globalThis.fetch = (async (url: string) => {
+      const u = new URL(url)
+      const path = u.pathname.replace('/api/v2', '')
+      const org = u.searchParams.get('org_id')
+      if (path === '/projects' && !org) return new Response(JSON.stringify({ code: '', message: 'org_id is required' }), { status: 400 })
+      const body = path === '/users/me/organizations' ? { organizations: [{ id: 'org-a' }, { id: 'org-b' }] }
+        : path === '/projects' && org === 'org-a' ? { projects: [] }
+        : path === '/projects' && org === 'org-b' ? { projects: [{ id: 'store' }] }
+        : path === '/projects/store/endpoints' ? { endpoints: [{ id: 'ep-store-1' }] }
+        : path === '/projects/store' ? { project: { id: 'store', compute_time_seconds: 12 * 3600, consumption_period_start: '2026-10-01T00:00:00Z', consumption_period_end: '2026-11-01T00:00:00Z' } }
+        : null
+      return new Response(JSON.stringify(body), { status: body ? 200 : 404 })
+    }) as typeof fetch
+    process.exitCode = 0
+    await main()
+    assert.equal(process.exitCode, 0)
+    assert.ok(lines.some(l => l.includes('12.0 of 100 (12%)')), lines.join('\n'))
+  } finally {
+    globalThis.fetch = saved.fetch
+    console.log = saved.log
+    process.env = saved.env
+    process.exitCode = saved.exitCode
+  }
+})
