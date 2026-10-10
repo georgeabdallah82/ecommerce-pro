@@ -2,7 +2,7 @@ import { db } from '@/lib/prisma'
 import { audit } from '@/lib/audit'
 import { releaseOrderReservations } from '@/lib/inventory'
 import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
-import { sendNewOrderAlertEmail, sendOrderConfirmationEmail } from '@/lib/email'
+import { sendOrderConfirmationEmail } from '@/lib/email'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { runInBackground } from '@/lib/background'
 import { sendMetaPurchase } from '@/lib/meta-capi'
@@ -58,7 +58,6 @@ export async function markOnlinePaymentPaid(order: { id: string; orderNumber: st
   await audit(null, afterCancel ? 'payment.paid_after_cancel' : 'payment.paid', 'Order', order.id, { provider: 'areeba_mpgs', orderNumber: order.orderNumber, source })
   if (afterCancel) return true
   runInBackground(sendOrderConfirmationEmail(order.id).catch(error => console.error('[email] order confirmation failed', error)))
-  runInBackground(sendNewOrderAlertEmail(order.id).catch(error => console.error('[email] new-order alert failed', error)))
   runInBackground(sendMetaPurchase(order.id))
   runInBackground(dispatchWebhookEvent('order.updated', { id: order.id, orderNumber: order.orderNumber, paymentStatus: 'PAID' }).catch(error => console.error('[webhook] order.updated dispatch failed', error)))
   return true
