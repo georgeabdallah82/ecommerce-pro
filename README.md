@@ -48,14 +48,13 @@ A full-stack Next.js + Prisma ecommerce platform with a clean storefront and an 
 
 ## Local setup
 
-Requires Node.js 22+ and a MongoDB deployment configured for Prisma.
+Requires Node.js 22+ and a PostgreSQL database (production uses Neon; any local PostgreSQL works for development).
 
 ```powershell
 npm ci
-Copy-Item .env.example .env
-node scripts/prepare-mongodb-schema.mjs
-npx prisma generate --schema=prisma/mongodb-schema
-npx prisma db push --schema=prisma/mongodb-schema
+Copy-Item .env.example .env   # then set DATABASE_URL to your PostgreSQL database
+npx prisma migrate deploy
+npx prisma generate
 npx tsx prisma/seed.ts
 npm run dev
 ```
@@ -80,7 +79,7 @@ Demo customer:
 Set these in `.env` before deployment:
 
 ```env
-DATABASE_URL="mongodb+srv://USER:PASSWORD@HOST/DATABASE"
+DATABASE_URL="postgresql://USER:PASSWORD@HOST/DATABASE"
 AUTH_SECRET="replace-with-a-long-random-secret-at-least-32-characters"
 NEXT_PUBLIC_BRAND_NAME="Your Brand"
 NEXT_PUBLIC_CURRENCY="USD"
@@ -97,11 +96,11 @@ PAYMENT_PROVIDER="manual"
 
 The application includes a payment-provider adapter and manual payment methods, but a live card gateway still needs the merchant credentials and webhook configuration for the provider you choose. Production media uploads use the Cloudflare R2 binding configured in `wrangler.jsonc`; local development falls back to `public/uploads`.
 
-The production runtime is Cloudflare Workers. It uses Prisma Accelerate in front of MongoDB Atlas, so the deployed `DATABASE_URL` must be a Prisma Accelerate `prisma://` connection string rather than a direct MongoDB URI. See [PRODUCTION-OPS.md](PRODUCTION-OPS.md) for the complete required secrets, scheduled worker, rollout, and smoke-test procedure.
+The production runtime is Cloudflare Workers with a Neon PostgreSQL database, reached through Prisma's Neon driver adapter (`NEON_DATABASE_URL`, uploaded with each deploy from the GitHub secret of the same name). See [PRODUCTION-OPS.md](PRODUCTION-OPS.md) for the complete required secrets, scheduled worker, rollout, and smoke-test procedure.
 
 ## Verification
 
-The production CI pipeline installs dependencies, generates the MongoDB Prisma client, runs TypeScript checks, unit tests and the backend audit, then builds and deploys the Cloudflare Worker after a successful merge to `main`.
+The production CI pipeline installs dependencies, generates the Prisma client, runs TypeScript checks, unit tests and the backend audit, then builds and deploys the Cloudflare Worker after a successful merge to `main`.
 
 Recommended verification after install:
 

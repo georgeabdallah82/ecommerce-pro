@@ -2,9 +2,9 @@
 
 ## Runtime topology
 
-The production application is deployed as a Cloudflare Worker (via `@opennextjs/cloudflare` / `npm run deploy`). Cloudflare Workers cannot open raw TCP connections to MongoDB, so the app connects through [Prisma Accelerate](https://www.prisma.io/data-platform/accelerate), an HTTPS-based connection proxy in front of MongoDB Atlas. `DATABASE_URL` in production must be an Accelerate connection string (`prisma://...`), not a direct `mongodb://` URL.
+The production application is deployed as a Cloudflare Worker (via `@opennextjs/cloudflare` / `npm run deploy`) at https://yallahaul.com (and www, which redirects to it). The database is Neon PostgreSQL, reached through Prisma's Neon driver adapter (`lib/prisma.ts`; each request's connections are closed when it ends). The Worker reads `NEON_DATABASE_URL`; the deploy job uploads it with each version from the GitHub secret of the same name.
 
-There is no runtime dependency on Netlify, Render, or PostgreSQL. Both were used earlier in this project's history; PostgreSQL was fully replaced by MongoDB, and Netlify was replaced by Cloudflare Workers.
+There is no runtime dependency on Netlify, Render, MongoDB or Prisma Accelerate. All were used earlier in this project's history; the store moved from MongoDB to Neon PostgreSQL on 2026-10-09 (every table copied and verified, then switched over).
 
 ## Checkout
 
@@ -23,7 +23,6 @@ Admin > Tax manages per-country tax rates (`TaxRate`), the same shape as Shippin
 - Reservations are recorded as inventory movements and are released on cancellation or expiration.
 - Shipping/delivery fulfillment converts reservations into stock deductions.
 - `InventoryItem.locationId` is a real foreign key to `StoreLocation` (managed in Admin > Operations), not a free-text field. Inventory transfers and purchase order receiving move stock by matching `locationId`, not by name, so renaming a location no longer silently orphans the inventory rows tagged with its old name.
-- **One-time migration for existing deployments**: if this app was already live before `locationId` existed, `InventoryItem` rows still carry the old free-text `location` string in MongoDB (Mongo doesn't drop removed schema fields on its own). Run `DATABASE_URL='mongodb://...' node scripts/backfill-inventory-locations.mjs` once, using a direct MongoDB connection string (not the `prisma://` Accelerate URL), after pulling this change so the local Prisma client matches the new schema. It creates a `StoreLocation` per distinct existing location string (case-insensitive match against ones that already exist) and sets `locationId` accordingly; safe to re-run. Until it runs, existing inventory rows just show as "Unassigned" in the admin UI -- stock levels, reservations, and checkout are unaffected either way. A brand-new deployment with no prior inventory data can skip this entirely.
 
 ## Expired reservations
 
@@ -75,9 +74,9 @@ Admin → Operations lets a store owner register endpoints (`WebhookEndpoint`) f
 
 ## Health check
 
-`GET /api/health` is the production health endpoint. It performs a lightweight MongoDB reachability check (through Accelerate) and returns HTTP `200` with `{ ok: true }` when the app and database are healthy, or HTTP `503` when the database is unreachable.
+`GET /api/health` is the production health endpoint. It performs a lightweight database reachability check (Neon) and returns HTTP `200` with `{ ok: true }` when the app and database are healthy, or HTTP `503` when the database is unreachable.
 
-## MongoDB production runtime
+## Database in production
 
 Production startup/build configuration rejects a missing or unconfigured `DATABASE_URL` in production — `lib/prisma.ts` throws instead of silently falling back to in-memory mock data (that fallback, including its seeded demo admin account, is only ever reachable outside production). The application therefore cannot silently serve fake data if the database client fails to initialize.
 
@@ -105,7 +104,7 @@ No separate secret is needed — R2 bindings are declared in `wrangler.jsonc`, n
 
 Cloudflare Workers don't share environment variables with any other platform — nothing carries over automatically from a previous Netlify or Render deployment. Set each of these with `npx wrangler secret put <NAME>` (run from the repo root, so it targets the main app worker configured in `wrangler.jsonc`):
 
-- `DATABASE_URL` — a Prisma Accelerate connection string (`prisma://...`) in front of the MongoDB Atlas production database. Create this via the [Prisma Data Platform](https://console.prisma.io): add the project, connect its origin to the MongoDB Atlas connection string, enable Accelerate, and copy the resulting `prisma://` URL.
+- `NEON_DATABASE_URL` — not set here: the deploy job uploads it with each version from the `NEON_DATABASE_URL` GitHub Actions secret (the Neon pooled connection string). Migrations run against the direct (non-pooled) address in the same job, before the new version goes live.
 - `AUTH_SECRET`
 - `CRON_SECRET` (must match what's set on the `release-expired-reservations` worker above)
 - `PAYMENT_WEBHOOK_SECRET`
@@ -128,11 +127,11 @@ Without `CLOUDFLARE_API_TOKEN` set, the `deploy` job fails fast with a clear err
 
 ## Before final production sign-off
 
-1. Set the Cloudflare Worker's `DATABASE_URL` secret to the production Accelerate connection string.
+1. Set the `NEON_DATABASE_URL` GitHub Actions secret to the Neon pooled connection string.
 2. Set the remaining secrets listed above via `wrangler secret put`.
 2b. Set the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` GitHub Actions repo secrets so merges to `main` deploy automatically (see "Automatic deploy on merge to main" above).
 3. Deploy with `npm run deploy` and confirm it completes successfully.
-4. Verify `GET /api/health` returns healthy and MongoDB (through Accelerate) is reachable.
+4. Verify `GET /api/health` returns healthy (the Neon database is reachable).
 5. Verify `GET /api/products`, authentication/session, navigation, storefront settings, and the critical checkout read paths.
 6. Test COD checkout with stock, shared inventory, variants, coupons, cancellation, and fulfillment.
 7. Test payment webhooks with duplicate and out-of-order events.

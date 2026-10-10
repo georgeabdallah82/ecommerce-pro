@@ -19,9 +19,6 @@
     "backend:audit": "node scripts/backend-audit.mjs",
     "db:push": "prisma db push",
     "db:deploy": "prisma migrate deploy",
-    "db:migrate:export": "node scripts/migrate-postgres-to-mongodb.mjs export",
-    "db:migrate:import": "node scripts/migrate-postgres-to-mongodb.mjs import",
-    "db:migrate:validate": "node scripts/validate-mongodb-migration.mjs",
     "db:ensure-admin": "tsx scripts/ensure-admin.ts"
   },
   "dependencies": {
