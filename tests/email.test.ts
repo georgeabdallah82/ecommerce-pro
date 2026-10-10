@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it, beforeEach, afterEach } from 'node:test'
-import { sendEmail } from '@/lib/email'
+import { newOrderAlertRecipients, sendEmail } from '@/lib/email'
 
 const ENV_KEYS = ['RESEND_API_KEY', 'EMAIL_FROM'] as const
 let savedEnv: Record<string, string | undefined>
@@ -72,5 +72,39 @@ describe('lib/email sendEmail', () => {
     const result = await sendEmail('customer@example.com', 'Subject', '<p>hi</p>', 'hi')
     assert.equal(result.sent, false)
     assert.equal(result.skipped, false)
+  })
+
+  it('sends one email to several people as a list', async () => {
+    process.env.RESEND_API_KEY = 'test-key'
+    process.env.EMAIL_FROM = 'orders@example.com'
+    let capturedInit: RequestInit | undefined
+    global.fetch = (async (_url: string, init?: RequestInit) => {
+      capturedInit = init
+      return new Response(JSON.stringify({ id: 'abc' }), { status: 200 })
+    }) as typeof fetch
+
+    const result = await sendEmail(['owner@example.com', 'partner@example.com'], 'New order', '<p>hi</p>', 'hi')
+    assert.equal(result.sent, true)
+    assert.deepEqual(JSON.parse(String(capturedInit?.body)).to, ['owner@example.com', 'partner@example.com'])
+  })
+})
+
+describe('lib/email newOrderAlertRecipients', () => {
+  it('uses the addresses typed in Settings, however they are separated', () => {
+    assert.deepEqual(
+      newOrderAlertRecipients(' Owner@Example.com, partner@example.com;helper@example.com\nowner@example.com ', 'contact@example.com'),
+      ['owner@example.com', 'partner@example.com', 'helper@example.com'],
+    )
+  })
+
+  it('falls back to the store contact email when nothing valid is typed', () => {
+    assert.deepEqual(newOrderAlertRecipients('', 'contact@example.com'), ['contact@example.com'])
+    assert.deepEqual(newOrderAlertRecipients('not an email', 'contact@example.com'), ['contact@example.com'])
+    assert.deepEqual(newOrderAlertRecipients(null, undefined), [])
+  })
+
+  it('sends to at most 5 people', () => {
+    const many = Array.from({ length: 8 }, (_, i) => `p${i}@example.com`).join(',')
+    assert.equal(newOrderAlertRecipients(many, '').length, 5)
   })
 })
