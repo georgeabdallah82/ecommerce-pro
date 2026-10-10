@@ -162,7 +162,7 @@ export function CategoryTabs({ navigation }: { navigation: NavItem[] }) {
             </>
           ) : openItem ? (
             <>
-              <div className="mkCatsPanelHead"><strong>{openItem.label}</strong>{openItem.url && <Link href={openItem.url} onClick={() => setPanel(null)}>Shop all {openItem.label} <ChevronRight size={14} /></Link>}</div>
+              <div className="mkCatsPanelHead"><strong>{openItem.label}</strong>{openItem.url && openItem.url !== '#' && <Link href={openItem.url} onClick={() => setPanel(null)}>Shop all {openItem.label} <ChevronRight size={14} /></Link>}</div>
               <div className="mkCatsPanelCols">
                 {openItem.children.map(child => <div key={child.id} className="mkCatsCol">
                   <Link href={child.url || '#'} className="mkCatsColHead" onClick={() => setPanel(null)}>{child.imageUrl && <img src={child.imageUrl} alt="" loading="lazy" />}{child.label}</Link>
@@ -241,7 +241,7 @@ export function MarketMenu({ open, onClose, navigation, brand, logo, logoWhite, 
                     <span>{item.label}</span><ChevronDown size={16} className="mkMenuChevron" />
                   </button>
                   {isOpen && <ul className="mkMenuSub">
-                    {item.url && <li><Link href={item.url} onClick={onClose}>All {item.label}</Link></li>}
+                    {item.url && item.url !== '#' && <li><Link href={item.url} onClick={onClose}>All {item.label}</Link></li>}
                     {item.children.map(c => <li key={c.id}><Link href={c.url || '#'} onClick={onClose}>{c.label}</Link>
                       {c.children.length > 0 && <ul>{c.children.map(g => <li key={g.id}><Link href={g.url || '#'} onClick={onClose}>{g.label}</Link></li>)}</ul>}
                     </li>)}
