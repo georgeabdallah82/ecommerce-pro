@@ -4,6 +4,7 @@ import { jwtVerify } from 'jose'
 import { countRedirectHit, findRedirect, getSettingValue, getStaffAccess } from '@/lib/edge-db'
 import { isSessionRevoked } from '@/lib/session-revocation'
 import { contentSecurityPolicy } from '@/lib/csp'
+import { wwwRedirectTarget } from '@/lib/www-redirect'
 
 // '/api' is deliberately NOT in this list (see the maintenance check below) -- API requests get
 // their own, narrower bypass so mutations to non-admin/auth/internal/webhook endpoints are
@@ -63,6 +64,9 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
       },
     })
   }
+
+  const wwwTarget = wwwRedirectTarget(request.url, request.headers.get('host'))
+  if (wwwTarget) return NextResponse.redirect(wwwTarget, 308)
 
   const pathname = request.nextUrl.pathname
   const nonce = btoa(crypto.randomUUID())
