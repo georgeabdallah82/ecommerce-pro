@@ -10,10 +10,13 @@ async function staffUser() {
   return user
 }
 
-export async function GET() {
+// ?endpoint= asks about one device (the browser's own subscription), which is what the admin's
+// "Order alerts on" button shows; without it, whether this staff member has alerts anywhere.
+export async function GET(req: Request) {
   const user = await staffUser()
   if (!user) return json({ error: 'Forbidden' }, { status: 403 })
-  return json({ subscribed: await hasPushSubscription(user.id) })
+  const endpoint = new URL(req.url).searchParams.get('endpoint')?.trim() || undefined
+  return json({ subscribed: await hasPushSubscription(user.id, endpoint) })
 }
 
 export async function POST(req: Request) {
@@ -21,7 +24,7 @@ export async function POST(req: Request) {
     const user = await staffUser()
     if (!user) return json({ error: 'Forbidden' }, { status: 403 })
     const body = await req.json()
-    if (body?.test === true) return json(await sendTestPush(user.id))
+    if (body?.test === true) return json(await sendTestPush(user.id, typeof body.endpoint === 'string' && body.endpoint.trim() ? body.endpoint.trim() : undefined))
     await savePushSubscription(user.id, body)
     const subscribed = await hasPushSubscription(user.id, String(body?.endpoint || '').trim())
     if (!subscribed) return json({ error: 'Push subscription was not saved' }, { status: 500 })
