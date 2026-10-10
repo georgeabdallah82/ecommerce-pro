@@ -28,6 +28,8 @@ const CLIENT_SETTING_KEYS = new Set([
   'notifications.lowStock',
   'notifications.reviews',
   'email.customerOrder',
+  'email.fromName',
+  'email.fromAddress',
   'email.fulfillment',
   'email.abandonedCheckout',
   'email.giftCard',
@@ -51,5 +53,7 @@ export default async function Settings() {
   })
   // The Conversions API token is a secret: the page only learns whether one is saved.
   const capiToken = await db.setting.findUnique({ where: { key: 'tracking.metaCapiToken' } }).catch(() => null)
-  return <SettingsCenterPro initial={settings} metaCapiTokenSet={!!capiToken?.value} />
+  // The sender set for the deploy (wrangler.jsonc EMAIL_FROM): shown as the default, and its
+  // domain is the one the sender address must use.
+  return <SettingsCenterPro initial={settings} metaCapiTokenSet={!!capiToken?.value} emailFromDefault={process.env.EMAIL_FROM || ''} />
 }

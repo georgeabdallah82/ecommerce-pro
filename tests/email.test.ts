@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it, beforeEach, afterEach } from 'node:test'
-import { sendEmail } from '@/lib/email'
+import { isAllowedSenderAddress, sendEmail, senderFrom } from '@/lib/email'
 
 const ENV_KEYS = ['RESEND_API_KEY', 'EMAIL_FROM'] as const
 let savedEnv: Record<string, string | undefined>
@@ -72,5 +72,45 @@ describe('lib/email sendEmail', () => {
     const result = await sendEmail('customer@example.com', 'Subject', '<p>hi</p>', 'hi')
     assert.equal(result.sent, false)
     assert.equal(result.skipped, false)
+  })
+})
+
+describe('lib/email sender from Settings', () => {
+  const envFrom = 'Yalla Haul <orders@yallahaul.com>'
+
+  it('keeps the deploy sender when Settings are empty', () => {
+    assert.equal(senderFrom(envFrom, '', ''), 'Yalla Haul <orders@yallahaul.com>')
+    assert.equal(senderFrom('orders@example.com', null, undefined), 'orders@example.com')
+  })
+
+  it('uses the name and address typed in Settings', () => {
+    assert.equal(senderFrom(envFrom, 'Yalla Haul Orders', 'Hello@YallaHaul.com '), 'Yalla Haul Orders <hello@yallahaul.com>')
+    assert.equal(senderFrom(envFrom, '', 'info@yallahaul.com'), 'Yalla Haul <info@yallahaul.com>')
+    assert.equal(senderFrom(envFrom, 'يلا هول', ''), 'يلا هول <orders@yallahaul.com>')
+  })
+
+  it('never uses an address at another domain, which Resend would refuse', () => {
+    assert.equal(senderFrom(envFrom, 'Shop', 'me@gmail.com'), 'Shop <orders@yallahaul.com>')
+    assert.equal(senderFrom(envFrom, 'Shop', 'orders@yallahaul.com.evil.com'), 'Shop <orders@yallahaul.com>')
+    assert.equal(isAllowedSenderAddress('hello@yallahaul.com', envFrom), true)
+    assert.equal(isAllowedSenderAddress('me@gmail.com', envFrom), false)
+    assert.equal(isAllowedSenderAddress('bad address@yallahaul.com', envFrom), false)
+    assert.equal(isAllowedSenderAddress('hello@yallahaul.com', ''), false)
+  })
+
+  it('strips characters that would break the From line', () => {
+    assert.equal(senderFrom(envFrom, 'Evil <x@y.com>\r\nBcc: z', ''), 'Evil x y.com Bcc z <orders@yallahaul.com>')
+  })
+
+  it('sends with the deploy sender when no sender is saved', async () => {
+    process.env.RESEND_API_KEY = 'test-key'
+    process.env.EMAIL_FROM = envFrom
+    let capturedInit: RequestInit | undefined
+    global.fetch = (async (_url: string, init?: RequestInit) => {
+      capturedInit = init
+      return new Response(JSON.stringify({ id: 'abc' }), { status: 200 })
+    }) as typeof fetch
+    await sendEmail('customer@example.com', 'Order confirmed', '<p>hi</p>', 'hi')
+    assert.equal(JSON.parse(String(capturedInit?.body)).from, envFrom)
   })
 })

@@ -52,7 +52,7 @@ const defaultPaymentConfig: PaymentConfig = {
   apiPassword: '',
 }
 
-export default function SettingsCenterPro({ initial, metaCapiTokenSet = false }: { initial: any[]; metaCapiTokenSet?: boolean }) {
+export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, emailFromDefault = '' }: { initial: any[]; metaCapiTokenSet?: boolean; emailFromDefault?: string }) {
   const map = useMemo(() => new Map(initial.map(x => [x.key, x.value])), [initial])
   const [tab, setTab] = useState('General')
   const [search, setSearch] = useState('')
@@ -66,6 +66,8 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false }:
     'store.timezone': map.get('store.timezone') || 'Asia/Beirut',
     'contact.email': map.get('contact.email') || '',
     'contact.phone': map.get('contact.phone') || '',
+    'email.fromName': map.get('email.fromName') || '',
+    'email.fromAddress': map.get('email.fromAddress') || '',
     'store.address': map.get('store.address') || '',
     'policy.returnDays': map.get('policy.returnDays') || POLICY_DEFAULTS.returnDays,
     'policy.refundTime': map.get('policy.refundTime') || POLICY_DEFAULTS.refundTime,
@@ -88,6 +90,11 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false }:
   const [capiToken, setCapiToken] = useState('')
   const [capiTokenSaved, setCapiTokenSaved] = useState(metaCapiTokenSet)
   const [capiCheck, setCapiCheck] = useState('')
+  const defaultSender = useMemo(() => {
+    const match = /^\s*(.*?)\s*<\s*([^<>\s]+)\s*>\s*$/.exec(emailFromDefault)
+    const address = (match ? match[2] : emailFromDefault).trim()
+    return { name: match ? match[1].replace(/^"|"$/g, '').trim() : '', address, domain: address.split('@')[1] || '' }
+  }, [emailFromDefault])
   const [flags, setFlags] = useState<Record<string, boolean>>(() => ({
     ...Object.fromEntries([
       'payment.cod', 'payment.card', 'payment.bank', 'payment.wallet',
@@ -311,6 +318,11 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false }:
           )}
 
           {tab === 'Email' && (
+            <>
+            <Card title="Sender" desc={defaultSender.domain ? `The name and address customers see on your emails. The address must end with @${defaultSender.domain}. Leave a box empty to use the default.` : 'Email sending is not set up yet.'}>
+              <Field label="Sender name" value={values['email.fromName']} placeholder={defaultSender.name} onChange={v => set('email.fromName', v)} />
+              <Field label="Sender address" value={values['email.fromAddress']} placeholder={defaultSender.address} onChange={v => set('email.fromAddress', v)} />
+            </Card>
             <Card title="Customer email events" desc="Control automated customer messaging. Provider credentials are configured separately.">
               <Toggle label="Order confirmation" keyName="email.customerOrder" value={flags['email.customerOrder']} onChange={() => toggle('email.customerOrder')} />
               <Toggle label="Fulfillment / tracking" keyName="email.fulfillment" value={flags['email.fulfillment']} onChange={() => toggle('email.fulfillment')} />
@@ -319,6 +331,7 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false }:
               <Toggle label="Return status updates" keyName="email.returnStatus" value={flags['email.returnStatus']} onChange={() => toggle('email.returnStatus')} />
               <Toggle label="Order edited by staff" keyName="email.orderEdit" value={flags['email.orderEdit']} onChange={() => toggle('email.orderEdit')} />
             </Card>
+            </>
           )}
 
           {tab === 'Security' && (
@@ -458,11 +471,11 @@ function Card({ title, desc, children }: { title: string; desc: string; children
   )
 }
 
-function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
     <label className={ui.fieldLabel}>
       {label}
-      <input className={ui.input} value={value || ''} onChange={e => onChange(e.target.value)} />
+      <input className={ui.input} value={value || ''} placeholder={placeholder} onChange={e => onChange(e.target.value)} />
     </label>
   )
 }

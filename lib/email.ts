@@ -74,6 +74,44 @@ async function settingEnabled(key: string) {
   return setting?.value !== 'false'
 }
 
+// The sender customers see. Settings > Email can change its name and its address; the address
+// must be at the domain verified in Resend (the domain of EMAIL_FROM), since Resend refuses any
+// other. An empty or unusable setting keeps the name or address from EMAIL_FROM.
+function parseSender(value: string) {
+  const match = /^\s*(.*?)\s*<\s*([^<>\s]+)\s*>\s*$/.exec(value)
+  if (match) return { name: match[1].replace(/^"|"$/g, '').trim(), address: match[2].toLowerCase() }
+  return { name: '', address: value.trim().toLowerCase() }
+}
+
+export function senderDomain(envFrom: string) {
+  return parseSender(envFrom).address.split('@')[1] || ''
+}
+
+export function isAllowedSenderAddress(address: string, envFrom: string) {
+  const domain = senderDomain(envFrom)
+  const value = address.trim().toLowerCase()
+  return Boolean(domain) && /^[a-z0-9][a-z0-9._+-]{0,63}@[a-z0-9.-]+$/.test(value) && value.endsWith('@' + domain)
+}
+
+export function senderFrom(envFrom: string, name?: string | null, address?: string | null) {
+  const fallback = parseSender(envFrom)
+  const cleanName = String(name || '').replace(/[<>"\\,;:@()[\]\r\n]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60)
+  const cleanAddress = String(address || '').trim().toLowerCase()
+  const useName = cleanName || fallback.name
+  const useAddress = cleanAddress && isAllowedSenderAddress(cleanAddress, envFrom) ? cleanAddress : fallback.address
+  return useName ? `${useName} <${useAddress}>` : useAddress
+}
+
+async function configuredSender(envFrom: string) {
+  try {
+    const rows = await db.setting.findMany({ where: { key: { in: ['email.fromName', 'email.fromAddress'] } }, select: { key: true, value: true } })
+    const value = Object.fromEntries(rows.map(row => [row.key, row.value]))
+    return senderFrom(envFrom, value['email.fromName'], value['email.fromAddress'])
+  } catch {
+    return envFrom
+  }
+}
+
 export async function sendEmail(to: string, subject: string, html: string, text: string) {
   const config = credentials()
   if (!config) {
@@ -81,10 +119,11 @@ export async function sendEmail(to: string, subject: string, html: string, text:
     return { sent: false, skipped: true }
   }
   try {
+    const from = await configuredSender(config.from)
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${config.apiKey}` },
-      body: JSON.stringify({ from: config.from, to, subject, html, text }),
+      body: JSON.stringify({ from, to, subject, html, text }),
       signal: AbortSignal.timeout(10000),
     })
     if (!response.ok) {
