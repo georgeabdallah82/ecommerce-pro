@@ -8,7 +8,7 @@ import { calculateShipping, getTaxRatePercent } from '@/lib/pricing'
 import { releaseOrderReservations, reserveStock, undoReservations } from '@/lib/inventory'
 import { getPaymentProvider } from '@/lib/payments'
 import { sendNewOrderPush } from '@/lib/push'
-import { sendOrderConfirmationEmail } from '@/lib/email'
+import { sendNewOrderAlertEmail, sendOrderConfirmationEmail } from '@/lib/email'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { consumeDurableRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
@@ -477,6 +477,7 @@ export async function POST(req: Request) {
     runInBackground(sendNewOrderPush({ id: order.id, orderNumber: order.orderNumber, grandTotal: order.grandTotal, currency: order.currency }).catch(error => console.error('[push] new-order notification failed', error)))
     if (paymentMethod !== PaymentMethod.CARD || order.grandTotal === 0) {
       runInBackground(sendOrderConfirmationEmail(order.id).catch(error => console.error('[email] order confirmation failed', error)))
+      runInBackground(sendNewOrderAlertEmail(order.id).catch(error => console.error('[email] new-order alert failed', error)))
       // Report the sale to Meta from the server too (card orders are reported once paid).
       runInBackground(sendMetaPurchase(order.id, { context: adContextFromRequest(req), storeUrl: new URL(req.url).origin }))
     }
