@@ -74,7 +74,13 @@ Admin → Operations lets a store owner register endpoints (`WebhookEndpoint`) f
 
 ## Health check
 
-`GET /api/health` is the production health endpoint. It performs a lightweight database reachability check (Neon) and returns HTTP `200` with `{ ok: true }` when the app and database are healthy, or HTTP `503` when the database is unreachable.
+`GET /api/health` is the production health endpoint. It runs one tiny database query (timing out after 8 s) and returns HTTP `200` with `{ ok: true }` when the app and database are healthy, or HTTP `503` when the database is unreachable or too slow. Each call wakes the Neon database if it was asleep (Neon's free plan counts compute hours), so an uptime monitor should call it about hourly and check `/robots.txt`, which needs no database, every few minutes.
+
+## Backups
+
+`.github/workflows/database-backup.yml` copies the whole database every night (03:17 Beirut) with `pg_dump`, restores the copy into a throwaway PostgreSQL in the same run and compares the row count of every table with the live database, then keeps it in the private R2 bucket `ecommerce-pro-backups` (`yallahaul-YYYY-MM-DD.dump`; a lifecycle rule deletes copies older than 30 days). A failed run emails the owner through GitHub. It can also be started by hand (Actions → Database backup → Run workflow). Neon's own instant restore covers only the last 6 hours on the free plan.
+
+To restore: `npx wrangler r2 object get ecommerce-pro-backups/yallahaul-YYYY-MM-DD.dump --remote --file backup.dump`, then `pg_restore --no-owner --no-privileges -d <new database> backup.dump` into a new Neon branch or database, and only switch the store to it after checking it.
 
 ## Database in production
 
