@@ -1,7 +1,7 @@
 // End-to-end test of the store's write paths: checkout, customer account, and the admin actions
 // that save data (orders, products, collections, coupons, theme, settings, files, customers).
-// Used by .github/workflows/postgres-migration.yml against a rehearsal copy of the store running
-// locally on the runner (wrangler dev) -- never against the live site.
+// Used by .github/workflows/postgres-staging.yml against a copy of the store running locally on
+// the runner (wrangler dev) with its own throwaway database -- never against the live site.
 //
 //   BASE=http://127.0.0.1:8787 ADMIN_EMAIL=... ADMIN_PASSWORD=... PRODUCT_PATH=/product/x node scripts/e2e/write-path.mjs
 //
