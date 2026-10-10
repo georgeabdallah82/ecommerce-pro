@@ -9,7 +9,7 @@ import { wwwRedirectTarget } from '@/lib/www-redirect'
 // '/api' is deliberately NOT in this list (see the maintenance check below) -- API requests get
 // their own, narrower bypass so mutations to non-admin/auth/internal/webhook endpoints are
 // actually blocked during maintenance instead of silently exempted wholesale.
-const MAINTENANCE_BYPASS_PREFIXES = ['/admin', '/coming-soon', '/_next']
+const MAINTENANCE_BYPASS_PREFIXES = ['/admin', '/maintenance', '/_next']
 const MAINTENANCE_API_BYPASS_PREFIXES = ['/api/admin', '/api/auth', '/api/internal', '/api/payments', '/api/health', '/api/newsletter']
 const MAINTENANCE_BYPASS_EXACT = new Set(['/favicon.ico', '/robots.txt', '/sitemap.xml'])
 // /theme-editor-preview is a staff-only technical surface (the theme editor's iframe target,
@@ -28,7 +28,7 @@ async function isStaffSession(sessionToken: string | undefined) {
     if (!payload.sub || typeof payload.sub !== 'string') return false
     const user = await getStaffAccess(payload.sub)
     // Same rule as getCurrentUser: a staff session revoked (password/role change, disabled)
-    // must not keep previewing the store behind "coming soon".
+    // must not keep seeing the store behind the maintenance page.
     if (typeof payload.iat !== 'number' || isSessionRevoked(payload.iat, user?.sessionsRevokedAt)) return false
     return !!user?.isActive && user.role !== 'CUSTOMER'
   } catch {
@@ -108,7 +108,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
 
   if (needsMaintenanceCheck) {
     if (maintenanceSetting === 'true' && !(await isStaffSession(request.cookies.get('session')?.value))) {
-      // Rewriting to /coming-soon is meaningless to an API client, and simply exempting the
+      // Rewriting to /maintenance is meaningless to an API client, and simply exempting the
       // whole '/api' prefix (as this used to) left checkout/orders/wishlist/reviews fully
       // reachable for non-staff visitors while every storefront page claimed the site wasn't
       // launched yet -- a real order could still be placed, with inventory reserved and a
@@ -121,9 +121,8 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
           return NextResponse.json({ error: 'The store is temporarily unavailable.' }, { status: 503, headers: { 'Cache-Control': 'no-store' } })
         }
       } else {
-        const requestHeaders = withNonce(new Headers(request.headers))
-        requestHeaders.set('x-maintenance-active', '1')
-        const rewrite = NextResponse.rewrite(new URL('/coming-soon', request.url), { request: { headers: requestHeaders } })
+        // The maintenance page (app/maintenance/route.ts) answers 503 + Retry-After itself.
+        const rewrite = NextResponse.rewrite(new URL('/maintenance', request.url), { request: { headers: withNonce(new Headers(request.headers)) } })
         rewrite.headers.set('Content-Security-Policy', csp)
         return rewrite
       }

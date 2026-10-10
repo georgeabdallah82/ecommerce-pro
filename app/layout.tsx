@@ -43,7 +43,6 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const requestHeaders = await headers()
-  const isMaintenancePage = requestHeaders.get('x-maintenance-active') === '1'
   // proxy.ts puts a fresh nonce in the Content-Security-Policy for every request; scripts we write
   // ourselves must carry it or the browser refuses to run them (Next.js adds it to its own).
   const nonce = requestHeaders.get('x-nonce') || undefined
@@ -91,9 +90,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // diff that script's plain DOM mutation against React's tracked style
   // object and warn on every /admin/* load.
   const rootVarsCss = `:root{${Object.entries(vars).map(([key, value]) => `${key}:${String(value).replace(/[{}<]/g, '')}`).join(';')}}`
-  if (isMaintenancePage) {
-    return <html lang="en" className={FONT_VARIABLE_CLASSES}><head><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/><link rel="icon" href={theme.faviconUrl || 'data:,'}/></head><body>{children}</body></html>
-  }
+
   // suppressHydrationWarning is required here: adminThemeScript above deliberately sets
   // data-admin-theme and style.colorScheme on this exact element from localStorage before
   // hydration (to avoid a dark-mode flash), which SSR can never predict. Without this flag,

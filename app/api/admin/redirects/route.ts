@@ -4,7 +4,7 @@ import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 
-const RESERVED_PREFIXES = ['/admin', '/api', '/_next', '/coming-soon']
+const RESERVED_PREFIXES = ['/admin', '/api', '/_next', '/maintenance']
 
 function cleanPath(value: unknown) {
   let path = String(value || '').trim()

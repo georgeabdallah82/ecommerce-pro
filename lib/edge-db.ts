@@ -1,7 +1,7 @@
 import { neon } from '@neondatabase/serverless'
 
 // The lookups proxy.ts makes before every request: redirects, maintenance mode and the staff
-// check that lets admins preview the store behind "coming soon". They run as three small SQL
+// check that lets staff see the store behind the maintenance page. They run as three small SQL
 // queries over Neon's HTTP endpoint instead of loading Prisma into the proxy bundle, which keeps
 // that bundle small (it is loaded for every request) and free of the node-postgres code
 // lib/prisma.ts carries for local databases.
