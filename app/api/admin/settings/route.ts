@@ -3,6 +3,7 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
+import { isAllowedSenderAddress, senderDomain } from '@/lib/email'
 
 const PRIVATE_PREFIXES = ['push.subscription.']
 function isPrivateKey(key: string) { return PRIVATE_PREFIXES.some(prefix => key.startsWith(prefix)) }
@@ -17,6 +18,16 @@ export async function GET(){
   }catch(e){return routeError(e, 'Forbidden', 403)}
 }
 
+// The email sender address must be at the domain verified in Resend (empty = the default).
+function invalidSetting(entries: ReadonlyArray<readonly [string, string]>) {
+  const address = entries.find(([key]) => key === 'email.fromAddress')?.[1].trim()
+  if (!address) return null
+  const envFrom = process.env.EMAIL_FROM || ''
+  if (isAllowedSenderAddress(address, envFrom)) return null
+  const domain = senderDomain(envFrom)
+  return domain ? `The sender address must end with @${domain}` : 'Email sending is not set up yet, so the sender address cannot be changed'
+}
+
 // Saves one setting ({key, value}) or many at once ({settings: {key: value, ...}}). The Settings
 // page sends everything in one request; only values that actually changed are written, in
 // parallel, so a save no longer costs one request per field.
@@ -27,6 +38,7 @@ export async function PATCH(req:Request){
       const entries=Object.entries(b.settings as Record<string,unknown>).map(([k,v])=>[String(k).trim(),String(v??'')] as const).filter(([k])=>k)
       if(entries.length>200)return json({error:'Too many settings in one save'},{status:400})
       const blocked=entries.find(([k])=>isPrivateKey(k));if(blocked)return json({error:'Private setting keys cannot be edited here'},{status:403})
+      const invalid=invalidSetting(entries);if(invalid)return json({error:invalid},{status:400})
       const keys=entries.map(([k])=>k)
       const current=new Map((keys.length?await db.setting.findMany({where:{key:{in:keys}}}):[]).map(row=>[row.key,row.value]))
       const changed=entries.filter(([k,v])=>current.get(k)!==v)
@@ -37,6 +49,7 @@ export async function PATCH(req:Request){
     const key=String(b.key||'').trim()
     if(!key)return json({error:'Setting key required'},{status:400})
     if(isPrivateKey(key))return json({error:'Private setting keys cannot be edited here'},{status:403})
+    const invalid=invalidSetting([[key,String(b.value??'')]]);if(invalid)return json({error:invalid},{status:400})
     const s=await db.setting.upsert({where:{key},update:{value:String(b.value??'')},create:{key,value:String(b.value??'')}})
     await audit(actor.id,'setting.updated','Setting',s.id,{key});return json({setting:masked(s)})
   }catch(e){return routeError(e, 'Unable to update setting', 400)}
