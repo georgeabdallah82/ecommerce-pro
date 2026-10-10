@@ -1,0 +1,30 @@
+name: Database hours check (daily)
+
+# Neon's free plan includes 100 compute hours a month and stops the database (and the store) when
+# they run out. Every morning this compares the hours used with that allowance and fails -- so
+# GitHub emails the owner -- once 70% are used, or earlier when the pace would use them all up
+# before the month ends. Read-only (scripts/neon-usage.ts). Needs the NEON_API_KEY secret.
+on:
+  schedule:
+    - cron: "41 5 * * *" # 08:41 in Beirut
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.2
+      - name: Compare database hours with the monthly allowance
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+          NEON_LIMIT_HOURS: "100"
+          NEON_WARN_AT_PERCENT: "70"
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/neon-usage.ts
