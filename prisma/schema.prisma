@@ -449,6 +449,20 @@ model EmailLog {
   @@index([createdAt])
 }
 
+// A browser that said yes to the store's notifications: from the visitor popup or Account >
+// Notifications. Push campaigns go to all of them. userId is set when a signed-in customer
+// subscribed; guests have none. (Staff order-alert devices are kept separately, in Setting.)
+model PushSubscription {
+  id        String   @id @default(cuid())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userId    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([userId])
+}
+
 model Notification {
   id        String   @id @default(cuid())
   userId    String

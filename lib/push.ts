@@ -1,10 +1,14 @@
 import webpush from 'web-push'
 import { db } from '@/lib/prisma'
+import { parsePushSubscription } from '@/lib/push-opt-in'
 
+// Staff devices (order, review and low-stock alerts) are Setting rows keyed by endpoint.
+// Customer devices (push campaigns) are PushSubscription rows: from the storefront popup or
+// Account > Notifications, signed in or not.
 const STAFF_PREFIX = 'push.subscription.'
-const CUSTOMER_PREFIX = 'push.customer.subscription.'
 
 type PushSubscriptionRecord = { userId?: string; endpoint?: string; keys?: { p256dh?: string; auth?: string } }
+type Target = { userId: string | null; endpoint: string; keys: { p256dh: string; auth: string }; remove: () => Promise<unknown> }
 
 function configure() {
   const publicKey = process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
@@ -17,21 +21,30 @@ function configure() {
 
 function subscriptionKey(endpoint: string, prefix: string) { return prefix + Buffer.from(endpoint).toString('base64url').slice(0, 180) }
 
-async function getSubscriptions(prefix: string, customers: boolean) {
-  const settings = await db.setting.findMany({ where: { key: { startsWith: prefix } }, select: { id: true, value: true } })
-  const users = await db.user.findMany({ where: customers ? { isActive: true, role: 'CUSTOMER' } : { isActive: true, role: { not: 'CUSTOMER' } }, select: { id: true } })
+async function getStaffSubscriptions(): Promise<Target[]> {
+  const settings = await db.setting.findMany({ where: { key: { startsWith: STAFF_PREFIX } }, select: { id: true, value: true } })
+  const users = await db.user.findMany({ where: { isActive: true, role: { not: 'CUSTOMER' } }, select: { id: true } })
   const userIds = new Set(users.map(user => user.id))
   return settings.flatMap(setting => {
     try {
       const saved = JSON.parse(setting.value) as PushSubscriptionRecord
       if (!saved.userId || !userIds.has(saved.userId) || !saved.endpoint || !saved.keys?.p256dh || !saved.keys.auth) return []
-      return [{ settingId: setting.id, ...saved }]
+      return [{ userId: saved.userId, endpoint: saved.endpoint, keys: { p256dh: saved.keys.p256dh, auth: saved.keys.auth }, remove: () => db.setting.delete({ where: { id: setting.id } }) }]
     } catch { return [] }
   })
 }
 
-async function getStaffSubscriptions() { return getSubscriptions(STAFF_PREFIX, false) }
-async function getCustomerSubscriptions() { return getSubscriptions(CUSTOMER_PREFIX, true) }
+// Everyone who said yes on the storefront. Guests (no account) are included; a device linked to
+// an account counts only while that account is an active customer (a deactivated customer's
+// device gets nothing).
+async function getCustomerSubscriptions(): Promise<Target[]> {
+  const rows = await db.pushSubscription.findMany({ select: { id: true, endpoint: true, p256dh: true, auth: true, userId: true } })
+  const linked = [...new Set(rows.map(row => row.userId).filter((id): id is string => !!id))]
+  const active = new Set(linked.length ? (await db.user.findMany({ where: { id: { in: linked }, isActive: true, role: 'CUSTOMER' }, select: { id: true } })).map(user => user.id) : [])
+  return rows
+    .filter(row => !row.userId || active.has(row.userId))
+    .map(row => ({ userId: row.userId, endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth }, remove: () => db.pushSubscription.delete({ where: { id: row.id } }) }))
+}
 
 export async function hasPushSubscription(userId: string, endpoint?: string) {
   const subscriptions = await getStaffSubscriptions()
@@ -39,24 +52,29 @@ export async function hasPushSubscription(userId: string, endpoint?: string) {
 }
 
 export async function hasCustomerPushSubscription(userId: string, endpoint?: string) {
-  const subscriptions = await getCustomerSubscriptions()
-  return subscriptions.some(subscription => subscription.userId === userId && (!endpoint || subscription.endpoint === endpoint))
+  return (await db.pushSubscription.count({ where: { userId, ...(endpoint ? { endpoint } : {}) } })) > 0
+}
+
+// How many devices a push campaign reaches right now (Push campaigns page).
+export async function countCustomerPushSubscriptions() {
+  return (await getCustomerSubscriptions()).length
 }
 
 async function sendToSubscriptions(payload: Record<string, unknown>, onlyUserId?: string, source: 'staff' | 'customer' = 'staff', allowedUserIds?: string[]) {
   if (!configure()) return { sent: 0, skipped: true, failed: 0 }
   const subscriptions = source === 'customer' ? await getCustomerSubscriptions() : await getStaffSubscriptions()
   const allowed = allowedUserIds?.length ? new Set(allowedUserIds) : null
-  const targets = subscriptions.filter(s => (!onlyUserId || s.userId === onlyUserId) && (!allowed || allowed.has(s.userId!)))
+  const targets = subscriptions.filter(s => (!onlyUserId || s.userId === onlyUserId) && (!allowed || (!!s.userId && allowed.has(s.userId))))
   let sent = 0; let failed = 0
   await Promise.all(targets.map(async saved => {
     try {
-      await webpush.sendNotification({ endpoint: saved.endpoint!, keys: { p256dh: saved.keys!.p256dh!, auth: saved.keys!.auth! } }, JSON.stringify(payload), { TTL: source === 'customer' ? 86400 : 300, urgency: source === 'customer' ? 'normal' : 'high' })
+      await webpush.sendNotification({ endpoint: saved.endpoint, keys: saved.keys }, JSON.stringify(payload), { TTL: source === 'customer' ? 86400 : 300, urgency: source === 'customer' ? 'normal' : 'high' })
       sent += 1
     } catch (error: any) {
       failed += 1
       const statusCode = Number(error?.statusCode || error?.status || 0)
-      if (statusCode === 404 || statusCode === 410) await db.setting.delete({ where: { id: saved.settingId } }).catch(() => undefined)
+      // The browser unsubscribed or the device is gone: forget it.
+      if (statusCode === 404 || statusCode === 410) await saved.remove().catch(() => undefined)
       console.error('[push] send failed', { statusCode, message: error?.message || String(error) })
     }
   }))
@@ -74,7 +92,17 @@ async function saveSubscription(userId: string, subscription: { endpoint: string
 }
 
 export async function savePushSubscription(userId: string, subscription: { endpoint: string; keys?: { p256dh?: string; auth?: string } }) { return saveSubscription(userId, subscription, STAFF_PREFIX) }
-export async function saveCustomerPushSubscription(userId: string, subscription: { endpoint: string; keys?: { p256dh?: string; auth?: string } }) { return saveSubscription(userId, subscription, CUSTOMER_PREFIX) }
+
+// A customer device, from the storefront popup or Account > Notifications. userId links it to a
+// signed-in customer; a guest's device has none (and keeps an earlier link if it had one).
+export async function saveCustomerPushSubscription(userId: string | null, subscription: unknown) {
+  const { endpoint, p256dh, auth } = parsePushSubscription(subscription)
+  await db.pushSubscription.upsert({
+    where: { endpoint },
+    update: { p256dh, auth, ...(userId ? { userId } : {}) },
+    create: { endpoint, p256dh, auth, userId },
+  })
+}
 
 // Every read path here (hasPushSubscription/hasCustomerPushSubscription) filters by the
 // caller's own userId -- subscriptionKey has no userId component (it's derived from the
@@ -92,7 +120,12 @@ async function removeSubscription(userId: string, endpoint: string, prefix: stri
 }
 
 export async function removePushSubscription(userId: string, endpoint: string) { return removeSubscription(userId, endpoint, STAFF_PREFIX) }
-export async function removeCustomerPushSubscription(userId: string, endpoint: string) { return removeSubscription(userId, endpoint, CUSTOMER_PREFIX) }
+
+// Account > Notifications "turn off" for this device: its row if it's this customer's, or a guest
+// row (the same browser said yes before signing in). Another customer's device is never touched.
+export async function removeCustomerPushSubscription(userId: string, endpoint: string) {
+  await db.pushSubscription.deleteMany({ where: { endpoint, OR: [{ userId }, { userId: null }] } })
+}
 
 export async function sendTestPush(userId: string) {
   return sendToSubscriptions({ title: 'Order alerts test', body: 'Push notifications are working on this device.', url: '/admin/orders', test: true }, userId)

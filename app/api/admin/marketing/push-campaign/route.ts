@@ -2,6 +2,14 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { json } from '@/lib/utils'
 import { sendCustomerPushCampaign } from '@/lib/push'
+import { getThemeState } from '@/lib/theme'
+
+// The store's icon on the notification: the theme's favicon, else its logo. Phones don't draw
+// SVG notification icons, so an SVG one is left out (the browser's own icon shows instead).
+async function notificationIcon() {
+  const theme: any = (await getThemeState().catch(() => null))?.theme || {}
+  return [theme.faviconUrl, theme.logoUrl].map(v => String(v || '').trim()).find(v => v && !/\.svg(\?|$)/i.test(v) && /^(https:\/\/|\/(?!\/))/.test(v)) || undefined
+}
 
 export async function POST(req: Request) {
   try {
@@ -14,7 +22,7 @@ export async function POST(req: Request) {
     if (!message) return json({ error: 'Message is required' }, { status: 400 })
     if (url && !url.startsWith('/')) return json({ error: 'URL must be a relative path starting with /' }, { status: 400 })
 
-    const result = await sendCustomerPushCampaign({ title, body: message, url: url || undefined })
+    const result = await sendCustomerPushCampaign({ title, body: message, url: url || undefined, icon: await notificationIcon() })
     await db.auditLog.create({ data: { actorId: actor.id, action: 'ADMIN_PUSH_CAMPAIGN', entity: 'customer', metadataJson: JSON.stringify({ title, sent: result.sent, failed: result.failed }) } })
     return json(result)
   } catch (error) {
