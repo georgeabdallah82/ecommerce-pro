@@ -74,7 +74,7 @@ Admin → Operations lets a store owner register endpoints (`WebhookEndpoint`) f
 
 ## Health check
 
-`GET /api/health` is the production health endpoint. It performs a lightweight database reachability check (Neon) and returns HTTP `200` with `{ ok: true }` when the app and database are healthy, or HTTP `503` when the database is unreachable.
+`GET /api/health` is the production health endpoint. It runs one tiny database query (timing out after 8 s) and returns HTTP `200` with `{ ok: true }` when the app and database are healthy, or HTTP `503` when the database is unreachable or too slow. Each call wakes the Neon database if it was asleep (Neon's free plan counts compute hours), so an uptime monitor should call it about hourly and check `/robots.txt`, which needs no database, every few minutes.
 
 ## Database in production
 
