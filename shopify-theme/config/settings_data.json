@@ -209,9 +209,9 @@
     "yh_whatsapp_message": "Hi! I would like to order.",
     "yh_whatsapp_float": true,
     "yh_whatsapp_position": "right",
-    "yh_tabbar": false,
+    "yh_tabbar": true,
     "yh_tab_home": "Home",
-    "yh_tab_categories": "Categories",
+    "yh_tab_categories": "Menu",
     "yh_tab_account": "Account"
   },
   "presets": {
@@ -425,9 +425,9 @@
       "yh_whatsapp_message": "Hi! I would like to order.",
       "yh_whatsapp_float": true,
       "yh_whatsapp_position": "right",
-      "yh_tabbar": false,
+      "yh_tabbar": true,
       "yh_tab_home": "Home",
-      "yh_tab_categories": "Categories",
+      "yh_tab_categories": "Menu",
       "yh_tab_account": "Account"
     }
   }

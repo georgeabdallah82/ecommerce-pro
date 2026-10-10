@@ -8,7 +8,7 @@ accounts; the Yalla Haul parts are the `yh-*` files.
 
 | File | What it is |
 | --- | --- |
-| `sections/yh-header.liquid` | Top bar (logo, search, account, cart) and nav bar (Home, Shop all, Flash deals, menu, WhatsApp), sticky |
+| `sections/yh-header.liquid` | Top bar (logo, search, account, cart); nav bar from the Shopify menu (Main menu by default, sub-items as dropdowns) on computers; menu button and side panel with the same links on phones |
 | `sections/yh-hero.liquid` | Optional hero banner: photo behind the text or a colour panel beside it, two buttons (hidden on the home page by default) |
 | `sections/yh-bento.liquid` | Home page tiles: welcome, flash deal with countdown, notes, photos, WhatsApp; each small, wide, tall or big |
 | `sections/yh-products.liquid` | "Popular right now": category chips and a product grid, optional countdown |
@@ -18,11 +18,11 @@ accounts; the Yalla Haul parts are the `yh-*` files.
 | `sections/yh-breadcrumbs.liquid` | Breadcrumbs on product and collection pages |
 | `sections/cart-icon-bubble.liquid` | Cart button contents (re-rendered by the cart drawer) |
 | `snippets/yh-card.liquid` | Product card (orange discount label, price, round "+" button), also on collection, search and related products |
-| `snippets/yh-tabbar.liquid` | Optional phone bottom bar: Home, Categories, Cart, Account (off by default) |
+| `snippets/yh-tabbar.liquid` | Phone bottom bar: Home, Menu (opens the menu panel), Cart, Account (on by default) |
 | `snippets/yh-photo.liquid` | Uploaded photo or one of the built-in `assets/yh-*.jpg` photos |
 | `snippets/yh-icon.liquid`, `snippets/yh-whatsapp-float.liquid` | Icons, floating WhatsApp button |
 | `snippets/yh-var.liquid` | Writes one section colour as a CSS variable (skipped when empty) |
-| `assets/yallahaul.css`, `assets/yallahaul.js` | Styles and behaviour (countdown to midnight, bottom bar) |
+| `assets/yallahaul.css`, `assets/yallahaul.js` | Styles and behaviour (countdown to midnight, menu panel, dropdowns, bottom bar) |
 
 Every Yalla Haul section has its own **Colours** settings (header and nav bar, each bento tile,
 products, trust cards, help card, footer), so each part's colours are

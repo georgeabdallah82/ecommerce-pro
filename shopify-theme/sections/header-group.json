@@ -32,14 +32,18 @@
       "settings": {
         "logo_white": false,
         "search_placeholder": "Search tissues, cleaning, kitchen...",
-        "account_label": "Account",
+        "account_label": "My account",
+        "menu": "main-menu",
         "show_nav": true,
-        "home_label": "Home",
-        "all_label": "Shop all",
+        "view_all_label": "View all",
+        "drawer_title": "Menu",
+        "menu_button_label": "Open menu",
+        "nav_label": "Main menu",
+        "show_deals": false,
         "deals_label": "Flash deals",
         "deals_link": "shopify://collections/all",
-        "contact_label": "Contact us",
-        "nav_label": "Main menu"
+        "show_contact": true,
+        "contact_label": "Contact us"
       }
     }
   },

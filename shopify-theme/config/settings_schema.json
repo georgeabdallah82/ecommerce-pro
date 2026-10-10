@@ -2,7 +2,7 @@
   {
     "name": "theme_info",
     "theme_name": "Yalla Haul",
-    "theme_version": "4.0.0",
+    "theme_version": "4.1.0",
     "theme_author": "Yalla Haul",
     "theme_documentation_url": "https://help.shopify.com/manual/online-store/themes",
     "theme_support_url": "https://support.shopify.com/"
@@ -173,7 +173,8 @@
         "type": "checkbox",
         "id": "yh_tabbar",
         "label": "Show bottom bar on phones",
-        "default": false
+        "default": true,
+        "info": "Home, Menu, Cart and Account, always within reach."
       },
       {
         "type": "text",
@@ -184,8 +185,8 @@
       {
         "type": "text",
         "id": "yh_tab_categories",
-        "label": "\"Categories\" label",
-        "default": "Categories"
+        "label": "\"Menu\" label",
+        "default": "Menu"
       },
       {
         "type": "text",

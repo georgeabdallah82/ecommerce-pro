@@ -1,8 +1,9 @@
 {%- comment -%}
-  Bento header: a white rounded bar (logo, search, account, cart) and under it a rounded nav bar
-  (Home, Shop all, Flash deals, the menu links, Contact us on WhatsApp). Both stick to the top.
-  Menu links come from the chosen menu (Online Store > Navigation); with an empty menu the
-  collections that have products are listed.
+  Bento header: a white rounded bar (logo, search, account, cart) and, on computers, a rounded
+  nav bar under it. The nav links are the chosen Shopify menu (Online Store > Navigation, the
+  Main menu by default); menu items with sub-items open a dropdown. On phones the nav bar is
+  replaced by a menu button that opens a side panel with the same links (also opened by the
+  "Menu" tab of the phone bottom bar). With an empty menu, the collections are listed.
 {%- endcomment -%}
 {%- liquid
   assign logo_alt = shop.name | escape
@@ -10,6 +11,11 @@
   assign menu = linklists[section.settings.menu]
   assign wa_digits = settings.yh_whatsapp_number | remove: '+' | remove: ' ' | remove: '-' | remove: '(' | remove: ')'
   assign wa_text = settings.yh_whatsapp_message | url_encode
+  assign wa_url = 'https://wa.me/' | append: wa_digits
+  if wa_text != blank
+    assign wa_url = wa_url | append: '?text=' | append: wa_text
+  endif
+  assign drawer_id = 'YhMenu-' | append: section.id
 -%}
 {%- capture yh_style -%}
   {%- render 'yh-var', name: '--yh-h-strip', value: section.settings.c_strip -%}
@@ -32,6 +38,17 @@
 <div class="yh-header" data-yh-header style="{{ yh_style }}">
   <div class="yh-wrap">
     <div class="yh-bar">
+      <button
+        type="button"
+        class="yh-roundbtn yh-menubtn"
+        data-yh-menu-open
+        aria-controls="{{ drawer_id }}"
+        aria-expanded="false"
+        aria-label="{{ section.settings.menu_button_label | escape }}"
+      >
+        {%- render 'yh-icon', icon: 'menu', size: 22 -%}
+      </button>
+
       <a href="{{ routes.root_url }}" class="yh-logo{% if section.settings.logo_white %} yh-logo--white{% endif %}" style="--yh-logo-width: {{ settings.logo_width }}px">
         {%- if logo != blank -%}
           {%- assign logo_2x = settings.logo_width | times: 2 -%}
@@ -76,34 +93,107 @@
 
     {%- if section.settings.show_nav -%}
       <nav class="yh-nav" aria-label="{{ section.settings.nav_label | escape }}">
-        {%- if section.settings.home_label != blank -%}
-          <a href="{{ routes.root_url }}" class="yh-nav__link{% if request.page_type == 'index' %} is-active{% endif %}"{% if request.page_type == 'index' %} aria-current="page"{% endif %}>{{ section.settings.home_label | escape }}</a>
-        {%- endif -%}
-        {%- if section.settings.all_label != blank -%}
-          <a href="{{ routes.all_products_collection_url }}" class="yh-nav__link{% if collection.handle == 'all' %} is-active{% endif %}">{{ section.settings.all_label | escape }}</a>
-        {%- endif -%}
-        {%- if section.settings.deals_label != blank -%}
+        {%- if section.settings.show_deals and section.settings.deals_label != blank -%}
           <a href="{{ section.settings.deals_link | default: routes.all_products_collection_url }}" class="yh-nav__link yh-nav__link--deals">
             {%- render 'yh-icon', icon: 'bolt', size: 16 -%}{{ section.settings.deals_label | escape }}
           </a>
         {%- endif -%}
         {%- if menu.links.size > 0 -%}
           {%- for link in menu.links -%}
-            <a href="{{ link.url }}" class="yh-nav__link{% if link.active or link.child_active %} is-active{% endif %}"{% if link.active %} aria-current="page"{% endif %}>{{ link.title | escape }}</a>
+            {%- if link.links.size > 0 -%}
+              <details class="yh-nav__group" data-yh-dropdown>
+                <summary class="yh-nav__link{% if link.active or link.child_active %} is-active{% endif %}">
+                  {{- link.title | escape -}}{%- render 'yh-icon', icon: 'chevron-down', size: 15 -%}
+                </summary>
+                <div class="yh-nav__drop">
+                  {%- if link.url != '#' and section.settings.view_all_label != blank -%}
+                    <a href="{{ link.url }}" class="yh-nav__droplink yh-nav__droplink--all">{{ section.settings.view_all_label | escape }}</a>
+                  {%- endif -%}
+                  {%- for child in link.links -%}
+                    <a href="{{ child.url }}" class="yh-nav__droplink{% if child.active %} is-active{% endif %}"{% if child.active %} aria-current="page"{% endif %}>{{ child.title | escape }}</a>
+                    {%- for grandchild in child.links -%}
+                      <a href="{{ grandchild.url }}" class="yh-nav__droplink yh-nav__droplink--sub{% if grandchild.active %} is-active{% endif %}">{{ grandchild.title | escape }}</a>
+                    {%- endfor -%}
+                  {%- endfor -%}
+                </div>
+              </details>
+            {%- else -%}
+              <a href="{{ link.url }}" class="yh-nav__link{% if link.active %} is-active{% endif %}"{% if link.active %} aria-current="page"{% endif %}>{{ link.title | escape }}</a>
+            {%- endif -%}
           {%- endfor -%}
         {%- else -%}
           {%- for c in collections limit: 12 -%}
-            {%- if c.handle == 'all' or c.handle == 'frontpage' or c.all_products_count == 0 -%}{%- continue -%}{%- endif -%}
+            {%- if c.handle == 'frontpage' or c.all_products_count == 0 -%}{%- continue -%}{%- endif -%}
             <a href="{{ c.url }}" class="yh-nav__link{% if collection.handle == c.handle %} is-active{% endif %}">{{ c.title | escape }}</a>
           {%- endfor -%}
         {%- endif -%}
-        {%- if section.settings.contact_label != blank and wa_digits != blank -%}
-          <a href="https://wa.me/{{ wa_digits }}{% if wa_text != blank %}?text={{ wa_text }}{% endif %}" target="_blank" rel="noopener" class="yh-nav__link yh-nav__link--contact">
+        {%- if section.settings.show_contact and section.settings.contact_label != blank and wa_digits != blank -%}
+          <a href="{{ wa_url }}" target="_blank" rel="noopener" class="yh-nav__link yh-nav__link--contact">
             {%- render 'yh-icon', icon: 'chat', size: 16 -%}{{ section.settings.contact_label | escape }}
           </a>
         {%- endif -%}
       </nav>
     {%- endif -%}
+  </div>
+
+  <div class="yh-drawer" id="{{ drawer_id }}" data-yh-menu hidden>
+    <div class="yh-drawer__shade" data-yh-menu-close></div>
+    <div class="yh-drawer__panel" role="dialog" aria-modal="true" aria-label="{{ section.settings.drawer_title | escape }}" tabindex="-1">
+      <div class="yh-drawer__head">
+        <span class="yh-drawer__title">{{ section.settings.drawer_title | escape }}</span>
+        <button type="button" class="yh-roundbtn" data-yh-menu-close aria-label="{{ 'accessibility.close' | t }}">
+          {%- render 'yh-icon', icon: 'x', size: 20 -%}
+        </button>
+      </div>
+      <nav class="yh-drawer__nav" aria-label="{{ section.settings.nav_label | escape }}">
+        {%- if section.settings.show_deals and section.settings.deals_label != blank -%}
+          <a href="{{ section.settings.deals_link | default: routes.all_products_collection_url }}" class="yh-drawer__link yh-drawer__link--deals">
+            <span>{%- render 'yh-icon', icon: 'bolt', size: 18 -%}{{ section.settings.deals_label | escape }}</span>
+          </a>
+        {%- endif -%}
+        {%- if menu.links.size > 0 -%}
+          {%- for link in menu.links -%}
+            {%- if link.links.size > 0 -%}
+              <details class="yh-drawer__group"{% if link.child_active %} open{% endif %}>
+                <summary class="yh-drawer__link{% if link.active or link.child_active %} is-current{% endif %}">
+                  <span>{{ link.title | escape }}</span>{%- render 'yh-icon', icon: 'chevron-down', size: 18 -%}
+                </summary>
+                <div class="yh-drawer__sub">
+                  {%- if link.url != '#' and section.settings.view_all_label != blank -%}
+                    <a href="{{ link.url }}" class="yh-drawer__sublink yh-drawer__sublink--all">{{ section.settings.view_all_label | escape }}</a>
+                  {%- endif -%}
+                  {%- for child in link.links -%}
+                    <a href="{{ child.url }}" class="yh-drawer__sublink{% if child.active %} is-current{% endif %}"{% if child.active %} aria-current="page"{% endif %}>{{ child.title | escape }}</a>
+                    {%- for grandchild in child.links -%}
+                      <a href="{{ grandchild.url }}" class="yh-drawer__sublink yh-drawer__sublink--sub{% if grandchild.active %} is-current{% endif %}">{{ grandchild.title | escape }}</a>
+                    {%- endfor -%}
+                  {%- endfor -%}
+                </div>
+              </details>
+            {%- else -%}
+              <a href="{{ link.url }}" class="yh-drawer__link{% if link.active %} is-current{% endif %}"{% if link.active %} aria-current="page"{% endif %}><span>{{ link.title | escape }}</span></a>
+            {%- endif -%}
+          {%- endfor -%}
+        {%- else -%}
+          {%- for c in collections limit: 20 -%}
+            {%- if c.handle == 'frontpage' or c.all_products_count == 0 -%}{%- continue -%}{%- endif -%}
+            <a href="{{ c.url }}" class="yh-drawer__link{% if collection.handle == c.handle %} is-current{% endif %}"><span>{{ c.title | escape }}</span></a>
+          {%- endfor -%}
+        {%- endif -%}
+      </nav>
+      <div class="yh-drawer__foot">
+        {%- if shop.customer_accounts_enabled -%}
+          <a href="{{ routes.account_url }}" class="yh-drawer__account">
+            {%- render 'yh-icon', icon: 'user', size: 20 -%}{{ section.settings.account_label | escape }}
+          </a>
+        {%- endif -%}
+        {%- if section.settings.show_contact and section.settings.contact_label != blank and wa_digits != blank -%}
+          <a href="{{ wa_url }}" target="_blank" rel="noopener" class="yh-drawer__wa">
+            {%- render 'yh-icon', icon: 'whatsapp', size: 20 -%}{{ section.settings.contact_label | escape }}
+          </a>
+        {%- endif -%}
+      </div>
+    </div>
   </div>
 </div>
 
@@ -154,40 +244,45 @@
       "default": false
     },
     { "type": "text", "id": "search_placeholder", "label": "Search box text", "default": "Search tissues, cleaning, kitchen..." },
-    { "type": "text", "id": "account_label", "label": "Account button name (screen readers)", "default": "Account" },
-    { "type": "header", "content": "Nav bar" },
-    { "type": "checkbox", "id": "show_nav", "label": "Show the nav bar", "default": true },
+    { "type": "text", "id": "account_label", "label": "Account link name", "default": "My account" },
+    { "type": "header", "content": "Menu" },
     {
       "type": "link_list",
       "id": "menu",
       "label": "Menu",
-      "info": "Links shown after Flash deals. Empty menu = your collections."
+      "default": "main-menu",
+      "info": "Edit it in Online Store > Navigation. Items with sub-items open a dropdown (a list on phones)."
     },
-    { "type": "text", "id": "home_label", "label": "Home link (empty hides it)", "default": "Home" },
-    { "type": "text", "id": "all_label", "label": "All products link (empty hides it)", "default": "Shop all" },
-    { "type": "text", "id": "deals_label", "label": "Lightning link (empty hides it)", "default": "Flash deals" },
+    { "type": "checkbox", "id": "show_nav", "label": "Show the nav bar on computers", "default": true },
+    { "type": "text", "id": "view_all_label", "label": "First line of each dropdown (empty hides it)", "default": "View all" },
+    { "type": "text", "id": "drawer_title", "label": "Phone menu title", "default": "Menu" },
+    { "type": "text", "id": "menu_button_label", "label": "Phone menu button name (screen readers)", "default": "Open menu" },
+    { "type": "text", "id": "nav_label", "label": "Menu name (screen readers)", "default": "Main menu" },
+    { "type": "header", "content": "Extra links" },
+    { "type": "checkbox", "id": "show_deals", "label": "Add a red lightning link before the menu", "default": false },
+    { "type": "text", "id": "deals_label", "label": "Lightning link text", "default": "Flash deals" },
     { "type": "url", "id": "deals_link", "label": "Lightning link goes to (empty = all products)" },
     {
-      "type": "text",
-      "id": "contact_label",
-      "label": "WhatsApp link on the right (empty hides it)",
+      "type": "checkbox",
+      "id": "show_contact",
+      "label": "Add a WhatsApp link after the menu",
       "info": "Uses the WhatsApp number in Theme settings > Yalla Haul.",
-      "default": "Contact us"
+      "default": true
     },
-    { "type": "text", "id": "nav_label", "label": "Nav bar name (screen readers)", "default": "Main menu" },
+    { "type": "text", "id": "contact_label", "label": "WhatsApp link text", "default": "Contact us" },
     { "type": "header", "content": "Colours" },
     { "type": "color", "id": "c_strip", "label": "Behind the bars", "default": "#fbf6f1" },
     { "type": "color", "id": "c_bg", "label": "Top bar", "default": "#ffffff" },
     { "type": "color", "id": "c_text", "label": "Top bar text and icons", "default": "#171717" },
     { "type": "color", "id": "c_search", "label": "Search box", "default": "#fbf6f1" },
     { "type": "color", "id": "c_search_text", "label": "Search box text", "default": "#171717" },
-    { "type": "color", "id": "c_icon_bg", "label": "Account button", "default": "#fbf6f1" },
+    { "type": "color", "id": "c_icon_bg", "label": "Round buttons", "default": "#fbf6f1" },
     { "type": "color", "id": "c_cart", "label": "Cart button", "default": "#d42a2a" },
     { "type": "color", "id": "c_cart_text", "label": "Cart button text", "default": "#ffffff" },
     { "type": "color", "id": "c_count", "label": "Cart count", "default": "#ffffff" },
     { "type": "color", "id": "c_count_text", "label": "Cart count text", "default": "#d42a2a" },
-    { "type": "color", "id": "c_nav", "label": "Nav bar", "default": "#ffffff" },
-    { "type": "color", "id": "c_nav_text", "label": "Nav links", "default": "#171717" },
+    { "type": "color", "id": "c_nav", "label": "Nav bar and phone menu", "default": "#ffffff" },
+    { "type": "color", "id": "c_nav_text", "label": "Menu links", "default": "#171717" },
     { "type": "color", "id": "c_nav_active", "label": "Current page link", "default": "#171717" },
     { "type": "color", "id": "c_nav_active_text", "label": "Current page link text", "default": "#ffffff" },
     { "type": "color", "id": "c_nav_deals", "label": "Lightning link", "default": "#d42a2a" },
