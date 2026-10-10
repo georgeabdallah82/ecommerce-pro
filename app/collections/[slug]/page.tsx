@@ -9,6 +9,7 @@ import AliExpressCollectionDetail from '@/components/aliexpress-collection-detai
 import { absoluteUrl, getSiteSeo, isShareableImage, metaText, shareMeta } from '@/lib/seo'
 import type { Metadata } from 'next'
 import { themeTemplates } from '@/lib/theme-templates'
+import { storefrontCached } from '@/lib/storefront-cache'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -31,7 +32,7 @@ const COLLECTION_ZONE_EXCLUDE = new Set(['header', 'announcement', 'footer', 'ma
 export default async function CollectionPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   // Fetched together; products hidden from the storefront channel are filtered out below.
-  const [{ theme }, unpublishedIds, collection] = await Promise.all([getThemeState(), getUnpublishedProductIds(), db.collection.findUnique({
+  const [{ theme }, unpublishedIds, collection] = await Promise.all([getThemeState(), getUnpublishedProductIds(), storefrontCached(`collection:${slug}`, () => db.collection.findUnique({
     where: { slug },
     include: {
       products: {
@@ -39,7 +40,7 @@ export default async function CollectionPage({ params }: { params: Promise<{ slu
         orderBy: { sortOrder: 'asc' },
       },
     },
-  })])
+  }))])
   const sections = (themeTemplates(theme).Collection || []).filter((s: any) => s && !COLLECTION_ZONE_EXCLUDE.has(s.type))
   const needsCollections = sections.some((s: any) => s.type === 'collection_grid' || s.type === 'collection_carousel')
   if (!collection || !collection.isActive) notFound()

@@ -9,6 +9,7 @@ import AliExpressShop from '@/components/aliexpress-shop'
 import { getSiteSeo, metaText, shareMeta } from '@/lib/seo'
 import type { Metadata } from 'next'
 import { themeTemplates } from '@/lib/theme-templates'
+import {storefrontCached} from '@/lib/storefront-cache'
 
 export const dynamic='force-dynamic'
 export const revalidate=0
@@ -53,8 +54,9 @@ export default async function Shop({searchParams}:{searchParams:Promise<{q?:stri
   const [unpublishedIds,{theme},candidates,collections]=await Promise.all([
     getUnpublishedProductIds(),
     getThemeState(),
-    db.product.findMany({where,select:{id:true,basePrice:true,createdAt:true,variants:{select:{price:true}}}}),
-    db.collection.findMany({where:{isActive:true},orderBy:{sortOrder:'asc'}})
+    q?db.product.findMany({where,select:{id:true,basePrice:true,createdAt:true,variants:{select:{price:true}}}})
+      :storefrontCached(`shop-candidates:${sp.collection||''}`,()=>db.product.findMany({where,select:{id:true,basePrice:true,createdAt:true,variants:{select:{price:true}}}})),
+    storefrontCached('shop-collections',()=>db.collection.findMany({where:{isActive:true},orderBy:{sortOrder:'asc'}}))
   ])
   const hasMin=Number.isFinite(min)&&min>0;const hasMax=Number.isFinite(max)&&max>0
   const minCents=hasMin?Math.trunc(min*100):null;const maxCents=hasMax?Math.trunc(max*100):null
@@ -74,7 +76,7 @@ export default async function Shop({searchParams}:{searchParams:Promise<{q?:stri
   const pages=Math.max(1,Math.ceil(total/PAGE_SIZE))
   const page=Math.min(pages,Math.max(1,Math.floor(Number(sp.page))||1))
   const pageIds=scoped.slice((page-1)*PAGE_SIZE,page*PAGE_SIZE).map(p=>p.id)
-  const pageRows=pageIds.length?await db.product.findMany({where:{id:{in:pageIds}},include:{images:{orderBy:{sortOrder:'asc'}},collections:{include:{collection:true}},...CARD_STOCK_INCLUDE}}):[]
+  const pageRows=pageIds.length?await storefrontCached(`shop-rows:${pageIds.join(',')}`,()=>db.product.findMany({where:{id:{in:pageIds}},include:{images:{orderBy:{sortOrder:'asc'}},collections:{include:{collection:true}},...CARD_STOCK_INCLUDE}})):[]
   const rowById=new Map(pageRows.map(p=>[p.id,p]))
   const ordered=pageIds.map(id=>rowById.get(id)).filter((p):p is NonNullable<typeof p>=>Boolean(p)).map(p=>({...p,effectivePrice:effectivePriceCents(p)}))
   const products=await withProductStats(withCardStock(ordered))
