@@ -10,7 +10,7 @@ export default async function PushCampaigns() {
       <div>
         <span className={ui.muted}>MARKETING</span>
         <h1 className={ui.title}>Push campaigns</h1>
-        <p className={ui.muted}>Send a one-off push notification to every customer who has opted in.</p>
+        <p className={ui.muted}>Send a notification to everyone who said yes to your store&apos;s notifications.</p>
       </div>
     </div>
     <PushCampaignAdmin />

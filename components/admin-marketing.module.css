@@ -44,3 +44,15 @@
   .toolbar input { max-width: none; flex: 1 1 100%; }
   .toolbar a { margin-left: 0; }
 }
+
+/* Push campaigns: the "Ask visitors on the website" switch and the subscriber count. */
+.switchRow { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.switchRow .panelText { margin-bottom: 0; }
+.switch { flex: none; width: 48px; height: 28px; margin-top: 2px; border-radius: 999px; border: 0; background: var(--admin-border); position: relative; cursor: pointer; padding: 0; transition: background .15s ease; }
+.switch i { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .15s ease; }
+.switchOn { background: var(--admin-accent); }
+.switchOn i { transform: translateX(20px); }
+.switch:disabled { opacity: .6; cursor: not-allowed; }
+.switch:focus-visible { outline: 2px solid var(--admin-ink); outline-offset: 2px; }
+.subscriberCount { display: flex; align-items: center; gap: 8px; margin-top: 14px; padding: 10px 12px; border-radius: var(--admin-radius-md); background: var(--admin-border-soft); font-size: 13px; color: var(--admin-ink-soft); }
+.subscriberCount strong { color: var(--admin-ink); }

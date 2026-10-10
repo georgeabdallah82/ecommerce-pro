@@ -60,6 +60,16 @@ Order confirmations and password reset emails are sent through [Resend](https://
 - "Fulfillment / tracking" (`email.fulfillment`): `sendFulfillmentEmail` goes out when an order is marked shipped/fulfilled from the admin (with its tracking details).
 - "Abandoned checkout recovery" (`email.abandonedCheckout`): `sendAbandonedCheckoutEmail` sends the "pick up where you left off" email with the cart-restoring link. It is sent by staff from Admin → Abandoned checkouts (not on a timer); the toggle turns that sending off entirely.
 
+## Customer notifications (web push)
+
+A few seconds after a visitor opens the store, a small box asks whether they want offers and order updates (`components/push-opt-in.tsx`; rules in `lib/push-opt-in.ts`). The browser's own permission prompt only appears after they tap **Yes**. "Not now" hides the box for 30 days. It never shows in the admin, on checkout, or on Account → Notifications, which has its own switch.
+
+- **Who can sign up:** anyone; no account is needed. Devices are saved in the `PushSubscription` table by the public `/api/push/subscribe` endpoint. That endpoint is rate limited and only accepts real push-service addresses. A signed-in customer's device is linked to their account.
+- **Sending:** Admin → Push campaigns sends to every saved device. A device whose push service answers 404/410 is deleted automatically.
+- **Admin controls:** the same page has the "Ask visitors on the website" switch (setting `push.askVisitors`, on unless set to `false`) and the number of devices a campaign reaches.
+- **Staff alerts are separate:** staff order alerts still use Setting rows (`push.subscription.*`).
+- **iPhone:** iPhone Safari only supports web push for sites added to the Home Screen as an app. The popup stays hidden wherever the browser lacks the Push API.
+
 ## Outbound webhooks
 
 Admin → Operations lets a store owner register endpoints (`WebhookEndpoint`) for `order.created`, `order.updated`, `order.fulfilled`, `product.updated`, `inventory.updated`, and `customer.created`. `lib/webhooks.ts`'s `dispatchWebhookEvent(topic, payload)` fires on the matching real-world action (order placed, admin order status change, product save, inventory adjustment, customer registration) to every `ACTIVE` endpoint subscribed to that topic.

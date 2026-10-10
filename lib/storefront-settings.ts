@@ -13,6 +13,8 @@ export const STOREFRONT_SETTING_KEYS = [
   'seo.title', 'seo.description', 'seo.image', 'store.name',
   // For the default search description (lib/seo.ts) when the merchant hasn't written one.
   'store.country', 'store.currency', 'checkout.freeShippingThreshold', 'payment.cod', 'returns.enabled',
+  // The notification popup (components/push-opt-in.tsx): on unless switched off in Push campaigns.
+  'push.askVisitors',
 ] as const
 
 export const getStorefrontSettings = cache(async (): Promise<Map<string, string>> => {

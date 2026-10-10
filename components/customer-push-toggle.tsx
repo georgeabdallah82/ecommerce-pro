@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { PUSH_PROMPT_DISMISSED_KEY, PUSH_PROMPT_SUBSCRIBED_KEY } from '@/lib/push-opt-in'
 
 function urlBase64ToUint8Array(value: string) {
   const padding = '='.repeat((4 - (value.length % 4)) % 4)
@@ -65,6 +66,8 @@ export default function CustomerPushToggle({ vapidPublicKey }: { vapidPublicKey?
       if (!response.ok || data.subscribed !== true) throw new Error(data.error || 'Unable to verify subscription on the server')
       setState('enabled')
       setMessage('Push notifications enabled on this device.')
+      // The storefront popup (push-opt-in.tsx) won't ask this browser again.
+      try { window.localStorage.setItem(PUSH_PROMPT_SUBSCRIBED_KEY, String(Date.now())) } catch {}
     } catch (e) {
       setState('disabled')
       setMessage(e instanceof Error ? e.message : 'Unable to enable notifications')
@@ -87,6 +90,8 @@ export default function CustomerPushToggle({ vapidPublicKey }: { vapidPublicKey?
       }
       setState('disabled')
       setMessage('Push notifications turned off on this device.')
+      // Turned off on purpose: the popup leaves this browser alone for its usual 30 days.
+      try { window.localStorage.removeItem(PUSH_PROMPT_SUBSCRIBED_KEY); window.localStorage.setItem(PUSH_PROMPT_DISMISSED_KEY, String(Date.now())) } catch {}
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Unable to turn off push notifications')
     } finally { setBusy(false) }

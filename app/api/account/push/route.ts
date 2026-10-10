@@ -16,9 +16,9 @@ export async function POST(req: Request) {
   try {
     const user = await requireUser()
     const body = await req.json()
-    await saveCustomerPushSubscription(user.id, body)
-    const subscribed = await hasCustomerPushSubscription(user.id, String(body?.endpoint || '').trim())
-    if (!subscribed) return json({ error: 'Push subscription was not saved' }, { status: 500 })
+    // Linked to the account only for customers; a staff member testing from the storefront is
+    // saved like a guest, so campaigns still reach that device.
+    await saveCustomerPushSubscription(user.role === 'CUSTOMER' ? user.id : null, body)
     return json({ ok: true, subscribed: true })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to save push subscription'
