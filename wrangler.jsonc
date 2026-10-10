@@ -17,5 +17,8 @@
   ],
   "observability": {
     "enabled": true
+  },
+  "vars": {
+    "EMAIL_FROM": "Yalla Haul <orders@yallahaul.com>"
   }
 }
