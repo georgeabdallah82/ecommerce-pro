@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Save, Store, CreditCard, Truck, Globe2, Mail, ShieldCheck, Search, Bell, Code2, ChevronRight, BarChart3, Timer } from 'lucide-react'
+import { Save, Store, CreditCard, Truck, Globe2, Mail, ShieldCheck, Search, Bell, Code2, ChevronRight, BarChart3, Wrench } from 'lucide-react'
+import { MAINTENANCE_DEFAULTS, maintenanceText } from '@/lib/maintenance-defaults'
 import styles from './admin-settings-center.module.css'
 import ui from './admin-ui.module.css'
 import MediaPicker from './media-picker'
@@ -16,17 +17,9 @@ const groups = [
   { key: 'Email', label: 'Email & messaging', icon: Mail, desc: 'Customer communication preferences' },
   { key: 'Security', label: 'Security & access', icon: ShieldCheck, desc: 'Staff access and account protection' },
   { key: 'Tracking', label: 'Tracking & pixels', icon: BarChart3, desc: 'Facebook/Meta, Google Analytics, and TikTok pixels' },
-  { key: 'Coming soon', label: 'Coming soon', icon: Timer, desc: 'Show an under-construction page with a launch countdown' },
+  { key: 'Maintenance', label: 'Maintenance mode', icon: Wrench, desc: 'Close the store for customers with a maintenance page' },
   { key: 'Custom data', label: 'Custom data', icon: Code2, desc: 'Metafields and structured data' },
 ]
-
-function isoToLocalInput(iso: string) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
 
 type PaymentConfig = {
   provider: string
@@ -81,9 +74,9 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
     'tracking.gaMeasurementId': map.get('tracking.gaMeasurementId') || '',
     'tracking.tiktokPixelId': map.get('tracking.tiktokPixelId') || '',
     'tracking.metaCapiTestCode': map.get('tracking.metaCapiTestCode') || '',
-    'maintenance.launchAt': map.get('maintenance.launchAt') || '',
-    'maintenance.headline': map.get('maintenance.headline') || "We're launching soon",
-    'maintenance.message': map.get('maintenance.message') || "We're putting the finishing touches on something great. Check back soon.",
+    'maintenance.headline': maintenanceText(map.get('maintenance.headline'), MAINTENANCE_DEFAULTS.headline),
+    'maintenance.message': maintenanceText(map.get('maintenance.message'), MAINTENANCE_DEFAULTS.message),
+    'maintenance.backBy': map.get('maintenance.backBy') || '',
   })
   const savedPolicy = useRef<Record<string, string>>(values)
   // The Conversions API token is write-only: typed in to save or replace it, never shown back.
@@ -376,22 +369,13 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
             </>
           )}
 
-          {tab === 'Coming soon' && (
-            <Card title="Coming soon" desc="While enabled, every visitor is shown this under-construction page with a countdown instead of the real storefront. You (signed-in staff) keep seeing the real site.">
-              <Toggle label="Show coming soon page" keyName="maintenance.enabled" value={flags['maintenance.enabled']} onChange={() => toggle('maintenance.enabled')} />
-              <div className={ui.twoCol}>
-                <label className={ui.fieldLabel}>
-                  Launch date &amp; time
-                  <input
-                    className={ui.input}
-                    type="datetime-local"
-                    value={isoToLocalInput(values['maintenance.launchAt'])}
-                    onChange={e => set('maintenance.launchAt', e.target.value ? new Date(e.target.value).toISOString() : '')}
-                  />
-                </label>
-                <Field label="Headline" value={values['maintenance.headline']} onChange={v => set('maintenance.headline', v)} />
-              </div>
+          {tab === 'Maintenance' && (
+            <Card title="Maintenance mode" desc="While it's on, customers see a maintenance page instead of the store, and search engines are told the store is closed only for now. You (signed-in staff) keep seeing the real store.">
+              <Toggle label="Maintenance mode (store closed for customers)" keyName="maintenance.enabled" value={flags['maintenance.enabled']} onChange={() => toggle('maintenance.enabled')} />
+              <Field label="Headline" value={values['maintenance.headline']} onChange={v => set('maintenance.headline', v)} />
               <Field label="Message" value={values['maintenance.message']} onChange={v => set('maintenance.message', v)} />
+              <Field label="Expected back (optional, e.g. Back by 6 pm)" value={values['maintenance.backBy']} onChange={v => set('maintenance.backBy', v)} />
+              <p className={ui.muted}>The page also shows your WhatsApp and contact email (Settings &gt; General). <a className={ui.textLink} href="/maintenance?preview=1" target="_blank" rel="noreferrer">Preview the page</a> (save first to see your changes).</p>
             </Card>
           )}
 

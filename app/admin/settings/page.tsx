@@ -40,7 +40,7 @@ const CLIENT_SETTING_KEYS = new Set([
   'tracking.tiktokPixelId',
   'tracking.metaCapiTestCode',
   'maintenance.enabled',
-  'maintenance.launchAt',
+  'maintenance.backBy',
   'maintenance.headline',
   'maintenance.message',
 ])
