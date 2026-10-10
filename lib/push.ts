@@ -60,11 +60,11 @@ export async function countCustomerPushSubscriptions() {
   return (await getCustomerSubscriptions()).length
 }
 
-async function sendToSubscriptions(payload: Record<string, unknown>, onlyUserId?: string, source: 'staff' | 'customer' = 'staff', allowedUserIds?: string[]) {
+async function sendToSubscriptions(payload: Record<string, unknown>, onlyUserId?: string, source: 'staff' | 'customer' = 'staff', allowedUserIds?: string[], onlyEndpoint?: string) {
   if (!configure()) return { sent: 0, skipped: true, failed: 0 }
   const subscriptions = source === 'customer' ? await getCustomerSubscriptions() : await getStaffSubscriptions()
   const allowed = allowedUserIds?.length ? new Set(allowedUserIds) : null
-  const targets = subscriptions.filter(s => (!onlyUserId || s.userId === onlyUserId) && (!allowed || (!!s.userId && allowed.has(s.userId))))
+  const targets = subscriptions.filter(s => (!onlyUserId || s.userId === onlyUserId) && (!onlyEndpoint || s.endpoint === onlyEndpoint) && (!allowed || (!!s.userId && allowed.has(s.userId))))
   let sent = 0; let failed = 0
   await Promise.all(targets.map(async saved => {
     try {
@@ -127,8 +127,10 @@ export async function removeCustomerPushSubscription(userId: string, endpoint: s
   await db.pushSubscription.deleteMany({ where: { endpoint, OR: [{ userId }, { userId: null }] } })
 }
 
-export async function sendTestPush(userId: string) {
-  return sendToSubscriptions({ title: 'Order alerts test', body: 'Push notifications are working on this device.', url: '/admin/orders', test: true }, userId)
+// To the device that asked (its endpoint), so the test proves that device works, not just that
+// this staff member has alerts on some device.
+export async function sendTestPush(userId: string, endpoint?: string) {
+  return sendToSubscriptions({ title: 'Order alerts test', body: 'Push notifications are working on this device.', url: '/admin/orders', test: true }, userId, 'staff', undefined, endpoint)
 }
 
 export async function sendNewOrderPush(order: { id: string; orderNumber: string; grandTotal: number; currency: string }) {

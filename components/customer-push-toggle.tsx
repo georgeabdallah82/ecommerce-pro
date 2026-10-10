@@ -1,14 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { PUSH_PROMPT_DISMISSED_KEY, PUSH_PROMPT_SUBSCRIBED_KEY } from '@/lib/push-opt-in'
-
-function urlBase64ToUint8Array(value: string) {
-  const padding = '='.repeat((4 - (value.length % 4)) % 4)
-  const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/')
-  const rawData = window.atob(base64)
-  return Uint8Array.from([...rawData].map(char => char.charCodeAt(0)))
-}
+import { PUSH_PROMPT_DISMISSED_KEY, PUSH_PROMPT_SUBSCRIBED_KEY, sameApplicationServerKey, urlBase64ToUint8Array } from '@/lib/push-opt-in'
 
 export default function CustomerPushToggle({ vapidPublicKey }: { vapidPublicKey?: string }) {
   const [state, setState] = useState<'hidden' | 'disabled' | 'enabled'>('hidden')
@@ -48,14 +41,16 @@ export default function CustomerPushToggle({ vapidPublicKey }: { vapidPublicKey?
       const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
       await navigator.serviceWorker.ready
 
-      // Tied to the VAPID key used when created -- drop any subscription left over
-      // from a previous key so it can't silently go stale.
-      const existing = await registration.pushManager.getSubscription()
-      if (existing) await existing.unsubscribe().catch(() => undefined)
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-      })
+      // Tied to the VAPID key used when created: reuse this browser's subscription when the key
+      // matches (a staff member's order alerts on this device share it), otherwise replace one
+      // left over from a previous key so it can't silently go stale.
+      const key = urlBase64ToUint8Array(vapidPublicKey)
+      let subscription = await registration.pushManager.getSubscription()
+      if (subscription && !sameApplicationServerKey(subscription.options.applicationServerKey, key)) {
+        await subscription.unsubscribe().catch(() => undefined)
+        subscription = null
+      }
+      subscription ||= await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key as BufferSource })
 
       const response = await fetch('/api/account/push', {
         method: 'POST',

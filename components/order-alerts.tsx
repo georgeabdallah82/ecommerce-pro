@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { Bell, BellOff, Send } from 'lucide-react'
+import { sameApplicationServerKey, urlBase64ToUint8Array } from '@/lib/push-opt-in'
 import ui from './admin-ui.module.css'
 
-function urlBase64ToUint8Array(value: string) {
-  const padding = '='.repeat((4 - (value.length % 4)) % 4)
-  const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/')
-  const rawData = window.atob(base64)
-  return Uint8Array.from([...rawData].map(char => char.charCodeAt(0)))
+// This browser's own push subscription, if it has one.
+async function currentSubscription() {
+  const registration = await navigator.serviceWorker.getRegistration('/')
+  return (await registration?.pushManager.getSubscription()) || null
 }
 
 export default function OrderAlerts({ vapidPublicKey }: { vapidPublicKey?: string }) {
@@ -21,7 +21,12 @@ export default function OrderAlerts({ vapidPublicKey }: { vapidPublicKey?: strin
     async function inspect() {
       if (!vapidPublicKey || !('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return
       try {
-        const statusResponse = await fetch('/api/admin/notifications/push', { cache: 'no-store' })
+        // "On" only when THIS device's subscription is registered for this staff member: alerts
+        // turned on from another device (or the old workers.dev address) used to show as on here
+        // while this device got nothing.
+        const subscription = await currentSubscription()
+        if (!subscription || Notification.permission !== 'granted') { if (!cancelled) setState('disabled'); return }
+        const statusResponse = await fetch(`/api/admin/notifications/push?endpoint=${encodeURIComponent(subscription.endpoint)}`, { cache: 'no-store' })
         const status = await statusResponse.json().catch(() => ({}))
         if (!statusResponse.ok) throw new Error(status.error || 'Unable to check push subscription')
         if (!cancelled) setState(status.subscribed ? 'enabled' : 'disabled')
@@ -49,14 +54,16 @@ export default function OrderAlerts({ vapidPublicKey }: { vapidPublicKey?: strin
       const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
       await navigator.serviceWorker.ready
 
-      // A subscription is tied to the VAPID application key used when it was created.
-      // Re-create it so a subscription left over from a previous VAPID key cannot be reused.
-      const existing = await registration.pushManager.getSubscription()
-      if (existing) await existing.unsubscribe().catch(() => undefined)
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-      })
+      // A subscription is tied to the VAPID key it was made with: reuse this browser's one when
+      // the key matches (the store's customer notifications share it, and replacing it would cut
+      // them off), otherwise replace it so a subscription from an old key isn't kept.
+      const key = urlBase64ToUint8Array(vapidPublicKey)
+      let subscription = await registration.pushManager.getSubscription()
+      if (subscription && !sameApplicationServerKey(subscription.options.applicationServerKey, key)) {
+        await subscription.unsubscribe().catch(() => undefined)
+        subscription = null
+      }
+      subscription ||= await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key as BufferSource })
 
       const response = await fetch('/api/admin/notifications/push', {
         method: 'POST',
@@ -77,15 +84,15 @@ export default function OrderAlerts({ vapidPublicKey }: { vapidPublicKey?: strin
     setBusy(true)
     setMessage('')
     try {
-      const registration = await navigator.serviceWorker.getRegistration('/')
-      const subscription = await registration?.pushManager.getSubscription()
+      const subscription = await currentSubscription()
       if (subscription) {
         await fetch('/api/admin/notifications/push', {
           method: 'DELETE',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ endpoint: subscription.endpoint }),
         })
-        await subscription.unsubscribe().catch(() => undefined)
+        // The browser keeps its subscription: the store's offer notifications may use it too.
+        // With the server's row gone, no order alert is sent to it.
       }
       setState('disabled')
       setMessage('Order alerts turned off on this device.')
@@ -98,17 +105,16 @@ export default function OrderAlerts({ vapidPublicKey }: { vapidPublicKey?: strin
     setBusy(true)
     setMessage('')
     try {
-      const statusResponse = await fetch('/api/admin/notifications/push', { cache: 'no-store' })
-      const status = await statusResponse.json().catch(() => ({}))
-      if (!statusResponse.ok) throw new Error(status.error || 'Unable to check push subscription')
-      if (!status.subscribed) {
+      const subscription = await currentSubscription()
+      if (!subscription) {
         setState('disabled')
-        throw new Error('This device is not subscribed to order alerts. Enable alerts first.')
+        throw new Error('Order alerts aren\u2019t set up on this device yet. Tap Enable order alerts.')
       }
+      // Sent to this device only, so the result is about this device.
       const response = await fetch('/api/admin/notifications/push', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ test: true }),
+        body: JSON.stringify({ test: true, endpoint: subscription.endpoint }),
       })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data.error || 'Unable to send test notification')
@@ -116,9 +122,9 @@ export default function OrderAlerts({ vapidPublicKey }: { vapidPublicKey?: strin
         setState('disabled')
         throw new Error(data.skipped
           ? 'Push is not configured on the server.'
-          : 'The push subscription could not be reached. Enable alerts again on this device.')
+          : 'This device isn\u2019t registered for order alerts any more. Tap Enable order alerts again.')
       }
-      setMessage('Test notification sent.')
+      setMessage('Test sent to this device. If nothing appears within a few seconds, notifications for this browser are switched off in the device\u2019s settings.')
     } catch (e) {
       setState('disabled')
       setMessage(e instanceof Error ? e.message : 'Test failed')
