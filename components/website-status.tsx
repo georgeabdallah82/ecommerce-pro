@@ -3,7 +3,7 @@ import { AlertCircle, CheckCircle2, CircleMinus, Cloud, Database, DatabaseBackup
 import { formatAdminDateTime } from '@/lib/admin-datetime'
 import { getCloudflareStatus, getDatabaseStatus, getEmailStatus, getGithubStatus, getUptimeStatus, type Run } from '@/lib/website-status'
 import { summarize } from '@/lib/website-status-summary'
-import { PLAN_LIMITS, formatBytes, formatCount, formatPercent, monitorTone, readableAction, runLabel, runTone, timeAgo, toneForShare, type Tone } from '@/lib/website-status-shared'
+import { PLAN_LIMITS, errorKindLabel, formatBytes, formatCount, formatPercent, monitorTone, readableAction, runLabel, runTone, timeAgo, toneForShare, type Tone } from '@/lib/website-status-shared'
 import WebsiteStatusChart from './website-status-chart'
 import styles from './admin-website-status.module.css'
 import ui from './admin-ui.module.css'
@@ -182,9 +182,13 @@ export async function CloudflareCard({ timezone }: { timezone: string }) {
         ? <NotConnected missing={c.trafficIssue.missing} what="Shows how many requests the website answers each day and how many failed." />
         : c.trafficIssue && <Problem message={c.trafficIssue.message} />}
     <div className={styles.tiles}>
-      {c.traffic && <Tile label="Errors, last 7 days" value={formatCount(weekErrors)} sub={weekRequests ? `${formatPercent(weekErrors, weekRequests)} of requests` : undefined} />}
+      {c.traffic && <Tile label="Errors, last 7 days" value={formatCount(weekErrors)} sub={`${weekRequests ? `${formatPercent(weekErrors, weekRequests)} of requests · ` : ''}last 24 h: ${formatCount(c.traffic.last24h.errors)}`} />}
       <Tile label="Last website update" value={<When at={c.deployedAt} timezone={timezone} />} />
     </div>
+    {c.traffic && c.traffic.kinds.length > 0 && <div className={styles.block}>
+      <h3 className={styles.blockTitle}>What the errors were, last 7 days</h3>
+      <ul className={styles.rows}>{c.traffic.kinds.map(k => <li key={k.status} className={styles.row}><span className={styles.rowMain}><strong>{errorKindLabel(k.status)}</strong><span>{k.status}</span></span><span className={styles.rowSide}>{formatCount(k.errors)}</span></li>)}</ul>
+    </div>}
     {c.media
       ? <Meter label="Images stored" used={c.media.bytes} limit={PLAN_LIMITS.mediaBytes} text={`${formatBytes(c.media.bytes)} of ${formatBytes(PLAN_LIMITS.mediaBytes)} free`} note={`${formatCount(c.media.files)}${c.media.partial ? '+' : ''} files`} />
       : <p className={styles.small}>Image storage size is only available on the live website.</p>}
