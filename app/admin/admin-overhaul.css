@@ -130,6 +130,12 @@ body:has(.adminShell),body:has(.adminShell) button,body:has(.adminShell) input,b
    components/admin-nav.module.css as CSS Modules - scoped by build-time class
    names instead of !important/body:has() specificity races. This block is
    only the page body underneath that bar. */
+/* storefront-legacy.css (loaded on every page) sets overflow-x:hidden on html and body. That
+   makes <body> a scroll container that never scrolls, so nothing inside it can be sticky: the
+   sidebar scrolled away with the page and left an empty strip beside long pages. clip hides
+   sideways overflow the same way without creating a scroll container. Admin only; browsers
+   without clip keep hidden. */
+html:has(.adminShell),body:has(.adminShell){overflow-x:clip}
 body:has(.adminShell) .adminShell{min-height:100vh!important;display:flex!important;flex-direction:column!important;background:var(--admin-bg)!important}
 body:has(.adminShell) .adminMain{min-width:0!important;padding:28px 36px 56px!important;background:var(--admin-bg)!important}
 
