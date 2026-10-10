@@ -205,7 +205,7 @@ export async function EmailCard({ timezone }: { timezone: string }) {
       <Tile label="Sent this month" value={formatCount(e.sentMonth)} sub={`of ${PLAN_LIMITS.emailsPerMonth.toLocaleString('en-US')} (free plan)`} />
       <Tile label="Failed, 7 days" value={formatCount(e.failed7d)} sub={e.skipped7d ? `${e.skipped7d} not sent (email not set up)` : undefined} />
     </div>
-    {e.from && <p className={styles.small}>Sent from {e.from.replace(/^.*<([^>]+)>.*$/, '$1')}</p>}
+    {e.from && <p className={styles.small}>Sent from {e.from} (change it in Settings &gt; Email &gt; Sender)</p>}
     <div className={styles.block}>
       <h3 className={styles.blockTitle}>Latest emails</h3>
       {e.recent.length

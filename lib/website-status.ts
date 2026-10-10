@@ -1,6 +1,7 @@
 import { cache } from 'react'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { db } from '@/lib/prisma'
+import { configuredSender } from '@/lib/email'
 import {
   PLAN_LIMITS, lastDays, monitorTone, parseBackupLog, parseNeonUsageLog, runTone, toneForShare, worstTone,
   type BackupResult, type NeonUsage, type Tone,
@@ -265,12 +266,14 @@ export const getEmailStatus = cache(async (): Promise<Section<EmailStatus>> => {
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
   const configured = Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM)
   try {
-    const [sent24h, sentMonth, failed7d, skipped7d, recent] = await withTimeout(Promise.all([
+    const [sent24h, sentMonth, failed7d, skipped7d, recent, from] = await withTimeout(Promise.all([
       db.emailLog.count({ where: { status: 'sent', createdAt: { gte: dayAgo } } }),
       db.emailLog.count({ where: { status: 'sent', createdAt: { gte: monthStart } } }),
       db.emailLog.count({ where: { status: 'failed', createdAt: { gte: weekAgo } } }),
       db.emailLog.count({ where: { status: 'skipped', createdAt: { gte: weekAgo } } }),
       db.emailLog.findMany({ orderBy: { createdAt: 'desc' }, take: 6, select: { to: true, subject: true, status: true, error: true, createdAt: true } }),
+      // The sender actually used (Settings > Email > Sender wins over EMAIL_FROM).
+      process.env.EMAIL_FROM ? configuredSender(process.env.EMAIL_FROM) : Promise.resolve(null),
     ]))
     const tone = worstTone([
       configured ? 'ok' : 'critical',
@@ -281,7 +284,7 @@ export const getEmailStatus = cache(async (): Promise<Section<EmailStatus>> => {
     return {
       state: 'ready',
       tone,
-      data: { configured, from: process.env.EMAIL_FROM || null, sent24h, sentMonth, failed7d, skipped7d, recent: recent.map(r => ({ to: r.to, subject: r.subject, status: r.status, error: r.error, at: r.createdAt.toISOString() })) },
+      data: { configured, from, sent24h, sentMonth, failed7d, skipped7d, recent: recent.map(r => ({ to: r.to, subject: r.subject, status: r.status, error: r.error, at: r.createdAt.toISOString() })) },
     }
   } catch (error) {
     return { state: 'error', tone: configured ? 'warning' : 'critical', message: `Could not read the email log: ${failed(error)}` }
