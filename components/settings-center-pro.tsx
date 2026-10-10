@@ -66,7 +66,6 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false }:
     'store.timezone': map.get('store.timezone') || 'Asia/Beirut',
     'contact.email': map.get('contact.email') || '',
     'contact.phone': map.get('contact.phone') || '',
-    'notifications.orderEmailTo': map.get('notifications.orderEmailTo') || '',
     'store.address': map.get('store.address') || '',
     'policy.returnDays': map.get('policy.returnDays') || POLICY_DEFAULTS.returnDays,
     'policy.refundTime': map.get('policy.refundTime') || POLICY_DEFAULTS.refundTime,
@@ -305,8 +304,7 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false }:
 
           {tab === 'Notifications' && (
             <Card title="Operational notifications" desc="Choose which internal events should alert your team.">
-              <Toggle label="New order notifications (email and phone alerts)" keyName="notifications.orderEmail" value={flags['notifications.orderEmail']} onChange={() => toggle('notifications.orderEmail')} />
-              <Field label="Email new orders to (empty = the store contact email; separate several with commas)" value={values['notifications.orderEmailTo']} onChange={v => set('notifications.orderEmailTo', v)} />
+              <Toggle label="New order notifications" keyName="notifications.orderEmail" value={flags['notifications.orderEmail']} onChange={() => toggle('notifications.orderEmail')} />
               <Toggle label="Low stock alerts" keyName="notifications.lowStock" value={flags['notifications.lowStock']} onChange={() => toggle('notifications.lowStock')} />
               <Toggle label="Review moderation alerts" keyName="notifications.reviews" value={flags['notifications.reviews']} onChange={() => toggle('notifications.reviews')} />
             </Card>

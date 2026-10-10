@@ -74,7 +74,7 @@ async function settingEnabled(key: string) {
   return setting?.value !== 'false'
 }
 
-export async function sendEmail(to: string | string[], subject: string, html: string, text: string) {
+export async function sendEmail(to: string, subject: string, html: string, text: string) {
   const config = credentials()
   if (!config) {
     console.warn('[email] RESEND_API_KEY/EMAIL_FROM not configured; skipping send', { to, subject })
@@ -110,18 +110,6 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string, expir
   return sendEmail(to, 'Reset your password', html, text)
 }
 
-// Name, street, city and phone from an order's delivery address, one per line.
-function deliveryAddressLines(order: { shippingAddressJson: string | null; phone: string | null }) {
-  let address: Record<string, string> = {}
-  try { address = JSON.parse(order.shippingAddressJson || '{}') || {} } catch { address = {} }
-  return [
-    [address.firstName, address.lastName].filter(Boolean).join(' '),
-    [address.line1, address.line2].filter(Boolean).join(', '),
-    [address.city, address.region].filter(Boolean).join(', '),
-    address.phone || order.phone || '',
-  ].map(line => String(line || '').trim()).filter(Boolean)
-}
-
 export async function sendOrderConfirmationEmail(orderId: string) {
   if (!(await settingEnabled('email.customerOrder'))) return { sent: false, skipped: true }
   const order = await db.order.findUnique({ where: { id: orderId }, include: { items: true } })
@@ -143,7 +131,14 @@ export async function sendOrderConfirmationEmail(orderId: string) {
     : order.paymentMethod === 'COD' ? `Please have <strong>${due}</strong> ready in cash when your order arrives.`
     : order.paymentMethod === 'BANK_TRANSFER' ? `Please pay <strong>${due}</strong> by bank transfer. Your order ships once the payment arrives.`
     : order.paymentMethod === 'CARD' ? 'Your card payment is being confirmed.' : ''
-  const addressLines = deliveryAddressLines(order)
+  let address: Record<string, string> = {}
+  try { address = JSON.parse(order.shippingAddressJson || '{}') || {} } catch { address = {} }
+  const addressLines = [
+    [address.firstName, address.lastName].filter(Boolean).join(' '),
+    [address.line1, address.line2].filter(Boolean).join(', '),
+    [address.city, address.region].filter(Boolean).join(', '),
+    address.phone || order.phone || '',
+  ].map(line => String(line || '').trim()).filter(Boolean)
   const rows = order.items
     .map(
       (item) => `<tr>
@@ -174,67 +169,6 @@ export async function sendOrderConfirmationEmail(orderId: string) {
   `, brand)
   const text = `Thanks for your order ${order.orderNumber}. Total: ${money(order.grandTotal, order.currency)}.${paymentNote ? ' ' + paymentNote.replace(/<[^>]+>/g, '') : ''}${issuedGiftCards.length ? ` Gift card code${issuedGiftCards.length > 1 ? 's' : ''}: ${issuedGiftCards.map((c: any) => `${c.code} (${money(c.balance, order.currency)})`).join(', ')}.` : ''}${url ? ` View your order: ${url}` : ''}`
   return sendEmail(order.email, `Order confirmed — ${order.orderNumber}`, html, text)
-}
-
-// Where new-order emails go: the addresses typed in Settings > Notifications, or the store's
-// contact email (Settings > General) when that is empty. Invalid entries are dropped; at most 5.
-export function newOrderAlertRecipients(alertTo: string | null | undefined, contactEmail: string | null | undefined) {
-  const list = (value: string | null | undefined) => String(value || '')
-    .split(/[\s,;]+/)
-    .map(entry => entry.trim().toLowerCase())
-    .filter(entry => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(entry))
-  const chosen = list(alertTo)
-  return [...new Set(chosen.length ? chosen : list(contactEmail))].slice(0, 5)
-}
-
-const PAYMENT_LABELS: Record<string, string> = { COD: 'Cash on delivery', BANK_TRANSFER: 'Bank transfer', CARD: 'Card', WALLET: 'Wallet' }
-
-// "You have a new order" for the owner: who ordered, what, how they pay and where it goes, with
-// a button to the order in the admin. Sent when the customer's confirmation is (placed, or paid
-// for card orders), whether or not that one is switched on; uses the same switch as the
-// new-order phone alerts (Settings > Notifications > New order notifications).
-export async function sendNewOrderAlertEmail(orderId: string) {
-  const settings = await db.setting.findMany({
-    where: { key: { in: ['notifications.newOrder', 'notifications.orderEmail', 'notifications.orderEmailTo', 'contact.email'] } },
-    select: { key: true, value: true },
-  })
-  const value = Object.fromEntries(settings.map(setting => [setting.key, setting.value]))
-  if ((value['notifications.newOrder'] ?? value['notifications.orderEmail']) === 'false') return { sent: false, skipped: true }
-  const to = newOrderAlertRecipients(value['notifications.orderEmailTo'], value['contact.email'])
-  if (!to.length) return { sent: false, skipped: true }
-  const order = await db.order.findUnique({ where: { id: orderId }, include: { items: true } })
-  if (!order) return { sent: false, skipped: true }
-
-  const total = money(order.grandTotal, order.currency)
-  const paid = order.paymentStatus === 'PAID' || order.grandTotal === 0
-  const payment = `${PAYMENT_LABELS[order.paymentMethod] || order.paymentMethod}${paid ? ' (paid)' : order.paymentMethod === 'COD' ? ` (collect ${total})` : ' (not paid yet)'}`
-  const addressLines = deliveryAddressLines(order)
-  const base = siteUrl()
-  const adminUrl = base ? `${base}/admin/orders/${encodeURIComponent(order.id)}` : ''
-  const rows = order.items
-    .map(item => `<tr>
-      <td style="padding:6px 0;font-size:13px;color:#121212">${escapeHtml(item.name)} <span style="color:#6b7280">&times; ${item.quantity}</span></td>
-      <td style="padding:6px 0;font-size:13px;text-align:right;color:#121212">${money(item.totalPrice, order.currency)}</td>
-    </tr>`)
-    .join('')
-  const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0)
-  const brand = await emailBrand()
-  const html = layout(`
-    <h1 style="font-size:20px;margin:0 0 4px">New order: ${total}</h1>
-    <p style="font-size:14px;color:#3f3f46;margin:0 0 20px">Order ${escapeHtml(order.orderNumber)} &middot; ${itemCount} item${itemCount === 1 ? '' : 's'}</p>
-    <table role="presentation" width="100%" style="border-collapse:collapse">${rows}</table>
-    <table role="presentation" width="100%" style="border-collapse:collapse;border-top:1px solid #eee;margin-top:6px">
-      ${order.discountTotal ? `<tr><td style="padding-top:8px;font-size:13px;color:#6b7280">Discount</td><td style="padding-top:8px;text-align:right;font-size:13px">-${money(order.discountTotal, order.currency)}</td></tr>` : ''}
-      <tr><td style="padding-top:8px;font-size:13px;color:#6b7280">Delivery</td><td style="padding-top:8px;text-align:right;font-size:13px">${order.shippingTotal ? money(order.shippingTotal, order.currency) : 'Free'}</td></tr>
-      <tr><td style="padding-top:6px;font-size:14px;font-weight:800">Total</td><td style="padding-top:6px;text-align:right;font-size:14px;font-weight:800">${total}</td></tr>
-    </table>
-    <p style="margin:16px 0 0;padding:12px 16px;background:#f6f6f4;border-radius:10px;font-size:14px;color:#121212"><strong>Payment:</strong> ${escapeHtml(payment)}</p>
-    ${addressLines.length ? `<p style="font-size:13px;font-weight:700;margin:20px 0 4px">Deliver to</p><p style="font-size:13px;line-height:1.6;color:#3f3f46;margin:0">${addressLines.map(escapeHtml).join('<br>')}<br>${escapeHtml(order.email)}</p>` : ''}
-    ${order.notes ? `<p style="font-size:13px;font-weight:700;margin:20px 0 4px">Customer note</p><p style="font-size:13px;line-height:1.6;color:#3f3f46;margin:0">${escapeHtml(order.notes)}</p>` : ''}
-    ${adminUrl ? button(adminUrl, 'Open the order', brand) : ''}
-  `, brand)
-  const text = `New order ${order.orderNumber}: ${total}, ${itemCount} item${itemCount === 1 ? '' : 's'}. Payment: ${payment}.${addressLines.length ? ` Deliver to: ${addressLines.join(', ')}.` : ''}${adminUrl ? ` Open: ${adminUrl}` : ''}`
-  return sendEmail(to, `New order ${order.orderNumber} · ${total}`, html, text)
 }
 
 export async function sendFulfillmentEmail(orderId: string) {

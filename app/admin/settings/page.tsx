@@ -25,7 +25,6 @@ const CLIENT_SETTING_KEYS = new Set([
   'payment.wallet',
   'checkout.guestCheckout',
   'notifications.orderEmail',
-  'notifications.orderEmailTo',
   'notifications.lowStock',
   'notifications.reviews',
   'email.customerOrder',
