@@ -142,12 +142,21 @@ jobs:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Read-only keys for Admin > Website status (lib/website-status.ts).
+          STATUS_GITHUB_TOKEN: ${{ secrets.STATUS_GITHUB_TOKEN }}
+          CLOUDFLARE_STATUS_TOKEN: ${{ secrets.CLOUDFLARE_STATUS_TOKEN }}
+          BETTERSTACK_API_TOKEN: ${{ secrets.BETTERSTACK_API_TOKEN }}
         run: |
           # The database address goes up with this version rather than as a separate secret
           # change, which would first restart the code that is currently live. The email key
-          # (Resend) goes up the same way when the repo has it; when it doesn't, it is left out,
-          # so a key set in the Cloudflare dashboard is never overwritten with an empty one.
+          # (Resend) and the Website status keys go up the same way when the repo has them; one
+          # it doesn't have is left out, so a key set in the Cloudflare dashboard is never
+          # overwritten with an empty one. The deploy key (CLOUDFLARE_API_TOKEN) never goes up.
           secrets="$RUNNER_TEMP/worker-secrets.json"
-          node -e 'const s = { NEON_DATABASE_URL: process.env.NEON_DATABASE_URL }; if (process.env.RESEND_API_KEY) s.RESEND_API_KEY = process.env.RESEND_API_KEY; require("fs").writeFileSync(process.argv[1], JSON.stringify(s))' "$secrets"
+          node -e '
+            const s = { NEON_DATABASE_URL: process.env.NEON_DATABASE_URL, STATUS_GITHUB_REPO: process.env.GITHUB_REPOSITORY }
+            for (const key of ["RESEND_API_KEY", "STATUS_GITHUB_TOKEN", "CLOUDFLARE_STATUS_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "BETTERSTACK_API_TOKEN"]) if (process.env[key]) s[key] = process.env[key]
+            require("fs").writeFileSync(process.argv[1], JSON.stringify(s))
+          ' "$secrets"
           npx opennextjs-cloudflare deploy -- --secrets-file "$secrets"
           rm -f "$secrets"

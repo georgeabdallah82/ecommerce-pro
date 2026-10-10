@@ -1,0 +1,112 @@
+/*
+ * Website status (app/admin/website-status) - CSS Module on the --admin-* tokens from
+ * app/admin/admin-overhaul.css, so dark mode follows the admin theme. Phone first: one column,
+ * two stat tiles per row; two columns of cards from 900px.
+ */
+
+/* Sizes and counts are drawn in one neutral blue, never the store's accent: a shop whose
+   accent is red would otherwise make a 1%-full bar look like an alarm. Status keeps its own
+   colours (pills, and the bar turning amber/red near a limit). */
+.page { max-width: 1100px; margin: 0 auto; padding-bottom: 32px; --ws-bar: #2a78d6; --ws-bar-strong: #1c5cab; --ws-track: #cde2fb; }
+:global(html[data-admin-theme='dark']) .page { --ws-bar: #5598e7; --ws-bar-strong: #86b6ef; --ws-track: #0d366b; }
+
+.grid { display: grid; grid-template-columns: 1fr; gap: 14px; align-items: start; }
+@media (min-width: 900px) { .grid { grid-template-columns: 1fr 1fr; } .wide { grid-column: 1 / -1; } }
+
+.card { padding: 18px; display: grid; gap: 16px; min-width: 0; }
+.cardHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.cardTitle { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.cardTitle h2 { margin: 0; font-size: 16px; color: var(--admin-ink); }
+.cardTitle p { margin: 2px 0 0; font-size: 12px; color: var(--admin-muted); }
+.cardIcon { flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--admin-accent-soft); color: var(--admin-accent-strong); }
+.headRight { display: flex; align-items: center; gap: 8px; }
+.external { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: var(--admin-ink-soft); text-decoration: none; }
+.external:hover { color: var(--admin-ink); text-decoration: underline; }
+
+.pillOff { background: var(--admin-border-soft); color: var(--admin-ink-soft); border-color: transparent; }
+
+/* Summary */
+.summary { padding: 18px; margin-bottom: 14px; display: grid; gap: 12px; }
+.summaryHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.summaryHead h2 { margin: 0; font-size: 18px; color: var(--admin-ink); }
+.issues { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.issue { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; line-height: 1.45; color: var(--admin-ink); }
+.issue svg { flex: none; margin-top: 2px; }
+.issueCritical svg { color: var(--admin-danger); }
+.issueWarning svg { color: var(--admin-warning); }
+.allGood { margin: 0; font-size: 14px; color: var(--admin-ink-soft); }
+.stamp { font-size: 12px; color: var(--admin-muted); }
+
+/* Stat tiles */
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (min-width: 560px) { .tiles4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.tile { border: 1px solid var(--admin-border-soft); border-radius: 12px; padding: 12px; display: grid; gap: 4px; min-width: 0; }
+.tileLabel { font-size: 12px; color: var(--admin-muted); }
+.tileValue { font-size: 22px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; color: var(--admin-ink); overflow-wrap: anywhere; }
+.tileSub { font-size: 12px; color: var(--admin-ink-soft); }
+
+/* Meters */
+.meter { display: grid; gap: 6px; }
+.meterTop { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--admin-ink); }
+.meterTop strong { font-weight: 700; }
+.meterTop span { color: var(--admin-ink-soft); white-space: nowrap; }
+.track { height: 10px; border-radius: 999px; background: var(--ws-track); overflow: hidden; }
+.fill { height: 100%; border-radius: 999px; background: var(--ws-bar); min-width: 4px; }
+.trackWarning { background: var(--admin-warning-soft); }
+.trackWarning .fill { background: var(--admin-warning); }
+.trackCritical { background: var(--admin-danger-soft); }
+.trackCritical .fill { background: var(--admin-danger); }
+.meterNote { font-size: 12px; color: var(--admin-muted); }
+
+/* Lists */
+.block { display: grid; gap: 8px; }
+.blockTitle { margin: 0; font-size: 13px; font-weight: 700; color: var(--admin-ink); }
+.rows { margin: 0; padding: 0; list-style: none; display: grid; }
+.row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 8px 0; border-top: 1px solid var(--admin-border-soft); font-size: 13px; color: var(--admin-ink); min-width: 0; }
+.row:first-child { border-top: 0; padding-top: 0; }
+.rowMain { min-width: 0; display: grid; gap: 2px; }
+.rowMain strong { font-weight: 600; overflow-wrap: anywhere; }
+.rowMain span { font-size: 12px; color: var(--admin-muted); overflow-wrap: anywhere; }
+.rowSide { flex: none; font-size: 12px; color: var(--admin-ink-soft); text-align: right; font-variant-numeric: tabular-nums; }
+.rowError { color: var(--admin-danger) !important; }
+.inline { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--admin-ink-soft); }
+.inline b { color: var(--admin-ink); font-weight: 700; }
+.small { font-size: 12px; color: var(--admin-muted); margin: 0; }
+.link { color: var(--admin-ink-soft); font-weight: 700; text-decoration: underline; }
+
+.tableBar { display: block; height: 4px; margin-top: 4px; border-radius: 0 4px 4px 0; background: var(--ws-bar); }
+
+/* Not connected / error */
+.notice { border: 1px dashed var(--admin-border); border-radius: 12px; padding: 12px; display: grid; gap: 6px; font-size: 13px; color: var(--admin-ink-soft); }
+.notice strong { color: var(--admin-ink); }
+.notice code { font-size: 12px; background: var(--admin-border-soft); padding: 1px 5px; border-radius: 5px; color: var(--admin-ink); }
+.noticeError { border-style: solid; border-color: var(--admin-danger-border, var(--admin-border)); background: var(--admin-danger-soft); }
+
+/* Loading */
+.skeleton { display: grid; gap: 10px; }
+.skeleton span { display: block; height: 12px; border-radius: 6px; background: var(--admin-border-soft); animation: pulse 1.2s ease-in-out infinite; }
+.skeleton span:nth-child(2) { width: 80%; }
+.skeleton span:nth-child(3) { width: 60%; }
+@keyframes pulse { 50% { opacity: .5; } }
+@media (prefers-reduced-motion: reduce) { .skeleton span { animation: none; } }
+
+/* 7-day requests chart */
+.chart { display: grid; gap: 6px; }
+.chartArea { position: relative; display: grid; grid-template-columns: 34px 1fr; gap: 6px; }
+.yAxis { position: relative; height: 120px; font-size: 11px; color: var(--admin-muted); font-variant-numeric: tabular-nums; }
+.yAxis span { position: absolute; right: 0; transform: translateY(-50%); }
+.plot { position: relative; height: 120px; border-bottom: 1px solid var(--admin-border); display: grid; grid-template-columns: repeat(7, 1fr); align-items: end; }
+.gridline { position: absolute; left: 0; right: 0; top: 0; border-top: 1px solid var(--admin-border-soft); }
+.col { appearance: none; border: 0; background: transparent; padding: 0; height: 100%; display: flex; align-items: flex-end; justify-content: center; cursor: pointer; position: relative; }
+.bar { width: min(24px, 60%); border-radius: 4px 4px 0 0; background: var(--ws-bar); min-height: 2px; }
+.col:hover .bar, .col:focus-visible .bar, .colActive .bar { background: var(--ws-bar-strong); }
+.col:focus-visible { outline: 2px solid var(--admin-ink); outline-offset: 2px; border-radius: 4px; }
+.xAxis { display: grid; grid-template-columns: 34px repeat(7, 1fr); gap: 0; font-size: 11px; color: var(--admin-muted); text-align: center; }
+.xAxis span:first-child { visibility: hidden; }
+.tip { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); white-space: nowrap; background: var(--admin-ink); color: var(--admin-surface); font-size: 12px; padding: 6px 8px; border-radius: 8px; pointer-events: none; z-index: 2; text-align: left; line-height: 1.4; }
+.col:first-child .tip { left: 0; transform: none; }
+.col:last-child .tip { left: auto; right: 0; transform: none; }
+.numbers summary { cursor: pointer; font-size: 12px; color: var(--admin-ink-soft); }
+.numbers table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.numbers th, .numbers td { text-align: right; padding: 4px 6px; border-top: 1px solid var(--admin-border-soft); color: var(--admin-ink); }
+.numbers th:first-child, .numbers td:first-child { text-align: left; }

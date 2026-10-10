@@ -81,6 +81,20 @@ Admin → Operations lets a store owner register endpoints (`WebhookEndpoint`) f
 - **Site down:** Better Stack (free plan, the owner's account) checks `https://yallahaul.com/robots.txt` every 3 minutes (no database) and `https://yallahaul.com/api/health` every 30 minutes (wakes the database, so not more often), and emails the owner when either fails.
 - **Database hours:** `.github/workflows/neon-usage.yml` runs `scripts/neon-usage.ts` every morning (08:41 Beirut). It reads the store project's compute hours for the current period from the Neon API and fails, so GitHub emails the owner, once 70% of the free plan's 100 hours are used, or earlier when the pace would use them up before the period ends. It needs the `NEON_API_KEY` GitHub Actions secret (Neon Console → Account settings → API keys). When it fires: move Neon to the Launch plan (pay per use) or reduce what keeps the database awake.
 - **Backups:** below. Failed scheduled runs of either workflow email the owner through GitHub.
+- **Website status page:** Admin → Website status (`/admin/website-status`, owner only: `settings.manage`) shows all of it in one place, each card loading on its own (`lib/website-status.ts`):
+  - Database: size against Neon Free's 1 GB, biggest tables, orders/customers/admin changes, latest admin activity, and the database hours from the last daily check's log.
+  - Backups: when the last nightly copy was made, its size and whether its restore check passed, from that run's log.
+  - Website & hosting: Worker requests and errors per day and this month (Cloudflare GraphQL analytics), image storage in R2 (`MEDIA_BUCKET`), and when this version went live (`CF_VERSION_METADATA`).
+  - Emails: sent / failed / not sent, from the `EmailLog` table that `lib/email.ts` writes on every attempt, against Resend Free's 100 a day and 3,000 a month.
+  - Uptime: each Better Stack monitor's state and 30-day uptime.
+  - GitHub: the last deploy, backup and database-hours runs.
+
+  The read-only keys it uses are GitHub Actions secrets that the deploy job uploads to the Worker (each left out while unset; that card then says "Not connected yet"):
+  - `STATUS_GITHUB_TOKEN`: a fine-grained token for this repository only, with "Actions: Read".
+  - `CLOUDFLARE_STATUS_TOKEN`: an API token with only "Account Analytics: Read"; together with `CLOUDFLARE_ACCOUNT_ID`.
+  - `BETTERSTACK_API_TOKEN`: an Uptime API token.
+
+  `NEON_API_KEY` and the deploy token (`CLOUDFLARE_API_TOKEN`) deliberately never go to the Worker: either could delete things.
 
 ## Backups
 
