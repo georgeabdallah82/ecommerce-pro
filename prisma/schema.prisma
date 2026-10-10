@@ -436,6 +436,19 @@ model AuditLog {
   @@index([entity, entityId])
 }
 
+// Every email the store tries to send (lib/email.ts): sent (accepted by Resend), failed (with
+// Resend's reason) or skipped (email sending not set up). Shown in Admin > Website status.
+model EmailLog {
+  id         String   @id @default(cuid())
+  to         String
+  subject    String
+  status     String
+  providerId String?
+  error      String?
+  createdAt  DateTime @default(now())
+  @@index([createdAt])
+}
+
 model Notification {
   id        String   @id @default(cuid())
   userId    String

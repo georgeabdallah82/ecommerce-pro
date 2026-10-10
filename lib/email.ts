@@ -1,5 +1,6 @@
 import { db } from '@/lib/prisma'
 import { issueGiftCardsForOrder } from '@/lib/gift-cards'
+import { runInBackground } from '@/lib/background'
 
 function credentials() {
   const apiKey = process.env.RESEND_API_KEY
@@ -112,10 +113,20 @@ async function configuredSender(envFrom: string) {
   }
 }
 
+// Every attempt is recorded for Admin > Website status (sent / failed with Resend's reason /
+// skipped). Written after the response; a failed write never affects the email itself.
+function logEmail(to: string, subject: string, status: 'sent' | 'failed' | 'skipped', providerId?: string | null, error?: string | null) {
+  runInBackground(
+    db.emailLog.create({ data: { to: String(to).slice(0, 320), subject: String(subject).slice(0, 300), status, providerId: providerId || null, error: error ? error.slice(0, 500) : null } })
+      .catch(err => console.error('[email] could not log', err)),
+  )
+}
+
 export async function sendEmail(to: string, subject: string, html: string, text: string) {
   const config = credentials()
   if (!config) {
     console.warn('[email] RESEND_API_KEY/EMAIL_FROM not configured; skipping send', { to, subject })
+    logEmail(to, subject, 'skipped', null, 'Email sending is not set up (RESEND_API_KEY / EMAIL_FROM)')
     return { sent: false, skipped: true }
   }
   try {
@@ -127,12 +138,20 @@ export async function sendEmail(to: string, subject: string, html: string, text:
       signal: AbortSignal.timeout(10000),
     })
     if (!response.ok) {
-      console.error('[email] send rejected', response.status, await response.text().catch(() => ''))
+      const detail = await response.text().catch(() => '')
+      console.error('[email] send rejected', response.status, detail)
+      // Resend answers {"message": "..."}; keep its explanation, not the raw body.
+      let reason = detail
+      try { reason = String(JSON.parse(detail)?.message || detail) } catch {}
+      logEmail(to, subject, 'failed', null, `Resend answered ${response.status}${reason ? `: ${reason}` : ''}`)
       return { sent: false, skipped: false }
     }
+    const accepted = await response.json().catch(() => null) as { id?: string } | null
+    logEmail(to, subject, 'sent', accepted?.id || null)
     return { sent: true, skipped: false }
   } catch (error) {
     console.error('[email] send failed', error)
+    logEmail(to, subject, 'failed', null, error instanceof Error ? error.message : String(error))
     return { sent: false, skipped: false }
   }
 }
