@@ -12,6 +12,16 @@
 
 .grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }
 .main, .rail { display: grid; gap: 16px; align-content: start; }
+/* ui.card is only the box (no padding); every card on this page gets its inside spacing here.
+   Without it the text sat on the card edges. */
+.main > section, .rail > section { padding: 20px; }
+
+/* Header: long order numbers (#ORD-MV2FC5F7-WMGZ) at a size that fits beside the actions,
+   payment/fulfilment status under the title, actions wrapping as a group on the right. */
+.orderTitle { font-size: clamp(24px, 2.6vw, 32px); overflow-wrap: anywhere; }
+.headMeta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; }
+.headActions { flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+@media (max-width: 640px) { .headActions { justify-content: flex-start; } }
 
 .twoCol { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .addressGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
