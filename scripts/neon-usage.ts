@@ -61,10 +61,35 @@ export function usageReport(input: UsageInput): UsageReport {
   return { usedHours, percent, projectedHours, daysLeft, warn: false, reason: 'within the monthly allowance' }
 }
 
+class NeonError extends Error {
+  status: number
+  constructor(message: string, status: number) { super(message); this.status = status }
+}
+
 async function neon(path: string, apiKey: string): Promise<any> {
   const response = await fetch(`https://console.neon.tech/api/v2${path}`, { headers: { authorization: `Bearer ${apiKey}`, accept: 'application/json' } })
-  if (!response.ok) throw new Error(`Neon API ${path.split('?')[0]} answered ${response.status}${response.status === 401 ? ' (check the NEON_API_KEY secret)' : ''}`)
+  if (!response.ok) {
+    // Neon's own explanation (never contains the key), e.g. "org_id is required".
+    const detail = await response.json().then((b: any) => String(b?.message || ''), () => '')
+    const hint = response.status === 401 ? ' (check the NEON_API_KEY secret)' : ''
+    throw new NeonError(`Neon API ${path.split('?')[0]} answered ${response.status}${detail ? `: ${detail.slice(0, 200)}` : ''}${hint}`, response.status)
+  }
   return response.json()
+}
+
+// Every project the key can see. A personal key on an account whose projects belong to a Neon
+// organization must name the organization when listing projects (Neon answers 400 otherwise), so
+// on a 400 the projects of each of the key's organizations are listed instead.
+async function listProjects(apiKey: string): Promise<any[]> {
+  try {
+    return (await neon('/projects?limit=100', apiKey)).projects || []
+  } catch (error) {
+    if (!(error instanceof NeonError) || error.status !== 400) throw error
+    const { organizations = [] } = await neon('/users/me/organizations', apiKey)
+    const projects: any[] = []
+    for (const org of organizations) projects.push(...((await neon(`/projects?limit=100&org_id=${encodeURIComponent(org.id)}`, apiKey)).projects || []))
+    return projects
+  }
 }
 
 export async function main() {
@@ -77,7 +102,7 @@ export async function main() {
 
   // The project whose compute the store connects to.
   const endpointId = endpointIdFromUrl(databaseUrl)
-  const { projects = [] } = await neon('/projects?limit=100', apiKey)
+  const projects = await listProjects(apiKey)
   let project: any = null
   for (const candidate of projects) {
     const { endpoints = [] } = await neon(`/projects/${candidate.id}/endpoints`, apiKey)
