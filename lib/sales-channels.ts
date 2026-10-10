@@ -1,4 +1,5 @@
 import { db } from '@/lib/prisma'
+import { storefrontCached } from '@/lib/storefront-cache'
 
 // The one sales channel that represents this storefront. Merchants can create other
 // channels (POS, marketplaces, etc.) through the existing Sales channels admin panel,
@@ -18,10 +19,10 @@ export async function ensureStorefrontChannel() {
 // This only ever needs to list the explicit opt-outs, which in practice is a small,
 // normally empty set, so one unscoped query per request is cheap.
 export async function getUnpublishedProductIds(): Promise<string[]> {
-  const rows = await db.productPublication.findMany({
+  const rows = await storefrontCached('unpublished-product-ids', () => db.productPublication.findMany({
     where: { available: false, channel: { handle: STOREFRONT_CHANNEL_HANDLE } },
     select: { productId: true },
-  })
+  }))
   return rows.map(row => row.productId)
 }
 

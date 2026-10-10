@@ -1,0 +1,345 @@
+{%- comment -%}
+  Dark footer with rounded top corners: logo and social links, up to three menu columns,
+  newsletter signup, a bottom line with the copyright and a pill, and the store name in big
+  letters (first word white, the rest red).
+{%- endcomment -%}
+{%- capture yh_style -%}
+  {%- render 'yh-var', name: '--yh-ft-bg', value: section.settings.c_bg -%}
+  {%- render 'yh-var', name: '--yh-ft-text', value: section.settings.c_text -%}
+  {%- render 'yh-var', name: '--yh-ft-heading', value: section.settings.c_heading -%}
+  {%- render 'yh-var', name: '--yh-ft-btn', value: section.settings.c_btn -%}
+  {%- render 'yh-var', name: '--yh-ft-btn-text', value: section.settings.c_btn_text -%}
+  {%- render 'yh-var', name: '--yh-ft-word1', value: section.settings.c_word1 -%}
+  {%- render 'yh-var', name: '--yh-ft-word2', value: section.settings.c_word2 -%}
+{%- endcapture -%}
+<footer class="yh-footer" style="{{ yh_style }}">
+  <div class="yh-wrap">
+    {%- liquid
+      assign footer_cols = section.blocks.size
+      if section.settings.newsletter
+        assign footer_cols = footer_cols | plus: 1
+      endif
+    -%}
+    <div class="yh-footer__top" style="--yh-footer-cols: {{ footer_cols | at_least: 1 }}">
+      <div class="yh-footer__brand">
+        <a href="{{ routes.root_url }}" class="yh-footer__logo">
+          {%- if section.settings.logo != blank -%}
+            {{ section.settings.logo | image_url: width: 480 | image_tag: alt: shop.name, loading: 'lazy' }}
+          {%- elsif settings.logo != blank and section.settings.use_header_logo -%}
+            {{ settings.logo | image_url: width: 480 | image_tag: alt: shop.name, loading: 'lazy' }}
+          {%- else -%}
+            <span class="yh-footer__name">{{ shop.name | escape }}</span>
+          {%- endif -%}
+        </a>
+        {%- if section.settings.about != blank -%}<p class="yh-footer__about">{{ section.settings.about | escape }}</p>{%- endif -%}
+        <div class="yh-footer__social">
+          {%- if settings.social_instagram_link != blank -%}<a href="{{ settings.social_instagram_link }}" target="_blank" rel="noopener" aria-label="Instagram">{%- render 'yh-icon', icon: 'instagram', size: 16 -%}</a>{%- endif -%}
+          {%- if settings.social_facebook_link != blank -%}<a href="{{ settings.social_facebook_link }}" target="_blank" rel="noopener" aria-label="Facebook">{%- render 'yh-icon', icon: 'facebook', size: 16 -%}</a>{%- endif -%}
+          {%- if settings.social_tiktok_link != blank -%}<a href="{{ settings.social_tiktok_link }}" target="_blank" rel="noopener" aria-label="TikTok">{%- render 'yh-icon', icon: 'tiktok', size: 16 -%}</a>{%- endif -%}
+          {%- assign wa_digits = settings.yh_whatsapp_number | remove: '+' | remove: ' ' | remove: '-' | remove: '(' | remove: ')' -%}
+          {%- if wa_digits != blank -%}<a href="https://wa.me/{{ wa_digits }}" target="_blank" rel="noopener" aria-label="WhatsApp">{%- render 'yh-icon', icon: 'whatsapp', size: 16 -%}</a>{%- endif -%}
+        </div>
+      </div>
+
+      {%- for block in section.blocks -%}
+        <div class="yh-footer__col" {{ block.shopify_attributes }}>
+          {%- if block.settings.heading != blank -%}<strong>{{ block.settings.heading | escape }}</strong>{%- endif -%}
+          <ul>
+            {%- case block.type -%}
+              {%- when 'menu' -%}
+                {%- for link in linklists[block.settings.menu].links -%}
+                  <li><a href="{{ link.url }}">{{ link.title | escape }}</a></li>
+                {%- endfor -%}
+              {%- when 'shop_links' -%}
+                <li><a href="{{ routes.all_products_collection_url }}">{{ block.settings.all_label | escape }}</a></li>
+                <li><a href="{{ routes.collections_url }}">{{ block.settings.collections_label | escape }}</a></li>
+                <li><a href="{{ routes.search_url }}">{{ block.settings.search_label | escape }}</a></li>
+              {%- when 'account_links' -%}
+                {%- if shop.customer_accounts_enabled -%}
+                  <li><a href="{{ routes.account_url }}">{{ block.settings.account_label | escape }}</a></li>
+                {%- endif -%}
+                <li><a href="{{ routes.cart_url }}">{{ block.settings.cart_label | escape }}</a></li>
+                {%- if block.settings.contact_page != blank -%}
+                  <li><a href="{{ block.settings.contact_page.url }}">{{ block.settings.contact_page.title | escape }}</a></li>
+                {%- endif -%}
+              {%- when 'policy_links' -%}
+                {%- for policy in shop.policies -%}
+                  <li><a href="{{ policy.url }}">{{ policy.title | escape }}</a></li>
+                {%- endfor -%}
+            {%- endcase -%}
+          </ul>
+        </div>
+      {%- endfor -%}
+
+      {%- if section.settings.newsletter -%}
+        <div class="yh-footer__col yh-footer__news">
+          {%- if section.settings.news_heading != blank -%}<strong>{{ section.settings.news_heading | escape }}</strong>{%- endif -%}
+          {%- if section.settings.news_text != blank -%}<p>{{ section.settings.news_text | escape }}</p>{%- endif -%}
+          {%- form 'customer', id: 'YhNewsletter', class: 'yh-footer__form' -%}
+            <input type="hidden" name="contact[tags]" value="newsletter">
+            {%- if form.posted_successfully? -%}
+              <p class="yh-footer__msg" role="status">{{ 'newsletter.success' | t }}</p>
+            {%- else -%}
+              <input
+                type="email"
+                name="contact[email]"
+                value="{{ form.email }}"
+                placeholder="{{ 'newsletter.label' | t }}"
+                aria-label="{{ 'newsletter.label' | t }}"
+                autocomplete="email"
+                required
+              >
+              <button type="submit">{{ section.settings.news_button | escape }}</button>
+              {%- if form.errors -%}
+                <p class="yh-footer__msg yh-footer__msg--error" role="alert">{{ form.errors.translated_fields.email | capitalize }} {{ form.errors.messages.email }}</p>
+              {%- endif -%}
+            {%- endif -%}
+          {%- endform -%}
+        </div>
+      {%- endif -%}
+    </div>
+
+    {%- if section.settings.show_wordmark -%}
+      {%- liquid
+        assign word = section.settings.wordmark | default: shop.name | strip
+        assign first_word = word | split: ' ' | first
+        assign rest = word | remove_first: first_word | strip
+      -%}
+      <div class="yh-footer__word" aria-hidden="true"><span>{{ first_word | escape }}</span>{% if rest != blank %} <span>{{ rest | escape }}</span>{% endif %}</div>
+    {%- endif -%}
+    <div class="yh-footer__bottom">
+      <span>&copy; {{ 'now' | date: '%Y' }} · {{ shop.name | escape }} · {{ section.settings.rights | escape }}</span>
+      {%- if section.settings.pill != blank -%}<span class="yh-footer__pill">{{ section.settings.pill | escape }}</span>{%- endif -%}
+    </div>
+  </div>
+</footer>
+
+{% schema %}
+{
+  "name": "Yalla Haul footer",
+  "max_blocks": 3,
+  "settings": [
+    {
+      "type": "image_picker",
+      "id": "logo",
+      "label": "Footer logo (the version for dark backgrounds)",
+      "info": "Empty = the store name."
+    },
+    {
+      "type": "checkbox",
+      "id": "use_header_logo",
+      "label": "Use the header logo when no footer logo is set",
+      "default": false
+    },
+    {
+      "type": "text",
+      "id": "about",
+      "label": "Line under the logo"
+    },
+    {
+      "type": "paragraph",
+      "content": "Instagram, Facebook and TikTok links are under Theme settings > Social media. WhatsApp is under Theme settings > Yalla Haul."
+    },
+    {
+      "type": "header",
+      "content": "Newsletter"
+    },
+    {
+      "type": "checkbox",
+      "id": "newsletter",
+      "label": "Show newsletter signup",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "news_heading",
+      "label": "Heading",
+      "default": "Stay in the loop"
+    },
+    {
+      "type": "text",
+      "id": "news_text",
+      "label": "Text",
+      "default": "Get launches, drops and offers in your inbox."
+    },
+    {
+      "type": "text",
+      "id": "news_button",
+      "label": "Button",
+      "default": "Subscribe"
+    },
+    {
+      "type": "header",
+      "content": "Bottom line"
+    },
+    {
+      "type": "text",
+      "id": "rights",
+      "label": "Copyright text",
+      "default": "All rights reserved"
+    },
+    {
+      "type": "text",
+      "id": "pill",
+      "label": "Pill on the right",
+      "default": "Cash on delivery"
+    },
+    {
+      "type": "header",
+      "content": "Big name"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_wordmark",
+      "label": "Show the store name in big letters",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "wordmark",
+      "label": "Big name (empty = store name)"
+    },
+    {
+      "type": "header",
+      "content": "Colours"
+    },
+    {
+      "type": "color",
+      "id": "c_bg",
+      "label": "Background",
+      "default": "#171717"
+    },
+    {
+      "type": "color",
+      "id": "c_text",
+      "label": "Text and links",
+      "default": "#c9c1ba"
+    },
+    {
+      "type": "color",
+      "id": "c_heading",
+      "label": "Headings and icons",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "c_btn",
+      "label": "Join button",
+      "default": "#ff7a1a"
+    },
+    {
+      "type": "color",
+      "id": "c_btn_text",
+      "label": "Join button text",
+      "default": "#171717"
+    },
+    {
+      "type": "color",
+      "id": "c_word1",
+      "label": "Big name, first word",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "c_word2",
+      "label": "Big name, other words",
+      "default": "#d42a2a"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "menu",
+      "name": "Menu column",
+      "settings": [
+        {
+          "type": "text",
+          "id": "heading",
+          "label": "Heading",
+          "default": "Shop"
+        },
+        {
+          "type": "link_list",
+          "id": "menu",
+          "label": "Menu",
+          "default": "footer"
+        }
+      ]
+    },
+    {
+      "type": "shop_links",
+      "name": "Shop links",
+      "settings": [
+        {
+          "type": "text",
+          "id": "heading",
+          "label": "Heading",
+          "default": "Shop"
+        },
+        {
+          "type": "text",
+          "id": "all_label",
+          "label": "All products",
+          "default": "All products"
+        },
+        {
+          "type": "text",
+          "id": "collections_label",
+          "label": "Collections",
+          "default": "Collections"
+        },
+        {
+          "type": "text",
+          "id": "search_label",
+          "label": "Search",
+          "default": "Search"
+        }
+      ]
+    },
+    {
+      "type": "account_links",
+      "name": "Account links",
+      "settings": [
+        {
+          "type": "text",
+          "id": "heading",
+          "label": "Heading",
+          "default": "Account"
+        },
+        {
+          "type": "text",
+          "id": "account_label",
+          "label": "My account",
+          "default": "My account"
+        },
+        {
+          "type": "text",
+          "id": "cart_label",
+          "label": "Cart",
+          "default": "Cart"
+        },
+        {
+          "type": "page",
+          "id": "contact_page",
+          "label": "Extra page (e.g. Contact or About us)"
+        }
+      ]
+    },
+    {
+      "type": "policy_links",
+      "name": "Policy links",
+      "settings": [
+        {
+          "type": "text",
+          "id": "heading",
+          "label": "Heading",
+          "default": "Legal"
+        },
+        {
+          "type": "paragraph",
+          "content": "Shows the policies written under Settings > Policies."
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

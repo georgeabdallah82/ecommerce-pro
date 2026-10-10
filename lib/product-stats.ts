@@ -1,10 +1,12 @@
 import { db } from '@/lib/prisma'
+import { storefrontCached } from '@/lib/storefront-cache'
 
 // Real per-product signals for the marketplace-style ProductCard (star
 // rating + review count, "X+ sold") -- neither existed as a queryable
 // aggregate before; both are derived live from Review/OrderItem rather
-// than a cached counter column, since this catalog is small enough that
-// a per-request groupBy is cheap and never goes stale.
+// than a counter column. Shoppers who aren't signed in share the result for
+// up to 30 seconds (lib/storefront-cache.ts), so a rush of visitors doesn't
+// rerun the two grouped queries on every page view.
 export type ProductStats = { rating: number; reviewCount: number; soldCount: number }
 
 const EMPTY: ProductStats = { rating: 0, reviewCount: 0, soldCount: 0 }
@@ -23,6 +25,10 @@ type OrderItemGroupRow = { productId: string; _sum: { quantity: number | null } 
 export async function getProductStats(productIds: string[]): Promise<Record<string, ProductStats>> {
   const ids = Array.from(new Set(productIds)).filter(Boolean)
   if (!ids.length) return {}
+  return storefrontCached(`product-stats:${[...ids].sort().join(',')}`, () => loadProductStats(ids))
+}
+
+async function loadProductStats(ids: string[]): Promise<Record<string, ProductStats>> {
   const reviewStats = await db.review.groupBy({ by: ['productId'], where: { productId: { in: ids }, approved: true }, _avg: { rating: true }, _count: { rating: true } }) as unknown as ReviewGroupRow[]
   // Sold = paid for. Cash-on-delivery orders count once delivered (the courier collected the
   // money), including ones delivered before delivery started marking them PAID.

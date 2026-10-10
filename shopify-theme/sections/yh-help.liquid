@@ -1,0 +1,87 @@
+{%- comment -%}
+  "Need help with your order?" card with a WhatsApp button. Hidden when no WhatsApp number is
+  set (Theme settings > Yalla Haul).
+{%- endcomment -%}
+{%- assign wa_digits = settings.yh_whatsapp_number | remove: '+' | remove: ' ' | remove: '-' | remove: '(' | remove: ')' -%}
+{%- if wa_digits != blank -%}
+  {%- assign wa_text = settings.yh_whatsapp_message | url_encode -%}
+  {%- capture yh_style -%}
+    {%- render 'yh-var', name: '--yh-hp-bg', value: section.settings.c_bg -%}
+    {%- render 'yh-var', name: '--yh-hp-text', value: section.settings.c_text -%}
+    {%- render 'yh-var', name: '--yh-hp-btn', value: section.settings.c_btn -%}
+    {%- render 'yh-var', name: '--yh-hp-btn-text', value: section.settings.c_btn_text -%}
+  {%- endcapture -%}
+  <div class="yh-section" style="{{ yh_style }}">
+    <div class="yh-wrap">
+      <div class="yh-help">
+        <div>
+          <b>{{ section.settings.heading | escape }}</b>
+          {%- if section.settings.text != blank -%}<span>{{ section.settings.text | escape }}</span>{%- endif -%}
+        </div>
+        <a href="https://wa.me/{{ wa_digits }}{% if wa_text != blank %}?text={{ wa_text }}{% endif %}" target="_blank" rel="noopener" class="yh-help__btn">
+          {%- render 'yh-icon', icon: 'whatsapp', size: 20 -%}{{ section.settings.button | escape }}
+        </a>
+      </div>
+    </div>
+  </div>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Yalla Haul WhatsApp help",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Need help with your order?"
+    },
+    {
+      "type": "text",
+      "id": "text",
+      "label": "Text",
+      "default": "Message us on WhatsApp, we reply fast."
+    },
+    {
+      "type": "text",
+      "id": "button",
+      "label": "Button",
+      "default": "WhatsApp us"
+    },
+    {
+      "type": "header",
+      "content": "Colours"
+    },
+    {
+      "type": "color",
+      "id": "c_bg",
+      "label": "Card",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "c_text",
+      "label": "Text",
+      "default": "#171717"
+    },
+    {
+      "type": "color",
+      "id": "c_btn",
+      "label": "Button",
+      "default": "#25d366"
+    },
+    {
+      "type": "color",
+      "id": "c_btn_text",
+      "label": "Button text",
+      "default": "#ffffff"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Yalla Haul WhatsApp help"
+    }
+  ]
+}
+{% endschema %}

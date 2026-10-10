@@ -1,0 +1,34 @@
+{%- comment -%}
+  "Home › Collection › Product" above product and collection pages.
+{%- endcomment -%}
+{%- liquid
+  assign crumb_collection = collection
+  if crumb_collection == blank and product != blank
+    assign crumb_collection = product.collections | first
+  endif
+-%}
+<nav class="yh-wrap yh-crumbs" aria-label="Breadcrumb">
+  <a href="{{ routes.root_url }}">{{ section.settings.home_label | escape }}</a>
+  {%- if crumb_collection != blank -%}
+    {%- render 'yh-icon', icon: 'chevron-right', size: 12 -%}
+    {%- if product != blank -%}
+      <a href="{{ crumb_collection.url }}">{{ crumb_collection.title | escape }}</a>
+    {%- else -%}
+      <span aria-current="page">{{ crumb_collection.title | escape }}</span>
+    {%- endif -%}
+  {%- endif -%}
+  {%- if product != blank -%}
+    {%- render 'yh-icon', icon: 'chevron-right', size: 12 -%}
+    <span aria-current="page">{{ product.title | escape }}</span>
+  {%- endif -%}
+</nav>
+
+{% schema %}
+{
+  "name": "Yalla Haul breadcrumbs",
+  "settings": [
+    { "type": "text", "id": "home_label", "label": "First link", "default": "Home" }
+  ],
+  "enabled_on": { "templates": ["product", "collection"] }
+}
+{% endschema %}

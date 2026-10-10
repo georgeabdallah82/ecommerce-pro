@@ -12,6 +12,7 @@ import AliExpressProduct from '@/components/aliexpress-product'
 import { descriptionHtml } from '@/lib/sanitize-html'
 import { absoluteUrl, getSiteSeo, isShareableImage, metaText, shareMeta, siteUrl } from '@/lib/seo'
 import { themeTemplates } from '@/lib/theme-templates'
+import { storefrontCached } from '@/lib/storefront-cache'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -19,7 +20,7 @@ export const revalidate = 0
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
-  const product = await db.product.findUnique({
+  const product = await storefrontCached(`product-meta:${slug}`, () => db.product.findUnique({
     where: { slug },
     select: {
       name: true,
@@ -30,7 +31,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       seoImageUrl: true,
       images: { orderBy: { sortOrder: 'asc' }, take: 1 },
     },
-  })
+  }))
   if (!product) return {}
   // Placeholder text like "0" is skipped (lib/seo.ts metaText) so Google and WhatsApp show
   // real copy; SVGs are skipped because share previews can't render them.
@@ -67,7 +68,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const { slug } = await params
   // Theme, product, the hidden-products list and the signed-in user don't depend on each
   // other, so they're fetched together instead of one after another.
-  const [{ theme }, product, unpublishedIds, currentUser] = await Promise.all([getThemeState(), db.product.findUnique({
+  const [{ theme }, product, unpublishedIds, currentUser] = await Promise.all([getThemeState(), storefrontCached(`product:${slug}`, () => db.product.findUnique({
     where: { slug },
     include: {
       images: { orderBy: { sortOrder: 'asc' } },
@@ -83,7 +84,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       collections: { include: { collection: true } },
       metafields: { include: { definition: true } },
     },
-  }), getUnpublishedProductIds(), getCurrentUser()])
+  })), getUnpublishedProductIds(), getCurrentUser()])
   const sections = (themeTemplates(theme).Product || []).filter((s: any) => s && !PRODUCT_ZONE_EXCLUDE.has(s.type))
 
   if (!product || product.status !== 'ACTIVE') return notFound()
@@ -92,7 +93,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   const collectionIds = product.collections.map(c => c.collectionId)
   const relatedRaw = collectionIds.length
-    ? await db.product.findMany({
+    ? await storefrontCached(`related:${product.id}:${unpublishedIds.join(',')}`, () => db.product.findMany({
         where: { status: 'ACTIVE', id: { not: product.id, notIn: unpublishedIds }, collections: { some: { collectionId: { in: collectionIds } } } },
         select: {
           id: true,
@@ -120,7 +121,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         },
         orderBy: [{ featured: 'desc' }, { createdAt: 'desc' }],
         take: 24,
-      })
+      }))
     : []
   // Only queried when the merchant's appended content zone actually contains
   // a collection_grid/collection_carousel section -- the two default sections
