@@ -1,8 +1,9 @@
 import { cache } from 'react'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { db } from '@/lib/prisma'
+import { configuredSender } from '@/lib/email'
 import {
-  PLAN_LIMITS, lastDays, monitorTone, parseBackupLog, parseNeonUsageLog, runTone, toneForShare, worstTone,
+  PLAN_LIMITS, errorRateTooHigh, lastDays, monitorTone, parseBackupLog, parseNeonUsageLog, runTone, toneForShare, worstTone,
   type BackupResult, type NeonUsage, type Tone,
 } from '@/lib/website-status-shared'
 
@@ -171,20 +172,33 @@ export const getDatabaseStatus = cache(async (): Promise<Section<DatabaseStatus>
 // ---------------------------------------------------------------- Cloudflare (traffic, files, deploy)
 
 export type CloudflareStatus = {
-  traffic: { days: { date: string; requests: number; errors: number }[]; monthRequests: number; monthErrors: number } | null
+  traffic: {
+    days: { date: string; requests: number; errors: number }[]
+    monthRequests: number
+    monthErrors: number
+    last24h: { requests: number; errors: number }
+    // What the last 7 days' failed requests were, by Cloudflare's outcome (exceededResources...).
+    kinds: { status: string; errors: number }[]
+  } | null
   trafficIssue: { missing: string[] } | { message: string } | null
   media: { bytes: number; files: number; partial: boolean } | null
   deployedAt: string | null
 }
 
 async function workerTraffic(token: string, accountId: string, now: Date): Promise<NonNullable<CloudflareStatus['traffic']>> {
-  // One total per day (UTC) for the last 7 days, plus the month so far: each is the requests
-  // summed over a time window, which needs no grouping by date.
+  // One total per day (UTC) for the last 7 days, the last 24 hours and the month so far: each
+  // is the requests summed over a time window, which needs no grouping by date. Plus the week
+  // grouped by outcome, to say what any failed requests were.
   const days = lastDays(now, 7)
   const windows = days.map((date, i) => ({ alias: `d${i}`, start: `${date}T00:00:00Z`, end: i === days.length - 1 ? now.toISOString() : `${date}T23:59:59Z` }))
   const monthStart = `${now.toISOString().slice(0, 7)}-01T00:00:00Z`
   windows.push({ alias: 'month', start: monthStart, end: now.toISOString() })
-  const fields = windows.map(w => `${w.alias}: workersInvocationsAdaptive(limit: 1, filter: { scriptName: "${WORKER_NAME}", datetime_geq: "${w.start}", datetime_leq: "${w.end}" }) { sum { requests errors } }`).join('\n')
+  windows.push({ alias: 'last24h', start: new Date(now.getTime() - 86_400_000).toISOString(), end: now.toISOString() })
+  const filter = (start: string, end: string) => `filter: { scriptName: "${WORKER_NAME}", datetime_geq: "${start}", datetime_leq: "${end}" }`
+  const fields = [
+    ...windows.map(w => `${w.alias}: workersInvocationsAdaptive(limit: 1, ${filter(w.start, w.end)}) { sum { requests errors } }`),
+    `kinds: workersInvocationsAdaptive(limit: 20, ${filter(windows[0].start, now.toISOString())}) { sum { errors } dimensions { status } }`,
+  ].join('\n')
   const query = `query ($account: string!) { viewer { accounts(filter: { accountTag: $account }) { ${fields} } } }`
   const response = await fetch('https://api.cloudflare.com/client/v4/graphql', {
     method: 'POST',
@@ -203,7 +217,11 @@ async function workerTraffic(token: string, accountId: string, now: Date): Promi
     return rows.reduce((acc, row) => ({ requests: acc.requests + Number(row?.sum?.requests || 0), errors: acc.errors + Number(row?.sum?.errors || 0) }), { requests: 0, errors: 0 })
   }
   const month = total('month')
-  return { days: days.map((date, i) => ({ date, ...total(`d${i}`) })), monthRequests: month.requests, monthErrors: month.errors }
+  const kinds = ((account.kinds || []) as any[])
+    .map(row => ({ status: String(row?.dimensions?.status || 'unknown'), errors: Number(row?.sum?.errors || 0) }))
+    .filter(k => k.errors > 0)
+    .sort((a, b) => b.errors - a.errors)
+  return { days: days.map((date, i) => ({ date, ...total(`d${i}`) })), monthRequests: month.requests, monthErrors: month.errors, last24h: total('last24h'), kinds }
 }
 
 // Total size of the uploaded images (R2 bucket bound as MEDIA_BUCKET). Stops after 20,000 files
@@ -237,10 +255,9 @@ export const getCloudflareStatus = cache(async (): Promise<Section<CloudflareSta
   const tones: Tone[] = []
   if (trafficData) {
     tones.push(toneForShare(trafficData.monthRequests, PLAN_LIMITS.workerRequests))
-    const weekRequests = trafficData.days.reduce((s, d) => s + d.requests, 0)
-    const weekErrors = trafficData.days.reduce((s, d) => s + d.errors, 0)
-    // A few errors are normal (visitors closing the page mid-load); 2% of requests is not.
-    if (weekRequests >= 100 && weekErrors / weekRequests >= 0.02) tones.push('warning')
+    // Judged on the last 24 hours, so a problem that is already over doesn't stay flagged for
+    // a week (the card still shows the week's errors and what they were).
+    if (errorRateTooHigh(trafficData.last24h)) tones.push('warning')
   } else if (trafficIssue && 'message' in trafficIssue) tones.push('warning')
   if (media) tones.push(toneForShare(media.bytes, PLAN_LIMITS.mediaBytes))
   return { state: 'ready', tone: worstTone(tones), data: { traffic: trafficData, trafficIssue, media, deployedAt } }
@@ -265,12 +282,14 @@ export const getEmailStatus = cache(async (): Promise<Section<EmailStatus>> => {
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
   const configured = Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM)
   try {
-    const [sent24h, sentMonth, failed7d, skipped7d, recent] = await withTimeout(Promise.all([
+    const [sent24h, sentMonth, failed7d, skipped7d, recent, from] = await withTimeout(Promise.all([
       db.emailLog.count({ where: { status: 'sent', createdAt: { gte: dayAgo } } }),
       db.emailLog.count({ where: { status: 'sent', createdAt: { gte: monthStart } } }),
       db.emailLog.count({ where: { status: 'failed', createdAt: { gte: weekAgo } } }),
       db.emailLog.count({ where: { status: 'skipped', createdAt: { gte: weekAgo } } }),
       db.emailLog.findMany({ orderBy: { createdAt: 'desc' }, take: 6, select: { to: true, subject: true, status: true, error: true, createdAt: true } }),
+      // The sender actually used (Settings > Email > Sender wins over EMAIL_FROM).
+      process.env.EMAIL_FROM ? configuredSender(process.env.EMAIL_FROM) : Promise.resolve(null),
     ]))
     const tone = worstTone([
       configured ? 'ok' : 'critical',
@@ -281,7 +300,7 @@ export const getEmailStatus = cache(async (): Promise<Section<EmailStatus>> => {
     return {
       state: 'ready',
       tone,
-      data: { configured, from: process.env.EMAIL_FROM || null, sent24h, sentMonth, failed7d, skipped7d, recent: recent.map(r => ({ to: r.to, subject: r.subject, status: r.status, error: r.error, at: r.createdAt.toISOString() })) },
+      data: { configured, from, sent24h, sentMonth, failed7d, skipped7d, recent: recent.map(r => ({ to: r.to, subject: r.subject, status: r.status, error: r.error, at: r.createdAt.toISOString() })) },
     }
   } catch (error) {
     return { state: 'error', tone: configured ? 'warning' : 'critical', message: `Could not read the email log: ${failed(error)}` }

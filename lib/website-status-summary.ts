@@ -1,5 +1,5 @@
 import type { CloudflareStatus, DatabaseStatus, EmailStatus, GithubStatus, Section, UptimeStatus } from '@/lib/website-status'
-import { PLAN_LIMITS, formatBytes, formatPercent, monitorTone, toneForShare, worstTone, type Tone } from '@/lib/website-status-shared'
+import { PLAN_LIMITS, errorRateTooHigh, formatBytes, formatPercent, monitorTone, toneForShare, worstTone, type Tone } from '@/lib/website-status-shared'
 
 export type StatusSections = {
   database: Section<DatabaseStatus>
@@ -51,9 +51,8 @@ export function summarize(sections: StatusSections, now: Date = new Date()): Sum
     const c = cloudflare.data
     if (c.traffic) {
       add(toneForShare(c.traffic.monthRequests, PLAN_LIMITS.workerRequests), `Website visits this month are at ${formatPercent(c.traffic.monthRequests, PLAN_LIMITS.workerRequests)} of the 10 million requests included.`)
-      const requests = c.traffic.days.reduce((s, d) => s + d.requests, 0)
-      const errors = c.traffic.days.reduce((s, d) => s + d.errors, 0)
-      if (requests >= 100 && errors / requests >= 0.02) add('warning', `${formatPercent(errors, requests)} of website requests failed in the last 7 days.`)
+      const { requests, errors } = c.traffic.last24h
+      if (errorRateTooHigh(c.traffic.last24h)) add('warning', `${formatPercent(errors, requests)} of website requests failed in the last 24 hours.`)
     }
     if (c.trafficIssue && 'message' in c.trafficIssue) add('warning', `Cloudflare traffic: ${c.trafficIssue.message}`)
     if (c.trafficIssue && 'missing' in c.trafficIssue) notConnected.push(NAMES.cloudflare)

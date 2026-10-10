@@ -29,6 +29,21 @@ export function toneForShare(used: number, limit: number): Tone {
   return share >= 0.9 ? 'critical' : share >= 0.7 ? 'warning' : 'ok'
 }
 
+// A few failed requests are normal; 2% of at least 100 requests is not.
+export function errorRateTooHigh(window: { requests: number; errors: number }): boolean {
+  return window.requests >= 100 && window.errors / window.requests >= 0.02
+}
+
+// Cloudflare's outcome for failed Worker requests, in plain words.
+export function errorKindLabel(status: string): string {
+  if (/^exceeded/i.test(status)) return 'Needed more processing than the plan allows'
+  if (status === 'scriptThrewException') return 'Error in the website\u2019s code'
+  if (status === 'clientDisconnected') return 'Visitor left before the page finished'
+  if (/internal/i.test(status)) return 'Cloudflare had an internal problem'
+  if (status === 'responseStreamDisconnected') return 'Page was cut off while sending'
+  return status
+}
+
 export type NeonUsage = { usedHours: number; limitHours: number; projectedHours: number | null; daysLeft: number | null; warning: boolean }
 
 // The lines scripts/neon-usage.ts prints (GitHub prefixes each log line with a timestamp).

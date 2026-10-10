@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  PLAN_LIMITS, formatBytes, formatCount, formatPercent, lastDays, monitorTone, parseBackupLog, parseNeonUsageLog,
+  PLAN_LIMITS, errorKindLabel, errorRateTooHigh, formatBytes, formatCount, formatPercent, lastDays, monitorTone, parseBackupLog, parseNeonUsageLog,
   readableAction, runLabel, runTone, timeAgo, toneForShare, worstTone,
 } from '../lib/website-status-shared'
 import { summarize, type StatusSections } from '../lib/website-status-summary'
@@ -76,7 +76,7 @@ const run = (conclusion: string, at = '2026-10-10T00:17:00Z') => ({ status: 'com
 function healthy(): StatusSections {
   return {
     database: { state: 'ready', tone: 'ok', data: { sizeBytes: 40 * 1024 * 1024, version: '18.1', tables: [], counts: { products: 12, orders: 3, customers: 2, media: 20 }, orders24h: 1, orders7d: 3, customers7d: 2, changes24h: 4, lastOrderAt: null, activity: [] } },
-    cloudflare: { state: 'ready', tone: 'ok', data: { traffic: { days: [{ date: '2026-10-10', requests: 5000, errors: 3 }], monthRequests: 40_000, monthErrors: 10 }, trafficIssue: null, media: { bytes: 80 * 1024 * 1024, files: 300, partial: false }, deployedAt: null } },
+    cloudflare: { state: 'ready', tone: 'ok', data: { traffic: { days: [{ date: '2026-10-10', requests: 5000, errors: 3 }], monthRequests: 40_000, monthErrors: 10, last24h: { requests: 5000, errors: 3 }, kinds: [] }, trafficIssue: null, media: { bytes: 80 * 1024 * 1024, files: 300, partial: false }, deployedAt: null } },
     email: { state: 'ready', tone: 'ok', data: { configured: true, from: 'Yalla Haul <orders@yallahaul.com>', sent24h: 2, sentMonth: 20, failed7d: 0, skipped7d: 0, recent: [] } },
     uptime: { state: 'ready', tone: 'ok', data: { monitors: [{ name: 'yallahaul.com', url: 'https://yallahaul.com', status: 'up', lastCheckedAt: null, availability: 99.9, incidents: 0, downtimeSeconds: 0 }] } },
     github: { state: 'ready', tone: 'ok', data: { repo: 'o/r', deploy: run('success'), backup: run('success'), usage: run('success'), backupResult: null, neonUsage: { usedHours: 3, limitHours: 100, projectedHours: 40, daysLeft: 20, warning: false } } },
@@ -195,7 +195,15 @@ test('Cloudflare: one total per day for 7 days plus the month, from one query', 
     assert.equal(String(input), 'https://api.cloudflare.com/client/v4/graphql')
     assert.equal(new Headers(init.headers).get('authorization'), 'Bearer cf-test')
     body = JSON.parse(String(init.body))
-    const account: Record<string, unknown> = { month: [{ sum: { requests: 9000, errors: 12 } }] }
+    const account: Record<string, unknown> = {
+      month: [{ sum: { requests: 9000, errors: 12 } }],
+      last24h: [{ sum: { requests: 640, errors: 0 } }],
+      kinds: [
+        { dimensions: { status: 'success' }, sum: { errors: 0 } },
+        { dimensions: { status: 'scriptThrewException' }, sum: { errors: 2 } },
+        { dimensions: { status: 'exceededResources' }, sum: { errors: 9 } },
+      ],
+    }
     for (let i = 0; i < 7; i++) account[`d${i}`] = i === 3 ? [] : [{ sum: { requests: 100 * (i + 1), errors: i } }]
     return Response.json({ data: { viewer: { accounts: [account] } }, errors: null })
   }) as typeof fetch
@@ -209,7 +217,12 @@ test('Cloudflare: one total per day for 7 days plus the month, from one query', 
   assert.equal(result.data.traffic?.days[3].requests, 0)
   assert.equal(result.data.traffic?.days[6].requests, 700)
   assert.equal(result.data.traffic?.monthRequests, 9000)
+  assert.deepEqual(result.data.traffic?.last24h, { requests: 640, errors: 0 })
+  assert.deepEqual(result.data.traffic?.kinds, [{ status: 'exceededResources', errors: 9 }, { status: 'scriptThrewException', errors: 2 }])
+  assert.match(body.query, /last24h: workersInvocationsAdaptive\(limit: 1,/)
+  assert.match(body.query, /kinds: workersInvocationsAdaptive\(limit: 20, filter: \{ scriptName: "ecommerce-pro", datetime_geq: "[^"]+T00:00:00Z", datetime_leq: "[^"]+" \}\) \{ sum \{ errors \} dimensions \{ status \} \}/)
   assert.equal(result.data.trafficIssue, null)
+  assert.equal(result.tone, 'ok')
 })
 
 test('Cloudflare: an error from the API is shown, not hidden', async t => {
@@ -239,4 +252,23 @@ test('Better Stack: monitors with their 30-day uptime', async t => {
   const { getUptimeStatus } = await import('../lib/website-status')
   const result = await getUptimeStatus()
   assert.deepEqual(result, { state: 'ready', tone: 'ok', data: { monitors: [{ name: 'Yalla Haul home', url: 'https://yallahaul.com/robots.txt', status: 'up', lastCheckedAt: '2026-10-10T11:58:00Z', availability: 99.95, incidents: 1, downtimeSeconds: 120 }] } })
+})
+
+test('errors are judged on the last 24 hours and named in plain words', () => {
+  assert.equal(errorRateTooHigh({ requests: 11_180, errors: 0 }), false)
+  assert.equal(errorRateTooHigh({ requests: 15_867, errors: 1_272 }), true)
+  assert.equal(errorRateTooHigh({ requests: 50, errors: 10 }), false, 'too few requests to judge')
+  assert.equal(errorKindLabel('exceededResources'), 'Needed more processing than the plan allows')
+  assert.equal(errorKindLabel('scriptThrewException'), 'Error in the website\u2019s code')
+  assert.equal(errorKindLabel('somethingNew'), 'somethingNew')
+
+  // Oct 4-10 as seen on the live page: a bad week that is over by today raises nothing.
+  const s = healthy()
+  if (s.cloudflare.state === 'ready' && s.cloudflare.data.traffic) {
+    s.cloudflare.data.traffic.days = [{ date: '2026-10-09', requests: 15_867, errors: 1_272 }, { date: '2026-10-10', requests: 11_180, errors: 0 }]
+    s.cloudflare.data.traffic.last24h = { requests: 11_180, errors: 0 }
+  }
+  assert.deepEqual(summarize(s, NOW).issues, [])
+  if (s.cloudflare.state === 'ready' && s.cloudflare.data.traffic) s.cloudflare.data.traffic.last24h = { requests: 1000, errors: 60 }
+  assert.deepEqual(summarize(s, NOW).issues, [{ tone: 'warning', text: '6% of website requests failed in the last 24 hours.' }])
 })

@@ -103,7 +103,8 @@ export function senderFrom(envFrom: string, name?: string | null, address?: stri
   return useName ? `${useName} <${useAddress}>` : useAddress
 }
 
-async function configuredSender(envFrom: string) {
+// The From line emails go out with: Settings > Email > Sender when set, else EMAIL_FROM.
+export async function configuredSender(envFrom: string) {
   try {
     const rows = await db.setting.findMany({ where: { key: { in: ['email.fromName', 'email.fromAddress'] } }, select: { key: true, value: true } })
     const value = Object.fromEntries(rows.map(row => [row.key, row.value]))
