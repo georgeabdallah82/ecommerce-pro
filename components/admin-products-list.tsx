@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Archive, CheckCircle2, ChevronDown, Download, ChevronLeft, ChevronRight, MoreHorizontal, Plus, Search, Star, StarOff, Tag, X } from 'lucide-react'
+import { Archive, CheckCircle2, ChevronDown, Download, ChevronLeft, ChevronRight, MoreHorizontal, Plus, Search, Star, StarOff, Tag, Upload, X } from 'lucide-react'
+import ProductExportDialog from './product-export-dialog'
 import { money } from '@/lib/config'
 import styles from './admin-products-list.module.css'
 import ui from './admin-ui.module.css'
@@ -43,6 +44,7 @@ export default function AdminProductsList({ initial }: { initial: any }) {
   const [notice, setNotice] = useState('')
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [bulkOpen, setBulkOpen] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
 
   async function load(nextPage = page) {
     setLoading(true)
@@ -108,10 +110,12 @@ export default function AdminProductsList({ initial }: { initial: any }) {
           </div>
         </div>
         <div className="inline" style={{ gap: 8 }}>
-          <Link className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/products/import"><Download size={16} /> Import</Link>
+          <Link className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/products/import"><Upload size={16} /> Import</Link>
+          <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setExportOpen(true)}><Download size={16} /> Export</button>
           <Link className={ui.btn} href="/admin/products/new"><Plus size={16} /> Add product</Link>
         </div>
       </div>
+      {exportOpen && <ProductExportDialog onClose={() => setExportOpen(false)} total={total} selectedIds={selected} status={status} q={q} />}
 
       {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
       {notice && <div className={ui.alert}>{notice}</div>}

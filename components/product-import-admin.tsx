@@ -18,7 +18,7 @@ const remembered = (key: string, fallback: string) => { try { return localStorag
 const remember = (key: string, value: string) => { try { localStorage.setItem(key, value) } catch {} }
 const num = (v: string) => { const n = Number(String(v).replace(',', '.')); return Number.isFinite(n) ? n : 0 }
 
-export default function ProductImportAdmin({ bookmarklet, storeName, currency }: { bookmarklet: string; storeName: string; currency: string }) {
+export default function ProductImportAdmin({ bookmarklet, storeName, currency, embedded = false }: { bookmarklet: string; storeName: string; currency: string; embedded?: boolean }) {
   const router = useRouter()
   const [product, setProduct] = useState<ImportedProduct | null>(null)
   const [url, setUrl] = useState('')
@@ -85,14 +85,15 @@ export default function ProductImportAdmin({ bookmarklet, storeName, currency }:
   const foreign = product?.currency && product.currency !== currency
 
   return <div className={s.page}>
-    <div className={ui.sectionHead}>
+    {!embedded && <div className={ui.sectionHead}>
       <div>
         <Link className={ui.textLink} href="/admin/products"><ArrowLeft size={15} /> Back to products</Link>
         <span className={`${ui.muted} ${ui.tiny}`} style={{ display: 'block', marginTop: 12 }}>CATALOG</span>
         <h1 className={ui.title}>Import a product</h1>
         <p className={ui.muted}>Bring a product in from AliExpress, Shein, Alibaba or another shop. It's saved as a draft so you can check it before it goes live.</p>
       </div>
-    </div>
+    </div>}
+    {embedded && <p className={ui.muted}>Bring one product in from AliExpress, Shein, Alibaba or another shop. It's saved as a draft so you can check it before it goes live.</p>}
     {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
 
     {!product && <>

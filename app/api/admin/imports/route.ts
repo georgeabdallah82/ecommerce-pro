@@ -2,125 +2,216 @@ import { routeError } from '@/lib/api-error'
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
+import { runInBackground } from '@/lib/background'
+import { sendBackInStockAlerts } from '@/lib/back-in-stock'
+import {
+  COLLECTION_COLUMNS, PRODUCT_COLUMNS, parseCsv, parseVariantOptions, planCollectionImport, planProductImport, readImportOptions, readRows, slugify, summarize,
+  type CatalogLookup, type CollectionKey, type ExistingCollection, type ImportOptions, type ParsedFile, type PlanEntry, type ProductKey, type StockState,
+} from '@/lib/catalog-csv'
 
 const MAX_FILE_BYTES = 2 * 1024 * 1024
 const MAX_ROWS = 500
-const PRODUCT_STATUSES = new Set(['DRAFT', 'ACTIVE', 'ARCHIVED'])
-type Row = Record<string, string>
 
-function parseCsv(text: string): Row[] {
-  const rows: string[][] = []; let row: string[] = [], cell = '', quoted = false
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i]
-    if (quoted) { if (ch === '"' && text[i + 1] === '"') { cell += '"'; i++ } else if (ch === '"') quoted = false; else cell += ch }
-    else if (ch === '"' && cell === '') quoted = true
-    else if (ch === ',') { row.push(cell); cell = '' }
-    else if (ch === '\n') { row.push(cell.replace(/\r$/, '')); rows.push(row); row = []; cell = '' }
-    else cell += ch
-  }
-  if (quoted) throw new Error('Malformed CSV: unterminated quoted field')
-  if (cell !== '' || row.length) { row.push(cell.replace(/\r$/, '')); rows.push(row) }
-  if (!rows.length) return []
-  const headers = rows.shift()!.map(h => h.trim())
-  if (!headers.length || headers.some(h => !h)) throw new Error('CSV header row is invalid')
-  const duplicate = headers.find((h, i) => headers.indexOf(h) !== i)
-  if (duplicate) throw new Error(`Duplicate CSV header: ${duplicate}`)
-  return rows.filter(r => r.some(Boolean)).map(r => Object.fromEntries(headers.map((h, i) => [h, r[i] ?? ''])))
-}
-
-// v is `undefined` whenever the CSV simply doesn't include that (optional) column at all --
-// parseCsv only ever sets keys for headers actually present in the file -- as opposed to `''`
-// for a column that's there but left blank on this row. Both mean "use the fallback."
-const bool = (v: string | undefined, fallback = false) => !v ? fallback : ['true', '1', 'yes'].includes(v.toLowerCase())
-const num = (v: string | undefined, fallback = 0) => { const n = Number(v); return Number.isFinite(n) ? n : fallback }
-const slugify = (v: string | undefined) => (v || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 120)
-const cleanSlug = (v: string | undefined, fallback: string) => slugify(v) || slugify(fallback) || `item-${Date.now()}`
-const split = (v?: string) => (v || '').split('|').map(x => x.trim()).filter(Boolean)
-// "Color:Red|Size:M" -> {Color: "Red", Size: "M"}, matching how the manual admin product
-// editor already stores variant options (JSON.stringify(v.options) in app/api/admin/products/route.ts).
-const parseVariantOptions = (v?: string) => Object.fromEntries(split(v).map(pair => { const i = pair.indexOf(':'); return i === -1 ? [pair, ''] : [pair.slice(0, i).trim(), pair.slice(i + 1).trim()] }))
-
+// Products › Import and Collections › Import (components/spreadsheet-import.tsx). Always two steps:
+// mode=preview reads the file and answers the plan (what every row would do, lib/catalog-csv.ts);
+// mode=apply reads the same file again, makes the same plan here (never trusting the browser's) and
+// saves it only if no row has a problem, all in one transaction.
 export async function POST(request: Request) {
   try {
-    const actor = await requirePermission('products.manage')
-    const url = new URL(request.url); const type = url.searchParams.get('type') || 'products'; const mode = url.searchParams.get('mode') || 'apply'
+    const url = new URL(request.url)
+    const type = url.searchParams.get('type') || 'products'
+    const mode = url.searchParams.get('mode') || 'preview'
     if (!['products', 'collections'].includes(type)) return NextResponse.json({ error: 'Unsupported import type' }, { status: 400 })
     if (!['preview', 'apply'].includes(mode)) return NextResponse.json({ error: 'Unsupported import mode' }, { status: 400 })
-    const form = await request.formData(); const file = form.get('file')
-    if (!(file instanceof File)) return NextResponse.json({ error: 'CSV file is required' }, { status: 400 })
-    if (file.size > MAX_FILE_BYTES) return NextResponse.json({ error: 'CSV exceeds 2 MB limit' }, { status: 413 })
-    const rows = parseCsv(await file.text())
-    if (rows.length > MAX_ROWS) return NextResponse.json({ error: `Maximum ${MAX_ROWS} rows per import` }, { status: 413 })
+    const actor = await requirePermission(type === 'collections' ? 'collections.manage' : 'products.manage')
+    const form = await request.formData()
+    const file = form.get('file')
+    if (!(file instanceof File)) return NextResponse.json({ error: 'Choose a CSV file first.' }, { status: 400 })
+    if (file.size > MAX_FILE_BYTES) return NextResponse.json({ error: 'The file is bigger than 2 MB. Split it into smaller files.' }, { status: 413 })
+    let rows
+    try { rows = parseCsv(await file.text()) } catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : 'This file could not be read as CSV.' }, { status: 400 }) }
+    if (!rows.length) return NextResponse.json({ error: 'The file has no rows under the column names.' }, { status: 400 })
+    if (rows.length > MAX_ROWS) return NextResponse.json({ error: `The file has ${rows.length} rows; the most is ${MAX_ROWS} per import. Split it into smaller files.` }, { status: 413 })
+    const options = readImportOptions(form)
 
-    const errors: string[] = []; const preview = rows.map((r, i) => ({ row: i + 2, action: 'validated', name: r.variantOf ? `${r.variantName || r.variantSku || ''} (variant)` : (r.name || ''), sku: r.variantOf ? (r.variantSku || '') : (r.sku || '') })); const addError = (m: string) => { if (errors.length < 100) errors.push(m) }
     if (type === 'products') {
-      // A row with variantOf set is a variant of another row's product, not a standalone
-      // product -- it's validated against ProductVariant's own required fields instead.
-      const seen = new Set<string>(); const seenVariantSku = new Set<string>()
-      rows.forEach((r, i) => {
-        if (r.variantOf) {
-          if (!r.variantSku) addError(`Row ${i + 2}: variantSku is required when variantOf is set`)
-          if (r.variantSku && seenVariantSku.has(r.variantSku)) addError(`Row ${i + 2}: duplicate variantSku ${r.variantSku} in import`)
-          if (r.variantSku) seenVariantSku.add(r.variantSku)
-          if (r.variantPrice && !Number.isFinite(Number(r.variantPrice))) addError(`Row ${i + 2}: variantPrice must be numeric`)
-          if (r.variantQuantity && !Number.isFinite(Number(r.variantQuantity))) addError(`Row ${i + 2}: variantQuantity must be numeric`)
-          return
-        }
-        if (!r.sku || !r.name) addError(`Row ${i + 2}: sku and name are required`); if (r.sku && seen.has(r.sku)) addError(`Row ${i + 2}: duplicate SKU ${r.sku} in import`); if (r.sku) seen.add(r.sku); if (r.status && !PRODUCT_STATUSES.has(r.status)) addError(`Row ${i + 2}: invalid status ${r.status}`); if (r.basePrice && !Number.isFinite(Number(r.basePrice))) addError(`Row ${i + 2}: basePrice must be numeric`); if (r.quantity && !Number.isFinite(Number(r.quantity))) addError(`Row ${i + 2}: quantity must be numeric`)
-      })
-    } else rows.forEach((r, i) => { if (!r.name) addError(`Row ${i + 2}: name is required`) })
-    if (mode === 'preview') return NextResponse.json({ ok: !errors.length, rows: preview, errors })
-    if (errors.length) return NextResponse.json({ error: 'Import validation failed', errors }, { status: 422 })
+      const parsed = readRows(rows, PRODUCT_COLUMNS)
+      if (!parsed.columns.has('sku')) return NextResponse.json({ error: 'The file needs a "SKU" column: it is how each row finds its product.' }, { status: 400 })
+      const lookup = await loadCatalog(parsed)
+      const plan = planProductImport(parsed, lookup, options)
+      const summary = summarize(plan)
+      if (mode === 'preview') return NextResponse.json({ plan, summary, ignored: parsed.ignored, backupSkus: plan.filter(p => p.kind === 'product' && p.action === 'update').map(p => p.sku) })
+      if (summary.error) return NextResponse.json({ error: 'Some rows have problems. Fix them in the file and upload it again.', plan, summary }, { status: 422 })
+      const result = await applyProducts(parsed, plan, lookup, options)
+      await db.auditLog.create({ data: { actorId: actor.id, action: 'ADMIN_IMPORT', entity: 'products', metadataJson: JSON.stringify({ filename: file.name, rowCount: rows.length, ...result.counts, options }) } })
+      if (result.touchedProductIds.length) runInBackground(sendBackInStockAlerts(result.touchedProductIds).catch(error => console.error('[back-in-stock] alerts after import failed', error)))
+      return NextResponse.json({ ok: true, ...result.counts, summary })
+    }
 
-    let created = 0, updated = 0
-    await db.$transaction(async tx => {
-      if (type === 'collections') {
-        for (const r of rows) { const slug = cleanSlug(r.slug, r.name); const existing = await tx.collection.findUnique({ where: { slug } }); const data = { name: r.name, slug, description: r.description || null, imageUrl: r.imageUrl || null, isActive: bool(r.isActive, true), sortOrder: num(r.sortOrder) }; if (existing) { await tx.collection.update({ where: { id: existing.id }, data }); updated++ } else { await tx.collection.create({ data }); created++ } }
-        for (const r of rows) { const collection = await tx.collection.findUnique({ where: { slug: cleanSlug(r.slug, r.name) } }); if (!collection) continue; await tx.collectionProduct.deleteMany({ where: { collectionId: collection.id } }); for (const sku of split(r.productSkus)) { const product = await tx.product.findUnique({ where: { sku } }); if (product) await tx.collectionProduct.create({ data: { collectionId: collection.id, productId: product.id } }) } }
-      } else {
-        // Rows with variantOf set are processed in a second pass below, once every row's own
-        // product (this pass) is guaranteed to exist -- a variant can reference a product
-        // defined earlier in the very same file.
-        for (const r of rows) {
-          if (r.variantOf) continue
-          const existing = await tx.product.findUnique({ where: { sku: r.sku } }); const slug = cleanSlug(r.slug, r.name); const slugOwner = await tx.product.findUnique({ where: { slug } }); if (slugOwner && slugOwner.id !== existing?.id) throw new Error(`Slug already belongs to another product: ${slug}`)
-          const barcode = r.barcode || null; if (barcode) { const barcodeOwner = await tx.product.findFirst({ where: { barcode } }); if (barcodeOwner && barcodeOwner.id !== existing?.id) throw new Error(`Barcode already belongs to another product: ${barcode}`) }
-          const data = { name: r.name, slug, description: r.description || null, shortDescription: r.shortDescription || null, brand: r.brand || null, vendor: r.vendor || null, productType: r.productType || null, basePrice: num(r.basePrice), compareAtPrice: r.compareAtPrice ? num(r.compareAtPrice) : null, costPrice: r.costPrice ? num(r.costPrice) : null, barcode, status: (r.status || 'DRAFT') as 'DRAFT' | 'ACTIVE' | 'ARCHIVED', featured: bool(r.featured), seoTitle: r.seoTitle || null, seoDescription: r.seoDescription || null, seoImageUrl: r.seoImageUrl || null, weight: r.weight ? num(r.weight) : null, weightUnit: r.weightUnit || null, requiresShipping: bool(r.requiresShipping, true), taxable: bool(r.taxable, true), trackInventory: bool(r.trackInventory, true), continueSellingWhenOutOfStock: bool(r.continueSellingWhenOutOfStock), giftCard: bool(r.giftCard) }
-          let product; if (existing) { product = await tx.product.update({ where: { id: existing.id }, data }); updated++ } else { product = await tx.product.create({ data: { ...data, sku: r.sku } }); created++ }
-          // Every product needs at least one InventoryItem row for its trackInventory-gated
-          // availability checks (checkout, the storefront PDP) to see anything but 0 in
-          // stock -- the manual admin "New product" flow always creates one (see
-          // app/api/admin/products/route.ts), but CSV import skipped it entirely, silently
-          // making every imported product unsellable until someone opened it in Inventory
-          // and added stock by hand. Only backfills a *missing* row, so re-importing never
-          // resets stock an admin already adjusted here.
-          const hasInventoryRow = await tx.inventoryItem.findFirst({ where: { productId: product.id, variantId: null } })
-          if (!hasInventoryRow) {
-            await tx.inventoryItem.create({ data: { productId: product.id, variantId: null, quantity: r.quantity ? Math.max(0, Math.trunc(num(r.quantity))) : 0, reserved: 0, lowStockThreshold: r.lowStockThreshold ? Math.max(0, Math.trunc(num(r.lowStockThreshold))) : 5 } })
-          }
-          await tx.productTag.deleteMany({ where: { productId: product.id } }); const tags = split(r.tags); for (const value of tags) { const exists = await tx.productTag.findFirst({ where: { productId: product.id, value } }); if (!exists) await tx.productTag.create({ data: { productId: product.id, value } }) }
-          await tx.collectionProduct.deleteMany({ where: { productId: product.id } }); for (const collectionSlug of split(r.collectionSlugs)) { const collection = await tx.collection.findUnique({ where: { slug: collectionSlug } }); if (collection) await tx.collectionProduct.create({ data: { collectionId: collection.id, productId: product.id } }) }
-        }
-        for (const r of rows) {
-          if (!r.variantOf) continue
-          const parent = await tx.product.findUnique({ where: { sku: r.variantOf } })
-          if (!parent) throw new Error(`Variant ${r.variantSku} references unknown product SKU: ${r.variantOf}`)
-          const existingVariant = await tx.productVariant.findUnique({ where: { sku: r.variantSku } })
-          if (existingVariant && existingVariant.productId !== parent.id) throw new Error(`Variant SKU already belongs to a different product: ${r.variantSku}`)
-          const variantBarcode = r.variantBarcode || null
-          if (variantBarcode) { const barcodeOwner = await tx.productVariant.findFirst({ where: { barcode: variantBarcode } }); if (barcodeOwner && barcodeOwner.id !== existingVariant?.id) throw new Error(`Variant barcode already belongs to another variant: ${variantBarcode}`) }
-          const variantData = { productId: parent.id, name: r.variantName || r.variantSku!, sku: r.variantSku!, barcode: variantBarcode, optionJson: JSON.stringify(parseVariantOptions(r.variantOptions)), price: r.variantPrice ? num(r.variantPrice) : null, compareAtPrice: r.variantCompareAtPrice ? num(r.variantCompareAtPrice) : null }
-          let variant; if (existingVariant) { variant = await tx.productVariant.update({ where: { id: existingVariant.id }, data: variantData }); updated++ } else { variant = await tx.productVariant.create({ data: variantData }); created++ }
-          // Mirrors the base-product backfill above: only creates a row when the variant has
-          // none yet, so re-importing never resets stock an admin already adjusted by hand.
-          const hasVariantInventoryRow = await tx.inventoryItem.findFirst({ where: { productId: parent.id, variantId: variant.id } })
-          if (!hasVariantInventoryRow) {
-            await tx.inventoryItem.create({ data: { productId: parent.id, variantId: variant.id, quantity: r.variantQuantity ? Math.max(0, Math.trunc(num(r.variantQuantity))) : 0, reserved: 0, lowStockThreshold: r.variantLowStockThreshold ? Math.max(0, Math.trunc(num(r.variantLowStockThreshold))) : 5 } })
-          }
-        }
-      }
-    })
-    await db.auditLog.create({ data: { actorId: actor.id, action: 'ADMIN_IMPORT', entity: type, metadataJson: JSON.stringify({ filename: file.name, rowCount: rows.length, created, updated }) } })
-    return NextResponse.json({ ok: true, created, updated, errors: [] })
+    const parsed = readRows(rows, COLLECTION_COLUMNS)
+    if (!parsed.columns.has('name') && !parsed.columns.has('slug')) return NextResponse.json({ error: 'The file needs a "Name" or "URL handle" column.' }, { status: 400 })
+    const { existing, knownSkus } = await loadCollections(parsed)
+    const plan = planCollectionImport(parsed, existing, knownSkus, options)
+    const summary = summarize(plan)
+    if (mode === 'preview') return NextResponse.json({ plan, summary, ignored: parsed.ignored, backupSkus: [] })
+    if (summary.error) return NextResponse.json({ error: 'Some rows have problems. Fix them in the file and upload it again.', plan, summary }, { status: 422 })
+    const counts = await applyCollections(parsed, plan, existing)
+    await db.auditLog.create({ data: { actorId: actor.id, action: 'ADMIN_IMPORT', entity: 'collections', metadataJson: JSON.stringify({ filename: file.name, rowCount: rows.length, ...counts, options }) } })
+    return NextResponse.json({ ok: true, ...counts, summary })
   } catch (error) { return routeError(error, 'Import failed', 400) }
+}
+
+const stockOf = (rows: Array<{ quantity: number; reserved: number }>): StockState => ({ rows: rows.length, quantity: rows.reduce((s, r) => s + r.quantity, 0), reserved: rows.reduce((s, r) => s + r.reserved, 0) })
+
+// Everything the plan compares against, for just the SKUs, handles and barcodes in the file.
+async function loadCatalog(parsed: ParsedFile<ProductKey>): Promise<CatalogLookup> {
+  const productRows = parsed.rows.filter(r => !r.values.variantOf)
+  const variantRows = parsed.rows.filter(r => r.values.variantOf)
+  const skus = [...new Set([...productRows.map(r => String(r.values.sku || '')), ...variantRows.map(r => String(r.values.variantOf))].filter(Boolean))]
+  const variantSkus = [...new Set(variantRows.map(r => String(r.values.variantSku || '')).filter(Boolean))]
+  const slugs = [...new Set(productRows.map(r => slugify(String(r.values.slug || r.values.name || r.values.sku || ''))).filter(Boolean))]
+  const barcodes = [...new Set(productRows.map(r => String(r.values.barcode || '')).filter(Boolean))]
+  const variantBarcodes = [...new Set(variantRows.map(r => String(r.values.variantBarcode || '')).filter(Boolean))]
+  const [products, slugOwners, barcodeOwners, variants, variantBarcodeOwners, collections] = await Promise.all([
+    skus.length ? db.product.findMany({ where: { sku: { in: skus } }, include: { tags: true, collections: { select: { collectionId: true } }, inventory: { where: { variantId: null } } } }) : [],
+    slugs.length ? db.product.findMany({ where: { slug: { in: slugs } }, select: { slug: true, sku: true } }) : [],
+    barcodes.length ? db.product.findMany({ where: { barcode: { in: barcodes } }, select: { barcode: true, sku: true } }) : [],
+    variantSkus.length ? db.productVariant.findMany({ where: { sku: { in: variantSkus } }, include: { product: { select: { sku: true } }, inventory: true } }) : [],
+    variantBarcodes.length ? db.productVariant.findMany({ where: { barcode: { in: variantBarcodes } }, select: { barcode: true, sku: true } }) : [],
+    db.collection.findMany({ select: { id: true, name: true, slug: true } }),
+  ])
+  return {
+    products: new Map(products.map(p => [p.sku, {
+      id: p.id, sku: p.sku, name: p.name, slug: p.slug, status: p.status, basePrice: p.basePrice, compareAtPrice: p.compareAtPrice, costPrice: p.costPrice,
+      description: p.description, shortDescription: p.shortDescription, brand: p.brand, vendor: p.vendor, productType: p.productType, barcode: p.barcode,
+      featured: p.featured, trackInventory: p.trackInventory, continueSellingWhenOutOfStock: p.continueSellingWhenOutOfStock, requiresShipping: p.requiresShipping,
+      taxable: p.taxable, giftCard: p.giftCard, weight: p.weight, weightUnit: p.weightUnit, seoTitle: p.seoTitle, seoDescription: p.seoDescription, seoImageUrl: p.seoImageUrl,
+      tags: p.tags.map(t => t.value), collectionIds: p.collections.map(c => c.collectionId), stock: stockOf(p.inventory), lowStockThreshold: p.inventory.length === 1 ? p.inventory[0].lowStockThreshold : null,
+    }])),
+    variants: new Map(variants.map(v => [v.sku, { id: v.id, sku: v.sku, productSku: v.product.sku, name: v.name, barcode: v.barcode, optionJson: v.optionJson, price: v.price, compareAtPrice: v.compareAtPrice, stock: stockOf(v.inventory), lowStockThreshold: v.inventory.length === 1 ? v.inventory[0].lowStockThreshold : null }])),
+    slugOwner: new Map(slugOwners.map(p => [p.slug, p.sku])),
+    barcodeOwner: new Map(barcodeOwners.filter(p => p.barcode).map(p => [p.barcode!, p.sku])),
+    variantBarcodeOwner: new Map(variantBarcodeOwners.filter(v => v.barcode).map(v => [v.barcode!, v.sku])),
+    collections,
+  }
+}
+
+const PRODUCT_FIELDS = ['name', 'description', 'shortDescription', 'brand', 'vendor', 'productType', 'basePrice', 'compareAtPrice', 'costPrice', 'barcode', 'status', 'featured', 'seoTitle', 'seoDescription', 'seoImageUrl', 'weight', 'weightUnit', 'requiresShipping', 'taxable', 'trackInventory', 'continueSellingWhenOutOfStock', 'giftCard'] as const
+
+async function applyProducts(parsed: ParsedFile<ProductKey>, plan: PlanEntry[], lookup: CatalogLookup, options: ImportOptions) {
+  const byLine = new Map(parsed.rows.map(r => [r.line, r.values]))
+  const collectionId = (name: string) => lookup.collections.find(c => c.slug.toLowerCase() === name.toLowerCase() || c.name.toLowerCase() === name.toLowerCase())!.id
+  const counts = { created: 0, updated: 0, unchanged: 0, skipped: 0 }
+  const touchedProductIds: string[] = []
+  const reason = 'Spreadsheet import'
+
+  // Sets one stock row (or makes the first), with a movement in the stock history.
+  async function setStock(tx: any, productId: string, variantId: string | null, quantity: number) {
+    const rows = await tx.inventoryItem.findMany({ where: { productId, variantId } })
+    if (rows.length > 1) return
+    if (!rows.length) { const created = await tx.inventoryItem.create({ data: { productId, variantId, quantity, reserved: 0 } }); if (quantity) await tx.inventoryMovement.create({ data: { inventoryId: created.id, type: 'ADJUSTMENT', quantity, reason } }); return }
+    const delta = quantity - rows[0].quantity
+    if (!delta) return
+    await tx.inventoryItem.update({ where: { id: rows[0].id }, data: { quantity } })
+    await tx.inventoryMovement.create({ data: { inventoryId: rows[0].id, type: 'ADJUSTMENT', quantity: delta, reason } })
+  }
+
+  await db.$transaction(async tx => {
+    const productIdBySku = new Map([...lookup.products.values()].map(p => [p.sku, p.id]))
+    for (const entry of plan.filter(p => p.kind === 'product')) {
+      if (entry.action === 'unchanged') { counts.unchanged++; continue }
+      if (entry.action === 'skip') { counts.skipped++; continue }
+      const v = byLine.get(entry.line)!
+      const data: Record<string, unknown> = {}
+      for (const key of PRODUCT_FIELDS) if (v[key] !== undefined) data[key] = v[key]
+      if (entry.action === 'create') {
+        const product = await tx.product.create({ data: {
+          sku: entry.sku, name: String(v.name), slug: slugify(String(v.slug || v.name || entry.sku)), basePrice: 0, ...data,
+          status: options.newAsDraft ? 'DRAFT' : (v.status as any) || 'DRAFT',
+        } as any })
+        productIdBySku.set(entry.sku, product.id)
+        await tx.inventoryItem.create({ data: { productId: product.id, variantId: null, quantity: (v.quantity as number) ?? 0, reserved: 0, lowStockThreshold: (v.lowStockThreshold as number) ?? 5 } })
+        if (v.tags) await tx.productTag.createMany({ data: [...new Set(v.tags as string[])].map(value => ({ productId: product.id, value })) })
+        if (v.collections) for (const [i, name] of [...new Set(v.collections as string[])].entries()) await tx.collectionProduct.create({ data: { collectionId: collectionId(name), productId: product.id, sortOrder: i } })
+        counts.created++
+        continue
+      }
+      // update: only what the plan listed (columns in the file, filled in, and different).
+      const existing = lookup.products.get(entry.sku)!
+      if (v.slug !== undefined) data.slug = slugify(String(v.slug))
+      if (Object.keys(data).length) await tx.product.update({ where: { id: existing.id }, data: data as any })
+      if (v.tags !== undefined) { await tx.productTag.deleteMany({ where: { productId: existing.id } }); await tx.productTag.createMany({ data: [...new Set(v.tags as string[])].map(value => ({ productId: existing.id, value })) }) }
+      if (v.collections !== undefined) {
+        const ids = [...new Set((v.collections as string[]).map(collectionId))]
+        await tx.collectionProduct.deleteMany({ where: { productId: existing.id, collectionId: { notIn: ids } } })
+        for (const id of ids) if (!existing.collectionIds.includes(id)) await tx.collectionProduct.create({ data: { collectionId: id, productId: existing.id } })
+      }
+      if (entry.changes.some(c => c.label === 'Stock')) await setStock(tx, existing.id, null, v.quantity as number)
+      if (entry.changes.some(c => c.label === 'Low stock at')) await tx.inventoryItem.updateMany({ where: { productId: existing.id, variantId: null }, data: { lowStockThreshold: v.lowStockThreshold as number } })
+      touchedProductIds.push(existing.id)
+      counts.updated++
+    }
+
+    for (const entry of plan.filter(p => p.kind === 'variant')) {
+      if (entry.action === 'unchanged') { counts.unchanged++; continue }
+      if (entry.action === 'skip') { counts.skipped++; continue }
+      const v = byLine.get(entry.line)!
+      const productId = productIdBySku.get(String(v.variantOf))!
+      const data: Record<string, unknown> = {}
+      if (v.variantName !== undefined) data.name = v.variantName
+      if (v.variantBarcode !== undefined) data.barcode = v.variantBarcode
+      if (v.variantOptions !== undefined) data.optionJson = JSON.stringify(parseVariantOptions(String(v.variantOptions)))
+      if (v.variantPrice !== undefined) data.price = v.variantPrice
+      if (v.variantCompareAtPrice !== undefined) data.compareAtPrice = v.variantCompareAtPrice
+      if (entry.action === 'create') {
+        const variant = await tx.productVariant.create({ data: { productId, sku: entry.sku, name: String(v.variantName || entry.sku), optionJson: '{}', ...data } as any })
+        await tx.inventoryItem.create({ data: { productId, variantId: variant.id, quantity: (v.variantQuantity as number) ?? 0, reserved: 0, lowStockThreshold: (v.variantLowStockThreshold as number) ?? 5 } })
+        counts.created++
+        continue
+      }
+      const existing = lookup.variants.get(entry.sku)!
+      if (Object.keys(data).length) await tx.productVariant.update({ where: { id: existing.id }, data: data as any })
+      if (entry.changes.some(c => c.label === 'Option stock')) await setStock(tx, productId, existing.id, v.variantQuantity as number)
+      touchedProductIds.push(productId)
+      counts.updated++
+    }
+  }, { timeout: 60_000, maxWait: 10_000 })
+  return { counts, touchedProductIds: [...new Set(touchedProductIds)] }
+}
+
+async function loadCollections(parsed: ParsedFile<CollectionKey>) {
+  const slugs = [...new Set(parsed.rows.map(r => slugify(String(r.values.slug || r.values.name || ''))).filter(Boolean))]
+  const skus = [...new Set(parsed.rows.flatMap(r => (r.values.productSkus as string[] | undefined) || []))]
+  const [collections, products] = await Promise.all([
+    slugs.length ? db.collection.findMany({ where: { slug: { in: slugs } }, include: { products: { include: { product: { select: { sku: true } } }, orderBy: { sortOrder: 'asc' } } } }) : [],
+    skus.length ? db.product.findMany({ where: { sku: { in: skus } }, select: { sku: true } }) : [],
+  ])
+  const existing = new Map<string, ExistingCollection>(collections.map(c => [c.slug, { id: c.id, name: c.name, slug: c.slug, description: c.description, imageUrl: c.imageUrl, isActive: c.isActive, sortOrder: c.sortOrder, productSkus: c.products.map(p => p.product.sku) }]))
+  return { existing, knownSkus: new Set(products.map(p => p.sku)) }
+}
+
+async function applyCollections(parsed: ParsedFile<CollectionKey>, plan: PlanEntry[], existing: Map<string, ExistingCollection>) {
+  const byLine = new Map(parsed.rows.map(r => [r.line, r.values]))
+  const counts = { created: 0, updated: 0, unchanged: 0, skipped: 0 }
+  await db.$transaction(async tx => {
+    for (const entry of plan) {
+      if (entry.action === 'unchanged') { counts.unchanged++; continue }
+      if (entry.action === 'skip') { counts.skipped++; continue }
+      const v = byLine.get(entry.line)!
+      const data: Record<string, unknown> = {}
+      for (const key of ['name', 'description', 'imageUrl', 'isActive', 'sortOrder'] as const) if (v[key] !== undefined) data[key] = v[key]
+      const collection = entry.action === 'create'
+        ? await tx.collection.create({ data: { name: String(v.name), slug: entry.sku, ...data } as any })
+        : Object.keys(data).length ? await tx.collection.update({ where: { id: existing.get(entry.sku)!.id }, data: data as any }) : { id: existing.get(entry.sku)!.id }
+      if (v.productSkus !== undefined) {
+        const products = await tx.product.findMany({ where: { sku: { in: v.productSkus as string[] } }, select: { id: true, sku: true } })
+        const idBySku = new Map(products.map(p => [p.sku, p.id]))
+        await tx.collectionProduct.deleteMany({ where: { collectionId: collection.id } })
+        for (const [i, sku] of [...new Set(v.productSkus as string[])].entries()) { const productId = idBySku.get(sku); if (productId) await tx.collectionProduct.create({ data: { collectionId: collection.id, productId, sortOrder: i } }) }
+      }
+      if (entry.action === 'create') counts.created++
+      else counts.updated++
+    }
+  }, { timeout: 60_000, maxWait: 10_000 })
+  return counts
 }

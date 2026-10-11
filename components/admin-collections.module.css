@@ -103,3 +103,4 @@
   .title { font-size: 32px; }
   .views { width: 100%; }
 }
+.headerActions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
