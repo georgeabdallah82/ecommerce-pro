@@ -403,6 +403,24 @@ export async function issueAndNotifyGiftCardsForOrder(orderId: string) {
   return sendEmail(order.email, `Your gift card is ready — ${order.orderNumber}`, html, text)
 }
 
+// "Notify me when it's back" (lib/back-in-stock.ts): the product the customer asked about.
+export async function sendBackInStockEmail(to: string, product: { name: string; slug: string; image?: string }) {
+  const base = siteUrl()
+  const url = base ? `${base}/product/${encodeURIComponent(product.slug)}` : null
+  const image = product.image && /^https:\/\//i.test(product.image) ? product.image : product.image?.startsWith('/') && base ? `${base}${product.image}` : ''
+  const brand = await emailBrand()
+  const html = layout(`
+    <h1 style="font-size:20px;margin:0 0 4px">It's back in stock</h1>
+    <p style="font-size:14px;line-height:1.6;color:#3f3f46;margin:0 0 20px">You asked us to tell you when this is available again. Here it is, order it before it sells out.</p>
+    ${image ? `<img src="${escapeHtml(image)}" alt="" width="160" style="display:block;width:160px;max-width:100%;height:auto;border-radius:12px;margin:0 0 14px">` : ''}
+    <p style="font-size:16px;font-weight:800;color:#121212;margin:0">${escapeHtml(product.name)}</p>
+    ${url ? button(url, 'Shop it now', brand) : ''}
+    <p style="font-size:12px;color:#6b7280;margin:24px 0 0">We only send this once, because you asked on our website.</p>
+  `, brand)
+  const text = `${product.name} is back in stock.${url ? ` Order it here: ${url}` : ''}`
+  return sendEmail(to, `Back in stock: ${product.name}`, html, text)
+}
+
 export async function sendAbandonedCheckoutEmail(abandonedCheckoutId: string) {
   if (!(await settingEnabled('email.abandonedCheckout'))) return { sent: false, skipped: true }
   const checkout = await db.abandonedCheckout.findUnique({ where: { id: abandonedCheckoutId } })

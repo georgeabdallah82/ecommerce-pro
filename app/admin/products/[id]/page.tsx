@@ -10,7 +10,7 @@ export default async function ProductEdit({ params }: ProductEditPageProps) {
   await requirePermission('products.view')
   const { id } = await params
   await ensureStorefrontChannel()
-  const [product, definitions, locations, channels, publications, collections] = await Promise.all([
+  const [product, definitions, locations, channels, publications, collections, waitingCount] = await Promise.all([
     db.product.findUnique({
       where: { id },
       include: {
@@ -27,6 +27,8 @@ export default async function ProductEdit({ params }: ProductEditPageProps) {
     db.salesChannel.findMany({ where: { status: 'ACTIVE' }, orderBy: { createdAt: 'asc' } }),
     db.productPublication.findMany({ where: { productId: id } }),
     db.collection.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true, isActive: true } }),
+    // Customers who tapped "Notify me when it's back" (lib/back-in-stock.ts).
+    db.backInStockRequest.count({ where: { productId: id } }).catch(() => 0),
   ])
 
   if (!product) return <div className={ui.empty}>Product not found.</div>
@@ -38,5 +40,5 @@ export default async function ProductEdit({ params }: ProductEditPageProps) {
   const serializedChannels = JSON.parse(JSON.stringify(channels))
   const serializedPublications = JSON.parse(JSON.stringify(publications))
 
-  return <ProductEditorV2 initial={serializedProduct} creating={false} definitions={serializedDefinitions} locations={serializedLocations} channels={serializedChannels} publications={serializedPublications} collections={collections} />
+  return <ProductEditorV2 initial={serializedProduct} creating={false} definitions={serializedDefinitions} locations={serializedLocations} channels={serializedChannels} publications={serializedPublications} collections={collections} waitingCount={waitingCount} />
 }

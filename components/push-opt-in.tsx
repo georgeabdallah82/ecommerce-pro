@@ -3,10 +3,8 @@
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { Bell, X } from 'lucide-react'
-import {
-  PUSH_PROMPT_DELAY_MS, PUSH_PROMPT_DISMISSED_KEY, PUSH_PROMPT_SUBSCRIBED_KEY,
-  sameApplicationServerKey, shouldOfferPush, urlBase64ToUint8Array,
-} from '@/lib/push-opt-in'
+import { PUSH_PROMPT_DELAY_MS, PUSH_PROMPT_DISMISSED_KEY, PUSH_PROMPT_SUBSCRIBED_KEY, shouldOfferPush } from '@/lib/push-opt-in'
+import { pushSupported, subscribeThisBrowser } from '@/lib/push-client'
 import styles from './push-opt-in.module.css'
 
 function readStored(key: string): number | null {
@@ -26,7 +24,7 @@ export default function PushOptIn({ vapidPublicKey, enabled, storeName }: { vapi
   const [state, setState] = useState<'ask' | 'busy' | 'done' | 'blocked'>('ask')
 
   useEffect(() => {
-    const supported = typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
+    const supported = pushSupported()
     const offer = shouldOfferPush({
       enabled,
       hasKey: !!vapidPublicKey,
@@ -51,23 +49,14 @@ export default function PushOptIn({ vapidPublicKey, enabled, storeName }: { vapi
     if (!vapidPublicKey) return
     setState('busy')
     try {
-      const permission = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission()
-      if (permission !== 'granted') {
+      const subscription = await subscribeThisBrowser(vapidPublicKey)
+      if (!subscription) {
         // Said no (or closed the browser's prompt): don't ask again for a while.
         store(PUSH_PROMPT_DISMISSED_KEY, String(Date.now()))
         setState('blocked')
         window.setTimeout(() => setOpen(false), 4000)
         return
       }
-      const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
-      await navigator.serviceWorker.ready
-      const key = urlBase64ToUint8Array(vapidPublicKey)
-      let subscription = await registration.pushManager.getSubscription()
-      if (subscription && !sameApplicationServerKey(subscription.options.applicationServerKey, key)) {
-        await subscription.unsubscribe().catch(() => undefined)
-        subscription = null
-      }
-      subscription ||= await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key as BufferSource })
       const response = await fetch('/api/push/subscribe', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(subscription.toJSON()) })
       if (!response.ok) throw new Error('save failed')
       store(PUSH_PROMPT_SUBSCRIBED_KEY, String(Date.now()))

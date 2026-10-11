@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { keyOf, useCart } from './cart-provider'
 import { CategoryTabs, DeliveryBar, MarketMenu } from './market-chrome'
+import CartSuggestions from './cart-suggestions'
 import { useShopper } from './use-shopper'
 import { money as formatMoney } from '@/lib/config'
 
@@ -581,6 +582,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
                 <button className="focalCartDeleteBtn" onClick={() => removeItem(keyOf(item))} aria-label={`Remove ${item.name}`}><Trash2 size={15}/></button>
               </div>
             ))}
+            <CartSuggestions currency={theme.currency || 'USD'} onNavigate={closeCart} />
           </div>
 
           <div className="focalCartFoot">

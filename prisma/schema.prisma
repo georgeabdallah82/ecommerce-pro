@@ -189,6 +189,7 @@ model Product {
   tags               ProductTag[]
   collections        CollectionProduct[]
   metafields         MetafieldValue[]
+  backInStockRequests BackInStockRequest[]
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
   @@index([status])
@@ -461,6 +462,24 @@ model PushSubscription {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@index([userId])
+}
+
+// "Notify me when it's back" on a sold-out product (lib/back-in-stock.ts): a browser to notify
+// (its push subscription) or an email address. Deleted once the customer has been told.
+model BackInStockRequest {
+  id        String   @id @default(cuid())
+  productId String
+  variantId String?
+  endpoint  String?
+  p256dh    String?
+  auth      String?
+  email     String?
+  userId    String?
+  // Product, option and the browser or email: one request each, however often the button is tapped.
+  dedupeKey String   @unique
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  @@index([productId])
 }
 
 model Notification {

@@ -85,7 +85,7 @@ function CollectionPicker({ options, value, onChange }: { options: CollectionOpt
   </div>
 }
 
-export default function ProductEditorV2({ initial, creating, definitions, locations, channels, publications, collections = [] }: { initial: Product; creating: boolean; definitions: any[]; locations?: StoreLocationOption[]; channels?: any[]; publications?: any[]; collections?: CollectionOption[] }) {
+export default function ProductEditorV2({ initial, creating, definitions, locations, channels, publications, collections = [], waitingCount = 0 }: { initial: Product; creating: boolean; definitions: any[]; locations?: StoreLocationOption[]; channels?: any[]; publications?: any[]; collections?: CollectionOption[]; waitingCount?: number }) {
   const confirm = useConfirm()
   const router = useRouter()
   const [product, setProduct] = useState<Product>(initial)
@@ -280,6 +280,7 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
 
         {tab === 'Inventory' && <>
           <Card title="Inventory" sub="Stock tracking and identifiers">
+            {waitingCount > 0 && <div className={s.notice}><strong>{waitingCount} customer{waitingCount === 1 ? ' is' : 's are'} waiting for this</strong><span>They tapped &ldquo;Notify me when it&rsquo;s back&rdquo;. Add stock and save, and they get a message straight away.</span></div>}
             <div className={s.threeCol}>
               <Field label="SKU"><input className={ui.input} value={product.sku} onChange={e => update({ sku: e.target.value })} /></Field>
               <Field label="Barcode"><input className={ui.input} value={product.barcode || ''} onChange={e => update({ barcode: e.target.value })} /></Field>

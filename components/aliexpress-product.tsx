@@ -11,6 +11,9 @@ import { FreeDeliveryBadge, ShippingNote, merchantShippingText } from '@/compone
 import { DELIVERY_AREA_EVENT, readDeliveryArea } from '@/components/market-chrome'
 import { parseDeliveryAreas } from '@/lib/storefront-market'
 import { trackViewContent } from '@/lib/tracking-events'
+import BackInStockButton from '@/components/back-in-stock-button'
+import BoughtTogether from '@/components/bought-together'
+import type { Suggestion } from '@/lib/recommendations'
 
 type AnyMap = Record<string, any>
 
@@ -66,7 +69,7 @@ function ReviewForm({ productId }: { productId: string }) {
   )
 }
 
-export default function AliExpressProduct({ theme, product, related, variantAvailability, productAvailable, trackInventory, continueSellingWhenOutOfStock, reviewEligibility, sections = [], collections = [] }: { theme: AnyMap; product: AnyMap; related: AnyMap[]; variantAvailability: Array<{ name: string; sku: string; available: number }>; productAvailable: number; trackInventory: boolean; continueSellingWhenOutOfStock: boolean; reviewEligibility: ReviewEligibility; sections?: AnyMap[]; collections?: AnyMap[] }) {
+export default function AliExpressProduct({ theme, product, related, variantAvailability, productAvailable, trackInventory, continueSellingWhenOutOfStock, reviewEligibility, sections = [], collections = [], vapidPublicKey, customerEmail, boughtTogether = [] }: { theme: AnyMap; product: AnyMap; related: AnyMap[]; boughtTogether?: Suggestion[]; variantAvailability: Array<{ name: string; sku: string; available: number }>; productAvailable: number; trackInventory: boolean; continueSellingWhenOutOfStock: boolean; reviewEligibility: ReviewEligibility; sections?: AnyMap[]; collections?: AnyMap[]; vapidPublicKey?: string; customerEmail?: string }) {
   const { addItem } = useCart()
   const { wishlist, toggleWish } = useWishlist()
   const router = useRouter()
@@ -237,7 +240,7 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
             </div>
           )}
 
-          {showQuantity && (
+          {showQuantity && canSell && (
             <div className="aliQtyRow">
               <span>Quantity</span>
               <div className="focalQty">
@@ -249,10 +252,15 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
           )}
 
           <div className="aliBuyRow">
-            <button className="focalButton aliBuyNow" onClick={buyNow} disabled={!purchaseAllowed} title={purchaseAllowed ? undefined : 'This quantity is not available'}>Buy Now</button>
-            <button className={`focalButton primary aliAddToCart ${added ? 'addedSuccess' : ''}`} onClick={addToCart} disabled={!purchaseAllowed} title={purchaseAllowed ? undefined : 'This quantity is not available'}>
-              {added ? <>Added <Check size={16} /></> : <>Add to Cart <ShoppingBag size={16} /></>}
-            </button>
+            {canSell ? <>
+              <button className="focalButton aliBuyNow" onClick={buyNow} disabled={!purchaseAllowed} title={purchaseAllowed ? undefined : 'This quantity is not available'}>Buy Now</button>
+              <button className={`focalButton primary aliAddToCart ${added ? 'addedSuccess' : ''}`} onClick={addToCart} disabled={!purchaseAllowed} title={purchaseAllowed ? undefined : 'This quantity is not available'}>
+                {added ? <>Added <Check size={16} /></> : <>Add to Cart <ShoppingBag size={16} /></>}
+              </button>
+            </> : (
+              // Sold out (this option or the whole product): offer to tell the customer when it's back.
+              <BackInStockButton productId={product.id} variantId={selectedVariant?.id || null} optionName={variants.length > 1 ? selectedVariant?.name : undefined} vapidPublicKey={vapidPublicKey} customerEmail={customerEmail} />
+            )}
             {showWishlist && (
               <button type="button" className={`focalWishlist ${wished ? 'active' : ''}`} aria-label={wished ? 'Remove from wishlist' : 'Add to wishlist'} onClick={() => toggleWish(product.id)}>
                 <Heart size={18} fill={wished ? 'currentColor' : 'none'} />
@@ -305,6 +313,12 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
           </div>
         </div>
       </div>
+
+      {canSell && boughtTogether.length > 0 && (
+        <div className="aliContainer aliSection">
+          <BoughtTogether key={selectedVariant?.id || product.id} main={{ ...buildItem(), quantity: 1 }} items={boughtTogether.slice(0, 2)} currency={theme.currency || 'USD'} />
+        </div>
+      )}
 
       {showReviews && (
         <div className="aliContainer aliReviewsSection" id="reviews">

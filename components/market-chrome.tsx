@@ -10,6 +10,7 @@ import { ChevronDown, ChevronLeft, ChevronRight, FileText, Heart, LayoutGrid, Ma
 import { whatsappUrl } from '@/lib/links'
 import { parseDeliveryAreas } from '@/lib/storefront-market'
 import type { Shopper } from './use-shopper'
+import { InstallAppRow } from './install-app'
 
 export const DELIVERY_AREA_KEY = 'ecom-delivery-area-v1'
 // Fired when the shopper picks another area, so the product page's delivery line follows.
@@ -267,6 +268,7 @@ export function MarketMenu({ open, onClose, navigation, brand, logo, logoWhite, 
             <li><Link href="/wishlist" className="mkMenuRow" onClick={onClose}><Heart size={17} /><span>Wishlist</span><ChevronRight size={16} /></Link></li>
             {wa && <li><a href={wa} target="_blank" rel="noopener noreferrer" className="mkMenuRow"><MessageCircle size={17} /><span>WhatsApp us</span><ChevronRight size={16} /></a></li>}
             <li><Link href="/refund-policy" className="mkMenuRow" onClick={onClose}><FileText size={17} /><span>Delivery &amp; refund policy</span><ChevronRight size={16} /></Link></li>
+            <InstallAppRow storeName={brand} onDone={onClose} />
           </ul>
         </div>
         {area?.name && <div className="mkMenuFoot"><MapPin size={15} aria-hidden="true" /><span>Delivering to <b>{area.name}</b>{area.eta ? <> · {area.eta}</> : null}</span></div>}

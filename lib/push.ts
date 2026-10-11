@@ -145,6 +145,21 @@ export async function sendCustomerPushCampaign(payload: { title: string; body: s
   return sendToSubscriptions({ ...payload, url: payload.url || '/', marketing: true }, undefined, 'customer', userIds)
 }
 
+// One device that is on neither list: a "notify me when it's back" request (lib/back-in-stock.ts).
+// 'gone' means the browser unsubscribed or no longer exists.
+export async function sendPushToDevice(device: { endpoint: string; p256dh: string; auth: string }, payload: Record<string, unknown>): Promise<'sent' | 'gone' | 'failed' | 'skipped'> {
+  if (!configure()) return 'skipped'
+  try {
+    await webpush.sendNotification({ endpoint: device.endpoint, keys: { p256dh: device.p256dh, auth: device.auth } }, JSON.stringify(payload), { TTL: 86400, urgency: 'normal' })
+    return 'sent'
+  } catch (error: any) {
+    const statusCode = Number(error?.statusCode || error?.status || 0)
+    if (statusCode === 404 || statusCode === 410) return 'gone'
+    console.error('[push] send failed', { statusCode, message: error?.message || String(error) })
+    return 'failed'
+  }
+}
+
 export async function sendNewReviewAlert(review: { id: string; productName: string; rating: number }) {
   const setting = await db.setting.findUnique({ where: { key: 'notifications.reviews' } })
   if (setting?.value === 'false') return { sent: 0, skipped: true, failed: 0 }
