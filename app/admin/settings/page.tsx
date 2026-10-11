@@ -1,6 +1,8 @@
 import { requirePermission } from '@/lib/auth'
 import { db } from '@/lib/prisma'
 import SettingsCenterPro from '@/components/settings-center-pro'
+import { getThemeState, defaultTheme } from '@/lib/theme'
+import { APP_ICON_LARGE, APP_ICON_SMALL, appIconSource } from '@/lib/app-icon'
 
 const CLIENT_SETTING_KEYS = new Set([
   'store.name',
@@ -53,7 +55,18 @@ export default async function Settings() {
   })
   // The Conversions API token is a secret: the page only learns whether one is saved.
   const capiToken = await db.setting.findUnique({ where: { key: 'tracking.metaCapiToken' } }).catch(() => null)
+  // Phone app icon (components/app-icon-card.tsx): the saved one, or the logo it's made from.
+  const [{ theme }, appIcons] = await Promise.all([
+    getThemeState().catch(() => ({ theme: defaultTheme })),
+    db.setting.findMany({ where: { key: { in: [APP_ICON_LARGE, APP_ICON_SMALL] } }, select: { key: true, value: true } }),
+  ])
+  const appIcon = {
+    brandName: String(theme.brandName || '').trim(),
+    source: appIconSource(theme),
+    brandColor: String(theme.colors?.primary || ''),
+    saved: { large: appIcons.find(r => r.key === APP_ICON_LARGE)?.value || '', small: appIcons.find(r => r.key === APP_ICON_SMALL)?.value || '' },
+  }
   // The sender set for the deploy (wrangler.jsonc EMAIL_FROM): shown as the default, and its
   // domain is the one the sender address must use.
-  return <SettingsCenterPro initial={settings} metaCapiTokenSet={!!capiToken?.value} emailFromDefault={process.env.EMAIL_FROM || ''} />
+  return <SettingsCenterPro initial={settings} metaCapiTokenSet={!!capiToken?.value} emailFromDefault={process.env.EMAIL_FROM || ''} appIcon={appIcon} />
 }

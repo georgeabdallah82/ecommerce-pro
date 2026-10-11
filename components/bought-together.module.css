@@ -1,0 +1,97 @@
+/*
+ * "Frequently bought together" on the product page (bought-together.tsx). Theme colours come from
+ * the --store-* variables, like the rest of the page.
+ */
+
+.box {
+  max-width: 760px;
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--store-border, #e7e5e4);
+  border-radius: var(--store-card-radius, 16px);
+  background: var(--store-surface, #fff);
+  color: var(--store-text, #171717);
+}
+.box h2 { margin: 0; font-size: 20px; letter-spacing: -.01em; }
+
+.pictures { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.pictureGroup { display: inline-flex; align-items: center; gap: 8px; }
+.plus { color: var(--store-muted, #57534e); flex: none; }
+.picture {
+  width: 92px;
+  height: 92px;
+  flex: none;
+  display: block;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--store-border, #e7e5e4);
+  background: var(--store-bg, #f6f6f4);
+  transition: opacity .15s ease;
+}
+.picture img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.off { opacity: .35; }
+
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; font-size: 14px; line-height: 1.4; }
+.unticked .name, .unticked .price { opacity: .5; }
+.checkLabel { position: relative; display: inline-grid; cursor: pointer; }
+.checkLabel input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.tick {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--store-primary, #d7261e);
+  background: var(--store-primary, #d7261e);
+  color: var(--store-button-text, #fff);
+}
+.checkLabel input:not(:checked) + .tick { background: transparent; color: transparent; border-color: var(--store-border, #d6d3d1); }
+.checkLabel input:focus-visible + .tick { outline: 2px solid var(--store-text, #171717); outline-offset: 2px; }
+.locked { opacity: .55; }
+.name { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; overflow-wrap: anywhere; }
+.name a { color: inherit; text-decoration: none; font-weight: 600; }
+.name a:hover { text-decoration: underline; }
+.price { font-weight: 800; white-space: nowrap; }
+.select {
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--store-border, #e7e5e4);
+  border-radius: 8px;
+  background: var(--store-bg, #fff);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+}
+
+.foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-top: 14px; border-top: 1px solid var(--store-border, #e7e5e4); }
+.total { display: grid; gap: 2px; }
+.total span { font-size: 13px; color: var(--store-muted, #57534e); }
+.total strong { font-size: 20px; }
+.add {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--store-button-height, 48px);
+  padding: 0 22px;
+  border: 0;
+  border-radius: var(--store-button-radius, 12px);
+  background: var(--store-primary, #d7261e);
+  color: var(--store-button-text, #fff);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.add:focus-visible { outline: 2px solid var(--store-text, #171717); outline-offset: 2px; }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+@media (max-width: 600px) {
+  .box { padding: 16px; }
+  .picture { width: 74px; height: 74px; }
+  .foot { flex-direction: column; align-items: stretch; }
+  .add { width: 100%; }
+}

@@ -1,0 +1,69 @@
+/*
+ * "Notify me when it's back" (back-in-stock-button.tsx), in place of Add to Cart on a sold-out
+ * product. Uses the theme's own colours (--store-*), like the rest of the product page.
+ */
+
+.ask { display: grid; gap: 8px; flex: 1 1 100%; }
+.primary {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--store-button-height, 48px);
+  padding: 0 20px;
+  border: 0;
+  border-radius: var(--store-button-radius, 12px);
+  background: var(--store-primary, #d7261e);
+  color: var(--store-button-text, #fff);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ask > .primary { width: 100%; }
+.primary:disabled { opacity: .7; cursor: default; }
+.primary:focus-visible { outline: 2px solid var(--store-text, #171717); outline-offset: 2px; }
+.note { margin: 0; font-size: 13px; line-height: 1.5; color: var(--store-muted, #57534e); }
+
+.box {
+  flex: 1 1 100%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 14px;
+  border: 1px solid var(--store-border, #e7e5e4);
+  border-radius: 14px;
+  background: var(--store-surface, #fff);
+}
+.box strong { display: block; font-size: 15px; line-height: 1.35; color: var(--store-text, #171717); }
+.box p { margin: 3px 0 0; font-size: 13.5px; line-height: 1.5; color: var(--store-muted, #57534e); }
+.icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--store-primary, #d7261e) 12%, transparent);
+  color: var(--store-primary, #d7261e);
+}
+.done .icon { background: color-mix(in srgb, #16a34a 14%, transparent); color: #15803d; }
+.body { min-width: 0; display: grid; gap: 10px; }
+.emailRow { display: flex; gap: 8px; flex-wrap: wrap; }
+.emailRow input {
+  flex: 1 1 180px;
+  min-width: 0;
+  height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--store-border, #e7e5e4);
+  border-radius: 12px;
+  background: var(--store-bg, #fff);
+  color: var(--store-text, #171717);
+  font: inherit;
+  font-size: 16px;
+}
+.emailRow input:focus { outline: 2px solid var(--store-primary, #d7261e); outline-offset: 1px; }
+.emailRow .primary { min-height: 46px; flex: 0 0 auto; }
+.error { margin: 0; font-size: 13px; color: #b91c1c; }

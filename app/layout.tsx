@@ -20,6 +20,7 @@ import { safeStyleText } from '@/lib/sanitize-html'
 import { WhatsAppFloat } from '@/components/market-chrome'
 import PushOptIn from '@/components/push-opt-in'
 import { getStorefrontSettings } from '@/lib/storefront-settings'
+import { APP_ICON_LARGE, APP_ICON_SMALL, appIconSource, appShortName, appleTouchIcon } from '@/lib/app-icon'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -31,8 +32,14 @@ const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').re
 
 export async function generateMetadata(): Promise<Metadata> {
   // Store-wide title, description and share image (lib/seo.ts); pages override what they know better.
-  const seo = await getSiteSeo().catch(() => ({ brand, title: brand, description: `Shop ${brand} online.`, image: undefined }))
+  const [seo, settings, themeState] = await Promise.all([
+    getSiteSeo().catch(() => ({ brand, title: brand, description: `Shop ${brand} online.`, image: undefined })),
+    getStorefrontSettings().catch(() => new Map<string, string>()),
+    getThemeState().catch(() => ({ theme: defaultTheme })),
+  ])
   const images = seo.image ? [{ url: seo.image, alt: seo.title }] : undefined
+  // Home-screen app (app/manifest.ts): iPhones read these instead of the manifest's icons.
+  const appleIcon = appleTouchIcon({ large: settings.get(APP_ICON_LARGE), small: settings.get(APP_ICON_SMALL) }, appIconSource(themeState.theme))
   return {
     title: { default: seo.title, template: `%s | ${seo.title}` },
     description: seo.description,
@@ -40,6 +47,8 @@ export async function generateMetadata(): Promise<Metadata> {
     robots: { index: true, follow: true },
     openGraph: { type: 'website', siteName: seo.brand, title: seo.title, description: seo.description, url: siteUrl, images },
     twitter: { card: seo.image ? 'summary_large_image' : 'summary', title: seo.title, description: seo.description, images: seo.image ? [seo.image] : undefined },
+    appleWebApp: { capable: true, title: appShortName(seo.brand), statusBarStyle: 'default' },
+    ...(appleIcon ? { icons: { apple: appleIcon } } : {}),
   }
 }
 

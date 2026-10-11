@@ -6,6 +6,7 @@ import { MAINTENANCE_DEFAULTS, maintenanceText } from '@/lib/maintenance-default
 import styles from './admin-settings-center.module.css'
 import ui from './admin-ui.module.css'
 import MediaPicker from './media-picker'
+import AppIconCard from './app-icon-card'
 import { POLICY_DEFAULTS } from '@/lib/policy-defaults'
 
 const groups = [
@@ -45,7 +46,7 @@ const defaultPaymentConfig: PaymentConfig = {
   apiPassword: '',
 }
 
-export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, emailFromDefault = '' }: { initial: any[]; metaCapiTokenSet?: boolean; emailFromDefault?: string }) {
+export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, emailFromDefault = '', appIcon }: { initial: any[]; metaCapiTokenSet?: boolean; emailFromDefault?: string; appIcon?: { brandName: string; source: string; brandColor: string; saved: { large: string; small: string } } }) {
   const map = useMemo(() => new Map(initial.map(x => [x.key, x.value])), [initial])
   const [tab, setTab] = useState('General')
   const [search, setSearch] = useState('')
@@ -232,6 +233,12 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
                 </div>
                 <MediaPicker open={shareImageOpen} onClose={() => setShareImageOpen(false)} onAdd={images => { if (images[0]) set('seo.image', images[0].url); setShareImageOpen(false) }} />
               </Card>
+
+              {appIcon && (
+                <Card title="Phone app" desc="The icon and name customers see when they add your store to their phone's home screen.">
+                  <AppIconCard brandName={appIcon.brandName || values['store.name']} source={appIcon.source} saved={appIcon.saved} brandColor={appIcon.brandColor} />
+                </Card>
+              )}
             </>
           )}
 

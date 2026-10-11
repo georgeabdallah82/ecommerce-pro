@@ -15,6 +15,8 @@ export const STOREFRONT_SETTING_KEYS = [
   'store.country', 'store.currency', 'checkout.freeShippingThreshold', 'payment.cod', 'returns.enabled',
   // The notification popup (components/push-opt-in.tsx): on unless switched off in Push campaigns.
   'push.askVisitors',
+  // The home-screen app icon (lib/app-icon.ts, app/manifest.ts).
+  'app.icon512', 'app.icon192',
 ] as const
 
 export const getStorefrontSettings = cache(async (): Promise<Map<string, string>> => {

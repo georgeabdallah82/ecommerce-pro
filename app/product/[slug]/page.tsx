@@ -13,6 +13,7 @@ import { descriptionHtml } from '@/lib/sanitize-html'
 import { absoluteUrl, getSiteSeo, isShareableImage, metaText, shareMeta, siteUrl } from '@/lib/seo'
 import { themeTemplates } from '@/lib/theme-templates'
 import { storefrontCached } from '@/lib/storefront-cache'
+import { getBoughtTogether } from '@/lib/recommendations'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -128,7 +129,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   // there (product_recommendations, newsletter) never need it.
   const needsCollections = sections.some((s: any) => s.type === 'collection_grid' || s.type === 'collection_carousel')
   const reviewerIds = [...new Set(product.reviews.map(review => review.userId))]
-  const [related, [ownStats], purchase, existingReview, zoneCollections, reviewerPurchases] = await Promise.all([
+  const [related, [ownStats], purchase, existingReview, zoneCollections, reviewerPurchases, boughtTogether] = await Promise.all([
     withProductStats(withCardStock(relatedRaw)),
     getProductStats([product.id]).then(stats => [stats[product.id]]),
     currentUser
@@ -146,6 +147,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           select: { order: { select: { userId: true } } },
         }).catch(() => []) as Promise<Array<{ order: { userId: string } | null }>>
       : Promise.resolve([] as Array<{ order: { userId: string } | null }>),
+    // "Frequently bought together" (lib/recommendations.ts); the page works without it.
+    getBoughtTogether([product.id], 2).catch(error => { console.error('[recommendations] product page', error); return [] }),
   ])
   const verifiedBuyers = new Set(reviewerPurchases.map(item => item.order?.userId).filter(Boolean))
   const reviewEligibility: 'guest' | 'not_purchased' | 'already_reviewed' | 'can_review' = !currentUser
@@ -277,6 +280,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         reviewEligibility={reviewEligibility}
         sections={sections}
         collections={zoneCollections}
+        vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}
+        customerEmail={currentUser?.role === 'CUSTOMER' ? currentUser.email || undefined : undefined}
+        boughtTogether={boughtTogether}
       />
       <Footer theme={theme} />
     </>

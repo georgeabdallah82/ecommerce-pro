@@ -80,9 +80,14 @@ export async function dispatchWebhookEvent(topic: string, payload: Record<string
  * dispatchWebhookEvent itself -- callers don't need to `void`/catch this.
  */
 export function dispatchInventoryUpdated(inventoryIds: Iterable<string>) {
-  for (const id of inventoryIds) {
+  const ids = [...inventoryIds]
+  for (const id of ids) {
     runInBackground(db.inventoryItem.findUnique({ where: { id } })
       .then(item => item && dispatchWebhookEvent('inventory.updated', { id: item.id, productId: item.productId, variantId: item.variantId, quantity: item.quantity, reserved: item.reserved, locationId: item.locationId }))
       .catch(error => console.error('[webhook] inventory.updated dispatch failed', error)))
   }
+  // Stock came back (purchase order received, return restocked, order cancelled): tell customers
+  // who asked to be notified. Imported here so this module keeps no static dependency on email.
+  if (ids.length) runInBackground(import('@/lib/back-in-stock').then(m => m.sendBackInStockForInventory(ids))
+    .catch(error => console.error('[back-in-stock] alerts failed', error)))
 }

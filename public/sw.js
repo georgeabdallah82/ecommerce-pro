@@ -10,7 +10,7 @@ self.addEventListener('push', event => {
   const options = {
     body: data.body || (marketing ? '' : 'A new order needs your attention.'),
     ...(data.icon ? { icon: data.icon, badge: data.icon } : {}),
-    tag: data.orderId ? `order-${data.orderId}` : marketing ? 'store-offer' : 'new-order',
+    tag: data.tag || (data.orderId ? `order-${data.orderId}` : marketing ? 'store-offer' : 'new-order'),
     renotify: true,
     requireInteraction: !marketing,
     data: { url: data.url || (marketing ? '/' : '/admin/orders'), orderId: data.orderId || null },
