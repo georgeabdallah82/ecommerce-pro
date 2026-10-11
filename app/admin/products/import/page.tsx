@@ -3,9 +3,10 @@ import { requirePermission } from '@/lib/auth'
 import { db } from '@/lib/prisma'
 import { bookmarkletCode } from '@/lib/import-bookmarklet'
 import { getStoreIdentity } from '@/lib/store-identity'
-import ProductImportAdmin from '@/components/product-import-admin'
+import ProductImportTabs from '@/components/product-import-tabs'
 
-export default async function ImportProduct() {
+// Products › Import: from a spreadsheet (CSV) or from another website. ?from=link opens the second.
+export default async function ImportProduct({ searchParams }: { searchParams: Promise<{ from?: string }> }) {
   await requirePermission('products.manage')
   const h = await headers()
   const host = h.get('x-forwarded-host') || h.get('host') || ''
@@ -15,5 +16,6 @@ export default async function ImportProduct() {
     getStoreIdentity(),
     db.setting.findUnique({ where: { key: 'store.currency' } }).then(s => (s?.value || 'USD').toUpperCase()).catch(() => 'USD'),
   ])
-  return <ProductImportAdmin bookmarklet={bookmarkletCode(origin)} storeName={store.name} currency={currency} />
+  const { from } = await searchParams
+  return <ProductImportTabs bookmarklet={bookmarkletCode(origin)} storeName={store.name} currency={currency} initialTab={from === 'link' ? 'link' : 'spreadsheet'} />
 }

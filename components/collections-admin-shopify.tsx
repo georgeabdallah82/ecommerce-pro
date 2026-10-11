@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { CheckCircle2, Eye, MoreHorizontal, Plus, Search, Tag, Trash2, XCircle, X } from 'lucide-react'
+import { CheckCircle2, Download, Eye, MoreHorizontal, Plus, Search, Tag, Trash2, Upload, XCircle, X } from 'lucide-react'
 import styles from './admin-collections.module.css'
 import ui from './admin-ui.module.css'
 import { useToast } from './admin-toast'
@@ -112,9 +112,13 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
           <h1 className={styles.title}>Collections</h1>
           <p className={ui.muted}>Group products into storefront-ready merchandising destinations.</p>
         </div>
-        <button className={`${ui.btn} ${styles.headerBtn}`} onClick={() => setShow(true)}>
-          <Plus size={16} /> Create collection
-        </button>
+        <div className={styles.headerActions}>
+          <Link className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/collections/import"><Upload size={16} /> Import</Link>
+          <a className={`${ui.btn} ${ui.btnSecondary}`} href="/api/admin/exports?type=collections"><Download size={16} /> Export</a>
+          <button className={`${ui.btn} ${styles.headerBtn}`} onClick={() => setShow(true)}>
+            <Plus size={16} /> Create collection
+          </button>
+        </div>
       </div>
 
       <div className={`${ui.card} ${styles.views}`}>
