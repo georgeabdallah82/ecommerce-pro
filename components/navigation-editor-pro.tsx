@@ -1,145 +1,119 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { GripVertical, ImagePlus, LayoutGrid, Link2, ListTree, Plus, Save, Trash2, X } from 'lucide-react'
+import { useMemo, useRef, useState, type ReactNode } from 'react'
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, ExternalLink, ImagePlus, Pencil, Plus, Save, Trash2, X } from 'lucide-react'
+import {
+  MAX_MENU_DEPTH, childrenOf, collectionFor, describeMenuItem, descendantIds, headingGroups, headingsUnder, isPicture, moveHeading, moveMenuItem, normalizeMenu,
+  removeMenuItem, renameHeading, siblingsOf, type MenuItem,
+} from '@/lib/menu-editor'
+import { useConfirm } from './admin-confirm'
 import styles from './admin-navigation-editor.module.css'
 import ui from './admin-ui.module.css'
 import MediaPicker from './media-picker'
 import ThemePublishBar from './theme-publish-bar'
 
-type Item = { id: string; label: string; url?: string | null; type?: string; parentId?: string | null; resourceId?: string | null; group?: string | null; imageUrl?: string | null }
-type Props = { initial: Item[]; collections: any[]; initialDraft: boolean }
-type LinkKind = 'tile' | 'link' | 'sublink'
-type Draft = { label: string; linkType: 'custom' | 'collection'; url: string; resourceId: string; group: string; imageUrl: string }
+type Collection = { id: string; name: string; slug: string }
+// grouped: the store design shows dropdown links by heading with pictures as tiles (false for the
+// Deals Market design, which shows them in plain order; see lib/menu-editor.ts).
+type Props = { initial: MenuItem[]; collections: Collection[]; initialDraft: boolean; grouped?: boolean }
 
 const newId = () => `nav-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-const childrenOf = (items: Item[], parentId: string | null) => items.filter(x => (x.parentId ?? null) === parentId)
 
-const descendants = (items: Item[], id: string) => {
-  const out = new Set<string>()
-  const walk = (parent: string) => {
-    items.filter(x => x.parentId === parent).forEach(x => {
-      if (!out.has(x.id)) { out.add(x.id); walk(x.id) }
-    })
-  }
-  walk(id)
-  return out
-}
-
-function normalize(items: Item[]) {
-  const valid = new Set(items.map(x => x.id))
-  return items.map(x => ({ ...x, parentId: x.parentId && valid.has(x.parentId) ? x.parentId : null }))
-}
-
-// Mirrors components/store-nav-fixed.tsx's groupChildren exactly, so what the editor
-// shows as "groups" and "other links" is the same bucketing the storefront dropdown
-// and mobile menu actually render -- tiles (imageUrl) are shown separately.
-function groupLinkChildren(children: Item[]) {
-  const groups: { name: string; items: Item[] }[] = []
-  const ungrouped: Item[] = []
-  for (const child of children) {
-    if (child.imageUrl) continue
-    const name = child.group?.trim()
-    if (!name) { ungrouped.push(child); continue }
-    let bucket = groups.find(g => g.name === name)
-    if (!bucket) { bucket = { name, items: [] }; groups.push(bucket) }
-    bucket.items.push(child)
-  }
-  return { groups, ungrouped }
-}
-
-function reorderItems(items: Item[], dragId: string, targetId: string) {
-  const from = items.findIndex(x => x.id === dragId)
-  if (from === -1 || dragId === targetId) return items
-  const copy = items.slice()
-  const [moved] = copy.splice(from, 1)
-  const to = copy.findIndex(x => x.id === targetId)
-  if (to === -1) return items
-  copy.splice(to, 0, moved)
-  return copy
-}
-
-function emptyDraft(): Draft {
-  return { label: '', linkType: 'custom', url: '', resourceId: '', group: '', imageUrl: '' }
-}
-
-function draftFromItem(item: Item): Draft {
-  return {
-    label: item.label || '',
-    linkType: item.type === 'collection' ? 'collection' : 'custom',
-    url: item.url || '',
-    resourceId: item.resourceId || '',
-    group: item.group || '',
-    imageUrl: item.imageUrl || '',
-  }
-}
-
-export default function NavigationEditorPro({ initial, collections, initialDraft }: Props) {
-  const [items, setItems] = useState<Item[]>(() => normalize(initial || []))
+// Admin > Online Store > Navigation: the store's top menu as one list. Each item has ↑ / ↓ to
+// change its place, opens to show the links under it (by heading, as the store's dropdown shows
+// them), and is edited right where it is. The data is the same flat list the store reads
+// (lib/menu-editor.ts); Save writes it to the theme draft and Publish puts it live, like the theme
+// editor.
+export default function NavigationEditorPro({ initial, collections, initialDraft, grouped = true }: Props) {
+  const confirm = useConfirm()
+  const [items, setItems] = useState<MenuItem[]>(() => normalizeMenu(initial || []))
+  const savedJson = useRef(JSON.stringify(normalizeMenu(initial || [])))
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
-  const [dragId, setDragId] = useState<string | null>(null)
   const [hasDraft, setHasDraft] = useState(initialDraft)
   const [publishing, setPublishing] = useState(false)
   const [publishMessage, setPublishMessage] = useState('')
   const [publishError, setPublishError] = useState('')
+  const [open, setOpen] = useState<Set<string>>(() => new Set())
+  // The item being edited, and how it was before (null: it was just added, Cancel removes it).
+  const [editing, setEditing] = useState<{ id: string; before: MenuItem | null } | null>(null)
 
-  const roots = useMemo(() => childrenOf(items, null), [items])
-  const [activeDeptId, setActiveDeptId] = useState<string | null>(null)
-  const activeDept = useMemo(() => roots.find(r => r.id === activeDeptId) || roots[0] || null, [roots, activeDeptId])
-  const deptChildren = useMemo(() => (activeDept ? childrenOf(items, activeDept.id) : []), [items, activeDept])
-  const tiles = useMemo(() => deptChildren.filter(c => c.imageUrl), [deptChildren])
-  const { groups, ungrouped } = useMemo(() => groupLinkChildren(deptChildren), [deptChildren])
-  const groupNames = useMemo(() => groups.map(g => g.name), [groups])
+  const dirty = useMemo(() => JSON.stringify(items) !== savedJson.current, [items])
+  const roots = childrenOf(items, null)
 
-  const [drawer, setDrawer] = useState<{ mode: 'add' | 'edit'; kind: LinkKind; parentId: string; item?: Item; requireGroup?: boolean; presetGroup?: string } | null>(null)
+  const patch = (id: string, data: Partial<MenuItem>) => setItems(cur => cur.map(x => (x.id === id ? { ...x, ...data } : x)))
+  const toggle = (id: string) => setOpen(cur => { const next = new Set(cur); if (next.has(id)) next.delete(id); else next.add(id); return next })
 
-  const patch = (id: string, patchData: Partial<Item>) => setItems(cur => cur.map(x => (x.id === id ? { ...x, ...patchData } : x)))
-
-  const remove = (id: string) => {
-    const ids = new Set([id, ...descendants(items, id)])
-    setItems(cur => cur.filter(x => !ids.has(x.id)))
-    if (activeDeptId === id) setActiveDeptId(null)
-    setDrawer(null)
+  function startEdit(item: MenuItem) {
+    if (editing && editing.id !== item.id) finishEdit()
+    setEditing({ id: item.id, before: { ...item } })
+  }
+  function finishEdit() {
+    if (!editing) return
+    setItems(cur => cur.map(x => (x.id === editing.id && !x.label.trim() ? { ...x, label: 'Untitled' } : x)))
+    setEditing(null)
+  }
+  function cancelEdit() {
+    if (!editing) return
+    const { id, before } = editing
+    setItems(cur => (before ? cur.map(x => (x.id === id ? before : x)) : removeMenuItem(cur, id)))
+    setEditing(null)
   }
 
-  const addDepartment = () => {
-    const item: Item = { id: newId(), label: 'New department', type: 'custom', url: '#', parentId: null }
+  function add(parentId: string | null, picture = false, group: string | null = null) {
+    if (editing) finishEdit()
+    const item: MenuItem = picture
+      ? { id: newId(), label: '', type: 'collection', url: '', parentId, resourceId: null, imageUrl: '' }
+      : { id: newId(), label: '', type: parentId ? 'collection' : 'custom', url: parentId ? '' : '#', parentId, resourceId: null, group }
     setItems(cur => [...cur, item])
-    setActiveDeptId(item.id)
+    if (parentId) setOpen(cur => new Set(cur).add(parentId))
+    setEditing({ id: item.id, before: null })
   }
 
-  const renameGroup = (oldName: string, newName: string) => {
-    if (!activeDept) return
-    const trimmed = newName.trim()
-    setItems(cur => cur.map(x => (x.parentId === activeDept.id && !x.imageUrl && (x.group || '').trim() === oldName ? { ...x, group: trimmed || null } : x)))
+  async function remove(item: MenuItem) {
+    const under = descendantIds(items, item.id).size
+    const ok = await confirm({
+      title: `Delete “${item.label || 'this item'}”?`,
+      message: under ? `The ${under} link${under === 1 ? '' : 's'} under it will be deleted too. Nothing changes on your store until you Save and Publish.` : 'Nothing changes on your store until you Save and Publish.',
+      confirmLabel: 'Delete',
+    })
+    if (!ok) return
+    if (editing?.id === item.id) setEditing(null)
+    setItems(cur => removeMenuItem(cur, item.id))
   }
 
-  const save = async () => {
+  async function save() {
+    if (editing) finishEdit()
     setSaving(true)
     setNotice('')
     setError('')
     try {
+      // A picture whose image was never chosen isn't saved (the store would show it as an empty link).
+      const current = items
+        .filter(x => !(isPicture(x) && !x.imageUrl))
+        .map(x => (x.label.trim() ? x : { ...x, label: 'Untitled' }))
       const theme = await (await fetch('/api/admin/theme', { cache: 'no-store' })).json()
       if (theme?.error) throw new Error(theme.error)
       const response = await fetch('/api/admin/theme', {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ ...theme, navigation: items }),
+        body: JSON.stringify({ ...theme, navigation: current }),
       })
       const data = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(data.error || 'Unable to save navigation')
+      if (!response.ok) throw new Error(data.error || 'Unable to save the menu')
+      savedJson.current = JSON.stringify(current)
+      setItems(current)
       setHasDraft(true)
-      setNotice('Navigation saved')
+      setNotice('Saved. Tap Publish (bottom right) to show it on your store.')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unable to save navigation')
+      setError(e instanceof Error ? e.message : 'Unable to save the menu')
     } finally {
       setSaving(false)
     }
   }
 
-  const publish = async () => {
+  async function publish() {
     if (!hasDraft || publishing) return
     setPublishing(true)
     setPublishMessage('')
@@ -147,478 +121,319 @@ export default function NavigationEditorPro({ initial, collections, initialDraft
     try {
       const response = await fetch('/api/admin/theme/publish', { method: 'POST' })
       const data = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(data.error || 'Unable to publish navigation')
+      if (!response.ok) throw new Error(data.error || 'Unable to publish the menu')
       setHasDraft(false)
-      setPublishMessage('Published')
-      window.setTimeout(() => setPublishMessage(''), 2500)
+      setNotice('')
+      setPublishMessage('Published: your store shows the new menu')
+      window.setTimeout(() => setPublishMessage(''), 3000)
     } catch (e) {
-      setPublishError(e instanceof Error ? e.message : 'Unable to publish navigation')
+      setPublishError(e instanceof Error ? e.message : 'Unable to publish the menu')
       window.setTimeout(() => setPublishError(''), 4000)
     } finally {
       setPublishing(false)
     }
   }
 
-  const submitDrawer = (draft: Draft) => {
-    if (!drawer) return
-    const data: Partial<Item> = {
-      label: draft.label.trim() || 'Untitled',
-      type: draft.linkType,
-      url: draft.linkType === 'custom' ? (draft.url || '#') : draft.url,
-      resourceId: draft.linkType === 'collection' ? draft.resourceId || null : null,
-      group: drawer.kind === 'link' ? (draft.group.trim() || null) : null,
-      imageUrl: drawer.kind === 'tile' ? (draft.imageUrl || null) : null,
-    }
-    if (drawer.mode === 'add') {
-      setItems(cur => [...cur, { id: newId(), parentId: drawer.parentId, ...data } as Item])
-    } else if (drawer.item) {
-      patch(drawer.item.id, data)
-    }
-    setDrawer(null)
+  const rowProps = {
+    items, collections, grouped, open, editing, toggle, startEdit, finishEdit, cancelEdit, add, remove, patch,
+    move: (id: string, d: -1 | 1) => setItems(cur => moveMenuItem(cur, id, d, grouped)),
+    moveHeading: (parentId: string, name: string, d: -1 | 1) => setItems(cur => moveHeading(cur, parentId, name, d)),
+    renameHeading: (parentId: string, from: string, to: string) => setItems(cur => renameHeading(cur, parentId, from, to)),
   }
-
-  const dragProps = (id: string) => ({
-    draggable: true,
-    onDragStart: (e: React.DragEvent) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', id); setDragId(id) },
-    onDragEnd: () => setDragId(null),
-  })
-  const dropProps = (targetId: string, allowed: Set<string>) => ({
-    onDragOver: (e: React.DragEvent) => { if (dragId && dragId !== targetId && allowed.has(dragId)) e.preventDefault() },
-    onDrop: (e: React.DragEvent) => {
-      e.preventDefault()
-      const source = e.dataTransfer.getData('text/plain') || dragId
-      if (source && source !== targetId && allowed.has(source)) setItems(cur => reorderItems(cur, source, targetId))
-      setDragId(null)
-    },
-  })
 
   return (
     <div className={styles.page}>
       <div className={styles.header}>
         <div>
-          <div className={styles.eyebrow}>ONLINE STORE · NAVIGATION</div>
-          <h1>Navigation</h1>
-          <p className={ui.muted}>Build departments the way your storefront actually renders them: image tiles, numbered link groups, and plain links. No dropdown wiring required.</p>
+          <div className={styles.eyebrow}>ONLINE STORE</div>
+          <h1>Menu</h1>
+          <p className={ui.muted}>The links at the top of your store. Use the arrows to change the order, tap an item to see the links under it, and Edit to change where it goes.</p>
         </div>
-        <div className="inline">
+        <div className={styles.headerActions}>
+          {dirty && <span className={styles.unsaved}>Unsaved changes</span>}
           <button className={ui.btn} onClick={save} disabled={saving}><Save size={15} />{saving ? 'Saving…' : 'Save'}</button>
         </div>
       </div>
 
       {(notice || error) && <div className={`${ui.alert} ${styles.alertSpacing} ${error ? ui.alertDanger : ''}`}>{error || notice}</div>}
 
-      <div className={styles.builderGrid}>
-        <aside className={styles.panel}>
-          <div className={styles.panelHead}>
-            <div>
-              <strong>Departments</strong>
-              <span>Top-level menu items</span>
-            </div>
+      <section className={`${ui.card} ${styles.menuCard}`}>
+        {roots.length === 0 && (
+          <div className={styles.empty}>
+            <strong>Your menu is empty</strong>
+            <span>Add the first item, e.g. “Kitchenware” or “About us”.</span>
           </div>
-          <div className={styles.deptRail}>
-            {roots.length === 0 && (
-              <div className={styles.emptyState}>
-                <Link2 size={22} />
-                <strong>No departments yet</strong>
-                <span className={ui.muted}>A department is a top-level menu item, e.g. “Women” or “Sale”.</span>
-              </div>
-            )}
-            {roots.map(root => (
-              <div
-                key={root.id}
-                className={`${styles.deptRow} ${activeDept?.id === root.id ? styles.deptRowActive : ''}`}
-                {...dragProps(root.id)}
-                {...dropProps(root.id, new Set(roots.map(r => r.id)))}
-                onClick={() => setActiveDeptId(root.id)}
-              >
-                <span className={styles.grip}><GripVertical size={16} /></span>
-                <div className={styles.deptRowMain}>
-                  <strong>{root.label}</strong>
-                  <small>{childrenOf(items, root.id).length} item{childrenOf(items, root.id).length === 1 ? '' : 's'}</small>
-                </div>
-                <button
-                  className={`${styles.action} ${styles.actionDanger}`}
-                  onClick={e => { e.stopPropagation(); remove(root.id) }}
-                  title="Delete department"
-                ><Trash2 size={14} /></button>
-              </div>
-            ))}
-          </div>
-          <div className={styles.toolbar}>
-            <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={addDepartment}><Plus size={15} /> Add department</button>
-          </div>
-        </aside>
-
-        <section className={styles.panel}>
-          {!activeDept ? (
-            <div className={styles.emptyState}>
-              <LayoutGrid size={26} />
-              <strong>Select or add a department</strong>
-              <span className={ui.muted}>Departments hold your image tiles and link groups.</span>
-            </div>
-          ) : (
-            <>
-              <div className={styles.deptSettings}>
-                <div className={styles.field}>
-                  <label>Department label</label>
-                  <input value={activeDept.label} onChange={e => patch(activeDept.id, { label: e.target.value })} placeholder="e.g. Women" />
-                </div>
-                <DestinationFields
-                  linkType={activeDept.type === 'collection' ? 'collection' : 'custom'}
-                  url={activeDept.url || ''}
-                  resourceId={activeDept.resourceId || ''}
-                  collections={collections}
-                  onChange={next => patch(activeDept.id, {
-                    type: next.linkType,
-                    url: next.url,
-                    resourceId: next.linkType === 'collection' ? next.resourceId : null,
-                  })}
-                />
-              </div>
-
-              <div className={styles.sectionCard}>
-                <div className={styles.sectionHead}>
-                  <div>
-                    <strong>Image tiles</strong>
-                    <span className={ui.muted}>Shown across the top of the dropdown, in order.</span>
-                  </div>
-                  <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setDrawer({ mode: 'add', kind: 'tile', parentId: activeDept.id })}><ImagePlus size={14} /> Add tile</button>
-                </div>
-                {tiles.length === 0 ? (
-                  <div className={styles.sectionEmpty}>No image tiles yet.</div>
-                ) : (
-                  <div className={styles.tileRow}>
-                    {tiles.map(tile => (
-                      <div key={tile.id} className={styles.tileCard} {...dragProps(tile.id)} {...dropProps(tile.id, new Set(tiles.map(t => t.id)))}>
-                        <div className={styles.tileImg} style={{ backgroundImage: `url(${tile.imageUrl})` }} />
-                        <div className={styles.tileLabel}>{tile.label}</div>
-                        <div className={styles.tileActions}>
-                          <button className={styles.action} onClick={() => setDrawer({ mode: 'edit', kind: 'tile', parentId: activeDept.id, item: tile })}>Edit</button>
-                          <button className={`${styles.action} ${styles.actionDanger}`} onClick={() => remove(tile.id)}><Trash2 size={13} /></button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className={styles.sectionCard}>
-                <div className={styles.sectionHead}>
-                  <div>
-                    <strong>Link groups</strong>
-                    <span className={ui.muted}>Links sharing a heading are numbered together, in the order headings first appear.</span>
-                  </div>
-                  <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setDrawer({ mode: 'add', kind: 'link', parentId: activeDept.id, requireGroup: true })}><Plus size={14} /> Add group</button>
-                </div>
-                {groups.length === 0 && <div className={styles.sectionEmpty}>No link groups yet.</div>}
-                {groups.map((group, i) => (
-                  <div key={group.name} className={styles.groupCard}>
-                    <div className={styles.groupCardHead}>
-                      <span className={styles.groupNum}>{String(i + 1).padStart(2, '0')}</span>
-                      <input
-                        className={styles.groupNameInput}
-                        defaultValue={group.name}
-                        onBlur={e => { if (e.target.value.trim() !== group.name) renameGroup(group.name, e.target.value) }}
-                      />
-                    </div>
-                    <LinkList
-                      links={group.items}
-                      allLinkIds={group.items.map(l => l.id)}
-                      dragProps={dragProps}
-                      dropProps={dropProps}
-                      items={items}
-                      onEdit={link => setDrawer({ mode: 'edit', kind: 'link', parentId: activeDept.id, item: link })}
-                      onAddSub={link => setDrawer({ mode: 'add', kind: 'sublink', parentId: link.id })}
-                      onEditSub={sub => setDrawer({ mode: 'edit', kind: 'sublink', parentId: sub.parentId || '', item: sub })}
-                      onRemove={remove}
-                    />
-                    <button className={styles.addGhostBtn} onClick={() => setDrawer({ mode: 'add', kind: 'link', parentId: activeDept.id, presetGroup: group.name })}>+ Add link to “{group.name}”</button>
-                  </div>
-                ))}
-              </div>
-
-              <div className={styles.sectionCard}>
-                <div className={styles.sectionHead}>
-                  <div>
-                    <strong>Other links</strong>
-                    <span className={ui.muted}>Plain links with no group heading.</span>
-                  </div>
-                  <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setDrawer({ mode: 'add', kind: 'link', parentId: activeDept.id })}><Plus size={14} /> Add link</button>
-                </div>
-                {ungrouped.length === 0 ? (
-                  <div className={styles.sectionEmpty}>No plain links yet.</div>
-                ) : (
-                  <LinkList
-                    links={ungrouped}
-                    allLinkIds={ungrouped.map(l => l.id)}
-                    dragProps={dragProps}
-                    dropProps={dropProps}
-                    items={items}
-                    onEdit={link => setDrawer({ mode: 'edit', kind: 'link', parentId: activeDept.id, item: link })}
-                    onAddSub={link => setDrawer({ mode: 'add', kind: 'sublink', parentId: link.id })}
-                    onEditSub={sub => setDrawer({ mode: 'edit', kind: 'sublink', parentId: sub.parentId || '', item: sub })}
-                    onRemove={remove}
-                  />
-                )}
-              </div>
-            </>
-          )}
-        </section>
-
-        {activeDept && (
-          <aside className={`${styles.panel} ${styles.previewPanel}`}>
-            <div className={styles.panelHead}>
-              <div>
-                <strong>Preview</strong>
-                <span>“{activeDept.label}” dropdown</span>
-              </div>
-              <span className={ui.pill}>Structure</span>
-            </div>
-            <div className={styles.previewBody}>
-              {tiles.length > 0 && (
-                <div className={styles.previewTileRow}>
-                  {tiles.map(tile => (
-                    <div key={tile.id} className={styles.previewTile}>
-                      <span className={styles.previewTileImg} style={{ backgroundImage: `url(${tile.imageUrl})` }} />
-                      <small>{tile.label}</small>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className={styles.previewGroupGrid}>
-                {groups.map((group, i) => (
-                  <div key={group.name} className={styles.previewGroup}>
-                    <div className={styles.previewGroupHead}><span>{String(i + 1).padStart(2, '0')}</span>{group.name}</div>
-                    <div className={styles.previewGroupLinks}>
-                      {group.items.map(link => (
-                        <div key={link.id}>
-                          <span>{link.label}</span>
-                          {childrenOf(items, link.id).length > 0 && (
-                            <div className={styles.previewSubLinks}>
-                              {childrenOf(items, link.id).map(sub => <span key={sub.id}>{sub.label}</span>)}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-                {ungrouped.length > 0 && (
-                  <div className={styles.previewGroup}>
-                    <div className={styles.previewGroupLinks}>
-                      {ungrouped.map(link => (
-                        <div key={link.id}>
-                          <span>{link.label}</span>
-                          {childrenOf(items, link.id).length > 0 && (
-                            <div className={styles.previewSubLinks}>
-                              {childrenOf(items, link.id).map(sub => <span key={sub.id}>{sub.label}</span>)}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {tiles.length === 0 && groups.length === 0 && ungrouped.length === 0 && (
-                  <div className={ui.muted}>Nothing in this department yet.</div>
-                )}
-              </div>
-            </div>
-          </aside>
         )}
-      </div>
+        <ol className={styles.list}>
+          {roots.map(root => <MenuRow key={root.id} item={root} depth={0} {...rowProps} />)}
+        </ol>
+        <button className={styles.addTop} onClick={() => add(null)}><Plus size={16} /> Add menu item</button>
+      </section>
 
-      {drawer && (
-        <div className={styles.overlay} onMouseDown={() => setDrawer(null)}>
-          <LinkDrawer
-            drawer={drawer}
-            collections={collections}
-            groupNames={groupNames}
-            onClose={() => setDrawer(null)}
-            onSubmit={submitDrawer}
-            onDelete={drawer.item ? () => remove(drawer.item!.id) : undefined}
-          />
-        </div>
-      )}
+      <p className={styles.footnote}>Changes show on your store after <strong>Save</strong> and then <strong>Publish</strong>.{' '}<a className={ui.textLink} href="/" target="_blank" rel="noreferrer">View store <ExternalLink size={12} /></a></p>
 
       <ThemePublishBar draft={hasDraft} publishing={publishing} message={publishMessage} error={publishError} onPublish={publish} />
     </div>
   )
 }
 
-function LinkList({ links, dragProps, dropProps, items, onEdit, onAddSub, onEditSub, onRemove }: {
-  links: Item[]
-  allLinkIds: string[]
-  dragProps: (id: string) => any
-  dropProps: (targetId: string, allowed: Set<string>) => any
-  items: Item[]
-  onEdit: (item: Item) => void
-  onAddSub: (item: Item) => void
-  onEditSub: (item: Item) => void
-  onRemove: (id: string) => void
-}) {
-  const allowed = new Set(links.map(l => l.id))
+type RowProps = {
+  item: MenuItem
+  depth: number
+  items: MenuItem[]
+  collections: Collection[]
+  grouped: boolean
+  open: Set<string>
+  editing: { id: string; before: MenuItem | null } | null
+  toggle: (id: string) => void
+  startEdit: (item: MenuItem) => void
+  finishEdit: () => void
+  cancelEdit: () => void
+  add: (parentId: string | null, picture?: boolean, group?: string | null) => void
+  remove: (item: MenuItem) => void
+  patch: (id: string, data: Partial<MenuItem>) => void
+  move: (id: string, direction: -1 | 1) => void
+  moveHeading: (parentId: string, name: string, direction: -1 | 1) => void
+  renameHeading: (parentId: string, from: string, to: string) => void
+}
+
+function MenuRow(props: RowProps) {
+  const { item, depth, items, collections, grouped, open, editing, toggle, startEdit, finishEdit, cancelEdit, add, remove, patch, move } = props
+  const kids = childrenOf(items, item.id)
+  // Grouped design: a top-level item's dropdown shows its picture tiles, then its links heading by
+  // heading. Otherwise (and below the dropdown) the links are one plain list, pictures included.
+  const tiles = grouped ? kids.filter(isPicture) : []
+  const links = grouped ? kids.filter(k => !isPicture(k)) : kids
+  const { groups, ungrouped } = grouped && depth === 0 ? headingGroups(items, item.id) : { groups: [], ungrouped: links }
+  const row = (child: MenuItem) => <MenuRow key={child.id} {...props} item={child} depth={depth + 1} />
+  const siblings = siblingsOf(items, item, grouped)
+  const index = siblings.findIndex(s => s.id === item.id)
+  const picture = isPicture(item)
+  // A grouped design's picture tile is a single link; anything else can have links under it.
+  const tile = grouped && picture
+  const canNest = depth < MAX_MENU_DEPTH - 1 && !tile
+  const isOpen = open.has(item.id)
+  const isEditing = editing?.id === item.id
+  const label = item.label.trim() || (tile ? 'New picture' : 'New item')
+
   return (
-    <div className={styles.linkList}>
-      {links.map(link => {
-        const subLinks = childrenOf(items, link.id)
-        return (
-          <div key={link.id} className={styles.linkRow} {...dragProps(link.id)} {...dropProps(link.id, allowed)}>
-            <div className={styles.linkRowMain}>
-              <span className={styles.grip}><GripVertical size={14} /></span>
-              <div className={styles.linkLabel} onClick={() => onEdit(link)}>
-                <strong>{link.label}</strong>
-                <small>{link.url || 'No destination'}</small>
-              </div>
-              <button className={styles.action} onClick={() => onAddSub(link)} title="Add sub-link"><ListTree size={13} /></button>
-              <button className={`${styles.action} ${styles.actionDanger}`} onClick={() => onRemove(link.id)} title="Delete"><Trash2 size={13} /></button>
-            </div>
-            {subLinks.length > 0 && (
-              <div className={styles.subLinkList}>
-                {subLinks.map(sub => (
-                  <div key={sub.id} className={styles.subLinkRow} onClick={() => onEditSub(sub)}>
-                    <span>{sub.label}</span>
-                    <button className={`${styles.action} ${styles.actionDanger}`} onClick={e => { e.stopPropagation(); onRemove(sub.id) }}><X size={12} /></button>
-                  </div>
-                ))}
-              </div>
-            )}
+    <li className={`${styles.item} ${depth ? styles.child : ''}`}>
+      <div className={`${styles.row} ${isEditing ? styles.rowEditing : ''}`}>
+        <div className={styles.arrows}>
+          <button type="button" aria-label={`Move “${label}” up`} disabled={index <= 0} onClick={() => move(item.id, -1)}><ArrowUp size={16} /></button>
+          <button type="button" aria-label={`Move “${label}” down`} disabled={index === -1 || index >= siblings.length - 1} onClick={() => move(item.id, 1)}><ArrowDown size={16} /></button>
+        </div>
+        {picture && <span className={styles.thumb} style={item.imageUrl ? { backgroundImage: `url(${JSON.stringify(item.imageUrl)})` } : undefined} aria-hidden="true" />}
+        <button type="button" className={styles.main} onClick={() => (canNest ? toggle(item.id) : startEdit(item))} aria-expanded={canNest ? isOpen : undefined}>
+          {canNest && (isOpen ? <ChevronDown size={16} className={styles.chevron} /> : <ChevronRight size={16} className={styles.chevron} />)}
+          <span className={styles.text}>
+            <strong>{label}</strong>
+            <small>
+              {tile ? 'Picture at the top of the dropdown' : describeMenuItem(item, collections, kids.length)}
+              {canNest && links.length > 0 ? <span className={styles.count}>{links.length} link{links.length === 1 ? '' : 's'} inside</span> : null}
+              {canNest && tiles.length > 0 ? <span className={styles.count}>{tiles.length} picture{tiles.length === 1 ? '' : 's'}</span> : null}
+            </small>
+          </span>
+        </button>
+        <div className={styles.rowActions}>
+          <button type="button" className={styles.iconBtn} onClick={() => (isEditing ? finishEdit() : startEdit(item))} aria-label={`Edit “${label}”`}><Pencil size={15} /><span>Edit</span></button>
+          <button type="button" className={`${styles.iconBtn} ${styles.danger}`} onClick={() => remove(item)} aria-label={`Delete “${label}”`}><Trash2 size={15} /></button>
+        </div>
+      </div>
+
+      {isEditing && (
+        <EditForm
+          item={item}
+          depth={depth}
+          grouped={grouped}
+          collections={collections}
+          headings={headingsUnder(items, item.parentId ?? null)}
+          hasChildren={kids.length > 0}
+          isNew={!editing?.before}
+          onChange={data => patch(item.id, data)}
+          onDone={finishEdit}
+          onCancel={cancelEdit}
+        />
+      )}
+
+      {canNest && isOpen && (
+        <div className={styles.children}>
+          {tiles.length > 0 && <ol className={styles.list}>{tiles.map(row)}</ol>}
+          {groups.map((group, i) => (
+            <HeadingSection
+              key={group.name}
+              name={group.name}
+              first={i === 0}
+              last={i === groups.length - 1}
+              onMove={d => props.moveHeading(item.id, group.name, d)}
+              onRename={to => props.renameHeading(item.id, group.name, to)}
+              onAdd={() => add(item.id, false, group.name)}
+            >
+              <ol className={styles.list}>{group.items.map(row)}</ol>
+            </HeadingSection>
+          ))}
+          {ungrouped.length > 0 && (
+            groups.length > 0 ? (
+              <section className={styles.group}>
+                <div className={`${styles.groupHead} ${styles.groupHeadPlain}`}><span className={styles.groupTitle}><small>Links without a heading</small></span></div>
+                <ol className={styles.list}>{ungrouped.map(row)}</ol>
+              </section>
+            ) : <ol className={styles.list}>{ungrouped.map(row)}</ol>
+          )}
+          {kids.length === 0 && <p className={styles.childEmpty}>No links under “{label}” yet.</p>}
+          <div className={styles.addRow}>
+            <button type="button" className={styles.addChild} onClick={() => add(item.id)}><Plus size={15} /> Add link under “{label}”</button>
+            {grouped && depth === 0 && <button type="button" className={styles.addChild} onClick={() => add(item.id, true)}><ImagePlus size={15} /> Add picture</button>}
           </div>
-        )
-      })}
-    </div>
+        </div>
+      )}
+    </li>
   )
 }
 
-function DestinationFields({ linkType, url, resourceId, collections, onChange }: {
-  linkType: 'custom' | 'collection'
-  url: string
-  resourceId: string
-  collections: any[]
-  onChange: (next: { linkType: 'custom' | 'collection'; url: string; resourceId: string }) => void
+// One heading in a dropdown: its name, ↑ / ↓ to move it with all its links, and Rename.
+function HeadingSection({ name, first, last, onMove, onRename, onAdd, children }: {
+  name: string
+  first: boolean
+  last: boolean
+  onMove: (direction: -1 | 1) => void
+  onRename: (to: string) => void
+  onAdd: () => void
+  children: ReactNode
 }) {
+  const [renaming, setRenaming] = useState(false)
+  const [value, setValue] = useState(name)
   return (
-    <>
-      <div className={styles.field}>
-        <label>Link type</label>
-        <select value={linkType} onChange={e => {
-          const next = e.target.value as 'custom' | 'collection'
-          onChange({ linkType: next, url, resourceId })
-        }}>
-          <option value="custom">Custom URL</option>
-          <option value="collection">Collection</option>
-        </select>
+    <section className={styles.group}>
+      <div className={styles.groupHead}>
+        <div className={styles.arrows}>
+          <button type="button" aria-label={`Move heading “${name}” up`} disabled={first} onClick={() => onMove(-1)}><ArrowUp size={16} /></button>
+          <button type="button" aria-label={`Move heading “${name}” down`} disabled={last} onClick={() => onMove(1)}><ArrowDown size={16} /></button>
+        </div>
+        {renaming ? (
+          <form className={styles.rename} onSubmit={e => { e.preventDefault(); if (value.trim()) { onRename(value); setRenaming(false) } }}>
+            <input autoFocus value={value} onChange={e => setValue(e.target.value)} aria-label="Heading name" />
+            <button type="submit" className={ui.btn} disabled={!value.trim()}>Done</button>
+            <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setRenaming(false)}>Cancel</button>
+          </form>
+        ) : (
+          <>
+            <span className={styles.groupTitle}><small>Heading</small><strong>{name}</strong></span>
+            <button type="button" className={styles.iconBtn} onClick={() => { setValue(name); setRenaming(true) }} aria-label={`Rename heading “${name}”`}><Pencil size={15} /><span>Rename</span></button>
+          </>
+        )}
       </div>
-      {linkType === 'collection' ? (
+      {children}
+      <div className={styles.addRow}>
+        <button type="button" className={styles.addChild} onClick={onAdd}><Plus size={15} /> Add link under “{name}”</button>
+      </div>
+    </section>
+  )
+}
+
+function EditForm({ item, depth, grouped, collections, headings, hasChildren, isNew, onChange, onDone, onCancel }: {
+  item: MenuItem
+  depth: number
+  grouped: boolean
+  collections: Collection[]
+  headings: string[]
+  hasChildren: boolean
+  isNew: boolean
+  onChange: (data: Partial<MenuItem>) => void
+  onDone: () => void
+  onCancel: () => void
+}) {
+  const tile = grouped && isPicture(item)
+  const target = item.type === 'collection' ? 'collection' : (!item.url || item.url === '#') && depth === 0 ? 'none' : 'custom'
+  const [showMore, setShowMore] = useState(!!item.group?.trim())
+  const listId = `menu-headings-${item.id}`
+
+  function setTarget(next: string) {
+    if (next === 'collection') onChange({ type: 'collection', url: '', resourceId: null })
+    else if (next === 'none') onChange({ type: 'custom', url: '#', resourceId: null })
+    else onChange({ type: 'custom', url: item.url && item.url !== '#' ? item.url : '', resourceId: null })
+  }
+
+  return (
+    <div className={styles.form}>
+      <label className={styles.field}>
+        <span>Name</span>
+        <input autoFocus value={item.label} onChange={e => onChange({ label: e.target.value })} placeholder={depth === 0 ? 'e.g. Kitchenware' : 'e.g. Tupperware'} />
+      </label>
+
+      {tile && (
         <div className={styles.field}>
-          <label>Collection</label>
-          <select value={resourceId} onChange={e => {
+          <span>Picture</span>
+          <NavImageField value={item.imageUrl || ''} onChange={imageUrl => onChange({ imageUrl })} />
+        </div>
+      )}
+      {/* Deals Market: a link in a dropdown can show a small picture next to its name. */}
+      {!grouped && depth === 1 && (
+        <div className={styles.field}>
+          <span>Picture (optional)</span>
+          <NavImageField value={item.imageUrl || ''} onChange={imageUrl => onChange({ imageUrl })} onRemove={() => onChange({ imageUrl: null })} />
+        </div>
+      )}
+
+      <label className={styles.field}>
+        <span>When tapped, it opens</span>
+        <select value={target} onChange={e => setTarget(e.target.value)}>
+          <option value="collection">A collection</option>
+          <option value="custom">A page or web address</option>
+          {depth === 0 && <option value="none">Nothing, it only opens its dropdown</option>}
+        </select>
+      </label>
+
+      {target === 'collection' && (
+        <label className={styles.field}>
+          <span>Collection</span>
+          <select value={collectionFor(item, collections)?.id || ''} onChange={e => {
             const c = collections.find(x => x.id === e.target.value)
-            onChange({ linkType, resourceId: e.target.value, url: c ? `/collections/${c.slug}` : '' })
+            onChange({ resourceId: e.target.value || null, url: c ? `/collections/${c.slug}` : '' })
           }}>
-            <option value="">Select collection</option>
+            <option value="">Choose a collection</option>
             {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-        </div>
-      ) : (
-        <div className={styles.field}>
-          <label>URL</label>
-          <input value={url} onChange={e => onChange({ linkType, url: e.target.value, resourceId })} placeholder="/collections/all" />
-        </div>
+        </label>
       )}
-    </>
-  )
-}
+      {target === 'custom' && (
+        <label className={styles.field}>
+          <span>Page or web address</span>
+          <input value={item.url || ''} onChange={e => onChange({ url: e.target.value })} placeholder="/pages/about-us or https://…" inputMode="url" />
+        </label>
+      )}
+      {target === 'none' && !hasChildren && <p className={styles.hint}>Add links under it after Done, or it will open an empty dropdown.</p>}
 
-function LinkDrawer({ drawer, collections, groupNames, onClose, onSubmit, onDelete }: {
-  drawer: { mode: 'add' | 'edit'; kind: LinkKind; parentId: string; item?: Item; requireGroup?: boolean; presetGroup?: string }
-  collections: any[]
-  groupNames: string[]
-  onClose: () => void
-  onSubmit: (draft: Draft) => void
-  onDelete?: () => void
-}) {
-  const [draft, setDraft] = useState<Draft>(() => (drawer.item ? draftFromItem(drawer.item) : { ...emptyDraft(), group: drawer.presetGroup || '' }))
-  const set = (p: Partial<Draft>) => setDraft(d => ({ ...d, ...p }))
+      {grouped && depth === 1 && !tile && (
+        showMore ? (
+          <label className={styles.field}>
+            <span>Heading (optional)</span>
+            <input value={item.group || ''} onChange={e => onChange({ group: e.target.value || null })} placeholder="e.g. New in" list={listId} />
+            <datalist id={listId}>{headings.map(h => <option key={h} value={h} />)}</datalist>
+            <small>Links with the same heading are shown together, under that heading, in the dropdown.</small>
+          </label>
+        ) : (
+          <button type="button" className={styles.more} onClick={() => setShowMore(true)}>+ Put it under a heading</button>
+        )
+      )}
 
-  const titles: Record<LinkKind, string> = { tile: 'Image tile', link: 'Link', sublink: 'Sub-link' }
-  const canSubmit = draft.label.trim().length > 0
-    && (drawer.kind !== 'tile' || !!draft.imageUrl)
-    && (!drawer.requireGroup || draft.group.trim().length > 0)
-
-  return (
-    <div className={styles.drawer} onMouseDown={e => e.stopPropagation()}>
-      <div className={styles.drawerHead}>
-        <div>
-          <div className={styles.eyebrow}>{drawer.mode === 'add' ? 'ADD' : 'EDIT'} · {titles[drawer.kind].toUpperCase()}</div>
-          <h2 className={styles.drawerTitle}>{titles[drawer.kind]}</h2>
-        </div>
-        <button className={ui.iconBtn} onClick={onClose}><X size={17} /></button>
-      </div>
-      <div className={styles.drawerBody}>
-        <div className={styles.field}>
-          <label>Label</label>
-          <input value={draft.label} onChange={e => set({ label: e.target.value })} placeholder="e.g. New In" autoFocus />
-        </div>
-
-        <DestinationFields
-          linkType={draft.linkType}
-          url={draft.url}
-          resourceId={draft.resourceId}
-          collections={collections}
-          onChange={next => set(next)}
-        />
-
-        {drawer.kind === 'link' && (
-          <div className={styles.field}>
-            <label>Group heading {drawer.requireGroup ? '' : '(optional)'}</label>
-            <input
-              value={draft.group}
-              onChange={e => set({ group: e.target.value })}
-              placeholder="e.g. New In, Special Prices"
-              list="nav-group-suggestions"
-            />
-            <datalist id="nav-group-suggestions">
-              {groupNames.map(name => <option key={name} value={name} />)}
-            </datalist>
-            <small className={ui.muted}>Leave blank for a plain link. Type an existing heading to add this link to that group, or a new one to start a group.</small>
-          </div>
-        )}
-
-        {drawer.kind === 'tile' && (
-          <div className={styles.field}>
-            <label>Image</label>
-            <NavImageField value={draft.imageUrl} onChange={imageUrl => set({ imageUrl })} />
-          </div>
-        )}
-      </div>
-      <div className={styles.drawerFoot}>
-        <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={onClose}>Cancel</button>
-        <div className="inline">
-          {onDelete && <button className={styles.removeBtn} onClick={() => { onDelete(); onClose() }}>Remove</button>}
-          <button className={ui.btn} onClick={() => onSubmit(draft)} disabled={!canSubmit}>{drawer.mode === 'add' ? 'Add' : 'Save'}</button>
-        </div>
+      <div className={styles.formActions}>
+        <button type="button" className={ui.btn} onClick={onDone} disabled={tile && !item.imageUrl}>Done</button>
+        <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={onCancel}><X size={15} /> {isNew ? 'Remove' : 'Cancel'}</button>
       </div>
     </div>
   )
 }
 
-function NavImageField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+function NavImageField({ value, onChange, onRemove }: { value: string; onChange: (value: string) => void; onRemove?: () => void }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className={styles.navImageField}>
-      {value ? (
-        <div className={styles.navImagePreview}>
-          <img src={value} alt="" />
-          <div className={styles.navImageActions}>
-            <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setOpen(true)}>Change</button>
-            <button type="button" className={ui.iconBtn} onClick={() => onChange('')} aria-label="Remove image"><X size={13} /></button>
-          </div>
-        </div>
-      ) : (
-        <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setOpen(true)}><ImagePlus size={15} /> Upload image</button>
-      )}
+    <div className={styles.imageField}>
+      {value ? <img src={value} alt="" /> : null}
+      <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setOpen(true)}><ImagePlus size={15} /> {value ? 'Change picture' : 'Choose picture'}</button>
+      {value && onRemove ? <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={onRemove}><X size={15} /> Remove picture</button> : null}
       <MediaPicker open={open} onClose={() => setOpen(false)} onAdd={images => { if (images[0]) onChange(images[0].url); setOpen(false) }} />
     </div>
   )
 }
+
