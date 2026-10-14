@@ -18,13 +18,13 @@
         "type": "color",
         "id": "yh_red",
         "label": "Main colour",
-        "default": "#d42a2a"
+        "default": "#D7261E"
       },
       {
         "type": "color",
         "id": "yh_accent",
         "label": "Accent colour",
-        "default": "#ff7a1a"
+        "default": "#FF7A1A"
       },
       {
         "type": "paragraph",
@@ -34,31 +34,31 @@
         "type": "color",
         "id": "yh_soft",
         "label": "Cream background",
-        "default": "#fff1e6"
+        "default": "#FFF0EE"
       },
       {
         "type": "color",
         "id": "yh_card",
         "label": "Panels and cards",
-        "default": "#ffffff"
+        "default": "#FFFFFF"
       },
       {
         "type": "color",
         "id": "yh_ink",
         "label": "Dark colour",
-        "default": "#171717"
+        "default": "#121212"
       },
       {
         "type": "color",
         "id": "yh_muted",
         "label": "Light text",
-        "default": "#6f655e"
+        "default": "#6B7280"
       },
       {
         "type": "color",
         "id": "yh_line",
         "label": "Borders",
-        "default": "#ece6e0"
+        "default": "#E9E9E6"
       },
       {
         "type": "range",
@@ -94,13 +94,13 @@
         "type": "color",
         "id": "yh_price",
         "label": "Prices",
-        "default": "#171717"
+        "default": "#121212"
       },
       {
         "type": "color",
         "id": "yh_badge",
         "label": "Discount label",
-        "default": "#ff7a1a"
+        "default": "#FF7A1A"
       },
       {
         "type": "color",
@@ -112,19 +112,19 @@
         "type": "color",
         "id": "yh_card_btn",
         "label": "\"+\" button",
-        "default": "#d42a2a"
+        "default": "#D7261E"
       },
       {
         "type": "color",
         "id": "yh_card_btn_text",
         "label": "\"+\" button icon",
-        "default": "#ffffff"
+        "default": "#FFFFFF"
       },
       {
         "type": "color",
         "id": "yh_card_btn_hover",
         "label": "\"+\" button on hover",
-        "default": "#171717"
+        "default": "#B91F18"
       },
       {
         "type": "header",
