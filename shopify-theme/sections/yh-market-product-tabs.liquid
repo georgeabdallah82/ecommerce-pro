@@ -17,11 +17,15 @@
       if chosen_collection == blank
         assign chosen_collection = collections.all
       endif
+      assign chosen_products = chosen_collection.products
+      if block.settings.sort_by == 'newest'
+        assign chosen_products = chosen_collection.products | sort: 'published_at' | reverse
+      endif
     -%}
     <div id="YhmTab-{{ section.id }}-{{ forloop.index }}" class="yhm-tab-panel{% if forloop.first %} is-active{% endif %}" role="tabpanel" data-yhm-panel="{{ forloop.index0 }}" {% unless forloop.first %}hidden{% endunless %}>
       <div class="yhm-product-grid yhm-product-grid--{{ section.settings.columns }}">
         {%- assign shown = 0 -%}
-        {%- for product in chosen_collection.products limit: section.settings.limit -%}
+        {%- for product in chosen_products limit: section.settings.limit -%}
           {%- if block.type == 'deals' -%}
             {%- if product.compare_at_price > product.price -%}
               {%- render 'yh-card', card_product: product, section_id: section.id, eager: forloop.first -%}
@@ -51,7 +55,7 @@
     {"type":"url","id":"link","label":"Bottom link"}
   ],
   "blocks":[
-    {"type":"collection","name":"Collection tab","settings":[{"type":"text","id":"label","label":"Tab label","default":"Popular"},{"type":"collection","id":"collection","label":"Collection"}]},
+    {"type":"collection","name":"Collection tab","settings":[{"type":"text","id":"label","label":"Tab label","default":"Popular"},{"type":"collection","id":"collection","label":"Collection"},{"type":"select","id":"sort_by","label":"Product order","options":[{"value":"manual","label":"Collection order"},{"value":"newest","label":"Newest first"}],"default":"manual"}]},
     {"type":"deals","name":"Sale items tab","settings":[{"type":"text","id":"label","label":"Tab label","default":"Deals"},{"type":"collection","id":"collection","label":"Collection with sale items"}]}
   ],
   "max_blocks":4,
