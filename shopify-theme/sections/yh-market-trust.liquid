@@ -1,0 +1,30 @@
+<section class="yh-market-section yhm-trust-section">
+  <div class="yhm-trust-grid">
+    {%- for block in section.blocks -%}
+      <div class="yhm-trust-item" {{ block.shopify_attributes }}>
+        <span class="yhm-trust-icon">
+          {%- case block.settings.icon -%}
+            {%- when 'truck' -%}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h11v11H3zM14 10h4l3 3v4h-7z"/><circle cx="7" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></svg>
+            {%- when 'cash' -%}<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 8h.01M18 16h.01"/></svg>
+            {%- when 'return' -%}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10a8 8 0 1 1 1 7M4 4v6h6"/></svg>
+            {%- else -%}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12 7.7L3 21l1.8-5.2a8.5 8.5 0 1 1 16.2-4.3Z"/><path d="M8 9c1 4 3 6 7 7"/></svg>
+          {%- endcase -%}
+        </span>
+        <div><strong>{{ block.settings.heading | escape }}</strong><p>{{ block.settings.text | escape }}</p></div>
+      </div>
+    {%- endfor -%}
+  </div>
+</section>
+{% schema %}
+{
+  "name":"YH market trust",
+  "settings":[],
+  "blocks":[{"type":"item","name":"Trust item","settings":[
+    {"type":"select","id":"icon","label":"Icon","options":[{"value":"truck","label":"Delivery"},{"value":"cash","label":"Cash on delivery"},{"value":"return","label":"Returns"},{"value":"chat","label":"WhatsApp support"}],"default":"truck"},
+    {"type":"text","id":"heading","label":"Heading","default":"Delivery across Lebanon"},
+    {"type":"text","id":"text","label":"Text","default":"A convenient delivery straight to your door."}
+  ]}],
+  "max_blocks":4,
+  "presets":[{"name":"YH market trust","blocks":[{"type":"item","settings":{"icon":"cash","heading":"Cash on delivery","text":"Pay when your order arrives"}},{"type":"item","settings":{"icon":"truck","heading":"Delivery across Lebanon","text":"Fast local delivery"}},{"type":"item","settings":{"icon":"return","heading":"Easy returns","text":"See our return policy"}},{"type":"item","settings":{"icon":"chat","heading":"WhatsApp support","text":"We're here to help"}}]}]
+}
+{% endschema %}
