@@ -50,33 +50,132 @@
 </section>
 {% schema %}
 {
-  "name":"YH market hero",
-  "settings":[
-    {"type":"checkbox","id":"autoplay","label":"Auto-rotate slides","default":true},
-    {"type":"range","id":"speed","label":"Slide duration (seconds)","min":3,"max":10,"step":1,"default":5}
+  "name": "YH market hero",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "autoplay",
+      "label": "Auto-rotate slides",
+      "default": true
+    },
+    {
+      "type": "range",
+      "id": "speed",
+      "label": "Slide duration (seconds)",
+      "min": 3,
+      "max": 10,
+      "step": 1,
+      "default": 5
+    }
   ],
-  "blocks":[
-    {"type":"slide","name":"Hero slide","settings":[
-      {"type":"image_picker","id":"image","label":"Desktop image"},
-      {"type":"text","id":"image_alt","label":"Image alt text"},
-      {"type":"text","id":"eyebrow","label":"Eyebrow","default":"EVERYDAY ESSENTIALS"},
-      {"type":"text","id":"heading","label":"Heading","default":"Everything for your home,"},
-      {"type":"text","id":"highlight","label":"Highlighted words","default":"delivered"},
-      {"type":"textarea","id":"text","label":"Text","default":"Practical finds for home and personal care, delivered across Lebanon."},
-      {"type":"text","id":"button_label","label":"Button label","default":"Shop now"},
-      {"type":"url","id":"button_link","label":"Button link"},
-      {"type":"text","id":"secondary_label","label":"Secondary button label","default":"Browse collections"},
-      {"type":"url","id":"secondary_link","label":"Secondary button link"},
-      {"type":"text","id":"badge","label":"Small badge"}
-    ]},
-    {"type":"_presets","name":"Defaults"}
+  "blocks": [
+    {
+      "type": "slide",
+      "name": "Hero slide",
+      "settings": [
+        {
+          "type": "image_picker",
+          "id": "image",
+          "label": "Desktop image"
+        },
+        {
+          "type": "text",
+          "id": "image_alt",
+          "label": "Image alt text"
+        },
+        {
+          "type": "text",
+          "id": "eyebrow",
+          "label": "Eyebrow",
+          "default": "EVERYDAY ESSENTIALS"
+        },
+        {
+          "type": "text",
+          "id": "heading",
+          "label": "Heading",
+          "default": "Everything for your home,"
+        },
+        {
+          "type": "text",
+          "id": "highlight",
+          "label": "Highlighted words",
+          "default": "delivered"
+        },
+        {
+          "type": "textarea",
+          "id": "text",
+          "label": "Text",
+          "default": "Practical finds for home and personal care, delivered across Lebanon."
+        },
+        {
+          "type": "text",
+          "id": "button_label",
+          "label": "Button label",
+          "default": "Shop now"
+        },
+        {
+          "type": "url",
+          "id": "button_link",
+          "label": "Button link"
+        },
+        {
+          "type": "text",
+          "id": "secondary_label",
+          "label": "Secondary button label",
+          "default": "Browse collections"
+        },
+        {
+          "type": "url",
+          "id": "secondary_link",
+          "label": "Secondary button link"
+        },
+        {
+          "type": "text",
+          "id": "badge",
+          "label": "Small badge"
+        }
+      ]
+    }
   ],
-  "presets":[
-    {"name":"YH market hero","blocks":[
-      {"type":"slide","settings":{"eyebrow":"HOME ESSENTIALS","heading":"Everything for your home,","highlight":"delivered","text":"Everyday essentials, with cash on delivery across Lebanon.","button_label":"Shop now","secondary_label":"Browse collections"}},
-      {"type":"slide","settings":{"eyebrow":"STOCK UP","heading":"Small things that make","highlight":"life easier","text":"Discover useful finds for every corner of your home.","button_label":"Shop all","secondary_label":""}},
-      {"type":"slide","settings":{"eyebrow":"PERSONAL CARE","heading":"Refresh your daily","highlight":"routine","text":"Find your everyday favourites in one easy haul.","button_label":"Discover more","secondary_label":""}}
-    ]}
+  "presets": [
+    {
+      "name": "YH market hero",
+      "blocks": [
+        {
+          "type": "slide",
+          "settings": {
+            "eyebrow": "HOME ESSENTIALS",
+            "heading": "Everything for your home,",
+            "highlight": "delivered",
+            "text": "Everyday essentials, with cash on delivery across Lebanon.",
+            "button_label": "Shop now",
+            "secondary_label": "Browse collections"
+          }
+        },
+        {
+          "type": "slide",
+          "settings": {
+            "eyebrow": "STOCK UP",
+            "heading": "Small things that make",
+            "highlight": "life easier",
+            "text": "Discover useful finds for every corner of your home.",
+            "button_label": "Shop all",
+            "secondary_label": ""
+          }
+        },
+        {
+          "type": "slide",
+          "settings": {
+            "eyebrow": "PERSONAL CARE",
+            "heading": "Refresh your daily",
+            "highlight": "routine",
+            "text": "Find your everyday favourites in one easy haul.",
+            "button_label": "Discover more",
+            "secondary_label": ""
+          }
+        }
+      ]
+    }
   ]
 }
 {% endschema %}
