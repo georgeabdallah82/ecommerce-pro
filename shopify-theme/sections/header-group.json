@@ -18,7 +18,7 @@
         "announcement-bar-0": {
           "type": "announcement",
           "settings": {
-            "text": "Free delivery on orders over $50",
+            "text": "Everyday finds. Better prices. Delivered across Lebanon.",
             "link": ""
           }
         }
@@ -27,28 +27,21 @@
         "announcement-bar-0"
       ]
     },
-    "yh-header": {
-      "type": "yh-header",
+    "yh-market-header": {
+      "type": "yh-market-header",
       "settings": {
-        "logo_white": false,
-        "search_placeholder": "Search tissues, cleaning, kitchen...",
-        "account_label": "My account",
         "menu": "main-menu",
-        "show_nav": true,
-        "view_all_label": "View all",
-        "drawer_title": "Menu",
-        "menu_button_label": "Open menu",
-        "nav_label": "Main menu",
-        "show_deals": false,
-        "deals_label": "Flash deals",
-        "deals_link": "shopify://collections/all",
-        "show_contact": true,
-        "contact_label": "Contact us"
+        "announcement": "Everyday finds. Better prices. Delivered across Lebanon.",
+        "search_placeholder": "Search products...",
+        "delivery_label": "Delivering to",
+        "delivery_eta": "Delivery in 1–3 days",
+        "delivery_note": "Cash on delivery",
+        "all_categories_label": "All categories"
       }
     }
   },
   "order": [
     "announcement-bar",
-    "yh-header"
+    "yh-market-header"
   ]
 }
