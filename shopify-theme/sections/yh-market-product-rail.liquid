@@ -7,7 +7,7 @@
 <section class="yh-market-section yhm-rail-section">
   <div class="yhm-section-heading"><div><span class="yhm-section-kicker">{{ section.settings.kicker | escape }}</span><h2>{{ section.settings.heading | escape }}</h2>{% if section.settings.subheading != blank %}<p>{{ section.settings.subheading | escape }}</p>{% endif %}</div><a class="yhm-text-link" href="{{ c.url | default: routes.all_products_collection_url }}">{{ section.settings.link_label | escape }} <span aria-hidden="true">→</span></a></div>
   <div class="yhm-rail-wrap"><div class="yhm-product-rail" data-yhm-rail>
-    {%- for product in c.products limit: section.settings.limit -%}<div class="yhm-rail-card">{% render 'yh-card', card_product: product, section_id: section.id, eager: forloop.index <= 2 %}</div>{%- else -%}<p class="yhm-empty-note">Add products to this collection to show them here.</p>{%- endfor -%}
+    {%- for product in c.products limit: section.settings.limit -%}{%- assign eager_card = false -%}{%- if forloop.index <= 2 -%}{%- assign eager_card = true -%}{%- endif -%}<div class="yhm-rail-card">{% render 'yh-card', card_product: product, section_id: section.id, eager: eager_card %}</div>{%- else -%}<p class="yhm-empty-note">Add products to this collection to show them here.</p>{%- endfor -%}
   </div></div>
 </section>
 {% schema %}
