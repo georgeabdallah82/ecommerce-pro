@@ -1,0 +1,75 @@
+{%- assign footer_logo = section.settings.logo | default: settings.logo -%}
+{%- assign wa_digits = settings.yh_whatsapp_number | remove: '+' | remove: ' ' | remove: '-' | remove: '(' | remove: ')' -%}
+{%- if section.settings.whatsapp_number != blank -%}{%- assign wa_digits = section.settings.whatsapp_number | remove: '+' | remove: ' ' | remove: '-' | remove: '(' | remove: ')' -%}{%- endif -%}
+{%- capture wa_url -%}https://wa.me/{{ wa_digits }}{%- endcapture -%}
+{%- if section.settings.whatsapp_message != blank -%}{%- assign wa_message = section.settings.whatsapp_message | url_encode -%}{%- assign wa_url = wa_url | append: '?text=' | append: wa_message -%}{%- endif -%}
+{%- if wa_digits != blank -%}
+  <div class="yhm-help-band"><span>{{ section.settings.help_text | escape }}</span><a href="{{ wa_url }}" target="_blank" rel="noopener noreferrer">{{ section.settings.help_button | escape }} <span aria-hidden="true">↗</span></a></div>
+{%- endif -%}
+<footer class="yh-market-footer">
+  <div class="yhm-footer-main">
+    <div class="yhm-footer-brand">
+      <a href="{{ routes.root_url }}" class="yhm-footer-logo">
+        {%- if footer_logo != blank -%}{{ footer_logo | image_url: width: 400 | image_tag: alt: shop.name, loading: 'lazy', widths: '120, 200, 300, 400' }}{%- else -%}<span>{{ shop.name | escape }}</span>{%- endif -%}
+      </a>
+      {%- if section.settings.about != blank -%}<p>{{ section.settings.about | escape }}</p>{%- endif -%}
+      <div class="yhm-footer-social">
+        {%- if settings.social_instagram_link != blank -%}<a href="{{ settings.social_instagram_link }}" aria-label="Instagram" target="_blank" rel="noopener">IG</a>{%- endif -%}
+        {%- if settings.social_facebook_link != blank -%}<a href="{{ settings.social_facebook_link }}" aria-label="Facebook" target="_blank" rel="noopener">f</a>{%- endif -%}
+        {%- if settings.social_tiktok_link != blank -%}<a href="{{ settings.social_tiktok_link }}" aria-label="TikTok" target="_blank" rel="noopener">♪</a>{%- endif -%}
+      </div>
+    </div>
+    {%- for block in section.blocks -%}
+      <div class="yhm-footer-col" {{ block.shopify_attributes }}>
+        <h3>{{ block.settings.heading | escape }}</h3>
+        {%- if block.settings.menu != blank -%}
+          <ul>{%- for link in block.settings.menu.links -%}<li><a href="{{ link.url }}">{{ link.title | escape }}</a></li>{%- endfor -%}</ul>
+        {%- elsif block.type == 'policies' -%}
+          <ul>{%- for policy in shop.policies -%}{% if policy != blank %}<li><a href="{{ policy.url }}">{{ policy.title | escape }}</a></li>{% endif %}{%- endfor -%}</ul>
+        {%- else -%}
+          <ul><li><a href="{{ routes.all_products_collection_url }}">Shop all</a></li><li><a href="{{ routes.collections_url }}">Collections</a></li><li><a href="{{ routes.cart_url }}">Cart</a></li></ul>
+        {%- endif -%}
+      </div>
+    {%- endfor -%}
+    {%- if section.settings.newsletter -%}
+      <div class="yhm-footer-col yhm-footer-news">
+        <h3>{{ section.settings.newsletter_heading | escape }}</h3><p>{{ section.settings.newsletter_text | escape }}</p>
+        {%- form 'customer', id: 'YhmNewsletter', class: 'yhm-newsletter-form' -%}
+          <input type="hidden" name="contact[tags]" value="newsletter">
+          <label class="visually-hidden" for="YhmNewsletterEmail">Email address</label>
+          <input id="YhmNewsletterEmail" type="email" name="contact[email]" value="{{ form.email }}" placeholder="Your email address" required>
+          <button type="submit" aria-label="Subscribe">→</button>
+          {%- if form.posted_successfully? -%}<p class="yhm-newsletter-status" role="status">Thanks for subscribing!</p>{%- endif -%}
+          {%- if form.errors -%}<p class="yhm-newsletter-status" role="alert">{{ form.errors.translated_fields.email | capitalize }} {{ form.errors.messages.email }}</p>{%- endif -%}
+        {%- endform -%}
+      </div>
+    {%- endif -%}
+  </div>
+  <div class="yhm-footer-bottom"><span>© {{ 'now' | date: '%Y' }} {{ shop.name | escape }}</span><span>{{ section.settings.footer_note | escape }}</span>{% if section.settings.show_policies %}<div class="yhm-footer-policy">{%- for policy in shop.policies -%}{% if policy != blank %}<a href="{{ policy.url }}">{{ policy.title | escape }}</a>{% endif %}{%- endfor -%}</div>{% endif %}</div>
+  {%- if section.settings.show_wordmark -%}<div class="yhm-footer-wordmark"><span>YALLA</span><em>HAUL</em></div>{%- endif -%}
+</footer>
+{% schema %}
+{
+  "name":"YH market footer",
+  "settings":[
+    {"type":"image_picker","id":"logo","label":"Logo for dark background"},
+    {"type":"text","id":"about","label":"About text","default":"Useful everyday finds for your home and personal care, all in one haul."},
+    {"type":"checkbox","id":"newsletter","label":"Show newsletter form","default":true},
+    {"type":"text","id":"newsletter_heading","label":"Newsletter heading","default":"Get the good finds first"},
+    {"type":"text","id":"newsletter_text","label":"Newsletter text","default":"New arrivals, useful finds and special offers."},
+    {"type":"text","id":"help_text","label":"WhatsApp help text","default":"Need help with your order?"},
+    {"type":"text","id":"help_button","label":"WhatsApp button label","default":"Message us on WhatsApp"},
+    {"type":"text","id":"whatsapp_number","label":"WhatsApp number with country code (optional)"},
+    {"type":"text","id":"whatsapp_message","label":"WhatsApp prefilled message","default":"Hi Yalla Haul, I need help with my order."},
+    {"type":"checkbox","id":"show_policies","label":"Show policy links","default":true},
+    {"type":"checkbox","id":"show_wordmark","label":"Show large brand wordmark","default":true},
+    {"type":"text","id":"footer_note","label":"Footer note"}
+  ],
+  "blocks":[
+    {"type":"menu","name":"Footer menu","settings":[{"type":"text","id":"heading","label":"Heading","default":"Explore"},{"type":"link_list","id":"menu","label":"Menu"}]},
+    {"type":"policies","name":"Policies","settings":[{"type":"text","id":"heading","label":"Heading","default":"Help & policies"}]}
+  ],
+  "max_blocks":4,
+  "presets":[{"name":"YH market footer","blocks":[{"type":"menu","settings":{"heading":"Shop"}},{"type":"policies","settings":{"heading":"Help"}}]}]
+}
+{% endschema %}
