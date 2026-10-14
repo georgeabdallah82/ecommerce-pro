@@ -3,7 +3,8 @@
   assign delivery_areas = 'Beirut,Metn,Keserwan,Jbeil,North,South,Bekaa' | split: ','
   assign menu = section.settings.menu
 -%}
-<header class="yh-market-header" data-yhm-header>
+<div class="yhm-header-shell" data-yhm-header>
+<header class="yh-market-header">
   {%- if section.settings.announcement != blank -%}
     <div class="yh-market-announcement"><span>{{ section.settings.announcement | escape }}</span></div>
   {%- endif -%}
@@ -89,6 +90,7 @@
       {%- if shop.customer_accounts_enabled -%}<a class="yhm-drawer-link" href="{{ routes.account_url }}">My account</a>{%- endif -%}
     </div>
   </div>
+</div>
 {% schema %}
 {
   "name": "YH market header",
