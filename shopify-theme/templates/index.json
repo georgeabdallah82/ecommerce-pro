@@ -114,7 +114,8 @@
         "new-tab": {
           "type": "collection",
           "settings": {
-            "label": "New arrivals"
+            "label": "New arrivals",
+            "sort_by": "newest"
           }
         }
       },
