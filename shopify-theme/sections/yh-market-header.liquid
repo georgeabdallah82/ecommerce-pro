@@ -37,7 +37,8 @@
       </a>
     </div>
   </div>
-  <div class="yhm-delivery">
+</header>
+<div class="yhm-delivery">
     <label for="YhmDeliveryArea"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg><span>{{ section.settings.delivery_label | escape }}</span></label>
     <select id="YhmDeliveryArea" data-yhm-area aria-label="Delivery area">
       {%- for area in delivery_areas -%}<option value="{{ area }}">{{ area }}</option>{%- endfor -%}
@@ -88,7 +89,6 @@
       {%- if shop.customer_accounts_enabled -%}<a class="yhm-drawer-link" href="{{ routes.account_url }}">My account</a>{%- endif -%}
     </div>
   </div>
-</header>
 {% schema %}
 {
   "name": "YH market header",
