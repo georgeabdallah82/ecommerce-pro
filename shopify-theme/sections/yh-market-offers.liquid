@@ -1,0 +1,49 @@
+<section class="yh-market-section yhm-offers-section">
+  {%- if section.settings.heading != blank -%}<div class="yhm-section-heading"><div><span class="yhm-section-kicker">{{ section.settings.kicker | escape }}</span><h2>{{ section.settings.heading | escape }}</h2></div>{% if section.settings.link_label != blank %}<a href="{{ section.settings.link | default: routes.all_products_collection_url }}" class="yhm-text-link">{{ section.settings.link_label | escape }} <span aria-hidden="true">→</span></a>{% endif %}</div>{%- endif -%}
+  <div class="yhm-offers yhm-offers--{{ section.blocks.size | at_most: 3 }}">
+    {%- for block in section.blocks -%}
+      {%- liquid
+        assign offer_image = block.settings.image
+        assign fallback_asset = 'yh-offer-home.jpg'
+        if forloop.index == 2
+          assign fallback_asset = 'yh-offer-care.jpg'
+        elsif forloop.index == 3
+          assign fallback_asset = 'yh-spot-cleaning.jpg'
+        endif
+      -%}
+      <a class="yhm-offer" href="{{ block.settings.link | default: routes.all_products_collection_url }}" {{ block.shopify_attributes }}>
+        {%- if offer_image != blank -%}
+          {{ offer_image | image_url: width: 1200 | image_tag: class: 'yhm-offer-image', widths: '360, 600, 900, 1200', sizes: '(min-width: 760px) 50vw, 90vw', loading: 'lazy', alt: block.settings.heading }}
+        {%- else -%}<img class="yhm-offer-image" src="{{ fallback_asset | asset_url }}" alt="{{ block.settings.heading | escape }}" loading="lazy">{%- endif -%}
+        <span class="yhm-offer-shade"></span>
+        <span class="yhm-offer-copy">
+          {%- if block.settings.kicker != blank -%}<small>{{ block.settings.kicker | escape }}</small>{%- endif -%}
+          <strong>{{ block.settings.heading | escape }}</strong>
+          {%- if block.settings.link_label != blank -%}<span class="yhm-offer-link">{{ block.settings.link_label | escape }} <span aria-hidden="true">→</span></span>{%- endif -%}
+        </span>
+      </a>
+    {%- endfor -%}
+  </div>
+</section>
+{% schema %}
+{
+  "name":"YH market offers",
+  "settings":[
+    {"type":"text","id":"kicker","label":"Kicker","default":"PICK YOUR NEXT HAUL"},
+    {"type":"text","id":"heading","label":"Heading","default":"Everyday favourites"},
+    {"type":"text","id":"link_label","label":"Heading link label","default":"Shop all"},
+    {"type":"url","id":"link","label":"Heading link"}
+  ],
+  "blocks":[
+    {"type":"offer","name":"Offer banner","settings":[
+      {"type":"image_picker","id":"image","label":"Image"},
+      {"type":"text","id":"kicker","label":"Category","default":"Home"},
+      {"type":"text","id":"heading","label":"Heading","default":"Everyday home essentials"},
+      {"type":"text","id":"link_label","label":"Link label","default":"Shop now"},
+      {"type":"url","id":"link","label":"Link"}
+    ]}
+  ],
+  "max_blocks":3,
+  "presets":[{"name":"YH market offers","blocks":[{"type":"offer"},{"type":"offer","settings":{"kicker":"PERSONAL CARE","heading":"Care for your daily routine"} }]}]
+}
+{% endschema %}
