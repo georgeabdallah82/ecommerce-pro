@@ -2,40 +2,43 @@
   "name": "t:sections.footer.name",
   "type": "footer",
   "sections": {
-    "yh-footer": {
-      "type": "yh-footer",
+    "yh-market-footer": {
+      "type": "yh-market-footer",
       "settings": {
-        "about": "Everything for your home, at the best prices.",
+        "about": "Useful everyday finds for your home and personal care, all in one haul.",
         "newsletter": true,
-        "news_heading": "Get the deals first",
-        "news_text": "Flash deals and new arrivals, straight to your inbox.",
-        "news_button": "Join",
-        "show_wordmark": true
+        "newsletter_heading": "Get the good finds first",
+        "newsletter_text": "New arrivals, useful finds and special offers.",
+        "help_text": "Need help with your order?",
+        "help_button": "Message us on WhatsApp",
+        "whatsapp_number": "",
+        "whatsapp_message": "Hi Yalla Haul, I need help with my order.",
+        "show_policies": true,
+        "show_wordmark": true,
+        "footer_note": "Made for everyday life."
       },
       "blocks": {
-        "shop": {
-          "type": "shop_links",
-          "settings": {}
-        },
-        "account": {
-          "type": "account_links",
+        "footer-shop": {
+          "type": "menu",
           "settings": {
-            "heading": "Help"
+            "heading": "Shop",
+            "menu": "main-menu"
           }
         },
-        "legal": {
-          "type": "policy_links",
-          "settings": {}
+        "footer-help": {
+          "type": "policies",
+          "settings": {
+            "heading": "Help & policies"
+          }
         }
       },
       "block_order": [
-        "shop",
-        "account",
-        "legal"
+        "footer-shop",
+        "footer-help"
       ]
     }
   },
   "order": [
-    "yh-footer"
+    "yh-market-footer"
   ]
 }
