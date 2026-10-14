@@ -1,0 +1,35 @@
+name: Package Yalla Haul Shopify theme
+
+on:
+  push:
+    branches:
+      - shopify-market-match
+    paths:
+      - "shopify-theme/**"
+      - ".github/workflows/shopify-theme-zip.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package-theme:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Package uploadable Shopify theme
+        shell: bash
+        run: |
+          cd shopify-theme
+          zip -qr ../yalla-haul-shopify-market-theme.zip assets config layout locales sections snippets templates
+          unzip -t ../yalla-haul-shopify-market-theme.zip
+
+      - name: Upload theme ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: yalla-haul-shopify-market-theme
+          path: yalla-haul-shopify-market-theme.zip
+          if-no-files-found: error
+          retention-days: 14
