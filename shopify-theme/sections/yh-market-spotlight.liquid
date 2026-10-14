@@ -1,0 +1,38 @@
+{%- liquid
+  assign c = section.settings.collection
+  assign spotlight_image = section.settings.image
+  if spotlight_image == blank
+    assign spotlight_asset = 'yh-spot-cleaning.jpg'
+  endif
+-%}
+<section class="yh-market-section yhm-spotlight-section">
+  <div class="yhm-spotlight{% if section.settings.image_side == 'right' %} yhm-spotlight--right{% endif %}">
+    <div class="yhm-spotlight-media">
+      {%- if spotlight_image != blank -%}{{ spotlight_image | image_url: width: 1300 | image_tag: class: 'yhm-spotlight-image', widths: '500, 800, 1100, 1300', sizes: '(min-width: 760px) 55vw, 100vw', loading: 'lazy', alt: section.settings.heading }}
+      {%- else -%}<img class="yhm-spotlight-image" src="{{ spotlight_asset | asset_url }}" alt="{{ section.settings.heading | escape }}" loading="lazy">{%- endif -%}
+    </div>
+    <div class="yhm-spotlight-copy">
+      {%- if section.settings.kicker != blank -%}<span class="yhm-section-kicker">{{ section.settings.kicker | escape }}</span>{%- endif -%}
+      <h2>{{ section.settings.heading | escape }}{% if section.settings.highlight != blank %} <em>{{ section.settings.highlight | escape }}</em>{% endif %}</h2>
+      <p>{{ section.settings.text | escape }}</p>
+      <a class="yhm-btn yhm-btn--primary" href="{% if c != blank %}{{ c.url }}{% else %}{{ section.settings.link | default: routes.all_products_collection_url }}{% endif %}">{{ section.settings.button_label | escape }} <span aria-hidden="true">→</span></a>
+    </div>
+  </div>
+</section>
+{% schema %}
+{
+  "name":"YH market spotlight",
+  "settings":[
+    {"type":"image_picker","id":"image","label":"Image"},
+    {"type":"select","id":"image_side","label":"Image position","options":[{"value":"left","label":"Left"},{"value":"right","label":"Right"}],"default":"left"},
+    {"type":"text","id":"kicker","label":"Kicker","default":"A BETTER EVERYDAY"},
+    {"type":"text","id":"heading","label":"Heading","default":"Make home feel"},
+    {"type":"text","id":"highlight","label":"Highlighted words","default":"easy."},
+    {"type":"textarea","id":"text","label":"Text","default":"Useful essentials for those little jobs, fresh routines and everyday moments."},
+    {"type":"text","id":"button_label","label":"Button label","default":"Explore the collection"},
+    {"type":"url","id":"link","label":"Button link"},
+    {"type":"collection","id":"collection","label":"Use collection link"}
+  ],
+  "presets":[{"name":"YH market spotlight"}]
+}
+{% endschema %}
