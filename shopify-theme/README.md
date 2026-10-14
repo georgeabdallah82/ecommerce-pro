@@ -1,47 +1,39 @@
-# Yalla Haul Shopify theme
+# Yalla Haul Shopify theme — Market edition
 
-Yalla Haul's Shopify theme, "Bento": a white rounded top bar and nav bar, colourful rounded tiles
-on a warm cream page, white product cards with a round "+" button, and a black footer with the
-store name in big letters, in the logo's colours. Built on [Dawn](https://github.com/Shopify/dawn)
-16.0.0: Dawn keeps the cart, checkout hand-off, product page, filters, search and customer
-accounts; the Yalla Haul parts are the `yh-*` files.
+This Shopify theme adapts the **current Yalla Haul storefront design** to Shopify's native theme architecture. It is based on Dawn 16.0.0 so Shopify continues to manage products, variants, search, customer accounts, cart and checkout.
 
-| File | What it is |
+## Visual direction
+
+The Market edition follows the live site's red navigation, white delivery-area bar and category navigation, large photo-led hero slider, home/personal-care offer banners, category circles, product tabs, product rail, trust strip, and dark footer with WhatsApp help band. Core brand styling uses red `#D7261E`, warm near-white `#F6F6F4`, white cards, near-black text, and DM Sans.
+
+The previous Bento sections remain in the repository for reference, but the homepage and global header/footer now use the Market edition sections.
+
+## Main custom sections
+
+| File | Purpose |
 | --- | --- |
-| `sections/yh-header.liquid` | Top bar (logo, search, account, cart); nav bar from the Shopify menu (Main menu by default, sub-items as dropdowns) on computers; menu button and side panel with the same links on phones |
-| `sections/yh-hero.liquid` | Optional hero banner: photo behind the text or a colour panel beside it, two buttons (hidden on the home page by default) |
-| `sections/yh-bento.liquid` | Home page tiles: welcome, flash deal with countdown, notes, photos, WhatsApp; each small, wide, tall or big |
-| `sections/yh-products.liquid` | "Popular right now": category chips and a product grid, optional countdown |
-| `sections/yh-trust.liquid` | Four reasons-to-buy cards with icons (off on the home page by default) |
-| `sections/yh-help.liquid` | "Need help with your order?" WhatsApp card (off on the home page by default) |
-| `sections/yh-footer.liquid` | Black footer: logo, social links, link columns, newsletter, big store name |
-| `sections/yh-breadcrumbs.liquid` | Breadcrumbs on product and collection pages |
-| `sections/cart-icon-bubble.liquid` | Cart button contents (re-rendered by the cart drawer) |
-| `snippets/yh-card.liquid` | Product card (orange discount label, price, round "+" button), also on collection, search and related products |
-| `snippets/yh-tabbar.liquid` | Phone bottom bar: Home, Menu (opens the menu panel), Cart, Account (on by default) |
-| `snippets/yh-photo.liquid` | Uploaded photo or one of the built-in `assets/yh-*.jpg` photos |
-| `snippets/yh-icon.liquid`, `snippets/yh-whatsapp-float.liquid` | Icons, floating WhatsApp button |
-| `snippets/yh-var.liquid` | Writes one section colour as a CSS variable (skipped when empty) |
-| `assets/yallahaul.css`, `assets/yallahaul.js` | Styles and behaviour (countdown to midnight, menu panel, dropdowns, bottom bar) |
+| `sections/yh-market-header.liquid` | Red responsive header, search, account/cart, area picker, category links and mobile drawer |
+| `sections/yh-market-hero.liquid` | Full-width photo slider with mobile-friendly layout and editable calls to action |
+| `sections/yh-market-offers.liquid` | Image offer cards for Home, Personal Care and other campaigns |
+| `sections/yh-market-categories.liquid` | Collection-category circles |
+| `sections/yh-market-product-tabs.liquid` | Product tabs, including an optional sale-items tab |
+| `sections/yh-market-product-rail.liquid` | Horizontal featured/best-seller product rail |
+| `sections/yh-market-spotlight.liquid` | Editorial image + copy collection spotlight |
+| `sections/yh-market-trust.liquid` | Delivery, COD, returns and support messages |
+| `sections/yh-market-footer.liquid` | Dark footer, newsletter sign-up, policy/menu links, and WhatsApp help band |
+| `assets/yh-market.css`, `assets/yh-market.js` | Responsive Market styling, hero slider, tabs, mobile menu and saved delivery area |
 
-Every Yalla Haul section has its own **Colours** settings (header and nav bar, each bento tile,
-products, trust cards, help card, footer), so each part's colours are
-changed by clicking it in the theme editor; `snippets/yh-var.liquid` passes them to the CSS.
-Product-card colours (prices, discount label, "+" button), brand colours used by the Dawn pages
-(logo red #D42A2A, orange #FF7A1A, black #171717, cream #FFF1E6), corners, the card note,
-WhatsApp and the phone bottom bar are under **Theme settings > Yalla Haul**. The page
-background is Colors > Scheme 1 (#FBF6F1); panels, cards and the cart drawer use Scheme 2
-(white). Font: Outfit. The logo and favicon are uploaded in the theme editor (Theme settings >
-Logo; the footer has its own logo for dark backgrounds); until then the store name is shown.
-Built-in photos are Unsplash (free for commercial use), see `public/stock/CREDITS.txt`.
+Product tiles reuse the Shopify-native `snippets/yh-card.liquid` component and product forms. Product and collection links are Shopify routes/objects; add-to-cart and checkout are not simulated.
 
-## Install
+## Upload to Shopify
 
-Zip the theme folders (not this README) and upload under Online Store > Themes > Add theme >
-Upload zip file:
+1. In Shopify admin, open **Online Store → Themes**.
+2. Choose **Add theme → Upload zip file**.
+3. Upload the packaged theme ZIP (the ZIP root must contain `assets/`, `config/`, `layout/`, `locales/`, `sections/`, `snippets/`, and `templates/`).
+4. Preview before publishing. Set the shop logo, social links, WhatsApp number, Main menu and choose the actual collections in **Customize**.
 
-    cd shopify-theme && zip -r ../yalla-haul-theme.zip assets config layout locales sections snippets templates
+Products are separate from theme code. The CSV in `../shopify-import/products.csv` is only an optional import starting point; verify product details, inventory, prices, images and policies before importing or publishing.
 
-Check before uploading: `@shopify/theme-check-node` should report no errors.
+## Important
 
-Products to import are in `../shopify-import/products.csv` (Products > Import).
+Shopify checkout, payment methods, shipping/delivery rates, domain settings, taxes and legal policies must be configured in Shopify admin. The delivery-area picker is a visual/storefront preference only; it does **not** calculate shipping rates or automatically alter the checkout address. Keep the existing Yalla Haul site unchanged until you have previewed and tested the Shopify store.
