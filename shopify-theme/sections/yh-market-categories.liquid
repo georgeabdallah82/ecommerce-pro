@@ -1,20 +1,42 @@
+{%- liquid
+  assign configured_categories = 0
+  for block in section.blocks
+    if block.settings.collection != blank
+      assign configured_categories = configured_categories | plus: 1
+    endif
+  endfor
+-%}
 <section class="yh-market-section yhm-categories-section">
   <div class="yhm-section-heading"><div><span class="yhm-section-kicker">{{ section.settings.kicker | escape }}</span><h2>{{ section.settings.heading | escape }}</h2></div>{% if section.settings.link_label != blank %}<a class="yhm-text-link" href="{{ routes.collections_url }}">{{ section.settings.link_label | escape }} <span aria-hidden="true">→</span></a>{% endif %}</div>
   <div class="yhm-category-grid">
-    {%- for block in section.blocks -%}
-      {%- assign c = block.settings.collection -%}
-      {%- if c != blank -%}
-        <a class="yhm-category-card" href="{{ c.url }}" {{ block.shopify_attributes }}>
-          <span class="yhm-category-image">
-            {%- if block.settings.image != blank -%}{{ block.settings.image | image_url: width: 600 | image_tag: widths: '160, 260, 400, 600', sizes: '(min-width: 760px) 16vw, 35vw', loading: 'lazy', alt: c.title }}
-            {%- elsif c.image != blank -%}{{ c.image | image_url: width: 600 | image_tag: widths: '160, 260, 400, 600', sizes: '(min-width: 760px) 16vw, 35vw', loading: 'lazy', alt: c.title }}
-            {%- else -%}<span class="yhm-category-placeholder">YH</span>{%- endif -%}
-          </span>
-          <span class="yhm-category-name">{{ block.settings.label | default: c.title | escape }}</span>
-          {% if section.settings.show_count %}<span class="yhm-category-count">{{ c.products_count }} items</span>{% endif %}
-        </a>
-      {%- endif -%}
-    {%- endfor -%}
+    {%- if configured_categories > 0 -%}
+      {%- for block in section.blocks -%}
+        {%- assign c = block.settings.collection -%}
+        {%- if c != blank -%}
+          <a class="yhm-category-card" href="{{ c.url }}" {{ block.shopify_attributes }}>
+            <span class="yhm-category-image">
+              {%- if block.settings.image != blank -%}{{ block.settings.image | image_url: width: 600 | image_tag: widths: '160, 260, 400, 600', sizes: '(min-width: 760px) 16vw, 35vw', loading: 'lazy', alt: c.title }}
+              {%- elsif c.image != blank -%}{{ c.image | image_url: width: 600 | image_tag: widths: '160, 260, 400, 600', sizes: '(min-width: 760px) 16vw, 35vw', loading: 'lazy', alt: c.title }}
+              {%- else -%}<span class="yhm-category-placeholder">YH</span>{%- endif -%}
+            </span>
+            <span class="yhm-category-name">{{ block.settings.label | default: c.title | escape }}</span>
+            {% if section.settings.show_count %}<span class="yhm-category-count">{{ c.products_count }} items</span>{% endif %}
+          </a>
+        {%- endif -%}
+      {%- endfor -%}
+    {%- else -%}
+      {%- assign auto_shown = 0 -%}
+      {%- for c in collections -%}
+        {%- if c != blank and c.handle != 'all' and auto_shown < 6 -%}
+          <a class="yhm-category-card" href="{{ c.url }}">
+            <span class="yhm-category-image">{%- if c.image != blank -%}{{ c.image | image_url: width: 600 | image_tag: widths: '160, 260, 400, 600', sizes: '(min-width: 760px) 16vw, 35vw', loading: 'lazy', alt: c.title }}{%- else -%}<span class="yhm-category-placeholder">YH</span>{%- endif -%}</span>
+            <span class="yhm-category-name">{{ c.title | escape }}</span>
+            {% if section.settings.show_count %}<span class="yhm-category-count">{{ c.products_count }} items</span>{% endif %}
+          </a>
+          {%- assign auto_shown = auto_shown | plus: 1 -%}
+        {%- endif -%}
+      {%- endfor -%}
+    {%- endif -%}
   </div>
 </section>
 {% schema %}
@@ -32,7 +54,6 @@
     {"type":"text","id":"label","label":"Custom label"}
   ]}],
   "max_blocks":12,
-  "presets":[{"name":"YH market categories","blocks":[{"type":"category"},{"type":"category"},{"type":"category"},{"type":"category"},{"type":"category"},{"type":"category"}]}
-  ]
+  "presets":[{"name":"YH market categories","blocks":[{"type":"category"},{"type":"category"},{"type":"category"},{"type":"category"},{"type":"category"},{"type":"category"}]}]
 }
 {% endschema %}
