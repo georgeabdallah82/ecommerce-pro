@@ -1,135 +1,202 @@
 {
   "sections": {
-    "hero": {
-      "type": "yh-hero",
-      "disabled": true,
+    "market-hero": {
+      "type": "yh-market-hero",
       "settings": {
-        "layout": "photo",
-        "height": "medium",
-        "align": "left",
-        "stock": "hero-kitchen",
-        "overlay": 45,
-        "label": "DELIVERED ALL OVER LEBANON",
-        "heading": "Make home feel easy.",
-        "highlight": "easy.",
-        "text": "Everyday essentials, delivered in 2-3 days. Pay cash at your door.",
-        "button": "Shop now",
-        "link": "shopify://collections/all"
-      }
-    },
-    "bento": {
-      "type": "yh-bento",
-      "settings": {
-        "row_height": 180
+        "autoplay": true,
+        "speed": 5
       },
       "blocks": {
-        "hero": {
-          "type": "hero",
+        "home-slide": {
+          "type": "slide",
           "settings": {
-            "size": "wide",
-            "heading": "Yalla! Your home haul.",
-            "text": "Essentials for every room, delivered in 2-3 days.",
-            "button": "Shop now",
-            "link": "shopify://collections/all"
+            "eyebrow": "HOME ESSENTIALS",
+            "heading": "Everything for your home,",
+            "highlight": "delivered",
+            "text": "Everyday essentials and useful finds, delivered across Lebanon.",
+            "button_label": "Shop now",
+            "secondary_label": "Browse collections"
           }
         },
-        "deal": {
-          "type": "deal",
+        "care-slide": {
+          "type": "slide",
           "settings": {
-            "size": "small",
-            "label": "FLASH DEALS",
-            "big_text": "-33%",
-            "timer": true,
-            "timer_label": "Deals end in",
-            "link": "shopify://collections/all"
+            "eyebrow": "PERSONAL CARE",
+            "heading": "Refresh your daily",
+            "highlight": "routine",
+            "text": "Discover everyday favourites for you and your home.",
+            "button_label": "Discover more",
+            "secondary_label": ""
           }
         },
-        "delivery": {
-          "type": "note",
+        "smart-finds": {
+          "type": "slide",
           "settings": {
-            "size": "small",
-            "icon": "truck",
-            "title": "Free delivery over $50",
-            "text": "Cash on delivery"
+            "eyebrow": "YALLA, LET'S GO",
+            "heading": "Little things that make",
+            "highlight": "life easier",
+            "text": "Find something useful, fun and a little unexpected.",
+            "button_label": "Shop all",
+            "secondary_label": ""
           }
         }
       },
       "block_order": [
-        "hero",
-        "deal",
-        "delivery"
+        "home-slide",
+        "care-slide",
+        "smart-finds"
       ]
     },
-    "popular": {
-      "type": "yh-products",
+    "market-offers": {
+      "type": "yh-market-offers",
       "settings": {
-        "collection": "",
-        "heading": "Popular right now",
-        "icon": "none",
-        "link_label": "See all",
-        "limit": 12,
-        "columns": 5,
-        "timer": false,
-        "show_chips": true,
-        "all_chip": "All"
-      }
-    },
-    "trust": {
-      "type": "yh-trust",
-      "disabled": true,
+        "kicker": "PICK YOUR NEXT HAUL",
+        "heading": "Everyday favourites",
+        "link_label": "Shop all"
+      },
       "blocks": {
-        "trust-1": {
-          "type": "item",
+        "home-offer": {
+          "type": "offer",
           "settings": {
-            "icon": "truck",
-            "title": "2–3 day delivery",
-            "text": "All over Lebanon"
+            "kicker": "HOME",
+            "heading": "Everyday home essentials",
+            "link_label": "Shop now"
           }
         },
-        "trust-2": {
+        "care-offer": {
+          "type": "offer",
+          "settings": {
+            "kicker": "PERSONAL CARE",
+            "heading": "Care for your daily routine",
+            "link_label": "Shop now"
+          }
+        }
+      },
+      "block_order": [
+        "home-offer",
+        "care-offer"
+      ]
+    },
+    "market-categories": {
+      "type": "yh-market-categories",
+      "settings": {
+        "kicker": "FIND YOUR FAVOURITES",
+        "heading": "Shop by category",
+        "link_label": "View all",
+        "show_count": false
+      },
+      "blocks": {},
+      "block_order": []
+    },
+    "market-tabs": {
+      "type": "yh-market-product-tabs",
+      "settings": {
+        "kicker": "WHAT'S WORTH A LOOK",
+        "heading": "Popular right now",
+        "subheading": "Find your next favourite.",
+        "limit": 8,
+        "columns": "4",
+        "link_label": "View all products"
+      },
+      "blocks": {
+        "popular-tab": {
+          "type": "collection",
+          "settings": {
+            "label": "Popular"
+          }
+        },
+        "deals-tab": {
+          "type": "deals",
+          "settings": {
+            "label": "Today's deals"
+          }
+        },
+        "new-tab": {
+          "type": "collection",
+          "settings": {
+            "label": "New arrivals"
+          }
+        }
+      },
+      "block_order": [
+        "popular-tab",
+        "deals-tab",
+        "new-tab"
+      ]
+    },
+    "market-rail": {
+      "type": "yh-market-product-rail",
+      "settings": {
+        "kicker": "CUSTOMER FAVOURITES",
+        "heading": "Best sellers",
+        "subheading": "The little things people keep coming back for.",
+        "limit": 8,
+        "link_label": "See all"
+      }
+    },
+    "market-spotlight": {
+      "type": "yh-market-spotlight",
+      "settings": {
+        "image_side": "left",
+        "kicker": "A BETTER EVERYDAY",
+        "heading": "Make home feel",
+        "highlight": "easy.",
+        "text": "Useful essentials for those little jobs, fresh routines and everyday moments.",
+        "button_label": "Explore the collection"
+      }
+    },
+    "market-trust": {
+      "type": "yh-market-trust",
+      "settings": {},
+      "blocks": {
+        "trust-cod": {
           "type": "item",
           "settings": {
             "icon": "cash",
-            "title": "Cash on delivery",
-            "text": "Pay at your door"
+            "heading": "Cash on delivery",
+            "text": "Pay when your order arrives"
           }
         },
-        "trust-3": {
+        "trust-delivery": {
+          "type": "item",
+          "settings": {
+            "icon": "truck",
+            "heading": "Delivery across Lebanon",
+            "text": "Convenient local delivery"
+          }
+        },
+        "trust-return": {
           "type": "item",
           "settings": {
             "icon": "return",
-            "title": "Easy returns",
-            "text": "Changed your mind?"
+            "heading": "Easy returns",
+            "text": "See our return policy"
           }
         },
-        "trust-4": {
+        "trust-support": {
           "type": "item",
           "settings": {
             "icon": "chat",
-            "title": "WhatsApp support",
-            "text": "We reply fast"
+            "heading": "WhatsApp support",
+            "text": "We're here to help"
           }
         }
       },
       "block_order": [
-        "trust-1",
-        "trust-2",
-        "trust-3",
-        "trust-4"
-      ],
-      "settings": {}
-    },
-    "help": {
-      "type": "yh-help",
-      "disabled": true,
-      "settings": {}
+        "trust-cod",
+        "trust-delivery",
+        "trust-return",
+        "trust-support"
+      ]
     }
   },
   "order": [
-    "hero",
-    "bento",
-    "popular",
-    "trust",
-    "help"
+    "market-hero",
+    "market-offers",
+    "market-categories",
+    "market-tabs",
+    "market-rail",
+    "market-spotlight",
+    "market-trust"
   ]
 }
