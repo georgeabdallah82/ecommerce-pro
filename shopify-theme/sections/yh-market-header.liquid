@@ -1,0 +1,106 @@
+{%- liquid
+  assign logo = section.settings.logo | default: settings.logo
+  assign delivery_areas = 'Beirut,Metn,Keserwan,Jbeil,North,South,Bekaa' | split: ','
+  assign menu = section.settings.menu
+-%}
+<header class="yh-market-header" data-yhm-header>
+  {%- if section.settings.announcement != blank -%}
+    <div class="yh-market-announcement"><span>{{ section.settings.announcement | escape }}</span></div>
+  {%- endif -%}
+  <div class="yh-market-header__main">
+    <button type="button" class="yhm-icon-button yhm-menu-toggle" data-yhm-menu-open aria-label="Open menu" aria-expanded="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <a href="{{ routes.root_url }}" class="yhm-brand" aria-label="{{ shop.name | escape }}">
+      {%- if logo != blank -%}
+        {{ logo | image_url: width: 360 | image_tag: alt: shop.name, loading: 'eager', widths: '120, 180, 240, 360' }}
+      {%- else -%}
+        <span>{{ shop.name | escape }}</span>
+      {%- endif -%}
+    </a>
+    <form class="yhm-search" action="{{ routes.search_url }}" method="get" role="search">
+      <input type="hidden" name="type" value="product">
+      <input type="search" name="q" value="{{ search.terms | escape }}" placeholder="{{ section.settings.search_placeholder | escape }}" aria-label="Search products">
+      <button type="submit" aria-label="Search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+      </button>
+    </form>
+    <div class="yhm-header-actions">
+      {%- if shop.customer_accounts_enabled -%}
+        <a class="yhm-action-link" href="{{ routes.account_url }}" aria-label="My account">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.5-4 3-6 7-6s6.5 2 7 6"/></svg><span>Account</span>
+        </a>
+      {%- endif -%}
+      <a class="yhm-cart-link" href="{{ routes.cart_url }}" aria-label="Cart, {{ cart.item_count }} items">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.2 11.2a2 2 0 0 0 2 1.6h7.9a2 2 0 0 0 1.9-1.4L21 8H6"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
+        <span>Cart</span><b class="yhm-cart-count">{{ cart.item_count }}</b>
+      </a>
+    </div>
+  </div>
+  <div class="yhm-delivery">
+    <label for="YhmDeliveryArea"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg><span>{{ section.settings.delivery_label | escape }}</span></label>
+    <select id="YhmDeliveryArea" data-yhm-area aria-label="Delivery area">
+      {%- for area in delivery_areas -%}<option value="{{ area }}">{{ area }}</option>{%- endfor -%}
+    </select>
+    <span class="yhm-delivery-divider">|</span>
+    <span>{{ section.settings.delivery_eta | escape }}</span>
+    {%- if section.settings.delivery_note != blank -%}<span class="yhm-delivery-divider">|</span><span class="yhm-delivery-note">{{ section.settings.delivery_note | escape }}</span>{%- endif -%}
+  </div>
+  <nav class="yhm-category-nav" aria-label="Shop categories">
+    <div class="yhm-category-nav__inner">
+      <a class="yhm-all-categories" href="{{ routes.all_products_collection_url }}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg>
+        {{ section.settings.all_categories_label | escape }}
+      </a>
+      <div class="yhm-category-links">
+        {%- if menu != blank -%}
+          {%- for link in menu.links -%}
+            <div class="yhm-category-item">
+              <a href="{{ link.url }}">{{ link.title | escape }}{% if link.links != blank %}<span aria-hidden="true">⌄</span>{% endif %}</a>
+              {%- if link.links != blank -%}
+                <div class="yhm-category-dropdown">
+                  {%- for child in link.links -%}<a href="{{ child.url }}">{{ child.title | escape }}</a>{%- endfor -%}
+                </div>
+              {%- endif -%}
+            </div>
+          {%- endfor -%}
+        {%- else -%}
+          <a href="{{ routes.all_products_collection_url }}">Shop all</a>
+          <a href="{{ routes.collections_url }}">Collections</a>
+        {%- endif -%}
+      </div>
+    </div>
+  </nav>
+  <div class="yhm-mobile-drawer" data-yhm-menu hidden>
+    <button class="yhm-drawer-backdrop" type="button" data-yhm-menu-close aria-label="Close menu"></button>
+    <div class="yhm-drawer-panel" role="dialog" aria-modal="true" aria-label="Shop menu" tabindex="-1">
+      <div class="yhm-drawer-head"><strong>{{ shop.name | escape }}</strong><button type="button" data-yhm-menu-close aria-label="Close menu">×</button></div>
+      {%- if menu != blank -%}
+        {%- for link in menu.links -%}
+          <a class="yhm-drawer-link" href="{{ link.url }}">{{ link.title | escape }}{% if link.links != blank %}<span>›</span>{% endif %}</a>
+          {%- for child in link.links -%}<a class="yhm-drawer-sublink" href="{{ child.url }}">{{ child.title | escape }}</a>{%- endfor -%}
+        {%- endfor -%}
+      {%- else -%}
+        <a class="yhm-drawer-link" href="{{ routes.all_products_collection_url }}">Shop all</a>
+        <a class="yhm-drawer-link" href="{{ routes.collections_url }}">Collections</a>
+      {%- endif -%}
+      <a class="yhm-drawer-link" href="{{ routes.cart_url }}">Shopping cart ({{ cart.item_count }})</a>
+      {%- if shop.customer_accounts_enabled -%}<a class="yhm-drawer-link" href="{{ routes.account_url }}">My account</a>{%- endif -%}
+    </div>
+  </div>
+</header>
+{% schema %}
+{
+  "name": "YH market header",
+  "settings": [
+    {"type":"image_picker","id":"logo","label":"Logo (uses theme logo if empty)"},
+    {"type":"link_list","id":"menu","label":"Category menu","default":"main-menu"},
+    {"type":"text","id":"announcement","label":"Announcement bar","default":"Everyday finds. Better prices. Delivered across Lebanon."},
+    {"type":"text","id":"search_placeholder","label":"Search placeholder","default":"Search products..."},
+    {"type":"text","id":"delivery_label","label":"Delivery selector label","default":"Delivering to"},
+    {"type":"text","id":"delivery_eta","label":"Delivery estimate","default":"Delivery in 1–3 days"},
+    {"type":"text","id":"delivery_note","label":"Delivery note","default":"Cash on delivery"},
+    {"type":"text","id":"all_categories_label","label":"All categories label","default":"All categories"}
+  ]
+}
+{% endschema %}
