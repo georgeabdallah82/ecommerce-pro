@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import Link from 'next/link'
+import Link from '@/components/admin-link'
 import { ArrowRight, Plus, Truck } from 'lucide-react'
 import styles from './admin-transfers.module.css'
 import ui from './admin-ui.module.css'

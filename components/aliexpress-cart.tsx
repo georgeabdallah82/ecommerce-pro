@@ -10,6 +10,7 @@ import StorefrontSections, { ProductCard, QuickView } from '@/components/storefr
 import { useWishlist } from '@/components/use-wishlist'
 import { CartNotices } from '@/components/cart-notices'
 import { NumInput } from './num-input'
+import { loadStoreSettings } from '@/lib/store-settings-client'
 
 type AnyMap = Record<string, any>
 
@@ -28,8 +29,7 @@ export default function AliExpressCart({ theme, recommended, sections = [], zone
 
   useEffect(() => {
     let active = true
-    fetch('/api/store/settings', { cache: 'no-store' })
-      .then(res => res.json())
+    loadStoreSettings()
       .then(data => {
         if (!active) return
         const threshold = Number(data?.settings?.checkout?.freeShippingThreshold)

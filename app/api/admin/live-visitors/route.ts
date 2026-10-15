@@ -1,8 +1,9 @@
 import { requirePermission } from '@/lib/auth'
 import { db } from '@/lib/prisma'
 import { json } from '@/lib/utils'
+import { LIVE_WINDOW_MS } from '@/lib/visitor-tracking'
 
-const ACTIVE_WINDOW_MS = 90_000
+const ACTIVE_WINDOW_MS = LIVE_WINDOW_MS
 
 export async function GET() {
   try {

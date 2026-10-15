@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import Link from 'next/link'
+import Link from '@/components/admin-link'
 import { Boxes, ClipboardList, CreditCard, FileEdit, MapPin, Plus, RefreshCw, RotateCcw, ShoppingCart, Truck, UsersRound } from 'lucide-react'
 import styles from './admin-operations-hub.module.css'
 import ui from './admin-ui.module.css'

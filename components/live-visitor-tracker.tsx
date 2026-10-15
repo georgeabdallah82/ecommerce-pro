@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { HEARTBEAT_MS, IDLE_STOP_MS, STAFF_PAUSE_KEY, STAFF_PAUSE_MS, isTrackedPath } from '@/lib/visitor-tracking'
 
 const LOCATION_CONSENT_KEY = 'live_visitor_precise_location_consent'
 type Coordinates = { latitude: number; longitude: number }
@@ -29,12 +30,16 @@ function detectOS() {
   return 'Other'
 }
 
-// /theme-editor-preview (the theme editor's own iframe target, see
-// app/theme-editor-preview/page.tsx) renders draft storefront markup for editing purposes only
-// -- it must never prompt for location or report itself as a real visitor hit, the same way
-// /admin already doesn't.
-function isTrackedPath(pathname: string) {
-  return !pathname.startsWith('/admin') && pathname !== '/theme-editor-preview'
+// Which pages count and who is counted: lib/visitor-tracking.ts. /theme-editor-preview (the
+// theme editor's own iframe target) and the admin never report or prompt for location; the
+// path is checked at every report, so moving into the admin inside the same tab stops it too.
+
+// This browser was recently seen signed in as staff (the server said so): don't report.
+function staffPaused() {
+  try { return Number(window.localStorage.getItem(STAFF_PAUSE_KEY) || 0) > Date.now() } catch { return false }
+}
+function pauseForStaff() {
+  try { window.localStorage.setItem(STAFF_PAUSE_KEY, String(Date.now() + STAFF_PAUSE_MS)) } catch {}
 }
 
 function readConsent() {
@@ -82,14 +87,19 @@ export default function LiveVisitorTracker() {
   }, [consent])
 
   useEffect(() => {
-    if (!isTrackedPath(window.location.pathname)) return
-    let stopped = false
+    let stopped = staffPaused()
+    let reported = false
+    let lastActivity = Date.now()
+    let lastSent = 0
 
     const send = async () => {
-      if (stopped || document.visibilityState === 'hidden') return
+      if (stopped || document.visibilityState === 'hidden' || !isTrackedPath(window.location.pathname)) return
+      // Nobody has touched the page for a while: stop until they do (see IDLE_STOP_MS).
+      if (Date.now() - lastActivity > IDLE_STOP_MS) return
+      lastSent = Date.now()
       const currentCoordinates = coordinatesRef.current
       try {
-        await fetch('/api/analytics/visitor', {
+        const response = await fetch('/api/analytics/visitor', {
           method: 'POST',
           credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json' },
@@ -105,17 +115,30 @@ export default function LiveVisitorTracker() {
             locationSource: currentCoordinates ? 'browser' : undefined,
           }),
         })
+        const result = await response.json().catch(() => null)
+        // Signed in as staff: not a visitor. Stop reporting from this browser for a while.
+        if (result?.staff) { stopped = true; pauseForStaff(); return }
+        if (result?.tracked !== false) reported = true
       } catch {
         // Analytics must never affect the storefront.
       }
     }
 
     send()
-    const timer = window.setInterval(send, 15_000)
+    const timer = window.setInterval(send, HEARTBEAT_MS)
+    // Any sign of life restarts reporting after an idle stop, straight away.
+    const onActivity = () => {
+      const wasIdle = Date.now() - lastActivity > IDLE_STOP_MS
+      lastActivity = Date.now()
+      if (wasIdle && Date.now() - lastSent > HEARTBEAT_MS) send()
+    }
     const onVisibility = () => {
-      if (document.visibilityState === 'visible') send()
+      if (document.visibilityState !== 'visible') return
+      lastActivity = Date.now()
+      send()
     }
     const onPageHide = () => {
+      if (!reported || stopped) return
       stopped = true
       void fetch('/api/analytics/visitor', {
         method: 'DELETE',
@@ -123,15 +146,27 @@ export default function LiveVisitorTracker() {
         keepalive: true,
       }).catch(() => {})
     }
+    // Back/forward can bring the same page back from the browser's memory after pagehide.
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (!event.persisted) return
+      stopped = staffPaused()
+      lastActivity = Date.now()
+      send()
+    }
+    const activityEvents = ['pointerdown', 'keydown', 'scroll', 'touchstart'] as const
 
+    for (const name of activityEvents) window.addEventListener(name, onActivity, { passive: true })
     document.addEventListener('visibilitychange', onVisibility)
     window.addEventListener('pagehide', onPageHide)
+    window.addEventListener('pageshow', onPageShow)
 
     return () => {
       stopped = true
       window.clearInterval(timer)
+      for (const name of activityEvents) window.removeEventListener(name, onActivity)
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('pagehide', onPageHide)
+      window.removeEventListener('pageshow', onPageShow)
     }
   }, [])
 

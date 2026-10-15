@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import Link from '@/components/admin-link'
 import { Plus, Trash2 } from 'lucide-react'
 import { money, config } from '@/lib/config'
 import s from './admin-order-detail.module.css'

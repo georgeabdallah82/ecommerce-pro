@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import Link from '@/components/admin-link'
 import { ExternalLink, RotateCcw } from 'lucide-react'
 import ui from './admin-ui.module.css'
 import s from './admin-policies.module.css'

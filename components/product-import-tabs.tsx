@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import Link from '@/components/admin-link'
 import { ArrowLeft, FileSpreadsheet, Globe } from 'lucide-react'
 import ProductImportAdmin from './product-import-admin'
 import SpreadsheetImport from './spreadsheet-import'

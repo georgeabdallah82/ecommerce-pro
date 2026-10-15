@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import Link from 'next/link'
+import Link from '@/components/admin-link'
 import { ArrowLeft, Plus, RefreshCw, Search, UsersRound, X } from 'lucide-react'
 import styles from './admin-customer-segments.module.css'
 import ui from './admin-ui.module.css'

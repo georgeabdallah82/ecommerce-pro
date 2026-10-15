@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import Link from '@/components/admin-link'
 import { ArrowLeft, ArrowRight, Ban, PackageCheck, Send } from 'lucide-react'
 import styles from './admin-transfers.module.css'
 import ui from './admin-ui.module.css'

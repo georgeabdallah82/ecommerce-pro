@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import Link from '@/components/admin-link'
 import { ArrowLeft, Check, X } from 'lucide-react'
 import { money } from '@/lib/config'
 import styles from './admin-order-edits.module.css'

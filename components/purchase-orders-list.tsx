@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import Link from 'next/link'
+import Link from '@/components/admin-link'
 import { Boxes, Plus } from 'lucide-react'
 import { money } from '@/lib/config'
 import styles from './admin-purchase-orders.module.css'

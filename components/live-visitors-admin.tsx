@@ -88,10 +88,15 @@ export default function LiveVisitorsAdmin() {
   const handleSelect = useCallback((id: string) => setSelectedId(id), [])
 
   useEffect(() => { load() }, [load])
+  // Auto-refresh only while this page is on screen: left open in a background tab it used to ask
+  // the database every 15 seconds all day, which kept the database from ever going to sleep.
   useEffect(() => {
     if (!autoRefresh) return
-    const timer = window.setInterval(load, 15_000)
-    return () => window.clearInterval(timer)
+    const tick = () => { if (document.visibilityState === 'visible') load() }
+    const timer = window.setInterval(tick, 15_000)
+    const onVisibility = () => { if (document.visibilityState === 'visible') load() }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisibility) }
   }, [autoRefresh, load])
 
   const precise = useMemo(() => visitors.filter(v => pinKind(v) === 'precise').length, [visitors])

@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import Link from '@/components/admin-link'
 import { ArrowLeft, SearchX } from 'lucide-react'
 import AdminRouteStateStyles from '@/components/admin-route-state-styles'
 import ui from '@/components/admin-ui.module.css'

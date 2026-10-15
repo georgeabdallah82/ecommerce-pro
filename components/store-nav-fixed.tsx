@@ -10,6 +10,7 @@ import { LanguageSwitch, useI18n } from './lang-provider'
 import CartSuggestions from './cart-suggestions'
 import { useShopper } from './use-shopper'
 import { money as formatMoney } from '@/lib/config'
+import { loadStoreSettings } from '@/lib/store-settings-client'
 
 type NavItem = { id: string; label: string; url?: string | null; parentId?: string | null; group?: string | null; imageUrl?: string | null }
 type TreeItem = NavItem & { children: TreeItem[] }
@@ -346,8 +347,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
   const [freeShippingThreshold, setFreeShippingThreshold] = useState<number | null>(null)
   useEffect(() => {
     let active = true
-    fetch('/api/store/settings', { cache: 'no-store' })
-      .then(res => res.json())
+    loadStoreSettings()
       .then(data => {
         if (!active) return
         const threshold = Number(data?.settings?.checkout?.freeShippingThreshold)

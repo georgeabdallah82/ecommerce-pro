@@ -9,7 +9,7 @@
  * so there is no specificity race to lose.
  */
 
-import Link from 'next/link'
+import Link from '@/components/admin-link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'

@@ -13,6 +13,7 @@ import StoreNavScroll from '@/components/store-nav-scroll'
 import LiveVisitorTracker from '@/components/live-visitor-tracker'
 import { CartProvider } from '@/components/cart-provider'
 import { TrackingScripts } from '@/components/tracking-scripts'
+import { isTrackedPath } from '@/lib/visitor-tracking'
 import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
 import { NavProgress } from '@/components/nav-progress'
@@ -58,6 +59,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // proxy.ts puts a fresh nonce in the Content-Security-Policy for every request; scripts we write
   // ourselves must carry it or the browser refuses to run them (Next.js adds it to its own).
   const nonce = requestHeaders.get('x-nonce') || undefined
+  // Ad and analytics pixels (Meta, Google, TikTok) are for the store's pages only: on the admin
+  // and the theme editor's preview they counted the owner's own work as page views and sent
+  // admin addresses (orders, customers) to those services. proxy.ts passes the path.
+  const pixelsAllowed = isTrackedPath(requestHeaders.get('x-pathname') || '/')
   // Every page on the site (storefront and admin alike) renders through this
   // root layout, so a transient database hiccup here -- momentary network
   // blip talking to Prisma Accelerate, a cold connection, anything short of
@@ -113,5 +118,5 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // editor's live-preview iframe: the fresh re-render recreates the iframe mid-handshake,
   // permanently losing the postMessage exchange that populates the preview pane.
   // Arabic pages read right to left (lib/i18n.ts); admin pages are always English.
-  return <html lang={lang} dir={lang === 'ar' ? 'rtl' : 'ltr'} className={FONT_VARIABLE_CLASSES} suppressHydrationWarning><head><Script id="admin-theme" strategy="beforeInteractive" nonce={nonce} dangerouslySetInnerHTML={{__html:adminThemeScript}}/><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/><link rel="icon" href={theme.faviconUrl || 'data:,'}/>{theme.customCss ? <style dangerouslySetInnerHTML={{ __html: safeStyleText(theme.customCss) }}/> : null}</head><body className={[theme.animations?.enabled ? 'animations-enabled' : '', theme.design === 'market' ? 'mk' : ''].filter(Boolean).join(' ') || undefined}><TrackingScripts config={tracking} nonce={nonce} /><LangProvider lang={lang} switchable={switchable} preview={languagePreview}><CartProvider><NavProgress/><LiveVisitorTracker/><StoreNavRuntime theme={theme} navigation={navigation}/><StoreNavScroll/>{children}<WhatsAppFloat theme={theme}/><PushOptIn vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} enabled={storefrontSettings.get('push.askVisitors') !== 'false'} storeName={String(theme.brandName || 'our store').trim()}/></CartProvider></LangProvider></body></html>
+  return <html lang={lang} dir={lang === 'ar' ? 'rtl' : 'ltr'} className={FONT_VARIABLE_CLASSES} suppressHydrationWarning><head><Script id="admin-theme" strategy="beforeInteractive" nonce={nonce} dangerouslySetInnerHTML={{__html:adminThemeScript}}/><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/><link rel="icon" href={theme.faviconUrl || 'data:,'}/>{theme.customCss ? <style dangerouslySetInnerHTML={{ __html: safeStyleText(theme.customCss) }}/> : null}</head><body className={[theme.animations?.enabled ? 'animations-enabled' : '', theme.design === 'market' ? 'mk' : ''].filter(Boolean).join(' ') || undefined}>{pixelsAllowed ? <TrackingScripts config={tracking} nonce={nonce} /> : null}<LangProvider lang={lang} switchable={switchable} preview={languagePreview}><CartProvider><NavProgress/><LiveVisitorTracker/><StoreNavRuntime theme={theme} navigation={navigation}/><StoreNavScroll/>{children}<WhatsAppFloat theme={theme}/><PushOptIn vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} enabled={storefrontSettings.get('push.askVisitors') !== 'false'} storeName={String(theme.brandName || 'our store').trim()}/></CartProvider></LangProvider></body></html>
 }

@@ -7,6 +7,7 @@ import { config } from '@/lib/config'
 import { whatsappUrl } from '@/lib/links'
 import { markT } from '@/lib/i18n'
 import { useI18n } from '@/components/lang-provider'
+import { loadStoreSettings } from '@/lib/store-settings-client'
 
 // lucide-react 1.x dropped brand/logo icons entirely (kept to generic UI
 // glyphs only), so these platform icons are small hand-drawn SVGs rather
@@ -58,8 +59,7 @@ export function Footer({ theme }: { theme?: any }) {
   const [payments, setPayments] = useState<string[]>([])
   useEffect(() => {
     let active = true
-    fetch('/api/store/settings', { cache: 'no-store' })
-      .then(res => res.json())
+    loadStoreSettings()
       .then(data => {
         const settings = data?.settings
         if (!active || !settings) return

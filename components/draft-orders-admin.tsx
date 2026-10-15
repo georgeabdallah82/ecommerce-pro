@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import Link from 'next/link'
+import Link from '@/components/admin-link'
 import { ClipboardList, Plus, RefreshCw, Search } from 'lucide-react'
 import { money } from '@/lib/config'
 import styles from './admin-draft-orders.module.css'

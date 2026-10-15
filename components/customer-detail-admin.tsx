@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import Link from '@/components/admin-link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Mail, MapPin, Phone, ShieldOff, UserCheck, Plus, Trash2, X, CreditCard, UsersRound, Coins } from 'lucide-react'
 import { money } from '@/lib/config'

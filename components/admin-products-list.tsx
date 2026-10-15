@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
+import Link from '@/components/admin-link'
 import { Archive, CheckCircle2, ChevronDown, Download, ChevronLeft, ChevronRight, MoreHorizontal, Plus, Search, Star, StarOff, Tag, Upload, X } from 'lucide-react'
 import ProductExportDialog from './product-export-dialog'
 import { money } from '@/lib/config'
