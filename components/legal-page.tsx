@@ -7,12 +7,15 @@ import { getPolicyHtml, getPolicyVars } from '@/lib/policies'
 import { POLICY_TITLES, type PolicyKind } from '@/lib/policy-templates'
 import { sanitizeRichHtml } from '@/lib/sanitize-html'
 import { Footer } from '@/components/footer'
+import { getLang, getT } from '@/lib/i18n-server'
 
 type Contact = { email: string; phone: string; country: string; address: string }
 
 // "Contact us" block shared by the policy pages. Only details the merchant has filled in
 // (Settings > General) are shown; nothing renders as a bracketed placeholder.
-export function LegalContact({ brand, contact }: { brand: string; contact: Contact }) {
+export async function LegalContact({ brand, contact }: { brand: string; contact: Contact }) {
+  const t = await getT()
+
   const wa = whatsappUrl(contact.phone, contact.country)
   const lines = [
     contact.address,
@@ -23,17 +26,18 @@ export function LegalContact({ brand, contact }: { brand: string; contact: Conta
     <p>
       {brand}
       {lines.map((line, i) => <Fragment key={i}><br/>{line}</Fragment>)}
-      {!contact.email && !contact.phone && <><br/>Use <a href="/orders/lookup">order tracking</a> to reach us about an order.</>}
+      {!contact.email && !contact.phone && <><br/>{t('Use')} <a href="/orders/lookup">{t('order tracking')}</a> {t('to reach us about an order.')}</>}
     </p>
   )
 }
 
-export function LegalPage({ title, updated, children }: { title: string; updated: string; children: React.ReactNode }) {
+export function LegalPage({ title, updated, updatedLabel = 'Last updated:', note, children }: { title: string; updated: string; updatedLabel?: string; note?: string; children: React.ReactNode }) {
   return (
     <div className="focalStorefront">
       <div className="aliContainer aliLegalPage">
         <h1>{title}</h1>
-        <p className="aliLegalUpdated">Last updated: {updated}</p>
+        <p className="aliLegalUpdated">{updatedLabel} <span dir="auto">{updated}</span></p>
+        {note ? <p className="aliLegalNote">{note}</p> : null}
         {children}
       </div>
     </div>
@@ -46,10 +50,13 @@ export async function PolicyPage({ kind }: { kind: PolicyKind }) {
   const [{ theme }, contact, policy] = await Promise.all([getThemeState(), getContactInfo(), getPolicyInfo()])
   const brand = theme.brandName || config.brand
   const { html } = await getPolicyHtml(kind, await getPolicyVars(brand, theme.currency))
+  const t = await getT()
+  // The policy itself is the store's own legal text: shown as written, never translated.
+  const note = (await getLang()) === 'ar' ? t('This policy is written in English.') : undefined
   return <>
-    <LegalPage title={POLICY_TITLES[kind]} updated={policy.updated}>
+    <LegalPage title={t(POLICY_TITLES[kind])} updated={policy.updated} updatedLabel={t('Last updated:')} note={note}>
       <div dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(html) }} />
-      <h2>Contact us</h2>
+      <h2>{t('Contact us')}</h2>
       <LegalContact brand={brand} contact={contact}/>
     </LegalPage>
     <Footer theme={theme}/>

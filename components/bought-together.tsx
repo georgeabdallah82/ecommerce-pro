@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useI18n } from '@/components/lang-provider'
 import { Check, Plus, ShoppingBag } from 'lucide-react'
 import { useCart, type CartItem } from '@/components/cart-provider'
 import { StoreImage, img, money } from '@/components/storefront-sections'
@@ -15,6 +16,7 @@ export default function BoughtTogether({ main, items, currency }: { main: CartIt
   const [ticked, setTicked] = useState<Record<string, boolean>>(() => Object.fromEntries(items.map(item => [item.id, true])))
   const [option, setOption] = useState<Record<string, string>>(() => Object.fromEntries(items.filter(i => i.options.length).map(i => [i.id, i.options[0].id])))
   const [added, setAdded] = useState(false)
+  const { t, count: plural } = useI18n()
 
   const lines = useMemo(() => items.map(item => {
     const chosen = item.options.find(o => o.id === option[item.id]) || item.options[0]
@@ -43,7 +45,7 @@ export default function BoughtTogether({ main, items, currency }: { main: CartIt
 
   return (
     <section className={styles.box} aria-labelledby="bought-together-title">
-      <h2 id="bought-together-title">Frequently bought together</h2>
+      <h2 id="bought-together-title">{t('Frequently bought together')}</h2>
       <div className={styles.pictures} aria-hidden="true">
         <span className={styles.picture}><StoreImage src={main.image} alt="" /></span>
         {lines.map(({ item }) => (
@@ -57,7 +59,7 @@ export default function BoughtTogether({ main, items, currency }: { main: CartIt
       <ul className={styles.list}>
         <li className={styles.row}>
           <span className={`${styles.tick} ${styles.locked}`} aria-hidden="true"><Check size={14} /></span>
-          <span className={styles.name}><strong>This item:</strong> {main.name}</span>
+          <span className={styles.name}><strong>{t('This item:')}</strong> {main.name}</span>
           <span className={styles.price}>{money(main.price, currency)}</span>
         </li>
         {lines.map(({ item, line }) => (
@@ -65,12 +67,12 @@ export default function BoughtTogether({ main, items, currency }: { main: CartIt
             <label className={styles.checkLabel}>
               <input type="checkbox" checked={!!ticked[item.id]} onChange={e => setTicked(cur => ({ ...cur, [item.id]: e.target.checked }))} />
               <span className={styles.tick} aria-hidden="true"><Check size={14} /></span>
-              <span className={styles.srOnly}>Add {item.name}</span>
+              <span className={styles.srOnly}>{t('Add {name}', { name: item.name })}</span>
             </label>
             <span className={styles.name}>
               <Link href={`/product/${item.slug}`}>{item.name}</Link>
               {item.options.length > 1 && (
-                <select className={styles.select} value={option[item.id]} onChange={e => setOption(cur => ({ ...cur, [item.id]: e.target.value }))} aria-label={`Option for ${item.name}`}>
+                <select className={styles.select} value={option[item.id]} onChange={e => setOption(cur => ({ ...cur, [item.id]: e.target.value }))} aria-label={t('Option for {name}', { name: item.name })}>
                   {item.options.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
                 </select>
               )}
@@ -81,9 +83,9 @@ export default function BoughtTogether({ main, items, currency }: { main: CartIt
       </ul>
 
       <div className={styles.foot}>
-        <div className={styles.total}><span>Total for {count}</span><strong>{money(total, currency)}</strong></div>
+        <div className={styles.total}><span>{t('Total for {count}', { count: plural(count, 'item') })}</span><strong>{money(total, currency)}</strong></div>
         <button type="button" className={styles.add} onClick={addAll}>
-          {added ? <>Added <Check size={16} /></> : <><ShoppingBag size={16} /> {count === 1 ? 'Add to cart' : `Add all ${count} to cart`}</>}
+          {added ? <>{t('Added')} <Check size={16} /></> : <><ShoppingBag size={16} /> {count === 1 ? t('Add to cart') : t('Add all {count} to cart', { count })}</>}
         </button>
       </div>
     </section>

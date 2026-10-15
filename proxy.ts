@@ -78,7 +78,8 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   // The theme editor's live preview (components/theme-preview-frame.tsx) embeds this one route
   // in a same-origin <iframe>; every other route refuses to be framed.
   const csp = contentSecurityPolicy(nonce, isThemePreview ? "'self'" : "'none'")
-  const withNonce = (headers: Headers) => { headers.set('x-nonce', nonce); headers.set('Content-Security-Policy', csp); return headers }
+  // x-pathname: the storefront's language is decided per page (admin pages stay English, lib/i18n-server.ts).
+  const withNonce = (headers: Headers) => { headers.set('x-nonce', nonce); headers.set('Content-Security-Policy', csp); headers.set('x-pathname', pathname); return headers }
   if (pathname === '/admin/login') {
     const rewriteUrl = request.nextUrl.clone()
     rewriteUrl.pathname = '/admin-login'

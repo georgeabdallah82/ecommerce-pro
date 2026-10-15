@@ -26,6 +26,8 @@ export const defaultTheme={
   whatsapp:{enabled:false,number:'',message:'Hi! I would like to order.',position:'right',label:'',showOnMobile:true},
   // Product cards: the small line under the price.
   productCardMarket:{deliveryText:'Cash on delivery',showAddToCart:true},
+  // Arabic version of the storefront (lib/i18n.ts): off until the owner shows it to customers.
+  languages:{arabic:false,defaultLang:'en'},
   customCss:'',
   presets:{active:'Quiet Minimal'}
 }

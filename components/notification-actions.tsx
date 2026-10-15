@@ -1,8 +1,10 @@
 'use client'
 import { useState } from 'react'
+import { useI18n } from '@/components/lang-provider'
 
 export function MarkAllReadButton() {
   const [busy, setBusy] = useState(false)
+  const { t } = useI18n()
   async function markAll() {
     setBusy(true)
     try {
@@ -13,11 +15,12 @@ export function MarkAllReadButton() {
       setBusy(false)
     }
   }
-  return <button className="btn secondary" type="button" onClick={markAll} disabled={busy}>{busy ? 'Marking…' : 'Mark all as read'}</button>
+  return <button className="btn secondary" type="button" onClick={markAll} disabled={busy}>{busy ? t('Marking…') : t('Mark all as read')}</button>
 }
 
 export function MarkReadButton({ id }: { id: string }) {
   const [busy, setBusy] = useState(false)
+  const { t } = useI18n()
   async function markRead() {
     setBusy(true)
     try {
@@ -28,5 +31,5 @@ export function MarkReadButton({ id }: { id: string }) {
       setBusy(false)
     }
   }
-  return <button className="btn secondary" type="button" onClick={markRead} disabled={busy}>{busy ? 'Marking…' : 'Mark as read'}</button>
+  return <button className="btn secondary" type="button" onClick={markRead} disabled={busy}>{busy ? t('Marking…') : t('Mark as read')}</button>
 }

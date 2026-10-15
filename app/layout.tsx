@@ -19,6 +19,7 @@ import { NavProgress } from '@/components/nav-progress'
 import { safeStyleText } from '@/lib/sanitize-html'
 import { WhatsAppFloat } from '@/components/market-chrome'
 import PushOptIn from '@/components/push-opt-in'
+import { LangProvider } from '@/components/lang-provider'
 import { getStorefrontSettings } from '@/lib/storefront-settings'
 import { APP_ICON_LARGE, APP_ICON_SMALL, appIconSource, appShortName, appleTouchIcon } from '@/lib/app-icon'
 
@@ -65,10 +66,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // whole page), so an uncaught rejection here previously surfaced as a raw
   // Cloudflare "Worker threw exception" page instead of the storefront.
   // Falling back to sane defaults keeps the site rendering through it.
-  const [{ theme, navigation }, tracking, storefrontSettings] = await Promise.all([
+  const [{ theme, navigation, lang, switchable, languagePreview }, tracking, storefrontSettings] = await Promise.all([
     getThemeState().catch(error => {
       console.error('[layout] getThemeState failed, using defaults', error)
-      return { theme: defaultTheme, navigation: defaultNavigation }
+      return { theme: defaultTheme, navigation: defaultNavigation, lang: 'en' as const, switchable: false, languagePreview: false }
     }),
     getTrackingConfig().catch(error => {
       console.error('[layout] getTrackingConfig failed, tracking disabled', error)
@@ -111,5 +112,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // client tree from scratch on every /admin/* load -- which was silently breaking the theme
   // editor's live-preview iframe: the fresh re-render recreates the iframe mid-handshake,
   // permanently losing the postMessage exchange that populates the preview pane.
-  return <html lang="en" className={FONT_VARIABLE_CLASSES} suppressHydrationWarning><head><Script id="admin-theme" strategy="beforeInteractive" nonce={nonce} dangerouslySetInnerHTML={{__html:adminThemeScript}}/><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/><link rel="icon" href={theme.faviconUrl || 'data:,'}/>{theme.customCss ? <style dangerouslySetInnerHTML={{ __html: safeStyleText(theme.customCss) }}/> : null}</head><body className={[theme.animations?.enabled ? 'animations-enabled' : '', theme.design === 'market' ? 'mk' : ''].filter(Boolean).join(' ') || undefined}><TrackingScripts config={tracking} nonce={nonce} /><CartProvider><NavProgress/><LiveVisitorTracker/><StoreNavRuntime theme={theme} navigation={navigation}/><StoreNavScroll/>{children}<WhatsAppFloat theme={theme}/><PushOptIn vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} enabled={storefrontSettings.get('push.askVisitors') !== 'false'} storeName={String(theme.brandName || 'our store').trim()}/></CartProvider></body></html>
+  // Arabic pages read right to left (lib/i18n.ts); admin pages are always English.
+  return <html lang={lang} dir={lang === 'ar' ? 'rtl' : 'ltr'} className={FONT_VARIABLE_CLASSES} suppressHydrationWarning><head><Script id="admin-theme" strategy="beforeInteractive" nonce={nonce} dangerouslySetInnerHTML={{__html:adminThemeScript}}/><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/><link rel="icon" href={theme.faviconUrl || 'data:,'}/>{theme.customCss ? <style dangerouslySetInnerHTML={{ __html: safeStyleText(theme.customCss) }}/> : null}</head><body className={[theme.animations?.enabled ? 'animations-enabled' : '', theme.design === 'market' ? 'mk' : ''].filter(Boolean).join(' ') || undefined}><TrackingScripts config={tracking} nonce={nonce} /><LangProvider lang={lang} switchable={switchable} preview={languagePreview}><CartProvider><NavProgress/><LiveVisitorTracker/><StoreNavRuntime theme={theme} navigation={navigation}/><StoreNavScroll/>{children}<WhatsAppFloat theme={theme}/><PushOptIn vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} enabled={storefrontSettings.get('push.askVisitors') !== 'false'} storeName={String(theme.brandName || 'our store').trim()}/></CartProvider></LangProvider></body></html>
 }

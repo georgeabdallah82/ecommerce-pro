@@ -360,6 +360,10 @@ function EditForm({ item, depth, grouped, collections, headings, hasChildren, is
         <span>Name</span>
         <input autoFocus value={item.label} onChange={e => onChange({ label: e.target.value })} placeholder={depth === 0 ? 'e.g. Kitchenware' : 'e.g. Tupperware'} />
       </label>
+      <label className={styles.field}>
+        <span>Name in Arabic <small>(optional, for the Arabic version of the store)</small></span>
+        <input dir="rtl" lang="ar" value={item.labelAr || ''} onChange={e => onChange({ labelAr: e.target.value || null })} placeholder={item.label || ''} />
+      </label>
 
       {tile && (
         <div className={styles.field}>

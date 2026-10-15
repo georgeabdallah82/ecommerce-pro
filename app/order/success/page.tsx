@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { internationalPhone } from '@/lib/phone'
 import Link from 'next/link'
+import { getT } from '@/lib/i18n-server'
 import { notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import { db } from '@/lib/prisma'
@@ -24,6 +25,7 @@ async function hashedCustomer(email: string | null, phone: string | null) {
 export default async function Success({ searchParams }: { searchParams: Promise<{ order?: string; email?: string; payment?: string; t?: string }> }) {
   const { order, email, payment, t } = await searchParams
   if (!order) notFound()
+  const tr = await getT()
   const user = await getCurrentUser()
 
   const record = await db.order.findUnique({
@@ -35,12 +37,12 @@ export default async function Success({ searchParams }: { searchParams: Promise<
   // same whether or not the order exists, so it can't be used to probe order numbers either.
   if (!record || !canViewOrder(record, { userId: user?.id, token: t, email })) {
     return <><main className="section"><div className="container"><div className="card successCard">
-      <span className="pill">ORDER</span>
-      <h1 className="h2">Thank you for shopping with us.</h1>
-      <p className="body muted">If you just placed an order, your confirmation is on its way to your email. To see an order's details, look it up with the email you used at checkout{user ? ' or open your account' : ''}.</p>
+      <span className="pill">{tr('ORDER')}</span>
+      <h1 className="h2">{tr('Thank you for shopping with us.')}</h1>
+      <p className="body muted">{user ? tr("If you just placed an order, your confirmation is on its way to your email. To see an order's details, look it up with the email you used at checkout or open your account.") : tr("If you just placed an order, your confirmation is on its way to your email. To see an order's details, look it up with the email you used at checkout.")}</p>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <Link className="btn" href="/orders/lookup">Look up an order</Link>
-        {user ? <Link className="btn secondary" href="/account">View account</Link> : <Link className="btn secondary" href="/shop">Continue shopping</Link>}
+        <Link className="btn" href="/orders/lookup">{tr('Look up an order')}</Link>
+        {user ? <Link className="btn secondary" href="/account">{tr('View account')}</Link> : <Link className="btn secondary" href="/shop">{tr('Continue shopping')}</Link>}
       </div>
     </div></div></main><StoreFooter /></>
   }
@@ -57,26 +59,26 @@ export default async function Success({ searchParams }: { searchParams: Promise<
 
   if (failed) {
     return <><main className="section"><div className="container"><div className="card successCard">
-      <span className="pill">PAYMENT NOT COMPLETED</span>
-      <h1 className="h2">Your payment didn't go through.</h1>
-      <p className="body muted">You haven't been charged for order <strong>#{order}</strong>. You can try again with another card or choose cash on delivery.</p>
+      <span className="pill">{tr('PAYMENT NOT COMPLETED')}</span>
+      <h1 className="h2">{tr("Your payment didn't go through.")}</h1>
+      <p className="body muted">{tr("You haven't been charged for order #{order}. You can try again with another card or choose cash on delivery.", { order })}</p>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <Link className="btn" href="/cart">Back to cart</Link>
-        <Link className="btn secondary" href="/shop">Continue shopping</Link>
+        <Link className="btn" href="/cart">{tr('Back to cart')}</Link>
+        <Link className="btn secondary" href="/shop">{tr('Continue shopping')}</Link>
       </div>
     </div></div></main><StoreFooter /></>
   }
 
   return <><main className="section"><div className="container"><div className="card successCard">
-    <span className="pill">{processing ? 'PAYMENT PROCESSING' : 'ORDER CONFIRMED'}</span>
-    <h1 className="h2">Thank you for your order.</h1>
-    {processing && <p className="body muted">We're waiting for your bank to confirm the payment. You'll get an email as soon as it does.</p>}
-    <p className="body muted">Your order number is <strong>#{order}</strong>. Keep it for your records.</p>
+    <span className="pill">{processing ? tr('PAYMENT PROCESSING') : tr('ORDER CONFIRMED')}</span>
+    <h1 className="h2">{tr('Thank you for your order.')}</h1>
+    {processing && <p className="body muted">{tr("We're waiting for your bank to confirm the payment. You'll get an email as soon as it does.")}</p>}
+    <p className="body muted">{tr('Your order number is')} <strong dir="ltr">#{order}</strong>. {tr('Keep it for your records.')}</p>
     {!processing && <PaymentInstructions method={record.paymentMethod} status={record.paymentStatus} amount={money(record.grandTotal, record.currency)} orderNumber={record.orderNumber} />}
     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-      <Link className="btn" href="/shop">Continue shopping</Link>
-      <Link className="btn secondary" href={viewOrderHref}>View order</Link>
-      {user ? <Link className="btn secondary" href="/account">View account</Link> : <Link className="btn secondary" href="/account/register">Create an account to track future orders</Link>}
+      <Link className="btn" href="/shop">{tr('Continue shopping')}</Link>
+      <Link className="btn secondary" href={viewOrderHref}>{tr('View order')}</Link>
+      {user ? <Link className="btn secondary" href="/account">{tr('View account')}</Link> : <Link className="btn secondary" href="/account/register">{tr('Create an account to track future orders')}</Link>}
     </div>
   </div></div>
   {!processing && <PurchaseTracker

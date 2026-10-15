@@ -8,7 +8,8 @@
 //   being a small image next to its link, and no headings.
 // Pure functions, so the editor (components/navigation-editor-pro.tsx) and the tests share them.
 
-export type MenuItem = { id: string; label: string; url?: string | null; type?: string; parentId?: string | null; resourceId?: string | null; group?: string | null; imageUrl?: string | null }
+// labelAr: the item's name on the Arabic version of the store (lib/i18n.ts), optional.
+export type MenuItem = { id: string; label: string; labelAr?: string | null; url?: string | null; type?: string; parentId?: string | null; resourceId?: string | null; group?: string | null; imageUrl?: string | null }
 
 // Top row, its links, and links under those: what the store's dropdown can show.
 export const MAX_MENU_DEPTH = 3

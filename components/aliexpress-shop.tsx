@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useI18n } from '@/components/lang-provider'
 import { Search, SlidersHorizontal } from 'lucide-react'
 import StorefrontSections, { ProductCard, QuickView } from '@/components/storefront-sections'
 import { useWishlist } from '@/components/use-wishlist'
@@ -10,6 +11,7 @@ import { SearchTracker } from '@/components/search-tracker'
 type AnyMap = Record<string, any>
 
 export default function AliExpressShop({ theme, products, collections, query, sections = [], pagination }: { theme: AnyMap; products: AnyMap[]; collections: AnyMap[]; query: { q?: string; collection?: string; min?: string; max?: string; sort?: string; page?: string }; sections?: AnyMap[]; pagination?: { page: number; pages: number; total: number } }) {
+  const { t, count: plural } = useI18n()
   const { wishlist, toggleWish } = useWishlist()
   const [quickProduct, setQuickProduct] = useState<AnyMap | null>(null)
   // On phones the price filter folds away behind a button so products show on the first screen.
@@ -33,33 +35,33 @@ export default function AliExpressShop({ theme, products, collections, query, se
   return (
     <div className="focalStorefront aliShopPage">
       {query.q ? <SearchTracker query={query.q} /> : null}
-      <h1 className="srOnly">{query.q ? `Search results for ${query.q}` : collections.find(c => c.slug === query.collection)?.name || 'Shop all products'}</h1>
+      <h1 className="srOnly">{query.q ? t('Search results for {query}', { query: query.q }) : collections.find(c => c.slug === query.collection)?.name || t('Shop all products')}</h1>
       <div className={`aliContainer aliShopLayout ${showFilters ? '' : 'noSidebar'}`}>
         {showFilters && (
           <aside className="aliShopSidebar">
             <div className="aliShopCollections">
-              <h3>Collections</h3>
+              <h3>{t('Collections')}</h3>
               <ul className="aliCategoryList">
-                <li><Link href="/shop" className={!query.collection ? 'active' : ''}>All collections</Link></li>
+                <li><Link href="/shop" className={!query.collection ? 'active' : ''}>{t('All collections')}</Link></li>
                 {collections.map(c => (
                   <li key={c.id}><Link href={`/shop?collection=${c.slug}`} className={query.collection === c.slug ? 'active' : ''}>{c.name}</Link></li>
                 ))}
               </ul>
             </div>
             <button type="button" className={`aliFilterToggle ${priceActive ? 'active' : ''}`} aria-expanded={priceOpen} aria-controls="shop-price-filter" onClick={() => setPriceOpen(open => !open)}>
-              <SlidersHorizontal size={15} /> {priceActive ? `Price: ${query.min || '0'} – ${query.max || 'any'}` : 'Filter by price'}
+              <SlidersHorizontal size={15} /> {priceActive ? t('Price: {min} to {max}', { min: query.min || '0', max: query.max || t('any') }) : t('Filter by price')}
             </button>
             <form method="GET" id="shop-price-filter" className={`aliPriceFilter ${priceOpen ? 'open' : ''}`}>
               {query.collection && <input type="hidden" name="collection" value={query.collection} />}
               {query.q && <input type="hidden" name="q" value={query.q} />}
               {query.sort && <input type="hidden" name="sort" value={query.sort} />}
-              <h3>Price</h3>
+              <h3>{t('Price')}</h3>
               <div className="aliPriceInputs">
-                <input type="number" name="min" aria-label="Minimum price" placeholder="Min" defaultValue={query.min} min={0} />
+                <input type="number" name="min" aria-label={t('Minimum price')} placeholder={t('Min')} defaultValue={query.min} min={0} />
                 <span>-</span>
-                <input type="number" name="max" aria-label="Maximum price" placeholder="Max" defaultValue={query.max} min={0} />
+                <input type="number" name="max" aria-label={t('Maximum price')} placeholder={t('Max')} defaultValue={query.max} min={0} />
               </div>
-              <button type="submit" className="focalButton primary aliPriceApply">Apply</button>
+              <button type="submit" className="focalButton primary aliPriceApply">{t('Apply')}</button>
             </form>
           </aside>
         )}
@@ -71,21 +73,21 @@ export default function AliExpressShop({ theme, products, collections, query, se
             {query.max && <input type="hidden" name="max" value={query.max} />}
             <div className="aliShopSearch">
               <Search size={16} />
-              <input type="text" name="q" aria-label="Search products" placeholder="Search products…" defaultValue={query.q} />
+              <input type="text" name="q" aria-label={t('Search products')} placeholder={t('Search products…')} defaultValue={query.q} />
             </div>
             {showSort && (
-              <select name="sort" aria-label="Sort products" defaultValue={sort} onChange={e => e.currentTarget.form?.submit()}>
-                <option value="newest">Newest</option>
-                <option value="bestselling">Best Selling</option>
-                <option value="rating">Top Rated</option>
-                <option value="price_asc">Price: Low to High</option>
-                <option value="price_desc">Price: High to Low</option>
+              <select name="sort" aria-label={t('Sort products')} defaultValue={sort} onChange={e => e.currentTarget.form?.submit()}>
+                <option value="newest">{t('Newest')}</option>
+                <option value="bestselling">{t('Best Selling')}</option>
+                <option value="rating">{t('Top Rated')}</option>
+                <option value="price_asc">{t('Price: low to high')}</option>
+                <option value="price_desc">{t('Price: high to low')}</option>
               </select>
             )}
-            <button type="submit" className="focalButton primary">Search</button>
+            <button type="submit" className="focalButton primary">{t('Search')}</button>
           </form>
 
-          <p className="aliResultCount">{total} product{total === 1 ? '' : 's'}</p>
+          <p className="aliResultCount">{plural(total, 'product')}</p>
 
           {sorted.length > 0 ? (
             <div className="aliDenseGrid aliShopGrid">
@@ -94,14 +96,14 @@ export default function AliExpressShop({ theme, products, collections, query, se
               ))}
             </div>
           ) : (
-            <div className="aliEmptyState">No products match your filters.</div>
+            <div className="aliEmptyState">{t('No products match your filters.')}</div>
           )}
 
           {pagination && pagination.pages > 1 && (
-            <nav aria-label="Pages" style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', margin: '28px 0 8px', flexWrap: 'wrap' }}>
-              {pagination.page > 1 && <Link className="focalButton secondary" href={pageHref(pagination.page - 1)} rel="prev">Previous</Link>}
-              <span style={{ fontSize: 14 }}>Page {pagination.page} of {pagination.pages}</span>
-              {pagination.page < pagination.pages && <Link className="focalButton secondary" href={pageHref(pagination.page + 1)} rel="next">Next</Link>}
+            <nav aria-label={t('Pages')} style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', margin: '28px 0 8px', flexWrap: 'wrap' }}>
+              {pagination.page > 1 && <Link className="focalButton secondary" href={pageHref(pagination.page - 1)} rel="prev">{t('Previous')}</Link>}
+              <span style={{ fontSize: 14 }}>{t('Page {page} of {pages}', { page: pagination.page, pages: pagination.pages })}</span>
+              {pagination.page < pagination.pages && <Link className="focalButton secondary" href={pageHref(pagination.page + 1)} rel="next">{t('Next')}</Link>}
             </nav>
           )}
         </main>

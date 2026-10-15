@@ -1,5 +1,6 @@
 import {db} from '@/lib/prisma'
 import {getThemeState} from '@/lib/theme'
+import {translator} from '@/lib/i18n'
 import {withProductStats} from '@/lib/product-stats'
 import { CARD_STOCK_INCLUDE, withCardStock } from '@/lib/card-stock'
 import {getUnpublishedProductIds} from '@/lib/sales-channels'
@@ -15,7 +16,8 @@ export const revalidate=0
 export const metadata: Metadata = { alternates: { canonical: '/' } }
 
 export default async function Home(){
-  const [{theme,sections},unpublishedIds]=await Promise.all([getThemeState(),getUnpublishedProductIds()])
+  const [{theme,sections,lang},unpublishedIds]=await Promise.all([getThemeState(),getUnpublishedProductIds()])
+  const t=translator(lang)
   const [rawProducts,collections,contentBlocks]=await Promise.all([
     storefrontCached(`home-products:${unpublishedIds.join(',')}`,()=>db.product.findMany({where:{status:'ACTIVE',id:{notIn:unpublishedIds}},include:{images:{orderBy:{sortOrder:'asc'}},collections:{include:{collection:true}},...CARD_STOCK_INCLUDE},orderBy:[{featured:'desc'},{createdAt:'desc'}],take:60})),
     storefrontCached('home-collections',()=>db.collection.findMany({where:{isActive:true},include:{products:{select:{productId:true}}},take:12,orderBy:{sortOrder:'asc'}})),
@@ -49,7 +51,7 @@ export default async function Home(){
         <div className="aliContainer aliTrustRow">
           {trustItems.map(block=>(
             <div className="aliTrustItem" key={block.id}>
-              <strong>{block.title||'Why shop with us'}</strong>
+              <strong>{block.title||t('Why shop with us')}</strong>
               {block.subtitle&&<span>{block.subtitle}</span>}
             </div>
           ))}

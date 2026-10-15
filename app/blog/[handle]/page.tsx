@@ -9,6 +9,7 @@ import StorefrontSections from '@/components/storefront-sections'
 import { BLOG_TEMPLATE_KEY, zoneSections } from '@/lib/custom-pages'
 import { loadZoneData } from '@/lib/zone-data'
 import { sanitizeRichHtml } from '@/lib/sanitize-html'
+import { dateLocale, translator } from '@/lib/i18n'
 
 function readTags(tagsJson: string | null) {
   const parsed = parseJson<unknown>(tagsJson, [])
@@ -33,7 +34,8 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
 
 export default async function BlogPostPage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params
-  const { theme } = await getThemeState()
+  const { theme, lang } = await getThemeState()
+  const t = translator(lang)
   const post = await db.blogPost.findUnique({ where: { handle } })
   if (!post || post.status !== 'PUBLISHED') notFound()
   const tags = readTags(post.tagsJson)
@@ -43,9 +45,9 @@ export default async function BlogPostPage({ params }: { params: Promise<{ handl
   return <>
     <div className="focalStorefront">
       <div className="aliContainer aliLegalPage">
-        <Link href="/blog" className="textLink">← Back to blog</Link>
+        <Link href="/blog" className="textLink">{t('Back to blog')}</Link>
         <h1 style={{ marginTop: 16 }}>{post.title}</h1>
-        {post.publishedAt && <p className="aliLegalUpdated">{post.publishedAt.toLocaleDateString()}</p>}
+        {post.publishedAt && <p className="aliLegalUpdated">{post.publishedAt.toLocaleDateString(dateLocale(lang))}</p>}
         {post.featuredImage && (
           <img src={post.featuredImage} alt="" style={{ width: '100%', maxHeight: 420, objectFit: 'cover', borderRadius: 14, margin: '0 0 24px', background: 'var(--focal-soft,#f1ebe6)' }} />
         )}

@@ -515,3 +515,60 @@ html body.mk .aliCollectionBannerOverlay p { display: -webkit-box; -webkit-line-
 .focalCartInfo, .focalCartInfo strong, .cartInfoUX, .cartProductName { min-width: 0; overflow-wrap: anywhere; }
 .summaryCard .summaryLine > span:first-child { min-width: 0; overflow-wrap: anywhere; }
 .summaryCard .summaryLine > strong { flex: none; }
+
+/* ---------------- Arabic (right to left) ----------------
+   Most of the layout is flex/grid and mirrors by itself under <html dir="rtl">; these are the
+   pieces placed by left/right. Arabic letters join up, so no letter spacing on Arabic text. */
+[lang="ar"] body, [lang="ar"] h1, [lang="ar"] h2, [lang="ar"] h3, [lang="ar"] h4, [lang="ar"] .mkMenuLabel, [lang="ar"] .focalEyebrow { letter-spacing: 0 !important; }
+[dir="rtl"] .lucide-chevron-right, [dir="rtl"] .lucide-chevron-left, [dir="rtl"] .lucide-arrow-right, [dir="rtl"] .lucide-arrow-left, [dir="rtl"] .flipRtl { transform: scaleX(-1); }
+[dir="rtl"] .mkCatsArrow svg { transform: none; } /* these point at the edge they sit on */
+[dir="rtl"] .mkArrowPrev { left: auto; right: 16px; }
+[dir="rtl"] .mkArrowNext { right: auto; left: 16px; }
+[dir="rtl"] .mkSlideBadge { right: auto; left: 14px; }
+[dir="rtl"] .mkHero-split .mkDots { left: auto; right: 22px; }
+@media (min-width: 760px) {
+  [dir="rtl"] .mkSlideShade { background: linear-gradient(270deg, rgba(0,0,0,.7) 0%, rgba(0,0,0,.4) 42%, rgba(0,0,0,0) 74%); }
+  [dir="rtl"] .mkHero-split .mkDots { left: auto; right: 36px; }
+  [dir="rtl"] .mkHero-split .mkArrowPrev { right: auto; left: 66px; }
+  [dir="rtl"] .mkHero-split .mkArrowNext { right: auto; left: 16px; }
+}
+/* The phone menu slides in from the right */
+@keyframes mkSlideRtl { from { transform: translateX(100%); } to { transform: none; } }
+[dir="rtl"] .mkMenu { left: auto; right: 0; box-shadow: -20px 0 60px rgba(0,0,0,.25); animation-name: mkSlideRtl; }
+[dir="rtl"] .mkMenuHead { padding: 14px 18px 14px 14px; }
+[dir="rtl"] .mkMenuRow { text-align: right; }
+[dir="rtl"] .mkCardBadge { left: auto; right: 8px; }
+[dir="rtl"] .mkCardWish { right: auto; left: 8px; }
+[dir="rtl"] .mkRank { left: auto; right: 18px; }
+[dir="rtl"] .mkBundle ul, [dir="rtl"] .pdpRichText ul, [dir="rtl"] .pdpRichText ol, [dir="rtl"] .aliLegalPage ul { padding-left: 0; padding-right: 20px; }
+[dir="rtl"] .mkBundlePrice s { margin-left: 0; margin-right: 6px; }
+html[dir="rtl"] body.mk .aliTrustItem { text-align: right !important; }
+[dir="rtl"] .pdpRichText td, [dir="rtl"] .pdpRichText th, [dir="rtl"] .aliLegalPage td, [dir="rtl"] .aliLegalPage th { text-align: right; }
+[dir="rtl"] .aliLegalPage blockquote { padding: 4px 16px 4px 0; border-left: 0; border-right: 3px solid var(--focal-line, #e5e7eb); }
+/* Product pages and cart (older styles) */
+[dir="rtl"] .focalStorefront .focalBadge { left: auto !important; right: 12px !important; }
+[dir="rtl"] .focalStorefront .focalProductActions { right: auto !important; left: 12px !important; }
+[dir="rtl"] .focalProductCard .cardWishlist { right: auto; left: 10px; }
+[dir="rtl"] .focalStorefront .focalQuickClose { right: auto; left: 14px; }
+[dir="rtl"] .focalStorefront .focalVariantList button, [dir="rtl"] .aliSpecTable th, [dir="rtl"] .aliSpecTable td { text-align: right; }
+[dir="rtl"] .aliSpecTable th, [dir="rtl"] .aliSpecTable td { padding: 10px 0 10px 12px; }
+[dir="rtl"] .focalStorefront .focalAccordions summary:after { float: left; }
+[dir="rtl"] .aliReviewHead span, [dir="rtl"] .aliFlash .aliViewAll { margin-left: 0; margin-right: auto; }
+[dir="rtl"] .aliReviewHead .aliReviewVerified, [dir="rtl"] .aliReviewHead .focalStars, [dir="rtl"] .aliReviewFeaturedBadge { margin-right: 0 !important; }
+[dir="rtl"] .aliShareButton { margin-left: 0; margin-right: 2px; }
+[dir="rtl"] .focalTrustBadge { border-left: 0; border-right: 1px solid var(--store-border, #e4e0d6); }
+[dir="rtl"] .focalTrustBadge:first-child { border-right: 0; }
+@keyframes focalCartInRtl { from { opacity: 0; transform: translateX(-22px); } to { opacity: 1; transform: translateX(0); } }
+[dir="rtl"] .focalCartDrawer { animation-name: focalCartInRtl; }
+[dir="rtl"] .focalStorefront .focalCartDrawer { box-shadow: 24px 0 80px rgba(0,0,0,.16); }
+/* The checkout summary's "Your order" heading comes from CSS (storefront-legacy.css): "طلبك" */
+[lang="ar"] body:has(.checkoutForm) .summaryCard:before { content: '\637\644\628\643'; letter-spacing: 0; }
+/* Phone numbers, emails and card numbers stay left to right inside Arabic text */
+[dir="rtl"] input[type="tel"], [dir="rtl"] input[type="email"] { direction: ltr; text-align: right; }
+/* The language button */
+.mkNavLang, .mkMenuLang, .langSwitch { font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; border-radius: 999px; white-space: nowrap; }
+.mkNavLang { height: 34px; padding: 0 12px; border: 1px solid currentColor; background: transparent; color: inherit; opacity: .92; }
+.mkNavLang:hover { opacity: 1; }
+.mkMenuLang { display: block; width: 100%; margin-top: 14px; padding: 12px 14px; border: 1px solid var(--mk-line); background: var(--mk-page); color: var(--mk-ink); text-align: center; }
+.langSwitch { padding: 6px 12px; border: 1px solid var(--focal-line, #e5e7eb); background: #fff; color: inherit; }
+@media (max-width: 760px) { .focalNavActions .mkNavLang { display: none; } } /* on phones it is in the menu */

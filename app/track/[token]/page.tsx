@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { db } from '@/lib/prisma'
 import { StoreFooter } from '@/components/store-footer'
 import DeliveryTrackingMap from '@/components/delivery-tracking-map'
+import { getT } from '@/lib/i18n-server'
 
 export default async function DeliveryTrackingPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
@@ -27,5 +28,6 @@ export default async function DeliveryTrackingPage({ params }: { params: Promise
     pollingSeconds: 15,
   }
 
-  return <><main className="section"><div className="container" style={{maxWidth:960}}><Link className="textLink" href="/account">← Back to account</Link><div style={{marginTop:18}}><DeliveryTrackingMap token={token} initial={initial}/></div></div></main><StoreFooter /></>
+  const t = await getT()
+  return <><main className="section"><div className="container" style={{maxWidth:960}}><Link className="textLink" href="/account">{t('Back to account')}</Link><div style={{marginTop:18}}><DeliveryTrackingMap token={token} initial={initial}/></div></div></main><StoreFooter /></>
 }

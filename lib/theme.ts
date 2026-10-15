@@ -1,4 +1,6 @@
 import {cache} from 'react'
+import {localize} from '@/lib/i18n'
+import {requestLang} from '@/lib/i18n-server'
 import {db} from '@/lib/prisma'
 import {getStorefrontSettings} from '@/lib/storefront-settings'
 import {normalizeNavUrl} from '@/lib/links'
@@ -157,10 +159,15 @@ async function loadThemeState(){
   // templates were serialized into every page's HTML. They're kept server-side instead (read
   // them with themeTemplates(theme)); headerTemplates is the slim copy the browser gets.
   delete theme.editorTemplates
-  setThemeTemplates(theme,editorTemplates)
-  theme.headerTemplates=Object.fromEntries(Object.entries(editorTemplates).map(([key,list])=>[key,(Array.isArray(list)?list:[]).filter((section:any)=>section?.type==='header'||section?.type==='announcement')]))
+  // English or Arabic for this visitor (lib/i18n.ts): the owner's Arabic texts and the
+  // dictionary replace the English ones here, so every storefront page gets them.
+  const {lang,switchable,preview}=await requestLang(theme.languages)
+  const localTemplates=localize(editorTemplates,lang)
+  const localTheme:any=localize(theme,lang)
+  setThemeTemplates(localTheme,localTemplates)
+  localTheme.headerTemplates=Object.fromEntries(Object.entries(localTemplates).map(([key,list])=>[key,(Array.isArray(list)?list:[]).filter((section:any)=>section?.type==='header'||section?.type==='announcement')]))
 
-  return {theme,sections,navigation:withAbsoluteUrls(parseJson<any[]>(navigationSetting?.value,defaultNavigation))}
+  return {theme:localTheme,sections:localize(sections,lang),navigation:localize(withAbsoluteUrls(parseJson<any[]>(navigationSetting?.value,defaultNavigation)),lang),lang,switchable,languagePreview:preview}
 }
 
 // getThemeState() above always resolves the currently PUBLISHED theme --

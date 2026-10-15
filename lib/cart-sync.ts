@@ -15,7 +15,8 @@ type SyncableItem = { productId: string; variantId?: string | null; name: string
 
 const lineKey = (productId: string, variantId?: string | null) => `${productId}:${variantId || 'default'}`
 
-export function applyCartValidation<T extends SyncableItem>(items: T[], checks: CartLineCheck[]) {
+// `t` puts the notices in the shopper's language (components/lang-provider.tsx); English without it.
+export function applyCartValidation<T extends SyncableItem>(items: T[], checks: CartLineCheck[], t: (text: string, vars?: Record<string, string | number>) => string = (text, vars) => text.replace(/\{(\w+)\}/g, (m, k) => (vars && k in vars ? String(vars[k]) : m))) {
   const byKey = new Map(checks.map(c => [lineKey(c.productId, c.variantId), c]))
   const changes: string[] = []
   const next: T[] = []
@@ -23,16 +24,16 @@ export function applyCartValidation<T extends SyncableItem>(items: T[], checks: 
     const check = byKey.get(lineKey(item.productId, item.variantId))
     if (!check) { next.push(item); continue }
     if (check.status === 'unavailable' || check.available === 0) {
-      changes.push(`${item.name} is no longer available and was removed.`)
+      changes.push(t('{name} is no longer available and was removed.', { name: item.name }))
       continue
     }
     let updated = item
     if (typeof check.price === 'number' && check.price !== item.price) {
-      changes.push(`The price of ${item.name} changed.`)
+      changes.push(t('The price of {name} changed.', { name: item.name }))
       updated = { ...updated, price: check.price }
     }
     if (typeof check.available === 'number' && check.available < updated.quantity) {
-      changes.push(`Only ${check.available} of ${item.name} left — your quantity was updated.`)
+      changes.push(t('Only {n} of {name} left. Your quantity was updated.', { n: check.available, name: item.name }))
       updated = { ...updated, quantity: check.available }
     }
     next.push(updated)

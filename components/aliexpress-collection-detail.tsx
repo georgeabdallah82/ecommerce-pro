@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useI18n } from '@/components/lang-provider'
 import { useMemo, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import StorefrontSections, { ProductCard, QuickView, StoreImage } from '@/components/storefront-sections'
@@ -9,6 +10,7 @@ import { useWishlist } from '@/components/use-wishlist'
 type AnyMap = Record<string, any>
 
 export default function AliExpressCollectionDetail({ theme, collection, products, sections = [], zoneCollections = [] }: { theme: AnyMap; collection: AnyMap; products: AnyMap[]; sections?: AnyMap[]; zoneCollections?: AnyMap[] }) {
+  const { t, count: plural } = useI18n()
   const { wishlist, toggleWish } = useWishlist()
   const [quickProduct, setQuickProduct] = useState<AnyMap | null>(null)
   const [sort, setSort] = useState('curated')
@@ -30,8 +32,8 @@ export default function AliExpressCollectionDetail({ theme, collection, products
     <main className="focalStorefront aliCollectionPage">
       {showBreadcrumbs && (
         <div className="aliContainer aliBreadcrumbs">
-          <Link href="/">Home</Link><ChevronRight size={12} />
-          <Link href="/collections">Collections</Link><ChevronRight size={12} />
+          <Link href="/">{t('Home')}</Link><ChevronRight size={12} className="flipRtl" />
+          <Link href="/collections">{t('Collections')}</Link><ChevronRight size={12} className="flipRtl" />
           <span>{collection.name}</span>
         </div>
       )}
@@ -40,32 +42,32 @@ export default function AliExpressCollectionDetail({ theme, collection, products
           <StoreImage src={collection.imageUrl || '/placeholder-product.svg'} alt={collection.name} eager />
           <div className="aliCollectionBannerOverlay">
             <div className="aliContainer">
-              <span className="focalEyebrow">COLLECTION</span>
+              <span className="focalEyebrow">{t('COLLECTION')}</span>
               <h1>{collection.name}</h1>
               {showDescription && collection.description && <p>{collection.description}</p>}
-              <span className="aliCollectionCount">{products.length} product{products.length === 1 ? '' : 's'}</span>
+              <span className="aliCollectionCount">{plural(products.length, 'product')}</span>
             </div>
           </div>
         </div>
       ) : (
         <header className="aliContainer aliCollectionsHead">
-          <span className="focalEyebrow">COLLECTION</span>
+          <span className="focalEyebrow">{t('COLLECTION')}</span>
           <h1>{collection.name}</h1>
           {showDescription && collection.description && <p>{collection.description}</p>}
-          <span className="aliCollectionCount">{products.length} product{products.length === 1 ? '' : 's'}</span>
+          <span className="aliCollectionCount">{plural(products.length, 'product')}</span>
         </header>
       )}
 
       <div className="aliContainer">
         <div className="aliCollectionToolbar">
-          <span className="focalResultCount">{products.length} product{products.length === 1 ? '' : 's'}</span>
+          <span className="focalResultCount">{plural(products.length, 'product')}</span>
           {showSort && (
             <select value={sort} onChange={e => setSort(e.target.value)}>
-              <option value="curated">Featured</option>
-              <option value="price_asc">Price: low to high</option>
-              <option value="price_desc">Price: high to low</option>
-              <option value="bestselling">Best Selling</option>
-              <option value="rating">Rating</option>
+              <option value="curated">{t('Featured')}</option>
+              <option value="price_asc">{t('Price: low to high')}</option>
+              <option value="price_desc">{t('Price: high to low')}</option>
+              <option value="bestselling">{t('Best Selling')}</option>
+              <option value="rating">{t('Rating')}</option>
             </select>
           )}
         </div>
@@ -77,7 +79,7 @@ export default function AliExpressCollectionDetail({ theme, collection, products
             ))}
           </div>
         ) : (
-          <p className="aliEmptyState">No products in this collection yet.</p>
+          <p className="aliEmptyState">{t('No products in this collection yet.')}</p>
         )}
       </div>
 
