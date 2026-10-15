@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import Link from '@/components/admin-link'
 import { AlertCircle, CheckCircle2, ChevronRight, RefreshCw, Wrench, XCircle } from 'lucide-react'
 import styles from './admin-system-health.module.css'
 import ui from './admin-ui.module.css'

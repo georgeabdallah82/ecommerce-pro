@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
+import Link from '@/components/admin-link'
 import { AlertTriangle, Trash2, Upload } from 'lucide-react'
 import { money } from '@/lib/config'
 import { parseMoney } from '@/lib/catalog-csv'

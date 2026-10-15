@@ -5,6 +5,7 @@ import { clientIp } from '@/lib/request-ip'
 import { randomUUID } from 'crypto'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { consumeRateLimit } from '@/lib/rate-limit'
+import { isStaffUser, isTrackedPath, leftAt } from '@/lib/visitor-tracking'
 
 const SESSION_COOKIE = 'live_visitor_id'
 const MAX_PATH = 500
@@ -47,8 +48,19 @@ export async function POST(req: Request) {
     const limit = consumeRateLimit(`visitor:ip:${clientIp(req.headers)}`, 60, 60 * 1000)
     if (!limit.allowed) return json({ ok: true, throttled: true }, { status: 202 })
     const body = await req.json().catch(() => ({}))
-    const sessionId = getCookie(req) || randomUUID()
+    const cookieId = getCookie(req)
     const path = clean(body.path, MAX_PATH) || '/'
+    // The admin and the editor's preview are not store visits (the tracker doesn't send them;
+    // this keeps an old open tab from counting them either).
+    if (!isTrackedPath(path)) return json({ ok: true, tracked: false })
+    // The owner and staff looking at their own store are not visitors: nothing is recorded,
+    // an earlier row for this browser is removed, and the page stops reporting ("staff").
+    const user = await getCurrentUser()
+    if (isStaffUser(user)) {
+      if (cookieId) await db.liveVisitorSession.deleteMany({ where: { sessionId: cookieId } })
+      return json({ ok: true, tracked: false, staff: true })
+    }
+    const sessionId = cookieId || randomUUID()
     const referrer = clean(body.referrer, 1000)
     const device = clean(body.device, 40)
     const browser = clean(body.browser, 80)
@@ -71,7 +83,6 @@ export async function POST(req: Request) {
     const latitude = preciseLocation ? browserLatitude : null
     const longitude = preciseLocation ? browserLongitude : null
 
-    const user = await getCurrentUser()
     const userId = user?.role === 'CUSTOMER' ? user.id : null
     const now = new Date()
 
@@ -100,8 +111,10 @@ export async function POST(req: Request) {
   }
 }
 
+// The shopper left: out of "Visitors now" at once, but still counted in "Visitors today" (the
+// row used to be deleted here, so everyone who closed the page vanished from today's count).
 export async function DELETE(req: Request) {
   const sessionId = getCookie(req)
-  if (sessionId) await db.liveVisitorSession.deleteMany({ where: { sessionId } })
+  if (sessionId) await db.liveVisitorSession.updateMany({ where: { sessionId }, data: { lastSeenAt: leftAt(new Date()) } })
   return json({ ok: true })
 }

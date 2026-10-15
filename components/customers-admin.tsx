@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
+import Link from '@/components/admin-link'
 import { ChevronLeft, ChevronRight, Eye, Plus, Search, ShieldOff, Tag, Trash2, UserCheck, UserX, X } from 'lucide-react'
 import { money } from '@/lib/config'
 import ui from './admin-ui.module.css'

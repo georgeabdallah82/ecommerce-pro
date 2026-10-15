@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import Link from 'next/link'
+import Link from '@/components/admin-link'
 import { CheckCircle2, Download, FileSpreadsheet, RotateCcw, Upload } from 'lucide-react'
 import { useConfirm } from './admin-confirm'
 import type { ImportMode, PlanEntry, PlanSummary } from '@/lib/catalog-csv'

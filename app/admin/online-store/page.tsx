@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import Link from '@/components/admin-link'
 import {requirePermission} from '@/lib/auth'
 import {getThemeState} from '@/lib/theme'
 import {Palette,Menu,Image,Settings2,ExternalLink,FileText,Globe2,Route,Newspaper} from 'lucide-react'

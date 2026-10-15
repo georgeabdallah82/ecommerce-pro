@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import Link from '@/components/admin-link'
 import { ArrowLeft, Check, Mail, MapPin, Pencil, Save, ShoppingBag, X } from 'lucide-react'
 import { money } from '@/lib/config'
 import styles from './admin-draft-orders.module.css'

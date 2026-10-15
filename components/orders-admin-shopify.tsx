@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
+import Link from '@/components/admin-link'
 import { ArrowUpRight, ChevronLeft, ChevronRight, FileText, MessageCircle, PackageCheck, Plus, RefreshCw, Search, Truck, X } from 'lucide-react'
 import { money } from '@/lib/config'
 import { formatAdminDateTime } from '@/lib/admin-datetime'

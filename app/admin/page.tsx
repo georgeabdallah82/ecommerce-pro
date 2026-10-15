@@ -1,5 +1,5 @@
 import { requirePermission } from '@/lib/auth'
-import Link from 'next/link'
+import Link from '@/components/admin-link'
 import { ArrowUpRight, Boxes, ChevronRight, Eye, MessageSquare, PackageCheck, Plus } from 'lucide-react'
 import { db } from '@/lib/prisma'
 import { money } from '@/lib/config'
@@ -9,10 +9,10 @@ import { getStoreCurrency } from '@/lib/store-currency'
 import AdminSalesChart, { type SalesDay } from '@/components/admin-sales-chart'
 import ui from '@/components/admin-ui.module.css'
 import s from '@/components/admin-dashboard.module.css'
+import { LIVE_WINDOW_MS } from '@/lib/visitor-tracking' // same window as the Live visitors page
 
 const OPEN_STATUSES = [OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PROCESSING]
 const DAY_MS = 24 * 60 * 60 * 1000
-const LIVE_WINDOW_MS = 90_000 // same window as the Live visitors page
 
 type SalesOrder = { grandTotal: number; createdAt: Date; paymentTransactions: { status: string; amount: number }[] }
 

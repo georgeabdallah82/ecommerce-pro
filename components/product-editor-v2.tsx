@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
+import Link from '@/components/admin-link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Copy, Eye, Plus, Trash2, X } from 'lucide-react'
 import s from './admin-product-editor.module.css'

@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import Link from '@/components/admin-link'
 import { ArrowLeft } from 'lucide-react'
 import { requirePermission } from '@/lib/auth'
 import SpreadsheetImport from '@/components/spreadsheet-import'

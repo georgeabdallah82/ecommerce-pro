@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useI18n } from '@/components/lang-provider'
+import { loadStoreSettings } from '@/lib/store-settings-client'
 
 // The old built-in default. Themes saved before it was replaced still store it word for word,
 // and it promised $50 free delivery and worldwide shipping whatever the store's settings,
@@ -18,8 +19,7 @@ export function useFreeDeliveryAmount() {
   const [free, setFree] = useState('')
   useEffect(() => {
     let active = true
-    fetch('/api/store/settings')
-      .then(res => res.json())
+    loadStoreSettings()
       .then(data => {
         const threshold = Number(data?.settings?.checkout?.freeShippingThreshold)
         const currency = data?.settings?.store?.currency || 'USD'

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import Link from 'next/link'
+import Link from '@/components/admin-link'
 import { Check, Plus, RefreshCw, RotateCcw, Search, X, XCircle } from 'lucide-react'
 import { money } from '@/lib/config'
 import styles from './admin-returns.module.css'

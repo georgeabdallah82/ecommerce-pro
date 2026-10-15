@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import Link from 'next/link'
+import Link from '@/components/admin-link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Check, Copy, Download, Link2, MousePointerClick } from 'lucide-react'
 import ui from './admin-ui.module.css'
