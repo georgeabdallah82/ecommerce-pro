@@ -1,14 +1,8 @@
 import type { NextConfig } from "next"
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare"
 
-const securityHeaders = [
-  { key: 'X-Content-Type-Options', value: 'nosniff' },
-  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-  // Must match proxy.ts: both headers reach the browser, and geolocation=() here would
-  // still block the storefront's opt-in live-map location prompt.
-  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self)' },
-]
-
+// Security headers (nosniff, Referrer-Policy, Permissions-Policy, HSTS, X-Frame-Options) are set
+// once, by proxy.ts (lib/security-headers.ts): setting them here as well sent each one twice.
 const nextConfig: NextConfig = {
   serverExternalPackages: ["@prisma/client", ".prisma/client"],
   // node-postgres (lib/prisma.ts uses it for non-Neon databases: local development and CI) loads
@@ -16,9 +10,6 @@ const nextConfig: NextConfig = {
   // Cloudflare build couldn't resolve it. Ship the whole package.
   outputFileTracingIncludes: { '/*': ['./node_modules/pg-cloudflare/**/*'] },
   poweredByHeader: false,
-  async headers() {
-    return [{ source: '/(.*)', headers: securityHeaders }]
-  },
 }
 
 initOpenNextCloudflareForDev()

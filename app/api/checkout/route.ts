@@ -8,7 +8,7 @@ import { calculateShipping, getTaxRatePercent } from '@/lib/pricing'
 import { releaseOrderReservations, reserveStock, undoReservations } from '@/lib/inventory'
 import { getPaymentProvider } from '@/lib/payments'
 import { sendNewOrderPush } from '@/lib/push'
-import { sendOrderConfirmationEmail } from '@/lib/email'
+import { sendAbandonedCheckoutEmail, sendOrderConfirmationEmail } from '@/lib/email'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { consumeDurableRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
@@ -20,6 +20,7 @@ import { PaymentMethod } from '@prisma/client'
 import { ZodError } from 'zod'
 import { newOrderNumber } from '@/lib/order-number'
 import { runInBackground } from '@/lib/background'
+import { markCheckoutsRecovered, maybeSendCartReminders } from '@/lib/cart-reminders'
 import { adContextFromRequest, sendMetaPurchase } from '@/lib/meta-capi'
 import { orderSuccessPath } from '@/lib/order-access'
 import { BLOCKED_MESSAGE, BLOCKED_PHONES_KEY, isBlocked, parseBlockedPhones } from '@/lib/blocked-phones'
@@ -480,6 +481,9 @@ export async function POST(req: Request) {
       // Report the sale to Meta from the server too (card orders are reported once paid).
       runInBackground(sendMetaPurchase(order.id, { context: adContextFromRequest(req), storeUrl: new URL(req.url).origin }))
     }
+    // Close this shopper's open checkouts now, so no cart reminder can follow a real order,
+    // then run the throttled reminder check while the database is awake.
+    runInBackground(markCheckoutsRecovered(order.email).catch(error => console.error('[cart-reminders] could not close checkouts', error)).then(() => maybeSendCartReminders(sendAbandonedCheckoutEmail)))
     runInBackground(dispatchWebhookEvent('order.created', { id: order.id, orderNumber: order.orderNumber, email: order.email, grandTotal: order.grandTotal, currency: order.currency, status: order.status, paymentStatus: order.paymentStatus }).catch(error => console.error('[webhook] order.created dispatch failed', error)))
     await audit(user?.id, 'order.created', 'Order', order.id, { orderNumber: order.orderNumber, total: grandTotal, paymentMethod, paymentProvider: paymentMethod === PaymentMethod.CARD ? paymentProvider.name : paymentMethod.toLowerCase(), coinsUsed: requestedCoins, coinDiscount, giftCardAmount: giftCardDiscount })
     return json({ order: { id: order.id, orderNumber: order.orderNumber, total: order.grandTotal, successPath: orderSuccessPath(order.orderNumber) }, payment: clientCheckout, rewards: { coinsUsed: requestedCoins, coinDiscount, giftCardAmount: giftCardDiscount } }, { status: 201, headers: { 'Cache-Control': 'no-store' } })

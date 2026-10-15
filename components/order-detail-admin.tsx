@@ -9,7 +9,7 @@ import { canTransitionOrder, canTransitionPayment } from '@/lib/orders'
 import s from './admin-order-detail.module.css'
 import ui from './admin-ui.module.css'
 import DeliveryTrackingAdmin from './delivery-tracking-admin'
-import { whatsappConfirmLink } from '@/lib/whatsapp-confirm'
+import { WHATSAPP_OUTCOMES, whatsappConfirmLink, whatsappPhoneProblem } from '@/lib/whatsapp-confirm'
 import { useConfirm } from './admin-confirm'
 
 async function api(path: string, init?: RequestInit) {
@@ -26,6 +26,9 @@ const ORDER_STATUS_OPTIONS = ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', '
 // endpoint always rejects setting them directly, so offering them here would
 // be a control that looks functional but can never actually be saved.
 const PAYMENT_STATUS_OPTIONS = ['UNPAID', 'PENDING', 'PAID', 'FAILED'] as const
+
+// Short button labels for the answers in lib/whatsapp-confirm.ts.
+const WHATSAPP_ANSWER_LABELS: Record<keyof typeof WHATSAPP_OUTCOMES, string> = { confirmed: 'Confirmed', no_answer: 'No answer yet', change_requested: 'Wants a change', cancel_requested: 'Wants to cancel', wrong_number: 'Wrong number' }
 
 function parseAddress(raw: string | null | undefined) {
   if (!raw) return { firstName:'', lastName:'', line1:'', line2:'', city:'', region:'', postalCode:'', country:'', phone:'' }
@@ -66,6 +69,31 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
   }
   // Opens WhatsApp with a ready "please confirm your order" message to the customer.
   const whatsappLink = useMemo(() => whatsappConfirmLink(o, storeName, storeCountry, money), [o, storeName, storeCountry])
+  const whatsappProblem = useMemo(() => whatsappLink ? '' : whatsappPhoneProblem(o, storeCountry), [o, whatsappLink, storeCountry])
+  // After the chat, staff record what the customer said; the order's status is theirs to change.
+  const [askedWhatsapp, setAskedWhatsapp] = useState(false)
+  const [recordingAnswer, setRecordingAnswer] = useState('')
+  const [lastAnswer, setLastAnswer] = useState('')
+  async function recordWhatsappAnswer(outcome: string) {
+    setRecordingAnswer(outcome); setMsg('')
+    try {
+      const d = await api('/api/admin/orders', { method: 'PATCH', body: JSON.stringify({ id: o.id, whatsappOutcome: outcome }) })
+      setO((c: any) => ({ ...c, notesHistory: [d.note, ...(c.notesHistory || [])], events: [d.event, ...(c.events || [])] }))
+      setLastAnswer(outcome)
+      setMsg(outcome === 'confirmed' && o.status === 'PENDING' ? 'Answer saved. The order is still Pending: tap "Mark as Confirmed" when you are ready to prepare it.' : 'Answer saved as a note on this order.')
+    } catch (e) { setMsg(e instanceof Error ? e.message : 'Could not save the answer') }
+    finally { setRecordingAnswer('') }
+  }
+  async function markConfirmed() {
+    setRecordingAnswer('status'); setMsg('')
+    try {
+      const d = await api('/api/admin/orders', { method: 'PATCH', body: JSON.stringify({ id: o.id, status: 'CONFIRMED' }) })
+      const next = { ...o, status: 'CONFIRMED', ...(d.order || {}) }
+      setO(next); setStatus(next.status); setPaymentStatus(next.paymentStatus); setLastAnswer('')
+      setMsg('Order marked as Confirmed.')
+    } catch (e) { setMsg(e instanceof Error ? e.message : 'Unable to update order') }
+    finally { setRecordingAnswer('') }
+  }
   const [status, setStatus] = useState(o.status)
   const [paymentStatus, setPaymentStatus] = useState(o.paymentStatus)
   const [tracking, setTracking] = useState(o.trackingNumber || '')
@@ -144,7 +172,7 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
         <div className={s.headMeta}><span className={ui.muted}>Placed {formatAdminDateTime(o.createdAt, storeTimezone)}</span><span className={`${s.statusPill} ${paymentPillClass(o.paymentStatus)}`}>{o.paymentStatus}</span><span className={`${s.statusPill} ${fulfillmentPillClass(o.fulfillmentStatus)}`}>{o.fulfillmentStatus}</span></div>
       </div>
       <div className={`inline ${s.headActions}`}>
-        {whatsappLink&&<a className={`${ui.btn} ${s.whatsappBtn}`} href={whatsappLink} target="_blank" rel="noreferrer"><MessageCircle size={15}/> {o.status==='PENDING'?'Confirm on WhatsApp':'WhatsApp customer'}</a>}
+        {whatsappLink&&<a className={`${ui.btn} ${s.whatsappBtn}`} href={whatsappLink} target="_blank" rel="noreferrer" onClick={()=>setAskedWhatsapp(true)}><MessageCircle size={15}/> {o.status==='PENDING'?'Confirm on WhatsApp':'WhatsApp customer'}</a>}
         <Link className={`${ui.btn} ${ui.btnSecondary}`} href={`/admin/orders/${o.id}/invoice`}>Invoice / Print</Link>
         {canStartOrderEdit&&<Link className={`${ui.btn} ${ui.btnSecondary}`} href={`/admin/order-edits/new?orderId=${o.id}`}><FileEdit size={15}/> Start order edit</Link>}
         <button className={ui.btn} onClick={beginEdit}><Pencil size={15}/> Edit order</button>
@@ -152,6 +180,13 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
     </div>
 
     {msg&&<div className={ui.alert}>{msg}</div>}
+
+    {!editing&&whatsappLink&&(askedWhatsapp||o.status==='PENDING')&&<section className={`${ui.card} ${s.whatsappAnswer}`}>
+      <div><strong>What did the customer answer on WhatsApp?</strong><div className={ui.muted} style={{fontSize:12}}>Saved as a note on this order. The order status never changes by itself.</div></div>
+      <div className={s.whatsappChoices}>{(Object.keys(WHATSAPP_OUTCOMES) as Array<keyof typeof WHATSAPP_OUTCOMES>).map(k=><button key={k} type="button" className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} disabled={!!recordingAnswer} aria-pressed={lastAnswer===k} onClick={()=>recordWhatsappAnswer(k)}>{recordingAnswer===k?'Saving...':WHATSAPP_ANSWER_LABELS[k]}</button>)}</div>
+      {lastAnswer==='confirmed'&&o.status==='PENDING'&&canTransitionOrder('PENDING','CONFIRMED')&&<button type="button" className={ui.btn} disabled={!!recordingAnswer} onClick={markConfirmed}><Check size={15}/> Mark as Confirmed</button>}
+    </section>}
+    {!editing&&!whatsappLink&&whatsappProblem&&(o.status==='PENDING'||o.status==='CONFIRMED')&&<div className={s.phoneWarning} role="note"><Phone size={16}/><span>{whatsappProblem}</span></div>}
 
     {editing&&<section className={s.editToolbar}><div><strong>Edit order</strong><div className={ui.muted} style={{fontSize:12}}>Update the customer, contact details, shipping/billing addresses and staff notes without creating a new order.</div></div><div className="inline"><button className={`${ui.btn} ${ui.btnGhost}`} onClick={cancelEdit} disabled={saving}><X size={15}/> Cancel</button><button className={ui.btn} onClick={save} disabled={saving}><Save size={15}/>{saving?'Saving…':'Save changes'}</button></div></section>}
 

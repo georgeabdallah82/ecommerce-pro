@@ -4,13 +4,15 @@ import { jwtVerify } from 'jose'
 import { countRedirectHit, findRedirect, getSettingValue, getStaffAccess } from '@/lib/edge-db'
 import { isSessionRevoked } from '@/lib/session-revocation'
 import { contentSecurityPolicy } from '@/lib/csp'
-import { wwwRedirectTarget } from '@/lib/www-redirect'
+import { httpsRedirectTarget, wwwRedirectTarget } from '@/lib/www-redirect'
+import { applySecurityHeaders } from '@/lib/security-headers'
 
 // '/api' is deliberately NOT in this list (see the maintenance check below) -- API requests get
 // their own, narrower bypass so mutations to non-admin/auth/internal/webhook endpoints are
 // actually blocked during maintenance instead of silently exempted wholesale.
-const MAINTENANCE_BYPASS_PREFIXES = ['/admin', '/maintenance', '/_next']
-const MAINTENANCE_API_BYPASS_PREFIXES = ['/api/admin', '/api/auth', '/api/internal', '/api/payments', '/api/health', '/api/newsletter']
+// /unsubscribe: stopping reminder emails must keep working while the store is closed.
+const MAINTENANCE_BYPASS_PREFIXES = ['/admin', '/maintenance', '/_next', '/unsubscribe']
+const MAINTENANCE_API_BYPASS_PREFIXES = ['/api/admin', '/api/auth', '/api/internal', '/api/payments', '/api/health', '/api/newsletter', '/api/unsubscribe']
 const MAINTENANCE_BYPASS_EXACT = new Set(['/favicon.ico', '/robots.txt', '/sitemap.xml'])
 // /theme-editor-preview is a staff-only technical surface (the theme editor's iframe target,
 // see app/theme-editor-preview/page.tsx), reloaded on every draft edit -- exempting it here
@@ -65,6 +67,8 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     })
   }
 
+  const httpsTarget = httpsRedirectTarget(request.url, { host: request.headers.get('host'), cfVisitor: request.headers.get('cf-visitor'), forwardedProto: request.headers.get('x-forwarded-proto') })
+  if (httpsTarget) return NextResponse.redirect(httpsTarget, 308)
   const wwwTarget = wwwRedirectTarget(request.url, request.headers.get('host'))
   if (wwwTarget) return NextResponse.redirect(wwwTarget, 308)
 
@@ -80,7 +84,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     rewriteUrl.pathname = '/admin-login'
     const rewrite = NextResponse.rewrite(rewriteUrl, { request: { headers: withNonce(new Headers(request.headers)) } })
     rewrite.headers.set('Content-Security-Policy', csp)
-    return rewrite
+    return applySecurityHeaders(rewrite)
   }
 
   const needsRedirectCheck = !REDIRECT_BYPASS_PREFIXES.some(p => pathname.startsWith(p)) && !isStaticAsset(pathname)
@@ -118,13 +122,13 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
       if (pathname.startsWith('/api/')) {
         const isBlockedMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method) && !MAINTENANCE_API_BYPASS_PREFIXES.some(p => pathname.startsWith(p))
         if (isBlockedMutation) {
-          return NextResponse.json({ error: 'The store is temporarily unavailable.' }, { status: 503, headers: { 'Cache-Control': 'no-store' } })
+          return applySecurityHeaders(NextResponse.json({ error: 'The store is temporarily unavailable.' }, { status: 503, headers: { 'Cache-Control': 'no-store' } }))
         }
       } else {
         // The maintenance page (app/maintenance/route.ts) answers 503 + Retry-After itself.
         const rewrite = NextResponse.rewrite(new URL('/maintenance', request.url), { request: { headers: withNonce(new Headers(request.headers)) } })
         rewrite.headers.set('Content-Security-Policy', csp)
-        return rewrite
+        return applySecurityHeaders(rewrite)
       }
     }
   }
@@ -133,25 +137,14 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const isApi = pathname.startsWith('/api/')
   const isApiMutation = isApi && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)
   if (isApiMutation && hasSession && !isSameOrigin(request)) {
-    return NextResponse.json({ error: 'Cross-site request blocked' }, { status: 403, headers: { 'Cache-Control': 'no-store' } })
+    return applySecurityHeaders(NextResponse.json({ error: 'Cross-site request blocked' }, { status: 403, headers: { 'Cache-Control': 'no-store' } }))
   }
 
-  const response = NextResponse.next({ request: { headers: withNonce(new Headers(request.headers)) } })
-  response.headers.set('X-Content-Type-Options', 'nosniff')
-  response.headers.set('X-Frame-Options', isThemePreview ? 'SAMEORIGIN' : 'DENY')
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-  // geolocation=(self): the storefront's opt-in live-map location prompt (components/live-visitor-tracker.tsx)
-  // needs it on our own pages; geolocation=() blocked it outright, so "Allow" could never work.
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)')
-  response.headers.set('X-DNS-Prefetch-Control', 'on')
+  const response = applySecurityHeaders(NextResponse.next({ request: { headers: withNonce(new Headers(request.headers)) } }), { framedBySameSite: isThemePreview })
   response.headers.set('Content-Security-Policy', csp)
 
   if (isApi && hasSession) {
     response.headers.set('Cache-Control', 'private, no-store')
-  }
-
-  if (process.env.NODE_ENV === 'production') {
-    response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
   }
 
   return response

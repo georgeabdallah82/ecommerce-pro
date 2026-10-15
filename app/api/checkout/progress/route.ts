@@ -4,6 +4,9 @@ import { json } from '@/lib/utils'
 import { consumeDurableRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { getStoreCurrency } from '@/lib/store-currency'
+import { runInBackground } from '@/lib/background'
+import { maybeSendCartReminders } from '@/lib/cart-reminders'
+import { sendAbandonedCheckoutEmail } from '@/lib/email'
 
 // Public, unauthenticated capture endpoint for the checkout page -- distinct from
 // /api/admin/abandoned-checkouts, which is staff-only and used to browse the
@@ -66,6 +69,8 @@ export async function POST(req: Request) {
       update: { customerId: user?.id ?? null, email, cartJson: JSON.stringify(cartItems), subtotal, currency, recoveryUrl, status: 'OPEN', lastActivity: new Date() },
       create: { token, customerId: user?.id ?? null, email, cartJson: JSON.stringify(cartItems), subtotal, currency, recoveryUrl },
     })
+    // The database is awake anyway: a good moment for the (rare, throttled) reminder check.
+    runInBackground(maybeSendCartReminders(sendAbandonedCheckoutEmail))
     return json({ ok: true })
   } catch {
     return json({ ok: false }, { status: 400 })

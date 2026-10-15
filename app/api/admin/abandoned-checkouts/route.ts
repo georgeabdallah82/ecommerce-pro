@@ -4,6 +4,9 @@ import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { getStoreCurrency } from '@/lib/store-currency'
+import { runInBackground } from '@/lib/background'
+import { maybeSendCartReminders } from '@/lib/cart-reminders'
+import { sendAbandonedCheckoutEmail } from '@/lib/email'
 
 export async function GET(req: Request) {
   try {
@@ -11,6 +14,8 @@ export async function GET(req: Request) {
     const params = new URL(req.url).searchParams
     const status = params.get('status') || undefined
     const rows = await db.abandonedCheckout.findMany({ where: status ? { status: status as any } : undefined, orderBy: { lastActivity: 'desc' }, take: 200 })
+    // Staff looking at the list: a good moment for the throttled cart reminder check.
+    runInBackground(maybeSendCartReminders(sendAbandonedCheckoutEmail))
     return json(rows)
   } catch (e) { return routeError(e, 'Forbidden', 403) }
 }
