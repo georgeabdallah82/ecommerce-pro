@@ -295,6 +295,52 @@ function ApiCredentialsPanel({ credentials, onChange }: { credentials: any[]; on
   </div>
 }
 
+const REMINDER_KEYS = { enabled: 'abandoned.autoSend', delayHours: 'abandoned.delayHours', maxAgeHours: 'abandoned.maxAgeHours', dailyLimit: 'abandoned.dailyLimit' }
+
+// Automatic cart reminders (lib/cart-reminders.ts): off until the owner turns them on here.
+function CartReminderSettings() {
+  const [values, setValues] = useState({ enabled: false, delayHours: '3', maxAgeHours: '48', dailyLimit: '20' })
+  const [loaded, setLoaded] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [note, setNote] = useState('')
+  useEffect(() => {
+    api('/api/admin/settings').then((rows: { key: string; value: string }[]) => {
+      const get = (key: string) => rows.find(r => r.key === key)?.value
+      setValues(v => ({ enabled: get(REMINDER_KEYS.enabled) === 'true', delayHours: get(REMINDER_KEYS.delayHours) || v.delayHours, maxAgeHours: get(REMINDER_KEYS.maxAgeHours) || v.maxAgeHours, dailyLimit: get(REMINDER_KEYS.dailyLimit) || v.dailyLimit }))
+      setLoaded(true)
+    }).catch(() => setLoaded(true))
+  }, [])
+  async function save() {
+    setSaving(true); setNote('')
+    try {
+      await api('/api/admin/settings', { method: 'PATCH', body: JSON.stringify({ settings: { [REMINDER_KEYS.enabled]: String(values.enabled), [REMINDER_KEYS.delayHours]: values.delayHours, [REMINDER_KEYS.maxAgeHours]: values.maxAgeHours, [REMINDER_KEYS.dailyLimit]: values.dailyLimit } }) })
+      setNote(values.enabled ? 'Saved. Reminders are on.' : 'Saved. Reminders are off.')
+    } catch (e) { setNote(e instanceof Error ? e.message : 'Unable to save') }
+    finally { setSaving(false) }
+  }
+  if (!loaded) return null
+  return <div className={styles.reminderBox}>
+    <label className={styles.reminderToggle}><input type="checkbox" checked={values.enabled} onChange={e => setValues({ ...values, enabled: e.target.checked })} /> <strong>Email one reminder automatically</strong></label>
+    <p className={ui.muted}>To shoppers who typed their email at checkout and left without ordering. Only one per checkout, never after they ordered or unsubscribed, never twice in 7 days to the same email.</p>
+    <div className={styles.reminderFields}>
+      <label className={ui.fieldLabel}>Wait after they leave<select className={ui.select} value={values.delayHours} onChange={e => setValues({ ...values, delayHours: e.target.value })}>{['1', '2', '3', '6', '12', '24'].map(h => <option key={h} value={h}>{h} hour{h === '1' ? '' : 's'}</option>)}</select></label>
+      <label className={ui.fieldLabel}>Too late after<select className={ui.select} value={values.maxAgeHours} onChange={e => setValues({ ...values, maxAgeHours: e.target.value })}>{['24', '48', '72'].map(h => <option key={h} value={h}>{h} hours</option>)}</select></label>
+      <label className={ui.fieldLabel}>At most per day<select className={ui.select} value={values.dailyLimit} onChange={e => setValues({ ...values, dailyLimit: e.target.value })}>{['5', '10', '20', '50'].map(n => <option key={n} value={n}>{n} emails</option>)}</select></label>
+      <button type="button" className={ui.btn} disabled={saving} onClick={save}>{saving ? 'Saving...' : 'Save'}</button>
+    </div>
+    {note && <p className={ui.muted}>{note}</p>}
+  </div>
+}
+
+function reminderText(x: any) {
+  const when = x.reminderAt ? new Date(x.reminderAt).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''
+  if (x.reminderState === 'sent') return `Reminder sent ${when}${x.reminderNote ? ` (${x.reminderNote})` : ''}`
+  if (x.reminderState === 'skipped') return `No reminder: ${x.reminderNote || 'not eligible'}`
+  if (x.reminderState === 'failed') return 'Reminder could not be sent'
+  if (x.reminderState === 'sending') return 'Reminder being sent'
+  return ''
+}
+
 function AbandonedCheckoutsPanel({ checkouts, onChange }: { checkouts: any[]; onChange: () => void }) {
   const [sendingId, setSendingId] = useState<string | null>(null)
   const [error, setError] = useState('')
@@ -309,15 +355,16 @@ function AbandonedCheckoutsPanel({ checkouts, onChange }: { checkouts: any[]; on
   return <div className={`${ui.card} ${styles.panel}`}>
     <h3>Abandoned checkouts</h3>
     <p className={ui.muted}>Recovery opportunities from incomplete carts.</p>
+    <CartReminderSettings />
     {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
     <div className={styles.list}>
       {checkouts.slice(0, 12).map((x: any) => (
         <div className={styles.entityRow} key={x.id}>
           <strong>{x.email || 'Guest checkout'}</strong>
           <span className={`${ui.statusPill} ${x.status === 'OPEN' ? ui.statusPillWarning : ui.statusPillSuccess}`}>{x.status}</span>
-          <span className={styles.rowMeta}>{x.currency} {((x.subtotal || 0) / 100).toFixed(2)}</span>
+          <span className={styles.rowMeta}>{x.currency} {((x.subtotal || 0) / 100).toFixed(2)}{reminderText(x) ? ` · ${reminderText(x)}` : ''}</span>
           <div className={styles.rowActions}>
-            {x.status === 'OPEN' && x.email && <button type="button" className={ui.textButton} disabled={sendingId === x.id} onClick={() => sendRecovery(x.id)}>{sendingId === x.id ? 'Sending…' : 'Send recovery email'}</button>}
+            {x.status === 'OPEN' && x.email && x.reminderState !== 'sent' && <button type="button" className={ui.textButton} disabled={sendingId === x.id} onClick={() => sendRecovery(x.id)}>{sendingId === x.id ? 'Sending…' : 'Send recovery email'}</button>}
           </div>
         </div>
       ))}

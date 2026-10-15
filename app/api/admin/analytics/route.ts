@@ -101,6 +101,9 @@ async function loadPeriod(range: Range) {
   const productIds = [...new Set(orders.flatMap(o => o.items.map(i => i.productId)))]
   const costRows = productIds.length ? await db.product.findMany({ where: { id: { in: productIds } }, select: { id: true, costPrice: true } }) : []
   const costByProduct = new Map(costRows.map(p => [p.id, p.costPrice ?? 0]))
+  // Sales of products with no cost entered: their whole price counts as profit above, so the
+  // page says how much of the gross profit is really "cost unknown" (Reports > Profit lists them).
+  let salesWithoutCost = 0
 
   const buckets = buildBuckets(range)
   let revenue = 0, itemsSold = 0, discountGiven = 0, itemsSalesValue = 0, costOfGoodsSold = 0
@@ -114,6 +117,7 @@ async function loadPeriod(range: Range) {
     for (const i of o.items) {
       itemsSalesValue += i.totalPrice
       costOfGoodsSold += (costByProduct.get(i.productId) || 0) * i.quantity
+      if (!((costByProduct.get(i.productId) || 0) > 0)) salesWithoutCost += i.totalPrice
     }
     if (o.userId) orderingCustomers.add(o.userId)
     const key = bucketKey(new Date(o.createdAt), range.days)
@@ -151,6 +155,7 @@ async function loadPeriod(range: Range) {
     itemsSalesValue,
     costOfGoodsSold,
     grossProfit,
+    salesWithoutCost,
     newCustomers: newCustomerRows.length,
     orderingCustomerCount: orderingCustomers.size,
     returningCustomers,
@@ -216,6 +221,7 @@ export async function GET(req: Request) {
         returningCustomerRateChange: previousPeriod ? pct(returningCustomerRate, previousReturningCustomerRate) : null,
         discountGiven: currentPeriod.discountGiven,
         grossProfit: currentPeriod.grossProfit,
+        salesWithoutCost: currentPeriod.salesWithoutCost,
         grossProfitChange: previousPeriod ? pct(currentPeriod.grossProfit, previousPeriod.grossProfit) : null,
         marginPercent,
         marginPercentChange: previousPeriod ? pct(marginPercent, previousMarginPercent) : null,

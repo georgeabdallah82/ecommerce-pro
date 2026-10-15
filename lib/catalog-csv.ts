@@ -131,7 +131,7 @@ export type ParsedFile<K extends string> = { rows: ParsedRow<K>[]; columns: Set<
 const BOM = new RegExp('^\\ufeff')
 const CURRENCY = new RegExp('[$\\u20ac\\u00a3\\s]|usd|lbp', 'gi')
 
-function parseMoney(raw: string): number | null {
+export function parseMoney(raw: string): number | null {
   let s = raw.replace(CURRENCY, '')
   if (/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(s)) s = s.replace(/,/g, '')
   else s = s.replace(',', '.')

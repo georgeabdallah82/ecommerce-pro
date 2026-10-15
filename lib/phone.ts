@@ -15,5 +15,8 @@ export function internationalPhone(phone: string | null | undefined, storeCountr
     if (digits.length <= 8) digits = `961${digits}`
     else if (digits.startsWith('9610')) digits = `961${digits.slice(4)}`
   }
+  // A Lebanese number is 961 and 7 digits (03 123456) or 8 (70 123456); fewer or more is a typo
+  // that WhatsApp would open as "this number isn't on WhatsApp".
+  if (digits.startsWith('961') && (digits.length < 10 || digits.length > 11)) return ''
   return digits.length >= 8 && digits.length <= 15 ? digits : ''
 }

@@ -402,8 +402,22 @@ model AbandonedCheckout {
   status       AbandonedCheckoutStatus  @default(OPEN)
   lastActivity DateTime                @default(now())
   recoveredAt  DateTime?
+  // The automatic reminder email (lib/cart-reminders.ts): null until it is handled, then
+  // "sending" (claimed by one request, so it is never sent twice), "sent", "skipped" or
+  // "failed". reminderNote says why it was skipped or failed.
+  reminderState String?
+  reminderAt    DateTime?
+  reminderNote  String?
   createdAt    DateTime                @default(now())
   updatedAt    DateTime                @updatedAt
   @@index([status, lastActivity])
   @@index([email])
+}
+
+// Customers who asked not to get cart reminder emails again (the link in that email).
+model EmailOptOut {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  source    String   @default("cart_reminder")
+  createdAt DateTime @default(now())
 }

@@ -36,6 +36,33 @@ export function whatsappConfirmMessage(order: ConfirmOrder, storeName: string, f
   ].join('\n')
 }
 
+// Why there is no WhatsApp button on an order: no number at all, or one too short, too long or
+// mistyped to open a chat. Empty when the number is usable.
+export function whatsappPhoneProblem(order: Pick<ConfirmOrder, 'phone' | 'shippingAddressJson'>, storeCountry: string | null | undefined) {
+  const typed = String(order.phone || shippingAddress(order.shippingAddressJson).phone || '').trim()
+  if (!typed) return 'No phone number on this order, so it can\'t be confirmed on WhatsApp. Call or email the customer instead.'
+  if (!internationalPhone(typed, storeCountry)) return `The phone number "${typed.slice(0, 40)}" looks incomplete or mistyped, so WhatsApp can't open it. Fix it with Edit order, or call the customer.`
+  return ''
+}
+
+// What the customer answered, recorded on the order by staff after the WhatsApp chat. Opening the
+// chat proves nothing (the message may never have been sent or answered), so the order is only
+// ever confirmed, changed or cancelled by staff themselves; these are notes for the timeline.
+export const WHATSAPP_OUTCOMES = {
+  confirmed: 'Customer confirmed the order on WhatsApp',
+  no_answer: 'Messaged on WhatsApp, no answer yet',
+  change_requested: 'Customer asked for a change on WhatsApp',
+  cancel_requested: 'Customer asked on WhatsApp to cancel',
+  wrong_number: 'WhatsApp number is wrong or not on WhatsApp',
+} as const
+export type WhatsappOutcome = keyof typeof WHATSAPP_OUTCOMES
+
+export function whatsappOutcomeNote(outcome: string, detail?: string | null) {
+  if (!Object.prototype.hasOwnProperty.call(WHATSAPP_OUTCOMES, outcome)) return ''
+  const extra = String(detail || '').trim().slice(0, 500)
+  return `${WHATSAPP_OUTCOMES[outcome as WhatsappOutcome]}.${extra ? ` ${extra}` : ''}`
+}
+
 // wa.me link that opens a chat with the customer, message ready to send. Empty when the order
 // has no usable phone number.
 export function whatsappConfirmLink(order: ConfirmOrder, storeName: string, storeCountry: string | null | undefined, formatMoney: (cents: number, currency: string) => string) {

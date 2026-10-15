@@ -123,7 +123,7 @@ function logEmail(to: string, subject: string, status: 'sent' | 'failed' | 'skip
   )
 }
 
-export async function sendEmail(to: string, subject: string, html: string, text: string) {
+export async function sendEmail(to: string, subject: string, html: string, text: string, extra?: { headers?: Record<string, string> }) {
   const config = credentials()
   if (!config) {
     console.warn('[email] RESEND_API_KEY/EMAIL_FROM not configured; skipping send', { to, subject })
@@ -135,7 +135,7 @@ export async function sendEmail(to: string, subject: string, html: string, text:
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${config.apiKey}` },
-      body: JSON.stringify({ from, to, subject, html, text }),
+      body: JSON.stringify({ from, to, subject, html, text, ...(extra?.headers ? { headers: extra.headers } : {}) }),
       signal: AbortSignal.timeout(10000),
     })
     if (!response.ok) {
@@ -421,8 +421,11 @@ export async function sendBackInStockEmail(to: string, product: { name: string; 
   return sendEmail(to, `Back in stock: ${product.name}`, html, text)
 }
 
-export async function sendAbandonedCheckoutEmail(abandonedCheckoutId: string) {
-  if (!(await settingEnabled('email.abandonedCheckout'))) return { sent: false, skipped: true }
+// Sent by staff from the admin (needs Settings > Notifications > "Abandoned checkout recovery")
+// or automatically by lib/cart-reminders.ts (needs its own switch, checked there). Both carry a
+// link to stop these emails.
+export async function sendAbandonedCheckoutEmail(abandonedCheckoutId: string, options: { automatic?: boolean; unsubscribeUrl?: string; oneClickUnsubscribeUrl?: string } = {}) {
+  if (!options.automatic && !(await settingEnabled('email.abandonedCheckout'))) return { sent: false, skipped: true }
   const checkout = await db.abandonedCheckout.findUnique({ where: { id: abandonedCheckoutId } })
   if (!checkout || !checkout.email) return { sent: false, skipped: true }
 
@@ -444,7 +447,10 @@ export async function sendAbandonedCheckoutEmail(abandonedCheckoutId: string) {
     <table role="presentation" width="100%" style="border-collapse:collapse">${rows}</table>
     ${checkout.subtotal ? `<table role="presentation" width="100%" style="border-collapse:collapse;border-top:1px solid #eee;margin-top:8px"><tr><td style="padding-top:12px;font-size:15px;font-weight:800">Subtotal</td><td style="padding-top:12px;text-align:right;font-size:15px;font-weight:800">${money(checkout.subtotal, checkout.currency)}</td></tr></table>` : ''}
     ${url ? `<p style="margin:24px 0 0"><a href="${escapeHtml(url)}" style="display:inline-block;background:${brand.color};color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:700">Complete your order</a></p>` : ''}
+    ${options.unsubscribeUrl ? `<p style="margin:24px 0 0;font-size:12px;color:#6b7280">Don't want cart reminders? <a href="${escapeHtml(options.unsubscribeUrl)}" style="color:#6b7280">Stop these emails</a>.</p>` : ''}
   `, brand)
-  const text = `You left items in your cart.${url ? ` Complete your order: ${url}` : ''}`
-  return sendEmail(checkout.email, 'You left something in your cart', html, text)
+  const text = `You left items in your cart.${url ? ` Complete your order: ${url}` : ''}${options.unsubscribeUrl ? `\n\nStop cart reminder emails: ${options.unsubscribeUrl}` : ''}`
+  // List-Unsubscribe: Gmail and others show their own "Unsubscribe" button, which posts to it.
+  const headers = options.oneClickUnsubscribeUrl ? { 'List-Unsubscribe': `<${options.oneClickUnsubscribeUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } : undefined
+  return sendEmail(checkout.email, 'You left something in your cart', html, text, headers ? { headers } : undefined)
 }

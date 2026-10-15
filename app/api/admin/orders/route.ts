@@ -13,6 +13,7 @@ import { sendFulfillmentEmail, issueAndNotifyGiftCardsForOrder } from '@/lib/ema
 import { checkLowStockAlerts } from '@/lib/push'
 import { OrderStatus, PaymentStatus, Prisma } from '@prisma/client'
 import { runInBackground } from '@/lib/background'
+import { whatsappOutcomeNote } from '@/lib/whatsapp-confirm'
 
 const ORDER_UPDATE_CONFLICT_MESSAGE = 'This order was just modified — please retry.'
 
@@ -67,6 +68,19 @@ export async function PATCH(req: Request) {
       const note = await db.orderNote.create({ data: { orderId: order.id, userId: actor.id, body: noteBody }, include: { user: true } })
       await audit(actor.id, 'order.note_added', 'Order', order.id, { noteId: note.id })
       return json({ note }, { status: 201 })
+    }
+
+    // What the customer said on WhatsApp: a staff note plus a timeline entry. It never changes the
+    // order's status -- staff confirm or cancel the order themselves (lib/whatsapp-confirm.ts).
+    if (typeof body.whatsappOutcome === 'string') {
+      const text = whatsappOutcomeNote(body.whatsappOutcome, typeof body.detail === 'string' ? body.detail : '')
+      if (!text) return json({ error: 'Unknown WhatsApp answer' }, { status: 400 })
+      const order = await db.order.findUnique({ where: { id: orderId }, select: { id: true, status: true } })
+      if (!order) return json({ error: 'Order not found' }, { status: 404 })
+      const note = await db.orderNote.create({ data: { orderId: order.id, userId: actor.id, body: text }, include: { user: true } })
+      const event = await db.orderEvent.create({ data: { orderId: order.id, status: order.status, message: `WhatsApp: ${text} (recorded by ${actor.name || 'staff'})` } })
+      await audit(actor.id, 'order.whatsapp_outcome', 'Order', order.id, { outcome: body.whatsappOutcome })
+      return json({ note, event }, { status: 201 })
     }
 
     const requestedStatus = typeof body.status === 'string' && body.status ? body.status as OrderStatus : undefined

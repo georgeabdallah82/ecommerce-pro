@@ -6,6 +6,7 @@ import { money } from '@/lib/config'
 import styles from './admin-analytics.module.css'
 import ui from './admin-ui.module.css'
 import { LineChart, Sparkline } from './analytics-charts'
+import ProfitReport from './profit-report'
 
 type Analytics = {
   periodDays: number
@@ -79,7 +80,8 @@ async function api(path: string) {
 }
 
 export default function AnalyticsAdmin() {
-  const [tab, setTab] = useState<'overview' | 'discounts'>('overview')
+  const [tab, setTab] = useState<'overview' | 'discounts' | 'profit'>('overview')
+  const [profitReloadKey, setProfitReloadKey] = useState(0)
   const [presetId, setPresetId] = useState('30')
   const [customStart, setCustomStart] = useState('')
   const [customEnd, setCustomEnd] = useState('')
@@ -191,7 +193,7 @@ export default function AnalyticsAdmin() {
           <select className={styles.compareSelect} value={compareMode} onChange={e => setCompareMode(e.target.value)}>
             {COMPARE_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
           </select>
-          <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={tab === 'overview' ? load : () => setDiscountsReloadKey(k => k + 1)} disabled={loading || discountsLoading}>
+          <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={tab === 'overview' ? load : tab === 'profit' ? () => setProfitReloadKey(k => k + 1) : () => setDiscountsReloadKey(k => k + 1)} disabled={loading || discountsLoading}>
             <RefreshCw size={15} /> Refresh
           </button>
         </div>
@@ -200,7 +202,10 @@ export default function AnalyticsAdmin() {
       <div className={styles.tabs}>
         <button className={`${styles.tab} ${tab === 'overview' ? styles.tabActive : ''}`} onClick={() => setTab('overview')}>Overview</button>
         <button className={`${styles.tab} ${tab === 'discounts' ? styles.tabActive : ''}`} onClick={() => setTab('discounts')}>Discounts</button>
+        <button className={`${styles.tab} ${tab === 'profit' ? styles.tabActive : ''}`} onClick={() => setTab('profit')}>Profit</button>
       </div>
+
+      {tab === 'profit' && <ProfitReport query={rangeParams().toString()} reloadKey={profitReloadKey} />}
 
       {tab === 'overview' && (error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>)}
 
@@ -217,7 +222,7 @@ export default function AnalyticsAdmin() {
             <Metric icon={<ShoppingBag size={18} />} label="Orders" value={data.kpis.orders} change={data.kpis.ordersChange} compareLabel={compareLabel} sparkline={data.series.map(x => x.orders)} />
             <Metric icon={<BarChart3 size={18} />} label="Average order" value={money0(data.kpis.averageOrderValue)} change={data.kpis.averageOrderValueChange} compareLabel={compareLabel} />
             <Metric icon={<Package size={18} />} label="Items sold" value={data.kpis.itemsSold} change={data.kpis.itemsSoldChange} compareLabel={compareLabel} sparkline={data.series.map(x => x.items)} />
-            <Metric icon={<DollarSign size={18} />} label="Gross profit" value={money0(data.kpis.grossProfit)} change={data.kpis.grossProfitChange} compareLabel={compareLabel} />
+            <Metric icon={<DollarSign size={18} />} label={data.kpis.salesWithoutCost > 0 ? `Gross profit (${money0(data.kpis.salesWithoutCost)} of sales have no cost entered)` : 'Gross profit'} value={money0(data.kpis.grossProfit)} change={data.kpis.grossProfitChange} compareLabel={compareLabel} />
             <Metric icon={<Percent size={18} />} label="Gross margin" value={`${data.kpis.marginPercent}%`} change={data.kpis.marginPercentChange} compareLabel={compareLabel} />
             <Metric icon={<Package size={18} />} label="Inventory value" value={money0(data.kpis.inventoryValue)} />
             <Metric icon={<Users size={18} />} label="New customers" value={data.kpis.newCustomers} change={data.kpis.newCustomersChange} compareLabel={compareLabel} sparkline={data.series.map(x => x.newCustomers)} />
