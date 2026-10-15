@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { keyOf, useCart } from './cart-provider'
 import { CategoryTabs, DeliveryBar, MarketMenu } from './market-chrome'
+import { LanguageSwitch, useI18n } from './lang-provider'
 import CartSuggestions from './cart-suggestions'
 import { useShopper } from './use-shopper'
 import { money as formatMoney } from '@/lib/config'
@@ -23,6 +24,7 @@ const ANNOUNCEMENT_ICONS: Record<string, typeof Sparkles> = { spark: Sparkles, t
 // different places (header-disabled early return, and above/below the
 // header in the normal return).
 function AnnouncementBar({ theme, announcementSection, closed, onDismiss }: { theme: any; announcementSection: any; closed: boolean; onDismiss: () => void }) {
+  const { t } = useI18n()
   const s = announcementSection?.settings || {}
   const g = theme.announcement || {}
   const height = Number(s.height ?? g.height ?? 40)
@@ -35,7 +37,7 @@ function AnnouncementBar({ theme, announcementSection, closed, onDismiss }: { th
   const blocks = Array.isArray(announcementSection?.blocks) ? announcementSection.blocks : []
   const messages = blocks.length
     ? blocks.map((b: any) => ({ text: b.settings?.text || '', link: b.settings?.link || '' }))
-    : [{ text: s.text || g.text || 'Free shipping on orders over $50', link: s.link || g.link || '' }]
+    : [{ text: s.text || g.text || t('Free shipping on orders over $50'), link: s.link || g.link || '' }]
   const [index, setIndex] = useState(0)
   useEffect(() => {
     if (!autoplay || messages.length < 2) return
@@ -50,8 +52,8 @@ function AnnouncementBar({ theme, announcementSection, closed, onDismiss }: { th
       <div className="focalAnnouncementGlobalInner" style={{ '--focal-announcement-height': `${height}px`, textTransform: uppercase ? 'uppercase' : 'none' } as React.CSSProperties}>
         {showIcon && <span className="focalAnnouncementIcon"><Icon size={13}/></span>}
         <span>{current.text}</span>
-        {current.link && <Link href={current.link}>Learn more</Link>}
-        {dismissible && <button className="focalAnnouncementDismiss" aria-label="Dismiss" onClick={onDismiss}><X size={13}/></button>}
+        {current.link && <Link href={current.link}>{t('Learn more')}</Link>}
+        {dismissible && <button className="focalAnnouncementDismiss" aria-label={t('Dismiss')} onClick={onDismiss}><X size={13}/></button>}
       </div>
     </div>
   )
@@ -287,12 +289,13 @@ function DeptContent({ item, close }: { item: TreeItem; close: () => void }) {
 
 function DesktopNode({ item, openId, setOpenId }: { item: TreeItem; openId: string | null; setOpenId: (id: string | null) => void }) {
   const open = openId === item.id
+  const { t } = useI18n()
   if (!hasChildren(item)) return <Link className="focalDropdownLink" href={item.url || '#'}>{item.label}</Link>
   return (
     <div className="focalNavItem" onMouseEnter={() => setOpenId(item.id)}>
       <div className="focalNavLink">
         <Link href={item.url || '#'}>{item.label}</Link>
-        <button className="focalNavChevron" aria-label={`Open ${item.label} submenu`} onClick={(e) => { e.preventDefault(); setOpenId(open ? null : item.id) }}><ChevronDown size={13} /></button>
+        <button className="focalNavChevron" aria-label={t('Open {name} submenu', { name: item.label })} onClick={(e) => { e.preventDefault(); setOpenId(open ? null : item.id) }}><ChevronDown size={13} /></button>
       </div>
       {open && <div className="focalDropdown zaraDropdown" onMouseLeave={() => setOpenId(null)}><DeptContent item={item} close={() => setOpenId(null)} /></div>}
     </div>
@@ -301,6 +304,7 @@ function DesktopNode({ item, openId, setOpenId }: { item: TreeItem; openId: stri
 
 export default function StoreNavFixed({ theme, navigation }: { theme: any; navigation: NavItem[] }) {
   const pathname = usePathname() || '/'
+  const { t, count: plural } = useI18n()
   const templateKey = templateForPath(pathname)
   // Storefront pages send only headerTemplates (header + announcement per template); the theme
   // editor preview still passes full editorTemplates.
@@ -424,7 +428,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
 
     <header className={`focalNav${market ? ` mkHeader${lightHeader ? ' mkHeaderLight' : ''}` : transparent ? ' focalNavTransparent' : ''}`} style={market ? { position: headerSettings.sticky === false ? 'relative' : 'sticky', top: 0, ...(theme.header?.background ? { '--mk-header-bg': theme.header.background } : {}) } as React.CSSProperties : { background: transparent ? 'transparent' : theme.colors.surface, borderColor: theme.colors.border, position: headerSettings.sticky ? 'sticky' : 'relative', top: 0 }}>
       <div className="focalNavInner focalContainer">
-        <button className="focalNavMobile" aria-label="Menu" onClick={() => setMenu(true)}><Menu size={19}/></button>
+        <button className="focalNavMobile" aria-label={t('Menu')} onClick={() => setMenu(true)}><Menu size={19}/></button>
         <Link href="/" className="focalLogo" style={{ fontFamily: theme.typography.heading }}>{logoSrc ? <img src={logoSrc} alt={theme.brandName} className={logoWhite ? 'mkLogoWhite' : undefined} style={{ maxWidth: headerSettings.logoWidth || 160 }} /> : <span>{theme.brandName}</span>}</Link>
         {headerSettings.showSearch !== false && (
           <form className="aliNavSearchWrap" action="/shop" method="GET" onSubmit={() => setDesktopSearchOpen(false)}>
@@ -435,30 +439,30 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
                 onChange={e => setSearchQuery(e.target.value)}
                 onFocus={openDesktopSearch}
                 onBlur={closeDesktopSearchDeferred}
-                placeholder={market ? (headerSettings.searchPlaceholder || 'Search products…') : 'Search products, collections, or materials...'}
-                aria-label="Search store"
+                placeholder={market ? (headerSettings.searchPlaceholder || t('Search products…')) : t('Search products, collections, or materials...')}
+                aria-label={t('Search store')}
               />
-              <button type="submit" className="aliNavSearchSubmit">{market ? null : <Search size={15}/>} Search</button>
+              <button type="submit" className="aliNavSearchSubmit">{market ? null : <Search size={15}/>} {t('Search')}</button>
             </div>
             {desktopSearchOpen && (
               <div className="aliNavSearchDropdown" onMouseDown={e => e.preventDefault()}>
-                {searchLoading && <div style={{ padding: '18px 8px', textAlign: 'center', fontSize: 13, color: 'var(--focal-muted)' }}>Searching catalog…</div>}
+                {searchLoading && <div style={{ padding: '18px 8px', textAlign: 'center', fontSize: 13, color: 'var(--focal-muted)' }}>{t('Searching catalog…')}</div>}
                 {!searchLoading && searchQuery.trim() && searchResults.length === 0 && (
-                  <div style={{ padding: '18px 8px', textAlign: 'center', fontSize: 13, color: 'var(--focal-muted)' }}>No products found for &ldquo;{searchQuery}&rdquo;.</div>
+                  <div style={{ padding: '18px 8px', textAlign: 'center', fontSize: 13, color: 'var(--focal-muted)' }}>{t('No products found for "{query}".', { query: searchQuery })}</div>
                 )}
                 {!searchLoading && searchResults.map(p => (
                   <Link key={p.id} href={`/product/${p.slug}`} className="focalSearchItem" onClick={() => setDesktopSearchOpen(false)}>
                     <img src={p.images?.[0]?.url || '/placeholder-product.svg'} alt={p.name} />
                     <div className="focalSearchItemInfo">
                       <strong>{p.name}</strong>
-                      <small>{p.vendor || 'In stock'}</small>
+                      <small>{p.vendor || t('In stock')}</small>
                     </div>
                     <div className="focalSearchItemPrice">{money(p.basePrice || 0)}</div>
                   </Link>
                 ))}
                 {!searchQuery.trim() && (
                   <div style={{ padding: '18px 8px', textAlign: 'center', fontSize: 13, color: 'var(--focal-muted)' }}>
-                    Type a product name or keyword above to find items instantly.
+                    {t('Type a product name or keyword above to find items instantly.')}
                   </div>
                 )}
               </div>
@@ -466,15 +470,16 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
           </form>
         )}
         <div className="focalNavActions">
-          {headerSettings.showSearch !== false && <button className="focalNavIcon aliNavSearchIconMobile" onClick={() => { setSearch(true); setSearchQuery('') }} aria-label="Search"><Search size={18}/></button>}
-          {headerSettings.showAccount !== false && <Link className={`focalNavIcon${shopper ? ' navSignedIn' : ''}`} href="/account" aria-label={shopper ? `My account (${shopper.name})` : 'Account'} title={shopper ? shopper.name : undefined}>{shopper ? <span className="navAvatar" aria-hidden="true">{shopper.initial}</span> : <UserRound size={18}/>}{market && <span className="mkNavLabel">{shopper ? `Hi, ${shopper.firstName}` : 'Account'}</span>}</Link>}
-          {headerSettings.showWishlist && <Link className="focalNavIcon" href="/wishlist" aria-label="Wishlist"><Heart size={18}/>{market && <span className="mkNavLabel">Wishlist</span>}</Link>}
-          {headerSettings.showCart !== false && <button className="focalNavIcon" onClick={openCart} aria-label={`Cart with ${count} items`}><ShoppingBag size={18}/>{market && <span className="mkNavLabel">Cart</span>}{(count > 0 || market) && <span className="focalCartCount">{count > 99 ? '99+' : count}</span>}</button>}
+          {headerSettings.showSearch !== false && <button className="focalNavIcon aliNavSearchIconMobile" onClick={() => { setSearch(true); setSearchQuery('') }} aria-label={t('Search')}><Search size={18}/></button>}
+          {market && <LanguageSwitch className="mkNavLang" />}
+          {headerSettings.showAccount !== false && <Link className={`focalNavIcon${shopper ? ' navSignedIn' : ''}`} href="/account" aria-label={shopper ? t('My account ({name})', { name: shopper.name }) : t('Account')} title={shopper ? shopper.name : undefined}>{shopper ? <span className="navAvatar" aria-hidden="true">{shopper.initial}</span> : <UserRound size={18}/>}{market && <span className="mkNavLabel">{shopper ? t('Hi, {name}', { name: shopper.firstName }) : t('Account')}</span>}</Link>}
+          {headerSettings.showWishlist && <Link className="focalNavIcon" href="/wishlist" aria-label={t('Wishlist')}><Heart size={18}/>{market && <span className="mkNavLabel">{t('Wishlist')}</span>}</Link>}
+          {headerSettings.showCart !== false && <button className="focalNavIcon" onClick={openCart} aria-label={t('Cart with {count}', { count: plural(count, 'item') })}><ShoppingBag size={18}/>{market && <span className="mkNavLabel">{t('Cart')}</span>}{(count > 0 || market) && <span className="focalCartCount">{count > 99 ? '99+' : count}</span>}</button>}
         </div>
       </div>
       {!market && <div className="focalNavSecondary focalContainer">
         <div className="focalNavSecondaryInner">
-          <nav className="focalNavLinks" aria-label="Main navigation">
+          <nav className="focalNavLinks" aria-label={t('Main navigation')}>
             {tree.map(item => <DesktopNode key={item.id} item={item} openId={openId} setOpenId={setOpenId} />)}
           </nav>
         </div>
@@ -493,14 +498,14 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
             autoFocus
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search products, collections, or materials..."
-            aria-label="Search store"
+            placeholder={t('Search products, collections, or materials...')}
+            aria-label={t('Search store')}
           />
-          {searchQuery && <button className="focalCartDeleteBtn" onClick={() => setSearchQuery('')} aria-label="Clear"><X size={15}/></button>}
-          <button className="focalNavIcon" onClick={() => setSearch(false)} aria-label="Close search"><X size={16}/></button>
+          {searchQuery && <button className="focalCartDeleteBtn" onClick={() => setSearchQuery('')} aria-label={t('Clear')}><X size={15}/></button>}
+          <button className="focalNavIcon" onClick={() => setSearch(false)} aria-label={t('Close search')}><X size={16}/></button>
         </div>
         <div className="focalSearchChips">
-          <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--focal-muted)', alignSelf: 'center', marginRight: 4 }}>POPULAR:</span>
+          <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--focal-muted)', alignSelf: 'center', marginInlineEnd: 4 }}>{t('POPULAR:')}</span>
           {['All Products', 'Essentials', 'Home', 'Care', 'Starter Kit'].map(tag => (
             <button
               key={tag}
@@ -508,28 +513,28 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
               className="focalSearchChip"
               onClick={() => setSearchQuery(tag === 'All Products' ? '' : tag)}
             >
-              {tag}
+              {t(tag)}
             </button>
           ))}
         </div>
         <div className="focalSearchResults">
-          {searchLoading && <div style={{ padding: '24px 0', textAlign: 'center', fontSize: 13, color: 'var(--focal-muted)' }}>Searching catalog…</div>}
+          {searchLoading && <div style={{ padding: '24px 0', textAlign: 'center', fontSize: 13, color: 'var(--focal-muted)' }}>{t('Searching catalog…')}</div>}
           {!searchLoading && searchQuery.trim() && searchResults.length === 0 && (
-            <div style={{ padding: '24px 0', textAlign: 'center', fontSize: 13, color: 'var(--focal-muted)' }}>No products found for &ldquo;{searchQuery}&rdquo;. Try another term or explore our catalog.</div>
+            <div style={{ padding: '24px 0', textAlign: 'center', fontSize: 13, color: 'var(--focal-muted)' }}>{t('No products found for "{query}". Try another term or explore our catalog.', { query: searchQuery })}</div>
           )}
           {!searchLoading && searchResults.map(p => (
             <Link key={p.id} href={`/product/${p.slug}`} className="focalSearchItem" onClick={() => setSearch(false)}>
               <img src={p.images?.[0]?.url || '/placeholder-product.svg'} alt={p.name} />
               <div className="focalSearchItemInfo">
                 <strong>{p.name}</strong>
-                <small>{p.vendor || 'In stock'}</small>
+                <small>{p.vendor || t('In stock')}</small>
               </div>
               <div className="focalSearchItemPrice">{money(p.basePrice || 0)}</div>
             </Link>
           ))}
           {!searchQuery.trim() && (
             <div style={{ padding: '24px 0', textAlign: 'center', fontSize: 13, color: 'var(--focal-muted)' }}>
-              Type a product name or keyword above to find items instantly.
+              {t('Type a product name or keyword above to find items instantly.')}
             </div>
           )}
         </div>
@@ -538,13 +543,13 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
 
     {/* ANIMATED SLIDE-OUT CART DRAWER */}
     {isCartOpen && <div className="focalCartOverlay" onClick={closeCart}>
-      <aside className="focalCartDrawer" onClick={e => e.stopPropagation()} role="dialog" aria-label="Shopping Cart">
+      <aside className="focalCartDrawer" onClick={e => e.stopPropagation()} role="dialog" aria-label={t('Shopping Cart')}>
         <div className="focalCartHead">
           <div className="focalCartHeadTitle">
-            <strong>Shopping Cart</strong>
-            <span className="focalCartHeadBadge">{count} {count === 1 ? 'item' : 'items'}</span>
+            <strong>{t('Shopping Cart')}</strong>
+            <span className="focalCartHeadBadge">{plural(count, 'item')}</span>
           </div>
-          <button className="focalNavIcon" onClick={closeCart} aria-label="Close cart"><X size={17}/></button>
+          <button className="focalNavIcon" onClick={closeCart} aria-label={t('Close cart')}><X size={17}/></button>
         </div>
 
         {/* FREE SHIPPING PROGRESS BAR -- hidden until the real threshold has loaded, so it
@@ -553,9 +558,9 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
           <div className={`focalShippingMeter ${freeShippingUnlocked ? 'isUnlocked' : ''}`}>
             <div className={`focalShippingText ${freeShippingUnlocked ? 'isUnlocked' : ''}`}>
               {freeShippingUnlocked ? (
-                <><Sparkles size={15} color="#16a34a"/> <span>You&apos;ve unlocked <strong>FREE standard shipping!</strong></span></>
+                <><Sparkles size={15} color="#16a34a"/> <span>{t("You've unlocked")} <strong>{t('FREE standard shipping!')}</strong></span></>
               ) : (
-                <><Truck size={15} color="var(--focal-primary)"/> <span>Add <strong>{money(remainingForFreeShipping)}</strong> more to unlock <strong>FREE Shipping</strong></span></>
+                <><Truck size={15} color="var(--focal-primary)"/> <span>{t('Add {amount} more to unlock free shipping', { amount: money(remainingForFreeShipping) })}</span></>
               )}
             </div>
             <div className="focalShippingTrack" role="progressbar" aria-valuenow={shippingProgress} aria-valuemin={0} aria-valuemax={100}>
@@ -572,14 +577,14 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
                 <div className="focalCartInfo">
                   <strong>{item.name}</strong>
                   <small>{money(item.price)}</small>
-                  {item.bundleId && <small className="cartBundleNote">Bundle price applied at checkout</small>}
+                  {item.bundleId && <small className="cartBundleNote">{t('Bundle price applied at checkout')}</small>}
                   <div className="focalCartQty">
-                    <button onClick={() => updateQty(keyOf(item), item.quantity - 1)} aria-label="Decrease quantity"><Minus size={11}/></button>
+                    <button onClick={() => updateQty(keyOf(item), item.quantity - 1)} aria-label={t('Decrease quantity')}><Minus size={11}/></button>
                     <span>{item.quantity}</span>
-                    <button onClick={() => updateQty(keyOf(item), item.quantity + 1)} aria-label="Increase quantity"><Plus size={11}/></button>
+                    <button onClick={() => updateQty(keyOf(item), item.quantity + 1)} aria-label={t('Increase quantity')}><Plus size={11}/></button>
                   </div>
                 </div>
-                <button className="focalCartDeleteBtn" onClick={() => removeItem(keyOf(item))} aria-label={`Remove ${item.name}`}><Trash2 size={15}/></button>
+                <button className="focalCartDeleteBtn" onClick={() => removeItem(keyOf(item))} aria-label={t('Remove {name}', { name: item.name })}><Trash2 size={15}/></button>
               </div>
             ))}
             <CartSuggestions currency={theme.currency || 'USD'} onNavigate={closeCart} />
@@ -587,29 +592,29 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
 
           <div className="focalCartFoot">
             <div className="focalCartTotal">
-              <span>Subtotal</span>
+              <span>{t('Subtotal')}</span>
               <strong>{money(subtotal)}</strong>
             </div>
-            <div className="focalCartTaxNote">Taxes and shipping calculated at checkout</div>
+            <div className="focalCartTaxNote">{t('Taxes and shipping calculated at checkout')}</div>
             <div className="focalCartActions">
               <Link className="focalButton primary wide" href="/checkout" onClick={closeCart} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                Proceed to Checkout <ArrowRight size={16}/>
+                {t('Proceed to Checkout')} <ArrowRight size={16} className="flipRtl"/>
               </Link>
               <Link className="focalButton secondary wide" href="/cart" onClick={closeCart}>
-                View Full Cart
+                {t('View Full Cart')}
               </Link>
             </div>
           </div>
         </> : (
           <div className="focalCartEmpty">
             <div className="focalCartEmptyIcon"><ShoppingBag size={28}/></div>
-            <strong style={{ fontSize: 16, color: 'var(--focal-ink)' }}>Your cart is empty</strong>
+            <strong style={{ fontSize: 16, color: 'var(--focal-ink)' }}>{t('Your cart is empty')}</strong>
             <p style={{ fontSize: 13, maxWidth: '28ch', margin: '0 auto', lineHeight: 1.5 }}>
-              Discover our signature essentials and premium collections.
+              {t('Discover our signature essentials and premium collections.')}
             </p>
             <div style={{ marginTop: 12 }}>
               <Link className="focalButton primary" href="/shop" onClick={closeCart}>
-                Explore All Products <ArrowRight size={15}/>
+                {t('Explore All Products')} <ArrowRight size={15} className="flipRtl"/>
               </Link>
             </div>
           </div>
@@ -621,11 +626,12 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
     {menu && !market && <div className="focalMobileOverlay">
       <div className="zaraMenuPanel">
         <div className="zaraMenuTop">
-          <button className="focalNavIcon" onClick={() => setMenu(false)} aria-label="Close menu"><X size={19}/></button>
+          <button className="focalNavIcon" onClick={() => setMenu(false)} aria-label={t('Close menu')}><X size={19}/></button>
           <div className="zaraMenuTopActions">
-            {headerSettings.showSearch !== false && <button className="focalNavIcon" onClick={() => { setMenu(false); setSearch(true); setSearchQuery('') }} aria-label="Search"><Search size={17}/></button>}
-            {headerSettings.showAccount !== false && <Link className="focalNavIcon" href="/account" onClick={() => setMenu(false)} aria-label="Account"><UserRound size={17}/></Link>}
-            {headerSettings.showCart !== false && <button className="focalNavIcon" onClick={() => { setMenu(false); openCart() }} aria-label={`Cart with ${count} items`}><ShoppingBag size={17}/>{count > 0 && <span className="focalCartCount">{count > 99 ? '99+' : count}</span>}</button>}
+            <LanguageSwitch className="mkNavLang" />
+            {headerSettings.showSearch !== false && <button className="focalNavIcon" onClick={() => { setMenu(false); setSearch(true); setSearchQuery('') }} aria-label={t('Search')}><Search size={17}/></button>}
+            {headerSettings.showAccount !== false && <Link className="focalNavIcon" href="/account" onClick={() => setMenu(false)} aria-label={t('Account')}><UserRound size={17}/></Link>}
+            {headerSettings.showCart !== false && <button className="focalNavIcon" onClick={() => { setMenu(false); openCart() }} aria-label={t('Cart with {count}', { count: plural(count, 'item') })}><ShoppingBag size={17}/>{count > 0 && <span className="focalCartCount">{count > 99 ? '99+' : count}</span>}</button>}
           </div>
         </div>
         <div className="zaraDeptTabs">

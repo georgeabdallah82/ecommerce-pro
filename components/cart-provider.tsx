@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { trackAddToCart } from '@/lib/tracking-events'
 import { config } from '@/lib/config'
 import { applyCartValidation, type CartLineCheck } from '@/lib/cart-sync'
+import { useI18n } from '@/components/lang-provider'
 
 export type CartItem = {
   productId: string
@@ -105,6 +106,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Check the saved cart against current prices and stock: on load, and whenever lines are
   // added or removed (not on quantity changes, which checkout re-checks anyway).
   const [notices, setNotices] = useState<string[]>([])
+  const { t } = useI18n()
   const lineSignature = items.map(keyOf).sort().join('|')
   useEffect(() => {
     if (!ready || !lineSignature) return
@@ -115,7 +117,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       .then((data: { items?: CartLineCheck[] } | null) => {
         if (!active || !Array.isArray(data?.items)) return
         setItems(prev => {
-          const { items: next, changes } = applyCartValidation(prev, data.items!)
+          const { items: next, changes } = applyCartValidation(prev, data.items!, t)
           if (changes.length) setNotices(current => [...new Set([...current, ...changes])])
           return changes.length ? next : prev
         })

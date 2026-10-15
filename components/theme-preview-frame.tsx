@@ -13,6 +13,8 @@ import AliExpressShop from '@/components/aliexpress-shop'
 import AliExpressCart from '@/components/aliexpress-cart'
 import { Footer } from '@/components/footer'
 import { fontCssStack } from '@/lib/font-options'
+import { localize } from '@/lib/i18n'
+import { LangProvider } from '@/components/lang-provider'
 
 // The page this iframe is mounted at renders through the same root
 // app/layout.tsx as the live site, so its <html> already carries --store-*
@@ -57,6 +59,8 @@ type PreviewState = {
   products: AnyMap[]
   collections: AnyMap[]
   selectedId: string
+  // The language being edited in the theme editor (components/theme-studio.tsx).
+  lang: 'en' | 'ar'
 } | null
 
 // The theme editor (components/theme-studio.tsx) renders this page inside
@@ -88,6 +92,7 @@ export default function ThemePreviewFrame() {
         products: Array.isArray(data.products) ? data.products : [],
         collections: Array.isArray(data.collections) ? data.collections : [],
         selectedId: data.selectedId || '',
+        lang: data.lang === 'ar' ? 'ar' : 'en',
       })
     }
     window.addEventListener('message', onMessage)
@@ -147,53 +152,63 @@ export default function ThemePreviewFrame() {
     nodes[visibleIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }, [state?.selectedId, state?.sections])
 
+  // Arabic preview: the page reads right to left, like the live Arabic store.
+  useEffect(() => {
+    const root = document.documentElement
+    const lang = state?.lang || 'en'
+    root.lang = lang
+    root.dir = lang === 'ar' ? 'rtl' : 'ltr'
+  }, [state?.lang])
+
   if (!state) return <div style={{ minHeight: '100vh' }} />
+  const view = state.lang === 'ar' ? { ...state, theme: localize(state.theme, 'ar'), sections: localize(state.sections, 'ar'), navigation: localize(state.navigation, 'ar') } : state
 
   // StoreNavFixed reads the header's live settings off theme.editorTemplates.Pages
   // rather than theme.editorTemplates['Home page'], so the nav bar reflects
   // in-progress header edits made on any template page, not just Home.
-  const navTheme = { ...state.theme, editorTemplates: { ...(state.theme.editorTemplates || {}), Pages: state.sections } }
+  const navTheme = { ...view.theme, editorTemplates: { ...(view.theme.editorTemplates || {}), Pages: view.sections } }
 
   const select = (sectionId: string) => window.parent.postMessage({ source: 'theme-preview', type: 'select', sectionId }, window.location.origin)
-  const sample = pageSample(state)
+  const sample = pageSample(view)
 
   return (
+    <LangProvider lang={view.lang}>
     <CartProvider>
-      <StorefrontPreviewContext.Provider value={{ selectedId: state.selectedId, onSelect: select }}>
-      <StoreNavFixed theme={navTheme} navigation={state.navigation} />
-      <WhatsAppFloat theme={{ ...state.theme, __preview: true }} />
-      {state.page === 'BlogPages' ? (
+      <StorefrontPreviewContext.Provider value={{ selectedId: view.selectedId, onSelect: select }}>
+      <StoreNavFixed theme={navTheme} navigation={view.navigation} />
+      <WhatsAppFloat theme={{ ...view.theme, __preview: true }} />
+      {view.page === 'BlogPages' ? (
         // The blog list with the merchant's published posts, then the editable zone -- the
         // same markup and order as the live /blog route.
         <div className="focalStorefront">
-          <BlogIndexView posts={state.blogPosts.map(post => ({ ...post, tags: Array.isArray(post.tags) ? post.tags : [] })) as any} />
-          {state.sections.length > 0 && <StorefrontSections theme={state.theme} sections={state.sections} products={state.products} collections={state.collections} />}
+          <BlogIndexView posts={view.blogPosts.map(post => ({ ...post, tags: Array.isArray(post.tags) ? post.tags : [] })) as any} />
+          {view.sections.length > 0 && <StorefrontSections theme={view.theme} sections={view.sections} products={view.products} collections={view.collections} />}
         </div>
-      ) : state.page.startsWith('Page:') ? (
-        <CustomPageView theme={state.theme} page={state.pageInfo || { title: 'Page', bodyHtml: '' }} sections={state.sections} products={state.products} collections={state.collections} />
-      ) : state.page === 'Home page' ? (
+      ) : view.page.startsWith('Page:') ? (
+        <CustomPageView theme={view.theme} page={view.pageInfo || { title: 'Page', bodyHtml: '' }} sections={view.sections} products={view.products} collections={view.collections} />
+      ) : view.page === 'Home page' ? (
         // The live homepage wraps its sections in .aliHome (it sets the page background).
         <div className="aliHome">
           <StorefrontSections
-            theme={state.theme}
-            sections={state.sections}
-            products={state.products}
-            collections={state.collections}
+            theme={view.theme}
+            sections={view.sections}
+            products={view.products}
+            collections={view.collections}
             preview
-            selectedId={state.selectedId}
+            selectedId={view.selectedId}
             onSelect={select}
           />
         </div>
       ) : (
         // These are the same components the live site renders -- the page's own
         // content is real and untouched, with only the merchant-editable zone
-        // (state.sections) driven by the editor. Sample products/collections
+        // (view.sections) driven by the editor. Sample products/collections
         // stand in for whatever a visitor's own URL would load.
         <>
           {sample ? (
-            state.page === 'Product' ? (
+            view.page === 'Product' ? (
               <AliExpressProduct
-                theme={state.theme}
+                theme={view.theme}
                 product={sample.product}
                 related={sample.related}
                 variantAvailability={[]}
@@ -201,13 +216,13 @@ export default function ThemePreviewFrame() {
                 trackInventory={false}
                 continueSellingWhenOutOfStock
                 reviewEligibility="guest"
-                sections={state.sections}
-                collections={state.collections}
+                sections={view.sections}
+                collections={view.collections}
               />
-            ) : state.page === 'Collection' ? (
-              <AliExpressShop theme={state.theme} products={state.products} collections={state.collections} query={{}} sections={state.sections} />
+            ) : view.page === 'Collection' ? (
+              <AliExpressShop theme={view.theme} products={view.products} collections={view.collections} query={{}} sections={view.sections} />
             ) : (
-              <AliExpressCart theme={state.theme} recommended={sample.related} sections={state.sections} zoneCollections={state.collections} />
+              <AliExpressCart theme={view.theme} recommended={sample.related} sections={view.sections} zoneCollections={view.collections} />
             )
           ) : (
             <div style={{ padding: '96px 24px', textAlign: 'center', color: 'var(--store-muted, #6b7280)' }}>
@@ -216,9 +231,10 @@ export default function ThemePreviewFrame() {
           )}
         </>
       )}
-      <Footer theme={state.theme} />
+      <Footer theme={view.theme} />
       </StorefrontPreviewContext.Provider>
     </CartProvider>
+    </LangProvider>
   )
 }
 

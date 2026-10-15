@@ -4,18 +4,20 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { ProductCard, QuickView } from '@/components/storefront-sections'
 import { useWishlist } from '@/components/use-wishlist'
+import { useI18n } from '@/components/lang-provider'
 
 type AnyMap = Record<string, any>
 
 export default function WishlistGrid({ theme, products }: { theme: AnyMap; products: AnyMap[] }) {
+  const { t } = useI18n()
   const { wishlist, toggleWish } = useWishlist()
   const [quickProduct, setQuickProduct] = useState<AnyMap | null>(null)
 
   return (
     <main className="focalStorefront aliShopPage">
       <div className="aliContainer">
-        <span className="focalEyebrow">SAVED</span>
-        <h1 style={{ margin: '8px 0 20px' }}>Wishlist</h1>
+        <span className="focalEyebrow">{t('SAVED')}</span>
+        <h1 style={{ margin: '8px 0 20px' }}>{t('Wishlist')}</h1>
 
         {products.length ? (
           <div className="aliDenseGrid">
@@ -24,7 +26,7 @@ export default function WishlistGrid({ theme, products }: { theme: AnyMap; produ
             ))}
           </div>
         ) : (
-          <p className="aliEmptyState">You haven't saved anything yet. <Link href="/shop">Browse the shop</Link></p>
+          <p className="aliEmptyState">{t("You haven't saved anything yet.")} <Link href="/shop">{t('Browse the shop')}</Link></p>
         )}
       </div>
 

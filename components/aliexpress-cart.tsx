@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useI18n } from '@/components/lang-provider'
 import { Minus, Plus, ShieldCheck, ShoppingBag, Tag, Trash2, Truck } from 'lucide-react'
 import { useCart, keyOf } from '@/components/cart-provider'
 import { money } from '@/lib/config'
@@ -13,6 +14,7 @@ import { NumInput } from './num-input'
 type AnyMap = Record<string, any>
 
 export default function AliExpressCart({ theme, recommended, sections = [], zoneCollections = [] }: { theme?: AnyMap; recommended?: AnyMap[]; sections?: AnyMap[]; zoneCollections?: AnyMap[] }) {
+  const { t, count: plural } = useI18n()
   const { items, updateQty, removeItem, isSelected, toggleSelected, selectAll, deselectAll, selectedItems, selectedCount, selectedSubtotal } = useCart()
   const { wishlist, toggleWish } = useWishlist()
   const [quickProduct, setQuickProduct] = useState<AnyMap | null>(null)
@@ -61,13 +63,13 @@ export default function AliExpressCart({ theme, recommended, sections = [], zone
         <div className="focalContainer">
           <section className="emptyCartUX" role="status">
             <div className="icon"><ShoppingBag size={26} /></div>
-            <h1>Nothing here yet.</h1>
-            <p>Browse the store, compare products, and add your favourites to start a fast checkout.</p>
-            <Link className="focalButton primary" href="/shop">Continue shopping</Link>
+            <h1>{t('Nothing here yet.')}</h1>
+            <p>{t('Browse the store, compare products, and add your favourites to start a fast checkout.')}</p>
+            <Link className="focalButton primary" href="/shop">{t('Continue shopping')}</Link>
           </section>
           {showRecommendations && theme && recommended && recommended.length > 0 && (
             <div className="aliSection">
-              <div className="aliSectionHead"><h2>You might also like</h2></div>
+              <div className="aliSectionHead"><h2>{t('You might also like')}</h2></div>
               <div className="aliDenseGrid">
                 {recommended.map(p => (
                   <ProductCard key={p.id} p={p} theme={theme} onQuickView={setQuickProduct} wishlist={wishlist} toggleWish={toggleWish} />
@@ -87,11 +89,11 @@ export default function AliExpressCart({ theme, recommended, sections = [], zone
       <div className="focalContainer">
         <header className="cartHeader">
           <div>
-            <span className="focalEyebrow">YOUR BAG</span>
-            <h1>Ready to checkout?</h1>
-            <p>{itemCount} {itemCount === 1 ? 'item' : 'items'} saved for checkout.</p>
+            <span className="focalEyebrow">{t('YOUR BAG')}</span>
+            <h1>{t('Ready to checkout?')}</h1>
+            <p>{t('{count} saved for checkout.', { count: plural(itemCount, 'item') })}</p>
           </div>
-          <span className="pill" aria-label={`${itemCount} items in cart`}>{itemCount} items</span>
+          <span className="pill" aria-label={t('{count} in cart', { count: plural(itemCount, 'item') })}>{plural(itemCount, 'item')}</span>
         </header>
         <CartNotices />
 
@@ -99,19 +101,19 @@ export default function AliExpressCart({ theme, recommended, sections = [], zone
           <div className="aliShippingBanner">
             <Truck size={16} />
             {remainingForFreeShipping > 0
-              ? <span>Add <strong>{money(remainingForFreeShipping)}</strong> more to your selected items for free shipping</span>
-              : <span>Your selected items qualify for <strong>free shipping</strong></span>}
+              ? <span>{t('Add {amount} more to your selected items for free shipping', { amount: money(remainingForFreeShipping) })}</span>
+              : <span>{t('Your selected items qualify for free shipping')}</span>}
           </div>
         )}
 
         <div className="cartLayout">
-          <section className="cartItemsCard" aria-label="Shopping cart items">
+          <section className="cartItemsCard" aria-label={t('Shopping cart items')}>
             <div className="cartItemsHead">
               <label className="aliCartCheck">
-                <input type="checkbox" checked={allSelected} onChange={() => allSelected ? deselectAll() : selectAll()} aria-label="Select all items" />
-                <span>Select all</span>
+                <input type="checkbox" checked={allSelected} onChange={() => allSelected ? deselectAll() : selectAll()} aria-label={t('Select all items')} />
+                <span>{t('Select all')}</span>
               </label>
-              <span>{selectedCount} selected</span>
+              <span>{t('{n} selected', { n: selectedCount })}</span>
             </div>
 
             {items.map(item => {
@@ -121,23 +123,23 @@ export default function AliExpressCart({ theme, recommended, sections = [], zone
               return (
                 <article className={`cartRowUX aliCartRow ${checked ? '' : 'unselected'}`} key={key}>
                   <div className="aliCartRowMedia">
-                    <input type="checkbox" className="aliCartRowCheck" checked={checked} onChange={() => toggleSelected(key)} aria-label={`Select ${item.name} for checkout`} />
+                    <input type="checkbox" className="aliCartRowCheck" checked={checked} onChange={() => toggleSelected(key)} aria-label={t('Select {name} for checkout', { name: item.name })} />
                     <img className="cartImageUX" src={item.image || '/placeholder-product.svg'} alt="" loading="lazy" decoding="async" width={116} height={116} />
                   </div>
                   <div className="cartInfoUX">
                     <div className="cartProductName" title={item.name}>{item.name}</div>
-                    {item.sku && <span className="sku">SKU {item.sku}</span>}
-                    {item.bundleId && <span className="cartBundleNote">Part of a bundle: the bundle price is applied at checkout</span>}
-                    <span className="unitPrice">{money(item.price)} each</span>
+                    {item.sku && <span className="sku">{t('SKU {sku}', { sku: item.sku })}</span>}
+                    {item.bundleId && <span className="cartBundleNote">{t('Part of a bundle: the bundle price is applied at checkout')}</span>}
+                    <span className="unitPrice">{t('{price} each', { price: money(item.price) })}</span>
                     <span className="cartLineTotal">{money(lineTotal)}</span>
                   </div>
                   <div className="cartControlsUX">
-                    <div className="qtyUX" aria-label={`Quantity for ${item.name}`}>
-                      <button type="button" onClick={() => updateQty(key, Math.max(1, item.quantity - 1))} aria-label={`Decrease ${item.name} quantity`}><Minus size={15} /></button>
-                      <NumInput aria-label={`Quantity for ${item.name}`} value={item.quantity} onValue={n => updateQty(key, Math.max(1, Math.min(99, Number(n) || 1)))} />
-                      <button type="button" onClick={() => updateQty(key, Math.min(99, item.quantity + 1))} aria-label={`Increase ${item.name} quantity`}><Plus size={15} /></button>
+                    <div className="qtyUX" aria-label={t('Quantity for {name}', { name: item.name })}>
+                      <button type="button" onClick={() => updateQty(key, Math.max(1, item.quantity - 1))} aria-label={t('Decrease quantity')}><Minus size={15} /></button>
+                      <NumInput aria-label={t('Quantity for {name}', { name: item.name })} value={item.quantity} onValue={n => updateQty(key, Math.max(1, Math.min(99, Number(n) || 1)))} />
+                      <button type="button" onClick={() => updateQty(key, Math.min(99, item.quantity + 1))} aria-label={t('Increase quantity')}><Plus size={15} /></button>
                     </div>
-                    <button className="removeUX" type="button" onClick={() => removeItem(key)} aria-label={`Remove ${item.name} from cart`}><Trash2 size={14} /> <span>Remove</span></button>
+                    <button className="removeUX" type="button" onClick={() => removeItem(key)} aria-label={t('Remove {name}', { name: item.name })}><Trash2 size={14} /> <span>{t('Remove')}</span></button>
                   </div>
                 </article>
               )
@@ -145,33 +147,33 @@ export default function AliExpressCart({ theme, recommended, sections = [], zone
 
             <div className="aliCouponRow">
               <Tag size={16} />
-              <input type="text" placeholder="Enter coupon code" value={couponCode} onChange={e => setCouponCode(e.target.value)} maxLength={40} />
-              <button type="button" className="focalButton secondary" onClick={saveCoupon}>{couponSaved ? 'Saved' : 'Apply at checkout'}</button>
+              <input type="text" placeholder={t('Enter coupon code')} value={couponCode} onChange={e => setCouponCode(e.target.value)} maxLength={40} />
+              <button type="button" className="focalButton secondary" onClick={saveCoupon}>{couponSaved ? t('Saved') : t('Apply at checkout')}</button>
             </div>
           </section>
 
-          <aside className="summaryUX" aria-label="Order summary">
-            <h2>Order summary</h2>
-            <div className="summaryLineUX"><span>Selected items ({selectedCount})</span><strong>{money(selectedSubtotal)}</strong></div>
-            <div className="summaryLineUX"><span>Shipping</span><span>Calculated at checkout</span></div>
-            <div className="summaryTotalUX"><span>Estimated total</span><strong>{money(selectedSubtotal)}</strong></div>
-            <p className="summaryNoteUX">Taxes, shipping, discounts and final total are calculated securely at checkout.</p>
+          <aside className="summaryUX" aria-label={t('Order summary')}>
+            <h2>{t('Order summary')}</h2>
+            <div className="summaryLineUX"><span>{t('Selected items ({count})', { count: selectedCount })}</span><strong>{money(selectedSubtotal)}</strong></div>
+            <div className="summaryLineUX"><span>{t('Shipping')}</span><span>{t('Calculated at checkout')}</span></div>
+            <div className="summaryTotalUX"><span>{t('Estimated total')}</span><strong>{money(selectedSubtotal)}</strong></div>
+            <p className="summaryNoteUX">{t('Taxes, shipping, discounts and final total are calculated securely at checkout.')}</p>
             <div className="cartActionUX">
               <Link className={`focalButton primary wide aliCartCheckoutLink ${selectedItems.length ? '' : 'disabled'}`} href="/checkout" aria-disabled={!selectedItems.length} onClick={e => { if (!selectedItems.length) e.preventDefault() }}>
-                Checkout ({selectedCount})
+                {t('Checkout ({count})', { count: selectedCount })}
               </Link>
-              <Link className="focalButton secondary wide" href="/shop">Continue shopping</Link>
+              <Link className="focalButton secondary wide" href="/shop">{t('Continue shopping')}</Link>
             </div>
             <div className="cartTrustUX">
-              <div><ShieldCheck size={16} /><span><strong>Secure checkout</strong><small>Your order is protected.</small></span></div>
-              <div><Truck size={16} /><span><strong>Fast delivery</strong><small>Shipping shown at checkout.</small></span></div>
+              <div><ShieldCheck size={16} /><span><strong>{t('Secure checkout')}</strong><small>{t('Your order is protected.')}</small></span></div>
+              <div><Truck size={16} /><span><strong>{t('Fast delivery')}</strong><small>{t('Shipping shown at checkout.')}</small></span></div>
             </div>
           </aside>
         </div>
 
         {showRecommendations && theme && recommended && recommended.length > 0 && (
           <div className="aliSection">
-            <div className="aliSectionHead"><h2>You might also like</h2></div>
+            <div className="aliSectionHead"><h2>{t('You might also like')}</h2></div>
             <div className="aliDenseGrid">
               {recommended.map(p => (
                 <ProductCard key={p.id} p={p} theme={theme} onQuickView={setQuickProduct} wishlist={wishlist} toggleWish={toggleWish} />
@@ -189,11 +191,11 @@ export default function AliExpressCart({ theme, recommended, sections = [], zone
       {showStickyCheckout && (
         <div className="aliCartStickyBar">
           <div className="aliCartStickyInfo">
-            <span>{selectedCount} item{selectedCount === 1 ? '' : 's'}</span>
+            <span>{plural(selectedCount, 'item')}</span>
             <strong>{money(selectedSubtotal)}</strong>
           </div>
           <Link className={`focalButton primary ${selectedItems.length ? '' : 'disabled'}`} href="/checkout" aria-disabled={!selectedItems.length} onClick={e => { if (!selectedItems.length) e.preventDefault() }}>
-            Checkout
+            {t('Checkout')}
           </Link>
         </div>
       )}

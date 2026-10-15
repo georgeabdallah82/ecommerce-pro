@@ -6,6 +6,7 @@ import { Bell, X } from 'lucide-react'
 import { PUSH_PROMPT_DELAY_MS, PUSH_PROMPT_DISMISSED_KEY, PUSH_PROMPT_SUBSCRIBED_KEY, shouldOfferPush } from '@/lib/push-opt-in'
 import { pushSupported, subscribeThisBrowser } from '@/lib/push-client'
 import styles from './push-opt-in.module.css'
+import { useI18n } from '@/components/lang-provider'
 
 function readStored(key: string): number | null {
   try { const value = Number(window.localStorage.getItem(key)); return Number.isFinite(value) && value > 0 ? value : null } catch { return null }
@@ -19,6 +20,7 @@ function store(key: string, value: string | null) {
 // 30 days. Yes asks the browser, then saves the device for Push campaigns (/api/push/subscribe).
 // Browsers without web push (iPhone Safari outside a home-screen app) never see it.
 export default function PushOptIn({ vapidPublicKey, enabled, storeName }: { vapidPublicKey?: string; enabled: boolean; storeName: string }) {
+  const { t } = useI18n()
   const pathname = usePathname() || '/'
   const [open, setOpen] = useState(false)
   const [state, setState] = useState<'ask' | 'busy' | 'done' | 'blocked'>('ask')
@@ -73,25 +75,25 @@ export default function PushOptIn({ vapidPublicKey, enabled, storeName }: { vapi
   if (!open) return null
   return (
     <div className={styles.box} role="dialog" aria-labelledby="push-opt-in-title" aria-describedby="push-opt-in-text">
-      <button type="button" className={styles.close} onClick={notNow} aria-label="Not now"><X size={16} /></button>
+      <button type="button" className={styles.close} onClick={notNow} aria-label={t('Not now')}><X size={16} /></button>
       <span className={styles.icon} aria-hidden="true"><Bell size={20} /></span>
       {state === 'done' ? (
         <div className={styles.body}>
-          <strong id="push-opt-in-title">You&apos;re in!</strong>
-          <p id="push-opt-in-text">We&apos;ll let you know about offers and your orders.</p>
+          <strong id="push-opt-in-title">{t("You're in!")}</strong>
+          <p id="push-opt-in-text">{t("We'll let you know about offers and your orders.")}</p>
         </div>
       ) : state === 'blocked' ? (
         <div className={styles.body}>
-          <strong id="push-opt-in-title">No problem</strong>
-          <p id="push-opt-in-text">You can turn notifications on any time from your account.</p>
+          <strong id="push-opt-in-title">{t('No problem')}</strong>
+          <p id="push-opt-in-text">{t('You can turn notifications on any time from your account.')}</p>
         </div>
       ) : (
         <div className={styles.body}>
-          <strong id="push-opt-in-title">Get deals before anyone else</strong>
-          <p id="push-opt-in-text">Turn on notifications for offers and order updates from {storeName}. You can turn them off any time.</p>
+          <strong id="push-opt-in-title">{t('Get deals before anyone else')}</strong>
+          <p id="push-opt-in-text">{t('Turn on notifications for offers and order updates from {name}. You can turn them off any time.', { name: storeName })}</p>
           <div className={styles.actions}>
-            <button type="button" className={styles.secondary} onClick={notNow} disabled={state === 'busy'}>Not now</button>
-            <button type="button" className={styles.primary} onClick={yes} disabled={state === 'busy'}>{state === 'busy' ? 'One moment…' : 'Yes, notify me'}</button>
+            <button type="button" className={styles.secondary} onClick={notNow} disabled={state === 'busy'}>{t('Not now')}</button>
+            <button type="button" className={styles.primary} onClick={yes} disabled={state === 'busy'}>{state === 'busy' ? t('One moment…') : t('Yes, notify me')}</button>
           </div>
         </div>
       )}

@@ -7,6 +7,7 @@ import { BlogIndexView } from '@/components/blog-views'
 import StorefrontSections from '@/components/storefront-sections'
 import { BLOG_TEMPLATE_KEY, zoneSections } from '@/lib/custom-pages'
 import { loadZoneData } from '@/lib/zone-data'
+import { translator } from '@/lib/i18n'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -20,7 +21,7 @@ function readTags(tagsJson: string | null) {
 
 export default async function BlogIndex({ searchParams }: { searchParams: Promise<{ tag?: string }> }) {
   const { tag } = await searchParams
-  const { theme } = await getThemeState()
+  const { theme, lang } = await getThemeState()
   const rawPosts = await db.blogPost.findMany({
     where: { status: 'PUBLISHED' },
     orderBy: { publishedAt: 'desc' },
@@ -34,7 +35,7 @@ export default async function BlogIndex({ searchParams }: { searchParams: Promis
 
   return <>
     <div className="focalStorefront">
-      <BlogIndexView posts={posts} tag={tag} />
+      <BlogIndexView posts={posts} tag={tag} t={translator(lang)} lang={lang} />
       {sections.length > 0 && <StorefrontSections theme={theme} sections={sections} products={products} collections={collections} />}
     </div>
     <Footer theme={theme} />

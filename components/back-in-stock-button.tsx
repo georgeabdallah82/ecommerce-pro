@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useI18n } from '@/components/lang-provider'
 import { Bell, Check, Mail } from 'lucide-react'
 import { pushSupported, subscribeThisBrowser } from '@/lib/push-client'
 import styles from './back-in-stock-button.module.css'
@@ -25,6 +26,7 @@ export default function BackInStockButton({ productId, variantId, optionName, va
   const [doneBy, setDoneBy] = useState<'push' | 'email'>('push')
   const [email, setEmail] = useState(customerEmail || '')
   const [error, setError] = useState('')
+  const { t } = useI18n()
 
   // Already asked for this option on this browser: say so instead of asking again.
   useEffect(() => {
@@ -39,7 +41,7 @@ export default function BackInStockButton({ productId, variantId, optionName, va
   async function save(body: Record<string, unknown>, by: 'push' | 'email') {
     const response = await fetch('/api/back-in-stock', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ productId, variantId, ...body }) })
     const data = await response.json().catch(() => ({}))
-    if (!response.ok) throw new Error(data.error || 'Something went wrong. Please try again.')
+    if (!response.ok) throw new Error(t(data.error || 'Something went wrong. Please try again.'))
     // It came back while the page was open: show the up-to-date page with Add to Cart.
     if (data.inStock) { router.refresh(); return }
     try { window.localStorage.setItem(doneKey(productId, variantId), by) } catch {}
@@ -58,7 +60,7 @@ export default function BackInStockButton({ productId, variantId, optionName, va
       if (!subscription) { setState('email'); return }
       await save({ subscription: subscription.toJSON() }, 'push')
     } catch (e) {
-      setError(e instanceof Error && e.message ? e.message : 'Something went wrong. Please try again.')
+      setError(e instanceof Error && e.message ? e.message : t('Something went wrong. Please try again.'))
       setState('email')
     } finally {
       setBusy(false)
@@ -72,20 +74,21 @@ export default function BackInStockButton({ productId, variantId, optionName, va
     try {
       await save({ email }, 'email')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong. Please try again.')
+      setError(e instanceof Error ? e.message : t('Something went wrong. Please try again.'))
     } finally {
       setBusy(false)
     }
   }
 
-  const what = optionName ? `${optionName} is` : 'it’s'
   if (state === 'done') {
     return (
       <div className={`${styles.box} ${styles.done}`} role="status">
         <span className={styles.icon} aria-hidden="true"><Check size={18} /></span>
         <div>
-          <strong>We&apos;ll let you know</strong>
-          <p>{doneBy === 'push' ? `You'll get a notification on this phone when ${what} back in stock.` : `We'll email you when ${what} back in stock.`}</p>
+          <strong>{t("We'll let you know")}</strong>
+          <p>{doneBy === 'push'
+            ? (optionName ? t("You'll get a notification on this phone when {name} is back in stock.", { name: optionName }) : t("You'll get a notification on this phone when it's back in stock."))
+            : (optionName ? t("We'll email you when {name} is back in stock.", { name: optionName }) : t("We'll email you when it's back in stock."))}</p>
         </div>
       </div>
     )
@@ -96,10 +99,10 @@ export default function BackInStockButton({ productId, variantId, optionName, va
       <form className={styles.box} onSubmit={submitEmail}>
         <span className={styles.icon} aria-hidden="true"><Mail size={18} /></span>
         <div className={styles.body}>
-          <strong>Get an email when {what} back</strong>
+          <strong>{optionName ? t('Get an email when {name} is back', { name: optionName }) : t("Get an email when it's back")}</strong>
           <div className={styles.emailRow}>
-            <input type="email" required autoComplete="email" inputMode="email" placeholder="Your email" value={email} onChange={e => setEmail(e.target.value)} aria-label="Your email" />
-            <button type="submit" className={styles.primary} disabled={busy}>{busy ? 'Saving…' : 'Notify me'}</button>
+            <input type="email" required autoComplete="email" inputMode="email" placeholder={t('Your email')} value={email} onChange={e => setEmail(e.target.value)} aria-label={t('Your email')} />
+            <button type="submit" className={styles.primary} disabled={busy}>{busy ? t('Saving…') : t('Notify me')}</button>
           </div>
           {error && <p className={styles.error} role="alert">{error}</p>}
         </div>
@@ -110,9 +113,9 @@ export default function BackInStockButton({ productId, variantId, optionName, va
   return (
     <div className={styles.ask}>
       <button type="button" className={styles.primary} onClick={notifyMe} disabled={busy}>
-        <Bell size={17} /> {busy ? 'One moment…' : 'Notify me when it’s back'}
+        <Bell size={17} /> {busy ? t('One moment…') : t("Notify me when it's back")}
       </button>
-      <p className={styles.note}>Sold out for now. We&apos;ll tell you as soon as {what} back in stock.</p>
+      <p className={styles.note}>{optionName ? t("Sold out for now. We'll tell you as soon as {name} is back in stock.", { name: optionName }) : t("Sold out for now. We'll tell you as soon as it's back in stock.")}</p>
       {error && <p className={styles.error} role="alert">{error}</p>}
     </div>
   )

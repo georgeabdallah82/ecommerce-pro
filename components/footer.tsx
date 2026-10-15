@@ -5,6 +5,8 @@ import NewsletterForm from '@/components/newsletter-form'
 import { MessageCircle } from 'lucide-react'
 import { config } from '@/lib/config'
 import { whatsappUrl } from '@/lib/links'
+import { markT } from '@/lib/i18n'
+import { useI18n } from '@/components/lang-provider'
 
 // lucide-react 1.x dropped brand/logo icons entirely (kept to generic UI
 // glyphs only), so these platform icons are small hand-drawn SVGs rather
@@ -25,12 +27,13 @@ const SOCIAL_LINKS: Array<{ key: string; label: string; Icon: () => React.JSX.El
 ]
 
 const FOOTER_LINK_GROUPS = [
-  { title: 'Shop', links: [{ href: '/shop', label: 'All products' }, { href: '/collections', label: 'Collections' }, { href: '/wishlist', label: 'Wishlist' }] },
-  { title: 'Account', links: [{ href: '/account', label: 'My account' }, { href: '/orders/lookup', label: 'Track your order' }, { href: '/cart', label: 'Cart' }] },
-  { title: 'Legal', links: [{ href: '/privacy-policy', label: 'Privacy Policy' }, { href: '/terms-of-service', label: 'Terms of Service' }, { href: '/refund-policy', label: 'Refund Policy' }] },
+  { title: markT('Shop'), links: [{ href: '/shop', label: markT('All products') }, { href: '/collections', label: markT('Collections') }, { href: '/wishlist', label: markT('Wishlist') }] },
+  { title: markT('Account'), links: [{ href: '/account', label: markT('My account') }, { href: '/orders/lookup', label: markT('Track your order') }, { href: '/cart', label: markT('Cart') }] },
+  { title: markT('Legal'), links: [{ href: '/privacy-policy', label: markT('Privacy Policy') }, { href: '/terms-of-service', label: markT('Terms of Service') }, { href: '/refund-policy', label: markT('Refund Policy') }] },
 ]
 
 export function Footer({ theme }: { theme?: any }) {
+  const { t } = useI18n()
   const social: Record<string, string> = theme?.social || {}
   const activeSocial = SOCIAL_LINKS.filter(item => social[item.key])
   const brand = theme?.brandName || config.brand
@@ -63,7 +66,7 @@ export function Footer({ theme }: { theme?: any }) {
         if (settings.contact?.phone) setWhatsapp(settings.contact.phone)
         if (settings.store?.country) setCountry(settings.store.country)
         const p = settings.payment || {}
-        setPayments([p.card && 'Card', p.cod && 'Cash on delivery', p.bank && 'Bank transfer'].filter(Boolean) as string[])
+        setPayments([p.card && markT('Card'), p.cod && markT('Cash on delivery'), p.bank && markT('Bank transfer')].filter(Boolean) as string[])
       })
       .catch(() => {})
     return () => { active = false }
@@ -108,9 +111,9 @@ export function Footer({ theme }: { theme?: any }) {
     {whatsappLink && (
       <div className="focalFooterHelp">
         <div className="focalContainer focalFooterHelpInner">
-          <span>Need help with your order?</span>
+          <span>{t('Need help with your order?')}</span>
           <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="focalFooterWhatsapp">
-            <MessageCircle size={15} /> WhatsApp us
+            <MessageCircle size={15} /> {t('WhatsApp us')}
           </a>
         </div>
       </div>
@@ -136,23 +139,23 @@ export function Footer({ theme }: { theme?: any }) {
         </div>
         {visibleGroups.map(group => (
           <div key={group.title}>
-            <strong>{group.title}</strong>
-            {group.links.map(link => <p key={link.href}><Link href={link.href}>{link.label}</Link></p>)}
+            <strong>{t(group.title)}</strong>
+            {group.links.map(link => <p key={link.href}><Link href={link.href}>{t(link.label)}</Link></p>)}
           </div>
         ))}
         {showNewsletter && (
           <div className="focalFooterNewsletter">
-            <strong>Stay in the loop</strong>
-            <p className="muted">Get launches, drops and offers in your inbox.</p>
+            <strong>{t('Stay in the loop')}</strong>
+            <p className="muted">{t('Get launches, drops and offers in your inbox.')}</p>
             <NewsletterForm className="focalFooterNewsletterForm" source="footer" />
           </div>
         )}
       </div>
       <div className="focalContainer focalFooterBottom">
-        <span className="muted">{new Date().getFullYear()} &middot; {brand} &middot; All rights reserved</span>
+        <span className="muted">{new Date().getFullYear()} &middot; {brand} &middot; {t('All rights reserved')}</span>
         {payments.length > 0 && (
           <div className="focalFooterPayments">
-            {payments.map(label => <span key={label}>{label}</span>)}
+            {payments.map(label => <span key={label}>{t(label)}</span>)}
           </div>
         )}
       </div>

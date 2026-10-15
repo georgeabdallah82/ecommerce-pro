@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { parseDeliveryAreas } from '@/lib/storefront-market'
 import { GripVertical, ImagePlus, Plus, Trash2, X } from 'lucide-react'
 import MediaPicker from './media-picker'
+import { isTranslatableKey } from '@/lib/i18n'
 
 type Section = { id: string; type: string; enabled?: boolean; settings?: Record<string, any>; blocks?: any[] }
 
@@ -14,6 +15,8 @@ type Props = {
   loadError?: string
   onUpdate: (patch: Record<string, any>) => void
   onUpdateBlocks: (blocks: any[]) => void
+  // 'ar': text boxes edit the Arabic version of each text (saved as "<name>Ar"), see lib/i18n.ts.
+  lang?: 'en' | 'ar'
 }
 
 export function Field({ label, value, onChange, placeholder }: { label: string; value: any; onChange: (value: string) => void; placeholder?: string }) {
@@ -138,14 +141,22 @@ export function SectionPanel({ title, children }: { title: string; children: Rea
   return <details className="themeInspectorPanel" open><summary>{title}</summary><div>{children}</div></details>
 }
 
-function BlocksEditor({ section, type, onUpdateBlocks }: { section: Section; type: string; onUpdateBlocks: (blocks: any[]) => void }) {
+function BlocksEditor({ section, type, onUpdateBlocks, lang = 'en' }: { section: Section; type: string; onUpdateBlocks: (blocks: any[]) => void; lang?: 'en' | 'ar' }) {
   const blocks = Array.isArray(section.blocks) ? section.blocks : []
   const labels: Record<string,string> = { promo: 'Promo card', quote: 'Testimonial', column: 'Column', item: 'Item', question: 'FAQ item', slide: 'Slide', logo: 'Logo', badge: 'Trust badge', trust_item: 'Trust item', stat: 'Stat', photo: 'Photo', message: 'Message', hero_slide: 'Slide', offer: 'Banner', price_band: 'Price range' }
   const label = labels[type] || 'Block'
   const add = () => onUpdateBlocks([...blocks, { id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`, type, settings: {} }])
   const update = (index: number, patch: Record<string,any>) => onUpdateBlocks(blocks.map((block,index2) => index===index2 ? {...block,settings:{...(block.settings||{}),...patch}} : block))
   const remove = (index: number) => onUpdateBlocks(blocks.filter((_,index2)=>index!==index2))
-  return <div className="themeBlockList">{blocks.map((block,index)=><div className="themeBlock" key={block.id || index}><div className="themeBlockHeader"><GripVertical size={14}/><strong>{labels[block.type] || label} {index+1}</strong><button type="button" className="themeBlockDelete" onClick={()=>remove(index)} aria-label={`Delete ${label}`}><Trash2 size={14}/></button></div><div className="themeBlockFields">{type==='promo'&&<><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><TextArea label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><ImageField label="Image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Link URL" value={block.settings?.url} onChange={value=>update(index,{url:value})}/></>}{type==='quote'&&<><TextArea label="Quote" value={block.settings?.quote} onChange={value=>update(index,{quote:value})}/><Field label="Author" value={block.settings?.author} onChange={value=>update(index,{author:value})}/><Field label="Role" value={block.settings?.role} onChange={value=>update(index,{role:value})}/><Select label="Rating" value={block.settings?.rating??5} options={['1','2','3','4','5']} onChange={value=>update(index,{rating:Number(value)})}/></>}{type==='column'&&<><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><TextArea label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><ImageField label="Icon / image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/></>}{type==='question'&&<><Field label="Question" value={block.settings?.question||block.settings?.heading} onChange={value=>update(index,{question:value,heading:value})}/><TextArea label="Answer" value={block.settings?.answer||block.settings?.text} onChange={value=>update(index,{answer:value,text:value})}/></>}{type==='slide'&&<><Field label="Eyebrow" value={block.settings?.eyebrow} onChange={value=>update(index,{eyebrow:value})}/><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><TextArea label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><ImageField label="Image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Button URL" value={block.settings?.buttonUrl} onChange={value=>update(index,{buttonUrl:value})}/></>}{type==='logo'&&<><ImageField label="Logo" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Text (shown if no logo image)" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><Field label="Alt text" value={block.settings?.alt} onChange={value=>update(index,{alt:value})}/><Field label="Link URL" value={block.settings?.url} onChange={value=>update(index,{url:value})}/></>}{type==='badge'&&<><Select label="Icon" value={block.settings?.icon||'shield'} options={[{value:'truck',label:'Shipping'},{value:'shield',label:'Secure'},{value:'return',label:'Returns'},{value:'lock',label:'Payment'},{value:'support',label:'Support'},{value:'award',label:'Quality'}]} onChange={value=>update(index,{icon:value})}/><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><Field label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/></>}{type==='trust_item'&&<><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><Field label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/></>}{type==='stat'&&<><Field label="Value" value={block.settings?.value} onChange={value=>update(index,{value:value})}/><Field label="Label" value={block.settings?.label} onChange={value=>update(index,{label:value})}/></>}{type==='photo'&&<><ImageField label="Image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/><Field label="Link URL" value={block.settings?.url} onChange={value=>update(index,{url:value})}/></>}{type==='hero_slide'&&<><ImageField label="Image" value={block.settings?.imageUrl} recommended={{w:1920,h:800,note:'wide photo; the text sits on the left'}} onChange={value=>update(index,{imageUrl:value})}/><ImageField label="Phone image (optional)" value={block.settings?.mobileImageUrl} recommended={{w:800,h:1000,note:'portrait; if empty the image above is cropped to fit'}} onChange={value=>update(index,{mobileImageUrl:value})}/><Field label="Image description (for screen readers)" value={block.settings?.imageAlt} onChange={value=>update(index,{imageAlt:value})}/><Field label="Tag (small yellow label)" value={block.settings?.tag} onChange={value=>update(index,{tag:value})}/><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><Field label="Highlighted words (yellow, after the heading)" value={block.settings?.highlight} onChange={value=>update(index,{highlight:value})}/><TextArea label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><div className="themeInspectorGrid"><Field label="Button label" value={block.settings?.buttonLabel} onChange={value=>update(index,{buttonLabel:value})}/><Field label="Button link" value={block.settings?.buttonUrl} placeholder="/shop" onChange={value=>update(index,{buttonUrl:value})}/><Field label="Second button label" value={block.settings?.secondaryLabel} onChange={value=>update(index,{secondaryLabel:value})}/><Field label="Second button link" value={block.settings?.secondaryUrl} onChange={value=>update(index,{secondaryUrl:value})}/></div><Field label="Corner badge (e.g. Valid until Sunday)" value={block.settings?.badge} onChange={value=>update(index,{badge:value})}/></>}{type==='offer'&&<><ImageField label="Image" value={block.settings?.imageUrl} recommended={{w:1200,h:460,note:'wide; text sits at the bottom'}} onChange={value=>update(index,{imageUrl:value})}/><Field label="Small label" value={block.settings?.kicker} onChange={value=>update(index,{kicker:value})}/><Field label="Heading" value={block.settings?.heading} onChange={value=>update(index,{heading:value})}/><div className="themeInspectorGrid"><Field label="Link text" value={block.settings?.linkLabel} onChange={value=>update(index,{linkLabel:value})}/><Field label="Link" value={block.settings?.url} placeholder="/shop" onChange={value=>update(index,{url:value})}/></div></>}{type==='price_band'&&<><Field label="Label" value={block.settings?.label} placeholder="Under $10" onChange={value=>update(index,{label:value})}/><div className="themeInspectorGrid"><Field label="From ($)" value={block.settings?.min} onChange={value=>update(index,{min:value})}/><Field label="Up to ($, empty = no limit)" value={block.settings?.max||''} onChange={value=>update(index,{max:value})}/></div></>}{type==='message'&&<><Field label="Text" value={block.settings?.text} onChange={value=>update(index,{text:value})}/><Field label="Link URL" value={block.settings?.link} onChange={value=>update(index,{link:value})}/></>}</div></div>)}<button type="button" className="themeAddBlock" onClick={add}><Plus size={14}/> Add {label}</button></div>
+  // A text box of a block: in Arabic editing, the Arabic version ("headingAr"), with the English as the hint.
+  const bf = (index: number, block: any, label: string, key: string, area = false, placeholder?: string) => {
+    const arabic = lang === 'ar' && isTranslatableKey(key)
+    const Box = area ? TextArea : Field
+    return arabic
+      ? <Box key={`${key}Ar`} label={`${label} (Arabic)`} placeholder={String(block.settings?.[key] || placeholder || '')} value={block.settings?.[`${key}Ar`]} onChange={value => update(index, { [`${key}Ar`]: value })} />
+      : <Box key={key} label={label} placeholder={placeholder} value={block.settings?.[key]} onChange={value => update(index, { [key]: value })} />
+  }
+  return <div className="themeBlockList">{blocks.map((block,index)=><div className="themeBlock" key={block.id || index}><div className="themeBlockHeader"><GripVertical size={14}/><strong>{labels[block.type] || label} {index+1}</strong><button type="button" className="themeBlockDelete" onClick={()=>remove(index)} aria-label={`Delete ${label}`}><Trash2 size={14}/></button></div><div className="themeBlockFields">{type==='promo'&&<>{bf(index,block,'Heading','heading',false)}{bf(index,block,'Text','text',true)}<ImageField label="Image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/>{bf(index,block,'Link URL','url',false)}</>}{type==='quote'&&<>{bf(index,block,'Quote','quote',true)}{bf(index,block,'Author','author',false)}{bf(index,block,'Role','role',false)}<Select label="Rating" value={block.settings?.rating??5} options={['1','2','3','4','5']} onChange={value=>update(index,{rating:Number(value)})}/></>}{type==='column'&&<>{bf(index,block,'Heading','heading',false)}{bf(index,block,'Text','text',true)}<ImageField label="Icon / image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/></>}{type==='question'&&<>{lang==='ar'?<Field label="Question (Arabic)" placeholder={block.settings?.question||block.settings?.heading||''} value={block.settings?.questionAr} onChange={value=>update(index,{questionAr:value,headingAr:value})}/>:<Field label="Question" value={block.settings?.question||block.settings?.heading} onChange={value=>update(index,{question:value,heading:value})}/>}{lang==='ar'?<TextArea label="Answer (Arabic)" placeholder={block.settings?.answer||block.settings?.text||''} value={block.settings?.answerAr} onChange={value=>update(index,{answerAr:value,textAr:value})}/>:<TextArea label="Answer" value={block.settings?.answer||block.settings?.text} onChange={value=>update(index,{answer:value,text:value})}/>}</>}{type==='slide'&&<>{bf(index,block,'Eyebrow','eyebrow',false)}{bf(index,block,'Heading','heading',false)}{bf(index,block,'Text','text',true)}<ImageField label="Image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/>{bf(index,block,'Button URL','buttonUrl',false)}</>}{type==='logo'&&<><ImageField label="Logo" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/>{bf(index,block,'Text (shown if no logo image)','text',false)}{bf(index,block,'Alt text','alt',false)}{bf(index,block,'Link URL','url',false)}</>}{type==='badge'&&<><Select label="Icon" value={block.settings?.icon||'shield'} options={[{value:'truck',label:'Shipping'},{value:'shield',label:'Secure'},{value:'return',label:'Returns'},{value:'lock',label:'Payment'},{value:'support',label:'Support'},{value:'award',label:'Quality'}]} onChange={value=>update(index,{icon:value})}/>{bf(index,block,'Heading','heading',false)}{bf(index,block,'Text','text',false)}</>}{type==='trust_item'&&<>{bf(index,block,'Heading','heading',false)}{bf(index,block,'Text','text',false)}</>}{type==='stat'&&<>{bf(index,block,'Value','value',false)}{bf(index,block,'Label','label',false)}</>}{type==='photo'&&<><ImageField label="Image" value={block.settings?.imageUrl} onChange={value=>update(index,{imageUrl:value})}/>{bf(index,block,'Link URL','url',false)}</>}{type==='hero_slide'&&<><ImageField label="Image" value={block.settings?.imageUrl} recommended={{w:1920,h:800,note:'wide photo; the text sits on the left'}} onChange={value=>update(index,{imageUrl:value})}/><ImageField label="Phone image (optional)" value={block.settings?.mobileImageUrl} recommended={{w:800,h:1000,note:'portrait; if empty the image above is cropped to fit'}} onChange={value=>update(index,{mobileImageUrl:value})}/>{bf(index,block,'Image description (for screen readers)','imageAlt',false)}{bf(index,block,'Tag (small yellow label)','tag',false)}{bf(index,block,'Heading','heading',false)}{bf(index,block,'Highlighted words (yellow, after the heading)','highlight',false)}{bf(index,block,'Text','text',true)}<div className="themeInspectorGrid">{bf(index,block,'Button label','buttonLabel',false)}{bf(index,block,'Button link','buttonUrl',false, '/shop')}{bf(index,block,'Second button label','secondaryLabel',false)}{bf(index,block,'Second button link','secondaryUrl',false)}</div>{bf(index,block,'Corner badge (e.g. Valid until Sunday)','badge',false)}</>}{type==='offer'&&<><ImageField label="Image" value={block.settings?.imageUrl} recommended={{w:1200,h:460,note:'wide; text sits at the bottom'}} onChange={value=>update(index,{imageUrl:value})}/>{bf(index,block,'Small label','kicker',false)}{bf(index,block,'Heading','heading',false)}<div className="themeInspectorGrid">{bf(index,block,'Link text','linkLabel',false)}{bf(index,block,'Link','url',false, '/shop')}</div></>}{type==='price_band'&&<>{bf(index,block,'Label','label',false, 'Under $10')}<div className="themeInspectorGrid">{bf(index,block,'From ($)','min',false)}<Field label="Up to ($, empty = no limit)" value={block.settings?.max||''} onChange={value=>update(index,{max:value})}/></div></>}{type==='message'&&<>{bf(index,block,'Text','text',false)}{bf(index,block,'Link URL','link',false)}</>}</div></div>)}<button type="button" className="themeAddBlock" onClick={add}><Plus size={14}/> Add {label}</button></div>
 }
 
 // ---- Declarative field schema ----
@@ -158,14 +169,14 @@ function BlocksEditor({ section, type, onUpdateBlocks }: { section: Section; typ
 // whose settings live on theme[group] instead of section.settings), instead
 // of maintaining a second, differently-styled field system for it.
 export type SettingsMap = Record<string, any>
-export type FieldCtx = { s: SettingsMap; products: any[]; collections: any[]; loadError?: string }
+export type FieldCtx = { s: SettingsMap; products: any[]; collections: any[]; loadError?: string; lang?: 'en' | 'ar' }
 export type OptionList = Array<{ value: string; label: string }> | string[]
 export type OptionsSource = OptionList | ((ctx: FieldCtx) => OptionList)
 
 export type FieldSchema =
-  | { kind: 'text'; label: string; placeholder?: string; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
+  | { kind: 'text'; label: string; placeholder?: string; name?: string; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
   | { kind: 'image'; label: string; recommended?: ImageRecommendation; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
-  | { kind: 'textarea'; label: string; placeholder?: string; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
+  | { kind: 'textarea'; label: string; placeholder?: string; name?: string; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
   | { kind: 'select'; label: string; options: OptionsSource; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
   | { kind: 'toggle'; label: string; get: (s: SettingsMap) => boolean; set: (value: boolean) => Record<string, any> }
   | { kind: 'range'; label: string; min: number; max: number; step?: number; unit?: string; get: (s: SettingsMap) => number; set: (value: number) => Record<string, any> }
@@ -177,11 +188,11 @@ export type FieldSchema =
 export type PanelSchema = { title: string; fields: Array<FieldSchema | FieldSchema[]> }
 
 export const text = (label: string, name: string, placeholder?: string): FieldSchema =>
-  ({ kind: 'text', label, placeholder, get: s => s[name], set: value => ({ [name]: value }) })
+  ({ kind: 'text', label, placeholder, name, get: s => s[name], set: value => ({ [name]: value }) })
 export const image = (label: string, name: string, recommended?: ImageRecommendation): FieldSchema =>
   ({ kind: 'image', label, recommended, get: s => s[name], set: value => ({ [name]: value }) })
 export const textarea = (label: string, name: string, placeholder?: string): FieldSchema =>
-  ({ kind: 'textarea', label, placeholder, get: s => s[name], set: value => ({ [name]: value }) })
+  ({ kind: 'textarea', label, placeholder, name, get: s => s[name], set: value => ({ [name]: value }) })
 export const select = (label: string, name: string, options: OptionsSource, fallback = ''): FieldSchema =>
   ({ kind: 'select', label, options, get: s => s[name] || fallback, set: value => ({ [name]: value }) })
 export const toggle = (label: string, name: string, defaultTrue: boolean): FieldSchema =>
@@ -638,6 +649,16 @@ export function ItemPicker({ label, hint, source, items, value, onChange, loadEr
 
 export function renderField(schema: FieldSchema, ctx: FieldCtx, set: (patch: Record<string, any>) => void): React.ReactNode {
   const { s } = ctx
+  // Arabic editing: each text box edits its Arabic version, the English shown as the hint.
+  // Links, numbers and settings stay shared by both languages.
+  if (ctx.lang === 'ar' && (schema.kind === 'text' || schema.kind === 'textarea') && schema.name && isTranslatableKey(schema.name)) {
+    const key = `${schema.name}Ar`
+    const Box = schema.kind === 'text' ? Field : TextArea
+    return <Box key={key} label={`${schema.label} (Arabic)`} placeholder={String(s[schema.name] || schema.placeholder || '')} value={s[key]} onChange={value => set({ [key]: value })} />
+  }
+  if (ctx.lang === 'ar' && schema.kind === 'deliveryAreas') {
+    return <TextArea key="areasAr" label={`${schema.label} (Arabic, one "Area | time" per line)`} placeholder={String(s.areas || '')} value={s.areasAr} onChange={value => set({ areasAr: value })} />
+  }
   switch (schema.kind) {
     case 'text':
       return <Field key={schema.label} label={schema.label} placeholder={schema.placeholder} value={schema.get(s)} onChange={value => set(schema.set(value))} />
@@ -672,7 +693,7 @@ export function renderPanel(panel: PanelSchema, ctx: FieldCtx, set: (patch: Reco
           return <div className="themeInspectorGrid" key={index}>{entry.map(field => renderField(field, ctx, set))}</div>
         }
         if (entry.kind === 'blocks') {
-          return section && onUpdateBlocks ? <BlocksEditor key={entry.label} section={section} type={entry.blockType} onUpdateBlocks={onUpdateBlocks} /> : null
+          return section && onUpdateBlocks ? <BlocksEditor key={entry.label} section={section} type={entry.blockType} onUpdateBlocks={onUpdateBlocks} lang={ctx.lang} /> : null
         }
         return renderField(entry, ctx, set)
       })}
@@ -680,9 +701,9 @@ export function renderPanel(panel: PanelSchema, ctx: FieldCtx, set: (patch: Reco
   )
 }
 
-export default function SectionInspector({ section, products, collections, loadError, onUpdate, onUpdateBlocks }: Props) {
+export default function SectionInspector({ section, products, collections, loadError, onUpdate, onUpdateBlocks, lang = 'en' }: Props) {
   const s = section.settings || {}
-  const ctx: FieldCtx = { s, products, collections, loadError }
+  const ctx: FieldCtx = { s, products, collections, loadError, lang }
   const set = (patch: Record<string, any>) => onUpdate(patch)
   const panels = (SECTION_PANELS[section.type] || (() => [commonLayoutPanel]))()
   return (

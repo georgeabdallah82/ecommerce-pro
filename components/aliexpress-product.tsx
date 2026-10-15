@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useI18n } from '@/components/lang-provider'
+import { dateLocale } from '@/lib/i18n'
 import { BadgeCheck, Check, ChevronDown, ChevronRight, Heart, MessageSquareText, Minus, Plus, Share2, ShoppingBag, Star } from 'lucide-react'
 import { useCart } from '@/components/cart-provider'
 import { useWishlist } from '@/components/use-wishlist'
@@ -27,13 +29,14 @@ function ReviewForm({ productId }: { productId: string }) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const { t } = useI18n()
 
   if (submitted) {
-    return <div className="aliReviewFormDone"><Check size={18} /> Thanks — your review was submitted and will appear once it's approved.</div>
+    return <div className="aliReviewFormDone"><Check size={18} /> {t("Thanks, your review was submitted and will appear once it's approved.")}</div>
   }
 
   const submit = async () => {
-    if (!rating) { setError('Pick a star rating first.'); return }
+    if (!rating) { setError(t('Pick a star rating first.')); return }
     setSubmitting(true)
     setError('')
     try {
@@ -43,33 +46,34 @@ function ReviewForm({ productId }: { productId: string }) {
         body: JSON.stringify({ productId, rating, title, body }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) { setError(data.error || 'Unable to submit review right now'); setSubmitting(false); return }
+      if (!res.ok) { setError(t(data.error || 'Unable to submit review right now')); setSubmitting(false); return }
       setSubmitted(true)
     } catch {
-      setError('Unable to submit review right now')
+      setError(t('Unable to submit review right now'))
       setSubmitting(false)
     }
   }
 
   return (
     <div className="aliReviewForm">
-      <span className="aliReviewFormLabel">Your rating</span>
+      <span className="aliReviewFormLabel">{t('Your rating')}</span>
       <div className="aliReviewStarPicker" onMouseLeave={() => setHoverRating(0)}>
         {[1, 2, 3, 4, 5].map(n => (
-          <button key={n} type="button" aria-label={`${n} star${n === 1 ? '' : 's'}`} onMouseEnter={() => setHoverRating(n)} onClick={() => setRating(n)}>
+          <button key={n} type="button" aria-label={t('{n} out of 5 stars', { n })} onMouseEnter={() => setHoverRating(n)} onClick={() => setRating(n)}>
             <Star size={22} fill="currentColor" opacity={n <= (hoverRating || rating) ? 1 : 0.22} />
           </button>
         ))}
       </div>
-      <input className="aliReviewFormInput" type="text" placeholder="Review title (optional)" maxLength={140} value={title} onChange={e => setTitle(e.target.value)} />
-      <textarea className="aliReviewFormInput" placeholder="Share details about your experience (optional)" maxLength={2000} rows={4} value={body} onChange={e => setBody(e.target.value)} />
+      <input className="aliReviewFormInput" type="text" placeholder={t('Review title (optional)')} maxLength={140} value={title} onChange={e => setTitle(e.target.value)} />
+      <textarea className="aliReviewFormInput" placeholder={t('Share details about your experience (optional)')} maxLength={2000} rows={4} value={body} onChange={e => setBody(e.target.value)} />
       {error && <p className="aliReviewFormError">{error}</p>}
-      <button type="button" className="focalButton primary" disabled={submitting} onClick={submit}>{submitting ? 'Submitting…' : 'Submit review'}</button>
+      <button type="button" className="focalButton primary" disabled={submitting} onClick={submit}>{submitting ? t('Submitting…') : t('Submit review')}</button>
     </div>
   )
 }
 
 export default function AliExpressProduct({ theme, product, related, variantAvailability, productAvailable, trackInventory, continueSellingWhenOutOfStock, reviewEligibility, sections = [], collections = [], vapidPublicKey, customerEmail, boughtTogether = [] }: { theme: AnyMap; product: AnyMap; related: AnyMap[]; boughtTogether?: Suggestion[]; variantAvailability: Array<{ name: string; sku: string; available: number }>; productAvailable: number; trackInventory: boolean; continueSellingWhenOutOfStock: boolean; reviewEligibility: ReviewEligibility; sections?: AnyMap[]; collections?: AnyMap[]; vapidPublicKey?: string; customerEmail?: string }) {
+  const { t, lang, count: plural } = useI18n()
   const { addItem } = useCart()
   const { wishlist, toggleWish } = useWishlist()
   const router = useRouter()
@@ -145,8 +149,8 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
     return () => window.removeEventListener(DELIVERY_AREA_EVENT, read)
   }, [])
   const area = deliveryAreas.find(a => a.name === deliveryArea) || deliveryAreas[0]
-  const deliveryLabel = area?.eta ? `Delivery to ${area.name}: ${area.eta}` : ''
-  const stockLabel = !canSell ? 'Out of stock' : [trackInventory && available > 0 ? `${available} available` : 'In stock', deliveryLabel].filter(Boolean).join(' · ')
+  const deliveryLabel = area?.eta ? t('Delivery to {area}: {eta}', { area: area.name, eta: area.eta }) : ''
+  const stockLabel = !canSell ? t('Out of stock') : [trackInventory && available > 0 ? t('{n} available', { n: available }) : t('In stock'), deliveryLabel].filter(Boolean).join(' · ')
 
   const buildItem = () => ({
     productId: product.id,
@@ -187,8 +191,8 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
     <div className="focalStorefront aliProductPage">
       {showBreadcrumbs && (
         <div className="aliContainer aliBreadcrumbs">
-          <Link href="/">Home</Link><ChevronRight size={12} />
-          {primaryCollection && <><Link href={`/collections/${primaryCollection.slug}`}>{primaryCollection.name}</Link><ChevronRight size={12} /></>}
+          <Link href="/">{t('Home')}</Link><ChevronRight size={12} className="flipRtl" />
+          {primaryCollection && <><Link href={`/collections/${primaryCollection.slug}`}>{primaryCollection.name}</Link><ChevronRight size={12} className="flipRtl" /></>}
           <span>{product.name}</span>
         </div>
       )}
@@ -201,7 +205,7 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
           {gallery.length > 1 && (
             <div className="aliProductThumbs">
               {gallery.slice(0, 8).map((im: AnyMap, i: number) => (
-                <button key={im.id || i} type="button" className={activeImgIndex === i ? 'active' : ''} onClick={() => setActiveImgIndex(i)} aria-label={`View image ${i + 1}`}>
+                <button key={im.id || i} type="button" className={activeImgIndex === i ? 'active' : ''} onClick={() => setActiveImgIndex(i)} aria-label={t('View image {n}', { n: i + 1 })}>
                   <StoreImage src={im.url} alt={im.alt || product.name} />
                 </button>
               ))}
@@ -214,7 +218,7 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
           <h1>{product.name}</h1>
           <div className="aliProductMeta">
             <span className="aliProductRating"><StarRow rating={avgRating} size={14} /> {avgRating > 0 && avgRating.toFixed(1)}</span>
-            <a href="#reviews" className="aliProductReviewsLink">{reviews.length} review{reviews.length === 1 ? '' : 's'}{reviewEligibility !== 'already_reviewed' && reviewEligibility !== 'not_purchased' ? ' · Write a review' : ''}</a>
+            <a href="#reviews" className="aliProductReviewsLink">{plural(reviews.length, 'review')}{reviewEligibility !== 'already_reviewed' && reviewEligibility !== 'not_purchased' ? ` · ${t('Write a review')}` : ''}</a>
             {Number(product.soldCount || 0) > 0 && <span>{formatSold(Number(product.soldCount))}</span>}
           </div>
           <div className="aliProductPrice">
@@ -225,10 +229,10 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
 
           {variants.length > 0 && (
             <div className="aliProductVariants">
-              <span>Options</span>
+              <span>{t('Options')}</span>
               <div className="aliVariantList">
                 {variants.map((v: AnyMap) => (
-                  <button key={v.id} className={`${selectedVariantId === v.id ? 'selected' : ''} ${optionSoldOut(v) ? 'soldOut' : ''}`} aria-label={optionSoldOut(v) ? `${v.name} (sold out)` : undefined} onClick={() => setSelectedVariantId(v.id)}>{v.name}</button>
+                  <button key={v.id} className={`${selectedVariantId === v.id ? 'selected' : ''} ${optionSoldOut(v) ? 'soldOut' : ''}`} aria-label={optionSoldOut(v) ? t('{name} (sold out)', { name: v.name }) : undefined} onClick={() => setSelectedVariantId(v.id)}>{v.name}</button>
                 ))}
               </div>
             </div>
@@ -242,32 +246,32 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
 
           {showQuantity && canSell && (
             <div className="aliQtyRow">
-              <span>Quantity</span>
+              <span>{t('Quantity')}</span>
               <div className="focalQty">
-                <button onClick={() => setQty(Math.max(1, qty - 1))} aria-label="Decrease quantity"><Minus size={14} /></button>
+                <button onClick={() => setQty(Math.max(1, qty - 1))} aria-label={t('Decrease quantity')}><Minus size={14} /></button>
                 <span>{qty}</span>
-                <button onClick={() => setQty(Math.min(99, qty + 1))} aria-label="Increase quantity"><Plus size={14} /></button>
+                <button onClick={() => setQty(Math.min(99, qty + 1))} aria-label={t('Increase quantity')}><Plus size={14} /></button>
               </div>
             </div>
           )}
 
           <div className="aliBuyRow">
             {canSell ? <>
-              <button className="focalButton aliBuyNow" onClick={buyNow} disabled={!purchaseAllowed} title={purchaseAllowed ? undefined : 'This quantity is not available'}>Buy Now</button>
-              <button className={`focalButton primary aliAddToCart ${added ? 'addedSuccess' : ''}`} onClick={addToCart} disabled={!purchaseAllowed} title={purchaseAllowed ? undefined : 'This quantity is not available'}>
-                {added ? <>Added <Check size={16} /></> : <>Add to Cart <ShoppingBag size={16} /></>}
+              <button className="focalButton aliBuyNow" onClick={buyNow} disabled={!purchaseAllowed} title={purchaseAllowed ? undefined : t('This quantity is not available')}>{t('Buy Now')}</button>
+              <button className={`focalButton primary aliAddToCart ${added ? 'addedSuccess' : ''}`} onClick={addToCart} disabled={!purchaseAllowed} title={purchaseAllowed ? undefined : t('This quantity is not available')}>
+                {added ? <>{t('Added')} <Check size={16} /></> : <>{t('Add to Cart')} <ShoppingBag size={16} /></>}
               </button>
             </> : (
               // Sold out (this option or the whole product): offer to tell the customer when it's back.
               <BackInStockButton productId={product.id} variantId={selectedVariant?.id || null} optionName={variants.length > 1 ? selectedVariant?.name : undefined} vapidPublicKey={vapidPublicKey} customerEmail={customerEmail} />
             )}
             {showWishlist && (
-              <button type="button" className={`focalWishlist ${wished ? 'active' : ''}`} aria-label={wished ? 'Remove from wishlist' : 'Add to wishlist'} onClick={() => toggleWish(product.id)}>
+              <button type="button" className={`focalWishlist ${wished ? 'active' : ''}`} aria-label={wished ? t('Remove from wishlist') : t('Add to wishlist')} onClick={() => toggleWish(product.id)}>
                 <Heart size={18} fill={wished ? 'currentColor' : 'none'} />
               </button>
             )}
             {showShare && (
-              <button type="button" className="focalWishlist aliShareButton" aria-label="Share this product" onClick={share}>
+              <button type="button" className="focalWishlist aliShareButton" aria-label={t('Share this product')} onClick={share}>
                 {shared ? <Check size={18} /> : <Share2 size={17} />}
               </button>
             )}
@@ -275,27 +279,27 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
 
           {showTrustBadges && (
             <div className="focalTrustGrid">
-              <span>✓ Secure checkout</span>
-              {product.returnsEnabled !== false && <span>✓ Easy returns</span>}
+              <span>✓ {t('Secure checkout')}</span>
+              {product.returnsEnabled !== false && <span>✓ {t('Easy returns')}</span>}
               <FreeDeliveryBadge />
             </div>
           )}
 
           <div className="focalAccordions">
-            {showDescription && product.descriptionHtml && <details open><summary>Description<ChevronDown size={16} /></summary><div className="pdpRichText" dangerouslySetInnerHTML={{ __html: product.descriptionHtml }} /></details>}
-            <details><summary>Product information<ChevronDown size={16} /></summary><p>SKU {selectedVariant?.sku || product.sku || '—'}</p></details>
+            {showDescription && product.descriptionHtml && <details open><summary>{t('Description')}<ChevronDown size={16} /></summary><div className="pdpRichText" dangerouslySetInnerHTML={{ __html: product.descriptionHtml }} /></details>}
+            <details><summary>{t('Product information')}<ChevronDown size={16} /></summary><p>{t('SKU')} {selectedVariant?.sku || product.sku || '—'}</p></details>
             {showShippingAccordion && (
-              <details><summary>Shipping &amp; returns<ChevronDown size={16} /></summary><p>{merchantShippingText(pp.shippingText) || <ShippingNote />}</p></details>
+              <details><summary>{t('Shipping & returns')}<ChevronDown size={16} /></summary><p>{merchantShippingText(pp.shippingText) || <ShippingNote />}</p></details>
             )}
             {showSpecs && product.metafields?.length > 0 && (
-              <details><summary>Specifications<ChevronDown size={16} /></summary>
+              <details><summary>{t('Specifications')}<ChevronDown size={16} /></summary>
                 <table className="aliSpecTable">
                   <tbody>
                     {product.metafields.map((m: AnyMap) => (
                       <tr key={m.name}>
                         <th>{m.name}</th>
                         <td>
-                          {m.type === 'boolean' ? (m.value === 'true' ? 'Yes' : 'No')
+                          {m.type === 'boolean' ? (m.value === 'true' ? t('Yes') : t('No'))
                             : m.isList ? (
                               <span className="aliSpecList">
                                 {String(m.value).split(',').map((v: string) => v.trim()).filter(Boolean).map((v: string, i: number) => (
@@ -322,35 +326,35 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
 
       {showReviews && (
         <div className="aliContainer aliReviewsSection" id="reviews">
-          <h2>Customer Reviews {reviews.length > 0 && <span className="aliReviewAvg"><StarRow rating={avgRating} size={16} /> {avgRating.toFixed(1)} ({reviews.length})</span>}</h2>
+          <h2>{t('Customer Reviews')} {reviews.length > 0 && <span className="aliReviewAvg"><StarRow rating={avgRating} size={16} /> {avgRating.toFixed(1)} ({reviews.length})</span>}</h2>
           {reviewEligibility === 'can_review' && <ReviewForm productId={product.id} />}
-          {reviewEligibility === 'already_reviewed' && <p className="aliReviewFormNote">You've already reviewed this product — thanks for the feedback.</p>}
+          {reviewEligibility === 'already_reviewed' && <p className="aliReviewFormNote">{t("You've already reviewed this product. Thanks for the feedback.")}</p>}
           {reviewEligibility === 'guest' && (() => {
             // Bring the customer straight back to this product's reviews after signing in.
             const back = encodeURIComponent(`/product/${product.slug}#reviews`)
             return <div className="aliReviewSignIn" role="note">
               <span className="aliReviewSignInIcon" aria-hidden="true"><MessageSquareText size={22} /></span>
               <div className="aliReviewSignInText">
-                <strong>Bought this product? Share your review</strong>
-                <p>Sign in to rate it and write a review. You can review it once your order is confirmed.</p>
+                <strong>{t('Bought this product? Share your review')}</strong>
+                <p>{t('Sign in to rate it and write a review. You can review it once your order is confirmed.')}</p>
               </div>
               <div className="aliReviewSignInActions">
-                <Link className="aliReviewSignInBtn" href={`/account/login?next=${back}`}>Sign in to review</Link>
-                <Link className="aliReviewSignInAlt" href={`/account/register?next=${back}`}>Create an account</Link>
+                <Link className="aliReviewSignInBtn" href={`/account/login?next=${back}`}>{t('Sign in to review')}</Link>
+                <Link className="aliReviewSignInAlt" href={`/account/register?next=${back}`}>{t('Create an account')}</Link>
               </div>
             </div>
           })()}
-          {reviewEligibility === 'not_purchased' && <p className="aliReviewFormNote">Only customers who bought this product can review it. You can write one once your order is confirmed.</p>}
+          {reviewEligibility === 'not_purchased' && <p className="aliReviewFormNote">{t('Only customers who bought this product can review it. You can write one once your order is confirmed.')}</p>}
           {reviews.length > 0 ? (
             <div className="aliReviewList">
               {reviews.map((r: AnyMap) => (
                 <div className={`aliReviewItem${r.featured ? ' aliReviewFeatured' : ''}`} key={r.id}>
                   <div className="aliReviewHead">
                     <StarRow rating={Number(r.rating || 0)} size={13} />
-                    <strong>{r.user?.name || 'Customer'}</strong>
-                    {r.verified && <span className="aliReviewVerified"><BadgeCheck size={13} aria-hidden="true" /> Verified purchase</span>}
-                    {r.featured && <span className="aliReviewFeaturedBadge">Featured</span>}
-                    <span>{new Date(r.createdAt).toLocaleDateString()}</span>
+                    <strong>{r.user?.name || t('Customer')}</strong>
+                    {r.verified && <span className="aliReviewVerified"><BadgeCheck size={13} aria-hidden="true" /> {t('Verified purchase')}</span>}
+                    {r.featured && <span className="aliReviewFeaturedBadge">{t('Featured')}</span>}
+                    <span>{new Date(r.createdAt).toLocaleDateString(dateLocale(lang))}</span>
                   </div>
                   {r.title && <div className="aliReviewTitle">{r.title}</div>}
                   <p>{r.body}</p>
@@ -358,14 +362,14 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
               ))}
             </div>
           ) : (
-            <p className="aliEmptyState">No reviews yet.</p>
+            <p className="aliEmptyState">{t('No reviews yet.')}</p>
           )}
         </div>
       )}
 
       {showRelated && related.length > 0 && (
         <div className="aliContainer aliSection">
-          <div className="aliSectionHead"><h2>You may also like</h2></div>
+          <div className="aliSectionHead"><h2>{t('You may also like')}</h2></div>
           <div className="aliDenseGrid">
             {related.slice(0, relatedLimit).map(p => (
               <ProductCard key={p.id} p={p} theme={theme} onQuickView={setQuickProduct} wishlist={wishlist} toggleWish={toggleWish} />

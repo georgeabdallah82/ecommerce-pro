@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Clock3, MapPin, RefreshCw, Truck } from 'lucide-react'
+import { useI18n } from '@/components/lang-provider'
 
 type Tracking = {
   active: boolean
@@ -24,6 +25,7 @@ function mapUrl(position: Tracking['position']) {
 }
 
 export default function DeliveryTrackingMap({ token, initial }: { token: string; initial: Tracking | null }) {
+  const { t } = useI18n()
   const [tracking, setTracking] = useState<Tracking | null>(initial)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -35,10 +37,10 @@ export default function DeliveryTrackingMap({ token, initial }: { token: string;
       try {
         const response = await fetch(`/api/tracking/${encodeURIComponent(token)}`, { cache: 'no-store' })
         const data = await response.json()
-        if (!response.ok) throw new Error(data?.error || 'Unable to load tracking')
+        if (!response.ok) throw new Error(data?.error || t('Unable to load tracking'))
         if (!cancelled) { setTracking(data); setError('') }
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Unable to load tracking')
+        if (!cancelled) setError(e instanceof Error ? e.message : t('Unable to load tracking'))
       } finally { if (!cancelled) setLoading(false) }
     }
     refresh()
@@ -47,18 +49,18 @@ export default function DeliveryTrackingMap({ token, initial }: { token: string;
   }, [token])
 
   const embed = useMemo(() => mapUrl(tracking?.position || null), [tracking?.position])
-  if (!tracking) return <div className="card" style={{padding:20}}>Tracking information is not available.</div>
+  if (!tracking) return <div className="card" style={{padding:20}}>{t('Tracking information is not available.')}</div>
 
   return <div className="space-y-4">
     <div className="card" style={{padding:20}}>
-      <div className="sectionHead small"><div><span className="muted tiny">DELIVERY</span><h2 className="h2">{tracking.active ? 'Your delivery is on the way' : 'Delivery tracking'}</h2></div><span className="pill"><Truck size={14}/> {statusLabel(tracking.status)}</span></div>
+      <div className="sectionHead small"><div><span className="muted tiny">{t('DELIVERY')}</span><h2 className="h2">{tracking.active ? t('Your delivery is on the way') : t('Delivery tracking')}</h2></div><span className="pill"><Truck size={14}/> {statusLabel(tracking.status)}</span></div>
       <div className="grid twoColumn" style={{marginTop:14}}>
-        <div className="card" style={{padding:14}}><span className="muted">ETA</span><strong style={{display:'block',marginTop:5,fontSize:24}}>{tracking.active && tracking.etaMinutes !== null ? `${tracking.etaMinutes} min` : '—'}</strong></div>
-        <div className="card" style={{padding:14}}><span className="muted">Location status</span><strong style={{display:'block',marginTop:5}}>{tracking.active ? (tracking.locationFresh ? 'Updated just now' : 'Update may be delayed') : 'Not live'}</strong>{tracking.locationUpdatedAt&&<small className="muted">{new Date(tracking.locationUpdatedAt).toLocaleString()}</small>}</div>
+        <div className="card" style={{padding:14}}><span className="muted">{t('ETA')}</span><strong style={{display:'block',marginTop:5,fontSize:24}}>{tracking.active && tracking.etaMinutes !== null ? t('{n} min', { n: tracking.etaMinutes }) : '—'}</strong></div>
+        <div className="card" style={{padding:14}}><span className="muted">{t('Location status')}</span><strong style={{display:'block',marginTop:5}}>{tracking.active ? (tracking.locationFresh ? t('Updated just now') : t('Update may be delayed')) : t('Not live')}</strong>{tracking.locationUpdatedAt&&<small className="muted">{new Date(tracking.locationUpdatedAt).toLocaleString()}</small>}</div>
       </div>
     </div>
     {error&&<div className="alert">{error}</div>}
-    {embed ? <div className="card" style={{padding:0,overflow:'hidden'}}><iframe title="Live delivery location" src={embed} style={{width:'100%',height:430,border:0}} loading="lazy" referrerPolicy="no-referrer-when-downgrade" /></div> : <div className="card" style={{padding:20}}><MapPin size={16}/> The courier has not shared a location yet.</div>}
-    <div className="inline" style={{justifyContent:'space-between'}}><span className="muted"><Clock3 size={14}/> Updates every 15 seconds while this page is open.</span><button className="btn secondary" onClick={()=>location.reload()} disabled={loading}><RefreshCw size={14}/> Refresh</button></div>
+    {embed ? <div className="card" style={{padding:0,overflow:'hidden'}}><iframe title={t('Live delivery location')} src={embed} style={{width:'100%',height:430,border:0}} loading="lazy" referrerPolicy="no-referrer-when-downgrade" /></div> : <div className="card" style={{padding:20}}><MapPin size={16}/> {t('The courier has not shared a location yet.')}</div>}
+    <div className="inline" style={{justifyContent:'space-between'}}><span className="muted"><Clock3 size={14}/> {t('Updates every 15 seconds while this page is open.')}</span><button className="btn secondary" onClick={()=>location.reload()} disabled={loading}><RefreshCw size={14}/> {t('Refresh')}</button></div>
   </div>
 }

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronRight, Share, Smartphone, SquarePlus, X } from 'lucide-react'
 import styles from './install-app.module.css'
+import { useI18n } from '@/components/lang-provider'
 
 // "Get the app" in the phone menu: puts the store on the home screen (app/manifest.ts). Android
 // and desktop Chrome offer their own install prompt, which this opens; iPhones have none, so it
@@ -27,6 +28,7 @@ const isInAppBrowser = () => /FBAN|FBAV|Instagram|musical_ly|Bytedance|TikTok/i.
 export function InstallAppRow({ storeName, onDone }: { storeName: string; onDone?: () => void }) {
   const [mode, setMode] = useState<'none' | 'prompt' | 'ios'>('none')
   const [help, setHelp] = useState(false)
+  const { t } = useI18n()
 
   useEffect(() => {
     const update = () => setMode(isStandalone() ? 'none' : installPrompt ? 'prompt' : isIos() ? 'ios' : 'none')
@@ -50,23 +52,23 @@ export function InstallAppRow({ storeName, onDone }: { storeName: string; onDone
   return (
     <>
       <li>
-        <button type="button" className="mkMenuRow" onClick={install}><Smartphone size={17} /><span>Get the {storeName} app</span><ChevronRight size={16} /></button>
+        <button type="button" className="mkMenuRow" onClick={install}><Smartphone size={17} /><span>{t('Get the {name} app', { name: storeName })}</span><ChevronRight size={16} /></button>
       </li>
       {help && typeof document !== 'undefined' && createPortal(
         <div className={styles.overlay} onClick={() => setHelp(false)}>
           <div className={styles.sheet} role="dialog" aria-modal="true" aria-labelledby="install-app-title" onClick={e => e.stopPropagation()}>
-            <button type="button" className={styles.close} onClick={() => setHelp(false)} aria-label="Close"><X size={18} /></button>
-            <strong id="install-app-title">Add {storeName} to your home screen</strong>
+            <button type="button" className={styles.close} onClick={() => setHelp(false)} aria-label={t('Close')}><X size={18} /></button>
+            <strong id="install-app-title">{t('Add {name} to your home screen', { name: storeName })}</strong>
             {isInAppBrowser() ? (
-              <p>Open this page in <b>Safari</b> first: tap <b>⋯</b> and choose <b>Open in browser</b>. Then follow the two steps below.</p>
+              <p>{t('Open this page in Safari first: tap ⋯ and choose Open in browser. Then follow the two steps below.')}</p>
             ) : (
-              <p>It opens like an app, and you can get our offers and order updates as notifications.</p>
+              <p>{t('It opens like an app, and you can get our offers and order updates as notifications.')}</p>
             )}
             <ol className={styles.steps}>
-              <li><span className={styles.stepIcon}><Share size={18} /></span><span>Tap the <b>Share</b> button at the bottom of Safari</span></li>
-              <li><span className={styles.stepIcon}><SquarePlus size={18} /></span><span>Scroll down and tap <b>Add to Home Screen</b>, then <b>Add</b></span></li>
+              <li><span className={styles.stepIcon}><Share size={18} /></span><span>{t('Tap the Share button at the bottom of Safari')}</span></li>
+              <li><span className={styles.stepIcon}><SquarePlus size={18} /></span><span>{t('Scroll down and tap Add to Home Screen, then Add')}</span></li>
             </ol>
-            <button type="button" className={styles.ok} onClick={() => setHelp(false)}>Got it</button>
+            <button type="button" className={styles.ok} onClick={() => setHelp(false)}>{t('Got it')}</button>
           </div>
         </div>,
         document.body,

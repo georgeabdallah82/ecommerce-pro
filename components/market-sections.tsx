@@ -9,6 +9,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ProductCard, StoreImage, img, money } from '@/components/storefront-sections'
 import { useCart } from '@/components/cart-provider'
+import { useI18n } from '@/components/lang-provider'
 
 type AnyMap = Record<string, any>
 type Common = {
@@ -48,6 +49,7 @@ export function HeroSlider({ section, preview, selected, click }: Pick<Common, '
   const layout = s.layout === 'split' ? 'split' : 'full'
   const [index, setIndex] = useState(0)
   const [paused, setPaused] = useState(false)
+  const { t: tr, dir } = useI18n()
   const count = slides.length
   const go = (i: number) => setIndex(((i % count) + count) % count)
   useEffect(() => {
@@ -69,10 +71,10 @@ export function HeroSlider({ section, preview, selected, click }: Pick<Common, '
       onTouchStart={e => { touch.current = e.touches[0].clientX }}
       onTouchEnd={e => { if (touch.current == null) return; const dx = e.changedTouches[0].clientX - touch.current; if (Math.abs(dx) > 40) go(index + (dx < 0 ? 1 : -1)); touch.current = null }}
       aria-roledescription="carousel"
-      aria-label="Featured"
+      aria-label={tr('Featured')}
     >
       <div className="mkHeroFrame">
-        <div className="mkHeroTrack" style={{ transform: `translateX(-${index * 100}%)` }}>
+        <div className="mkHeroTrack" style={{ transform: `translateX(${dir === 'rtl' ? '' : '-'}${index * 100}%)` }}>
           {slides.map((b, i) => {
             const t = b.settings || {}
             const copy = (
@@ -98,7 +100,7 @@ export function HeroSlider({ section, preview, selected, click }: Pick<Common, '
               </picture>
             ) : <div className="mkSlidePic mkSlidePicEmpty" />
             return (
-              <div className="mkSlide" key={b.id || i} role="group" aria-roledescription="slide" aria-label={`${i + 1} of ${count}`} aria-hidden={i !== index}>
+              <div className="mkSlide" key={b.id || i} role="group" aria-roledescription="slide" aria-label={tr('{n} of {total}', { n: i + 1, total: count })} aria-hidden={i !== index}>
                 {layout === 'full'
                   ? <>{picture}<span className="mkSlideShade" /><div className="mkWrap mkSlideInner">{copy}</div>{t.badge ? <span className="mkSlideBadge">{t.badge}</span> : null}</>
                   : <><div className="mkSplitCopy">{copy}</div><div className="mkSplitPic">{picture}{t.badge ? <span className="mkSlideBadge">{t.badge}</span> : null}</div></>}
@@ -107,9 +109,9 @@ export function HeroSlider({ section, preview, selected, click }: Pick<Common, '
           })}
         </div>
         {count > 1 && <>
-          <button type="button" className="mkArrow mkArrowPrev" aria-label="Previous slide" onClick={e => { e.stopPropagation(); go(index - 1) }}><ChevronLeft size={20} /></button>
-          <button type="button" className="mkArrow mkArrowNext" aria-label="Next slide" onClick={e => { e.stopPropagation(); go(index + 1) }}><ChevronRight size={20} /></button>
-          <div className="mkDots">{slides.map((b, i) => <button type="button" key={b.id || i} aria-label={`Show slide ${i + 1}`} aria-current={i === index} onClick={e => { e.stopPropagation(); go(i) }} />)}</div>
+          <button type="button" className="mkArrow mkArrowPrev" aria-label={tr('Previous slide')} onClick={e => { e.stopPropagation(); go(index - 1) }}><ChevronLeft size={20} className="flipRtl" /></button>
+          <button type="button" className="mkArrow mkArrowNext" aria-label={tr('Next slide')} onClick={e => { e.stopPropagation(); go(index + 1) }}><ChevronRight size={20} className="flipRtl" /></button>
+          <div className="mkDots">{slides.map((b, i) => <button type="button" key={b.id || i} aria-label={tr('Show slide {n}', { n: i + 1 })} aria-current={i === index} onClick={e => { e.stopPropagation(); go(i) }} />)}</div>
         </>}
       </div>
     </section>
@@ -155,22 +157,23 @@ export function ProductTabs(c: Common) {
   const { section, products, preview, selected, click } = c
   const s = section.settings || {}
   const limit = n(s.limit, 10)
+  const { t: tr } = useI18n()
   const lists = useMemo(() => {
     const out: { key: string; label: string; items: AnyMap[] }[] = []
     const deals = products.filter(onSale).sort((a, b) => (Number(b.compareAtPrice) - Number(b.basePrice)) / Number(b.compareAtPrice) - (Number(a.compareAtPrice) - Number(a.basePrice)) / Number(a.compareAtPrice))
     const best = bestOf(products)
-    if (s.showDeals !== false && deals.length) out.push({ key: 'deals', label: s.dealsLabel || 'Deals', items: deals })
-    if (s.showBest !== false) out.push(best.length ? { key: 'best', label: s.bestLabel || 'Best sellers', items: best } : { key: 'popular', label: 'Popular', items: products })
-    if (s.showNew !== false) out.push({ key: 'new', label: s.newLabel || 'New', items: newest(products) })
+    if (s.showDeals !== false && deals.length) out.push({ key: 'deals', label: s.dealsLabel || tr('Deals'), items: deals })
+    if (s.showBest !== false) out.push(best.length ? { key: 'best', label: s.bestLabel || tr('Best sellers'), items: best } : { key: 'popular', label: tr('Popular'), items: products })
+    if (s.showNew !== false) out.push({ key: 'new', label: s.newLabel || tr('New'), items: newest(products) })
     return out.filter(l => l.items.length)
-  }, [products, s.showDeals, s.showBest, s.showNew, s.dealsLabel, s.bestLabel, s.newLabel])
+  }, [products, s.showDeals, s.showBest, s.showNew, s.dealsLabel, s.bestLabel, s.newLabel, tr])
   const [tab, setTab] = useState(0)
   const active = lists[Math.min(tab, lists.length - 1)]
   if (!lists.length || products.length < n(s.minProducts, 4)) return <Hidden preview={preview} name={s.heading || 'Product tabs'} reason={`Your store has ${products.length} product${products.length === 1 ? '' : 's'}; this row needs ${n(s.minProducts, 4)}.`} id={section.id} selected={selected} click={click} />
   return (
     <section className={`mkSection ${selected ? 'isSelected' : ''}`} onClick={e => click(section.id, e)}>
       <div className="mkWrap">
-        <Head heading={s.heading || "Today's deals"} sub={s.subheading} right={lists.length > 1 ? (
+        <Head heading={s.heading || tr("Today's deals")} sub={s.subheading} right={lists.length > 1 ? (
           <div className="mkTabs" role="tablist">
             {lists.map((l, i) => <button type="button" role="tab" key={l.key} aria-selected={l === active} onClick={e => { e.stopPropagation(); setTab(i) }}>{l.label}</button>)}
           </div>
@@ -199,18 +202,19 @@ export function ProductRail(c: Common) {
     return best.length >= n(s.minProducts, 4) ? { items: best, ranked: s.showRank !== false } : { items: products, ranked: false }
   }, [products, collections, source, s.collection, s.showRank, s.minProducts])
   const track = useRef<HTMLDivElement>(null)
+  const { t: tr, dir: textDir } = useI18n()
   const list = items.slice(0, n(s.limit, 12))
   if (list.length < n(s.minProducts, 4)) return <Hidden preview={preview} name={s.heading || 'Product row'} reason={`It has ${list.length} product${list.length === 1 ? '' : 's'}; it needs ${n(s.minProducts, 4)}.`} id={section.id} selected={selected} click={click} />
   const noSalesYet = source === 'best' && !ranked
-  const heading = noSalesYet ? (s.emptyHeading || 'Popular right now') : (s.heading || 'Best sellers')
-  const scroll = (dir: number) => { const el = track.current; if (el) el.scrollBy({ left: dir * el.clientWidth * 0.85, behavior: reduceMotion() ? 'auto' : 'smooth' }) }
+  const heading = noSalesYet ? (s.emptyHeading || tr('Popular right now')) : (s.heading || tr('Best sellers'))
+  const scroll = (dir: number) => { const el = track.current; if (el) el.scrollBy({ left: (textDir === 'rtl' ? -dir : dir) * el.clientWidth * 0.85, behavior: reduceMotion() ? 'auto' : 'smooth' }) }
   return (
     <section className={`mkSection ${selected ? 'isSelected' : ''}`} onClick={e => click(section.id, e)}>
       <div className="mkWrap">
         <Head heading={heading} sub={noSalesYet ? undefined : s.subheading} right={
           <div className="mkRailNav">
-            <button type="button" aria-label="Scroll left" onClick={e => { e.stopPropagation(); scroll(-1) }}><ChevronLeft size={18} /></button>
-            <button type="button" aria-label="Scroll right" onClick={e => { e.stopPropagation(); scroll(1) }}><ChevronRight size={18} /></button>
+            <button type="button" aria-label={tr('Scroll back')} onClick={e => { e.stopPropagation(); scroll(-1) }}><ChevronLeft size={18} className="flipRtl" /></button>
+            <button type="button" aria-label={tr('Scroll forward')} onClick={e => { e.stopPropagation(); scroll(1) }}><ChevronRight size={18} className="flipRtl" /></button>
           </div>
         } />
         <div className="mkRail" ref={track}><Cards items={list} c={c} rank={ranked} /></div>
@@ -223,6 +227,7 @@ export function ProductRail(c: Common) {
 export function CategorySpotlight(c: Common) {
   const { section, products, collections, preview, selected, click } = c
   const s = section.settings || {}
+  const { t: tr } = useI18n()
   const need = n(s.minProducts, 2)
   const membersOf = (col: AnyMap | undefined) => {
     if (!col) return []
@@ -239,14 +244,14 @@ export function CategorySpotlight(c: Common) {
       <span className="mkSpotText">
         {s.kicker ? <small>{s.kicker}</small> : null}
         <b>{s.bannerHeading || chosen.name}</b>
-        <span className="mkBtn mkBtnWhite">{s.buttonLabel || 'Shop now'}</span>
+        <span className="mkBtn mkBtnWhite">{s.buttonLabel || tr('Shop now')}</span>
       </span>
     </Link>
   )
   return (
     <section className={`mkSection ${selected ? 'isSelected' : ''}`} onClick={e => click(section.id, e)}>
       <div className="mkWrap">
-        <Head heading={s.heading || chosen.name} right={<Link className="mkLink" href={href}>Shop all</Link>} />
+        <Head heading={s.heading || chosen.name} right={<Link className="mkLink" href={href}>{tr('Shop all')}</Link>} />
         <div className={`mkSpot ${s.bannerPosition === 'right' ? 'mkSpotRight' : ''}`}>
           {banner}
           <div className="mkSpotGrid"><Cards items={items} c={c} /></div>
@@ -262,17 +267,18 @@ export function ShopByPrice(c: Common) {
   const s = section.settings || {}
   const bands: AnyMap[] = (section.blocks || []).map((b: AnyMap) => b.settings || {}).filter((b: AnyMap) => b.label)
   const [active, setActive] = useState(0)
+  const { t: tr } = useI18n()
   const band = bands[Math.min(active, bands.length - 1)]
   const items = band ? products.filter(p => { const price = Number(p.basePrice || 0) / 100; const min = n(band.min, 0); const max = n(band.max, 0); return price >= min && (max <= 0 || price < max) }) : []
   if (!bands.length || products.length < n(s.minProducts, 2)) return <Hidden preview={preview} name="Shop by price" reason="There are not enough products yet." id={section.id} selected={selected} click={click} />
   return (
     <section className={`mkSection ${selected ? 'isSelected' : ''}`} onClick={e => click(section.id, e)}>
       <div className="mkWrap">
-        <Head heading={s.heading || 'Shop by price'} />
-        <div className="mkChips" role="group" aria-label="Price range">
+        <Head heading={s.heading || tr('Shop by price')} />
+        <div className="mkChips" role="group" aria-label={tr('Price range')}>
           {bands.map((b, i) => <button type="button" key={i} aria-pressed={i === active} onClick={e => { e.stopPropagation(); setActive(i) }}>{b.label}</button>)}
         </div>
-        {items.length ? <div className="mkRail"><Cards items={items.slice(0, n(s.limit, 10))} c={c} /></div> : <p className="mkEmpty">Nothing in this price range yet.</p>}
+        {items.length ? <div className="mkRail"><Cards items={items.slice(0, n(s.limit, 10))} c={c} /></div> : <p className="mkEmpty">{tr('Nothing in this price range yet.')}</p>}
       </div>
     </section>
   )
@@ -282,13 +288,14 @@ export function ShopByPrice(c: Common) {
 export function RecentlyViewed({ section, theme, products, preview, selected, click }: Common) {
   const s = section.settings || {}
   const [ids, setIds] = useState<string[]>([])
+  const { t: tr } = useI18n()
   useEffect(() => { try { const raw = JSON.parse(localStorage.getItem('ecom-recent-products-v1') || '[]'); if (Array.isArray(raw)) setIds(raw.map(String)) } catch {} }, [])
   const items = ids.map(id => products.find(p => p.id === id)).filter(Boolean).slice(0, n(s.limit, 6)) as AnyMap[]
   if (items.length < 2) return <Hidden preview={preview} name="Recently viewed" reason="It only shows to shoppers who have viewed at least two products." id={section.id} selected={selected} click={click} />
   return (
     <section className={`mkSection ${selected ? 'isSelected' : ''}`} onClick={e => click(section.id, e)}>
       <div className="mkWrap">
-        <Head heading={s.heading || 'Recently viewed'} />
+        <Head heading={s.heading || tr('Recently viewed')} />
         <div className="mkRecent">
           {items.map(p => (
             <Link key={p.id} className="mkRecentItem" href={`/product/${p.slug}`}>
@@ -309,6 +316,7 @@ export function BundlesSection({ section, theme, preview, selected, click }: Com
   const { addItem } = useCart()
   const [bundles, setBundles] = useState<Bundle[] | null>(null)
   const [added, setAdded] = useState('')
+  const { t: tr } = useI18n()
   useEffect(() => {
     let live = true
     fetch('/api/bundles', { cache: 'no-store' }).then(r => (r.ok ? r.json() : { bundles: [] })).then(d => { if (live) setBundles(Array.isArray(d?.bundles) ? d.bundles : []) }).catch(() => { if (live) setBundles([]) })
@@ -326,15 +334,15 @@ export function BundlesSection({ section, theme, preview, selected, click }: Com
   return (
     <section className={`mkSection ${selected ? 'isSelected' : ''}`} onClick={e => click(section.id, e)}>
       <div className="mkWrap">
-        <Head heading={s.heading || 'Bundle & save'} sub={s.subheading} />
+        <Head heading={s.heading || tr('Bundle & save')} sub={s.subheading} />
         <div className="mkBundles">
           {bundles.slice(0, n(s.limit, 6)).map(b => (
             <article className="mkBundle" key={b.id}>
               <div className="mkBundleThumbs">{b.items.slice(0, 3).map((it, i) => <StoreImage key={i} src={it.image} alt="" />)}</div>
               <h3>{b.name}</h3>
               <ul>{b.items.map((it, i) => <li key={i}>{it.quantity > 1 ? `${it.quantity} × ` : ''}{it.name}</li>)}</ul>
-              <div className="mkBundlePrice"><span><b>{money(b.price, cur)}</b>{b.fullPrice > b.price ? <s>{money(b.fullPrice, cur)}</s> : null}</span>{b.fullPrice > b.price ? <em>Save {money(b.fullPrice - b.price, cur)}</em> : null}</div>
-              <button type="button" className="mkAdd" onClick={e => add(b, e)}>{added === b.id ? 'Added to cart' : 'Add bundle to cart'}</button>
+              <div className="mkBundlePrice"><span><b>{money(b.price, cur)}</b>{b.fullPrice > b.price ? <s>{money(b.fullPrice, cur)}</s> : null}</span>{b.fullPrice > b.price ? <em>{tr('Save {amount}', { amount: money(b.fullPrice - b.price, cur) })}</em> : null}</div>
+              <button type="button" className="mkAdd" onClick={e => add(b, e)}>{added === b.id ? tr('Added to cart') : tr('Add bundle to cart')}</button>
             </article>
           ))}
         </div>

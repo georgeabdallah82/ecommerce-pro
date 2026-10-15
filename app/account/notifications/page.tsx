@@ -4,12 +4,17 @@ import { db } from '@/lib/prisma'
 import { StoreFooter } from '@/components/store-footer'
 import { MarkAllReadButton, MarkReadButton } from '@/components/notification-actions'
 import CustomerPushToggle from '@/components/customer-push-toggle'
+import { getLang, getT } from '@/lib/i18n-server'
+import { dateLocale } from '@/lib/i18n'
 
 const PAGE_SIZE = 20
 
 export default async function Notifications({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const t = await getT()
+  const locale = dateLocale(await getLang())
+
   const u = await getCurrentUser()
-  if (!u) return <><main className="section"><div className="container"><span className="muted">ACCOUNT</span><h1 className="h2">Notifications</h1><div className="card" style={{ padding: 24, maxWidth: 560 }}><h3>Sign in to view your notifications</h3><div style={{ display: 'flex', gap: 10 }}><Link className="btn" href="/account/login?next=%2Faccount%2Fnotifications">Sign in</Link></div></div></div></main><StoreFooter /></>
+  if (!u) return <><main className="section"><div className="container"><span className="muted">{t('ACCOUNT')}</span><h1 className="h2">{t('Notifications')}</h1><div className="card" style={{ padding: 24, maxWidth: 560 }}><h3>{t('Sign in to view your notifications')}</h3><div style={{ display: 'flex', gap: 10 }}><Link className="btn" href="/account/login?next=%2Faccount%2Fnotifications">{t('Sign in')}</Link></div></div></div></main><StoreFooter /></>
 
   const { page: pageParam } = await searchParams
   const requestedPage = Number(pageParam) || 1
@@ -28,13 +33,13 @@ export default async function Notifications({ searchParams }: { searchParams: Pr
   })
 
   return <><main className="section"><div className="container">
-    <Link className="textLink" href="/account">← Back to account</Link>
-    <div className="sectionHead"><div><span className="muted">ACCOUNT</span><h1 className="h2">Notifications</h1></div>{unreadCount > 0 && <MarkAllReadButton />}</div>
+    <Link className="textLink" href="/account">{t('Back to account')}</Link>
+    <div className="sectionHead"><div><span className="muted">{t('ACCOUNT')}</span><h1 className="h2">{t('Notifications')}</h1></div>{unreadCount > 0 && <MarkAllReadButton />}</div>
     <div style={{ marginBottom: 16 }}>
       <CustomerPushToggle vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} />
     </div>
     {!notifications.length ? (
-      <div className="card empty"><p className="muted">No notifications yet.</p></div>
+      <div className="card empty"><p className="muted">{t('No notifications yet.')}</p></div>
     ) : (
       <div className="grid" style={{ gap: 10 }}>
         {notifications.map(n => (
@@ -42,11 +47,11 @@ export default async function Notifications({ searchParams }: { searchParams: Pr
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
               <div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  {!n.readAt && <span className="pill">New</span>}
+                  {!n.readAt && <span className="pill">{t('New')}</span>}
                   <strong>{n.title}</strong>
                 </div>
                 <p className="muted" style={{ marginTop: 6 }}>{n.body}</p>
-                <small className="muted">{n.createdAt.toLocaleString()}</small>
+                <small className="muted">{n.createdAt.toLocaleString(locale)}</small>
               </div>
               {!n.readAt && <MarkReadButton id={n.id} />}
             </div>
@@ -56,9 +61,9 @@ export default async function Notifications({ searchParams }: { searchParams: Pr
     )}
     {totalPages > 1 && (
       <div className="inline" style={{ justifyContent: 'space-between', marginTop: 20 }}>
-        {page > 1 ? <Link className="btn secondary" href={`/account/notifications?page=${page - 1}`}>← Previous</Link> : <span />}
-        <span className="muted">Page {page} of {totalPages}</span>
-        {page < totalPages ? <Link className="btn secondary" href={`/account/notifications?page=${page + 1}`}>Next →</Link> : <span />}
+        {page > 1 ? <Link className="btn secondary" href={`/account/notifications?page=${page - 1}`}>{t('Previous')}</Link> : <span />}
+        <span className="muted">{t('Page {page} of {total}', { page, total: totalPages })}</span>
+        {page < totalPages ? <Link className="btn secondary" href={`/account/notifications?page=${page + 1}`}>{t('Next')}</Link> : <span />}
       </div>
     )}
   </div></main><StoreFooter /></>

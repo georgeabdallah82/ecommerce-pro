@@ -1,12 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useI18n } from '@/components/lang-provider'
+import { markT } from '@/lib/i18n'
 import { PUSH_PROMPT_DISMISSED_KEY, PUSH_PROMPT_SUBSCRIBED_KEY, sameApplicationServerKey, urlBase64ToUint8Array } from '@/lib/push-opt-in'
 
 export default function CustomerPushToggle({ vapidPublicKey }: { vapidPublicKey?: string }) {
   const [state, setState] = useState<'hidden' | 'disabled' | 'enabled'>('hidden')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
+  const { t } = useI18n()
 
   useEffect(() => {
     let cancelled = false
@@ -27,7 +30,7 @@ export default function CustomerPushToggle({ vapidPublicKey }: { vapidPublicKey?
 
   async function enable() {
     if (!vapidPublicKey) {
-      setMessage('Push notifications are not configured on this store.')
+      setMessage(markT('Push notifications are not configured on this store.'))
       return
     }
     setBusy(true)
@@ -60,12 +63,12 @@ export default function CustomerPushToggle({ vapidPublicKey }: { vapidPublicKey?
       const data = await response.json().catch(() => ({}))
       if (!response.ok || data.subscribed !== true) throw new Error(data.error || 'Unable to verify subscription on the server')
       setState('enabled')
-      setMessage('Push notifications enabled on this device.')
+      setMessage(markT('Push notifications enabled on this device.'))
       // The storefront popup (push-opt-in.tsx) won't ask this browser again.
       try { window.localStorage.setItem(PUSH_PROMPT_SUBSCRIBED_KEY, String(Date.now())) } catch {}
     } catch (e) {
       setState('disabled')
-      setMessage(e instanceof Error ? e.message : 'Unable to enable notifications')
+      setMessage(e instanceof Error ? e.message : markT('Unable to enable notifications'))
     } finally { setBusy(false) }
   }
 
@@ -84,11 +87,11 @@ export default function CustomerPushToggle({ vapidPublicKey }: { vapidPublicKey?
         await subscription.unsubscribe().catch(() => undefined)
       }
       setState('disabled')
-      setMessage('Push notifications turned off on this device.')
+      setMessage(markT('Push notifications turned off on this device.'))
       // Turned off on purpose: the popup leaves this browser alone for its usual 30 days.
       try { window.localStorage.removeItem(PUSH_PROMPT_SUBSCRIBED_KEY); window.localStorage.setItem(PUSH_PROMPT_DISMISSED_KEY, String(Date.now())) } catch {}
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : 'Unable to turn off push notifications')
+      setMessage(e instanceof Error ? e.message : markT('Unable to turn off push notifications'))
     } finally { setBusy(false) }
   }
 
@@ -96,14 +99,14 @@ export default function CustomerPushToggle({ vapidPublicKey }: { vapidPublicKey?
   return (
     <div className="card" style={{ padding: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
       <div>
-        <strong>Push notifications</strong>
-        <p className="muted" style={{ marginTop: 4 }}>Get an alert on this device for order updates and occasional offers.</p>
-        {message && <small className="muted" role="status" style={{ display: 'block', marginTop: 6 }}>{message}</small>}
+        <strong>{t('Push notifications')}</strong>
+        <p className="muted" style={{ marginTop: 4 }}>{t('Get an alert on this device for order updates and occasional offers.')}</p>
+        {message && <small className="muted" role="status" style={{ display: 'block', marginTop: 6 }}>{t(message)}</small>}
       </div>
       {state === 'enabled' ? (
-        <button type="button" className="btn secondary" onClick={disable} disabled={busy}>{busy ? 'Working…' : 'Turn off'}</button>
+        <button type="button" className="btn secondary" onClick={disable} disabled={busy}>{busy ? t('Working…') : t('Turn off')}</button>
       ) : (
-        <button type="button" className="btn" onClick={enable} disabled={busy}>{busy ? 'Working…' : 'Enable'}</button>
+        <button type="button" className="btn" onClick={enable} disabled={busy}>{busy ? t('Working…') : t('Enable')}</button>
       )}
     </div>
   )

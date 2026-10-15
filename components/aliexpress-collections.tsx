@@ -2,17 +2,19 @@
 
 import Link from 'next/link'
 import { StoreImage } from '@/components/storefront-sections'
+import { useI18n } from '@/components/lang-provider'
 
 type AnyMap = Record<string, any>
 
 export default function AliExpressCollections({ collections }: { collections: AnyMap[] }) {
+  const { t, count: plural } = useI18n()
   return (
     <main className="focalStorefront aliCollectionsPage">
       <div className="aliContainer">
         <header className="aliCollectionsHead">
-          <span className="focalEyebrow">CURATED SHOPPING</span>
-          <h1>Collections</h1>
-          <p>{collections.length} collection{collections.length === 1 ? '' : 's'} to browse.</p>
+          <span className="focalEyebrow">{t('CURATED SHOPPING')}</span>
+          <h1>{t('Collections')}</h1>
+          <p>{t('{n} to browse.', { n: collections.length })}</p>
         </header>
 
         {collections.length ? (
@@ -22,11 +24,11 @@ export default function AliExpressCollections({ collections }: { collections: An
               return (
                 <Link key={c.id} href={`/collections/${c.slug}`} className="focalCollectionCard aliCollectionCard">
                   <div className="focalCollectionMedia">
-                    <StoreImage src={c.imageUrl || '/placeholder-product.svg'} alt={c.name || 'Collection'} />
+                    <StoreImage src={c.imageUrl || '/placeholder-product.svg'} alt={c.name || t('Collection')} />
                   </div>
                   <div className="focalCollectionCopy">
                     <span className="focalCollectionName">{c.name}</span>
-                    <span className="aliCollectionCount">{count} item{count === 1 ? '' : 's'}</span>
+                    <span className="aliCollectionCount">{plural(count, 'product')}</span>
                   </div>
                   {c.description && <p className="aliCollectionDesc">{c.description}</p>}
                 </Link>
@@ -34,7 +36,7 @@ export default function AliExpressCollections({ collections }: { collections: An
             })}
           </div>
         ) : (
-          <p className="aliEmptyState">No collections yet.</p>
+          <p className="aliEmptyState">{t('No collections yet.')}</p>
         )}
       </div>
     </main>

@@ -61,8 +61,7 @@ import {
   Rows3,
   MessageCircle,
   Truck,
-  BadgePercent,
-} from 'lucide-react'
+  BadgePercent, Languages } from 'lucide-react'
 import SectionInspector, {
   renderPanel,
   text, image, textarea, select, toggle, range, color, deliveryAreas,
@@ -367,6 +366,12 @@ const THEME_CATEGORIES: ThemeCategory[] = [
   { key: 'footer', label: 'Footer', icon: PanelBottom, group: 'footer', panels: [
     { title: 'Footer', fields: [toggle('Show newsletter signup', 'showNewsletter', true), text('Description text', 'text'), range('Link columns shown', 'columns', 2, 4, 4)] },
   ] },
+  { key: 'languages', label: 'Languages', icon: Languages, group: 'languages', panels: [
+    { title: 'Arabic version', fields: [
+      toggle('Show the Arabic version to customers (an English / العربية button appears in the menu)', 'arabic', false),
+      select('Language new visitors see first', 'defaultLang', [{ value: 'en', label: 'English' }, { value: 'ar', label: 'Arabic (العربية)' }], 'en'),
+    ] },
+  ] },
   { key: 'social', label: 'Social links', icon: AtSign, group: 'social', panels: [
     { title: 'Social links', fields: [text('Instagram URL', 'instagram'), text('Facebook URL', 'facebook'), text('TikTok URL', 'tiktok'), text('X / Twitter URL', 'twitter'), text('YouTube URL', 'youtube')] },
   ] },
@@ -396,10 +401,33 @@ const THEME_CATEGORIES: ThemeCategory[] = [
 ]
 // How the Theme tab groups its categories (display only; order here is the order shown).
 const THEME_GROUPS: { label: string; hint: string; keys: string[] }[] = [
-  { label: 'Store', hint: 'Name, logo, links', keys: ['branding', 'social'] },
+  { label: 'Store', hint: 'Name, logo, links, languages', keys: ['branding', 'social', 'languages'] },
   { label: 'Pages & layout', hint: 'Header, footer, page options', keys: ['header', 'delivery', 'whatsapp', 'productCardMarket', 'footer', 'productPage', 'collectionPage', 'cart'] },
   { label: 'Look & feel', hint: 'Applies everywhere', keys: ['colors', 'typography', 'buttons', 'cards', 'layout'] },
 ]
+
+// Theme settings > Languages: what switching Arabic on does, and a way to see the Arabic store
+// before customers do (a cookie on this browser only; see lib/i18n.ts resolveLang).
+function ArabicPreviewBox({ published, onEditArabic }: { published: boolean; onEditArabic: () => void }) {
+  const preview = () => {
+    document.cookie = 'lang=ar; path=/; max-age=31536000; samesite=lax'
+    document.cookie = 'lang_preview=1; path=/; max-age=86400; samesite=lax'
+    window.open('/', '_blank', 'noopener')
+  }
+  const stop = () => {
+    document.cookie = 'lang_preview=; path=/; max-age=0; samesite=lax'
+    document.cookie = 'lang=en; path=/; max-age=31536000; samesite=lax'
+  }
+  return <div className="themeInspectorPanel" style={{ padding: 14, display: 'grid', gap: 10, fontSize: 13 }}>
+    <p style={{ margin: 0 }}>{published ? 'Customers can switch the store to Arabic.' : 'Customers do not see the Arabic version yet. Switch it on above and press Publish when it is ready.'}</p>
+    <p style={{ margin: 0 }}>Buttons, cart, checkout and order pages are already in Arabic. Your own texts (banners, headings, menu) need their Arabic version: tap <b>ع</b> at the top to type them. Product names and descriptions show as you wrote them; policies stay in English.</p>
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <button type="button" className="themeAddBlock" onClick={onEditArabic}>Type the Arabic texts</button>
+      <button type="button" className="themeAddBlock" onClick={preview}>Preview the Arabic store (this phone only)</button>
+      <button type="button" className="themeAddBlock" onClick={stop}>Stop previewing</button>
+    </div>
+  </div>
+}
 
 export default function ThemeStudio({ initial }: Props) {
   const fallback = useMemo(() => defaultTemplates(initial.sections), [initial.sections])
@@ -436,6 +464,9 @@ export default function ThemeStudio({ initial }: Props) {
   const [pageBusy, setPageBusy] = useState(false)
   const [selectedId, setSelectedId] = useState('')
   const [device, setDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
+  // Which language's texts the boxes edit and the preview shows (lib/i18n.ts). Arabic texts are
+  // saved beside the English ones ("headingAr"), so both versions are kept.
+  const [editLang, setEditLang] = useState<'en' | 'ar'>('en')
   const [sideTab, setSideTab] = useState<'sections' | 'theme' | 'history'>(THEME_CATEGORIES.some(c => c.key === initial.openSettings) ? 'theme' : 'sections')
   // ?settings=<key> (e.g. delivery, linked from Shipping) opens that Theme settings panel.
   const startCategory = THEME_CATEGORIES.some(c => c.key === initial.openSettings) ? initial.openSettings! : ''
@@ -598,8 +629,9 @@ export default function ThemeStudio({ initial }: Props) {
       products,
       collections,
       selectedId,
+      lang: editLang,
     }, window.location.origin)
-  }, [previewReadyToken, page, activePage, blogPosts, theme, current, initial.navigation, products, collections, selectedId])
+  }, [previewReadyToken, page, activePage, blogPosts, theme, current, initial.navigation, products, collections, selectedId, editLang])
 
   const commit = (nextTemplates: Record<string, Section[]>, nextTheme = theme) => {
     setHistory(history => [...history, { theme: clone(theme), templates: clone(templates), page, selectedId }].slice(-50))
@@ -914,7 +946,7 @@ export default function ThemeStudio({ initial }: Props) {
   const frameClass = device === 'mobile' ? styles.frameMobile : device === 'tablet' ? styles.frameTablet : styles.frameDesktop
 
   const categoryCtx: FieldCtx | null = activeCategory
-    ? { s: activeCategory.group === ROOT_GROUP ? theme : (theme[activeCategory.group] || {}), products, collections }
+    ? { s: activeCategory.group === ROOT_GROUP ? theme : (theme[activeCategory.group] || {}), products, collections, lang: editLang }
     : null
 
   return (
@@ -934,6 +966,10 @@ export default function ThemeStudio({ initial }: Props) {
         <div className={styles.topRight}>
           <button className={styles.iconBtn} onClick={undo} disabled={!history.length} aria-label="Undo" title="Undo (Ctrl/Cmd+Z)"><Undo2 size={15} /></button>
           <button className={styles.iconBtn} onClick={redo} disabled={!future.length} aria-label="Redo" title="Redo (Ctrl/Cmd+Shift+Z)"><Redo2 size={15} /></button>
+          <div className={styles.deviceGroup} role="group" aria-label="Language being edited">
+            <button className={`${styles.iconBtn} ${editLang === 'en' ? styles.active : ''}`} onClick={() => setEditLang('en')} aria-pressed={editLang === 'en'} title="Edit the English texts">EN</button>
+            <button className={`${styles.iconBtn} ${editLang === 'ar' ? styles.active : ''}`} onClick={() => setEditLang('ar')} aria-pressed={editLang === 'ar'} title="Edit the Arabic texts (the preview shows the Arabic store)" lang="ar">ع</button>
+          </div>
           <div className={styles.deviceGroup}>
             {(['desktop', 'tablet', 'mobile'] as const).map(item => (
               <button className={`${styles.iconBtn} ${device === item ? styles.active : ''}`} key={item} onClick={() => setDevice(item)} aria-label={item}>
@@ -1153,7 +1189,10 @@ export default function ThemeStudio({ initial }: Props) {
               ))}
             </div>
             {drawerTab === 'content' ? (
-              <SectionInspector section={selected} products={products} collections={collections} loadError={dataError} onUpdate={patch} onUpdateBlocks={patchBlocks} />
+              <>
+                {editLang === 'ar' && <p className={styles.langNote}>Editing the <b>Arabic</b> texts. Empty boxes show the English (or the store&apos;s standard Arabic for texts like &quot;Shop now&quot;).</p>}
+                <SectionInspector section={selected} products={products} collections={collections} loadError={dataError} onUpdate={patch} onUpdateBlocks={patchBlocks} lang={editLang} />
+              </>
             ) : drawerTab === 'design' ? (
               <div className="themeInspector">
                 <details className="themeInspectorPanel" open><summary>Design</summary><div>
@@ -1191,7 +1230,9 @@ export default function ThemeStudio({ initial }: Props) {
               </div>
             </div>
             <div className="themeInspector">
+              {editLang === 'ar' && activeCategory.key !== 'languages' && <p className={styles.langNote}>Editing the <b>Arabic</b> texts.</p>}
               {activeCategory.panels.map(panel => renderPanel(panel, categoryCtx, patches => patchTheme(activeCategory.group, patches)))}
+              {activeCategory.key === 'languages' && <ArabicPreviewBox published={!!initial.theme?.languages?.arabic} onEditArabic={() => setEditLang('ar')} />}
             </div>
           </aside>
         )}

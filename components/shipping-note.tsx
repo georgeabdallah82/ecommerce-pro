@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useI18n } from '@/components/lang-provider'
 
 // The old built-in default. Themes saved before it was replaced still store it word for word,
 // and it promised $50 free delivery and worldwide shipping whatever the store's settings,
@@ -34,15 +35,17 @@ export function useFreeDeliveryAmount() {
 // Product page trust badge.
 export function FreeDeliveryBadge() {
   const free = useFreeDeliveryAmount()
-  return <span>✓ {free ? `Free delivery over ${free}` : 'Cash on delivery'}</span>
+  const { t } = useI18n()
+  return <span>✓ {free ? t('Free delivery over {amount}', { amount: free }) : t('Cash on delivery')}</span>
 }
 
 // Default "Shipping & returns" text on product pages when the merchant hasn't written their
 // own. Built from the real free-delivery threshold (Settings > Checkout).
 export function ShippingNote() {
   const free = useFreeDeliveryAmount()
+  const { t } = useI18n()
   return <>
-    {free && <>Free delivery on orders over {free}. </>}
-    The delivery fee and estimated delivery time are shown at checkout. See our <Link href="/refund-policy">Refund Policy</Link> for returns.
+    {free && <>{t('Free delivery on orders over {amount}.', { amount: free })} </>}
+    {t('The delivery fee and estimated delivery time are shown at checkout.')} <Link href="/refund-policy">{t('Delivery & refund policy')}</Link>
   </>
 }
