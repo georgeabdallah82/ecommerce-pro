@@ -1,5 +1,0 @@
-{%- comment -%}
-  One CSS custom property for a section's style attribute; nothing when the colour is empty.
-  Usage: {% render 'yh-var', name: '--yh-h-bg', value: section.settings.c_bg %}
-{%- endcomment -%}
-{%- if value != blank -%}{{ name }}: {{ value }};{%- endif -%}
