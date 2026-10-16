@@ -14,6 +14,8 @@ import DeliveryTrackingAdmin from './delivery-tracking-admin'
 import { WHATSAPP_OUTCOMES, whatsappConfirmLink, whatsappPhoneProblem } from '@/lib/whatsapp-confirm'
 import { internationalPhone } from '@/lib/phone'
 import { reviewRequestMessage } from '@/lib/order-reviews'
+import { customerUpdateLink, updateForStatus } from '@/lib/order-updates'
+import type { PhoneHistory } from '@/lib/customer-history'
 import { useConfirm } from './admin-confirm'
 
 // Admin > Orders > one order. Top to bottom: where the order is (a progress line), the one thing
@@ -66,7 +68,7 @@ function Menu({ children }: { children: React.ReactNode }) {
   )
 }
 
-export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTimezone, storeName = '', storeCountry = 'Lebanon', phoneBlocked = false, reviewLink = '' }: { initial: any; canStartOrderEdit?: boolean; storeTimezone?: string; storeName?: string; storeCountry?: string; phoneBlocked?: boolean; reviewLink?: string }) {
+export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTimezone, storeName = '', storeCountry = 'Lebanon', phoneBlocked = false, reviewLink = '', trackLink = '', history = null }: { initial: any; canStartOrderEdit?: boolean; storeTimezone?: string; storeName?: string; storeCountry?: string; phoneBlocked?: boolean; reviewLink?: string; trackLink?: string; history?: PhoneHistory | null }) {
   const [o, setO] = useState(initial)
   const confirm = useConfirm()
   const router = useRouter()
@@ -97,6 +99,9 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
     const firstName = String(address.firstName || o.user?.name || '').trim().split(/\s+/)[0] || ''
     return `https://wa.me/${digits}?text=${encodeURIComponent(reviewRequestMessage({ storeName, firstName, orderNumber: String(o.orderNumber), link: reviewLink }))}`
   }, [reviewLink, phoneNumber, storeCountry, storeName, o])
+  // One-tap WhatsApp update for the customer: "confirmed" or "on the way" (lib/order-updates.ts).
+  const updateKind = updateForStatus(o.status)
+  const updateLink = useMemo(() => updateKind ? customerUpdateLink(updateKind, o, storeName, storeCountry, money, trackLink) : '', [updateKind, o, storeName, storeCountry, trackLink])
   const reviewEmailSent = (o.events || []).some((e: any) => String(e.message || '').startsWith('Review request sent by email'))
   const whatsappProblem = useMemo(() => confirmLink ? '' : whatsappPhoneProblem(o, storeCountry), [o, confirmLink, storeCountry])
   const call = telLink(o, storeCountry)
@@ -277,6 +282,7 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
           <div className={s.choices}>{(Object.keys(WHATSAPP_OUTCOMES) as Array<keyof typeof WHATSAPP_OUTCOMES>).map(k=><button key={k} type="button" className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}${lastAnswer===k?` ${s.chosen}`:''}`} disabled={!!recordingAnswer} aria-pressed={lastAnswer===k} onClick={()=>recordWhatsappAnswer(k)}>{recordingAnswer===k?'Saving…':WHATSAPP_ANSWER_LABELS[k]}</button>)}</div>
         </div>
       </>}
+      {updateLink && <a className={`${ui.btn} ${s.whatsappBtn}`} href={updateLink} target="_blank" rel="noreferrer"><MessageCircle size={16}/> {updateKind === 'on_the_way' ? "Tell the customer it's on the way" : "Tell the customer it's confirmed"}</a>}
       <div className={s.rowButtons}>
         {step && <button type="button" className={`${ui.btn} ${s.bigBtn}`} disabled={moving} onClick={advance}>{moving ? 'Saving…' : `${o.status === 'PENDING' ? '3. ' : ''}${step.label}`}</button>}
         {o.status !== 'PENDING' && <a className={`${ui.btn} ${ui.btnSecondary}`} href={driverShareLink(o, storeName, money)} target="_blank" rel="noreferrer"><Send size={15}/> Send to driver</a>}
@@ -344,6 +350,12 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
             </div>
           </div>
           {billingText && billingText !== addressText(o.shippingAddressJson) && <div className={s.address}><div className={ui.muted}>Billing address</div><div className={s.pre}>{billingText}</div></div>}
+          {history && <div className={`${s.history}${history.warning ? ` ${s.historyWarn}` : ''}`}>
+            <strong>{history.total ? `Ordered ${history.total} time${history.total === 1 ? '' : 's'} before with this phone` : 'First order from this phone number'}</strong>
+            {history.total > 0 && <span>{[history.delivered ? `${history.delivered} delivered` : '', history.cancelled ? `${history.cancelled} cancelled` : '', history.open ? `${history.open} in progress` : ''].filter(Boolean).join(' · ')}</span>}
+            {history.warning && <span className={s.historyNote}>{history.warning}</span>}
+            {history.total > 0 && <ul>{history.orders.slice(0, 5).map(h => <li key={h.id}><Link href={`/admin/orders/${h.id}`}>#{h.orderNumber}</Link> · {statusInfo(h.status).label}{h.refused ? ' (after sending)' : ''} · {money(h.grandTotal, h.currency)} · {formatAdminDate(h.createdAt, storeTimezone)}</li>)}</ul>}
+          </div>}
           <div className={s.customerFoot}>
             {o.user?.id && <Link className={ui.textLink} href={`/admin/customers/${o.user.id}`}>Customer's account and past orders</Link>}
             {phoneNumber && <button type="button" className={`${s.linkBtn}${blocked ? '' : ` ${s.danger}`}`} onClick={toggleBlock}><Ban size={13}/> {blocked ? 'Unblock this number' : 'Block this number from ordering'}</button>}

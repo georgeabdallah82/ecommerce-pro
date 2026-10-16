@@ -83,3 +83,10 @@
   .headerActions > * { flex: 1; }
   .cardBody, .actions { padding-left: 0; }
 }
+
+/* Shortcuts under the title: delivery sheet, unfinished checkouts */
+.shortcuts { display: flex; flex-wrap: wrap; gap: 8px; }
+.shortcut { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: var(--admin-radius-md); border: 1px solid var(--admin-border); background: var(--admin-surface); color: var(--admin-ink); font-size: 13.5px; font-weight: 750; text-decoration: none; }
+.shortcut:hover { border-color: var(--admin-ink-soft); }
+.shortcut span { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--admin-border); font-size: 12px; }
+.shortcutAlert span { background: #d92d20; color: #fff; }

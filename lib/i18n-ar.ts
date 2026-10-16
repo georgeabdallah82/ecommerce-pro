@@ -778,4 +778,10 @@ export const AR: Record<string, string> = {
   "Invalid review": "تقييم غير صالح",
   "Review content is too long": "نص التقييم طويل جداً",
   "Too many review submissions. Please try again later.": "محاولات تقييم كثيرة. يرجى المحاولة لاحقاً.",
+  // Track your order by phone (app/orders/lookup)
+  "Enter your order number and the phone number or email you used at checkout.": "أدخل رقم طلبك ورقم الهاتف أو البريد الإلكتروني الذي استخدمته عند الطلب.",
+  "Phone number or email": "رقم الهاتف أو البريد الإلكتروني",
+  "Please enter your order number and your phone number or email.": "يرجى إدخال رقم الطلب ورقم هاتفك أو بريدك الإلكتروني.",
+  "We could not find an order with that number and phone number or email.": "لم نجد طلباً بهذا الرقم وهذا الهاتف أو البريد الإلكتروني.",
+  "Too many attempts. Please try again later.": "محاولات كثيرة. يرجى المحاولة لاحقاً.",
 }

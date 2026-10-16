@@ -33,3 +33,22 @@ export async function POST(req: Request) {
     return json({ checkout: row })
   } catch (e) { return routeError(e, 'Unable to save abandoned checkout', 400) }
 }
+
+// Unfinished checkouts (Admin > Orders > Unfinished): note that staff opened the WhatsApp
+// reminder ({id, action: 'whatsapp'}), or close one that needs nothing more ({id, action: 'dismiss'}).
+export async function PATCH(req: Request) {
+  try {
+    const actor = await requirePermission('abandonedCheckouts.manage')
+    const b = await req.json().catch(() => ({}))
+    const id = String(b.id || '').trim()
+    const action = String(b.action || '')
+    if (!id || !['whatsapp', 'dismiss'].includes(action)) return json({ error: 'Invalid request' }, { status: 400 })
+    const row = await db.abandonedCheckout.update({
+      where: { id },
+      data: action === 'whatsapp' ? { whatsappAt: new Date() } : { status: 'EXPIRED' },
+      select: { id: true, status: true, whatsappAt: true },
+    })
+    await audit(actor.id, action === 'whatsapp' ? 'abandoned_checkout.whatsapp_opened' : 'abandoned_checkout.dismissed', 'AbandonedCheckout', id, {})
+    return json({ checkout: row })
+  } catch (e) { return routeError(e, 'Unable to update this checkout', 400) }
+}

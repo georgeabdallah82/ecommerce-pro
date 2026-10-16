@@ -7,13 +7,16 @@ import { getStoreCurrency } from '@/lib/store-currency'
 import { runInBackground } from '@/lib/background'
 import { maybeSendCartReminders } from '@/lib/cart-reminders'
 import { sendAbandonedCheckoutEmail } from '@/lib/email'
+import { internationalPhone } from '@/lib/phone'
 
 // Public, unauthenticated capture endpoint for the checkout page -- distinct from
 // /api/admin/abandoned-checkouts, which is staff-only and used to browse the
 // results, not create them. The AbandonedCheckout admin UI has always existed
 // with nothing ever writing to it (no idle timer, no beacon on the checkout
-// page), so every abandoned cart was invisible. This is called on email blur
-// during checkout and marks the row RECOVERED once an order is actually placed.
+// page), so every abandoned cart was invisible. This is called when the shopper leaves the
+// phone, email or first-name box during checkout, and marks the row RECOVERED once an order is
+// actually placed. A phone alone is enough: most customers order with a phone number only, and
+// staff remind those on WhatsApp (Admin > Orders > Unfinished checkouts).
 
 export async function POST(req: Request) {
   try {
@@ -23,10 +26,15 @@ export async function POST(req: Request) {
     const b = await req.json().catch(() => ({}))
     const token = String(b.token || '').trim().slice(0, 100)
     if (!token) return json({ error: 'token is required' }, { status: 400 })
-    const email = typeof b.email === 'string' ? b.email.trim().slice(0, 190) : ''
+    const typedEmail = typeof b.email === 'string' ? b.email.trim().slice(0, 190) : ''
+    const email = typedEmail.includes('@') ? typedEmail : ''
+    const typedPhone = typeof b.phone === 'string' ? b.phone.slice(0, 40) : ''
+    const country = typedPhone ? (await db.setting.findUnique({ where: { key: 'store.country' } }).catch(() => null))?.value : ''
+    const phone = internationalPhone(typedPhone, country || 'Lebanon')
+    const name = typeof b.name === 'string' ? b.name.replace(/\s+/g, ' ').trim().slice(0, 60) : ''
     const items = Array.isArray(b.items) ? b.items.slice(0, 100) : []
     // Nothing worth recording yet -- not an error, just too early to capture.
-    if (!email || !email.includes('@') || !items.length) return json({ ok: true })
+    if ((!email && !phone) || !items.length) return json({ ok: true })
 
     // Names and prices come from the catalogue, not the browser (audit ME-04): the admin's
     // abandoned-cart list and the recovered cart must show real prices, whatever was sent.
@@ -66,8 +74,10 @@ export async function POST(req: Request) {
     const recoveryUrl = siteUrl ? `${siteUrl}/checkout?recover=${encodeURIComponent(token)}` : null
     await db.abandonedCheckout.upsert({
       where: { token },
-      update: { customerId: user?.id ?? null, email, cartJson: JSON.stringify(cartItems), subtotal, currency, recoveryUrl, status: 'OPEN', lastActivity: new Date() },
-      create: { token, customerId: user?.id ?? null, email, cartJson: JSON.stringify(cartItems), subtotal, currency, recoveryUrl },
+      // A box left empty keeps what was saved before (the email typed earlier stays when the phone
+      // arrives next).
+      update: { customerId: user?.id ?? null, ...(email ? { email } : {}), ...(phone ? { phone } : {}), ...(name ? { name } : {}), cartJson: JSON.stringify(cartItems), subtotal, currency, recoveryUrl, status: 'OPEN', lastActivity: new Date() },
+      create: { token, customerId: user?.id ?? null, email: email || null, phone: phone || null, name: name || null, cartJson: JSON.stringify(cartItems), subtotal, currency, recoveryUrl },
     })
     // The database is awake anyway: a good moment for the (rare, throttled) reminder check.
     runInBackground(maybeSendCartReminders(sendAbandonedCheckoutEmail))

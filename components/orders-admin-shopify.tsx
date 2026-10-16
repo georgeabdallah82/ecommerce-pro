@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from '@/components/admin-link'
-import { ChevronDown, ChevronLeft, ChevronRight, FileText, MessageCircle, MoreHorizontal, PackageCheck, Phone, Plus, RefreshCw, Search, Send, Truck, X, XCircle } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, FileText, MessageCircle, MoreHorizontal, PackageCheck, Phone, Plus, RefreshCw, Search, Send, ShoppingCart, Truck, X, XCircle } from 'lucide-react'
 import { money } from '@/lib/config'
 import { formatAdminDateTime } from '@/lib/admin-datetime'
 import { canTransitionOrder } from '@/lib/orders'
@@ -48,7 +48,7 @@ function MoreMenu({ label, children }: { label: string; children: React.ReactNod
   )
 }
 
-export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone, storeName = '', storeCountry = 'Lebanon' }: { initial: Initial; canRefund?: boolean; storeTimezone?: string; storeName?: string; storeCountry?: string }) {
+export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone, storeName = '', storeCountry = 'Lebanon', unfinishedCount = 0 }: { initial: Initial; canRefund?: boolean; storeTimezone?: string; storeName?: string; storeCountry?: string; unfinishedCount?: number }) {
   const confirm = useConfirm()
   const [rows, setRows] = useState<Order[]>(initial?.rows || [])
   const [counts, setCounts] = useState<Record<string, number>>(initial?.counts || {})
@@ -206,6 +206,11 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone, 
           <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => load(page)} disabled={loading || busy !== null}><RefreshCw size={15} /> Refresh</button>
           <Link className={ui.btn} href="/admin/orders/new"><Plus size={15} /> Create order</Link>
         </div>
+      </div>
+
+      <div className={styles.shortcuts}>
+        <Link className={styles.shortcut} href="/admin/orders/deliveries"><Truck size={16} /> Delivery sheet</Link>
+        <Link className={`${styles.shortcut}${unfinishedCount ? ` ${styles.shortcutAlert}` : ''}`} href="/admin/orders/unfinished"><ShoppingCart size={16} /> Unfinished checkouts{unfinishedCount ? <span>{unfinishedCount}</span> : null}</Link>
       </div>
 
       <nav className={styles.views} aria-label="Order views">

@@ -113,10 +113,23 @@ export default function Checkout() {
       .finally(() => { setRecovering(false); router.replace('/checkout', { scroll: false }) })
   }, [])
 
-  function captureCheckoutProgress(email: string) {
-    if (!checkoutToken.current || !EMAIL.test(email) || !items.length) return
-    const payload = { token: checkoutToken.current, email, items: items.map(item => ({ productId: item.productId, variantId: item.variantId || null, name: item.name, quantity: item.quantity, unitPrice: item.price })) }
-    fetch('/api/checkout/progress', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload), keepalive: true }).catch(() => {})
+  // Saves the cart for "unfinished checkout" follow-up once there is a way to reach the shopper:
+  // a phone number (most customers) or an email. Called when they leave the phone, email or
+  // first-name box; sends again only when something changed.
+  const lastProgress = useRef('')
+  function captureCheckoutProgress(form: HTMLFormElement | null | undefined) {
+    if (!form || !checkoutToken.current || !items.length) return
+    const fd = new FormData(form)
+    const typedEmail = String(fd.get('email') || '').trim()
+    const email = EMAIL.test(typedEmail) ? typedEmail : ''
+    const phone = String(fd.get('phone') || '').trim()
+    const name = String(fd.get('firstName') || '').trim()
+    if (!email && phone.replace(/\D/g, '').length < 7) return
+    const payload = { token: checkoutToken.current, email, phone, name, items: items.map(item => ({ productId: item.productId, variantId: item.variantId || null, name: item.name, quantity: item.quantity, unitPrice: item.price })) }
+    const key = JSON.stringify(payload)
+    if (key === lastProgress.current) return
+    lastProgress.current = key
+    fetch('/api/checkout/progress', { method: 'POST', headers: { 'content-type': 'application/json' }, body: key, keepalive: true }).catch(() => {})
   }
 
   const idempotencyKey = useRef(crypto.randomUUID())
@@ -417,11 +430,11 @@ export default function Checkout() {
       <section className={s.step} aria-labelledby="co-contact">
         <h2 id="co-contact" className={s.stepHead}><span className={s.stepNum}>1</span>{t('Contact')}</h2>
         <label className={fieldClass('phone')}><span className={s.label}>{t('Phone (WhatsApp)')}</span>
-          <span className={s.phone}>{inLebanon && <span className={s.phonePrefix}>+961</span>}<input className={s.input} name="phone" type="tel" autoComplete="tel" inputMode="tel" placeholder={t('e.g. 70 123 456')} dir="ltr" aria-invalid={!!errors.phone} /></span>
+          <span className={s.phone}>{inLebanon && <span className={s.phonePrefix}>+961</span>}<input className={s.input} name="phone" type="tel" autoComplete="tel" inputMode="tel" placeholder={t('e.g. 70 123 456')} dir="ltr" aria-invalid={!!errors.phone} onBlur={e => captureCheckoutProgress(e.currentTarget.form)} /></span>
           {fieldError('phone') || <span className={s.help}>{t('We confirm your order and the courier calls you on this number.')}</span>}
         </label>
         <label className={fieldClass('email')}><span className={s.label}>{t('Email')} <i>{t('(optional)')}</i></span>
-          <input ref={emailRef} className={s.input} name="email" type="email" autoComplete="email" inputMode="email" placeholder="you@example.com" defaultValue={recoveredEmail} key={recoveredEmail} dir="ltr" aria-invalid={!!errors.email} onBlur={e => captureCheckoutProgress(e.target.value.trim())} />
+          <input ref={emailRef} className={s.input} name="email" type="email" autoComplete="email" inputMode="email" placeholder="you@example.com" defaultValue={recoveredEmail} key={recoveredEmail} dir="ltr" aria-invalid={!!errors.email} onBlur={e => captureCheckoutProgress(e.currentTarget.form)} />
           {fieldError('email') || <span className={s.help}>{t('For your receipt and order updates.')}</span>}
         </label>
       </section>
@@ -436,7 +449,7 @@ export default function Checkout() {
           {fieldError('area') || (areaEta ? <span className={s.help}><Truck size={13} style={{ verticalAlign: '-2px' }} /> {t('Delivery: {when}', { when: areaEta })}</span> : null)}
         </label>}
         <div className={`${s.row} ${s.row2}`}>
-          <label className={fieldClass('firstName')}><span className={s.label}>{t('First name')}</span><input ref={firstNameRef} className={s.input} name="firstName" autoComplete="given-name" aria-invalid={!!errors.firstName} />{fieldError('firstName')}</label>
+          <label className={fieldClass('firstName')}><span className={s.label}>{t('First name')}</span><input ref={firstNameRef} className={s.input} name="firstName" autoComplete="given-name" aria-invalid={!!errors.firstName} onBlur={e => captureCheckoutProgress(e.currentTarget.form)} />{fieldError('firstName')}</label>
           <label className={fieldClass('lastName')}><span className={s.label}>{t('Last name')}</span><input ref={lastNameRef} className={s.input} name="lastName" autoComplete="family-name" aria-invalid={!!errors.lastName} />{fieldError('lastName')}</label>
         </div>
         <label className={fieldClass('city')}><span className={s.label}>{t('Town / city')}</span><input className={s.input} name="city" autoComplete="address-level2" placeholder={t('e.g. Jounieh')} aria-invalid={!!errors.city} />{fieldError('city')}</label>

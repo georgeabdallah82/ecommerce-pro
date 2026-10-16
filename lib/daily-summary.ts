@@ -14,6 +14,8 @@ export type DailySummaryFacts = {
   lowStock: Array<{ name: string; left: number }>
   pendingReviews: number
   reviewEmailsSent: number
+  // Unfinished checkouts from the last 2 days nobody has messaged yet (Admin > Orders > Unfinished).
+  unfinished?: number
 }
 
 type Money = (cents: number, currency: string) => string
@@ -48,6 +50,7 @@ export function waitingLines(f: DailySummaryFacts) {
     f.outForDelivery ? `${plural(f.outForDelivery, 'order')} out for delivery` : '',
     f.lowStock.length ? `${plural(f.lowStock.length, 'product')} low on stock` : '',
     f.pendingReviews ? `${plural(f.pendingReviews, 'review')} to approve` : '',
+    f.unfinished ? `${plural(f.unfinished, 'unfinished checkout')} to follow up` : '',
   ].filter(Boolean)
 }
 
