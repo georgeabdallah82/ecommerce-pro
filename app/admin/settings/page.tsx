@@ -30,6 +30,7 @@ const CLIENT_SETTING_KEYS = new Set([
   'notifications.lowStock',
   'notifications.reviews',
   'notifications.dailySummary',
+  'notifications.weeklyReport',
   'notifications.summaryEmail',
   'email.customerOrder',
   'email.fromName',

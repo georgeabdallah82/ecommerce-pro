@@ -166,6 +166,15 @@ export async function sendNewReviewAlert(review: { id: string; productName: stri
   return sendToSubscriptions({ title: 'New review submitted', body: `${review.productName} · ${review.rating}★ rating awaiting moderation`, url: '/admin/reviews', reviewId: review.id })
 }
 
+// A driver marked an order delivered or reported a problem on their own page (lib/drivers.ts).
+// Uses the new-order alerts switch, as both are about orders on the way.
+export async function sendDriverUpdatePush(update: { title: string; body: string; orderId: string }) {
+  const settings = await db.setting.findMany({ where: { key: { in: ['notifications.newOrder', 'notifications.orderEmail'] } }, select: { key: true, value: true } })
+  const configured = Object.fromEntries(settings.map(setting => [setting.key, setting.value]))
+  if ((configured['notifications.newOrder'] ?? configured['notifications.orderEmail']) === 'false') return { sent: 0, skipped: true, failed: 0 }
+  return sendToSubscriptions({ title: update.title, body: update.body, url: `/admin/orders/${update.orderId}`, orderId: update.orderId })
+}
+
 // A shopper asked about a product (app/api/questions): staff answer it in Admin > Questions. Uses
 // the review alerts switch (Settings > Notifications), as both wait for the owner.
 export async function sendNewQuestionAlert(question: { id: string; productName: string }) {

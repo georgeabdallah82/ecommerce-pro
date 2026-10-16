@@ -315,7 +315,7 @@ export function WhatsAppFloat({ theme }: { theme: any }) {
   }, [enabled])
   if (!enabled || !store) return null
   // Never over the checkout form or inside the admin.
-  if (pathname.startsWith('/admin') || pathname.startsWith('/checkout')) return null
+  if (pathname.startsWith('/admin') || pathname.startsWith('/checkout') || pathname.startsWith('/driver/')) return null
   if (pathname === '/theme-editor-preview' && !theme.__preview) return null
   // The number set in the theme studio, or else the store's contact phone (Settings).
   const base = whatsappUrl(String(w.number || '').trim() || store.phone, store.country)

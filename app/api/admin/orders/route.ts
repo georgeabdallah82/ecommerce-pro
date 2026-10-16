@@ -210,6 +210,8 @@ export async function PATCH(req: Request) {
         ...(statusChanged ? { status: requestedStatus, fulfillmentStatus: fulfillmentForStatus(requestedStatus!) } : {}),
         ...(paymentChanged ? { paymentStatus: requestedPayment } : {}),
         ...(codCollected ? { paymentStatus: PaymentStatus.PAID } : {}),
+        // Delivered by one of the store's drivers (lib/drivers.ts): they now hold this cash.
+        ...(codCollected && order.driverId ? { cashCollected: order.grandTotal } : {}),
         ...(cancelRefundAmount > 0 ? { paymentStatus: PaymentStatus.REFUNDED } : {}),
       }
       const returnMessage = returnedToSender ? ' Returned to sender: the shipped items were put back in stock.' : ''

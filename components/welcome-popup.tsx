@@ -8,7 +8,7 @@ import { useSelling } from '@/components/selling-client'
 import { INVITE_STORAGE_KEY } from '@/components/invite-landing'
 
 const KEY = 'yh-welcome-v1'
-const SKIP = ['/checkout', '/cart', '/admin', '/account', '/order', '/review', '/orders', '/invoice', '/pay-invoice', '/track', '/theme-editor-preview', '/maintenance']
+const SKIP = ['/checkout', '/cart', '/admin', '/account', '/order', '/review', '/orders', '/invoice', '/pay-invoice', '/track', '/theme-editor-preview', '/maintenance', '/driver']
 
 // Welcome discount (Settings > Selling tools): a first-time visitor is offered the first-order
 // code for their WhatsApp number. Shown once per browser; never on checkout or account pages.

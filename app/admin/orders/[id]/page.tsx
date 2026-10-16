@@ -18,6 +18,7 @@ export default async function OrderDetail({params}:{params:Promise<{id:string}>}
     where:{id},
     include:{
       user:true,
+      driver:{select:{id:true,name:true}},
       items:{include:{product:{include:{images:true}},variant:true}},
       events:{orderBy:{createdAt:'desc'}},
       notesHistory:{include:{user:true},orderBy:{createdAt:'desc'}},

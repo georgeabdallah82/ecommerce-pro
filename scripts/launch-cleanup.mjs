@@ -109,6 +109,8 @@ const COUNTS = {
   pages: `SELECT count(*)::int AS n FROM "Page"`,
   adSpend: `SELECT count(*)::int AS n FROM "AdSpend"`,
   purchaseOrders: `SELECT count(*)::int AS n FROM "PurchaseOrder"`,
+  drivers: `SELECT count(*)::int AS n FROM "Driver"`,
+  expenses: `SELECT count(*)::int AS n FROM "Expense"`,
   staffPushDevices: `SELECT count(*)::int AS n FROM "Setting" WHERE key LIKE 'push.subscription.%'`,
 }
 
@@ -176,7 +178,7 @@ function printPreview({ c, orders, stock, state, args }) {
   console.log('KEPT')
   console.log(`  Products: ${c.products} | Collections: ${c.collections} | Pages: ${c.pages} | Coupons: ${c.coupons} (use counts restart; ${c.inviteRewardCoupons} invite thank-you code(s) from test orders switched off)`)
   console.log(`  Staff accounts: ${c.staff} | Staff phones with order alerts: ${c.staffPushDevices} | Gift cards not from tests: ${c.giftCardsKept}`)
-  console.log(`  Ad spend entries: ${c.adSpend} | Purchase orders: ${c.purchaseOrders} | Theme, settings, shipping, photos: all`)
+  console.log(`  Ad spend entries: ${c.adSpend} | Running costs: ${c.expenses} | Drivers: ${c.drivers} | Purchase orders: ${c.purchaseOrders} | Theme, settings, shipping, photos: all`)
   if (state.missingOrders.length || state.missingCustomers.length) {
     console.log('')
     if (state.missingOrders.length) console.log(`WARNING: orders to keep not found: ${state.missingOrders.join(', ')}`)
@@ -246,7 +248,7 @@ async function clean(client, args, before) {
   if (after.ordersAll !== before.ordersAll - before.ordersGone) problems.push(`orders left ${after.ordersAll}, expected ${before.ordersAll - before.ordersGone}`)
   if (after.ordersGone !== 0) problems.push('some test orders are still there')
   if (after.customersAll !== before.customersAll - before.customersGone) problems.push(`customers left ${after.customersAll}, expected ${before.customersAll - before.customersGone}`)
-  for (const kept of ['staff', 'products', 'collections', 'pages', 'coupons', 'adSpend', 'purchaseOrders', 'staffPushDevices']) {
+  for (const kept of ['staff', 'products', 'collections', 'pages', 'coupons', 'adSpend', 'expenses', 'drivers', 'purchaseOrders', 'staffPushDevices']) {
     if (after[kept] !== before[kept]) problems.push(`${kept} changed from ${before[kept]} to ${after[kept]}`)
   }
   const badStock = (await run(`SELECT count(*)::int AS n FROM "InventoryItem" WHERE reserved < 0 OR quantity < 0`)).rows[0].n

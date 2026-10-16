@@ -74,6 +74,10 @@ await insert('PhoneSubscriber', { phone: '96170000001' })
 await insert('ProductQuestion', { productId: product.id, name: 'Maya', question: 'Is it big?' })
 await insert('InviteCode', { code: 'MAYALC1', phone: '96170000002' })
 await insert('WinbackContact', { phone: '96170000003' })
+// Drivers and running costs are the store's own, not test data: they stay.
+await insert('Driver', { id: 'lc_driver', name: 'Ali', token: 'lc-driver-token-0123456789abcdef' })
+await insert('Expense', { name: 'Rent', amount: 30000, startsOn: new Date('2026-10-01') })
+await db.query(`UPDATE "Order" SET "driverId" = 'lc_driver', "cashCollected" = 1000 WHERE id = 'lc_o_gone_shipped'`)
 // A friend's test order made a thank-you code: the code is switched off (discounts are never deleted).
 await insert('InviteReward', { orderId: 'lc_o_gone_new', inviteCode: 'MAYALC1', rewardCode: 'THANKSLC1' })
 await insert('Coupon', { code: 'THANKSLC1', type: 'FIXED', value: 500, maxUses: 1 })
@@ -121,6 +125,7 @@ ok(await n(`SELECT count(*) AS n FROM "InventoryMovement" WHERE "referenceId" IN
 ok(await n(`SELECT count(*) AS n FROM "Fulfillment"`) === 0 && await n(`SELECT count(*) AS n FROM "DeliveryTracking"`) === 0 && await n(`SELECT count(*) AS n FROM "DraftOrder"`) === 0, 'clean: parcels, delivery tracking and draft orders gone')
 ok(await n(`SELECT count(*) AS n FROM "GiftCard" WHERE code = 'LC-GC-GONE'`) === 0 && await n(`SELECT count(*) AS n FROM "GiftCard" WHERE code = 'LC-GC-KEEP'`) === 1, 'clean: gift card from a test order gone, hand-made one stays')
 ok(await n(`SELECT count(*) AS n FROM "Review"`) === 0 && await n(`SELECT count(*) AS n FROM "WishlistItem" WHERE "userId" = 'lc_keep'`) === 1, 'clean: reviews gone, kept customer\'s wishlist stays')
+ok(await n(`SELECT count(*) AS n FROM "Driver"`) === 1 && await n(`SELECT count(*) AS n FROM "Expense"`) === 1, 'clean: drivers and running costs stay')
 ok((await one(`SELECT "isActive" FROM "Coupon" WHERE code = 'THANKSLC1'`)).isActive === false && (await one(`SELECT "isActive" FROM "Coupon" WHERE code = 'LCTEST'`)).isActive === true, 'clean: test thank-you code switched off, other discounts untouched')
 for (const table of ['AbandonedCheckout', 'PhoneSubscriber', 'ProductQuestion', 'InviteCode', 'InviteReward', 'WinbackContact', 'EmailLog', 'LiveVisitorSession', 'Notification']) ok(await n(`SELECT count(*) AS n FROM "${table}"`) === 0, `clean: ${table} emptied`)
 ok(await n(`SELECT count(*) AS n FROM "Setting" WHERE key LIKE 'newsletter.subscriber.%'`) === 0, 'clean: newsletter signups gone')

@@ -248,6 +248,7 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
         </div>
         <Menu>
           <Link role="menuitem" href={`/admin/orders/${o.id}/invoice`}><FileText size={15}/> Invoice / print</Link>
+          <Link role="menuitem" href={`/admin/orders/packing-slips?ids=${o.id}`}><FileText size={15}/> Packing slip (no prices)</Link>
           <button role="menuitem" type="button" onClick={beginEdit}><Pencil size={15}/> Edit contact &amp; address</button>
           {canStartOrderEdit && <Link role="menuitem" href={`/admin/order-edits/new?orderId=${o.id}`}><FileEdit size={15}/> Change items</Link>}
           {!closed && <button role="menuitem" type="button" onClick={() => { setTracking(o.trackingNumber || ''); setTrackingOpen(true) }}><Truck size={15}/> Tracking number</button>}
@@ -350,6 +351,7 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
             </div>
           </div>
           {billingText && billingText !== addressText(o.shippingAddressJson) && <div className={s.address}><div className={ui.muted}>Billing address</div><div className={s.pre}>{billingText}</div></div>}
+          {o.driver && <div className={s.giftNote}><Truck size={16}/><div><strong>Driver: {o.driver.name}</strong>{o.cashCollected ? <span className={ui.muted}>Collected {money(o.cashCollected, o.currency)} cash · {o.cashSettledAt ? 'handed to the store' : 'not handed over yet'}</span> : <span className={ui.muted}>{o.status === 'DELIVERED' ? 'Delivered, nothing to collect' : 'On their delivery list'}</span>} <Link className={ui.textLink} href="/admin/orders/drivers">Drivers</Link></div></div>}
           {o.isGift && <div className={s.giftNote}><Gift size={16}/><div><strong>Gift order</strong>{o.giftMessage ? <span className={s.pre}>"{o.giftMessage}"</span> : <span className={ui.muted}>No message. Don't put prices in the parcel.</span>}</div></div>}
           {history && <div className={`${s.history}${history.warning ? ` ${s.historyWarn}` : ''}`}>
             <strong>{history.total ? `Ordered ${history.total} time${history.total === 1 ? '' : 's'} before with this phone` : 'First order from this phone number'}</strong>

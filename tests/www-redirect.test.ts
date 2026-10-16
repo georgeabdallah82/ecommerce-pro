@@ -51,6 +51,8 @@ test('security headers are sent once each, with HSTS only in production', () => 
   assert.equal(prod.get('X-Frame-Options'), 'DENY')
   assert.equal(prod.get('Permissions-Policy'), 'camera=(), microphone=(), geolocation=(self)')
   assert.equal(new Map(securityHeaders({ production: false })).has('Strict-Transport-Security'), false)
+  // Only the barcode stock count page may use the camera.
+  assert.equal(new Map(securityHeaders({ camera: true })).get('Permissions-Policy'), 'camera=(self), microphone=(), geolocation=(self)')
   assert.equal(new Map(securityHeaders({ framedBySameSite: true })).get('X-Frame-Options'), 'SAMEORIGIN')
   const response = applySecurityHeaders(new Response('ok', { headers: { 'X-Content-Type-Options': 'nosniff' } }), { production: true })
   assert.equal(response.headers.get('X-Content-Type-Options'), 'nosniff', 'set, not appended')

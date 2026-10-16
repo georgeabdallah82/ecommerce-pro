@@ -105,7 +105,7 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
     ...Object.fromEntries([
       'payment.cod', 'payment.card', 'payment.bank', 'payment.wallet',
       'checkout.guestCheckout', 'notifications.orderEmail', 'notifications.lowStock',
-      'notifications.reviews', 'notifications.dailySummary', 'email.customerOrder', 'email.fulfillment', 'email.abandonedCheckout', 'email.giftCard', 'email.returnStatus', 'email.orderEdit', 'email.reviewRequest',
+      'notifications.reviews', 'notifications.dailySummary', 'notifications.weeklyReport', 'email.customerOrder', 'email.fulfillment', 'email.abandonedCheckout', 'email.giftCard', 'email.returnStatus', 'email.orderEdit', 'email.reviewRequest',
       'checkout.giftOption', 'product.whatsappOrder', 'product.questions',
     ].map(k => [k, map.get(k) !== 'false'])),
     // Off until switched on.
@@ -379,8 +379,9 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
               <Toggle label="Low stock alerts" keyName="notifications.lowStock" value={flags['notifications.lowStock']} onChange={() => toggle('notifications.lowStock')} />
               <Toggle label="Review moderation alerts" keyName="notifications.reviews" value={flags['notifications.reviews']} onChange={() => toggle('notifications.reviews')} />
             </Card>
-            <Card title="Morning summary" desc="Every morning at about 8:30 (store time): yesterday's orders and sales, orders waiting for you, low stock and new reviews. Sent by email and as a phone notification to staff who turned notifications on.">
+            <Card title="Morning summary" desc="Every morning at about 8:30 (store time): yesterday's orders and sales, orders waiting for you, low stock and new reviews. Sent by email and as a phone notification to staff who turned notifications on. On Mondays, a weekly report email too: last week's sales against the week before, best sellers and top areas.">
               <Toggle label="Send the morning summary" keyName="notifications.dailySummary" value={flags['notifications.dailySummary']} onChange={() => toggle('notifications.dailySummary')} />
+              <Toggle label="Weekly report by email on Mondays" keyName="notifications.weeklyReport" value={flags['notifications.weeklyReport']} onChange={() => toggle('notifications.weeklyReport')} />
               <Field label="Send the email to" value={values['notifications.summaryEmail']} placeholder={values['contact.email'] || 'Store email (Settings > General)'} onChange={v => set('notifications.summaryEmail', v)} />
             </Card>
             </>

@@ -384,6 +384,11 @@ model Order {
   // "This is a gift" at checkout, with the message to put in the parcel (packing slip).
   isGift              Boolean              @default(false)
   giftMessage         String?
+  // The driver taking it (Admin > Orders > Drivers, lib/drivers.ts), the cash they collected on
+  // delivery, and when they handed that cash to the store.
+  driverId            String?
+  cashCollected       Int?
+  cashSettledAt       DateTime?
   trackingNumber      String?
   shippingMethod      String?
   createdAt           DateTime             @default(now())
@@ -395,7 +400,9 @@ model Order {
   notesHistory        OrderNote[]
   paymentTransactions PaymentTransaction[]
   inviteReward        InviteReward?
+  driver              Driver?              @relation(fields: [driverId], references: [id], onDelete: SetNull)
   @@index([createdAt])
+  @@index([driverId])
   @@index([status])
   @@index([userId])
 }
@@ -834,4 +841,34 @@ model InviteReward {
 model WinbackContact {
   phone       String   @id
   contactedAt DateTime @default(now())
+}
+
+// The people who deliver (Admin > Orders > Drivers, lib/drivers.ts). Each has a private link
+// (/driver/<token>) to their own list, where they mark orders delivered and the cash collected.
+// A new link replaces the old one; a driver who is turned off can't open theirs.
+model Driver {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  token     String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
+}
+
+// The store's own running costs for Reports > Profit (lib/expenses.ts): rent, salaries,
+// internet... A monthly cost counts every month from startsOn until endsOn (or for good); a
+// one-off counts on its day.
+model Expense {
+  id        String    @id @default(cuid())
+  name      String
+  amount    Int
+  currency  String    @default("USD")
+  monthly   Boolean   @default(true)
+  startsOn  DateTime  @db.Date
+  endsOn    DateTime? @db.Date
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  @@index([startsOn])
 }
