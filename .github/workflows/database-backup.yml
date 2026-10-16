@@ -14,18 +14,31 @@ on:
   schedule:
     - cron: "17 0 * * *" # 03:17 in Beirut
   workflow_dispatch:
+  # Also run as the first step of other jobs that change data (Launch clean-up): same copy, same
+  # restore check, saved under its own name so the nightly copy of that day is not replaced.
+  workflow_call:
+    inputs:
+      label:
+        description: "Word added to the copy's name, e.g. before-launch (letters, digits, dashes)"
+        type: string
+        default: ""
+    outputs:
+      name:
+        description: "The copy's file name in the backups bucket"
+        value: ${{ jobs.backup.outputs.name }}
 
 permissions:
   contents: read
-
-concurrency:
-  group: database-backup
-  cancel-in-progress: false
 
 jobs:
   backup:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    concurrency:
+      group: database-backup
+      cancel-in-progress: false
+    outputs:
+      name: ${{ steps.keep.outputs.name }}
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -91,6 +104,9 @@ jobs:
           echo "The copy restores with the same rows as the live database."
 
       - name: Keep the copy for ${{ env.KEEP_DAYS }} days in R2
+        id: keep
+        env:
+          LABEL: ${{ inputs.label }}
         run: |
           # First run: create the private bucket and its 30-day expiry rule. Later runs find them
           # there; "already exists" is fine, any other failure shows up in the upload below.
@@ -100,6 +116,8 @@ jobs:
             npx --yes "$WRANGLER" r2 bucket lifecycle add "$BUCKET" expire-old-backups --expire-days "$KEEP_DAYS" --force \
               || echo "::warning::Could not set the $KEEP_DAYS-day expiry on $BUCKET; old copies will be kept until it is set"
           fi
-          name="yallahaul-$(date -u +%Y-%m-%d).dump"
+          case "$LABEL" in *[!a-z0-9-]*) echo "::error::Backup label may only use a-z, 0-9 and -"; exit 1 ;; esac
+          if [ -n "$LABEL" ]; then name="yallahaul-$LABEL-$(date -u +%Y-%m-%dT%H%MZ).dump"; else name="yallahaul-$(date -u +%Y-%m-%d).dump"; fi
           npx --yes "$WRANGLER" r2 object put "$BUCKET/$name" --file backup.dump --content-type application/octet-stream --remote
           echo "Saved $name ($(stat -c %s backup.dump) bytes) in $BUCKET; copies older than $KEEP_DAYS days are deleted automatically."
+          echo "name=$name" >> "$GITHUB_OUTPUT"
