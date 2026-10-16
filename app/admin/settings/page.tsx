@@ -40,6 +40,9 @@ const CLIENT_SETTING_KEYS = new Set([
   'email.returnStatus',
   'email.orderEdit',
   'email.reviewRequest',
+  // Selling tools (lib/selling.ts)
+  'currency.showLbp', 'currency.lbpRate', 'freeGift.enabled', 'freeGift.threshold', 'freeGift.productId', 'checkout.giftOption',
+  'product.whatsappOrder', 'welcome.enabled', 'welcome.code', 'welcome.title', 'welcome.delaySeconds', 'search.synonyms',
   'tracking.metaPixelId',
   'tracking.gaMeasurementId',
   'tracking.tiktokPixelId',
@@ -71,5 +74,10 @@ export default async function Settings() {
   }
   // The sender set for the deploy (wrangler.jsonc EMAIL_FROM): shown as the default, and its
   // domain is the one the sender address must use.
-  return <SettingsCenterPro initial={settings} metaCapiTokenSet={!!capiToken?.value} emailFromDefault={process.env.EMAIL_FROM || ''} appIcon={appIcon} />
+  // For the free-gift product list and the WhatsApp list link (Selling tools).
+  const [products, whatsappListCount] = await Promise.all([
+    db.product.findMany({ where: { status: 'ACTIVE' }, select: { id: true, name: true }, orderBy: { name: 'asc' }, take: 1000 }),
+    db.phoneSubscriber.count().catch(() => 0),
+  ])
+  return <SettingsCenterPro initial={settings} metaCapiTokenSet={!!capiToken?.value} emailFromDefault={process.env.EMAIL_FROM || ''} appIcon={appIcon} products={products} whatsappListCount={whatsappListCount} />
 }

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from '@/components/admin-link'
-import { ArrowLeft, Ban, Check, ChevronDown, Copy, FileEdit, FileText, Mail, MapPin, MessageCircle, MoreHorizontal, PackageCheck, Pencil, Phone, Plus, Save, Send, SlidersHorizontal, Truck, X, XCircle } from 'lucide-react'
+import { ArrowLeft, Ban, Check, ChevronDown, Copy, FileEdit, FileText, Mail, MapPin, MessageCircle, MoreHorizontal, PackageCheck, Pencil, Phone, Plus, Save, Send, SlidersHorizontal, Truck, X, XCircle, Gift } from 'lucide-react'
 import { money } from '@/lib/config'
 import { formatAdminDate, formatAdminDateTime } from '@/lib/admin-datetime'
 import { canTransitionOrder, canTransitionPayment } from '@/lib/orders'
@@ -350,6 +350,7 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
             </div>
           </div>
           {billingText && billingText !== addressText(o.shippingAddressJson) && <div className={s.address}><div className={ui.muted}>Billing address</div><div className={s.pre}>{billingText}</div></div>}
+          {o.isGift && <div className={s.giftNote}><Gift size={16}/><div><strong>Gift order</strong>{o.giftMessage ? <span className={s.pre}>"{o.giftMessage}"</span> : <span className={ui.muted}>No message. Don't put prices in the parcel.</span>}</div></div>}
           {history && <div className={`${s.history}${history.warning ? ` ${s.historyWarn}` : ''}`}>
             <strong>{history.total ? `Ordered ${history.total} time${history.total === 1 ? '' : 's'} before with this phone` : 'First order from this phone number'}</strong>
             {history.total > 0 && <span>{[history.delivered ? `${history.delivered} delivered` : '', history.cancelled ? `${history.cancelled} cancelled` : '', history.open ? `${history.open} in progress` : ''].filter(Boolean).join(' · ')}</span>}

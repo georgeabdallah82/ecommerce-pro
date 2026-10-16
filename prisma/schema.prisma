@@ -176,6 +176,10 @@ model Product {
   taxable            Boolean              @default(true)
   trackInventory     Boolean              @default(true)
   continueSellingWhenOutOfStock Boolean   @default(false)
+  // Pre-order: keeps selling when sold out, labelled "Pre-order" with this note ("Ships in about
+  // 2 weeks") on the product page, in the cart and on the order.
+  preorder           Boolean              @default(false)
+  preorderNote       String?
   giftCard           Boolean              @default(false)
   salesChannelsJson  String?
   productTemplate    String?              @default("product")
@@ -317,6 +321,9 @@ model Coupon {
   getProductIds      String[]      @default([])
   getCollectionIds   String[]      @default([])
   firstOrderOnly     Boolean       @default(false)
+  // Flash sale: an automatic discount shown on the store with its sale price and a countdown to
+  // expiresAt (lib/flash-sale.ts).
+  flashSale          Boolean       @default(false)
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 }
@@ -371,6 +378,9 @@ model Order {
   shippingAddressJson String
   billingAddressJson  String?
   notes               String?
+  // "This is a gift" at checkout, with the message to put in the parcel (packing slip).
+  isGift              Boolean              @default(false)
+  giftMessage         String?
   trackingNumber      String?
   shippingMethod      String?
   createdAt           DateTime             @default(now())
@@ -765,4 +775,14 @@ model DeliveryTracking {
 
   @@index([active])
   @@index([lastLocationUpdatedAt])
+}
+
+// WhatsApp numbers collected by the welcome-discount popup (components/welcome-popup.tsx):
+// shoppers who asked for the first-order code and agreed to hear about offers on WhatsApp.
+model PhoneSubscriber {
+  id         String   @id @default(cuid())
+  phone      String   @unique
+  name       String?
+  source     String   @default("welcome-popup")
+  createdAt  DateTime @default(now())
 }

@@ -38,7 +38,8 @@ export default function PushOptIn({ vapidPublicKey, enabled, storeName }: { vapi
       now: Date.now(),
     })
     if (!offer) { setOpen(false); return }
-    const timer = window.setTimeout(() => setOpen(true), PUSH_PROMPT_DELAY_MS)
+    // The welcome-discount popup goes first when it is due (components/welcome-popup.tsx).
+    const timer = window.setTimeout(() => { if (!document.documentElement.dataset.welcomePopup) setOpen(true) }, PUSH_PROMPT_DELAY_MS)
     return () => window.clearTimeout(timer)
   }, [enabled, vapidPublicKey, pathname])
 

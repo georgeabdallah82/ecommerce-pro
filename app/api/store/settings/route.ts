@@ -3,6 +3,7 @@ import { getPaymentProvider } from '@/lib/payments'
 import { json } from '@/lib/utils'
 import { getPublicPaymentMethods } from '@/lib/payment-methods-public'
 import { config } from '@/lib/config'
+import { getSellingConfig } from '@/lib/selling-config'
 
 const PUBLIC_KEYS = [
   'payment.cod', 'payment.card', 'payment.bank', 'payment.wallet',
@@ -12,10 +13,12 @@ const PUBLIC_KEYS = [
 
 export async function GET(){
   try{
-    const [rows,paymentProvider,paymentMethods]=await Promise.all([
+    const [rows,paymentProvider,paymentMethods,selling]=await Promise.all([
       db.setting.findMany({where:{key:{in:PUBLIC_KEYS}},select:{key:true,value:true}}),
       Promise.resolve(getPaymentProvider()),
       getPublicPaymentMethods(),
+      // Selling tools (lib/selling-config.ts): LBP prices, free gift, gift option, welcome popup, flash sales.
+      getSellingConfig().catch(()=>null),
     ])
     const map=Object.fromEntries(rows.map(row=>[row.key,row.value]))
     return json({settings:{
@@ -29,6 +32,7 @@ export async function GET(){
       checkout:{guestCheckout:map['checkout.guestCheckout']!=='false',freeShippingThreshold:map['checkout.freeShippingThreshold']||'100',taxRatePercent:map['checkout.taxRatePercent']||'0'},
       store:{currency:map['store.currency']||'USD',country:map['store.country']||'Lebanon'},
       contact:{email:map['contact.email']?.trim()||config.supportEmail,phone:map['contact.phone']?.trim()||config.whatsapp},
+      selling:selling?{lbp:selling.lbp,freeGift:selling.freeGift,giftOption:selling.giftOption,welcome:selling.welcome,flashSales:selling.flashSales}:null,
     }},{headers:{'Cache-Control':'public, max-age=30, s-maxage=120, stale-while-revalidate=600'}})
   }catch{return json({error:'Unable to load store settings'},{status:500})}
 }

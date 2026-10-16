@@ -11,6 +11,9 @@ import { useWishlist } from '@/components/use-wishlist'
 import { CartNotices } from '@/components/cart-notices'
 import { NumInput } from './num-input'
 import { loadStoreSettings } from '@/lib/store-settings-client'
+import { FreeGiftBar, LbpNote, useSelling } from '@/components/selling-client'
+import { saleFor } from '@/lib/flash-sale-shared'
+import { Zap } from 'lucide-react'
 
 type AnyMap = Record<string, any>
 
@@ -18,6 +21,9 @@ export default function AliExpressCart({ theme, recommended, sections = [], zone
   const { t, count: plural } = useI18n()
   const { items, updateQty, removeItem, isSelected, toggleSelected, selectAll, deselectAll, selectedItems, selectedCount, selectedSubtotal } = useCart()
   const { wishlist, toggleWish } = useWishlist()
+  // A flash sale on something in the cart: its discount shows at checkout (lib/flash-sale.ts).
+  const selling = useSelling()
+  const flashInCart = items.some(item => !!saleFor(selling?.flashSales, item.productId))
   const [quickProduct, setQuickProduct] = useState<AnyMap | null>(null)
   const [freeShippingThreshold, setFreeShippingThreshold] = useState<number | null>(null)
   const [couponCode, setCouponCode] = useState('')
@@ -96,6 +102,8 @@ export default function AliExpressCart({ theme, recommended, sections = [], zone
           <span className="pill" aria-label={t('{count} in cart', { count: plural(itemCount, 'item') })}>{plural(itemCount, 'item')}</span>
         </header>
         <CartNotices />
+        <FreeGiftBar subtotal={selectedSubtotal} currency={theme?.currency || 'USD'} />
+        {flashInCart && <div className="aliShippingBanner"><Zap size={16} /><span>{t('Flash sale prices are taken off at checkout.')}</span></div>}
 
         {showFreeShippingBar && freeShippingThreshold !== null && (
           <div className="aliShippingBanner">
@@ -156,7 +164,7 @@ export default function AliExpressCart({ theme, recommended, sections = [], zone
             <h2>{t('Order summary')}</h2>
             <div className="summaryLineUX"><span>{t('Selected items ({count})', { count: selectedCount })}</span><strong>{money(selectedSubtotal)}</strong></div>
             <div className="summaryLineUX"><span>{t('Shipping')}</span><span>{t('Calculated at checkout')}</span></div>
-            <div className="summaryTotalUX"><span>{t('Estimated total')}</span><strong>{money(selectedSubtotal)}</strong></div>
+            <div className="summaryTotalUX"><span>{t('Estimated total')}</span><strong>{money(selectedSubtotal)}<LbpNote cents={selectedSubtotal} /></strong></div>
             <p className="summaryNoteUX">{t('Taxes, shipping, discounts and final total are calculated securely at checkout.')}</p>
             <div className="cartActionUX">
               <Link className={`focalButton primary wide aliCartCheckoutLink ${selectedItems.length ? '' : 'disabled'}`} href="/checkout" aria-disabled={!selectedItems.length} onClick={e => { if (!selectedItems.length) e.preventDefault() }}>

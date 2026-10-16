@@ -35,7 +35,10 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
     if(b.slug!==undefined)data.slug=slug
     for(const k of ['basePrice','compareAtPrice','costPrice'])if(b[k]!==undefined)data[k]=b[k]===null||b[k]===''?null:Math.max(0,Math.trunc(Number(b[k])))
     if(b.weight!==undefined)data.weight=b.weight===null||b.weight===''?null:Number(b.weight)
-    for(const k of ['featured','requiresShipping','taxable','trackInventory','continueSellingWhenOutOfStock','giftCard'])if(b[k]!==undefined)data[k]=Boolean(b[k])
+    for(const k of ['featured','requiresShipping','taxable','trackInventory','continueSellingWhenOutOfStock','giftCard','preorder'])if(b[k]!==undefined)data[k]=Boolean(b[k])
+    // Pre-order keeps selling at zero stock (checkout's stock rule), so it turns that on too.
+    if(data.preorder===true)data.continueSellingWhenOutOfStock=true
+    if(b.preorderNote!==undefined)data.preorderNote=b.preorderNote?String(b.preorderNote).trim().slice(0,120):null
     if(b.status!==undefined)data.status=b.status;if(b.publishedAt!==undefined)data.publishedAt=b.publishedAt?new Date(b.publishedAt):null
 
     if(Array.isArray(b.variants)){

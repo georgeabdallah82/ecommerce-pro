@@ -12,6 +12,9 @@ export const checkoutSchema = z.object({
   giftCardCode: z.string().trim().max(60).optional().or(z.literal('')),
   coinsToUse: z.number().int().min(0).max(1000000).default(0),
   shippingRateId: z.string().trim().max(60).optional().or(z.literal('')),
+  // "This is a gift" (Settings > Selling tools): the message goes in the parcel.
+  isGift: z.boolean().optional().default(false),
+  giftMessage: z.string().trim().max(300).optional().or(z.literal('')),
   // firstName/lastName/line1/city are only required for a cart that actually needs physical
   // delivery -- checked in app/api/checkout/route.ts once it knows whether every item's product
   // has requiresShipping: false, since that depends on a DB lookup this schema can't do. country

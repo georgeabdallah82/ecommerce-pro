@@ -9,6 +9,8 @@ import { getUnpublishedProductIds } from '@/lib/sales-channels'
 import { taxableAmountAfterRewards, zeroSplit } from '@/lib/discounts'
 import { applyCoupon, findAutomaticDiscount } from '@/lib/checkout-discounts'
 import { bundleDiscount } from '@/lib/bundles'
+import { freeGiftFor } from '@/lib/free-gift'
+import { orderedBefore } from '@/lib/customer-history'
 
 // The checkout summary's price before the order is placed: the cart priced from the database,
 // with the discount code (or the best automatic discount), bundles, delivery for the chosen area
@@ -21,14 +23,19 @@ const quoteSchema = z.object({
   country: z.string().trim().min(2).max(80),
   region: z.string().trim().max(100).optional().or(z.literal('')),
   shippingRateId: z.string().trim().max(60).optional().or(z.literal('')),
+  // For "first order only" codes without an account (lib/customer-history.ts orderedBefore).
+  phone: z.string().trim().max(40).optional().or(z.literal('')),
+  email: z.string().trim().max(190).optional().or(z.literal('')),
 })
 
 // Coupon problems the customer can act on, shown under the code box (the same wording checkout uses).
 const COUPON_MESSAGES = new Set([
   'Invalid coupon code', 'This discount is not configured correctly', 'This coupon is not active yet', 'This coupon has expired',
   'This coupon has reached its usage limit', 'Minimum order is required for this coupon', 'This discount does not apply to the items in your cart',
-  'This coupon requires a customer account',
+  'This coupon requires a customer account', 'This coupon is for first orders only',
 ])
+
+const storeCountry = async () => (await db.setting.findUnique({ where: { key: 'store.country' } }).catch(() => null))?.value || 'Lebanon'
 
 export async function POST(req: Request) {
   const limit = consumeRateLimit(`checkout-quote:${clientIp(req.headers)}`, 60, 10 * 60 * 1000)
@@ -67,7 +74,7 @@ export async function POST(req: Request) {
     let applied: { discount: ReturnType<typeof zeroSplit>; coupon: any } = { discount: zeroSplit(), coupon: null }
     try {
       applied = input.couponCode ? await applyCoupon(input.couponCode, subtotal, normalized) : await findAutomaticDiscount(subtotal, user?.id ?? null, normalized)
-      if (applied.coupon?.firstOrderOnly && !user?.id) throw new Error('This coupon requires a customer account')
+      if (applied.coupon?.firstOrderOnly && !user?.id && await orderedBefore(input.phone, input.email, await storeCountry())) throw new Error('This coupon is for first orders only')
     } catch (error) {
       const message = error instanceof Error ? error.message : ''
       couponError = COUPON_MESSAGES.has(message) ? message : 'Invalid coupon code'
@@ -91,8 +98,12 @@ export async function POST(req: Request) {
     const taxRate = await getTaxRatePercent(input.country)
     const taxTotal = Math.round(taxableAmountAfterRewards(taxableSubtotal, discount.taxable, discountedSubtotal, 0) * taxRate / 100)
 
+    // Free gift above an amount (lib/free-gift.ts), shown in the summary as checkout will add it.
+    const gift = await freeGiftFor(subtotal).catch(() => null)
+
     return json({
       subtotal,
+      freeGift: gift ? { name: gift.line.name.replace(/ \(Free gift\)$/, ''), image: gift.image } : null,
       discount: discount.total,
       discountCode: input.couponCode && applied.coupon ? String(applied.coupon.code) : null,
       automaticDiscount: !input.couponCode && applied.coupon ? true : false,

@@ -15,12 +15,16 @@ function couponFields(b: any): { error: string } | { data: any } {
   const startsAt = b.startsAt ? new Date(b.startsAt) : null
   const expiresAt = b.expiresAt ? new Date(b.expiresAt) : null
   if (startsAt && expiresAt && expiresAt <= startsAt) return { error: 'The end date must be after the start date.' }
+  // Flash sale (lib/flash-sale.ts): shown on the store with its price and a countdown, so it has to
+  // be an automatic percentage discount with an end and no minimum order.
+  const flashSale = Boolean(b.flashSale)
+  if (flashSale && (type !== 'PERCENTAGE' || !b.isAutomatic || !expiresAt || b.minSubtotal)) return { error: 'A flash sale needs: Automatic, a percentage, an end date, and no minimum order.' }
   return { data: {
     code, type, isAutomatic: Boolean(b.isAutomatic),
     value: type === 'FREE_SHIPPING' || type === 'BUY_X_GET_Y' ? 0 : value,
     minSubtotal: b.minSubtotal ? Math.trunc(Number(b.minSubtotal)) : null,
     maxUses: b.maxUses ? Math.trunc(Number(b.maxUses)) : null,
-    startsAt, expiresAt, firstOrderOnly: Boolean(b.firstOrderOnly), ...targeting(b),
+    startsAt, expiresAt, firstOrderOnly: Boolean(b.firstOrderOnly), flashSale, ...targeting(b),
   } }
 }
 function saveError(e: unknown, fallback: string) {

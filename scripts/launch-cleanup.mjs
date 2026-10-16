@@ -11,7 +11,7 @@
 //
 // Removed: test orders (items, history, notes, payments, parcels, returns, edits, delivery
 // tracking, draft orders, gift cards they issued) and the stock they held, customer accounts
-// (addresses, wishlists, reviews, coins, wallet), all reviews, abandoned checkouts, newsletter
+// (addresses, wishlists, reviews, coins, wallet), all reviews, abandoned checkouts, newsletter and WhatsApp
 // signups, email opt-outs, the email log, visitor stats, customer push devices, back-in-stock
 // requests, notifications, sign-in limits and the audit log. Coupon use counts restart and the next
 // order is #1001.
@@ -90,6 +90,7 @@ const COUNTS = {
   wishlist: `SELECT count(*)::int AS n FROM "WishlistItem" WHERE "userId" IN (SELECT id FROM (${GONE_USERS}) u)`,
   abandonedCheckouts: `SELECT count(*)::int AS n FROM "AbandonedCheckout"`,
   newsletter: `SELECT count(*)::int AS n FROM "Setting" WHERE key LIKE 'newsletter.subscriber.%'`,
+  whatsappSignups: `SELECT count(*)::int AS n FROM "PhoneSubscriber"`,
   emailOptOuts: `SELECT count(*)::int AS n FROM "EmailOptOut"`,
   emailLog: `SELECT count(*)::int AS n FROM "EmailLog"`,
   visitorSessions: `SELECT count(*)::int AS n FROM "LiveVisitorSession"`,
@@ -161,7 +162,7 @@ function printPreview({ c, orders, stock, state, args }) {
   console.log(`  Draft orders: ${c.draftOrders} | Parcels: ${c.parcels} | Returns: ${c.returns} | Order edits: ${c.orderEdits}`)
   console.log(`  Gift cards from these orders/customers: ${c.giftCardsGone}`)
   console.log(`  Reviews: ${c.reviews} | Wishlist items: ${c.wishlist}`)
-  console.log(`  Abandoned checkouts: ${c.abandonedCheckouts} | Newsletter signups: ${c.newsletter} | Email opt-outs: ${c.emailOptOuts}`)
+  console.log(`  Abandoned checkouts: ${c.abandonedCheckouts} | Newsletter signups: ${c.newsletter} | WhatsApp signups: ${c.whatsappSignups} | Email opt-outs: ${c.emailOptOuts}`)
   console.log(`  Email log: ${c.emailLog} | Visitor stats: ${c.visitorSessions} | Customer push devices: ${c.customerPushDevices}`)
   console.log(`  Back-in-stock requests: ${c.backInStock} | Notifications: ${c.notifications} | Audit log: ${c.auditLog}`)
   console.log(`  Order numbers restart: the next order is #${state.counter === null ? FIRST_ORDER_NUMBER : state.counter + 1} now, #${FIRST_ORDER_NUMBER} after the clean-up${keepOrders ? ' (or the one after the highest kept number)' : ''}`)
@@ -222,7 +223,7 @@ async function clean(client, args, before) {
   await run(`DELETE FROM "User" WHERE id IN (SELECT id FROM gone_users)`)
 
   // Everything else that only exists because of testing.
-  for (const table of ['Review', 'AbandonedCheckout', 'EmailOptOut', 'EmailLog', 'LiveVisitorSession', 'PushSubscription', 'BackInStockRequest', 'Notification', 'PasswordResetToken', 'RateLimitBucket', 'AdminLoginLockout', 'AuditLog']) {
+  for (const table of ['Review', 'AbandonedCheckout', 'PhoneSubscriber', 'EmailOptOut', 'EmailLog', 'LiveVisitorSession', 'PushSubscription', 'BackInStockRequest', 'Notification', 'PasswordResetToken', 'RateLimitBucket', 'AdminLoginLockout', 'AuditLog']) {
     await run(`DELETE FROM "${table}"`)
   }
   await run(`DELETE FROM "Setting" WHERE key LIKE 'newsletter.subscriber.%'`)

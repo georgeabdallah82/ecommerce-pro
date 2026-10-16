@@ -15,6 +15,10 @@ import { validGtin } from '@/lib/product-feed'
 import { themeTemplates } from '@/lib/theme-templates'
 import { storefrontCached } from '@/lib/storefront-cache'
 import { getBoughtTogether } from '@/lib/recommendations'
+import { getSellingConfig } from '@/lib/selling-config'
+import { saleFor } from '@/lib/flash-sale'
+import { getContactInfo } from '@/lib/store-contact'
+import { whatsappDigits } from '@/lib/links'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -183,6 +187,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     vendor: product.vendor,
     productType: product.productType,
     basePrice: product.basePrice,
+    preorder: product.preorder,
+    preorderNote: product.preorderNote,
     compareAtPrice: product.compareAtPrice,
     rating: ownStats?.rating || 0,
     reviewCount: ownStats?.reviewCount || 0,
@@ -281,6 +287,12 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       : offerFor(product.variants[0]?.price ?? product.basePrice, isAvailable),
   }
 
+  // Selling tools (lib/selling-config.ts): a flash sale on this product, prices in LBP, and the
+  // store's WhatsApp number for "Order on WhatsApp".
+  const [selling, contact] = await Promise.all([getSellingConfig().catch(() => null), getContactInfo().catch(() => null)])
+  const flash = saleFor(selling?.flashSales, product.id)
+  const storeWhatsapp = selling?.whatsappOrder === false ? '' : whatsappDigits(String((theme as any)?.whatsapp?.number || '').trim() || contact?.phone || '', (await getStorefrontSettings()).get('store.country') || 'Lebanon')
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, '\\u003c') }} />
@@ -298,6 +310,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}
         customerEmail={currentUser?.role === 'CUSTOMER' ? currentUser.email || undefined : undefined}
         boughtTogether={boughtTogether}
+        flashSale={flash ? { percent: flash.percent, endsAt: flash.endsAt } : null}
+        lbpRate={selling?.lbp.show ? selling.lbp.rate : 0}
+        storeWhatsapp={storeWhatsapp}
       />
       <Footer theme={theme} />
     </>

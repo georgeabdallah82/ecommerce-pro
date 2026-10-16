@@ -1,4 +1,5 @@
 import {db} from '@/lib/prisma'
+import { FlashSaleBanner } from '@/components/selling-client'
 import {getThemeState} from '@/lib/theme'
 import {translator} from '@/lib/i18n'
 import {withProductStats} from '@/lib/product-stats'
@@ -45,6 +46,7 @@ export default async function Home(){
       try{const parsed=JSON.parse(block.contentJson||'{}');if(parsed?.text)text=String(parsed.text)}catch{}
       return text?<div className="aliAnnouncementBar" key={block.id}>{text}</div>:null
     })}
+    <FlashSaleBanner/>
     <StorefrontSections theme={theme} sections={sections} products={products} collections={collections}/>
     {trustItems.length>0&&(
       <section className="aliTrustStrip">

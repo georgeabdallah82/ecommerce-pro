@@ -21,6 +21,7 @@ type Product = {
   seoTitle?: string | null; seoDescription?: string | null; seoImageUrl?: string | null
   weight?: number | null; weightUnit?: string | null
   requiresShipping: boolean; taxable: boolean; trackInventory: boolean; continueSellingWhenOutOfStock: boolean; giftCard: boolean
+  preorder?: boolean; preorderNote?: string | null
   productTemplate?: string | null; publishedAt?: string | null
   images: ImageItem[]; variants: Variant[]; inventory: any[]; tags: any[]; metafields?: any[]
   sharedInventory?: boolean; quantity?: number; lowStockThreshold?: number; locationId?: string | null
@@ -289,7 +290,9 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
             <div className={s.checkGrid}>
               <Check checked={product.trackInventory} onChange={v => update({ trackInventory: v })} title="Track inventory" text="Prevent overselling when stock is exhausted." />
               <Check checked={product.continueSellingWhenOutOfStock} onChange={v => update({ continueSellingWhenOutOfStock: v })} title="Continue selling when out of stock" text="Allow checkout at zero available inventory." />
+              <Check checked={!!product.preorder} onChange={v => update({ preorder: v, ...(v ? { continueSellingWhenOutOfStock: true } : {}) })} title="Pre-order when sold out" text="Keeps selling at zero stock, shown to customers as a pre-order." />
             </div>
+            {product.preorder && <Field label="Pre-order note (shown to customers)"><input className={ui.input} value={product.preorderNote || ''} maxLength={120} onChange={e => update({ preorderNote: e.target.value })} placeholder="e.g. Ships in about 2 weeks" /></Field>}
             <div className={s.notice}><strong>{product.sharedInventory ? 'Shared inventory pool' : product.variants.length ? 'Variant inventory' : 'Product inventory'}</strong><span>{inventoryTotal} units represented by the current inventory mode.</span></div>
           </Card>
           {(!product.variants.length || product.sharedInventory) && <Card title="Product inventory" sub="Used for non-variant stock or a shared variant pool">

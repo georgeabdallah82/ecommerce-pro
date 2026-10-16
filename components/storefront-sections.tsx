@@ -9,6 +9,8 @@ import {StorefrontPreviewContext} from '@/components/preview-context'
 import {useWishlist} from '@/components/use-wishlist'
 import {useI18n} from '@/components/lang-provider'
 import { money as formatMoney } from '@/lib/config'
+import { FlashCountdown, useSelling } from '@/components/selling-client'
+import { saleFor, salePrice } from '@/lib/flash-sale-shared'
 import { FreeDeliveryBadge, ShippingNote, merchantShippingText } from '@/components/shipping-note'
 import { BundlesSection, CategorySpotlight, HeroSlider, OfferBanners, ProductRail, ProductTabs, RecentlyViewed, ShopByPrice } from '@/components/market-sections'
 
@@ -160,8 +162,12 @@ export function ProductCard({p,theme,onQuickView,preview,onSelect,wishlist,toggl
   const [added,setAdded]=useState(false);
   const primaryImage=p.images?.[0]?.url||'/placeholder-product.svg';
   const secondaryImage=p.images?.[1]?.url||null;
-  const price=Number(p.basePrice||0);
-  const compare=Number(p.compareAtPrice||0);
+  // A flash sale on this product (lib/flash-sale.ts) shows its price and a countdown badge.
+  const selling=useSelling();
+  const flash=saleFor(selling?.flashSales,String(p.id));
+  const basePrice=Number(p.basePrice||0);
+  const price=flash?salePrice(basePrice,flash.percent):basePrice;
+  const compare=flash?Math.max(basePrice,Number(p.compareAtPrice||0)):Number(p.compareAtPrice||0);
   const discountPct=compare>price?Math.round((1-price/compare)*100):0;
   const reviewCount=Number(p.reviewCount||0);
   const soldLabel=formatSold(Number(p.soldCount||0)).replace(' sold',' '+t('sold'));
@@ -171,7 +177,7 @@ export function ProductCard({p,theme,onQuickView,preview,onSelect,wishlist,toggl
     if(p.soldOut)return;
     if(Array.isArray(p.variants)&&p.variants.length){onQuickView(p);return}
     setAdded(true);
-    addItem({productId:p.id,variantId:null,name:p.name,sku:p.sku||p.slug,price,image:img(primaryImage),quantity:1});
+    addItem({productId:p.id,variantId:null,name:p.name,sku:p.sku||p.slug,price:basePrice,image:img(primaryImage),quantity:1});
     setTimeout(()=>setAdded(false),1400);
   };
   const quickView=(e:React.MouseEvent)=>{e.preventDefault();e.stopPropagation();onQuickView(p)};
@@ -191,6 +197,7 @@ export function ProductCard({p,theme,onQuickView,preview,onSelect,wishlist,toggl
           <h3>{p.name}</h3>
           {reviewCount>0&&<div className="mkCardRating"><StarRow rating={Number(p.rating||0)} size={12}/><span>({reviewCount})</span></div>}
           <div className="mkCardPrice"><strong>{money(price,theme.currency||'USD')}</strong>{compare>price&&<del>{money(compare,theme.currency||'USD')}</del>}</div>
+          {flash&&<FlashCountdown endsAt={flash.endsAt} compact/>}
           {card.deliveryText!==''&&<span className="mkCardNote"><Truck size={13}/> {card.deliveryText||t('Cash on delivery')}</span>}
           {card.showAddToCart!==false&&(p.soldOut
             ?<button type="button" className="mkCardAdd soldOut" disabled>{t('Sold out')}</button>
@@ -221,6 +228,7 @@ export function ProductCard({p,theme,onQuickView,preview,onSelect,wishlist,toggl
           <strong>{money(price,theme.currency||'USD')}</strong>
           {compare>price&&<del>{money(compare,theme.currency||'USD')}</del>}
         </div>
+        {flash&&<FlashCountdown endsAt={flash.endsAt} compact/>}
         {soldLabel&&<span className="focalSoldCount">{soldLabel}</span>}
       </div>
     </Link>
