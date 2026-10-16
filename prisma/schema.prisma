@@ -96,6 +96,14 @@ model User {
   sessionsRevokedAt DateTime?
   // Custom role from Users & roles (lib/staff-roles.ts); null = the built-in role decides.
   staffRoleId      String?
+  // Admin 2-step login (lib/two-step.ts): the authenticator app's secret, encrypted. It is on
+  // once totpEnabledAt is set; before that the secret is a setup in progress.
+  totpSecret       String?
+  totpEnabledAt    DateTime?
+  // The last 30-second step a code signed in with, so the same code can't be used twice.
+  totpLastStep     Int?
+  // Backup codes for a lost phone, as SHA-256 hashes; each one is removed once used.
+  totpBackupCodes  String[]        @default([])
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   addresses        Address[]

@@ -54,4 +54,6 @@ export { isSessionRevoked }
 
 export async function requireUser() { const user = await getCurrentUser(); if (!user) throw new Error('UNAUTHORIZED'); return user }
 export async function requireRole(roles: Role[]) { const user = await requireUser(); if (!roles.includes(user.role)) throw new Error('FORBIDDEN'); return user }
+// Any signed-in staff member, for settings of their own account (2-step login).
+export async function requireStaff() { const user = await requireUser(); if (user.role === 'CUSTOMER') throw new Error('FORBIDDEN'); return user }
 export async function requirePermission(permission: Permission) { const user = await requireUser(); if (!hasPermission(user, permission)) throw new Error('FORBIDDEN'); return user }

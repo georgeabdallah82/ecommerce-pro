@@ -8,7 +8,8 @@ import { useConfirm } from './admin-confirm'
 import { BUILT_IN_ROLES, PERMISSION_SECTIONS, builtInRoleName } from '@/lib/permission-groups'
 import { ROLE_PERMISSIONS, type Permission } from '@/lib/permissions'
 
-type UserRow = { id: string; name: string; email: string; phone?: string | null; role: string; staffRoleId?: string | null; isActive: boolean; lastLoginAt?: string | null }
+type UserRow = { id: string; name: string; email: string; phone?: string | null; role: string; staffRoleId?: string | null; isActive: boolean; lastLoginAt?: string | null; twoStep?: boolean; totpEnabledAt?: string | null }
+const hasTwoStep = (u: UserRow) => Boolean(u.twoStep || u.totpEnabledAt)
 type CustomRole = { id: string; name: string; description: string; permissions: Permission[]; users?: number }
 type CurrentUser = { id: string; role: string } | null
 
@@ -118,6 +119,11 @@ export default function UsersRolesAdmin({ initialUsers, initialRoles, currentUse
     try { await api('/api/admin/users', { method: 'PATCH', body: JSON.stringify({ id: user.id, isActive }) }); setUsers(list => list.map(u => u.id === user.id ? { ...u, isActive } : u)); done(isActive ? `${user.name} can sign in again.` : `${user.name} is disabled.`); refresh().catch(() => {}) } catch (err) { fail(err) }
   }
 
+  async function twoStepOff(user: UserRow) {
+    if (!(await confirm({ title: `Turn off 2-step login for ${user.name}?`, message: 'Do this when they lost their phone and their backup codes. They can sign in with their password only, then turn it on again in Settings > Security & access.', confirmLabel: 'Turn it off' }))) return
+    try { await api('/api/admin/users', { method: 'PATCH', body: JSON.stringify({ id: user.id, twoStepOff: true }) }); setUsers(list => list.map(u => u.id === user.id ? { ...u, twoStep: false, totpEnabledAt: null } : u)); done(`2-step login is off for ${user.name}.`) } catch (err) { fail(err) }
+  }
+
   async function removeUser(user: UserRow) {
     if (!(await confirm({ title: `Delete ${user.name}?`, message: 'Their account is removed for good. Orders and notes they handled are kept. To only block access for a while, use Disable instead.', confirmLabel: 'Delete for good' }))) return
     try { await api(`/api/admin/users?id=${encodeURIComponent(user.id)}`, { method: 'DELETE' }); setUsers(list => list.filter(u => u.id !== user.id)); done(`${user.name} was deleted.`); refresh().catch(() => {}) } catch (err) { fail(err); refresh().catch(() => {}) }
@@ -181,12 +187,14 @@ export default function UsersRolesAdmin({ initialUsers, initialRoles, currentUse
           <div className={s.userRole}><span className={`${ui.statusPill} ${u.role === 'SUPER_ADMIN' ? s.ownerPill : ''}`}>{u.role === 'SUPER_ADMIN' && <ShieldCheck size={12} />}{roleName(u)}</span></div>
           <div className={s.userStatus}>
             <span className={`${ui.statusPill} ${u.isActive ? ui.statusPillSuccess : ui.statusPillDanger}`}>{u.isActive ? 'Active' : 'Disabled'}</span>
+            {hasTwoStep(u) && <span className={`${ui.statusPill} ${ui.statusPillSuccess}`}><ShieldCheck size={12} /> 2-step on</span>}
             <small>{u.lastLoginAt ? `Last sign-in ${new Date(u.lastLoginAt).toLocaleDateString()}` : 'Never signed in'}</small>
           </div>
           {can && <div className={s.userActions}>
             <button className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} onClick={() => setStaffForm({ id: u.id, name: u.name, email: u.email, phone: u.phone || '', role: roleValue(u), password: '' })}><Pencil size={13} /> Edit</button>
             <button className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} onClick={() => setPasswordFor({ user: u, password: generatePassword() })}><KeyRound size={13} /> Password</button>
             {!self && <button className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} onClick={() => setActive(u, !u.isActive)}>{u.isActive ? 'Disable' : 'Enable'}</button>}
+            {!self && hasTwoStep(u) && <button className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} onClick={() => twoStepOff(u)}>Turn off 2-step</button>}
             {!self && <button className={`${ui.iconBtn} ${ui.iconBtnDanger}`} onClick={() => removeUser(u)} aria-label={`Delete ${u.name}`}><Trash2 size={15} /></button>}
           </div>}
         </div>

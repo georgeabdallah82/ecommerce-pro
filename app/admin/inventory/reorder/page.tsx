@@ -3,6 +3,7 @@ import { db } from '@/lib/prisma'
 import { getStoreIdentity } from '@/lib/store-identity'
 import { getStoreCurrency } from '@/lib/store-currency'
 import { REORDER_COVER_DAYS, REORDER_SALES_DAYS, reorderList, stockKey, type ReorderStock } from '@/lib/reorder'
+import { SUPPLIERS_KEY, readSuppliers, supplierPhones } from '@/lib/suppliers'
 import ReorderAdmin from '@/components/reorder-admin'
 
 export const dynamic = 'force-dynamic'
@@ -13,7 +14,7 @@ export default async function ReorderPage({ searchParams }: { searchParams: Prom
   const coverRaw = Number((await searchParams).cover)
   const cover = (REORDER_COVER_DAYS as readonly number[]).includes(coverRaw) ? coverRaw : 30
   const since = new Date(Date.now() - REORDER_SALES_DAYS * 24 * 60 * 60 * 1000)
-  const [items, sales, store, currency] = await Promise.all([
+  const [items, sales, store, currency, suppliers] = await Promise.all([
     db.inventoryItem.findMany({
       where: { product: { status: 'ACTIVE', trackInventory: true } },
       select: { productId: true, variantId: true, quantity: true, reserved: true, lowStockThreshold: true, product: { select: { name: true, sku: true, vendor: true, costPrice: true } }, variant: { select: { name: true, sku: true } } },
@@ -22,6 +23,7 @@ export default async function ReorderPage({ searchParams }: { searchParams: Prom
     db.orderItem.groupBy({ by: ['productId', 'variantId'], where: { order: { createdAt: { gte: since }, status: { notIn: ['CANCELLED', 'REFUNDED'] } }, unitPrice: { gt: 0 } }, _sum: { quantity: true } }),
     getStoreIdentity(),
     getStoreCurrency(),
+    db.setting.findUnique({ where: { key: SUPPLIERS_KEY }, select: { value: true } }),
   ])
   // One row per product or option, adding up its stock in every location.
   const stock = new Map<string, ReorderStock>()
@@ -37,5 +39,5 @@ export default async function ReorderPage({ searchParams }: { searchParams: Prom
     })
   }
   const rows = reorderList([...stock.values()], sales.map(s => ({ productId: s.productId, variantId: s.variantId, quantity: s._sum.quantity || 0 })), { coverDays: cover })
-  return <ReorderAdmin rows={rows} cover={cover} storeName={store.name} currency={currency} />
+  return <ReorderAdmin rows={rows} cover={cover} storeName={store.name} currency={currency} phones={supplierPhones(readSuppliers(suppliers?.value))} />
 }

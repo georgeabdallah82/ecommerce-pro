@@ -23,6 +23,12 @@ async function main() {
       passwordHash,
       role: Role.SUPER_ADMIN,
       isActive: true,
+      // The way back in when the phone and the backup codes are both lost: 2-step login is
+      // turned off too, to be turned on again in Settings > Security & access.
+      totpSecret: null,
+      totpEnabledAt: null,
+      totpLastStep: null,
+      totpBackupCodes: [],
     },
     create: {
       name: 'Store Admin',

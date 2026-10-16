@@ -107,6 +107,7 @@ export default function StockCount({ canManage }: { canManage: boolean }) {
     <div>
       <h1 className={s.title}>Stock count</h1>
       <p className={s.subtitle}>Scan a product&apos;s barcode with the camera, count what is on the shelf, and save. The product&apos;s stock is set to your count, and the change is kept in its stock history.</p>
+      <p className={s.subtitle}>No barcode on the box? <Link className={ui.textLink} href="/admin/inventory/labels">Print barcode stickers</Link>.</p>
     </div>
 
     <section className={`${ui.card} ${s.settings}`}>

@@ -856,4 +856,9 @@ export const AR: Record<string, string> = {
   "Unable to add the photo right now": "تعذّر إضافة الصورة الآن",
   "Too many photos. Please try again later.": "صور كثيرة. يرجى المحاولة لاحقاً.",
   "Up to 3 photos per product.": "حتى 3 صور لكل منتج.",
+  // Marketing > Occasions (components/selling-client.tsx)
+  "Last day to order for {occasion}: today!": "اليوم آخر يوم للطلب قبل {occasion}!",
+  "Order by {date} to receive it for {occasion}.": "اطلب حتى {date} ليصلك قبل {occasion}.",
+  "{occasion} is on {date}.": "{occasion} يوم {date}.",
+  "Shop gifts": "تسوّق الهدايا",
 }

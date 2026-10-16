@@ -1,7 +1,8 @@
 name: Ensure production admin
 
 # Resets the store owner's admin login (ADMIN_EMAIL, password SEED_ADMIN_PASSWORD, full access,
-# active) in the store's database -- PostgreSQL on Neon since 2026-10-09.
+# active, 2-step login off) in the store's database -- PostgreSQL on Neon since 2026-10-09.
+# The way back in after losing the phone and the 2-step backup codes.
 on:
   workflow_dispatch:
 

@@ -24,10 +24,11 @@ for (const file of adminFiles) {
   const text = await readFile(file, 'utf8')
   const relative = file.slice(root.length + 1).replaceAll('\\', '/')
   const mutates = /export async function (POST|PATCH|PUT|DELETE)\b/.test(text)
-  const isLoginRoute = relative === 'app/api/admin/login/route.ts'
-  const protectedRoute = /requirePermission\(|hasPermission\(/.test(text)
-  // Login is intentionally the authentication boundary: it must establish identity
-  // before a permission check can exist. It is still staff-role restricted in the route.
+  const isLoginRoute = relative === 'app/api/admin/login/route.ts' || relative === 'app/api/admin/login/code/route.ts'
+  // requireStaff: any staff member acting on their own account (2-step login settings).
+  const protectedRoute = /requirePermission\(|hasPermission\(|requireStaff\(/.test(text)
+  // Login (password, then the 2-step code) is intentionally the authentication boundary: it
+  // must establish identity before a permission check can exist. Both are staff-role restricted.
   if (mutates && !protectedRoute && !isLoginRoute) failures.push(`${relative}: mutation route has no permission guard`)
   if (mutates && !/audit\(/.test(text) && !relative.includes('/notifications/') && !isLoginRoute) warnings.push(`${relative}: mutation route has no visible audit() call`)
   if (/TODO|FIXME|COMING SOON|not implemented/i.test(text)) warnings.push(`${relative}: contains a TODO/placeholder marker`)

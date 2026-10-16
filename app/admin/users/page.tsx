@@ -11,12 +11,12 @@ export default async function Users() {
     db.user.findMany({
       where: { role: { not: Role.CUSTOMER } },
       orderBy: { createdAt: 'desc' },
-      select: { id: true, name: true, email: true, phone: true, role: true, staffRoleId: true, isActive: true, lastLoginAt: true },
+      select: { id: true, name: true, email: true, phone: true, role: true, staffRoleId: true, isActive: true, lastLoginAt: true, totpEnabledAt: true },
     }),
     getStaffRoles(),
   ])
   const canManage = hasPermission(currentUser, 'users.manage')
-  const rows = users.map(user => ({ ...user, lastLoginAt: user.lastLoginAt?.toISOString() ?? null }))
+  const rows = users.map(user => ({ ...user, lastLoginAt: user.lastLoginAt?.toISOString() ?? null, twoStep: Boolean(user.totpEnabledAt), totpEnabledAt: undefined }))
   const rolesWithCounts = roles.map(r => ({ ...r, users: users.filter(u => u.staffRoleId === r.id).length }))
   return <UsersRolesAdmin initialUsers={rows} initialRoles={rolesWithCounts} currentUser={{ id: currentUser.id, role: currentUser.role }} canManage={canManage} />
 }

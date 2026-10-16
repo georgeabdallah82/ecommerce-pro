@@ -11,7 +11,7 @@ import { useWishlist } from '@/components/use-wishlist'
 import { CartNotices } from '@/components/cart-notices'
 import { NumInput } from './num-input'
 import { loadStoreSettings } from '@/lib/store-settings-client'
-import { FreeGiftBar, LbpNote, useSelling } from '@/components/selling-client'
+import { FreeGiftBar, LbpNote, OccasionNote, useSelling } from '@/components/selling-client'
 import { saleFor } from '@/lib/flash-sale-shared'
 import { Zap } from 'lucide-react'
 
@@ -103,6 +103,7 @@ export default function AliExpressCart({ theme, recommended, sections = [], zone
         </header>
         <CartNotices />
         <FreeGiftBar subtotal={selectedSubtotal} currency={theme?.currency || 'USD'} />
+        <OccasionNote />
         {flashInCart && <div className="aliShippingBanner"><Zap size={16} /><span>{t('Flash sale prices are taken off at checkout.')}</span></div>}
 
         {showFreeShippingBar && freeShippingThreshold !== null && (

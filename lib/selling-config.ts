@@ -3,6 +3,7 @@ import { storefrontCached } from '@/lib/storefront-cache'
 import { SELLING_KEYS, SELLING_SETTING_KEYS, freeGiftConfig, giftOptionOn, lbpConfig, questionsOn, welcomeConfig, whatsappOrderOn } from '@/lib/selling'
 import { inviteConfig, type InviteConfig } from '@/lib/invites-shared'
 import { activeFlashSales, type FlashSale } from '@/lib/flash-sale'
+import { OCCASIONS_KEY, addDays, readOccasions, upcomingOccasions, type Occasion } from '@/lib/occasions'
 
 export type SellingConfig = {
   lbp: { show: boolean; rate: number }
@@ -14,13 +15,15 @@ export type SellingConfig = {
   searchWords: string
   invite: InviteConfig
   questions: boolean
+  // Marketing > Occasions still to come; each page checks its own day (lib/occasions.ts).
+  occasions: Occasion[]
 }
 
 // What the store pages and checkout need to know about the selling tools, read once and shared
 // for a short while (lib/storefront-cache.ts) like the theme.
 export function getSellingConfig(): Promise<SellingConfig> {
   return storefrontCached('selling-config', async () => {
-    const rows = await db.setting.findMany({ where: { key: { in: SELLING_SETTING_KEYS } }, select: { key: true, value: true } })
+    const rows = await db.setting.findMany({ where: { key: { in: [...SELLING_SETTING_KEYS, OCCASIONS_KEY] } }, select: { key: true, value: true } })
     const map = new Map(rows.map(r => [r.key, r.value]))
     const gift = freeGiftConfig(map)
     const [giftProduct, flashSales] = await Promise.all([
@@ -37,6 +40,8 @@ export function getSellingConfig(): Promise<SellingConfig> {
       searchWords: map.get(SELLING_KEYS.searchWords) || '',
       invite: inviteConfig(map),
       questions: questionsOn(map),
+      // A day of slack for shoppers whose day starts before the server's.
+      occasions: upcomingOccasions(readOccasions(map.get(OCCASIONS_KEY)), addDays(new Date().toISOString().slice(0, 10), -1)),
     }
   })
 }

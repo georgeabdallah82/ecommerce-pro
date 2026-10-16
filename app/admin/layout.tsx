@@ -28,6 +28,9 @@ const groups: AdminSidebarGroup[] = [
     { href: '/admin/inventory', label: 'Inventory', permission: 'inventory.view', icon: 'inventory' },
     { href: '/admin/inventory/reorder', label: 'What to reorder', permission: 'inventory.view', icon: 'reorder' },
     { href: '/admin/inventory/count', label: 'Stock count', permission: 'inventory.view', icon: 'stockCount' },
+    { href: '/admin/inventory/labels', label: 'Barcode stickers', permission: 'inventory.view', icon: 'labels' },
+    { href: '/admin/products/prices', label: 'Change prices', permission: 'products.manage', icon: 'prices' },
+    { href: '/admin/inventory/suppliers', label: 'Suppliers', permission: 'inventory.view', icon: 'suppliers' },
     { href: '/admin/purchase-orders', label: 'Purchase orders', permission: 'purchaseOrders.view', icon: 'purchaseOrders' },
     { href: '/admin/inventory/transfers', label: 'Transfers', permission: 'transfers.view', icon: 'transfers' },
     { href: '/admin/operations', label: 'Operations', permission: 'inventory.view', icon: 'operations' },
@@ -58,6 +61,7 @@ const groups: AdminSidebarGroup[] = [
     { href: '/admin/push-campaigns', label: 'Push campaigns', permission: 'customers.manage', icon: 'pushCampaigns' },
     { href: '/admin/marketing/win-back', label: 'Win back', permission: 'customers.view', icon: 'winback' },
     { href: '/admin/marketing/invites', label: 'Invite a friend', permission: 'customers.view', icon: 'invites' },
+    { href: '/admin/marketing/occasions', label: 'Occasions', permission: 'coupons.view', icon: 'occasions' },
   ]},
   { id: 'analytics', label: 'Analytics', items: [
     { href: '/admin/reports', label: 'Analytics & reports', permission: 'reports.view', icon: 'analytics' },

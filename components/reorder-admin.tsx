@@ -5,12 +5,14 @@ import Link from '@/components/admin-link'
 import { ArrowLeft, Check, ClipboardList, Copy, MessageCircle, PackageCheck } from 'lucide-react'
 import { money } from '@/lib/config'
 import { REORDER_COVER_DAYS, REORDER_SALES_DAYS, daysLeftText, groupBySupplier, supplierOrderMessage, type ReorderRow } from '@/lib/reorder'
+import { supplierKey } from '@/lib/suppliers'
+import { whatsappChatLink } from '@/lib/checkout-followup'
 import { NumInput } from './num-input'
 import s from './bring-back.module.css'
 import ui from './admin-ui.module.css'
 
 // Inventory > What to reorder (app/admin/inventory/reorder).
-export default function ReorderAdmin({ rows, cover, storeName, currency }: { rows: ReorderRow[]; cover: number; storeName: string; currency: string }) {
+export default function ReorderAdmin({ rows, cover, storeName, currency, phones = {} }: { rows: ReorderRow[]; cover: number; storeName: string; currency: string; phones?: Record<string, string> }) {
   const [qty, setQty] = useState<Record<string, number>>(() => Object.fromEntries(rows.map(r => [r.key, r.suggested])))
   const [copied, setCopied] = useState('')
   const groups = useMemo(() => groupBySupplier(rows), [rows])
@@ -33,6 +35,7 @@ export default function ReorderAdmin({ rows, cover, storeName, currency }: { row
         const units = group.rows.reduce((sum, r) => sum + (qty[r.key] || 0), 0)
         const cost = group.rows.reduce((sum, r) => sum + (r.cost || 0) * (qty[r.key] || 0), 0)
         const missingCost = group.rows.some(r => !r.cost && (qty[r.key] || 0) > 0)
+        const phone = group.supplier === 'No supplier' ? '' : phones[supplierKey(group.supplier)] || ''
         return <section key={group.supplier} className={`${ui.card} ${s.card}`}>
           <div className={s.head}>
             <div><strong className={s.name}><ClipboardList size={16} style={{ verticalAlign: '-2px' }} /> {group.supplier}</strong><div className={s.meta}><span>{group.rows.length} product{group.rows.length === 1 ? '' : 's'}</span></div></div>
@@ -49,11 +52,12 @@ export default function ReorderAdmin({ rows, cover, storeName, currency }: { row
             </tr>)}</tbody>
           </table></div>
           <div className={s.actions}>
-            <a className={`${ui.btn} ${s.whatsapp}`} href={`https://wa.me/?text=${encodeURIComponent(message)}`} target="_blank" rel="noreferrer"><MessageCircle size={16} /> Send to the supplier</a>
+            <a className={`${ui.btn} ${s.whatsapp}`} href={phone ? whatsappChatLink(phone, message) : `https://wa.me/?text=${encodeURIComponent(message)}`} target="_blank" rel="noreferrer"><MessageCircle size={16} /> {phone ? `Send to ${group.supplier}` : 'Send to the supplier'}</a>
             <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => copy(group.supplier, message)}>{copied === group.supplier ? <Check size={16} /> : <Copy size={16} />} {copied === group.supplier ? 'Copied' : 'Copy the list'}</button>
           </div>
+          {!phone && group.supplier !== 'No supplier' && <p className={ui.muted}><Link className={ui.textLink} href="/admin/inventory/suppliers">Add {group.supplier}&apos;s WhatsApp number</Link> to send the list straight to their chat.</p>}
         </section>
       })}
-    <p className={ui.muted}>The supplier is the &quot;Vendor&quot; on each product. Free gifts are not counted as sales.</p>
+    <p className={ui.muted}>The supplier is the &quot;Vendor&quot; on each product (<Link className={ui.textLink} href="/admin/inventory/suppliers">Suppliers</Link>). Free gifts are not counted as sales.</p>
   </div>
 }

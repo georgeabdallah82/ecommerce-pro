@@ -9,6 +9,10 @@ export default function AdminLoginForm({ brand }: { brand?: AdminLoginBrand }) {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  // 2-step login (lib/two-step.ts): after a right password, the code from the phone's app.
+  const [codeStep, setCodeStep] = useState(false)
+  const [useBackup, setUseBackup] = useState(false)
+  const [code, setCode] = useState('')
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError('')
@@ -17,6 +21,19 @@ export default function AdminLoginForm({ brand }: { brand?: AdminLoginBrand }) {
       const response = await fetch('/api/admin/login', { method: 'POST', body: form })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data.error || 'Invalid admin credentials')
+      if (data.needsCode) { setCodeStep(true); setBusy(false); return }
+      window.location.assign('/admin')
+    } catch (err) { setError(err instanceof Error ? err.message : 'Unable to sign in'); setBusy(false) }
+  }
+
+  async function submitCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setBusy(true); setError('')
+    try {
+      const response = await fetch('/api/admin/login/code', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code }) })
+      const data = await response.json().catch(() => ({}))
+      if (data.restart) { setCodeStep(false); setCode(''); setUseBackup(false) }
+      if (!response.ok) throw new Error(data.error || 'That code is not right')
+      if (typeof data.backupLeft === 'number') window.alert(`Signed in with a backup code. ${data.backupLeft} backup code${data.backupLeft === 1 ? '' : 's'} left. Make new ones in Settings > Security & access.`)
       window.location.assign('/admin')
     } catch (err) { setError(err instanceof Error ? err.message : 'Unable to sign in'); setBusy(false) }
   }
@@ -40,6 +57,7 @@ export default function AdminLoginForm({ brand }: { brand?: AdminLoginBrand }) {
       .adminLoginAlert{position:relative;margin-top:16px;padding:11px 12px 11px 40px;border:1px solid #f1c9c4;border-left:3px solid #c1372a;border-radius:11px;background:#fdecea;color:#972d24;font-size:12.5px;line-height:1.5}.adminLoginAlert::before{content:'!';position:absolute;left:12px;top:11px;display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#c1372a;color:#fff;font-size:11px;font-weight:900}
       .adminLoginSubmit{height:48px;margin-top:6px;display:flex;align-items:center;justify-content:center;gap:9px;border:0;border-radius:12px;background:var(--accent);color:var(--accent-ink);font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 10px 24px color-mix(in srgb,var(--accent) 28%,transparent);transition:.16s ease}.adminLoginSubmit:hover:not(:disabled){transform:translateY(-1px);filter:brightness(.96)}.adminLoginSubmit:disabled{opacity:.55;cursor:not-allowed}
       .adminLoginFoot{margin-top:18px;text-align:center;color:#8d8178;font-size:11px}
+      .adminLoginLink{margin-top:12px;border:0;background:transparent;color:#5b524b;font-size:12.5px;font-weight:700;text-decoration:underline;cursor:pointer;align-self:center}
       @media(max-width:820px){.adminLoginShell{grid-template-columns:1fr;max-width:480px}.adminLoginBrand{display:none}.adminLoginForm{padding:40px 30px}.adminLoginMobileLogo{display:block}}
       @media(max-width:420px){.adminLoginPage{padding:14px;align-items:start;padding-top:8vh}.adminLoginForm{padding:32px 22px}.adminLoginShell{border-radius:22px}}
     `}</style>
@@ -52,14 +70,23 @@ export default function AdminLoginForm({ brand }: { brand?: AdminLoginBrand }) {
         </div>
         <div className="adminLoginFacts"><div className="adminLoginFact"><span />Live orders and sales</div><div className="adminLoginFact"><span />Theme studio for your storefront</div><div className="adminLoginFact"><span />Staff roles and activity log</div></div>
       </aside>
-      <form onSubmit={submit} className="adminLoginForm">
+      {codeStep ? <form onSubmit={submitCode} className="adminLoginForm">
+        <div className="adminLoginMobileLogo">{brand?.logoUrl ? <img className="adminLoginLogo" src={brand.logoUrl} alt={name} /> : <span className="adminLoginName" style={{ color: '#191512' }}>{name}</span>}</div>
+        <div className="adminLoginEyebrow">2-step login</div><h1>Enter your code</h1>
+        <p>{useBackup ? 'Type one of the backup codes you saved when you turned on 2-step login. Each one works once.' : 'Open your authenticator app (for example Google Authenticator) and type the 6-digit code it shows for this store.'}</p>
+        <div className="adminLoginFields"><label className="adminLoginLabel">{useBackup ? 'Backup code' : '6-digit code'}<input className="adminLoginInput" name="code" value={code} onChange={e => setCode(e.target.value)} inputMode={useBackup ? 'text' : 'numeric'} autoComplete="one-time-code" placeholder={useBackup ? 'abcd-2345' : '123456'} maxLength={useBackup ? 12 : 7} autoFocus required/></label></div>
+        {error&&<div className="adminLoginAlert" role="alert">{error}</div>}
+        <button className="adminLoginSubmit" disabled={busy || !code.trim()}>{busy?'Checking…':'Sign in'}{!busy&&<ArrowRight size={15}/>}</button>
+        <button type="button" className="adminLoginLink" onClick={() => { setUseBackup(v => !v); setCode(''); setError('') }}>{useBackup ? 'Use the code from the app' : 'Lost your phone? Use a backup code'}</button>
+        <button type="button" className="adminLoginLink" onClick={() => { setCodeStep(false); setCode(''); setError(''); setUseBackup(false) }}>Back</button>
+      </form> : <form onSubmit={submit} className="adminLoginForm">
         <div className="adminLoginMobileLogo">{brand?.logoUrl ? <img className="adminLoginLogo" src={brand.logoUrl} alt={name} /> : <span className="adminLoginName" style={{ color: '#191512' }}>{name}</span>}</div>
         <div className="adminLoginEyebrow">{name} admin</div><h1>Welcome back</h1><p>Sign in with your staff account to continue.</p>
         <div className="adminLoginFields"><label className="adminLoginLabel">Email<input className="adminLoginInput" name="email" type="email" autoComplete="username" placeholder="you@example.com" required/></label><label className="adminLoginLabel">Password<div className="adminLoginInputWrap"><input className="adminLoginInput" name="password" type={showPassword?'text':'password'} autoComplete="current-password" placeholder="Enter your password" required/><button type="button" className="adminLoginPasswordToggle" onClick={()=>setShowPassword(v=>!v)} aria-label={showPassword?'Hide password':'Show password'}>{showPassword?<EyeOff size={16}/>:<Eye size={16}/>}</button></div></label></div>
         {error&&<div className="adminLoginAlert" role="alert">{error}</div>}
         <button className="adminLoginSubmit" disabled={busy}>{busy?'Signing in…':'Sign in'}{!busy&&<ArrowRight size={15}/>}</button>
         <div className="adminLoginFoot">Staff access only · Customers sign in on the store.</div>
-      </form>
+      </form>}
     </section>
   </main>
 }

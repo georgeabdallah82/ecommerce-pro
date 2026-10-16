@@ -29,6 +29,11 @@ const emptyPart = (): Part => ({ orders: 0, sales: 0, salesExTax: 0, productCost
 
 export type MissingCost = { productId: string; name: string; units: number; sales: number }
 
+// One product's share: its sales after discounts, without tax and delivery, against what the
+// units cost. Delivery, packaging, ads and running costs are for the whole store and are not
+// split per product. `cost` is null when the product's cost is not entered.
+export type ProductProfit = { productId: string; name: string; units: number; freeUnits: number; sales: number; cost: number | null; profit: number | null; margin: number | null }
+
 export type ProfitReport = {
   currency: string
   ordersPlaced: number
@@ -49,6 +54,7 @@ export type ProfitReport = {
   adSpend: { total: number; byPlatform: { platform: string; total: number }[]; entries: number; otherCurrency: number }
   // The store's running costs in these dates (lib/expenses.ts): rent, salaries...
   expenses: { total: number; lines: { id: string; name: string; monthly: boolean; amount: number }[] }
+  byProduct: ProductProfit[]
   profit: { collectedSoFar: number; ifUnpaidCollected: number }
   estimated: boolean
   missing: string[]
@@ -61,6 +67,7 @@ export function computeProfit(orders: ProfitOrder[], costs: Map<string, number |
     collected: emptyPart(), unpaidCod: emptyPart(), unpaidOther: emptyPart(),
   }
   const missing = new Map<string, MissingCost>()
+  const perProduct = new Map<string, { name: string; units: number; freeUnits: number; sales: number; cost: number; costMissing: boolean }>()
   let productCost = 0
   let missingSales = 0
   for (const order of inCurrency) {
@@ -76,7 +83,19 @@ export function computeProfit(orders: ProfitOrder[], costs: Map<string, number |
     report.shippingCharged += order.shippingTotal
     report.discounts += order.discountTotal
     let cost = 0
+    // The goods' share of what was paid: after discounts and refunds, without tax and delivery,
+    // shared between the lines by their price.
+    const itemsTotal = order.items.reduce((sum, i) => sum + Math.max(0, i.totalPrice), 0)
+    const goodsShare = itemsTotal > 0 ? Math.max(0, net - tax - order.shippingTotal) / itemsTotal : 0
     for (const item of order.items) {
+      const line = perProduct.get(item.productId) || { name: item.name, units: 0, freeUnits: 0, sales: 0, cost: 0, costMissing: false }
+      line.units += item.quantity
+      if (item.totalPrice <= 0) line.freeUnits += item.quantity
+      line.sales += Math.max(0, item.totalPrice) * goodsShare
+      const lineUnit = costs.get(item.productId)
+      if (lineUnit && lineUnit > 0) line.cost += lineUnit * item.quantity
+      else line.costMissing = true
+      perProduct.set(item.productId, line)
       const unit = costs.get(item.productId)
       if (unit && unit > 0) { cost += unit * item.quantity; continue }
       const entry = missing.get(item.productId) || { productId: item.productId, name: item.name, units: 0, sales: 0 }
@@ -132,6 +151,11 @@ export function computeProfit(orders: ProfitOrder[], costs: Map<string, number |
     delivery,
     packaging,
     expenses,
+    byProduct: [...perProduct].map(([productId, p]) => {
+      const sales = Math.round(p.sales)
+      const profit = p.costMissing ? null : sales - p.cost
+      return { productId, name: p.name, units: p.units, freeUnits: p.freeUnits, sales, cost: p.costMissing ? null : p.cost, profit, margin: profit != null && sales > 0 ? Math.round((profit / sales) * 1000) / 10 : null }
+    }).sort((a, b) => (b.profit ?? Number.NEGATIVE_INFINITY) - (a.profit ?? Number.NEGATIVE_INFINITY) || b.sales - a.sales || a.name.localeCompare(b.name)),
     adSpend: { total: adTotal, byPlatform: [...byPlatform].map(([platform, total]) => ({ platform, total })).sort((a, b) => b.total - a.total), entries: spend.length, otherCurrency: adSpend.length - spend.length },
     profit: { collectedSoFar: collectedProfit, ifUnpaidCollected: collectedProfit + unpaidProfit },
     estimated: missingNotes.length > 0,

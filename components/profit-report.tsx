@@ -25,6 +25,29 @@ async function api(path: string, init?: RequestInit) {
 const centsText = (cents: number | null | undefined) => cents == null ? '' : (cents / 100).toFixed(2)
 const dayLabel = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
 
+// Which products earn the most, and which lose money (lib/profit.ts, byProduct).
+function ProductProfit({ rows, m }: { rows: Report['byProduct']; m: (cents: number) => string }) {
+  const [sort, setSort] = useState<'most' | 'least' | 'sold'>('most')
+  const [all, setAll] = useState(false)
+  if (!rows.length) return null
+  const sorted = [...rows].sort((a, b) => sort === 'sold' ? b.units - a.units || b.sales - a.sales
+    : sort === 'least' ? (a.profit ?? Number.POSITIVE_INFINITY) - (b.profit ?? Number.POSITIVE_INFINITY) || a.sales - b.sales
+      : (b.profit ?? Number.NEGATIVE_INFINITY) - (a.profit ?? Number.NEGATIVE_INFINITY) || b.sales - a.sales)
+  const losing = rows.filter(p => p.profit != null && p.profit < 0).length
+  return <section className={`${ui.card} ${s.card}`}>
+    <h3>Profit per product</h3>
+    <p className={ui.muted}>Each product&apos;s sales after discounts (without tax and delivery), minus what its units cost you. Delivery, packaging, ads and running costs are for the whole store, so they are not split per product.{losing ? ` ${losing} product${losing === 1 ? ' sells' : 's sell'} below cost here.` : ''}</p>
+    <div className="inline" style={{ gap: 6, flexWrap: 'wrap' }} role="radiogroup" aria-label="Order by">
+      {([['most', 'Most profit'], ['least', 'Least profit'], ['sold', 'Most sold']] as const).map(([id, label]) => <button key={id} type="button" role="radio" aria-checked={sort === id} className={`${ui.btn} ${ui.btnSmall} ${sort === id ? '' : ui.btnSecondary}`} onClick={() => setSort(id)}>{label}</button>)}
+    </div>
+    <div className={s.lines}>{(all ? sorted : sorted.slice(0, 10)).map(p => <div className={s.line} key={p.productId}>
+      <span><Link className={ui.textLink} href={`/admin/products/${p.productId}`}>{p.name}</Link><br /><small className={ui.muted}>{p.units} sold{p.freeUnits ? ` (${p.freeUnits} free)` : ''} · sales {m(p.sales)}{p.cost != null ? ` · cost ${m(p.cost)}` : ''}</small></span>
+      <span>{p.profit == null ? <span className={s.notEntered}>Cost not entered</span> : <strong className={p.profit < 0 ? s.negative : ''}>{m(p.profit)}{p.margin != null ? ` (${p.margin}%)` : ''}</strong>}</span>
+    </div>)}</div>
+    {rows.length > 10 && <button type="button" className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} style={{ justifySelf: 'start' }} onClick={() => setAll(v => !v)}>{all ? 'Show fewer' : `Show all ${rows.length}`}</button>}
+  </section>
+}
+
 // Reports > Profit: the store's money over the chosen dates, line by line, with the costs the
 // owner enters (delivery and packaging per order, ad spend). Anything not entered says so.
 export default function ProfitReport({ query, reloadKey }: { query: string; reloadKey: number }) {
@@ -181,6 +204,8 @@ export default function ProfitReport({ query, reloadKey }: { query: string; relo
       </div>
       <p className={`${ui.muted} ${s.note}`}>Delivery charged to customers ({m(r.shippingCharged)}) is part of sales. Discounts given: {m(r.discounts)}. Product cost uses each product&apos;s cost today. Delivery and packaging count every order that was not cancelled or fully refunded.</p>
     </section>
+
+    <ProductProfit rows={r.byProduct} m={m} />
 
     {r.productCost.missing.length > 0 && <section className={`${ui.card} ${s.card}`}>
       <h3>Products sold without a cost</h3>
