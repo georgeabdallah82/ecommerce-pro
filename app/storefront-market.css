@@ -134,8 +134,10 @@ html body.mk .focalNav.mkHeader.mkHeaderLight .focalCartCount { background: var(
 .mkCatsCol .mkCatsColHead { display: grid; gap: 8px; color: var(--mk-ink); font-size: 14px; font-weight: 700; }
 .mkCatsColHead img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 10px; }
 
-/* Phones: the bar is a row of pills; the full menu lives behind the ☰ button */
+/* Phones: the full menu lives behind the ☰ button, so the bar is hidden unless the theme turns
+   it on (Header > "Show the category tabs on phones too"); then it is a row of pills */
 @media (max-width: 900px) {
+  .mkCatsComputerOnly { display: none; }
   .mkCatsAll, .mkCatsArrow, .mkCatsPanel { display: none !important; }
   .mkCatsInner { min-height: 0; padding-block: 10px; }
   .mkCatsTrack { gap: 8px; }

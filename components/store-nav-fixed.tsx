@@ -486,7 +486,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
       </div>}
     </header>
     {market && <DeliveryBar theme={theme} />}
-    {market && headerSettings.showCategoryTabs !== false && <CategoryTabs navigation={navigation} />}
+    {market && headerSettings.showCategoryTabs !== false && <CategoryTabs navigation={navigation} phone={headerSettings.showCategoryTabsPhone === true} />}
     {announcementEnabled && announcementPosition === 'below' && <AnnouncementBar theme={theme} announcementSection={announcementSection} closed={announcementClosed} onDismiss={dismissAnnouncement}/>}
 
     {/* PREDICTIVE LIVE SEARCH OVERLAY */}
