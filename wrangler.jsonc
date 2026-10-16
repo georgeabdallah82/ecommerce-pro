@@ -21,6 +21,12 @@
   "version_metadata": {
     "binding": "CF_VERSION_METADATA"
   },
+  // Once a day at 05:37 UTC (08:37 in Beirut): the owner's morning summary and the review-request
+  // emails (worker.ts scheduled() -> /api/internal/daily). Right before the 05:41 database-hours
+  // check, so both use the same database wake-up.
+  "triggers": {
+    "crons": ["37 5 * * *"]
+  },
   "vars": {
     "EMAIL_FROM": "Yalla Haul <orders@yallahaul.com>"
   }

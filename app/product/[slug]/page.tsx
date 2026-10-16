@@ -11,6 +11,7 @@ import { Footer } from '@/components/footer'
 import AliExpressProduct from '@/components/aliexpress-product'
 import { descriptionHtml } from '@/lib/sanitize-html'
 import { absoluteUrl, getSiteSeo, isShareableImage, metaText, shareMeta, siteUrl } from '@/lib/seo'
+import { validGtin } from '@/lib/product-feed'
 import { themeTemplates } from '@/lib/theme-templates'
 import { storefrontCached } from '@/lib/storefront-cache'
 import { getBoughtTogether } from '@/lib/recommendations'
@@ -128,7 +129,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   // a collection_grid/collection_carousel section -- the two default sections
   // there (product_recommendations, newsletter) never need it.
   const needsCollections = sections.some((s: any) => s.type === 'collection_grid' || s.type === 'collection_carousel')
-  const reviewerIds = [...new Set(product.reviews.map(review => review.userId))]
+  const reviewerIds = [...new Set(product.reviews.map(review => review.userId).filter((id): id is string => !!id))]
   const [related, [ownStats], purchase, existingReview, zoneCollections, reviewerPurchases, boughtTogether] = await Promise.all([
     withProductStats(withCardStock(relatedRaw)),
     getProductStats([product.id]).then(stats => [stats[product.id]]),
@@ -218,9 +219,11 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       body: review.body,
       createdAt: review.createdAt,
       featured: review.featured,
-      verified: verifiedBuyers.has(review.userId),
+      // A review from a delivered order's review link (app/review/[orderNumber]) is a purchase.
+      verified: !!review.orderId || (!!review.userId && verifiedBuyers.has(review.userId)),
       // First name and last initial only ("Maya H.") -- enough for trust, without a full name.
-      user: review.user ? { name: reviewerName(review.user.name) } : null,
+      // Reviews left without an account carry the name the customer typed instead.
+      user: review.user ? { name: reviewerName(review.user.name) } : review.authorName ? { name: reviewerName(review.authorName) } : null,
     })),
     tags: product.tags.map((tag) => ({ id: tag.id, value: tag.value })),
     collections: product.collections.map((item) => ({
@@ -260,7 +263,19 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     sku: product.sku,
     image: product.images.map((image) => absoluteUrl(image.url)),
     brand: product.brand ? { '@type': 'Brand', name: product.brand } : undefined,
+    ...(validGtin(product.barcode) ? { gtin: validGtin(product.barcode) } : {}),
     url: productUrl,
+    // Stars in Google search results: the approved reviews' average and a few of them.
+    ...(ownStats?.reviewCount ? {
+      aggregateRating: { '@type': 'AggregateRating', ratingValue: Number(ownStats.rating.toFixed(1)), reviewCount: ownStats.reviewCount, bestRating: 5, worstRating: 1 },
+      review: product.reviews.slice(0, 5).map((review) => ({
+        '@type': 'Review',
+        reviewRating: { '@type': 'Rating', ratingValue: review.rating, bestRating: 5, worstRating: 1 },
+        author: { '@type': 'Person', name: reviewerName(review.user?.name || review.authorName) || 'Customer' },
+        datePublished: new Date(review.createdAt).toISOString().slice(0, 10),
+        ...(review.body ? { reviewBody: metaText(review.body, 1000) } : {}),
+      })),
+    } : {}),
     offers: variesByOption
       ? variantOffers
       : offerFor(product.variants[0]?.price ?? product.basePrice, isAvailable),

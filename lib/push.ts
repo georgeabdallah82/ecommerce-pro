@@ -189,3 +189,9 @@ export async function checkLowStockAlerts(inventoryIds: Iterable<string>) {
   const body = names.length <= 3 ? names.join(', ') : `${names.slice(0, 3).join(', ')} and ${names.length - 3} more`
   return sendToSubscriptions({ title: `Low stock: ${low.length} item${low.length === 1 ? '' : 's'}`, body, url: '/admin/inventory', lowStock: true })
 }
+
+// The owner's morning summary on the phone (lib/daily-summary.ts), to staff who turned
+// notifications on.
+export async function sendDailySummaryPush(payload: { title: string; body: string }) {
+  return sendToSubscriptions({ ...payload, url: '/admin', dailySummary: true })
+}

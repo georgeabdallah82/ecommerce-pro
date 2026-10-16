@@ -3,7 +3,9 @@ import { z } from 'zod'
 export const emailSchema = z.string().email().max(190)
 export const passwordSchema = z.string().min(8).max(72)
 export const checkoutSchema = z.object({
-  email: emailSchema,
+  // Optional: many customers in Lebanon order with a phone number only. With no email there is
+  // simply no confirmation email; the phone (required for deliveries) is how the store reaches them.
+  email: z.union([emailSchema, z.literal('')]).optional().transform(value => (value || '').trim().toLowerCase()),
   phone: z.string().trim().max(40).optional().or(z.literal('')),
   paymentMethod: z.enum(['COD','CARD','BANK_TRANSFER','WALLET']),
   couponCode: z.string().trim().max(60).optional().or(z.literal('')),

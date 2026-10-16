@@ -18,7 +18,7 @@ export async function GET(req: Request) {
       where: { status: 'ACTIVE', giftCard: false, id: { notIn: unpublishedIds } },
       select: {
         id: true, name: true, slug: true, description: true, shortDescription: true, brand: true, vendor: true,
-        basePrice: true, compareAtPrice: true, trackInventory: true, continueSellingWhenOutOfStock: true,
+        basePrice: true, compareAtPrice: true, barcode: true, trackInventory: true, continueSellingWhenOutOfStock: true,
         images: { select: { url: true }, orderBy: { sortOrder: 'asc' } },
         collections: { select: { collection: { select: { name: true, isActive: true, sortOrder: true } } } },
         ...CARD_STOCK_INCLUDE,

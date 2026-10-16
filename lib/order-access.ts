@@ -48,3 +48,23 @@ export function orderSuccessPath(orderNumber: string, payment?: 'paid' | 'failed
   if (payment) params.set('payment', payment)
   return `/order/success?${params.toString()}`
 }
+
+// The "rate your order" link sent after delivery (app/review/[orderNumber]): its own code, so the
+// link lets the customer review what they bought without also opening the order's address and
+// phone the way the view code does.
+export function orderReviewToken(orderNumber: string) {
+  return createHmac('sha256', secret()).update(`order-review:${orderNumber}`).digest('base64url').slice(0, 24)
+}
+
+export function isValidOrderReviewToken(orderNumber: string, token: string | null | undefined) {
+  if (!token || typeof token !== 'string') return false
+  try {
+    const expected = Buffer.from(orderReviewToken(orderNumber))
+    const given = Buffer.from(token)
+    return expected.length === given.length && timingSafeEqual(expected, given)
+  } catch { return false }
+}
+
+export function orderReviewPath(orderNumber: string) {
+  return `/review/${encodeURIComponent(orderNumber)}?t=${orderReviewToken(orderNumber)}`
+}

@@ -62,6 +62,7 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
     'contact.phone': map.get('contact.phone') || '',
     'email.fromName': map.get('email.fromName') || '',
     'email.fromAddress': map.get('email.fromAddress') || '',
+    'notifications.summaryEmail': map.get('notifications.summaryEmail') || '',
     'store.address': map.get('store.address') || '',
     'policy.returnDays': map.get('policy.returnDays') || POLICY_DEFAULTS.returnDays,
     'policy.refundTime': map.get('policy.refundTime') || POLICY_DEFAULTS.refundTime,
@@ -93,7 +94,7 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
     ...Object.fromEntries([
       'payment.cod', 'payment.card', 'payment.bank', 'payment.wallet',
       'checkout.guestCheckout', 'notifications.orderEmail', 'notifications.lowStock',
-      'notifications.reviews', 'email.customerOrder', 'email.fulfillment', 'email.abandonedCheckout', 'email.giftCard', 'email.returnStatus', 'email.orderEdit',
+      'notifications.reviews', 'notifications.dailySummary', 'email.customerOrder', 'email.fulfillment', 'email.abandonedCheckout', 'email.giftCard', 'email.returnStatus', 'email.orderEdit', 'email.reviewRequest',
     ].map(k => [k, map.get(k) !== 'false'])),
     'maintenance.enabled': map.get('maintenance.enabled') === 'true',
   }))
@@ -310,11 +311,17 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
           )}
 
           {tab === 'Notifications' && (
+            <>
             <Card title="Operational notifications" desc="Choose which internal events should alert your team.">
               <Toggle label="New order notifications" keyName="notifications.orderEmail" value={flags['notifications.orderEmail']} onChange={() => toggle('notifications.orderEmail')} />
               <Toggle label="Low stock alerts" keyName="notifications.lowStock" value={flags['notifications.lowStock']} onChange={() => toggle('notifications.lowStock')} />
               <Toggle label="Review moderation alerts" keyName="notifications.reviews" value={flags['notifications.reviews']} onChange={() => toggle('notifications.reviews')} />
             </Card>
+            <Card title="Morning summary" desc="Every morning at about 8:30 (store time): yesterday's orders and sales, orders waiting for you, low stock and new reviews. Sent by email and as a phone notification to staff who turned notifications on.">
+              <Toggle label="Send the morning summary" keyName="notifications.dailySummary" value={flags['notifications.dailySummary']} onChange={() => toggle('notifications.dailySummary')} />
+              <Field label="Send the email to" value={values['notifications.summaryEmail']} placeholder={values['contact.email'] || 'Store email (Settings > General)'} onChange={v => set('notifications.summaryEmail', v)} />
+            </Card>
+            </>
           )}
 
           {tab === 'Email' && (
@@ -330,6 +337,7 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
               <Toggle label="Gift card issued" keyName="email.giftCard" value={flags['email.giftCard']} onChange={() => toggle('email.giftCard')} />
               <Toggle label="Return status updates" keyName="email.returnStatus" value={flags['email.returnStatus']} onChange={() => toggle('email.returnStatus')} />
               <Toggle label="Order edited by staff" keyName="email.orderEdit" value={flags['email.orderEdit']} onChange={() => toggle('email.orderEdit')} />
+              <Toggle label="Ask for a review 1 day after delivery" keyName="email.reviewRequest" value={flags['email.reviewRequest']} onChange={() => toggle('email.reviewRequest')} />
             </Card>
             </>
           )}

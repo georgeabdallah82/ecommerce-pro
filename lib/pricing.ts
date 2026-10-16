@@ -18,12 +18,28 @@ export function resolveFreeShippingThresholdCents(settingValue: string | null | 
 // both a global zone and a few country-specific zones -- an entirely normal setup -- got
 // whichever zone was created/stored first, silently charging the wrong rate/threshold for
 // customers in the country-specific zone's country whenever the wildcard zone sorted ahead of it.
-async function matchingZone(country: string) {
-  const zones = await db.shippingZone.findMany({ where: { isActive: true }, include: { rates: { where: { isActive: true }, orderBy: { price: 'asc' } } } })
+// Delivery price by area (Settings › Shipping): a zone can list areas ("Beirut, Metn"), the same
+// names customers pick in the delivery bar and at checkout. Most specific first:
+//   1. a zone of the customer's country that lists their area,
+//   2. the country's zone that lists no areas (everywhere else in that country),
+//   3. any zone of the country (how zones matched before areas counted, so a store whose only
+//      zone lists areas keeps its price for the other areas too),
+//   4. the catch-all '*' zone.
+export const zoneAreas = (regions: string | null | undefined) => String(regions || '').split(/[,\n]/).map(x => x.trim().toLowerCase()).filter(Boolean)
+
+export function pickZone<Z extends { countries: string; regions?: string | null }>(zones: Z[], country: string, region?: string | null): Z | undefined {
   const upper = normalizeCountry(country)
-  const specific = zones.find(z => z.countries !== '*' && z.countries.split(',').map(x => normalizeCountry(x)).includes(upper))
-  if (specific) return specific
-  return zones.find(z => z.countries === '*')
+  const area = String(region || '').trim().toLowerCase()
+  const forCountry = zones.filter(z => z.countries !== '*' && z.countries.split(',').map(x => normalizeCountry(x)).includes(upper))
+  return (area ? forCountry.find(z => zoneAreas(z.regions).includes(area)) : undefined)
+    || forCountry.find(z => !zoneAreas(z.regions).length)
+    || forCountry[0]
+    || zones.find(z => z.countries === '*')
+}
+
+async function matchingZone(country: string, region?: string | null) {
+  const zones = await db.shippingZone.findMany({ where: { isActive: true }, include: { rates: { where: { isActive: true }, orderBy: { price: 'asc' } } }, orderBy: { createdAt: 'asc' } })
+  return pickZone(zones, country, region)
 }
 
 export type ShippingRateOption = { id: string | null; name: string; price: number; freeAbove: number | null; estimatedDays: number | null }
@@ -34,8 +50,8 @@ export type ShippingRateOption = { id: string | null; name: string; price: numbe
 // rates[0]. Falls back to a single synthetic "Standard delivery" option, priced the same
 // way calculateShipping's own no-zone-match branch always has, so the UI always has at
 // least one option to show even for an unconfigured country.
-export async function listShippingRates(country: string): Promise<ShippingRateOption[]> {
-  const zone = await matchingZone(country)
+export async function listShippingRates(country: string, region?: string | null): Promise<ShippingRateOption[]> {
+  const zone = await matchingZone(country, region)
   if (zone && zone.rates.length) return zone.rates.map(r => ({ id: r.id, name: r.name, price: r.price, freeAbove: r.freeAbove, estimatedDays: r.estimatedDays }))
   const setting = await db.setting.findUnique({ where: { key: 'checkout.freeShippingThreshold' } })
   const thresholdCents = resolveFreeShippingThresholdCents(setting?.value)
@@ -48,8 +64,8 @@ export async function listShippingRates(country: string): Promise<ShippingRateOp
 // was fetched) is rejected rather than silently substituted, the same way an invalid coupon
 // code is rejected rather than silently ignored. Omitting rateId keeps the original
 // behavior (cheapest active rate) for callers that don't offer a picker.
-export async function calculateShipping(country: string, subtotalAfterDiscount: number, rateId?: string | null) {
-  const zone = await matchingZone(country)
+export async function calculateShipping(country: string, subtotalAfterDiscount: number, rateId?: string | null, region?: string | null) {
+  const zone = await matchingZone(country, region)
   const rate = rateId ? zone?.rates.find(r => r.id === rateId) : zone?.rates[0]
   if (rateId && !rate) throw new Error('Selected shipping method is no longer available')
   if (!rate) {

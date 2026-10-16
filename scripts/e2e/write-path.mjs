@@ -35,17 +35,20 @@ await sp.locator('[name=lastName]').fill('Test')
 await sp.locator('[name=phone]').fill('70 123 456')
 await sp.locator('[name=line1]').fill('Test street 1')
 await sp.locator('[name=city]').fill('Beirut')
-const country = sp.locator('[name=country]'); if (!(await country.inputValue())) await country.fill('Lebanon')
+// The country box only shows after "Change" when the store's own country is preset.
+const country = sp.locator('[name=country]'); if (await country.count() && !(await country.inputValue())) await country.fill('Lebanon')
+// The delivery area (theme delivery bar areas), and whatever else the store's checkout settings
+// require (a time slot...): pick the first real option of each still-empty one.
+const area = sp.locator('select[name=area]'); if (await area.count()) { const first = await area.locator('option[value]:not([value=""])').first().getAttribute('value').catch(() => null); if (first) await area.selectOption(first) }
 await sp.waitForTimeout(1500)
-// Whatever else the store's checkout settings require (a delivery area, a time slot...): pick the
-// first option of every required, still-empty select.
 await sp.evaluate(() => { for (const el of document.querySelectorAll('form select[required]')) if (!el.value) { const o = [...el.options].find(o => o.value); if (o) { el.value = o.value; el.dispatchEvent(new Event('change', { bubbles: true })) } } })
 await sp.waitForTimeout(800)
 await sp.locator('button[type=submit]', { hasText: /place order/i }).first().click()
 let orderNumber = ''
 try {
   await sp.waitForURL(/\/order\/success/, { timeout: 60000 })
-  const card = await sp.locator('.successCard').innerText()
+  await sp.waitForLoadState('networkidle')
+  const card = await sp.locator('main').first().innerText()
   // New orders get short running numbers from the Counter table (#1001, ...); ORD-... would mean
   // the counter failed and checkout fell back to the long format.
   orderNumber = (card.match(/#(\d+|ORD-[A-Z0-9-]+)/) || [])[1] || ''

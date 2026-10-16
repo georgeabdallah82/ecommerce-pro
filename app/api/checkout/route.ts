@@ -15,7 +15,8 @@ import { clientIp } from '@/lib/request-ip'
 import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { getUnpublishedProductIds } from '@/lib/sales-channels'
 import { getStoreCurrency } from '@/lib/store-currency'
-import { discountAmount, misconfigured, taxableAmountAfterRewards, zeroSplit, type DiscountSplit, type LineItem } from '@/lib/discounts'
+import { taxableAmountAfterRewards } from '@/lib/discounts'
+import { applyCoupon, findAutomaticDiscount } from '@/lib/checkout-discounts'
 import { PaymentMethod } from '@prisma/client'
 import { ZodError } from 'zod'
 import { nextOrderNumber } from '@/lib/order-number'
@@ -47,58 +48,6 @@ function checkoutFingerprint(userId: string | null, input: any, merged: Map<stri
     shippingRateId: input.shippingRateId || null,
     shippingAddress: input.shippingAddress,
   })).digest('hex')
-}
-
-async function applyCoupon(code: string, subtotal: number, items: LineItem[]) {
-  if (!code) return { discount: zeroSplit(), coupon: null as any }
-  const coupon = await db.coupon.findUnique({ where: { code: code.toUpperCase() } })
-  const now = new Date()
-  if (!coupon || !coupon.isActive) throw new Error('Invalid coupon code')
-  if (misconfigured(coupon)) throw new Error('This discount is not configured correctly')
-  if (coupon.startsAt && coupon.startsAt > now) throw new Error('This coupon is not active yet')
-  if (coupon.expiresAt && coupon.expiresAt < now) throw new Error('This coupon has expired')
-  if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) throw new Error('This coupon has reached its usage limit')
-  if (coupon.minSubtotal !== null && subtotal < coupon.minSubtotal) throw new Error('Minimum order is required for this coupon')
-  const discount = await discountAmount(coupon, items)
-  if (discount.total === 0 && coupon.type !== 'FREE_SHIPPING') throw new Error('This discount does not apply to the items in your cart')
-  return { discount, coupon }
-}
-
-/**
- * Automatic (codeless) discounts only ever apply when the customer didn't
- * enter a code -- an explicitly typed code always wins, keeping exactly one
- * discount on an order. Ineligible automatic discounts (wrong subtotal,
- * outside their date range, exhausted, first-order-only for an ineligible
- * customer, or simply not matching any item in this cart) are silently
- * skipped rather than surfaced as an error, since the customer never asked
- * for them by name. Among the remaining eligible candidates, the one worth
- * the most to the customer is applied.
- */
-async function findAutomaticDiscount(subtotal: number, userId: string | null, items: LineItem[]) {
-  const now = new Date()
-  const candidates = await db.coupon.findMany({ where: { isActive: true, isAutomatic: true } })
-  let best: { discount: DiscountSplit; coupon: any } | null = null
-  // "First order only" needs to know whether this customer has ordered before; asked once, not
-  // once per such discount (audit ME-03).
-  let priorOrder: Promise<boolean> | null = null
-  const hasPriorOrder = () => (priorOrder ??= userId
-    ? db.order.findFirst({ where: { userId, status: { not: 'CANCELLED' } }, select: { id: true } }).then(Boolean)
-    : Promise.resolve(false))
-  for (const coupon of candidates) {
-    if (misconfigured(coupon)) continue
-    if (coupon.startsAt && coupon.startsAt > now) continue
-    if (coupon.expiresAt && coupon.expiresAt < now) continue
-    if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) continue
-    if (coupon.minSubtotal !== null && subtotal < coupon.minSubtotal) continue
-    if (coupon.firstOrderOnly) {
-      if (!userId) continue
-      if (await hasPriorOrder()) continue
-    }
-    const discount = await discountAmount(coupon, items)
-    if (discount.total === 0 && coupon.type !== 'FREE_SHIPPING') continue
-    if (!best || discount.total > best.discount.total) best = { discount, coupon }
-  }
-  return best ?? { discount: zeroSplit(), coupon: null as any }
 }
 
 function providerCheckout(rawJson: string | null) {
@@ -139,6 +88,7 @@ const SAFE_CHECKOUT_MESSAGES = new Set([
   'Selected shipping method is no longer available',
   'A shipping address is required for this order.',
   'A phone number is required so the courier can reach you.',
+  'Add a phone number or an email so we can reach you.',
 ])
 
 function checkoutFailure(error: unknown) {
@@ -208,6 +158,8 @@ export async function POST(req: Request) {
     if (rawBody.length > 100_000) return json({ error: 'Checkout request is too large.' }, { status: 413, headers: { 'Cache-Control': 'no-store' } })
 
     const input = checkoutSchema.parse(JSON.parse(rawBody))
+    // Email is optional (phone-only checkout); a signed-in customer's account email fills in.
+    const orderEmail = input.email || String(user?.email || '').trim().toLowerCase()
     const idempotencyKey = req.headers.get('x-idempotency-key')?.trim().slice(0, 190) || null
     const paymentMethod = input.paymentMethod as PaymentMethod
     const paymentProvider = await getPaymentProvider()
@@ -276,6 +228,9 @@ export async function POST(req: Request) {
       // The checkout form already asks for this; the server must too, or a direct request
       // (or a broken form) creates a delivery the courier has no way to arrange.
       if (String(input.phone || input.shippingAddress?.phone || '').replace(/\D/g, '').length < 6) throw new Error('A phone number is required so the courier can reach you.')
+    } else if (!orderEmail && String(input.phone || '').replace(/\D/g, '').length < 6) {
+      // Nothing to deliver: the store still needs one way to reach the customer.
+      throw new Error('Add a phone number or an email so we can reach you.')
     }
 
     const { discount: couponDiscount, coupon } = input.couponCode
@@ -297,7 +252,7 @@ export async function POST(req: Request) {
     const taxableAmount = taxableAmountAfterRewards(taxableSubtotal, discount.taxable, discountedSubtotal, coinDiscount)
     const rewardAdjustedSubtotal = Math.max(0, discountedSubtotal - coinDiscount)
     const shipping = requiresPhysicalShipping
-      ? await calculateShipping(input.shippingAddress.country, rewardAdjustedSubtotal, input.shippingRateId || null)
+      ? await calculateShipping(input.shippingAddress.country, rewardAdjustedSubtotal, input.shippingRateId || null, input.shippingAddress.region || null)
       : { total: 0, method: 'No shipping required', estimatedDays: null }
     const taxRate = await getTaxRatePercent(input.shippingAddress.country)
     const taxTotal = Math.round(taxableAmount * taxRate / 100)
@@ -414,7 +369,7 @@ export async function POST(req: Request) {
           data: {
             orderNumber,
             userId: user?.id ?? null,
-            email: input.email,
+            email: orderEmail,
             phone: input.phone || null,
             subtotal,
             discountTotal: discount.total + freeShippingDiscount + coinDiscount + giftCardDiscount,
@@ -483,7 +438,7 @@ export async function POST(req: Request) {
     }
     // Close this shopper's open checkouts now, so no cart reminder can follow a real order,
     // then run the throttled reminder check while the database is awake.
-    runInBackground(markCheckoutsRecovered(order.email).catch(error => console.error('[cart-reminders] could not close checkouts', error)).then(() => maybeSendCartReminders(sendAbandonedCheckoutEmail)))
+    if (order.email) runInBackground(markCheckoutsRecovered(order.email).catch(error => console.error('[cart-reminders] could not close checkouts', error)).then(() => maybeSendCartReminders(sendAbandonedCheckoutEmail)))
     runInBackground(dispatchWebhookEvent('order.created', { id: order.id, orderNumber: order.orderNumber, email: order.email, grandTotal: order.grandTotal, currency: order.currency, status: order.status, paymentStatus: order.paymentStatus }).catch(error => console.error('[webhook] order.created dispatch failed', error)))
     await audit(user?.id, 'order.created', 'Order', order.id, { orderNumber: order.orderNumber, total: grandTotal, paymentMethod, paymentProvider: paymentMethod === PaymentMethod.CARD ? paymentProvider.name : paymentMethod.toLowerCase(), coinsUsed: requestedCoins, coinDiscount, giftCardAmount: giftCardDiscount })
     return json({ order: { id: order.id, orderNumber: order.orderNumber, total: order.grandTotal, successPath: orderSuccessPath(order.orderNumber) }, payment: clientCheckout, rewards: { coinsUsed: requestedCoins, coinDiscount, giftCardAmount: giftCardDiscount } }, { status: 201, headers: { 'Cache-Control': 'no-store' } })

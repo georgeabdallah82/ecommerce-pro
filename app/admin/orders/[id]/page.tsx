@@ -4,6 +4,8 @@ import { db } from '@/lib/prisma'
 import { getStoreTimezone } from '@/lib/store-timezone'
 import { getStoreIdentity } from '@/lib/store-identity'
 import { getBlockedPhones, isBlocked } from '@/lib/blocked-phones'
+import { orderReviewPath } from '@/lib/order-access'
+import { requestOrigin } from '@/lib/site-url'
 import OrderDetailAdmin from '@/components/order-detail-admin'
 import ui from '@/components/admin-ui.module.css'
 
@@ -29,5 +31,7 @@ export default async function OrderDetail({params}:{params:Promise<{id:string}>}
   // GiftCard has no orderId relation -- issueGiftCardsForOrder (lib/gift-cards.ts) tags
   // the ones it mints with a `note` naming this order's number, so that's how they're found again.
   const issuedGiftCards = await db.giftCard.findMany({ where: { note: `Issued from order ${order.orderNumber}` } })
-  return <OrderDetailAdmin initial={JSON.parse(JSON.stringify({ ...order, fulfillments, issuedGiftCards }))} canStartOrderEdit={canStartOrderEdit} storeTimezone={storeTimezone} storeName={store.name} storeCountry={store.country} phoneBlocked={isBlocked(blockedList, [order.phone, (() => { try { return JSON.parse(order.shippingAddressJson || '{}').phone } catch { return '' } })()], store.country)}/>
+  // Delivered orders get a "rate your order" link to send the customer (lib/order-access.ts).
+  const reviewLink = order.status === 'DELIVERED' ? `${await requestOrigin()}${orderReviewPath(order.orderNumber)}` : ''
+  return <OrderDetailAdmin reviewLink={reviewLink} initial={JSON.parse(JSON.stringify({ ...order, fulfillments, issuedGiftCards }))} canStartOrderEdit={canStartOrderEdit} storeTimezone={storeTimezone} storeName={store.name} storeCountry={store.country} phoneBlocked={isBlocked(blockedList, [order.phone, (() => { try { return JSON.parse(order.shippingAddressJson || '{}').phone } catch { return '' } })()], store.country)}/>
 }
