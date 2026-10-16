@@ -32,7 +32,7 @@ export async function GET(){
       checkout:{guestCheckout:map['checkout.guestCheckout']!=='false',freeShippingThreshold:map['checkout.freeShippingThreshold']||'100',taxRatePercent:map['checkout.taxRatePercent']||'0'},
       store:{currency:map['store.currency']||'USD',country:map['store.country']||'Lebanon'},
       contact:{email:map['contact.email']?.trim()||config.supportEmail,phone:map['contact.phone']?.trim()||config.whatsapp},
-      selling:selling?{lbp:selling.lbp,freeGift:selling.freeGift,giftOption:selling.giftOption,welcome:selling.welcome,flashSales:selling.flashSales}:null,
+      selling:selling?{lbp:selling.lbp,freeGift:selling.freeGift,giftOption:selling.giftOption,welcome:selling.welcome,flashSales:selling.flashSales,occasions:selling.occasions}:null,
     }},{headers:{'Cache-Control':'public, max-age=30, s-maxage=120, stale-while-revalidate=600'}})
   }catch{return json({error:'Unable to load store settings'},{status:500})}
 }

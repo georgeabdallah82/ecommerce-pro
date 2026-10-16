@@ -3,6 +3,7 @@ import { db } from '@/lib/prisma'
 import { verifyPassword, setSession } from '@/lib/auth'
 import { consumeRateLimit, clearRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
+import { setTwoStepTicket } from '@/lib/two-step'
 
 const STAFF_ROLES = ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'SUPPORT', 'EDITOR'] as const
 const WINDOW_MS = 15 * 60 * 1000
@@ -63,6 +64,12 @@ export async function POST(request: Request) {
   clearRateLimit(emailKey)
   if (lockout && lockout.failedCount > 0) {
     await db.adminLoginLockout.upsert({ where: { email }, create: { email, failedCount: 0, lockedUntil: null }, update: { failedCount: 0, lockedUntil: null } })
+  }
+  // 2-step login on: the password was right, now the code from their phone
+  // (app/api/admin/login/code/route.ts). No session until then.
+  if (user.totpEnabledAt && user.totpSecret) {
+    await setTwoStepTicket(user.id)
+    return NextResponse.json({ needsCode: true }, { headers })
   }
   await db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
   await setSession(user.id)

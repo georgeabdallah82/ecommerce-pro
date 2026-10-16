@@ -110,6 +110,7 @@ export default function AdminProductsList({ initial }: { initial: any }) {
           </div>
         </div>
         <div className="inline" style={{ gap: 8 }}>
+          <Link className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/products/prices"><Tag size={16} /> Change prices</Link>
           <Link className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/products/import"><Upload size={16} /> Import</Link>
           <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setExportOpen(true)}><Download size={16} /> Export</button>
           <Link className={ui.btn} href="/admin/products/new"><Plus size={16} /> Add product</Link>

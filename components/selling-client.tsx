@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Gift, Zap } from 'lucide-react'
+import { CalendarHeart, Gift, Zap } from 'lucide-react'
 import { useI18n } from '@/components/lang-provider'
 import { loadStoreSettings } from '@/lib/store-settings-client'
 import { formatLbp, freeGiftProgress, lbpAmount } from '@/lib/selling'
 import { countdown, type FlashSale } from '@/lib/flash-sale-shared'
 import { money } from '@/lib/config'
+import { activeOccasion, dayKeyOf, type Occasion } from '@/lib/occasions'
 
 export type ClientSelling = {
   lbp: { show: boolean; rate: number }
@@ -14,6 +15,7 @@ export type ClientSelling = {
   giftOption: boolean
   welcome: { enabled: boolean; code: string; title: string; delaySeconds: number }
   flashSales: FlashSale[]
+  occasions?: Occasion[]
 }
 
 // The selling tools' public settings (/api/store/settings), shared by everything on the page.
@@ -83,4 +85,49 @@ export function FlashSaleBanner() {
     <FlashCountdown endsAt={endsAt} compact />
     <span className="flashStripCta">{t('Shop the sale')}</span>
   </a>
+}
+
+// Marketing > Occasions: the occasion to show today, by the shopper's own day. Nothing on the
+// server, so a page never shows a day that has already passed for the shopper.
+function useOccasion() {
+  const selling = useSelling()
+  const [today, setToday] = useState('')
+  useEffect(() => { setToday(dayKeyOf(new Date())) }, [])
+  if (!today || !selling?.occasions?.length) return null
+  const occasion = activeOccasion(selling.occasions, today)
+  return occasion ? { occasion, lastDay: occasion.orderBy === today } : null
+}
+
+function useOccasionText() {
+  const { t, lang } = useI18n()
+  const shown = useOccasion()
+  if (!shown) return null
+  const { occasion, lastDay } = shown
+  const name = lang === 'ar' && occasion.nameAr ? occasion.nameAr : occasion.name
+  const day = (key: string) => new Intl.DateTimeFormat(lang === 'ar' ? 'ar-LB-u-nu-latn' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${key}T00:00:00Z`))
+  return {
+    occasion, name,
+    title: lastDay ? t('Last day to order for {occasion}: today!', { occasion: name }) : t('Order by {date} to receive it for {occasion}.', { date: day(occasion.orderBy), occasion: name }),
+    when: t('{occasion} is on {date}.', { occasion: name, date: day(occasion.date) }),
+    cta: t('Shop gifts'),
+  }
+}
+
+// Home page strip while an occasion is on.
+export function OccasionBanner() {
+  const shown = useOccasionText()
+  if (!shown) return null
+  const body = <>
+    <span className="occasionStripTitle"><CalendarHeart size={18} aria-hidden="true" /> {shown.title}</span>
+    <span className="occasionStripWhen">{shown.when}</span>
+    {shown.occasion.link && <span className="occasionStripCta">{shown.cta}</span>}
+  </>
+  return shown.occasion.link ? <a className="occasionStrip" href={shown.occasion.link}>{body}</a> : <div className="occasionStrip">{body}</div>
+}
+
+// One line on product pages and in the cart.
+export function OccasionNote() {
+  const shown = useOccasionText()
+  if (!shown) return null
+  return <p className="occasionNote"><CalendarHeart size={15} aria-hidden="true" /> {shown.title}</p>
 }

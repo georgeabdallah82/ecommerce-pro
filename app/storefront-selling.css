@@ -44,6 +44,12 @@
 .flashStripTitle { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; }
 .flashStrip .flashBadge { background: #fff; color: var(--store-sale, #d7261e); font-size: 13px; padding: 3px 10px; }
 .flashStripCta { text-decoration: underline; font-size: 14px; }
+/* Marketing > Occasions (OccasionBanner / OccasionNote in components/selling-client.tsx). */
+.occasionStrip { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 14px; margin: 0 auto; padding: 12px 16px; background: #fff4e5; color: #1f1f1f !important; text-decoration: none; text-align: center; border-bottom: 1px solid rgba(0, 0, 0, .06); }
+.occasionStripTitle { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 800; }
+.occasionStripWhen { font-size: 14px; opacity: .8; }
+.occasionStripCta { font-size: 14px; font-weight: 800; text-decoration: underline; }
+.occasionNote { display: flex; align-items: center; gap: 6px; margin: 8px 0 0; padding: 8px 12px; border-radius: 10px; background: #fff4e5; color: #1f1f1f; font-size: 14px; font-weight: 700; }
 
 /* Invite your friends (components/invite-share.tsx): thank-you page and order page. */
 .inviteCard { display: grid; gap: 14px; padding: 20px 18px; border-radius: 16px; border: 1px solid color-mix(in srgb, var(--store-primary, #d7261e) 30%, var(--store-border, #e7e7e4)); background: color-mix(in srgb, var(--store-primary, #d7261e) 5%, var(--store-surface, #fff)); color: var(--store-text, #121212); }

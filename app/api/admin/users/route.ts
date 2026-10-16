@@ -7,7 +7,7 @@ import { getStaffRoles } from '@/lib/staff-roles'
 import { deleteStaffCascade } from '@/lib/customers'
 
 const staffRoles = new Set<Role>(['ADMIN', 'MANAGER', 'SUPPORT', 'EDITOR'])
-const safeUserSelect = { id: true, name: true, email: true, phone: true, role: true, staffRoleId: true, isActive: true, createdAt: true, lastLoginAt: true } as const
+const safeUserSelect = { id: true, name: true, email: true, phone: true, role: true, staffRoleId: true, isActive: true, createdAt: true, lastLoginAt: true, totpEnabledAt: true } as const
 
 // A custom role (Users & roles › Roles) is picked as "custom:<id>"; the user then keeps SUPPORT
 // as their built-in role, which grants nothing while staffRoleId is set.
@@ -63,10 +63,14 @@ export async function PATCH(req: Request) {
     }
     if (actor.id === targetId && b.isActive === false) return json({ error: 'You cannot disable your own account' }, { status: 400 })
     if (actor.id === targetId && b.role && b.role !== 'SUPER_ADMIN') return json({ error: 'You cannot demote your own account' }, { status: 400 })
+    // A staff member who lost their phone and backup codes: someone who manages users turns
+    // their 2-step login off, and they set it up again. Your own needs a code (Settings > Security).
+    if (b.twoStepOff === true && actor.id === targetId) return json({ error: 'Turn off your own 2-step login in Settings > Security & access' }, { status: 400 })
 
     const data: Record<string, unknown> = {}
     if (choice) { data.role = choice.role; data.staffRoleId = choice.staffRoleId }
     if (b.isActive !== undefined) data.isActive = Boolean(b.isActive)
+    if (b.twoStepOff === true) Object.assign(data, { totpSecret: null, totpEnabledAt: null, totpLastStep: null, totpBackupCodes: [] })
     if (b.name !== undefined) data.name = String(b.name).trim()
     if (b.phone !== undefined) data.phone = String(b.phone || '').trim() || null
     if (b.password) {
@@ -83,7 +87,7 @@ export async function PATCH(req: Request) {
     const roleChanged = choice && (choice.role !== target.role || choice.staffRoleId !== (target.staffRoleId ?? null))
     if (data.passwordHash || roleChanged || data.isActive === false || data.email) data.sessionsRevokedAt = new Date()
     const u = await db.user.update({ where: { id: targetId }, data, select: safeUserSelect })
-    await audit(actor.id, data.passwordHash ? 'user.password_set' : 'user.updated', 'User', u.id, { role: u.role, staffRoleId: u.staffRoleId, isActive: u.isActive })
+    await audit(actor.id, data.passwordHash ? 'user.password_set' : b.twoStepOff === true ? 'user.two_step_off' : 'user.updated', 'User', u.id, { role: u.role, staffRoleId: u.staffRoleId, isActive: u.isActive })
     return json({ user: u }, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (e) {
     const failure = sanitizeFailure(e)

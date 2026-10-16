@@ -16,7 +16,7 @@ import { trackViewContent } from '@/lib/tracking-events'
 import BackInStockButton from '@/components/back-in-stock-button'
 import BoughtTogether from '@/components/bought-together'
 import type { Suggestion } from '@/lib/recommendations'
-import { FlashCountdown, LbpNote } from '@/components/selling-client'
+import { FlashCountdown, LbpNote, OccasionNote } from '@/components/selling-client'
 import { salePrice } from '@/lib/flash-sale-shared'
 import RecentlyViewedRow from '@/components/recently-viewed-row'
 import ProductQuestions from '@/components/product-questions'
@@ -251,6 +251,7 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
           </div>
           {lbpRate > 0 && <LbpNote cents={shownPrice} rate={lbpRate} />}
           {flashSale && <FlashCountdown endsAt={flashSale.endsAt} />}
+          <OccasionNote />
 
           {variants.length > 0 && (
             <div className="aliProductVariants">

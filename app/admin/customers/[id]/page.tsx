@@ -67,6 +67,8 @@ export default async function CustomerDetail({ params }: { params: Promise<{ id:
   const serialized = JSON.parse(JSON.stringify({
     ...customer,
     passwordHash: undefined,
+    totpSecret: undefined,
+    totpBackupCodes: undefined,
     orderTotal,
     tags: tagMembers.map(x => x.tag),
     segments: segmentMembers.map(x => x.segment),

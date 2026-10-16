@@ -1,5 +1,5 @@
 import {db} from '@/lib/prisma'
-import { FlashSaleBanner } from '@/components/selling-client'
+import { FlashSaleBanner, OccasionBanner } from '@/components/selling-client'
 import {getThemeState} from '@/lib/theme'
 import {translator} from '@/lib/i18n'
 import {withProductStats} from '@/lib/product-stats'
@@ -47,6 +47,7 @@ export default async function Home(){
       return text?<div className="aliAnnouncementBar" key={block.id}>{text}</div>:null
     })}
     <FlashSaleBanner/>
+    <OccasionBanner/>
     <StorefrontSections theme={theme} sections={sections} products={products} collections={collections}/>
     {trustItems.length>0&&(
       <section className="aliTrustStrip">

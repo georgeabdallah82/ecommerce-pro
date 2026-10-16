@@ -7,6 +7,7 @@ import styles from './admin-settings-center.module.css'
 import ui from './admin-ui.module.css'
 import MediaPicker from './media-picker'
 import AppIconCard from './app-icon-card'
+import TwoStepCard from './two-step-card'
 import { POLICY_DEFAULTS } from '@/lib/policy-defaults'
 
 const groups = [
@@ -417,6 +418,7 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
               </div>
               <a className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/users">Manage users &amp; roles</a>
             </Card>
+            <TwoStepCard />
             <BlockedPhonesCard />
             </>
           )}

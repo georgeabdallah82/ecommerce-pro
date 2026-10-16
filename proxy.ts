@@ -21,7 +21,7 @@ async function isStaffSession(sessionToken: string | undefined) {
   if (!sessionToken || !process.env.AUTH_SECRET) return false
   try {
     const { payload } = await jwtVerify(sessionToken, new TextEncoder().encode(process.env.AUTH_SECRET))
-    if (!payload.sub || typeof payload.sub !== 'string') return false
+    if (!payload.sub || typeof payload.sub !== 'string' || payload.type !== 'session') return false
     const user = await getStaffAccess(payload.sub)
     // Same rule as getCurrentUser: a staff session revoked (password/role change, disabled)
     // must not keep seeing the store behind the maintenance page.
