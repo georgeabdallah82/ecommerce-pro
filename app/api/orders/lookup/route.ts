@@ -11,7 +11,8 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => null)
-  const orderNumber = typeof body?.orderNumber === 'string' ? body.orderNumber.trim().slice(0, 60) : ''
+  // People type the number as printed ("#1001", "ord-…"): drop the # and match the stored case.
+  const orderNumber = typeof body?.orderNumber === 'string' ? body.orderNumber.trim().replace(/^#\s*/, '').toUpperCase().slice(0, 60) : ''
   const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase().slice(0, 254) : ''
   if (!orderNumber || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return json({ error: 'Please enter a valid order number and email.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } })

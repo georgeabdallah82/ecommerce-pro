@@ -103,8 +103,9 @@ export async function PATCH(req: Request) {
 
     const detailsPatch: Record<string, unknown> = {}
     if (body.email !== undefined) {
-      const email = String(body.email || '').trim().slice(0, 320)
-      if (!email || !email.includes('@')) return json({ error: 'A valid customer email is required' }, { status: 400 })
+      // Empty is allowed: customers who order on WhatsApp or by phone often have no email.
+      const email = String(body.email || '').trim().toLowerCase().slice(0, 320)
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: 'That email address does not look right' }, { status: 400 })
       detailsPatch.email = email
     }
     if (body.phone !== undefined) detailsPatch.phone = String(body.phone || '').trim().slice(0, 80) || null

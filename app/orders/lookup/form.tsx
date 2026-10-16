@@ -40,7 +40,7 @@ export default function OrderLookupPage() {
         <p className="muted">{t('Enter your order number and the email you used at checkout.')}</p>
         <form onSubmit={submit} className="card" style={{ padding: 24, marginTop: 20 }}>
           <label className="fieldLabel" htmlFor="orderNumber">{t('Order number')}</label>
-          <input className="input" id="orderNumber" required autoComplete="off" value={orderNumber} onChange={e => setOrderNumber(e.target.value)} placeholder="ORD-..." dir="ltr" />
+          <input className="input" id="orderNumber" required autoComplete="off" value={orderNumber} onChange={e => setOrderNumber(e.target.value)} placeholder="#1001" dir="ltr" />
           <label className="fieldLabel" htmlFor="email" style={{ marginTop: 14 }}>{t('Email')}</label>
           <input className="input" id="email" type="email" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" />
           {error && <div className="alert danger" style={{ marginTop: 14 }} role="alert" aria-live="polite">{error}</div>}

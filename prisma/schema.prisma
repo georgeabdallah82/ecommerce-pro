@@ -535,6 +535,13 @@ model HomepageBlock {
   updatedAt   DateTime @updatedAt
 }
 
+// Running numbers handed out one at a time (lib/order-number.ts: "order" -> 1001, 1002, ...).
+model Counter {
+  name      String   @id
+  value     Int
+  updatedAt DateTime @updatedAt
+}
+
 model Setting {
   id        String   @id @default(cuid())
   key       String   @unique

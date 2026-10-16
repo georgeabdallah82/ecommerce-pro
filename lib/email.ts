@@ -124,6 +124,8 @@ function logEmail(to: string, subject: string, status: 'sent' | 'failed' | 'skip
 }
 
 export async function sendEmail(to: string, subject: string, html: string, text: string, extra?: { headers?: Record<string, string> }) {
+  // Orders taken on WhatsApp or by phone may have no email address: there is nobody to send to.
+  if (!to || !to.includes('@')) return { sent: false, skipped: true }
   const config = credentials()
   if (!config) {
     console.warn('[email] RESEND_API_KEY/EMAIL_FROM not configured; skipping send', { to, subject })
@@ -209,7 +211,7 @@ export async function sendOrderConfirmationEmail(orderId: string) {
   const brand = await emailBrand()
   const html = layout(`
     <h1 style="font-size:20px;margin:0 0 4px">Thanks for your order</h1>
-    <p style="font-size:14px;color:#3f3f46;margin:0 0 20px">Order ${escapeHtml(order.orderNumber)}</p>
+    <p style="font-size:14px;color:#3f3f46;margin:0 0 20px">Order #${escapeHtml(order.orderNumber)}</p>
     <table role="presentation" width="100%" style="border-collapse:collapse">${rows}</table>
     <table role="presentation" width="100%" style="border-collapse:collapse;border-top:1px solid #eee;margin-top:8px">
       <tr><td style="padding-top:12px;font-size:13px;color:#6b7280">Subtotal</td><td style="padding-top:12px;text-align:right;font-size:13px">${money(order.subtotal, order.currency)}</td></tr>
@@ -226,8 +228,8 @@ export async function sendOrderConfirmationEmail(orderId: string) {
     </td></tr></table>` : ''}
     ${url ? `<p style="margin:28px 0 0"><a href="${url}" style="display:inline-block;background:${brand.color};color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:700">View your order</a></p>` : ''}
   `, brand)
-  const text = `Thanks for your order ${order.orderNumber}. Total: ${money(order.grandTotal, order.currency)}.${paymentNote ? ' ' + paymentNote.replace(/<[^>]+>/g, '') : ''}${issuedGiftCards.length ? ` Gift card code${issuedGiftCards.length > 1 ? 's' : ''}: ${issuedGiftCards.map((c: any) => `${c.code} (${money(c.balance, order.currency)})`).join(', ')}.` : ''}${url ? ` View your order: ${url}` : ''}`
-  return sendEmail(order.email, `Order confirmed — ${order.orderNumber}`, html, text)
+  const text = `Thanks for your order #${order.orderNumber}. Total: ${money(order.grandTotal, order.currency)}.${paymentNote ? ' ' + paymentNote.replace(/<[^>]+>/g, '') : ''}${issuedGiftCards.length ? ` Gift card code${issuedGiftCards.length > 1 ? 's' : ''}: ${issuedGiftCards.map((c: any) => `${c.code} (${money(c.balance, order.currency)})`).join(', ')}.` : ''}${url ? ` View your order: ${url}` : ''}`
+  return sendEmail(order.email, `Order confirmed — #${order.orderNumber}`, html, text)
 }
 
 export async function sendFulfillmentEmail(orderId: string) {
@@ -239,13 +241,13 @@ export async function sendFulfillmentEmail(orderId: string) {
   const brand = await emailBrand()
   const html = layout(`
     <h1 style="font-size:20px;margin:0 0 4px">Your order is on its way</h1>
-    <p style="font-size:14px;color:#3f3f46;margin:0 0 20px">Order ${escapeHtml(order.orderNumber)} has shipped.</p>
+    <p style="font-size:14px;color:#3f3f46;margin:0 0 20px">Order #${escapeHtml(order.orderNumber)} has shipped.</p>
     ${order.shippingMethod ? `<p style="font-size:13px;color:#6b7280;margin:0 0 6px">Delivery: ${escapeHtml(order.shippingMethod)}</p>` : ''}
     ${order.trackingNumber ? `<p style="font-size:13px;color:#6b7280;margin:0 0 6px">Tracking number: ${escapeHtml(order.trackingNumber)}</p>` : ''}
     ${url ? `<p style="margin:24px 0 0"><a href="${url}" style="display:inline-block;background:${brand.color};color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:700">Track your order</a></p>` : ''}
   `, brand)
-  const text = `Order ${order.orderNumber} has shipped.${order.trackingNumber ? ` Tracking number: ${order.trackingNumber}.` : ''}${url ? ` Track your order: ${url}` : ''}`
-  return sendEmail(order.email, `Your order has shipped — ${order.orderNumber}`, html, text)
+  const text = `Order #${order.orderNumber} has shipped.${order.trackingNumber ? ` Tracking number: ${order.trackingNumber}.` : ''}${url ? ` Track your order: ${url}` : ''}`
+  return sendEmail(order.email, `Your order has shipped — #${order.orderNumber}`, html, text)
 }
 
 export async function sendDraftOrderInvoiceEmail(draftOrderId: string, payUrl: string) {
@@ -296,22 +298,22 @@ export async function sendGiftCardIssuedEmail(giftCardId: string) {
 
 const RETURN_STATUS_COPY: Record<string, (returnRequest: { id: string; refundAmount: number; notes: string | null }, orderNumber: string, currency: string) => { subject: string; heading: string; message: string }> = {
   APPROVED: (_returnRequest, orderNumber) => ({
-    subject: `Your return was approved — ${orderNumber}`,
+    subject: `Your return was approved — #${orderNumber}`,
     heading: 'Your return was approved',
     message: 'Please ship the items back to us. We\'ll process your return as soon as they arrive.',
   }),
   REJECTED: (returnRequest, orderNumber) => ({
-    subject: `Update on your return — ${orderNumber}`,
+    subject: `Update on your return — #${orderNumber}`,
     heading: 'Your return request was declined',
     message: returnRequest.notes ? `We're unable to process this return. ${returnRequest.notes}` : 'We\'re unable to process this return. Contact us if you have questions.',
   }),
   RECEIVED: (returnRequest, orderNumber) => ({
-    subject: `We received your return — ${orderNumber}`,
+    subject: `We received your return — #${orderNumber}`,
     heading: 'We received your return',
     message: returnRequest.refundAmount > 0 ? 'Your items have arrived and your refund is being processed.' : 'Your items have arrived and your return has been processed.',
   }),
   REFUNDED: (returnRequest, orderNumber, currency) => ({
-    subject: `Your refund has been issued — ${orderNumber}`,
+    subject: `Your refund has been issued — #${orderNumber}`,
     heading: 'Your refund has been issued',
     message: `A refund of ${money(returnRequest.refundAmount, currency)} has been issued for order ${orderNumber}.`,
   }),
