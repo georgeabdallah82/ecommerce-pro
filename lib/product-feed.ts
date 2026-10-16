@@ -13,6 +13,17 @@ export type FeedProduct = {
   compareAtPrice?: number | null
   soldOut: boolean
   images: Array<{ url: string }>
+  // The store collections the product is in ("Kitchenware", "Personal Care"), in the store's
+  // order. Sent as product_type (all of them) and custom_label_0 (the first), so Meta can group
+  // products by category for ads.
+  categories?: string[]
+}
+
+// A product's active collections, in the store's order (sortOrder, then name).
+export function feedCategories(links: Array<{ collection: { name: string; isActive: boolean; sortOrder: number } }> | undefined) {
+  return (links || []).map(l => l.collection).filter(c => c.isActive && c.name.trim())
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))
+    .map(c => c.name.trim())
 }
 
 const xml = (value: unknown) => String(value ?? '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;')
@@ -49,6 +60,7 @@ export function productFeedXml(products: FeedProduct[], store: { name: string; u
         `<g:price>${xml(price(onSale ? p.compareAtPrice! : p.basePrice, store.currency))}</g:price>`,
         ...(onSale ? [`<g:sale_price>${xml(price(p.basePrice, store.currency))}</g:sale_price>`] : []),
         `<g:brand>${xml(p.brand || p.vendor || store.name)}</g:brand>`,
+        ...(p.categories?.length ? [`<g:product_type>${xml(p.categories.join(', ').slice(0, 750))}</g:product_type>`, `<g:custom_label_0>${xml(p.categories[0].slice(0, 100))}</g:custom_label_0>`] : []),
         '</item>',
       ].join('')
     })

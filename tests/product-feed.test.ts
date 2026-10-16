@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { plainText, productFeedXml } from '@/lib/product-feed'
+import { feedCategories, plainText, productFeedXml } from '@/lib/product-feed'
 
 const store = { name: 'Yalla Haul', url: 'https://shop.example', currency: 'USD' }
 const base = { id: 'p1', name: 'Baloo tissues', slug: 'baloo-tissues', basePrice: 450, soldOut: false, images: [{ url: '/api/media/1.webp' }, { url: 'https://cdn.example/2.jpg' }] }
@@ -22,6 +22,18 @@ describe('product feed', () => {
   it('skips products without a usable photo and escapes text', () => {
     const out = productFeedXml([{ ...base, images: [{ url: '/logo.svg' }] }, { ...base, id: 'p2', name: 'Cups <6 pack> & "more"' }], store)
     assert.ok(!out.includes('<g:id>p1</g:id>') && out.includes('<g:title>Cups &lt;6 pack&gt; &amp; &quot;more&quot;</g:title>'))
+  })
+  it('sends the store categories so Meta can group products for ads', () => {
+    const categories = feedCategories([
+      { collection: { name: 'Personal Care', isActive: true, sortOrder: 2 } },
+      { collection: { name: 'Hidden', isActive: false, sortOrder: 0 } },
+      { collection: { name: 'Kitchen & Home', isActive: true, sortOrder: 1 } },
+    ])
+    assert.deepEqual(categories, ['Kitchen & Home', 'Personal Care'])
+    const out = productFeedXml([{ ...base, categories }], store)
+    assert.ok(out.includes('<g:product_type>Kitchen &amp; Home, Personal Care</g:product_type>'))
+    assert.ok(out.includes('<g:custom_label_0>Kitchen &amp; Home</g:custom_label_0>'))
+    assert.ok(!productFeedXml([base], store).includes('product_type'), 'no category: no empty tag')
   })
   it('turns descriptions into plain text', () => {
     assert.equal(plainText('<h2>Size</h2><p>Big&nbsp;one<br>Two</p><script>x()</script>'), 'Size\nBig one\nTwo')
