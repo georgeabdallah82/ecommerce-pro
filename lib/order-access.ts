@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
+import { internationalPhone } from '@/lib/phone'
 
 // Who may see an order's details (thank-you page, guest order page). An order number alone is
 // never enough: they count up (1001, 1002, ...; older ones ORD-<timestamp>-<4 chars>), so they can
@@ -30,6 +31,16 @@ export function orderEmailMatches(orderEmail: string | null | undefined, email: 
   const a = String(orderEmail || '').trim().toLowerCase()
   const b = String(email || '').trim().toLowerCase()
   return !!a && a === b
+}
+
+// "Track your order" by phone (orders placed with a phone number only): the number typed matches
+// the order's phone however either was written ("70 123 456", "+961 70123456", "0096170...").
+export function orderPhoneMatches(order: { phone?: string | null; shippingAddressJson?: string | null }, typed: string | null | undefined, storeCountry?: string | null) {
+  const given = internationalPhone(typed, storeCountry)
+  if (!given) return false
+  let addressPhone = ''
+  try { addressPhone = String(JSON.parse(order.shippingAddressJson || '{}')?.phone || '') } catch {}
+  return [order.phone, addressPhone].some(phone => !!phone && internationalPhone(phone, storeCountry) === given)
 }
 
 export function canViewOrder(

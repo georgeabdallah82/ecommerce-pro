@@ -22,6 +22,7 @@ import { ZodError } from 'zod'
 import { nextOrderNumber } from '@/lib/order-number'
 import { runInBackground } from '@/lib/background'
 import { markCheckoutsRecovered, maybeSendCartReminders } from '@/lib/cart-reminders'
+import { internationalPhone } from '@/lib/phone'
 import { adContextFromRequest, sendMetaPurchase } from '@/lib/meta-capi'
 import { orderSuccessPath } from '@/lib/order-access'
 import { BLOCKED_MESSAGE, BLOCKED_PHONES_KEY, isBlocked, parseBlockedPhones } from '@/lib/blocked-phones'
@@ -438,7 +439,8 @@ export async function POST(req: Request) {
     }
     // Close this shopper's open checkouts now, so no cart reminder can follow a real order,
     // then run the throttled reminder check while the database is awake.
-    if (order.email) runInBackground(markCheckoutsRecovered(order.email).catch(error => console.error('[cart-reminders] could not close checkouts', error)).then(() => maybeSendCartReminders(sendAbandonedCheckoutEmail)))
+    const phoneKey = internationalPhone(input.phone || input.shippingAddress.phone, settings['store.country'])
+    if (order.email || phoneKey) runInBackground(markCheckoutsRecovered(order.email, phoneKey).catch(error => console.error('[cart-reminders] could not close checkouts', error)).then(() => maybeSendCartReminders(sendAbandonedCheckoutEmail)))
     runInBackground(dispatchWebhookEvent('order.created', { id: order.id, orderNumber: order.orderNumber, email: order.email, grandTotal: order.grandTotal, currency: order.currency, status: order.status, paymentStatus: order.paymentStatus }).catch(error => console.error('[webhook] order.created dispatch failed', error)))
     await audit(user?.id, 'order.created', 'Order', order.id, { orderNumber: order.orderNumber, total: grandTotal, paymentMethod, paymentProvider: paymentMethod === PaymentMethod.CARD ? paymentProvider.name : paymentMethod.toLowerCase(), coinsUsed: requestedCoins, coinDiscount, giftCardAmount: giftCardDiscount })
     return json({ order: { id: order.id, orderNumber: order.orderNumber, total: order.grandTotal, successPath: orderSuccessPath(order.orderNumber) }, payment: clientCheckout, rewards: { coinsUsed: requestedCoins, coinDiscount, giftCardAmount: giftCardDiscount } }, { status: 201, headers: { 'Cache-Control': 'no-store' } })

@@ -298,7 +298,7 @@ function ApiCredentialsPanel({ credentials, onChange }: { credentials: any[]; on
 const REMINDER_KEYS = { enabled: 'abandoned.autoSend', delayHours: 'abandoned.delayHours', maxAgeHours: 'abandoned.maxAgeHours', dailyLimit: 'abandoned.dailyLimit' }
 
 // Automatic cart reminders (lib/cart-reminders.ts): off until the owner turns them on here.
-function CartReminderSettings() {
+export function CartReminderSettings() {
   const [values, setValues] = useState({ enabled: false, delayHours: '3', maxAgeHours: '48', dailyLimit: '20' })
   const [loaded, setLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -453,7 +453,7 @@ export default function AdminOperationsHub() {
       {tab === 'overview' && <>
         <div className={styles.grid}>
           <Card icon={MapPin} title="Locations" count={counts.locations}/><Card icon={Truck} title="Transfers" count={counts.transfers} href="/admin/inventory/transfers"/><Card icon={ClipboardList} title="Draft orders" count={counts.drafts} href="/admin/draft-orders"/><Card icon={Boxes} title="Purchase orders" count={counts.purchaseOrders} href="/admin/purchase-orders"/>
-          <Card icon={RotateCcw} title="Returns" count={counts.returns} href="/admin/returns"/><Card icon={FileEdit} title="Order edits" count={counts.orderEdits} href="/admin/order-edits"/><Card icon={CreditCard} title="Gift cards" count={counts.giftCards} href="/admin/gift-cards"/><Card icon={ShoppingCart} title="Abandoned checkouts" count={counts.abandoned} attention={counts.abandoned > 0}/><Card icon={UsersRound} title="Sales channels" count={counts.channels}/><Card icon={Truck} title="Webhooks" count={counts.webhooks}/>
+          <Card icon={RotateCcw} title="Returns" count={counts.returns} href="/admin/returns"/><Card icon={FileEdit} title="Order edits" count={counts.orderEdits} href="/admin/order-edits"/><Card icon={CreditCard} title="Gift cards" count={counts.giftCards} href="/admin/gift-cards"/><Card icon={ShoppingCart} title="Unfinished checkouts" count={counts.abandoned} attention={counts.abandoned > 0} href="/admin/orders/unfinished"/><Card icon={UsersRound} title="Sales channels" count={counts.channels}/><Card icon={Truck} title="Webhooks" count={counts.webhooks}/>
         </div>
         <div className={`${ui.card} ${styles.panel}`}><div><h3>Quick actions</h3><p className={ui.muted}>Use the dedicated admin sections for full editing workflows.</p></div><div className={styles.actions}><button className={ui.btn} disabled={busy || counts.locations > 0} onClick={seedLocation}>{busy ? 'Creating…' : counts.locations ? 'Locations configured' : 'Create main location'}</button><a className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/orders">Open orders</a><a className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/inventory">Open inventory</a><a className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/customers">Open customers</a><a className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/purchase-orders">Purchase orders</a><a className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/inventory/transfers">Transfers</a><a className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/order-edits">Order edits</a></div></div>
       </>}

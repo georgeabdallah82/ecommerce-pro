@@ -395,6 +395,12 @@ model AbandonedCheckout {
   token        String                  @unique
   customerId   String?
   email        String?
+  // The phone typed at checkout, as international digits (96170123456), and the first name:
+  // shoppers who order by phone only can be reminded on WhatsApp (Admin > Orders > Unfinished).
+  phone        String?
+  name         String?
+  // When staff last opened the WhatsApp reminder for it.
+  whatsappAt   DateTime?
   cartJson     String
   subtotal     Int                     @default(0)
   currency     String                  @default("USD")
@@ -412,6 +418,7 @@ model AbandonedCheckout {
   updatedAt    DateTime                @updatedAt
   @@index([status, lastActivity])
   @@index([email])
+  @@index([phone])
 }
 
 // Customers who asked not to get cart reminder emails again (the link in that email).

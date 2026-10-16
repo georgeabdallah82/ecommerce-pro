@@ -117,10 +117,12 @@ export async function isOptedOut(email: string | null | undefined) {
 
 // An order placed with this address closes its open checkouts at once: the checkout page also
 // reports it, but from the shopper's browser, which may never arrive.
-export async function markCheckoutsRecovered(email: string | null | undefined) {
+// phone: international digits (lib/phone.ts internationalPhone), as saved by checkout.
+export async function markCheckoutsRecovered(email: string | null | undefined, phone?: string | null) {
   const normalized = normalizeEmail(email)
-  if (!normalized) return
-  await db.abandonedCheckout.updateMany({ where: { email: { equals: normalized, mode: 'insensitive' }, status: 'OPEN' }, data: { status: 'RECOVERED', recoveredAt: new Date() } })
+  const match = [...(normalized ? [{ email: { equals: normalized, mode: 'insensitive' as const } }] : []), ...(phone ? [{ phone }] : [])]
+  if (!match.length) return
+  await db.abandonedCheckout.updateMany({ where: { status: 'OPEN', OR: match }, data: { status: 'RECOVERED', recoveredAt: new Date() } })
 }
 
 // ---- The check ----

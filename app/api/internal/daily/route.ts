@@ -78,7 +78,7 @@ async function sendSummary(now: Date, reviewEmailsSent: number) {
   await db.setting.upsert({ where: { key: SUMMARY_LAST_SENT }, update: { value: today }, create: { key: SUMMARY_LAST_SENT, value: today } })
 
   const yesterday = yesterdayKey(now, timezone)
-  const [currency, store, recent, counts, stock, pendingReviews, recipients] = await Promise.all([
+  const [currency, store, recent, counts, stock, pendingReviews, recipients, unfinished] = await Promise.all([
     getStoreCurrency(),
     getStoreIdentity(),
     db.order.findMany({ where: { createdAt: { gte: new Date(now.getTime() - 50 * 60 * 60 * 1000) }, status: { notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED] } }, select: { createdAt: true, grandTotal: true } }),
@@ -86,6 +86,7 @@ async function sendSummary(now: Date, reviewEmailsSent: number) {
     db.inventoryItem.findMany({ where: { lowStockThreshold: { gt: 0 }, product: { status: 'ACTIVE' } }, select: { quantity: true, reserved: true, lowStockThreshold: true, product: { select: { name: true } }, variant: { select: { name: true } } }, take: 5000 }),
     db.review.count({ where: { approved: false } }),
     db.setting.findMany({ where: { key: { in: ['notifications.summaryEmail', 'contact.email'] } }, select: { key: true, value: true } }),
+    db.abandonedCheckout.count({ where: { status: 'OPEN', whatsappAt: null, lastActivity: { gte: new Date(now.getTime() - 48 * 60 * 60 * 1000) }, OR: [{ phone: { not: null } }, { email: { not: null } }] } }).catch(() => 0),
   ])
   const count = (status: OrderStatus) => counts.find(c => c.status === status)?._count._all || 0
   const placed = recent.filter(o => storeDayKey(o.createdAt, timezone) === yesterday)
@@ -105,6 +106,7 @@ async function sendSummary(now: Date, reviewEmailsSent: number) {
     lowStock,
     pendingReviews,
     reviewEmailsSent,
+    unfinished,
   }
   const message = dailySummaryMessage(facts, money)
   const map = new Map(recipients.map(r => [r.key, r.value.trim()]))
