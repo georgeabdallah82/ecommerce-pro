@@ -90,8 +90,9 @@ function isActiveUrl(url: string, pathname: string, here: string) {
 
 // Category bar under the header. Computers: "All categories" opens a panel with every
 // collection (with its picture); menu items with sub-items open their own panel; the bar
-// scrolls with arrow buttons when it doesn't fit. Phones: a row of scrollable pills.
-export function CategoryTabs({ navigation }: { navigation: NavItem[] }) {
+// scrolls with arrow buttons when it doesn't fit. Phones: hidden, since the menu button lists
+// the same links, unless the theme turns on `phone` (a row of scrollable pills).
+export function CategoryTabs({ navigation, phone = false }: { navigation: NavItem[]; phone?: boolean }) {
   const pathname = usePathname() || '/'
   const [search, setSearch] = useState('')
   const { t, count, dir } = useI18n()
@@ -134,7 +135,7 @@ export function CategoryTabs({ navigation }: { navigation: NavItem[] }) {
   const openItem = panel && panel !== 'all' ? roots.find(r => r.id === panel) : null
 
   return (
-    <nav className="mkCats" aria-label={t('Categories')} onMouseLeave={closeSoon}>
+    <nav className={`mkCats${phone ? '' : ' mkCatsComputerOnly'}`} aria-label={t('Categories')} onMouseLeave={closeSoon}>
       <div className="mkWrap mkCatsInner">
         <button type="button" className={`mkCatsAll ${panel === 'all' ? 'on' : ''}`} aria-expanded={panel === 'all'} onClick={() => setPanel(panel === 'all' ? null : 'all')} onMouseEnter={() => openSoon('all')}>
           <LayoutGrid size={16} aria-hidden="true" /> {t('All categories')} <ChevronDown size={14} className="mkCatsChevron" aria-hidden="true" />

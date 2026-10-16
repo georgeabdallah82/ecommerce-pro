@@ -306,6 +306,7 @@ const THEME_CATEGORIES: ThemeCategory[] = [
       toggle('Brand colour style: show the logo in solid white (off: use the dark-background logo as it is)', 'whiteLogo', true),
       text('Search box hint', 'searchPlaceholder', 'Search products…'),
       toggle('Show category tabs under the header (your Navigation menu)', 'showCategoryTabs', true),
+      toggle('Show the category tabs on phones too (the menu button already lists the same links)', 'showCategoryTabsPhone', false),
     ] },
   ] },
   { key: 'delivery', label: 'Delivery bar', icon: Truck, group: 'delivery', panels: [
