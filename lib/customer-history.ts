@@ -46,3 +46,17 @@ export async function phoneHistory(orderId: string, phone: string | null | undef
     createdAt: new Date(row.createdAt).toISOString(), refused: sentOut.has(row.id),
   })))
 }
+
+// "First order only" codes (the welcome-popup code) for customers without an account: has this
+// phone number or email ordered before (cancelled orders don't count)?
+export async function orderedBefore(phone: string | null | undefined, email: string | null | undefined, storeCountry: string) {
+  const e = String(email || '').trim().toLowerCase()
+  if (e && await db.order.findFirst({ where: { email: { equals: e, mode: 'insensitive' }, status: { not: 'CANCELLED' } }, select: { id: true } })) return true
+  const target = internationalPhone(phone, storeCountry)
+  if (!target) return false
+  const rows = await db.$queryRaw<Array<{ phone: string | null }>>`
+    SELECT "phone" FROM "Order"
+    WHERE "status"::text <> 'CANCELLED' AND regexp_replace(coalesce("phone", ''), '[^0-9]', '', 'g') LIKE ${`%${target.slice(-7)}`}
+    LIMIT 50`
+  return rows.some(row => internationalPhone(row.phone, storeCountry) === target)
+}

@@ -1,0 +1,44 @@
+/* Admin pages that bring customers back (components/invites-admin.tsx, winback-admin.tsx,
+   questions-admin.tsx). Phone first, like Unfinished checkouts. */
+.page { display: grid; gap: 14px; max-width: 860px; }
+.title { margin: 6px 0 0; font-size: 28px; font-weight: 850; letter-spacing: -.02em; color: var(--admin-ink); }
+.subtitle { margin: 4px 0 0; font-size: 14px; line-height: 1.5; color: var(--admin-muted); }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.stats > div { display: grid; gap: 2px; padding: 14px 16px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); background: var(--admin-surface); }
+.stats strong { font-size: 24px; font-weight: 850; color: var(--admin-ink); }
+.stats span { font-size: 13px; color: var(--admin-muted); }
+.list { display: grid; gap: 12px; }
+.card { display: grid; gap: 10px; }
+.head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.name { font-size: 16px; color: var(--admin-ink); }
+.meta { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 2px; font-size: 14px; color: var(--admin-muted); }
+.meta a { color: var(--admin-ink); font-weight: 700; text-decoration: none; }
+.amount { display: grid; justify-items: end; gap: 2px; flex: none; text-align: end; }
+.amount strong { font-size: 16px; color: var(--admin-ink); }
+.amount span { font-size: 12.5px; color: var(--admin-muted); }
+.note { margin: 0; font-size: 14px; line-height: 1.5; color: var(--admin-ink-soft); }
+.done { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; font-weight: 700; color: #15803d; }
+.wait { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; font-weight: 700; color: var(--admin-muted); }
+.code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 800; letter-spacing: .04em; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.whatsapp { border-color: #1fa855; background: #25d366; color: #fff; }
+.whatsapp:hover { background: #1fa855; border-color: #1fa855; color: #fff; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { min-height: 38px; padding: 0 14px; border: 1px solid var(--admin-border); border-radius: 999px; background: var(--admin-surface); color: var(--admin-ink); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
+.chipOn { border-color: var(--admin-ink); background: var(--admin-ink); color: var(--admin-surface); }
+.settings { display: grid; gap: 8px; }
+.settingsTitle { margin: 0; font-size: 16px; font-weight: 800; color: var(--admin-ink); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.row input { flex: 1 1 200px; }
+.quote { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--admin-surface-muted, color-mix(in srgb, var(--admin-ink) 5%, var(--admin-surface))); font-size: 14.5px; line-height: 1.5; color: var(--admin-ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+.answer { display: grid; gap: 6px; }
+.answer textarea { min-height: 84px; }
+.thumbs { display: flex; flex-wrap: wrap; gap: 8px; }
+.thumb { position: relative; width: 72px; height: 72px; border-radius: 10px; overflow: hidden; border: 1px solid var(--admin-border); }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb button { position: absolute; top: 3px; inset-inline-end: 3px; width: 24px; height: 24px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(0, 0, 0, .65); color: #fff; cursor: pointer; }
+@media (max-width: 520px) { .actions > * { flex: 1 1 100%; justify-content: center; } }
+
+/* ui.card is only the box (no padding): the inside spacing of every card on these pages. */
+.card, .settings { padding: 16px 18px; }
+@media (max-width: 560px) { .card, .settings { padding: 14px; } }

@@ -22,6 +22,7 @@ type Coupon = {
   expiresAt: string | null
   isActive: boolean
   firstOrderOnly: boolean
+  flashSale?: boolean
   appliesTo?: Scope
   productIds?: string[]
   collectionIds?: string[]
@@ -122,7 +123,7 @@ function ScopePicker({
 
 const emptyForm = {
   code: '', isAutomatic: false, type: 'PERCENTAGE' as Coupon['type'], value: '10',
-  minSubtotal: '', maxUses: '', startsAt: '', expiresAt: '', firstOrderOnly: false,
+  minSubtotal: '', maxUses: '', startsAt: '', expiresAt: '', firstOrderOnly: false, flashSale: false,
   appliesTo: 'ALL_PRODUCTS' as Scope, productIds: [] as string[], collectionIds: [] as string[],
   buyQuantity: '1', getQuantity: '1', getDiscountPercent: '100',
   getAppliesTo: 'ALL_PRODUCTS' as Scope, getProductIds: [] as string[], getCollectionIds: [] as string[],
@@ -141,7 +142,7 @@ function formFromCoupon(c: Coupon): typeof emptyForm {
     code: c.code, isAutomatic: c.isAutomatic, type: c.type,
     value: c.type === 'PERCENTAGE' ? String(c.value) : c.type === 'FIXED' ? (c.value / 100).toFixed(2) : '0',
     minSubtotal: c.minSubtotal ? (c.minSubtotal / 100).toFixed(2) : '', maxUses: c.maxUses ? String(c.maxUses) : '',
-    startsAt: toLocalInput(c.startsAt), expiresAt: toLocalInput(c.expiresAt), firstOrderOnly: c.firstOrderOnly,
+    startsAt: toLocalInput(c.startsAt), expiresAt: toLocalInput(c.expiresAt), firstOrderOnly: c.firstOrderOnly, flashSale: !!c.flashSale,
     appliesTo: c.appliesTo || 'ALL_PRODUCTS', productIds: c.productIds || [], collectionIds: c.collectionIds || [],
     buyQuantity: String(c.buyQuantity || 1), getQuantity: String(c.getQuantity || 1), getDiscountPercent: String(c.getDiscountPercent ?? 100),
     getAppliesTo: c.getAppliesTo || 'ALL_PRODUCTS', getProductIds: c.getProductIds || [], getCollectionIds: c.getCollectionIds || [],
@@ -238,6 +239,7 @@ export default function CouponsAdminPro({ initial }: { initial: Coupon[] }) {
         startsAt: form.startsAt ? new Date(form.startsAt).toISOString() : null,
         expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : null,
         firstOrderOnly: form.firstOrderOnly,
+        flashSale: form.flashSale,
         appliesTo: form.appliesTo,
         productIds: form.productIds,
         collectionIds: form.collectionIds,
@@ -304,7 +306,7 @@ export default function CouponsAdminPro({ initial }: { initial: Coupon[] }) {
       <div className={styles.tableTopline}><span className={ui.muted}>{filtered.length} discount{filtered.length === 1 ? '' : 's'}</span><span className={ui.muted}>Codes are case-insensitive</span></div>
       <div className={ui.tableWrap}><table className={`${ui.table} ${ui.cardTable} productTable`}><thead><tr><th>Discount</th><th>Type</th><th>Value</th><th>Applies to</th><th>Usage</th><th>Schedule</th><th>Status</th><th></th></tr></thead><tbody>
         {filtered.map(c => <tr key={c.id}>
-          <td data-cell="primary"><div className="inline"><div className={styles.discountIcon}><Tag size={18}/></div><div><strong>{c.code}</strong>{c.isAutomatic && <span className={ui.statusPill} style={{ marginLeft: 8 }}>Automatic</span>}<div className={ui.muted}>{c.firstOrderOnly ? 'First order only' : 'Available to all customers'}</div></div></div></td>
+          <td data-cell="primary"><div className="inline"><div className={styles.discountIcon}><Tag size={18}/></div><div><strong>{c.code}</strong>{c.isAutomatic && <span className={ui.statusPill} style={{ marginLeft: 8 }}>Automatic</span>}{c.flashSale && <span className={`${ui.statusPill} ${ui.statusPillWarning}`} style={{ marginLeft: 6 }}>Flash sale</span>}<div className={ui.muted}>{c.firstOrderOnly ? 'First order only' : 'Available to all customers'}</div></div></div></td>
           <td data-label="Type">{label(c.type)}</td><td data-label="Value"><strong>{valueLabel(c)}</strong>{c.minSubtotal ? <div className={ui.muted}>Min {money(c.minSubtotal)}</div> : null}</td>
           <td data-label="Applies to">{scopeSummary(c.appliesTo, c.productIds, c.collectionIds)}</td>
           <td data-label="Usage">{c.usedCount}{c.maxUses ? <span className={ui.muted}> / {c.maxUses}</span> : <span className={ui.muted}> / unlimited</span>}</td>
@@ -366,6 +368,7 @@ export default function CouponsAdminPro({ initial }: { initial: Coupon[] }) {
 
         <div className={styles.formGrid}><label className={ui.fieldLabel}>Minimum order<input className={ui.input} type="number" min="0" step="0.01" value={form.minSubtotal} onChange={e => setForm({...form, minSubtotal: e.target.value})} placeholder="None"/></label><label className={ui.fieldLabel}>Maximum uses<input className={ui.input} type="number" min="1" step="1" value={form.maxUses} onChange={e => setForm({...form, maxUses: e.target.value})} placeholder="Unlimited"/></label><label className={ui.fieldLabel}>Starts<input className={ui.input} type="datetime-local" value={form.startsAt} onChange={e => setForm({...form, startsAt: e.target.value})}/></label><label className={ui.fieldLabel}>Ends<input className={ui.input} type="datetime-local" value={form.expiresAt} onChange={e => setForm({...form, expiresAt: e.target.value})}/></label></div>
         <label className={styles.toggleRow}><input type="checkbox" checked={form.firstOrderOnly} onChange={e => setForm({...form, firstOrderOnly: e.target.checked})}/><span><strong>First order only</strong><small>Limit this discount to customers with no previous completed order.</small></span></label>
+        {form.type === 'PERCENTAGE' && <label className={styles.toggleRow}><input type="checkbox" checked={form.flashSale} onChange={e => setForm({...form, flashSale: e.target.checked, ...(e.target.checked ? { isAutomatic: true } : {})})}/><span><strong>Flash sale</strong><small>Shows the sale price and a countdown on the store until the end date. Needs Automatic, an end date and no minimum order.</small></span></label>}
         <div className={`inline ${styles.formFooter}`}><div className="inline"><ShieldCheck size={15}/><span className={ui.muted}>Validated again at checkout</span></div><div className="inline"><button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setFormOpen(false)} disabled={saving}>Cancel</button><button className={ui.btn} disabled={saving}>{saving ? 'Saving…' : editing ? 'Save changes' : 'Create discount'}</button></div></div>
       </form>
     </div></div>}

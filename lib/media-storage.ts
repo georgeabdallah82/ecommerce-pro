@@ -1,8 +1,9 @@
-import { mkdir, writeFile } from 'fs/promises'
+import { mkdir, unlink, writeFile } from 'fs/promises'
 import path from 'path'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { db } from '@/lib/prisma'
 import { isPublicHttpUrl } from '@/lib/product-import'
+import { reviewPhotoKey } from '@/lib/review-photos'
 
 // Cloudflare Workers has no writable local filesystem, so uploaded files go to R2 (bound as
 // MEDIA_BUCKET in wrangler.jsonc) whenever that binding is available, and are served back via
@@ -56,4 +57,30 @@ export async function saveMediaFromUrl(url: string, name: string, alt?: string |
   if (declared > MAX_MEDIA_BYTES) throw new Error('Photo is larger than 5 MB')
   const bytes = new Uint8Array(await res.arrayBuffer())
   return saveMediaBytes(bytes, type, name, alt)
+}
+
+// A customer's review photo (app/api/reviews/photo): stored like other uploads but not listed in
+// Files, since it belongs to the review. The caller has already checked the type and size.
+export async function saveReviewPhoto(bytes: Uint8Array, contentType: 'image/jpeg' | 'image/png' | 'image/webp') {
+  const ext = contentType === 'image/png' ? 'png' : contentType === 'image/webp' ? 'webp' : 'jpg'
+  const key = `review-${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`
+  const bucket = await getMediaBucket()
+  if (bucket) {
+    await bucket.put(key, bytes, { httpMetadata: { contentType } })
+    return `/api/media/${key}`
+  }
+  if (process.env.NODE_ENV === 'production') throw new Error('File uploads are not configured for this deployment.')
+  const dir = path.join(process.cwd(), 'public', 'uploads')
+  await mkdir(dir, { recursive: true })
+  await writeFile(path.join(dir, key), bytes)
+  return `/uploads/${key}`
+}
+
+// Removes a review photo the owner took off a review (Admin > Reviews).
+export async function deleteReviewPhoto(url: string) {
+  const key = reviewPhotoKey(url)
+  if (!key) return
+  const bucket = await getMediaBucket()
+  if (bucket) { await bucket.delete(key); return }
+  if (process.env.NODE_ENV !== 'production') await unlink(path.join(process.cwd(), 'public', 'uploads', key)).catch(() => {})
 }

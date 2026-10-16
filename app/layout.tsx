@@ -1,6 +1,7 @@
 import './globals.css'
 import './storefront-legacy.css'
 import './storefront-market.css'
+import './storefront-selling.css'
 import { headers } from 'next/headers'
 import { db } from '@/lib/prisma'
 import { getSiteSeo } from '@/lib/seo'
@@ -21,6 +22,8 @@ import { safeStyleText } from '@/lib/sanitize-html'
 import { WhatsAppFloat } from '@/components/market-chrome'
 import PushOptIn from '@/components/push-opt-in'
 import { LangProvider } from '@/components/lang-provider'
+import WelcomePopup from '@/components/welcome-popup'
+import InviteLanding from '@/components/invite-landing'
 import { getStorefrontSettings } from '@/lib/storefront-settings'
 import { APP_ICON_LARGE, APP_ICON_SMALL, appIconSource, appShortName, appleTouchIcon } from '@/lib/app-icon'
 
@@ -118,5 +121,5 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // editor's live-preview iframe: the fresh re-render recreates the iframe mid-handshake,
   // permanently losing the postMessage exchange that populates the preview pane.
   // Arabic pages read right to left (lib/i18n.ts); admin pages are always English.
-  return <html lang={lang} dir={lang === 'ar' ? 'rtl' : 'ltr'} className={FONT_VARIABLE_CLASSES} suppressHydrationWarning><head><Script id="admin-theme" strategy="beforeInteractive" nonce={nonce} dangerouslySetInnerHTML={{__html:adminThemeScript}}/><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/><link rel="icon" href={theme.faviconUrl || 'data:,'}/>{theme.customCss ? <style dangerouslySetInnerHTML={{ __html: safeStyleText(theme.customCss) }}/> : null}</head><body className={[theme.animations?.enabled ? 'animations-enabled' : '', theme.design === 'market' ? 'mk' : ''].filter(Boolean).join(' ') || undefined}>{pixelsAllowed ? <TrackingScripts config={tracking} nonce={nonce} /> : null}<LangProvider lang={lang} switchable={switchable} preview={languagePreview}><CartProvider><NavProgress/><LiveVisitorTracker/><StoreNavRuntime theme={theme} navigation={navigation}/><StoreNavScroll/>{children}<WhatsAppFloat theme={theme}/><PushOptIn vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} enabled={storefrontSettings.get('push.askVisitors') !== 'false'} storeName={String(theme.brandName || 'our store').trim()}/></CartProvider></LangProvider></body></html>
+  return <html lang={lang} dir={lang === 'ar' ? 'rtl' : 'ltr'} className={FONT_VARIABLE_CLASSES} suppressHydrationWarning><head><Script id="admin-theme" strategy="beforeInteractive" nonce={nonce} dangerouslySetInnerHTML={{__html:adminThemeScript}}/><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/><link rel="icon" href={theme.faviconUrl || 'data:,'}/>{theme.customCss ? <style dangerouslySetInnerHTML={{ __html: safeStyleText(theme.customCss) }}/> : null}</head><body className={[theme.animations?.enabled ? 'animations-enabled' : '', theme.design === 'market' ? 'mk' : ''].filter(Boolean).join(' ') || undefined}>{pixelsAllowed ? <TrackingScripts config={tracking} nonce={nonce} /> : null}<LangProvider lang={lang} switchable={switchable} preview={languagePreview}><CartProvider><NavProgress/><LiveVisitorTracker/><StoreNavRuntime theme={theme} navigation={navigation}/><StoreNavScroll/>{children}<WhatsAppFloat theme={theme}/><WelcomePopup/><InviteLanding/><PushOptIn vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} enabled={storefrontSettings.get('push.askVisitors') !== 'false'} storeName={String(theme.brandName || 'our store').trim()}/></CartProvider></LangProvider></body></html>
 }

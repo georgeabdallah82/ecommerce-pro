@@ -1,4 +1,6 @@
 import {db} from '@/lib/prisma'
+import { searchProductIds } from '@/lib/search-index'
+import { getSellingConfig } from '@/lib/selling-config'
 import {getThemeState} from '@/lib/theme'
 import {getProductStats,withProductStats} from '@/lib/product-stats'
 import { CARD_STOCK_INCLUDE, withCardStock } from '@/lib/card-stock'
@@ -45,16 +47,22 @@ const COLLECTION_ZONE_EXCLUDE=new Set(['header','announcement','footer','main_co
 // then only the visible page is loaded with images and collections.
 const PAGE_SIZE=48
 
-export default async function Shop({searchParams}:{searchParams:Promise<{q?:string;collection?:string;min?:string;max?:string;sort?:string;page?:string}>}){
+export default async function Shop({searchParams}:{searchParams:Promise<{q?:string;collection?:string;min?:string;max?:string;sort?:string;page?:string;sale?:string}>}){
   const sp=await searchParams
   const q=sp.q?.trim();const min=Number(sp.min);const max=Number(sp.max);const sort=sp.sort||'newest'
-  const searchFilter=q?{OR:[{name:{contains:q,mode:'insensitive' as const}},{sku:{contains:q,mode:'insensitive' as const}},{description:{contains:q,mode:'insensitive' as const}}]}:{}
+  // Search forgives typos, Arabic spellings and the store's word list (lib/smart-search.ts); the
+  // results keep their best-match order unless the shopper picks another sort.
+  const searchIds=q?await searchProductIds(q):[]
+  // ?sale=flash: the products in a running flash sale (Admin > Discounts > Flash sale).
+  const flashSales=sp.sale==='flash'?(await getSellingConfig().catch(()=>null))?.flashSales||[]:[]
+  const flashFilter=sp.sale==='flash'&&!flashSales.some(s=>s.all)?{id:{in:[...new Set(flashSales.flatMap(s=>s.productIds))]}}:{}
+  const searchFilter=q?{id:{in:searchIds}}:{}
   // All independent, so fetched together; unpublished products are filtered out below.
-  const where={status:ProductStatus.ACTIVE,...searchFilter,...(sp.collection?{collections:{some:{collection:{slug:sp.collection}}}}:{})}
+  const where={status:ProductStatus.ACTIVE,...searchFilter,...(q?{}:flashFilter),...(sp.collection?{collections:{some:{collection:{slug:sp.collection}}}}:{})}
   const [unpublishedIds,{theme},candidates,collections]=await Promise.all([
     getUnpublishedProductIds(),
     getThemeState(),
-    q?db.product.findMany({where,select:{id:true,basePrice:true,createdAt:true,variants:{select:{price:true}}}})
+    q||sp.sale==='flash'?db.product.findMany({where,select:{id:true,basePrice:true,createdAt:true,variants:{select:{price:true}}}})
       :storefrontCached(`shop-candidates:${sp.collection||''}`,()=>db.product.findMany({where,select:{id:true,basePrice:true,createdAt:true,variants:{select:{price:true}}}})),
     storefrontCached('shop-collections',()=>db.collection.findMany({where:{isActive:true},orderBy:{sortOrder:'asc'}}))
   ])
@@ -71,6 +79,7 @@ export default async function Shop({searchParams}:{searchParams:Promise<{q?:stri
     :sort==='price_desc'?scoped.sort((a,b)=>b.effectivePrice-a.effectivePrice)
     :sort==='bestselling'?scoped.sort((a,b)=>(stats[b.id]?.soldCount||0)-(stats[a.id]?.soldCount||0))
     :sort==='rating'?scoped.sort((a,b)=>(stats[b.id]?.rating||0)-(stats[a.id]?.rating||0))
+    :q&&!sp.sort?scoped.sort((a,b)=>searchIds.indexOf(a.id)-searchIds.indexOf(b.id))
     :scoped.sort((a,b)=>new Date(b.createdAt).getTime()-new Date(a.createdAt).getTime())
   const total=scoped.length
   const pages=Math.max(1,Math.ceil(total/PAGE_SIZE))

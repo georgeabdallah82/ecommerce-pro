@@ -6,7 +6,9 @@
 export const REVIEW_BODY_MAX = 2000
 export const REVIEW_NAME_MAX = 60
 
-export type OrderReviewInput = { productId: string; rating: number; body: string | null }
+import { parseReviewPhotos } from '@/lib/review-photos'
+
+export type OrderReviewInput = { productId: string; rating: number; body: string | null; photos: string[] }
 
 // The reviews sent from the page: products from this order only, a whole-star rating 1-5, an
 // optional comment. Products left unrated are simply not sent.
@@ -25,8 +27,11 @@ export function parseOrderReviews(raw: unknown, orderProductIds: Set<string>): {
     if (rawBody !== undefined && rawBody !== null && typeof rawBody !== 'string') return { reviews: [], error: 'Invalid review' }
     const body = typeof rawBody === 'string' ? rawBody.trim() : ''
     if (body.length > REVIEW_BODY_MAX) return { reviews: [], error: 'Review content is too long' }
+    // Photos uploaded from the page first (app/api/reviews/photo), up to 3.
+    const photos = parseReviewPhotos((entry as Record<string, unknown>).photos)
+    if (photos.error) return { reviews: [], error: photos.error }
     seen.add(productId)
-    reviews.push({ productId, rating, body: body || null })
+    reviews.push({ productId, rating, body: body || null, photos: photos.photos })
   }
   return { reviews }
 }

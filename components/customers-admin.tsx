@@ -118,7 +118,10 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
   return <div className="customersPage">
     <div className={ui.sectionHead}>
       <div><span className={ui.muted}>PEOPLE</span><h1 className={ui.title}>Customers</h1><p className={ui.muted}>See who buys from you, understand their history and manage customer accounts.</p></div>
-      <button className={ui.btn} onClick={() => setShowCreate(true)}><Plus size={16}/> Add customer</button>
+      <div className="inline" style={{ gap: 8 }}>
+        <Link className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/customers/whatsapp">WhatsApp list</Link>
+        <button className={ui.btn} onClick={() => setShowCreate(true)}><Plus size={16}/> Add customer</button>
+      </div>
     </div>
 
     {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}

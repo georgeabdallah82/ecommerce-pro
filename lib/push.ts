@@ -166,6 +166,14 @@ export async function sendNewReviewAlert(review: { id: string; productName: stri
   return sendToSubscriptions({ title: 'New review submitted', body: `${review.productName} · ${review.rating}★ rating awaiting moderation`, url: '/admin/reviews', reviewId: review.id })
 }
 
+// A shopper asked about a product (app/api/questions): staff answer it in Admin > Questions. Uses
+// the review alerts switch (Settings > Notifications), as both wait for the owner.
+export async function sendNewQuestionAlert(question: { id: string; productName: string }) {
+  const setting = await db.setting.findUnique({ where: { key: 'notifications.reviews' } })
+  if (setting?.value === 'false') return { sent: 0, skipped: true, failed: 0 }
+  return sendToSubscriptions({ title: 'New question', body: `About ${question.productName}: waiting for your answer`, url: '/admin/questions' })
+}
+
 // Called with the inventory item ids touched by a stock-reducing action (a manual adjustment,
 // an order fulfillment) to alert staff about any that are now at or below their threshold.
 // Re-reads current state rather than trusting the caller's snapshot, same reasoning as

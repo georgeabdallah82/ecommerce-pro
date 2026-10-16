@@ -23,6 +23,9 @@ import { nextOrderNumber } from '@/lib/order-number'
 import { runInBackground } from '@/lib/background'
 import { markCheckoutsRecovered, maybeSendCartReminders } from '@/lib/cart-reminders'
 import { internationalPhone } from '@/lib/phone'
+import { freeGiftFor } from '@/lib/free-gift'
+import { orderedBefore } from '@/lib/customer-history'
+import { checkInvite } from '@/lib/invites'
 import { adContextFromRequest, sendMetaPurchase } from '@/lib/meta-capi'
 import { orderSuccessPath } from '@/lib/order-access'
 import { BLOCKED_MESSAGE, BLOCKED_PHONES_KEY, isBlocked, parseBlockedPhones } from '@/lib/blocked-phones'
@@ -72,6 +75,7 @@ const SAFE_CHECKOUT_MESSAGES = new Set([
   'This coupon requires a customer account',
   'This coupon is for first orders only',
   'This coupon is no longer available',
+  'This is your own invite code. Share it with your friends.',
   'Your cart is empty.',
   'One or more products are unavailable',
   'Invalid product option selected.',
@@ -203,17 +207,21 @@ export async function POST(req: Request) {
       const p = byId.get(raw.productId)!
       const variant = raw.variantId ? p.variants.find(v => v.id === raw.variantId) : undefined
       if (raw.variantId && !variant) return json({ error: 'Invalid product option selected.' }, { status: 400 })
-      if (p.trackInventory && !p.continueSellingWhenOutOfStock) {
+      const stockRowsFor = () => {
         const dedicated = raw.variantId ? p.inventory.filter(x => x.variantId === raw.variantId) : []
-        const stockRows = dedicated.length ? dedicated : p.inventory.filter(x => !x.variantId)
-        const available = stockRows.reduce((s, x) => s + x.quantity - x.reserved, 0)
+        return dedicated.length ? dedicated : p.inventory.filter(x => !x.variantId)
+      }
+      if (p.trackInventory && !p.continueSellingWhenOutOfStock && !p.preorder) {
+        const available = stockRowsFor().reduce((s, x) => s + x.quantity - x.reserved, 0)
         if (available < raw.quantity) return json({ error: 'One or more requested quantities are no longer available.' }, { status: 409 })
       }
+      // Pre-order (product setting): sold out but still sold, and marked so on the order.
+      const preordered = p.preorder && p.trackInventory && stockRowsFor().reduce((s, x) => s + x.quantity - x.reserved, 0) < raw.quantity
       const unitPrice = variant?.price ?? p.basePrice
       const totalPrice = unitPrice * raw.quantity
       subtotal += totalPrice
       if (p.taxable) taxableSubtotal += totalPrice
-      normalized.push({ productId: p.id, variantId: variant?.id ?? null, name: p.name + (variant ? ` — ${variant.name}` : ''), sku: variant?.sku ?? p.sku, quantity: raw.quantity, unitPrice, totalPrice, taxable: p.taxable })
+      normalized.push({ productId: p.id, variantId: variant?.id ?? null, name: p.name + (variant ? ` — ${variant.name}` : '') + (preordered ? ' (Pre-order)' : ''), sku: variant?.sku ?? p.sku, quantity: raw.quantity, unitPrice, totalPrice, taxable: p.taxable })
     }
 
     // requiresShipping defaults to true (a merchant's admin toggle for "Physical product --
@@ -245,8 +253,19 @@ export async function POST(req: Request) {
       taxable: Math.min(taxableSubtotal, couponDiscount.taxable + bundles.taxable),
       nonTaxable: couponDiscount.nonTaxable + bundles.nonTaxable,
     } : couponDiscount
-    if (coupon?.firstOrderOnly && !user?.id) throw new Error('This coupon requires a customer account')
+    // "First order only" without an account (the welcome-popup code): this phone number or email
+    // must not have ordered before.
+    if (coupon?.firstOrderOnly && !user?.id && await orderedBefore(input.phone || input.shippingAddress.phone, orderEmail, settings['store.country'] || 'Lebanon')) throw new Error('This coupon is for first orders only')
+    // A friend's invite code (lib/invites.ts): new customers only, and not the inviter's own.
+    if (coupon?.invite) await checkInvite(coupon.invite, { phone: input.phone || input.shippingAddress.phone, email: orderEmail, userId: user?.id }, settings['store.country'] || 'Lebanon')
     const discountedSubtotal = Math.max(0, subtotal - discount.total)
+    // Free gift above an amount (lib/free-gift.ts): added at 0 after the prices are worked out, so
+    // no discount, bundle or tax ever counts it; reserved below with the other items.
+    const freeGift = await freeGiftFor(subtotal).catch(() => null)
+    if (freeGift) {
+      if (!byId.has(freeGift.product.id)) byId.set(freeGift.product.id, freeGift.product as any)
+      normalized.push(freeGift.line)
+    }
     const requestedCoins = Math.max(0, Number(input.coinsToUse || 0))
     const coinDiscount = Math.min(discountedSubtotal, requestedCoins)
     if (requestedCoins > discountedSubtotal && requestedCoins > 0) throw new Error('Coin redemption exceeds the merchandise total.')
@@ -344,7 +363,8 @@ export async function POST(req: Request) {
           const reserved = await reserveStock(tx, byId.get(item.productId)!, item.variantId, item.quantity, orderNumber)
           if (reserved.length) undo.push(() => undoReservations(tx, reserved, orderNumber, 'Checkout failed before the order was placed'))
         }
-        if (coupon) {
+        // Invite codes are not discounts in Discounts: nothing to count (lib/invites.ts).
+        if (coupon && !coupon.invite) {
           const couponUpdate = await tx.coupon.updateMany({ where: { id: coupon.id, isActive: true, ...(coupon.maxUses !== null ? { usedCount: { lt: coupon.maxUses } } : {}) }, data: { usedCount: { increment: 1 } } })
           if (couponUpdate.count !== 1) throw new Error('This coupon is no longer available')
           undo.push(() => tx.coupon.updateMany({ where: { id: coupon.id, usedCount: { gt: 0 } }, data: { usedCount: { decrement: 1 } } }))
@@ -384,6 +404,8 @@ export async function POST(req: Request) {
             shippingAddressJson: JSON.stringify(input.shippingAddress),
             couponCode: coupon?.code ?? null,
             shippingMethod: shipping.method,
+            isGift: input.isGift === true,
+            giftMessage: input.isGift && input.giftMessage ? input.giftMessage : null,
             items: { create: normalized.map(({ taxable: _taxable, ...item }) => item) },
             events: { create: { status: orderStatus, message: paidByWallet ? `Order placed using wallet${coinDiscount ? ` and ${requestedCoins} coins` : ''}.` : paidUpfront ? 'Order placed successfully using a gift card.' : 'Order placed successfully.' } },
             paymentTransactions: { create: { provider: 'checkout', externalId: idempotencyKey, status: paidUpfront ? 'paid' : 'created', amount: grandTotal, currency: orderCurrency, rawJson: JSON.stringify(checkoutTxRaw) } },

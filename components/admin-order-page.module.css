@@ -106,3 +106,8 @@
 .history a { color: var(--admin-ink); font-weight: 700; }
 .historyWarn { border-color: color-mix(in srgb, #d92d20 35%, transparent); background: color-mix(in srgb, #d92d20 9%, transparent); }
 .historyNote { color: #d92d20; font-weight: 750; }
+
+/* Gift order (checkout "This is a gift") */
+.giftNote { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; margin-top: 12px; padding: 12px 14px; border-radius: var(--admin-radius-md); border: 1px solid color-mix(in srgb, #7c3aed 35%, transparent); background: color-mix(in srgb, #7c3aed 8%, transparent); font-size: 14px; color: var(--admin-ink); }
+.giftNote svg { color: #7c3aed; margin-top: 2px; }
+.giftNote strong { display: block; }

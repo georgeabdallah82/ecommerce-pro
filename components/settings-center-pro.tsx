@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Save, Store, CreditCard, Truck, Globe2, Mail, ShieldCheck, Search, Bell, Code2, ChevronRight, BarChart3, Wrench } from 'lucide-react'
+import { Save, Store, CreditCard, Truck, Globe2, Mail, ShieldCheck, Search, Bell, Code2, ChevronRight, BarChart3, Wrench, Gift } from 'lucide-react'
 import { MAINTENANCE_DEFAULTS, maintenanceText } from '@/lib/maintenance-defaults'
 import styles from './admin-settings-center.module.css'
 import ui from './admin-ui.module.css'
@@ -14,6 +14,7 @@ const groups = [
   { key: 'Payments', label: 'Payments', icon: CreditCard, desc: 'Payment methods and checkout status' },
   { key: 'Shipping', label: 'Shipping & delivery', icon: Truck, desc: 'Shipping defaults and checkout behavior' },
   { key: 'Markets', label: 'Markets', icon: Globe2, desc: 'Currency and localization' },
+  { key: 'Selling', label: 'Selling tools', icon: Gift, desc: 'Free gift, gift option, welcome discount, invite a friend, questions, WhatsApp button, search words' },
   { key: 'Notifications', label: 'Notifications', icon: Bell, desc: 'Order and operational alerts' },
   { key: 'Email', label: 'Email & messaging', icon: Mail, desc: 'Customer communication preferences' },
   { key: 'Security', label: 'Security & access', icon: ShieldCheck, desc: 'Staff access and account protection' },
@@ -46,7 +47,7 @@ const defaultPaymentConfig: PaymentConfig = {
   apiPassword: '',
 }
 
-export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, emailFromDefault = '', appIcon }: { initial: any[]; metaCapiTokenSet?: boolean; emailFromDefault?: string; appIcon?: { brandName: string; source: string; brandColor: string; saved: { large: string; small: string } } }) {
+export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, emailFromDefault = '', appIcon, products = [], whatsappListCount = 0 }: { initial: any[]; metaCapiTokenSet?: boolean; emailFromDefault?: string; appIcon?: { brandName: string; source: string; brandColor: string; saved: { large: string; small: string } }; products?: Array<{ id: string; name: string }>; whatsappListCount?: number }) {
   const map = useMemo(() => new Map(initial.map(x => [x.key, x.value])), [initial])
   const [tab, setTab] = useState('General')
   const [search, setSearch] = useState('')
@@ -63,6 +64,16 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
     'email.fromName': map.get('email.fromName') || '',
     'email.fromAddress': map.get('email.fromAddress') || '',
     'notifications.summaryEmail': map.get('notifications.summaryEmail') || '',
+    'currency.lbpRate': map.get('currency.lbpRate') || '',
+    'freeGift.threshold': map.get('freeGift.threshold') || '',
+    'freeGift.productId': map.get('freeGift.productId') || '',
+    'welcome.code': map.get('welcome.code') || '',
+    'welcome.title': map.get('welcome.title') || '',
+    'welcome.delaySeconds': map.get('welcome.delaySeconds') || '8',
+    'search.synonyms': map.get('search.synonyms') || '',
+    'invite.friendPercent': map.get('invite.friendPercent') || '10',
+    'invite.reward': map.get('invite.reward') || '5',
+    'invite.rewardDays': map.get('invite.rewardDays') || '60',
     'store.address': map.get('store.address') || '',
     'policy.returnDays': map.get('policy.returnDays') || POLICY_DEFAULTS.returnDays,
     'policy.refundTime': map.get('policy.refundTime') || POLICY_DEFAULTS.refundTime,
@@ -95,7 +106,10 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
       'payment.cod', 'payment.card', 'payment.bank', 'payment.wallet',
       'checkout.guestCheckout', 'notifications.orderEmail', 'notifications.lowStock',
       'notifications.reviews', 'notifications.dailySummary', 'email.customerOrder', 'email.fulfillment', 'email.abandonedCheckout', 'email.giftCard', 'email.returnStatus', 'email.orderEdit', 'email.reviewRequest',
+      'checkout.giftOption', 'product.whatsappOrder', 'product.questions',
     ].map(k => [k, map.get(k) !== 'false'])),
+    // Off until switched on.
+    ...Object.fromEntries(['currency.showLbp', 'freeGift.enabled', 'welcome.enabled', 'invite.enabled'].map(k => [k, map.get(k) === 'true'])),
     'maintenance.enabled': map.get('maintenance.enabled') === 'true',
   }))
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig>(defaultPaymentConfig)
@@ -301,6 +315,7 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
           )}
 
           {tab === 'Markets' && (
+            <>
             <Card title="Markets & localization" desc="Set your primary market and defaults.">
               <div className={styles.marketSummary}>
                 <div className={styles.marketItem}><span>Primary market</span><strong>{values['store.country']}</strong></div>
@@ -308,6 +323,53 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
                 <div className={styles.marketItem}><span>Timezone</span><strong>{values['store.timezone']}</strong></div>
               </div>
             </Card>
+            <Card title="Prices in Lebanese pounds" desc="Show an approximate LBP amount under prices and totals. Customers still pay the price in your store currency.">
+              <Toggle label="Show prices in LBP too" keyName="currency.showLbp" value={flags['currency.showLbp']} onChange={() => toggle('currency.showLbp')} />
+              <Field label="Rate: LBP for $1" value={values['currency.lbpRate']} placeholder="e.g. 89500" onChange={v => set('currency.lbpRate', v.replace(/[^\d]/g, ''))} />
+            </Card>
+            </>
+          )}
+
+          {tab === 'Selling' && (
+            <>
+            <Card title="Free gift above an amount" desc="Orders that reach the amount get the gift product free, while it is in stock. Shoppers see how far they are in the cart.">
+              <Toggle label="Give a free gift" keyName="freeGift.enabled" value={flags['freeGift.enabled']} onChange={() => toggle('freeGift.enabled')} />
+              <Field label="Orders over (in your currency)" value={values['freeGift.threshold']} placeholder="e.g. 50" onChange={v => set('freeGift.threshold', v.replace(/[^\d.]/g, ''))} />
+              <label className={ui.fieldLabel}>Gift product
+                <select className={ui.select} value={values['freeGift.productId']} onChange={e => set('freeGift.productId', e.target.value)}>
+                  <option value="">Choose a product</option>
+                  {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </label>
+            </Card>
+            <Card title="Gift option at checkout" desc="Customers can tick This is a gift and write a message. You see it on the order and on the packing slip.">
+              <Toggle label="Offer the gift option" keyName="checkout.giftOption" value={flags['checkout.giftOption']} onChange={() => toggle('checkout.giftOption')} />
+            </Card>
+            <Card title="Welcome discount" desc="First-time visitors are offered your first-order code for their WhatsApp number. Create the code first in Discounts (tick First order only).">
+              <Toggle label="Show the welcome popup" keyName="welcome.enabled" value={flags['welcome.enabled']} onChange={() => toggle('welcome.enabled')} />
+              <Field label="Discount code to give" value={values['welcome.code']} placeholder="e.g. WELCOME10" onChange={v => set('welcome.code', v.toUpperCase().replace(/\s+/g, ''))} />
+              <Field label="Title" value={values['welcome.title']} placeholder="A gift for your first order" onChange={v => set('welcome.title', v)} />
+              <Field label="Show after (seconds)" value={values['welcome.delaySeconds']} placeholder="8" onChange={v => set('welcome.delaySeconds', v.replace(/[^\d]/g, ''))} />
+              <p className={ui.muted}><a className={ui.textLink} href="/admin/customers/whatsapp">See the WhatsApp list ({whatsappListCount})</a></p>
+            </Card>
+            <Card title="Invite a friend" desc="Every customer gets their own code on the thank-you page to share on WhatsApp. Friends get a discount on their first order. When a friend's order is delivered, you send the customer a thank-you code from Marketing > Invite a friend.">
+              <Toggle label="Turn on invite a friend" keyName="invite.enabled" value={flags['invite.enabled']} onChange={() => toggle('invite.enabled')} />
+              <Field label="Friend's discount on their first order (%)" value={values['invite.friendPercent']} placeholder="10" onChange={v => set('invite.friendPercent', v.replace(/[^\d]/g, '').slice(0, 2))} />
+              <Field label="Thank-you amount for the customer (in your currency)" value={values['invite.reward']} placeholder="5" onChange={v => set('invite.reward', v.replace(/[^\d.]/g, ''))} />
+              <Field label="Thank-you code valid for (days)" value={values['invite.rewardDays']} placeholder="60" onChange={v => set('invite.rewardDays', v.replace(/[^\d]/g, '').slice(0, 3))} />
+              <p className={ui.muted}><a className={ui.textLink} href="/admin/marketing/invites">See friends&apos; orders and thank-you codes</a></p>
+            </Card>
+            <Card title="Questions on product pages" desc="Shoppers can ask about a product. You answer in Content > Questions, and published answers show on the product page for everyone.">
+              <Toggle label="Show the Ask a question form" keyName="product.questions" value={flags['product.questions']} onChange={() => toggle('product.questions')} />
+              <p className={ui.muted}><a className={ui.textLink} href="/admin/questions">See the questions</a></p>
+            </Card>
+            <Card title="Order on WhatsApp button" desc="A button on every product page that sends the product, option, quantity and price to your WhatsApp.">
+              <Toggle label="Show the button" keyName="product.whatsappOrder" value={flags['product.whatsappOrder']} onChange={() => toggle('product.whatsappOrder')} />
+            </Card>
+            <Card title="Search words" desc="Words people type for your products, one group per line, e.g. soap = sabon, saboun. Arabic words work too. Search already forgives small typos.">
+              <label className={ui.fieldLabel}>Word groups<textarea className={ui.textarea} rows={5} value={values['search.synonyms']} onChange={e => set('search.synonyms', e.target.value)} placeholder={'soap = sabon, saboun\ntissue = tissues, mahareem'} dir="auto" /></label>
+            </Card>
+            </>
           )}
 
           {tab === 'Notifications' && (

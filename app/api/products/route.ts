@@ -4,6 +4,8 @@ import { clientIp } from '@/lib/request-ip'
 import { json } from '@/lib/utils'
 import { getUnpublishedProductIds } from '@/lib/sales-channels'
 import { withProductStats } from '@/lib/product-stats'
+import { searchProductIds } from '@/lib/search-index'
+import { CARD_STOCK_INCLUDE, withCardStock } from '@/lib/card-stock'
 
 const publicProductSelect = {
   id: true,
@@ -78,6 +80,8 @@ export async function GET(req: Request) {
     const slug = searchParams.get('slug')?.trim() || ''
     const id = searchParams.get('id')?.trim() || ''
     const collection = searchParams.get('collection')?.trim() || ''
+    // ?ids=a,b,c: those products, in that order (the "Recently viewed" row on product pages).
+    const ids = (searchParams.get('ids') || '').split(',').map(x => x.trim()).filter(x => x && x.length <= 100).slice(0, 12)
 
     if (q.length > 100 || slug.length > 180 || id.length > 100 || collection.length > 100) {
       return json({ error: 'Invalid product query' }, { status: 400 })
@@ -89,6 +93,14 @@ export async function GET(req: Request) {
       return json(product, { headers: { 'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=600' } })
     }
 
+    if (ids.length) {
+      const unpublished = new Set(await getUnpublishedProductIds())
+      const rows = await db.product.findMany({ where: { id: { in: ids }, status: 'ACTIVE' }, select: { ...publicProductSelect, ...CARD_STOCK_INCLUDE } })
+      const byId = new Map(rows.filter(p => !unpublished.has(p.id)).map(p => [p.id, p]))
+      const ordered = ids.map(id => byId.get(id)).filter((p): p is NonNullable<typeof p> => !!p)
+      return json(await withProductStats(withCardStock(ordered)), { headers: { 'Cache-Control': 'public, max-age=60, s-maxage=120, stale-while-revalidate=600' } })
+    }
+
     if (slug) {
       const product = await findPublicProduct({ slug })
       if (!product) return json({ error: 'Product not found' }, { status: 404 })
@@ -96,20 +108,13 @@ export async function GET(req: Request) {
     }
 
     const unpublishedIds = await getUnpublishedProductIds()
+    // Search forgives typos, Arabic spellings and the store's word list (lib/smart-search.ts).
+    const searchIds = q ? await searchProductIds(q, 100) : []
     const where = {
       status: 'ACTIVE' as const,
       id: { notIn: unpublishedIds },
       ...(collection ? { collections: { some: { collection: { slug: collection } } } } : {}),
-      ...(q
-        ? {
-            OR: [
-              { name: { contains: q, mode: 'insensitive' as const } },
-              { sku: { contains: q, mode: 'insensitive' as const } },
-              { description: { contains: q, mode: 'insensitive' as const } },
-              { shortDescription: { contains: q, mode: 'insensitive' as const } },
-            ],
-          }
-        : {}),
+      ...(q ? { id: { in: searchIds, notIn: unpublishedIds } } : {}),
     }
 
     const products = await db.product.findMany({
@@ -118,7 +123,7 @@ export async function GET(req: Request) {
       orderBy: [{ featured: 'desc' }, { createdAt: 'desc' }],
       take: 100,
     })
-    const withStats = await withProductStats(products)
+    const withStats = await withProductStats(q ? [...products].sort((a, b) => searchIds.indexOf(a.id) - searchIds.indexOf(b.id)) : products)
 
     return json(withStats, { headers: { 'Cache-Control': 'public, max-age=30, s-maxage=120, stale-while-revalidate=600' } })
   } catch {

@@ -1,5 +1,6 @@
 import { db } from '@/lib/prisma'
 import { discountAmount, misconfigured, zeroSplit, type DiscountSplit, type LineItem } from '@/lib/discounts'
+import { inviteCoupon } from '@/lib/invites'
 
 // The discount a cart gets at checkout: a code the customer typed, or else the best automatic
 // discount. Shared by checkout (app/api/checkout/route.ts) and the order summary's live price
@@ -8,6 +9,16 @@ import { discountAmount, misconfigured, zeroSplit, type DiscountSplit, type Line
 export async function applyCoupon(code: string, subtotal: number, items: LineItem[]) {
   if (!code) return { discount: zeroSplit(), coupon: null as any }
   const coupon = await db.coupon.findUnique({ where: { code: code.toUpperCase() } })
+  if (!coupon) {
+    // A customer's invite code (lib/invites.ts): the friend's first-order discount. Checkout and
+    // the price summary then check it is a new customer (checkInvite).
+    const invite = await inviteCoupon(code)
+    if (invite) {
+      const discount = await discountAmount(invite, items)
+      if (discount.total === 0) throw new Error('This discount does not apply to the items in your cart')
+      return { discount, coupon: invite as any }
+    }
+  }
   const now = new Date()
   if (!coupon || !coupon.isActive) throw new Error('Invalid coupon code')
   if (misconfigured(coupon)) throw new Error('This discount is not configured correctly')

@@ -16,7 +16,7 @@ import { createPortal } from 'react-dom'
 import {
   Activity, ArrowLeftRight, BarChart3, Boxes, ClipboardList, CreditCard, FileEdit, FileText, Gauge, Image as ImageIcon, Layers3,
   LayoutDashboard, LogOut, Mail, Megaphone, Menu, MessageSquare, PackageCheck, Palette, Percent, Radio, RotateCcw, Search, Settings2,
-  ShoppingBag, MoreHorizontal, Store, Tag, Truck, UserCog, Users, UsersRound, Workflow, X, PackagePlus, type LucideIcon,
+  ShoppingBag, MoreHorizontal, Store, Tag, Truck, UserCog, Users, UsersRound, Workflow, X, PackagePlus, MessageCircleQuestion, HeartHandshake, UserPlus, type LucideIcon,
 } from 'lucide-react'
 import AdminThemeToggle from '@/components/admin-theme-toggle'
 import OrderAlerts from '@/components/order-alerts'
@@ -35,6 +35,7 @@ const iconMap: Record<string, LucideIcon> = {
   draftOrders: ClipboardList, returns: RotateCcw,
   segments: UsersRound, giftCards: CreditCard,
   liveVisitors: Radio, pushCampaigns: Megaphone, newsletter: Mail, bundles: PackagePlus,
+  questions: MessageCircleQuestion, winback: HeartHandshake, invites: UserPlus,
 }
 
 function normalizePath(pathname: string) { return pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname }

@@ -139,3 +139,11 @@
 .center { max-width: 520px; margin: 24px auto; padding: 32px 22px; text-align: center; background: var(--co-card); border: 1px solid var(--co-line); border-radius: var(--co-radius); display: grid; gap: 12px; justify-items: center; }
 .center h1 { margin: 0; font-size: 24px; }
 .centerBtn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 22px; border-radius: 12px; background: var(--co-primary); color: #fff; font-weight: 800; text-decoration: none; }
+
+/* ---- Selling tools: gift option, free gift line, Lebanese pounds ---- */
+.giftBox { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--co-line); }
+.check { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 15px; font-weight: 700; cursor: pointer; }
+.check input { width: 20px; height: 20px; accent-color: var(--co-primary); flex: none; }
+.check span { display: inline-flex; align-items: center; gap: 6px; }
+.giftTag { display: inline-block; margin-inline-start: 4px; padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, var(--co-ok) 12%, var(--co-card)); color: var(--co-ok); font-size: 11.5px; font-style: normal; font-weight: 800; }
+.lbp { display: block; text-align: end; margin-top: -4px; font-size: 13px; font-weight: 600; color: var(--co-muted); }

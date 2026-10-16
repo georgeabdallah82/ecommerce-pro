@@ -40,6 +40,7 @@ const groups: AdminSidebarGroup[] = [
   { id: 'content', label: 'Content', items: [
     { href: '/admin/media', label: 'Files', permission: 'media.view', icon: 'files' },
     { href: '/admin/reviews', label: 'Reviews', permission: 'reviews.view', icon: 'reviews' },
+    { href: '/admin/questions', label: 'Questions', permission: 'reviews.view', icon: 'questions' },
   ]},
   { id: 'online-store', label: 'Online Store', items: [
     { href: '/admin/online-store', label: 'Overview', permission: 'content.view', icon: 'store' },
@@ -52,6 +53,8 @@ const groups: AdminSidebarGroup[] = [
     { href: '/admin/bundles', label: 'Bundles', permission: 'products.view', icon: 'bundles' },
     { href: '/admin/newsletter', label: 'Email subscribers', permission: 'customers.view', icon: 'newsletter' },
     { href: '/admin/push-campaigns', label: 'Push campaigns', permission: 'customers.manage', icon: 'pushCampaigns' },
+    { href: '/admin/marketing/win-back', label: 'Win back', permission: 'customers.view', icon: 'winback' },
+    { href: '/admin/marketing/invites', label: 'Invite a friend', permission: 'customers.view', icon: 'invites' },
   ]},
   { id: 'analytics', label: 'Analytics', items: [
     { href: '/admin/reports', label: 'Analytics & reports', permission: 'reports.view', icon: 'analytics' },

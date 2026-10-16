@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Banknote, Check, ChevronDown, CreditCard, Landmark, Lock, ShieldCheck, ShoppingBag, Truck, Wallet, X } from 'lucide-react'
+import { Banknote, Check, ChevronDown, CreditCard, Gift, Landmark, Lock, ShieldCheck, ShoppingBag, Truck, Wallet, X } from 'lucide-react'
 import { readDeliveryArea } from '@/components/market-chrome'
 import { useCart } from '@/components/cart-provider'
 import { config, money } from '@/lib/config'
@@ -11,6 +11,7 @@ import { trackInitiateCheckout } from '@/lib/tracking-events'
 import { CartNotices } from '@/components/cart-notices'
 import { useI18n } from '@/components/lang-provider'
 import { internationalPhone } from '@/lib/phone'
+import { LbpNote } from '@/components/selling-client'
 import s from './checkout.module.css'
 
 // Checkout: phone first, email optional (many customers in Lebanon don't want to give one), the
@@ -27,11 +28,11 @@ type PaymentDetails = {
   bank: { bankName: string; accountName: string; iban: string; instructions: string } | null
   wallet: { provider: string; accountName: string; accountNumber: string; instructions: string } | null
 }
-type StoreSettings = { payment: { cod: boolean; card: boolean; bank: boolean; wallet: boolean; details: PaymentDetails }; checkout: { guestCheckout: boolean } }
+type StoreSettings = { payment: { cod: boolean; card: boolean; bank: boolean; wallet: boolean; details: PaymentDetails }; checkout: { guestCheckout: boolean }; selling?: { giftOption?: boolean; lbp?: { show: boolean; rate: number } } | null }
 type ClientCheckout = { type: 'mpgs'; merchantId: string; sessionId: string; scriptUrl: string }
 type ShippingRate = { id: string | null; name: string; price: number; freeAbove: number | null; estimatedDays: number | null }
 type DeliveryArea = { name: string; eta: string }
-type Quote = { subtotal: number; discount: number; discountCode: string | null; automaticDiscount: boolean; bundleDiscount: number; shipping: number; freeShipping: boolean; tax: number; total: number; couponError: string }
+type Quote = { subtotal: number; discount: number; discountCode: string | null; automaticDiscount: boolean; bundleDiscount: number; shipping: number; freeShipping: boolean; tax: number; total: number; couponError: string; freeGift?: { name: string; image: string } | null }
 const defaultSettings: StoreSettings = { payment: { cod: true, card: false, bank: false, wallet: false, details: { bank: null, wallet: null } }, checkout: { guestCheckout: true } }
 const PAYMENT_ICONS: Record<string, typeof Banknote> = { COD: Banknote, CARD: CreditCard, BANK_TRANSFER: Landmark, WALLET: Wallet }
 // The fields checked before the order is sent, in the order they appear (the first problem is scrolled to).
@@ -117,6 +118,8 @@ export default function Checkout() {
   // a phone number (most customers) or an email. Called when they leave the phone, email or
   // first-name box; sends again only when something changed.
   const lastProgress = useRef('')
+  // The phone/email typed so far, for "first order only" codes (the welcome code) in the price.
+  const [contact, setContact] = useState({ phone: '', email: '' })
   function captureCheckoutProgress(form: HTMLFormElement | null | undefined) {
     if (!form || !checkoutToken.current || !items.length) return
     const fd = new FormData(form)
@@ -127,6 +130,7 @@ export default function Checkout() {
     if (!email && phone.replace(/\D/g, '').length < 7) return
     const payload = { token: checkoutToken.current, email, phone, name, items: items.map(item => ({ productId: item.productId, variantId: item.variantId || null, name: item.name, quantity: item.quantity, unitPrice: item.price })) }
     const key = JSON.stringify(payload)
+    setContact(current => current.phone === phone && current.email === email ? current : { phone, email })
     if (key === lastProgress.current) return
     lastProgress.current = key
     fetch('/api/checkout/progress', { method: 'POST', headers: { 'content-type': 'application/json' }, body: key, keepalive: true }).catch(() => {})
@@ -264,7 +268,7 @@ export default function Checkout() {
     const timer = setTimeout(() => {
       fetch('/api/checkout/quote', {
         method: 'POST', headers: { 'content-type': 'application/json' }, cache: 'no-store',
-        body: JSON.stringify({ items: items.map(item => ({ productId: item.productId, variantId: item.variantId || null, quantity: item.quantity, bundleId: item.bundleId || null })), couponCode: appliedCode, country: country.trim(), region: area, shippingRateId: selectedRateId }),
+        body: JSON.stringify({ items: items.map(item => ({ productId: item.productId, variantId: item.variantId || null, quantity: item.quantity, bundleId: item.bundleId || null })), couponCode: appliedCode, country: country.trim(), region: area, shippingRateId: selectedRateId, phone: contact.phone, email: contact.email }),
       })
         .then(r => r.ok ? r.json() : null)
         .then((data: Quote | null) => {
@@ -277,8 +281,12 @@ export default function Checkout() {
         .finally(() => { if (requestId === quoteRequestId.current) setQuoting(false) })
     }, 300)
     return () => clearTimeout(timer)
-  }, [cartReady, recovering, cartKey, country, area, selectedRateId, appliedCode])
+  }, [cartReady, recovering, cartKey, country, area, selectedRateId, appliedCode, appliedCode ? contact.phone : '', appliedCode ? contact.email : ''])
   const [codeMessage, setCodeMessage] = useState('')
+  // "This is a gift" (Settings > Selling tools > Gift option).
+  const [isGift, setIsGift] = useState(false)
+  const [giftMessage, setGiftMessage] = useState('')
+  const lbpRate = settings?.selling?.lbp?.show ? settings.selling.lbp.rate : 0
   useEffect(() => { if (quote?.couponError) setCodeMessage(quote.couponError) }, [quote?.couponError])
 
   function applyCode() {
@@ -339,6 +347,7 @@ export default function Checkout() {
     const data = {
       email: value('email').toLowerCase(), phone: value('phone'), paymentMethod,
       couponCode: appliedCode, giftCardCode: value('giftCardCode'), coinsToUse, shippingRateId: selectedRateId,
+      isGift, giftMessage: isGift ? giftMessage.trim() : '',
       shippingAddress: { firstName: value('firstName'), lastName: value('lastName'), line1: value('line1'), line2: value('line2'), city: value('city'), region: useAreaList ? area : value('region'), postalCode: value('postalCode'), country: country.trim(), phone: value('phone') },
       items: items.map(item => ({ productId: item.productId, variantId: item.variantId || null, quantity: item.quantity, bundleId: item.bundleId || null })),
     }
@@ -399,6 +408,11 @@ export default function Checkout() {
           <span className={s.itemName}>{item.name}</span>
           <span className={s.itemPrice}>{money(item.price * item.quantity)}</span>
         </li>)}
+        {quote?.freeGift && <li className={s.item}>
+          <span className={s.thumb}>{quote.freeGift.image ? <img src={quote.freeGift.image} alt="" loading="lazy" /> : null}<span className={s.qty}>1</span></span>
+          <span className={s.itemName}>{quote.freeGift.name} <em className={s.giftTag}>{t('Free gift')}</em></span>
+          <span className={`${s.itemPrice} ${s.free}`}>{t('Free')}</span>
+        </li>}
       </ul>
       {appliedCode && quote?.discountCode
         ? <span className={s.applied}><Check size={14} /> {quote.discountCode}<button type="button" onClick={removeCode} aria-label={t('Remove discount code')}><X size={14} /></button></span>
@@ -413,6 +427,7 @@ export default function Checkout() {
         <div><span>{t('Delivery')}{area ? ` · ${area}` : ''}</span><strong>{deliveryCost === null ? '—' : deliveryCost === 0 ? <span className={s.free}>{t('Free')}</span> : money(deliveryCost)}</strong></div>
         {quote && quote.tax > 0 && <div><span>{t('Tax')}</span><strong>{money(quote.tax)}</strong></div>}
         <div className={s.grand}><span>{t('Total')}</span><strong>{money(total)}</strong></div>
+        {lbpRate > 0 && total > 0 && <LbpNote cents={total} rate={lbpRate} className={s.lbp} />}
       </div>
       {paymentMethod === 'COD' && <p className={`${s.muted} ${s.small}`}>{t('You pay this in cash when your order arrives.')}</p>}
     </div>
@@ -503,6 +518,10 @@ export default function Checkout() {
         {giftOpen
           ? <label className={s.field}><span className={s.label}>{t('Gift card')}</span><input className={s.input} name="giftCardCode" autoCapitalize="characters" placeholder={t('Gift card code')} /><span className={s.help}>{t('Applied when you place the order.')}</span></label>
           : <button type="button" className={s.linkBtn} onClick={() => setGiftOpen(true)}>{t('Have a gift card?')}</button>}
+        {settings?.selling?.giftOption !== false && <div className={s.giftBox}>
+          <label className={s.check}><input type="checkbox" checked={isGift} onChange={e => setIsGift(e.target.checked)} /> <span><Gift size={16} aria-hidden="true" /> {t('This is a gift')}</span></label>
+          {isGift && <label className="giftNote"><span className={s.label}>{t('Gift message (optional)')}</span><textarea value={giftMessage} onChange={e => setGiftMessage(e.target.value)} maxLength={300} rows={3} placeholder={t('We put your message in the parcel. Prices are not shown inside.')} dir="auto" /></label>}
+        </div>}
       </section>
 
       {error && <div className={s.alert} role="alert" aria-live="polite">{error}</div>}
