@@ -3,7 +3,7 @@ import { getUnpublishedProductIds } from '@/lib/sales-channels'
 import { CARD_STOCK_INCLUDE, withCardStock } from '@/lib/card-stock'
 import { getStoreIdentity } from '@/lib/store-identity'
 import { getStorefrontSettings } from '@/lib/storefront-settings'
-import { productFeedXml } from '@/lib/product-feed'
+import { feedCategories, productFeedXml } from '@/lib/product-feed'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,12 +20,14 @@ export async function GET(req: Request) {
         id: true, name: true, slug: true, description: true, shortDescription: true, brand: true, vendor: true,
         basePrice: true, compareAtPrice: true, trackInventory: true, continueSellingWhenOutOfStock: true,
         images: { select: { url: true }, orderBy: { sortOrder: 'asc' } },
+        collections: { select: { collection: { select: { name: true, isActive: true, sortOrder: true } } } },
         ...CARD_STOCK_INCLUDE,
       },
       orderBy: { createdAt: 'desc' },
       take: 5000,
     })
-    const body = productFeedXml(withCardStock(rows), { name: store.name, url, currency: (settings.get('store.currency') || 'USD').toUpperCase() })
+    const products = withCardStock(rows).map(({ collections, ...p }) => ({ ...p, categories: feedCategories(collections) }))
+    const body = productFeedXml(products, { name: store.name, url, currency: (settings.get('store.currency') || 'USD').toUpperCase() })
     return new Response(body, { headers: { 'content-type': 'application/xml; charset=utf-8', 'cache-control': 'public, max-age=900' } })
   } catch (e) {
     console.error('[feed] products feed failed', e)
