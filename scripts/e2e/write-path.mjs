@@ -46,8 +46,11 @@ let orderNumber = ''
 try {
   await sp.waitForURL(/\/order\/success/, { timeout: 60000 })
   const card = await sp.locator('.successCard').innerText()
-  orderNumber = (card.match(/#(ORD-[A-Z0-9-]+)/) || [])[1] || ''
+  // New orders get short running numbers from the Counter table (#1001, ...); ORD-... would mean
+  // the counter failed and checkout fell back to the long format.
+  orderNumber = (card.match(/#(\d+|ORD-[A-Z0-9-]+)/) || [])[1] || ''
   step('checkout places an order (nested create + stock reservation in a transaction)', !!orderNumber, orderNumber)
+  step('order gets a short running number from the counter', /^\d{4,}$/.test(orderNumber), orderNumber)
   await sp.locator('a', { hasText: 'View order' }).click(); await sp.waitForLoadState('networkidle')
   step('guest view-order link', (await sp.locator('main').innerText()).includes(orderNumber))
 } catch (e) { step('checkout places an order', false, String(e).slice(0, 120) + ' :: ' + (await sp.locator('body').innerText()).slice(0, 300)) }
