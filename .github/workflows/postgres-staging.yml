@@ -91,6 +91,14 @@ jobs:
           npx playwright-core install --with-deps chromium
           BASE=http://127.0.0.1:8787 ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD='ChangeMe123!' node scripts/e2e/write-path.mjs
 
+      # The launch clean-up (Actions > Launch clean-up) on this throwaway database: fake test
+      # orders and customers are added, then preview, refusals, a clean keeping two orders and a
+      # full clean are checked (scripts/e2e/launch-cleanup-check.mjs).
+      - name: Launch clean-up rehearsal
+        env:
+          LAUNCH_CLEANUP_REHEARSAL: throwaway
+        run: node scripts/e2e/launch-cleanup-check.mjs
+
       - name: Store log (errors only)
         if: always()
         run: grep -E "ERROR|Error" wrangler.log | grep -v "Duplicate key" | head -50 || true

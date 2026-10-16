@@ -1,0 +1,116 @@
+name: Launch clean-up (before opening the store)
+
+# Removes everything left from building and testing the store, right before it opens to customers
+# (scripts/launch-cleanup.mjs lists exactly what goes and what stays). Run by hand only:
+#   1. mode "preview": read only; the log shows what would be removed and what is kept.
+#   2. mode "clean" + confirm "DELETE TEST DATA": the same check runs first, then a full copy of
+#      the database is saved and test-restored (Database backup), then the test data is removed in
+#      one step that undoes itself if any check fails. Refuses while the store is open (maintenance
+#      mode off), so it can't wipe real orders after the launch.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "preview = only look, clean = delete the test data"
+        type: choice
+        options: [preview, clean]
+        default: preview
+      keep_orders:
+        description: "Real orders to keep (numbers, e.g. 1004, 1007). Empty = keep none"
+        type: string
+        default: ""
+      keep_customers:
+        description: "Real customers to keep (their emails, comma separated). Empty = keep none"
+        type: string
+        default: ""
+      restore_stock:
+        description: "Put back stock that test orders took out when marked delivered"
+        type: boolean
+        default: false
+      confirm:
+        description: 'For "clean" only: type DELETE TEST DATA'
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: launch-cleanup
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Preview (read only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+      MODE: ${{ inputs.mode }}
+      KEEP_ORDERS: ${{ inputs.keep_orders }}
+      KEEP_CUSTOMERS: ${{ inputs.keep_customers }}
+      RESTORE_STOCK: ${{ inputs.restore_stock }}
+      CONFIRM: ${{ inputs.confirm }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.2
+
+      - name: Install
+        run: npm ci --no-audit --no-fund --ignore-scripts
+
+      # Neon's direct address (not the pooler), masked so it never shows in the log. In "clean"
+      # mode this fails here, before any backup or change, if the clean-up would refuse to start.
+      - name: What would be removed and kept
+        run: |
+          case "$NEON_DATABASE_URL" in postgres://*|postgresql://*) ;; *) echo "::error::NEON_DATABASE_URL secret is missing"; exit 1 ;; esac
+          export DATABASE_URL="${NEON_DATABASE_URL/-pooler./.}"
+          echo "::add-mask::$DATABASE_URL"
+          args=(preview --keep-orders "$KEEP_ORDERS" --keep-customers "$KEEP_CUSTOMERS")
+          if [ "$RESTORE_STOCK" = "true" ]; then args+=(--restore-stock); fi
+          if [ "$MODE" = "clean" ]; then args+=(--strict --confirm "$CONFIRM"); fi
+          node scripts/launch-cleanup.mjs "${args[@]}"
+
+  backup:
+    name: Backup first
+    needs: check
+    if: inputs.mode == 'clean'
+    uses: ./.github/workflows/database-backup.yml
+    with:
+      label: before-launch
+    secrets: inherit
+
+  clean:
+    name: Remove the test data
+    needs: [check, backup]
+    if: inputs.mode == 'clean'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+      KEEP_ORDERS: ${{ inputs.keep_orders }}
+      KEEP_CUSTOMERS: ${{ inputs.keep_customers }}
+      RESTORE_STOCK: ${{ inputs.restore_stock }}
+      CONFIRM: ${{ inputs.confirm }}
+      BACKUP_NAME: ${{ needs.backup.outputs.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.2
+
+      - name: Install
+        run: npm ci --no-audit --no-fund --ignore-scripts
+
+      - name: Remove the test data
+        run: |
+          [ -n "$BACKUP_NAME" ] || { echo "::error::No backup was saved; nothing removed"; exit 1; }
+          echo "Backup saved first: $BACKUP_NAME (bucket ecommerce-pro-backups, kept 30 days)"
+          export DATABASE_URL="${NEON_DATABASE_URL/-pooler./.}"
+          echo "::add-mask::$DATABASE_URL"
+          args=(clean --confirm "$CONFIRM" --keep-orders "$KEEP_ORDERS" --keep-customers "$KEEP_CUSTOMERS")
+          if [ "$RESTORE_STOCK" = "true" ]; then args+=(--restore-stock); fi
+          node scripts/launch-cleanup.mjs "${args[@]}"
