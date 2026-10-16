@@ -2,19 +2,23 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from '@/components/admin-link'
-import { ArrowUpRight, ChevronLeft, ChevronRight, FileText, MessageCircle, PackageCheck, Plus, RefreshCw, Search, Truck, X } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, FileText, MessageCircle, MoreHorizontal, PackageCheck, Phone, Plus, RefreshCw, Search, Send, Truck, X, XCircle } from 'lucide-react'
 import { money } from '@/lib/config'
 import { formatAdminDateTime } from '@/lib/admin-datetime'
 import { canTransitionOrder } from '@/lib/orders'
 import { whatsappConfirmLink } from '@/lib/whatsapp-confirm'
-import styles from './admin-orders-list.module.css'
+import { ORDER_VIEWS, customerCity, customerName, customerPhone, driverShareLink, itemsSummary, nextStep, paymentInfo, statusInfo, telLink, viewCount, type OrderViewId } from '@/lib/order-flow'
+import { useConfirm } from './admin-confirm'
+import styles from './admin-orders-board.module.css'
 import ui from './admin-ui.module.css'
 
-type Order = any
-type Modal = { type: 'cancel' | 'refund' | 'tracking'; order: Order } | null
-type Initial = { rows: Order[]; total: number; page: number; pageSize: number; pages: number }
+// Admin > Orders. Each order is a card that says, in plain words, where it is ("New", "Out for
+// delivery"), what it is waiting for, and has one button for that next step. Everything else
+// (invoice, tracking, refund, cancel) is in the order's "More" menu, with words, not icons.
 
-const statuses = ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'REFUNDED'] as const
+type Order = any
+type Modal = { type: 'refund' | 'tracking'; order: Order } | null
+type Initial = { rows: Order[]; total: number; page: number; pageSize: number; pages: number; counts?: Record<string, number> }
 
 async function api(path: string, init?: RequestInit) {
   const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
@@ -23,44 +27,37 @@ async function api(path: string, init?: RequestInit) {
   return data
 }
 
-function tabCount(rows: Order[], tab: string) {
-  if (tab === 'all') return rows.length
-  if (tab === 'unfulfilled') return rows.filter(o => !['SHIPPED', 'DELIVERED', 'CANCELLED', 'REFUNDED'].includes(o.status)).length
-  if (tab === 'unpaid') return rows.filter(o => ['UNPAID', 'PENDING'].includes(o.paymentStatus)).length
-  if (tab === 'fulfilled') return rows.filter(o => ['SHIPPED', 'DELIVERED'].includes(o.status)).length
-  if (tab === 'cancelled') return rows.filter(o => ['CANCELLED', 'REFUNDED'].includes(o.status)).length
-  return 0
-}
-function matchesTab(o: Order, tab: string) {
-  if (tab === 'all') return true
-  if (tab === 'unfulfilled') return !['SHIPPED', 'DELIVERED', 'CANCELLED', 'REFUNDED'].includes(o.status)
-  if (tab === 'unpaid') return ['UNPAID', 'PENDING'].includes(o.paymentStatus)
-  if (tab === 'fulfilled') return ['SHIPPED', 'DELIVERED'].includes(o.status)
-  if (tab === 'cancelled') return ['CANCELLED', 'REFUNDED'].includes(o.status)
-  return true
-}
-function statusPillClass(status: string) {
-  if (['SHIPPED', 'DELIVERED'].includes(status)) return styles.pillSuccess
-  if (status === 'CANCELLED') return styles.pillDanger
-  if (status === 'REFUNDED') return styles.pillNeutral
-  return styles.pillWarning
-}
-function paymentPillClass(status: string) {
-  if (status === 'PAID') return styles.pillSuccess
-  if (status === 'FAILED') return styles.pillDanger
-  if (status === 'REFUNDED' || status === 'PARTIALLY_REFUNDED') return styles.pillNeutral
-  return styles.pillWarning
+const TONE: Record<string, string> = { warning: styles.toneWarning, info: styles.toneInfo, success: styles.toneSuccess, danger: styles.toneDanger, neutral: styles.toneNeutral }
+
+function MoreMenu({ label, children }: { label: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const close = (event: Event) => { if (!ref.current?.contains(event.target as Node)) setOpen(false) }
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false) }
+    document.addEventListener('pointerdown', close)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', onKey) }
+  }, [open])
+  return (
+    <div className={styles.more} ref={ref}>
+      <button type="button" className={`${ui.btn} ${ui.btnSecondary} ${styles.actionBtn}`} aria-expanded={open} aria-label={label} onClick={() => setOpen(!open)}><MoreHorizontal size={16} /> More <ChevronDown size={14} /></button>
+      {open && <div className={styles.menu} role="menu" onClick={() => setOpen(false)}>{children}</div>}
+    </div>
+  )
 }
 
 export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone, storeName = '', storeCountry = 'Lebanon' }: { initial: Initial; canRefund?: boolean; storeTimezone?: string; storeName?: string; storeCountry?: string }) {
+  const confirm = useConfirm()
   const [rows, setRows] = useState<Order[]>(initial?.rows || [])
+  const [counts, setCounts] = useState<Record<string, number>>(initial?.counts || {})
   const [total, setTotal] = useState(Number(initial?.total ?? initial?.rows?.length ?? 0))
   const [page, setPage] = useState(Number(initial?.page || 1))
   const [pageSize, setPageSize] = useState(Number(initial?.pageSize || 50))
   const [pages, setPages] = useState(Number(initial?.pages || 1))
   const [q, setQ] = useState('')
-  const [tab, setTab] = useState('all')
-  const [filter, setFilter] = useState('')
+  const [view, setView] = useState<OrderViewId>('all')
   const [selected, setSelected] = useState<string[]>([])
   const [modal, setModal] = useState<Modal>(null)
   const [refundAmount, setRefundAmount] = useState('')
@@ -71,28 +68,19 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone, 
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
 
-  const shown = rows.filter(o => matchesTab(o, tab))
-  const stats = {
-    total: rows.length,
-    unfulfilled: tabCount(rows, 'unfulfilled'),
-    unpaid: tabCount(rows, 'unpaid'),
-    fulfilled: tabCount(rows, 'fulfilled'),
-    revenue: rows.reduce((sum, o) => {
-      if (['CANCELLED', 'REFUNDED'].includes(o.status)) return sum
-      const refunded = Number(o.refundedTotal || o.refundedAmount || 0)
-      return sum + Math.max(0, Number(o.grandTotal || 0) - refunded)
-    }, 0),
-  }
-  const allShownSelected = shown.length > 0 && shown.every(o => selected.includes(o.id))
+  const viewStatuses = (ORDER_VIEWS.find(v => v.id === view)?.statuses || []) as readonly string[]
+  const allSelected = rows.length > 0 && rows.every(o => selected.includes(o.id))
 
-  async function load(nextPage = 1) {
-    setLoading(true); setError(''); setNotice('')
+  async function load(nextPage = 1, keepMessages = false) {
+    setLoading(true)
+    if (!keepMessages) { setError(''); setNotice('') }
     try {
-      const params = new URLSearchParams({ page: String(nextPage), limit: String(pageSize) })
+      const params = new URLSearchParams({ page: String(nextPage), limit: String(pageSize), counts: '1' })
       if (q.trim()) params.set('q', q.trim())
-      if (filter) params.set('status', filter)
+      if (viewStatuses.length) params.set('status', viewStatuses.join(','))
       const data = await api(`/api/admin/orders?${params.toString()}`)
       setRows(Array.isArray(data) ? data : data.rows || [])
+      if (data.counts) setCounts(data.counts)
       setTotal(Number(data.pagination?.total ?? data.rows?.length ?? 0))
       setPages(Number(data.pagination?.pages ?? 1))
       setPage(Number(data.pagination?.page ?? nextPage))
@@ -104,21 +92,21 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone, 
     }
   }
 
-  // Live filtering: search (debounced), status and page size reload the list as they change,
-  // like every other admin list. The first render already has the server's rows.
-  const appliedFilters = useRef(JSON.stringify([q.trim(), filter, pageSize]))
+  // Search (after a short pause), the view and the page size reload the list as they change.
+  // The first render already has the server's rows.
+  const applied = useRef(JSON.stringify([q.trim(), view, pageSize]))
   useEffect(() => {
-    const key = JSON.stringify([q.trim(), filter, pageSize])
-    if (key === appliedFilters.current) return
-    const timer = setTimeout(() => { appliedFilters.current = key; void load(1) }, q.trim() ? 300 : 0)
+    const key = JSON.stringify([q.trim(), view, pageSize])
+    if (key === applied.current) return
+    const timer = setTimeout(() => { applied.current = key; void load(1) }, q.trim() ? 300 : 0)
     return () => clearTimeout(timer)
-  }, [q, filter, pageSize]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [q, view, pageSize]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function update(id: string, data: any, message = 'Order updated.') {
-    setBusy(id); setError(''); setNotice('')
+  async function update(order: Order, data: Record<string, unknown>, message: string) {
+    setBusy(order.id); setError(''); setNotice('')
     try {
-      const response = await api('/api/admin/orders', { method: 'PATCH', body: JSON.stringify({ id, ...data }) })
-      await load(page)
+      const response = await api('/api/admin/orders', { method: 'PATCH', body: JSON.stringify({ id: order.id, ...data }) })
+      await load(page, true)
       setNotice(message)
       return response
     } catch (e) {
@@ -129,13 +117,43 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone, 
     }
   }
 
-  async function bulkStatus(status: string) {
+  async function advance(order: Order) {
+    const step = nextStep(order, money)
+    if (!step) return
+    if (!(await confirm({ title: step.confirmTitle, message: step.confirmMessage, confirmLabel: step.label, tone: 'default' }))) return
+    await update(order, { status: step.to }, `#${order.orderNumber} is now ${statusInfo(step.to).label.toLowerCase()}.`)
+  }
+
+  async function cancelOrder(order: Order) {
+    const paid = order.paymentStatus === 'PAID' || order.paymentStatus === 'PARTIALLY_REFUNDED'
+    const ok = await confirm({
+      title: `Cancel #${order.orderNumber}?`,
+      message: `${money(order.grandTotal, order.currency)} · ${customerName(order)}. Reserved stock goes back on sale${order.status === 'SHIPPED' ? ' (a returned parcel goes back in stock)' : ''}.${paid ? ' The paid amount is refunded.' : ''} This can't be undone.`,
+      confirmLabel: 'Cancel order',
+    })
+    if (!ok) return
+    const response = await update(order, { status: 'CANCELLED' }, `#${order.orderNumber} was cancelled.`)
+    if (response?.cancelRefund) {
+      const amount = money(response.cancelRefund.amount, order.currency)
+      setNotice(response.cancelRefund.pending ? `#${order.orderNumber} was cancelled. A ${amount} refund is being processed.` : `#${order.orderNumber} was cancelled and ${amount} refunded.`)
+    }
+  }
+
+  async function bulkStatus(status: 'PROCESSING' | 'SHIPPED' | 'CANCELLED') {
     if (!selected.length) return
-    const eligible = rows.filter(o => selected.includes(o.id) && canTransitionOrder(o.status, status as Parameters<typeof canTransitionOrder>[1])).map(o => o.id)
-    if (!eligible.length) { setError(`No selected orders can move to ${status.toLowerCase()}.`); return }
+    const eligible = rows.filter(o => selected.includes(o.id) && o.status !== status && canTransitionOrder(o.status, status)).map(o => o.id)
+    const words = status === 'CANCELLED' ? 'cancelled' : status === 'SHIPPED' ? 'sent out for delivery' : 'moved to Preparing'
+    if (!eligible.length) { setError(`None of the selected orders can be ${words} from where they are now.`); return }
+    const ok = await confirm({
+      title: `${eligible.length} order${eligible.length === 1 ? '' : 's'} will be ${words}`,
+      message: `${selected.length - eligible.length ? `${selected.length - eligible.length} selected order${selected.length - eligible.length === 1 ? '' : 's'} can't be ${words} and will be left as they are. ` : ''}${status === 'SHIPPED' ? 'Each customer gets an email that the order is on its way. ' : ''}This can't be undone.`,
+      confirmLabel: status === 'CANCELLED' ? 'Cancel orders' : 'Continue',
+      tone: status === 'CANCELLED' ? 'danger' : 'default',
+    })
+    if (!ok) return
     setBusy('bulk'); setError(''); setNotice('')
     try {
-      // A few at a time instead of one by one; each order is still updated (and checked) on its own.
+      // A few at a time; each order is still checked and updated on its own.
       const queue = [...eligible]
       const failures: string[] = []
       await Promise.all(Array.from({ length: Math.min(3, queue.length) }, async () => {
@@ -143,26 +161,15 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone, 
           try { await api('/api/admin/orders', { method: 'PATCH', body: JSON.stringify({ id, status }) }) } catch (e) { failures.push(e instanceof Error ? e.message : 'Unable to update order') }
         }
       }))
-      await load(page)
+      await load(page, true)
       const done = eligible.length - failures.length
       if (failures.length) setError(`${failures.length} order${failures.length === 1 ? '' : 's'} could not be updated: ${failures[0]}`)
-      if (done) setNotice(`${done} order${done === 1 ? '' : 's'} updated.`)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unable to update selected orders')
+      if (done) setNotice(`${done} order${done === 1 ? '' : 's'} ${words}.`)
     } finally {
       setBusy(null)
     }
   }
 
-  async function cancelOrder() {
-    if (!modal || modal.type !== 'cancel') return
-    const response = await update(modal.order.id, { status: 'CANCELLED' }, 'Order cancelled. Any remaining reservation was released.')
-    if (response?.cancelRefund) {
-      const amount = money(response.cancelRefund.amount, modal.order.currency)
-      setNotice(response.cancelRefund.pending ? `Order cancelled. A ${amount} refund is being processed.` : `Order cancelled. A ${amount} refund was issued.`)
-    }
-    setModal(null)
-  }
   async function refundOrder() {
     if (!modal || modal.type !== 'refund') return
     const amount = Math.round(Number(refundAmount) * 100)
@@ -172,8 +179,8 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone, 
     setBusy(modal.order.id); setError(''); setNotice('')
     try {
       await api('/api/admin/refunds', { method: 'POST', body: JSON.stringify({ orderId: modal.order.id, amount, reason: 'Admin refund' }) })
-      await load(page)
-      setModal(null); setRefundAmount(''); setNotice('Refund issued successfully.')
+      await load(page, true)
+      setModal(null); setRefundAmount(''); setNotice('Refund issued.')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unable to refund order')
     } finally {
@@ -182,180 +189,152 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone, 
   }
   async function saveTracking() {
     if (!modal || modal.type !== 'tracking') return
-    await update(modal.order.id, { trackingNumber: trackingNumber.trim(), trackingCompany: trackingCompany.trim() || null }, 'Tracking information saved.')
+    await update(modal.order, { trackingNumber: trackingNumber.trim(), trackingCompany: trackingCompany.trim() || null }, 'Tracking number saved.')
     setModal(null)
   }
+
+  const toConfirm = counts.PENDING || 0
 
   return (
     <div className={styles.page}>
       <div className={styles.header}>
         <div>
-          <div className={styles.eyebrow}>Commerce</div>
           <h1 className={styles.title}>Orders</h1>
-          <p className={styles.subtitle}>Manage orders, fulfillment, payments, tracking and refunds.</p>
+          <p className={styles.subtitle}>{toConfirm ? <><strong>{toConfirm} new order{toConfirm === 1 ? '' : 's'}</strong> to confirm with the customer.</> : 'No new orders waiting to be confirmed.'}</p>
         </div>
-        <div className="inline">
+        <div className={styles.headerActions}>
           <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => load(page)} disabled={loading || busy !== null}><RefreshCw size={15} /> Refresh</button>
           <Link className={ui.btn} href="/admin/orders/new"><Plus size={15} /> Create order</Link>
         </div>
       </div>
 
-      {(error || notice) && <div className={`${ui.alert} ${error ? ui.alertDanger : ''}`}>{error || notice}</div>}
+      <nav className={styles.views} aria-label="Order views">
+        {ORDER_VIEWS.map(v => {
+          const n = viewCount(counts, v)
+          return (
+            <button key={v.id} type="button" className={`${styles.view}${view === v.id ? ` ${styles.viewActive}` : ''}${v.id === 'action' && n ? ` ${styles.viewAlert}` : ''}`} aria-pressed={view === v.id} onClick={() => setView(v.id)}>
+              {v.label}<span>{n}</span>
+            </button>
+          )
+        })}
+      </nav>
 
-      <div className={styles.statGrid}>
-        <button className={`${styles.statCard}${tab === 'all' ? ` ${styles.statCardActive}` : ''}`} onClick={() => setTab('all')}><span>Loaded orders</span><strong>{stats.total}</strong></button>
-        <button className={`${styles.statCard}${tab === 'unfulfilled' ? ` ${styles.statCardActive}` : ''}`} onClick={() => setTab('unfulfilled')}><span>Unfulfilled</span><strong>{stats.unfulfilled}</strong></button>
-        <button className={`${styles.statCard}${tab === 'unpaid' ? ` ${styles.statCardActive}` : ''}`} onClick={() => setTab('unpaid')}><span>Unpaid</span><strong>{stats.unpaid}</strong></button>
-        <button className={`${styles.statCard}${tab === 'fulfilled' ? ` ${styles.statCardActive}` : ''}`} onClick={() => setTab('fulfilled')}><span>Fulfilled</span><strong>{stats.fulfilled}</strong></button>
+      <div className={styles.search}>
+        <Search size={16} />
+        <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search by order number, name, phone, city or email" aria-label="Search orders" />
+        {q && <button onClick={() => setQ('')} aria-label="Clear search"><X size={14} /></button>}
       </div>
 
-      <div className={`${ui.card} ${styles.viewBar}`}>
-        {['all', 'unfulfilled', 'unpaid', 'fulfilled', 'cancelled'].map(v => (
-          <button key={v} className={`${styles.view}${tab === v ? ` ${styles.viewActive}` : ''}`} onClick={() => setTab(v)}>
-            {v[0].toUpperCase() + v.slice(1)} <span>{tabCount(rows, v)}</span>
-          </button>
-        ))}
-      </div>
-
-      <div className={`${ui.card} ${styles.toolbar}`}>
-        <div className={styles.search}>
-          <Search size={16} />
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search orders, customers, email…" />
-          {q && <button onClick={() => setQ('')} aria-label="Clear search"><X size={14} /></button>}
-        </div>
-        <select className={`${ui.select} ${styles.statusSelect}`} value={filter} onChange={e => setFilter(e.target.value)}>
-          <option value="">All statuses</option>
-          {statuses.map(s => <option key={s}>{s}</option>)}
-        </select>
-        <span className={styles.revenue}><span>Revenue (loaded)</span>{money(stats.revenue)}</span>
-      </div>
-
-      {total > rows.length && (
-        <div className={styles.truncNotice}>
-          Showing {rows.length} of {total.toLocaleString()} matching orders on this page. Use the pager below, or narrow your search, to see the rest.
-        </div>
-      )}
+      {(error || notice) && <div className={`${ui.alert} ${error ? ui.alertDanger : ''}`} role="status">{error || notice}</div>}
 
       {selected.length > 0 && (
         <div className={styles.bulkBar}>
-          <div className={styles.bulkCount}><strong>{selected.length}</strong><span> selected</span></div>
+          <strong>{selected.length} selected</strong>
           <div className={styles.bulkActions}>
+            <button className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} disabled={busy === 'bulk'} onClick={() => bulkStatus('PROCESSING')}>Start preparing</button>
+            <button className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} disabled={busy === 'bulk'} onClick={() => bulkStatus('SHIPPED')}>Send out for delivery</button>
+            <button className={`${ui.btn} ${ui.btnDanger} ${ui.btnSmall}`} disabled={busy === 'bulk'} onClick={() => bulkStatus('CANCELLED')}>Cancel</button>
             <button className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} onClick={() => setSelected([])}>Clear</button>
-            <button className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} disabled={busy === 'bulk'} onClick={() => bulkStatus('PROCESSING')}>Mark processing</button>
-            <button className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} disabled={busy === 'bulk'} onClick={() => bulkStatus('SHIPPED')}>Mark shipped</button>
-            <button className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} disabled={busy === 'bulk'} onClick={() => bulkStatus('CANCELLED')}>Cancel</button>
           </div>
         </div>
       )}
 
-      <div className={`${ui.card} ${styles.tableCard}`}>
-        <div className={styles.tableTopline}>
-          <span>{shown.length} order{shown.length === 1 ? '' : 's'} on this page</span>
-          <label className="inline" style={{ gap: 8, fontSize: 12 }}>Rows
-            <select className={`${ui.select} ${styles.compactSelect}`} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
+      <div className={styles.listHead}>
+        <label className={styles.selectAll}><input type="checkbox" checked={allSelected} onChange={() => setSelected(allSelected ? [] : rows.map(o => o.id))} /> Select all</label>
+        <span>{loading ? 'Loading…' : `${total.toLocaleString()} order${total === 1 ? '' : 's'}`}</span>
+      </div>
+
+      <div className={styles.list}>
+        {rows.map(o => {
+          const status = statusInfo(o.status)
+          const payment = paymentInfo(o)
+          const step = nextStep(o, money)
+          const phone = customerPhone(o)
+          const tel = telLink(o, storeCountry)
+          const city = customerCity(o)
+          const wa = o.status === 'PENDING' ? whatsappConfirmLink(o, storeName, storeCountry, money) : ''
+          const open = !['DELIVERED', 'CANCELLED', 'REFUNDED'].includes(o.status)
+          const isSelected = selected.includes(o.id)
+          const working = busy === o.id
+          return (
+            <article key={o.id} className={`${styles.card}${isSelected ? ` ${styles.cardSelected}` : ''}`}>
+              <div className={styles.cardTop}>
+                <input type="checkbox" aria-label={`Select order ${o.orderNumber}`} checked={isSelected} onChange={() => setSelected(current => current.includes(o.id) ? current.filter(id => id !== o.id) : [...current, o.id])} />
+                <Link className={styles.orderLink} href={`/admin/orders/${o.id}`}>
+                  <strong>#{o.orderNumber}</strong>
+                  <span>{formatAdminDateTime(o.createdAt, storeTimezone)}</span>
+                </Link>
+                <span className={`${styles.pill} ${TONE[status.tone]}`}>{status.label}</span>
+              </div>
+              <Link className={styles.cardBody} href={`/admin/orders/${o.id}`} tabIndex={-1}>
+                <div className={styles.who}><strong>{customerName(o)}</strong>{phone ? <span>{phone}</span> : null}{city ? <span>{city}</span> : null}</div>
+                <div className={styles.what}>{itemsSummary(o)}</div>
+                <div className={styles.money}><strong>{money(o.grandTotal, o.currency)}</strong><span className={`${styles.payment} ${TONE[payment.tone]}`}>{payment.label}</span></div>
+                {o.trackingNumber ? <div className={styles.meta}>Tracking: {o.trackingNumber}</div> : null}
+                {open && status.hint ? <div className={styles.hint}>Next: {status.hint}</div> : null}
+              </Link>
+              <div className={styles.actions}>
+                {step && <button type="button" className={`${ui.btn} ${styles.actionBtn} ${styles.primaryAction}`} disabled={working} onClick={() => advance(o)}>{working ? 'Saving…' : step.label}</button>}
+                {wa && <a className={`${ui.btn} ${styles.actionBtn} ${styles.whatsapp}`} href={wa} target="_blank" rel="noreferrer"><MessageCircle size={15} /> WhatsApp</a>}
+                {!step && <Link className={`${ui.btn} ${ui.btnSecondary} ${styles.actionBtn}`} href={`/admin/orders/${o.id}`}>View order</Link>}
+                <MoreMenu label={`More actions for order ${o.orderNumber}`}>
+                  <Link role="menuitem" href={`/admin/orders/${o.id}`}><PackageCheck size={15} /> Open order</Link>
+                  {tel && <a role="menuitem" href={tel}><Phone size={15} /> Call customer</a>}
+                  {open && <a role="menuitem" href={driverShareLink(o, storeName, money)} target="_blank" rel="noreferrer"><Send size={15} /> Send to driver (WhatsApp)</a>}
+                  <Link role="menuitem" href={`/admin/orders/${o.id}/invoice`}><FileText size={15} /> Invoice / print</Link>
+                  {open && <button role="menuitem" type="button" onClick={() => { setTrackingNumber(o.trackingNumber || ''); setTrackingCompany(o.trackingCompany || ''); setModal({ type: 'tracking', order: o }) }}><Truck size={15} /> Tracking number</button>}
+                  {canRefund && ['PAID', 'PARTIALLY_REFUNDED'].includes(o.paymentStatus) && o.status !== 'CANCELLED' && <button role="menuitem" type="button" onClick={() => { setRefundAmount(''); setModal({ type: 'refund', order: o }) }}><RefreshCw size={15} /> Refund</button>}
+                  {canTransitionOrder(o.status, 'CANCELLED') && o.status !== 'CANCELLED' && <button role="menuitem" type="button" className={styles.danger} onClick={() => cancelOrder(o)}><XCircle size={15} /> Cancel order</button>}
+                </MoreMenu>
+              </div>
+            </article>
+          )
+        })}
+        {!rows.length && !loading && <div className={ui.empty}><PackageCheck size={28} /><h3>No orders here</h3><p className={ui.muted}>{q ? 'Nothing matches that search.' : 'Try another view.'}</p></div>}
+      </div>
+
+      <div className={styles.pagination}>
+        <span className={ui.muted}>Page {page} of {pages}</span>
+        <div className={styles.pager}>
+          <label className={styles.perPage}>Per page
+            <select className={ui.select} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
               <option value={25}>25</option>
               <option value={50}>50</option>
               <option value={100}>100</option>
             </select>
           </label>
-        </div>
-        <div className={ui.tableWrap}>
-          <table className={`${ui.table} ${ui.cardTable} ${styles.ordersTable}`}>
-            <thead>
-              <tr>
-                <th><input aria-label="Select all" type="checkbox" checked={allShownSelected} onChange={() => setSelected(allShownSelected ? selected.filter(id => !shown.some(o => o.id === id)) : [...new Set([...selected, ...shown.map(o => o.id)])])} /></th>
-                <th>Order</th>
-                <th>Customer</th>
-                <th>Items</th>
-                <th>Total</th>
-                <th>Payment</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map(o => {
-                const canCancel = canTransitionOrder(o.status, 'CANCELLED')
-                const isSelected = selected.includes(o.id)
-                return (
-                  <tr key={o.id} className={isSelected ? styles.selectedRow : undefined}>
-                    <td data-cell="check"><input aria-label={`Select order ${o.orderNumber}`} type="checkbox" checked={isSelected} onChange={() => setSelected(current => current.includes(o.id) ? current.filter(id => id !== o.id) : [...current, o.id])} /></td>
-                    <td data-cell="primary">
-                      <Link className={ui.textLink} href={`/admin/orders/${o.id}`}><span className={styles.orderNumber}>#{o.orderNumber}</span></Link>
-                      <div className={styles.rowMeta}>{formatAdminDateTime(o.createdAt, storeTimezone)}</div>
-                    </td>
-                    <td data-label="Customer"><strong>{o.user?.name || 'Guest'}</strong><div className={styles.rowMeta}>{o.email}</div></td>
-                    <td data-label="Items">{(o.items || []).reduce((a: number, x: any) => a + x.quantity, 0)}</td>
-                    <td data-label="Total"><strong>{money(o.grandTotal, o.currency)}</strong></td>
-                    <td data-label="Payment"><span className={`${styles.statusPill} ${paymentPillClass(o.paymentStatus)}`}>{o.paymentStatus}</span><div className={styles.rowMeta}>{o.paymentMethod}</div></td>
-                    <td data-label="Status"><span className={`${styles.statusPill} ${statusPillClass(o.status)}`}>{o.status}</span>{o.trackingNumber && <div className={styles.rowMeta}>{o.trackingNumber}</div>}</td>
-                    <td data-cell="actions">
-                      <div className={`inline ${styles.orderActions}`}>
-                        {o.status === 'PENDING' && (() => { const wa = whatsappConfirmLink(o, storeName, storeCountry, money); return wa ? <a className={`${ui.iconBtn} ${styles.whatsappIcon}`} href={wa} target="_blank" rel="noreferrer" title="Confirm on WhatsApp" aria-label={`Confirm order ${o.orderNumber} on WhatsApp`}><MessageCircle size={15} /></a> : null })()}
-                        <Link className={ui.iconBtn} href={`/admin/orders/${o.id}`} title="Open order"><ArrowUpRight size={15} /></Link>
-                        <Link className={ui.iconBtn} href={`/admin/orders/${o.id}/invoice`} title="Invoice"><FileText size={15} /></Link>
-                        <button className={ui.iconBtn} onClick={() => { setTrackingNumber(o.trackingNumber || ''); setTrackingCompany(o.trackingCompany || ''); setModal({ type: 'tracking', order: o }) }} disabled={busy === o.id} title="Tracking"><Truck size={15} /></button>
-                        {canCancel && <button className={styles.dangerIcon} onClick={() => setModal({ type: 'cancel', order: o })} disabled={busy === o.id} title="Cancel"><X size={15} /></button>}
-                        {canRefund && o.paymentStatus !== 'REFUNDED' && o.status !== 'CANCELLED' && <button className={ui.iconBtn} onClick={() => { setRefundAmount(''); setModal({ type: 'refund', order: o }) }} disabled={busy === o.id} title="Refund"><RefreshCw size={15} /></button>}
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-        {!shown.length && <div className={ui.empty}><PackageCheck size={28} /><h3>No orders found</h3><p className={ui.muted}>Try another view, filter or search term.</p></div>}
-        <div className={styles.pagination}>
-          <span className={ui.muted}>Page {page} of {pages} · {total.toLocaleString()} matching order{total === 1 ? '' : 's'}</span>
-          <div className="inline">
-            <button className={ui.iconBtn} disabled={page <= 1 || loading} onClick={() => load(page - 1)}><ChevronLeft size={16} /></button>
-            <button className={ui.iconBtn} disabled={page >= pages || loading} onClick={() => load(page + 1)}><ChevronRight size={16} /></button>
-          </div>
+          <button className={ui.iconBtn} aria-label="Previous page" disabled={page <= 1 || loading} onClick={() => load(page - 1)}><ChevronLeft size={16} /></button>
+          <button className={ui.iconBtn} aria-label="Next page" disabled={page >= pages || loading} onClick={() => load(page + 1)}><ChevronRight size={16} /></button>
         </div>
       </div>
 
       {modal && (
         <div className={ui.modalOverlay} onClick={() => setModal(null)}>
-          <div className={`${ui.card} ${styles.orderModal}`} onClick={e => e.stopPropagation()}>
+          <div className={`${ui.card} ${styles.modal}`} onClick={e => e.stopPropagation()} role="dialog" aria-label={modal.type === 'refund' ? 'Refund order' : 'Tracking number'}>
             <div className={styles.modalHead}>
               <div>
-                <span className={`${ui.muted} ${ui.tiny}`}>ORDER #{modal.order.orderNumber}</span>
-                <h2>{modal.type === 'cancel' ? 'Cancel order' : modal.type === 'refund' ? 'Refund order' : 'Add tracking'}</h2>
-                <p className={ui.muted}>{modal.type === 'cancel' ? 'This will release any remaining stock reservation.' : modal.type === 'refund' ? 'Refunds are recorded against the order and protected against over-refunding.' : 'Customers can use this tracking information to follow shipment progress.'}</p>
+                <span className={ui.muted}>Order #{modal.order.orderNumber}</span>
+                <h2>{modal.type === 'refund' ? 'Refund' : 'Tracking number'}</h2>
+                <p className={ui.muted}>{modal.type === 'refund' ? 'The refund is recorded on the order; it can never be more than was paid.' : 'The customer can follow the parcel with it. Changing it after the order went out tells the customer.'}</p>
               </div>
-              <button className={ui.iconBtn} onClick={() => setModal(null)}><X size={17} /></button>
+              <button className={ui.iconBtn} onClick={() => setModal(null)} aria-label="Close"><X size={17} /></button>
             </div>
-
-            {modal.type === 'cancel' && <>
-              <div className={styles.confirmBox}>
-                <strong>#{modal.order.orderNumber}</strong>
-                <span>{money(modal.order.grandTotal, modal.order.currency)}</span>
-                <small>Current status: {modal.order.status}</small>
-              </div>
-              <div className={styles.modalFooter}>
-                <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setModal(null)}>Keep order</button>
-                <button className={styles.dangerBtn} onClick={cancelOrder} disabled={busy === modal.order.id}>{busy === modal.order.id ? 'Cancelling…' : 'Cancel order'}</button>
-              </div>
-            </>}
-
             {modal.type === 'refund' && <>
-              <label className={ui.fieldLabel}>Refund amount
+              <label className={ui.fieldLabel}>Amount to refund
                 <input className={ui.input} autoFocus type="number" min="0.01" step="0.01" value={refundAmount} onChange={e => setRefundAmount(e.target.value)} placeholder={money(modal.order.grandTotal, modal.order.currency)} />
               </label>
-              <p className={`${ui.muted} ${styles.refundHint}`}>Maximum refundable: <strong>{money(Math.max(0, Number(modal.order.grandTotal || 0) - Number(modal.order.refundedTotal || modal.order.refundedAmount || 0)), modal.order.currency)}</strong></p>
+              <p className={ui.muted}>At most <strong>{money(Math.max(0, Number(modal.order.grandTotal || 0) - Number(modal.order.refundedTotal || modal.order.refundedAmount || 0)), modal.order.currency)}</strong></p>
               <div className={styles.modalFooter}>
-                <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setModal(null)}>Cancel</button>
-                <button className={ui.btn} onClick={refundOrder} disabled={busy === modal.order.id}>{busy === modal.order.id ? 'Processing…' : 'Issue refund'}</button>
+                <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setModal(null)}>Close</button>
+                <button className={ui.btn} onClick={refundOrder} disabled={busy === modal.order.id}>{busy === modal.order.id ? 'Refunding…' : 'Refund'}</button>
               </div>
             </>}
-
             {modal.type === 'tracking' && <>
-              <label className={ui.fieldLabel}>Tracking number<input className={ui.input} autoFocus value={trackingNumber} onChange={e => setTrackingNumber(e.target.value)} placeholder="Enter tracking number" /></label>
-              <label className={ui.fieldLabel}>Carrier<input className={ui.input} value={trackingCompany} onChange={e => setTrackingCompany(e.target.value)} placeholder="Aramex, DHL, LibanPost…" /></label>
+              <label className={ui.fieldLabel}>Tracking number<input className={ui.input} autoFocus value={trackingNumber} onChange={e => setTrackingNumber(e.target.value)} placeholder="From the delivery company" /></label>
+              <label className={ui.fieldLabel}>Delivery company<input className={ui.input} value={trackingCompany} onChange={e => setTrackingCompany(e.target.value)} placeholder="Aramex, DHL, LibanPost…" /></label>
               <div className={styles.modalFooter}>
-                <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setModal(null)}>Cancel</button>
-                <button className={ui.btn} onClick={saveTracking} disabled={busy === modal.order.id}>{busy === modal.order.id ? 'Saving…' : 'Save tracking'}</button>
+                <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setModal(null)}>Close</button>
+                <button className={ui.btn} onClick={saveTracking} disabled={busy === modal.order.id}>{busy === modal.order.id ? 'Saving…' : 'Save'}</button>
               </div>
             </>}
           </div>

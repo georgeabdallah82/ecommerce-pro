@@ -41,10 +41,17 @@ describe('admin destructive actions', () => {
 
 describe('admin on phones', () => {
   it('turns resource tables into cards instead of clipping columns', () => {
-    for (const path of ['components/orders-admin-shopify.tsx', 'components/admin-products-list.tsx', 'components/customers-admin.tsx']) {
+    for (const path of ['components/admin-products-list.tsx', 'components/customers-admin.tsx']) {
       assert.match(read(path), /ui\.cardTable/, path)
       assert.match(read(path), /data-cell="primary"/, path)
     }
+  })
+
+  it('shows orders as cards with worded actions, not a table of icon buttons', () => {
+    const orders = read('components/orders-admin-shopify.tsx')
+    assert.doesNotMatch(orders, /<table/)
+    assert.match(orders, /<article key=\{o\.id\} className=\{`\$\{styles\.card\}/)
+    assert.doesNotMatch(orders, /ui\.iconBtn\} href=\{`\/admin\/orders/, 'no icon-only links on an order')
   })
 
   it('lists staff as rows that restack on phones, not a wide table', () => {

@@ -14,6 +14,7 @@ import { checkLowStockAlerts } from '@/lib/push'
 import { OrderStatus, PaymentStatus, Prisma } from '@prisma/client'
 import { runInBackground } from '@/lib/background'
 import { whatsappOutcomeNote } from '@/lib/whatsapp-confirm'
+import { orderCounts } from '@/lib/order-counts'
 
 const ORDER_UPDATE_CONFLICT_MESSAGE = 'This order was just modified — please retry.'
 
@@ -36,19 +37,29 @@ export async function GET(req: Request) {
   try {
     await requirePermission('orders.view')
     const sp = new URL(req.url).searchParams
-    const status = sp.get('status')
+    // One status, or several separated by commas (the list's "To prepare" view is
+    // CONFIRMED,PROCESSING).
+    const statuses = (sp.get('status') || '').split(',').map(x => x.trim()).filter(Boolean)
     const q = sp.get('q')?.trim()
     const requestedPage = Number(sp.get('page') || 1)
     const requestedLimit = Number(sp.get('limit') || 50)
     const page = Number.isFinite(requestedPage) ? Math.max(1, Math.floor(requestedPage)) : 1
     const limit = Number.isFinite(requestedLimit) ? Math.min(200, Math.max(1, Math.floor(requestedLimit))) : 50
-    if (status && !ORDER_STATUSES.has(status as OrderStatus)) return json({ error: 'Invalid order status' }, { status: 400 })
-    const where = { ...(status ? { status: status as OrderStatus } : {}), ...(q ? { OR: [{ orderNumber: { contains: q, mode: 'insensitive' as const } }, { email: { contains: q, mode: 'insensitive' as const } }, { phone: { contains: q, mode: 'insensitive' as const } }, { user: { is: { name: { contains: q, mode: 'insensitive' as const } } } }] } : {}) }
-    const [rows,total] = await Promise.all([
+    if (statuses.some(x => !ORDER_STATUSES.has(x as OrderStatus))) return json({ error: 'Invalid order status' }, { status: 400 })
+    // Guests' names and cities are only in the delivery address they typed, so it is searched too.
+    // Each word must match somewhere: "Rana Haddad" finds the first and last name, which the
+    // address keeps apart, and "Rana Beirut" narrows to Rana's orders going to Beirut.
+    const words = (q || '').split(/\s+/).filter(Boolean).slice(0, 5)
+    const wordMatch = (word: string) => ({ OR: [{ orderNumber: { contains: word, mode: 'insensitive' as const } }, { email: { contains: word, mode: 'insensitive' as const } }, { phone: { contains: word, mode: 'insensitive' as const } }, { shippingAddressJson: { contains: word, mode: 'insensitive' as const } }, { user: { is: { name: { contains: word, mode: 'insensitive' as const } } } }] })
+    const search = words.length === 1 ? wordMatch(words[0]) : words.length ? { AND: words.map(wordMatch) } : {}
+    const where = { ...search, ...(statuses.length === 1 ? { status: statuses[0] as OrderStatus } : statuses.length ? { status: { in: statuses as OrderStatus[] } } : {}) }
+    const [rows, total, byStatus] = await Promise.all([
       db.order.findMany({ where, include: { user: true, items: true }, orderBy: { createdAt: 'desc' }, skip: (page-1)*limit, take: limit }),
       db.order.count({ where }),
+      // How many orders each view holds (with the same search), for the list's view buttons.
+      sp.get('counts') === '1' ? orderCounts(search) : Promise.resolve(null),
     ])
-    return json({ rows, pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total/limit)) } })
+    return json({ rows, pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total/limit)) }, ...(byStatus ? { counts: byStatus } : {}) })
   } catch (e) {
     return routeError(e, 'Forbidden', 403)
   }
