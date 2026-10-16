@@ -7,10 +7,11 @@ import { getThemeState } from '@/lib/theme'
 import { parseDeliveryAreas } from '@/lib/storefront-market'
 import { storeDayKey } from '@/lib/daily-summary'
 import DeliverySheet from '@/components/delivery-sheet'
+import { siteUrl } from '@/lib/seo'
 
 const ORDER_SELECT = {
   id: true, orderNumber: true, status: true, paymentMethod: true, paymentStatus: true, grandTotal: true, currency: true,
-  phone: true, email: true, shippingAddressJson: true, shippingMethod: true, createdAt: true,
+  phone: true, email: true, shippingAddressJson: true, shippingMethod: true, createdAt: true, driverId: true,
   user: { select: { name: true } },
   items: { select: { name: true, quantity: true, variant: { select: { name: true } } } },
 } as const
@@ -18,12 +19,14 @@ const ORDER_SELECT = {
 // Admin > Orders > Delivery sheet: today's run for the driver.
 export default async function DeliverySheetPage() {
   const user = await requirePermission('orders.view')
-  const [orders, timezone, store, themeState, deliveredEvents] = await Promise.all([
+  const [orders, timezone, store, themeState, deliveredEvents, drivers] = await Promise.all([
     db.order.findMany({ where: { status: { in: ['CONFIRMED', 'PROCESSING', 'SHIPPED'] } }, select: ORDER_SELECT, orderBy: { createdAt: 'asc' }, take: 300 }),
     getStoreTimezone(),
     getStoreIdentity(),
     getThemeState().catch(() => null),
     db.orderEvent.findMany({ where: { status: 'DELIVERED', createdAt: { gte: new Date(Date.now() - 30 * 60 * 60 * 1000) } }, select: { orderId: true, createdAt: true } }),
+    // The store's drivers (Admin > Orders > Drivers), each with their own delivery link.
+    db.driver.findMany({ where: { active: true }, select: { id: true, name: true, phone: true, token: true }, orderBy: { createdAt: 'asc' } }),
   ])
   // Delivered today (store time): what the driver should have brought back.
   const today = storeDayKey(new Date(), timezone)
@@ -41,5 +44,6 @@ export default async function DeliverySheetPage() {
     storeName={store.name}
     storeCountry={store.country}
     canManage={hasPermission(user, 'orders.manage')}
+    drivers={drivers.map(d => ({ id: d.id, name: d.name, phone: d.phone || '', link: `${siteUrl()}/driver/${d.token}` }))}
   />
 }

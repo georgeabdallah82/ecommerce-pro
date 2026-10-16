@@ -52,3 +52,13 @@ test('the logo and colour are used only when safe', () => {
   assert.ok(bad.includes('#d42a2a'))
   assert.ok(bad.includes('>Yalla Haul<'))
 })
+
+test('maintenance mode closes the store but not staff pages, the driver list or stopping emails', async () => {
+  const { isBlockedDuringMaintenance, skipsMaintenanceCheck } = await import('../lib/maintenance-paths')
+  for (const path of ['/admin', '/admin/orders', '/maintenance', '/unsubscribe', '/driver/abcdefghijklmnopqrstuvwx']) assert.ok(skipsMaintenanceCheck(path), path)
+  for (const path of ['/', '/shop', '/product/soap', '/checkout', '/drivers', '/driver']) assert.ok(!skipsMaintenanceCheck(path), path)
+  assert.equal(isBlockedDuringMaintenance('/api/checkout', 'POST'), true)
+  assert.equal(isBlockedDuringMaintenance('/api/products', 'GET'), false)
+  assert.equal(isBlockedDuringMaintenance('/api/driver/abcdefghijklmnopqrstuvwx', 'POST'), false, 'drivers can still mark deliveries')
+  assert.equal(isBlockedDuringMaintenance('/api/questions', 'POST'), true)
+})

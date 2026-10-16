@@ -5,15 +5,9 @@ import { countRedirectHit, findRedirect, getSettingValue, getStaffAccess } from 
 import { isSessionRevoked } from '@/lib/session-revocation'
 import { contentSecurityPolicy } from '@/lib/csp'
 import { httpsRedirectTarget, wwwRedirectTarget } from '@/lib/www-redirect'
-import { applySecurityHeaders } from '@/lib/security-headers'
+import { CAMERA_PATHS, applySecurityHeaders } from '@/lib/security-headers'
+import { isBlockedDuringMaintenance, skipsMaintenanceCheck } from '@/lib/maintenance-paths'
 
-// '/api' is deliberately NOT in this list (see the maintenance check below) -- API requests get
-// their own, narrower bypass so mutations to non-admin/auth/internal/webhook endpoints are
-// actually blocked during maintenance instead of silently exempted wholesale.
-// /unsubscribe: stopping reminder emails must keep working while the store is closed.
-const MAINTENANCE_BYPASS_PREFIXES = ['/admin', '/maintenance', '/_next', '/unsubscribe']
-const MAINTENANCE_API_BYPASS_PREFIXES = ['/api/admin', '/api/auth', '/api/internal', '/api/payments', '/api/health', '/api/newsletter', '/api/unsubscribe']
-const MAINTENANCE_BYPASS_EXACT = new Set(['/favicon.ico', '/robots.txt', '/sitemap.xml'])
 // /theme-editor-preview is a staff-only technical surface (the theme editor's iframe target,
 // see app/theme-editor-preview/page.tsx), reloaded on every draft edit -- exempting it here
 // avoids a redirect-table lookup on every one of those renders, the same way /admin already is.
@@ -89,10 +83,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   }
 
   const needsRedirectCheck = !REDIRECT_BYPASS_PREFIXES.some(p => pathname.startsWith(p)) && !isStaticAsset(pathname)
-  const needsMaintenanceCheck =
-    !MAINTENANCE_BYPASS_PREFIXES.some(p => pathname.startsWith(p)) &&
-    !MAINTENANCE_BYPASS_EXACT.has(pathname) &&
-    !isStaticAsset(pathname)
+  const needsMaintenanceCheck = !skipsMaintenanceCheck(pathname) && !isStaticAsset(pathname)
   // Both lookups run at the same time: a storefront page view used to wait for one database
   // round trip, then a second, before rendering even started.
   // A failed lookup (a brief database/Accelerate hiccup) must not fail the request itself:
@@ -121,8 +112,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
       // Reads stay open (nothing to block there); only state-changing requests to endpoints
       // outside admin/auth/internal-cron/payment-webhook traffic are blocked outright.
       if (pathname.startsWith('/api/')) {
-        const isBlockedMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method) && !MAINTENANCE_API_BYPASS_PREFIXES.some(p => pathname.startsWith(p))
-        if (isBlockedMutation) {
+        if (isBlockedDuringMaintenance(pathname, request.method)) {
           return applySecurityHeaders(NextResponse.json({ error: 'The store is temporarily unavailable.' }, { status: 503, headers: { 'Cache-Control': 'no-store' } }))
         }
       } else {
@@ -141,7 +131,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     return applySecurityHeaders(NextResponse.json({ error: 'Cross-site request blocked' }, { status: 403, headers: { 'Cache-Control': 'no-store' } }))
   }
 
-  const response = applySecurityHeaders(NextResponse.next({ request: { headers: withNonce(new Headers(request.headers)) } }), { framedBySameSite: isThemePreview })
+  const response = applySecurityHeaders(NextResponse.next({ request: { headers: withNonce(new Headers(request.headers)) } }), { framedBySameSite: isThemePreview, camera: CAMERA_PATHS.has(pathname) })
   response.headers.set('Content-Security-Policy', csp)
 
   if (isApi && hasSession) {

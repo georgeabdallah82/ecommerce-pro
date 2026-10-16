@@ -1,6 +1,7 @@
 import { db } from '@/lib/prisma'
 import { issueGiftCardsForOrder } from '@/lib/gift-cards'
 import { runInBackground } from '@/lib/background'
+import type { WeeklyFacts } from '@/lib/weekly-report'
 
 function credentials() {
   const apiKey = process.env.RESEND_API_KEY
@@ -498,4 +499,36 @@ export async function sendDailySummaryEmail(to: string, summary: { subject: stri
   `, brand)
   const text = [`Good morning. ${summary.dayLabel}: ${summary.ordersYesterday} order(s), ${summary.sales}.`, ...(summary.waiting.length ? ['Waiting for you:', ...summary.waiting.map(line => `- ${line}`)] : ['Nothing waiting for you.']), ...(admin ? [`Admin: ${admin}`] : [])].join('\n')
   return sendEmail(to, summary.subject, html, text)
+}
+
+// The owner's weekly report (Mondays, app/api/internal/daily/route.ts, lib/weekly-report.ts).
+export async function sendWeeklyReportEmail(to: string, r: { subject: string; weekLabel: string; currency: string; facts: WeeklyFacts; ordersChange: string; salesChange: string; cashWithDrivers: number; lowStock: number; adSpend: number }) {
+  const brand = await emailBrand()
+  const admin = siteUrl() ? `${siteUrl()}/admin` : ''
+  const m = (cents: number) => money(cents, r.currency)
+  const f = r.facts
+  const stat = (value: string, label: string, note = '') => `<td width="33%" style="padding:14px 12px;background:#f6f6f4;border-radius:10px;vertical-align:top"><div style="font-size:20px;font-weight:800;color:#121212">${escapeHtml(value)}</div><div style="font-size:12px;color:#6b7280;margin-top:2px">${escapeHtml(label)}</div>${note ? `<div style="font-size:12px;font-weight:700;color:${note.startsWith('-') ? '#b42318' : '#15803d'};margin-top:4px">${escapeHtml(note)} vs last week</div>` : ''}</td>`
+  const list = (rows: string[]) => rows.length ? `<table role="presentation" width="100%" style="border-collapse:collapse">${rows.join('')}</table>` : '<p style="font-size:14px;color:#6b7280;margin:0">None this week.</p>'
+  const row = (left: string, right: string) => `<tr><td style="padding:6px 0;font-size:14px;border-bottom:1px solid #eee">${escapeHtml(left)}</td><td style="padding:6px 0;font-size:14px;text-align:right;border-bottom:1px solid #eee;font-weight:700">${escapeHtml(right)}</td></tr>`
+  const link = (path: string, label: string) => admin ? `<a href="${escapeHtml(`${admin}${path}`)}" style="color:${brand.color};font-weight:700;text-decoration:none">${escapeHtml(label)}</a>` : ''
+  const html = layout(`
+    <h1 style="font-size:20px;margin:0 0 4px">Your week</h1>
+    <p style="font-size:14px;color:#3f3f46;margin:0 0 18px">${escapeHtml(r.weekLabel)}</p>
+    <table role="presentation" width="100%" style="border-collapse:separate;border-spacing:6px 0;margin:0 -6px"><tr>${stat(m(f.sales), 'sales', r.salesChange)}${stat(String(f.orders), f.orders === 1 ? 'order' : 'orders', r.ordersChange)}${stat(m(f.average), 'average order')}</tr></table>
+    <p style="font-size:14px;color:#3f3f46;margin:16px 0 0">${f.delivered} delivered · ${f.cancelled} cancelled · ${f.newCustomers} new customer${f.newCustomers === 1 ? '' : 's'} · ${f.returningCustomers} came back</p>
+    <p style="font-size:15px;font-weight:800;margin:24px 0 8px">Best sellers</p>
+    ${list(f.topProducts.map(p => row(p.name, `${p.units} sold`)))}
+    <p style="font-size:15px;font-weight:800;margin:24px 0 8px">Top areas</p>
+    ${list(f.topAreas.map(a => row(a.area, `${a.orders} order${a.orders === 1 ? '' : 's'}`)))}
+    <p style="font-size:15px;font-weight:800;margin:24px 0 8px">To keep an eye on</p>
+    <ul style="margin:0;padding:0 0 0 18px;font-size:14px;line-height:1.8;color:#121212">
+      <li>${r.cashWithDrivers ? `${escapeHtml(m(r.cashWithDrivers))} cash with drivers, not handed over yet` : 'No cash waiting with drivers'}</li>
+      <li>${r.lowStock ? `${r.lowStock} product${r.lowStock === 1 ? '' : 's'} low on stock` : 'Stock looks fine'}</li>
+      <li>${r.adSpend ? `${escapeHtml(m(r.adSpend))} spent on ads this week` : 'No ad spend entered this week'}</li>
+    </ul>
+    ${admin ? `<p style="font-size:14px;margin:24px 0 0">${[link('/reports', 'Profit report'), link('/inventory/reorder', 'What to reorder'), link('/orders/drivers', 'Drivers')].join(' &nbsp;·&nbsp; ')}</p>` : ''}
+    <p style="font-size:12px;color:#6b7280;margin:24px 0 0">You can turn this email off in Admin &gt; Settings &gt; Notifications.</p>
+  `, brand)
+  const text = [`Your week (${r.weekLabel}): ${f.orders} order(s), ${m(f.sales)} in sales (${r.salesChange || 'no change'} vs last week).`, `${f.delivered} delivered, ${f.cancelled} cancelled, ${f.newCustomers} new customer${f.newCustomers === 1 ? "" : "s"}.`, ...(f.topProducts.length ? ['Best sellers:', ...f.topProducts.map(p => `- ${p.name}: ${p.units}`)] : []), ...(admin ? [`Admin: ${admin}`] : [])].join('\n')
+  return sendEmail(to, r.subject, html, text)
 }

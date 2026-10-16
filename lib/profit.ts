@@ -47,12 +47,14 @@ export type ProfitReport = {
   delivery: { perOrder: number | null; orders: number; total: number | null }
   packaging: { perOrder: number | null; orders: number; total: number | null }
   adSpend: { total: number; byPlatform: { platform: string; total: number }[]; entries: number; otherCurrency: number }
+  // The store's running costs in these dates (lib/expenses.ts): rent, salaries...
+  expenses: { total: number; lines: { id: string; name: string; monthly: boolean; amount: number }[] }
   profit: { collectedSoFar: number; ifUnpaidCollected: number }
   estimated: boolean
   missing: string[]
 }
 
-export function computeProfit(orders: ProfitOrder[], costs: Map<string, number | null>, settings: ProfitSettings, adSpend: AdSpendEntry[], currency: string): ProfitReport {
+export function computeProfit(orders: ProfitOrder[], costs: Map<string, number | null>, settings: ProfitSettings, adSpend: AdSpendEntry[], currency: string, expenses: ProfitReport['expenses'] = { total: 0, lines: [] }): ProfitReport {
   const inCurrency = orders.filter(o => o.currency === currency)
   const report = {
     grossOrderValue: 0, cancelledOrders: 0, cancelledValue: 0, refunded: 0, taxIncluded: 0, shippingCharged: 0, discounts: 0,
@@ -103,7 +105,7 @@ export function computeProfit(orders: ProfitOrder[], costs: Map<string, number |
   const adTotal = spend.reduce((sum, a) => sum + a.amount, 0)
 
   const unpaid = [report.unpaidCod, report.unpaidOther]
-  const collectedProfit = report.collected.salesExTax - report.collected.productCost - perOrderCosts * report.collected.orders - adTotal
+  const collectedProfit = report.collected.salesExTax - report.collected.productCost - perOrderCosts * report.collected.orders - adTotal - expenses.total
   const unpaidProfit = unpaid.reduce((sum, p) => sum + p.salesExTax - p.productCost - perOrderCosts * p.orders, 0)
 
   const missingNotes: string[] = []
@@ -129,6 +131,7 @@ export function computeProfit(orders: ProfitOrder[], costs: Map<string, number |
     productCost: { total: productCost, missing: [...missing.values()].sort((a, b) => b.sales - a.sales), missingSales },
     delivery,
     packaging,
+    expenses,
     adSpend: { total: adTotal, byPlatform: [...byPlatform].map(([platform, total]) => ({ platform, total })).sort((a, b) => b.total - a.total), entries: spend.length, otherCurrency: adSpend.length - spend.length },
     profit: { collectedSoFar: collectedProfit, ifUnpaidCollected: collectedProfit + unpaidProfit },
     estimated: missingNotes.length > 0,

@@ -11,7 +11,8 @@ import ui from './admin-ui.module.css'
 import s from './admin-profit.module.css'
 
 type Spend = { id: string; date: string; platform: string; amount: number; currency: string; note: string | null }
-type Data = { range: { since: string; until: string; days: number }; report: Report; adSpend: Spend[]; canEdit: boolean; truncated: boolean }
+type ExpenseItem = { id: string; name: string; amount: number; currency: string; monthly: boolean; startsOn: string; endsOn: string | null }
+type Data = { range: { since: string; until: string; days: number }; report: Report; adSpend: Spend[]; expenseList: ExpenseItem[]; canEdit: boolean; truncated: boolean }
 type Preview = { rows: { line: number; date: string; platform: string; amount: number; replaces: number | null }[]; errors: { line: number; message: string }[]; dateOrder: 'dmy' | 'mdy'; total: number; currency: string }
 
 async function api(path: string, init?: RequestInit) {
@@ -42,6 +43,11 @@ export default function ProfitReport({ query, reloadKey }: { query: string; relo
   const [csvName, setCsvName] = useState('')
   const [preview, setPreview] = useState<Preview | null>(null)
   const [importing, setImporting] = useState(false)
+  const [expName, setExpName] = useState('')
+  const [expAmount, setExpAmount] = useState('')
+  const [expMonthly, setExpMonthly] = useState(true)
+  const [expDate, setExpDate] = useState(() => `${new Date().toISOString().slice(0, 7)}-01`)
+  const [savingExpense, setSavingExpense] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const confirm = useConfirm()
 
@@ -80,6 +86,33 @@ export default function ProfitReport({ query, reloadKey }: { query: string; relo
       await load()
     } catch (e) { setMsg(e instanceof Error ? e.message : 'Unable to save') }
     finally { setSavingSpend(false) }
+  }
+
+  async function addExpense() {
+    const amount = parseMoney(expAmount.trim())
+    if (!expName.trim()) { setMsg('Write what the cost is, like Rent or Salary.'); return }
+    if (!amount) { setMsg('Enter the amount, like 300 or 25.50.'); return }
+    setSavingExpense(true); setMsg('')
+    try {
+      await api('/api/admin/reports/expenses', { method: 'POST', body: JSON.stringify({ name: expName, amount, monthly: expMonthly, startsOn: expDate }) })
+      setExpName(''); setExpAmount('')
+      setMsg(expMonthly ? `${expName.trim()} added: it counts every month from ${expDate}.` : `${expName.trim()} added on ${expDate}.`)
+      await load()
+    } catch (e) { setMsg(e instanceof Error ? e.message : 'Unable to save') }
+    finally { setSavingExpense(false) }
+  }
+
+  async function stopExpense(e: ExpenseItem) {
+    const today = new Date().toISOString().slice(0, 10)
+    if (!(await confirm({ title: `Stop ${e.name}?`, message: `It stops counting after today (${today}). Months before stay in the reports.`, confirmLabel: 'Stop it', tone: 'default' }))) return
+    try { await api('/api/admin/reports/expenses', { method: 'PATCH', body: JSON.stringify({ id: e.id, endsOn: today }) }); await load() }
+    catch (err) { setMsg(err instanceof Error ? err.message : 'Unable to save') }
+  }
+
+  async function removeExpense(e: ExpenseItem) {
+    if (!(await confirm({ title: `Delete ${e.name}?`, message: 'It is removed from every report, including past months. To stop a cost from now on, use Stop instead.', confirmLabel: 'Delete' }))) return
+    try { await api(`/api/admin/reports/expenses?id=${encodeURIComponent(e.id)}`, { method: 'DELETE' }); await load() }
+    catch (err) { setMsg(err instanceof Error ? err.message : 'Unable to delete') }
   }
 
   async function removeSpend(entry: Spend) {
@@ -143,6 +176,7 @@ export default function ProfitReport({ query, reloadKey }: { query: string; relo
         <Line label={r.delivery.perOrder == null ? 'Delivery cost' : `Delivery (${r.delivery.orders} x ${m(r.delivery.perOrder)})`} value={r.delivery.total == null ? notEntered : `- ${m(r.delivery.total)}`} />
         <Line label={r.packaging.perOrder == null ? 'Packaging cost' : `Packaging (${r.packaging.orders} x ${m(r.packaging.perOrder)})`} value={r.packaging.total == null ? notEntered : `- ${m(r.packaging.total)}`} />
         <Line label={`Ad spend${r.adSpend.byPlatform.length ? ` (${r.adSpend.byPlatform.map(p => `${p.platform} ${m(p.total)}`).join(', ')})` : ''}`} value={r.adSpend.entries ? `- ${m(r.adSpend.total)}` : <span className={s.notEntered}>None entered</span>} />
+        <Line label={`Running costs${r.expenses.lines.length ? ` (${r.expenses.lines.slice(0, 3).map(l => l.name).join(', ')}${r.expenses.lines.length > 3 ? '...' : ''})` : ''}`} value={r.expenses.lines.length ? `- ${m(r.expenses.total)}` : <span className={s.notEntered}>None entered</span>} />
         <Line label="Profit if unpaid orders are collected" value={m(r.profit.ifUnpaidCollected)} strong />
       </div>
       <p className={`${ui.muted} ${s.note}`}>Delivery charged to customers ({m(r.shippingCharged)}) is part of sales. Discounts given: {m(r.discounts)}. Product cost uses each product&apos;s cost today. Delivery and packaging count every order that was not cancelled or fully refunded.</p>
@@ -163,6 +197,25 @@ export default function ProfitReport({ query, reloadKey }: { query: string; relo
         {data.canEdit && <button type="button" className={ui.btn} onClick={saveCosts} disabled={savingCosts}>{savingCosts ? 'Saving...' : 'Save costs'}</button>}
       </div>
       {!data.canEdit && <p className={ui.muted}>Only the store owner can change these.</p>}
+    </section>
+
+    <section className={`${ui.card} ${s.card}`}>
+      <h3>Running costs</h3>
+      <p className={ui.muted}>What the store pays to run: rent, salaries, internet, phone... A monthly cost counts in every month from its start; a report of part of a month counts that part. A one-time cost counts on its day.</p>
+      {data.canEdit && <div className={s.form}>
+        <label className={ui.fieldLabel}>What<input className={ui.input} value={expName} onChange={e => setExpName(e.target.value)} placeholder="Rent" maxLength={80} /></label>
+        <label className={ui.fieldLabel}>Amount ({r.currency})<input className={ui.input} inputMode="decimal" value={expAmount} onChange={e => setExpAmount(e.target.value)} placeholder="300" /></label>
+        <label className={ui.fieldLabel}>How often<select className={ui.select} value={expMonthly ? 'monthly' : 'once'} onChange={e => setExpMonthly(e.target.value === 'monthly')}><option value="monthly">Every month</option><option value="once">One time</option></select></label>
+        <label className={ui.fieldLabel}>{expMonthly ? 'From' : 'Day'}<input className={ui.input} type="date" value={expDate} onChange={e => setExpDate(e.target.value)} /></label>
+        <button type="button" className={ui.btn} onClick={addExpense} disabled={savingExpense}>{savingExpense ? 'Saving...' : 'Add'}</button>
+      </div>}
+      <div className={s.lines}>
+        {(data.expenseList || []).map(e => <div className={s.line} key={e.id}>
+          <span>{e.name}<small className={ui.muted}> · {e.monthly ? `every month from ${e.startsOn}${e.endsOn ? ` to ${e.endsOn}` : ''}` : `one time, ${e.startsOn}`}</small></span>
+          <span className="inline">{money(e.amount, e.currency)}{e.monthly ? '/month' : ''}{data.canEdit && e.monthly && !e.endsOn && <button type="button" className={ui.textButton} onClick={() => stopExpense(e)}>Stop</button>}{data.canEdit && <button type="button" className={ui.textButton} aria-label={`Delete ${e.name}`} onClick={() => removeExpense(e)}><Trash2 size={14} /></button>}</span>
+        </div>)}
+        {!(data.expenseList || []).length && <p className={ui.muted}>No running costs entered yet.</p>}
+      </div>
     </section>
 
     <section className={`${ui.card} ${s.card}`}>

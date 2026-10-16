@@ -30,6 +30,8 @@
 .settingsTitle { margin: 0; font-size: 16px; font-weight: 800; color: var(--admin-ink); }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .row input { flex: 1 1 200px; }
+.counter { display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; }
+.counter input { flex: 0 0 84px !important; width: 84px; text-align: center; font-size: 18px; font-weight: 800; }
 .quote { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--admin-surface-muted, color-mix(in srgb, var(--admin-ink) 5%, var(--admin-surface))); font-size: 14.5px; line-height: 1.5; color: var(--admin-ink); white-space: pre-wrap; overflow-wrap: anywhere; }
 .answer { display: grid; gap: 6px; }
 .answer textarea { min-height: 84px; }

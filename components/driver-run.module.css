@@ -1,0 +1,44 @@
+/* A driver's own delivery page (components/driver-run.tsx). Phone first, big buttons, no store
+   header: the store's menu and popups stay off this page. */
+:global(body):has(.page) :global(.nav) { display: none !important; }
+.page { max-width: 560px; margin: 0 auto; padding: 18px 14px 48px; display: grid; gap: 14px; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: #121212; background: #f6f6f4; min-height: 100vh; box-sizing: border-box; }
+.head { display: grid; gap: 2px; }
+.store { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #6b7280; }
+.head h1 { margin: 0; font-size: 26px; font-weight: 850; }
+.head p { margin: 0; font-size: 15px; color: #3f3f46; }
+.cash { display: flex; gap: 12px; align-items: center; padding: 14px 16px; border-radius: 14px; background: #fff7e6; border: 1px solid #f5d79a; color: #92400e; }
+.cash div { display: grid; gap: 2px; }
+.cash strong { font-size: 18px; color: #121212; }
+.cash span { font-size: 13.5px; }
+.notice, .error { margin: 0; padding: 12px 14px; border-radius: 12px; font-size: 14.5px; font-weight: 700; }
+.notice { background: #e7f6ec; color: #15803d; }
+.error { background: #fdecea; color: #b42318; }
+.card { display: grid; gap: 10px; padding: 16px; border-radius: 16px; background: #fff; border: 1px solid #e7e7e4; box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
+.top { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+.number { font-size: 18px; }
+.collect, .paid { padding: 5px 10px; border-radius: 999px; font-size: 13.5px; font-weight: 800; }
+.collect { background: #fdecea; color: #b42318; }
+.paid { background: #e7f6ec; color: #15803d; }
+.name { font-size: 17px; font-weight: 800; }
+.address { font-size: 15px; line-height: 1.45; overflow-wrap: anywhere; }
+.note { font-size: 14px; padding: 8px 10px; border-radius: 10px; background: #f6f6f4; }
+.items { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 14px; color: #3f3f46; }
+.items li { display: flex; gap: 6px; align-items: center; }
+.contact, .row { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn, .big { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 0 16px; border-radius: 12px; border: 1px solid #e7e7e4; background: #fff; color: #121212; font: inherit; font-size: 15px; font-weight: 800; text-decoration: none; cursor: pointer; flex: 1 1 auto; }
+.wa { background: #25d366; border-color: #1fa855; color: #fff; }
+.big { min-height: 54px; font-size: 16.5px; flex: 2 1 60%; }
+.ok { background: #15803d; border-color: #15803d; color: #fff; }
+.warn { background: #b45309; border-color: #b45309; color: #fff; }
+.big:disabled { opacity: .6; }
+.confirm { display: grid; gap: 10px; padding: 12px; border-radius: 12px; background: #f6f6f4; }
+.confirm p { margin: 0; font-size: 15px; font-weight: 700; }
+.confirm label { display: grid; gap: 6px; font-size: 14px; font-weight: 700; }
+.confirm select, .confirm input { min-height: 46px; padding: 0 12px; border: 1px solid #e7e7e4; border-radius: 10px; background: #fff; font: inherit; font-size: 16px; color: #121212; }
+.section { display: grid; gap: 8px; padding: 14px 16px; border-radius: 14px; background: #fff; border: 1px solid #e7e7e4; }
+.section h2 { margin: 0; font-size: 16px; }
+.muted { margin: 0; font-size: 14px; color: #6b7280; }
+.done { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; padding: 6px 0; border-top: 1px solid #f0f0ee; }
+.done:first-of-type { border-top: 0; }
+.footer { margin: 4px 0 0; text-align: center; font-size: 14px; color: #6b7280; }
+.footer a { color: #121212; font-weight: 800; }

@@ -10,6 +10,7 @@ import { getStoreCurrency } from '@/lib/store-currency'
 import { getStoreIdentity } from '@/lib/store-identity'
 import { isOptedOut } from '@/lib/cart-reminders'
 import { sendDailySummaryEmail, sendReviewRequestEmail } from '@/lib/email'
+import { sendWeeklyReport } from '@/lib/weekly-report-job'
 import { sendDailySummaryPush } from '@/lib/push'
 import { REVIEW_REQUESTS_PER_DAY, REVIEW_REQUEST_MARK, dailySummaryMessage, dayLabel, reviewRequestWindow, storeDayKey, yesterdayKey } from '@/lib/daily-summary'
 
@@ -129,6 +130,7 @@ export async function POST(req: Request) {
   const site = configuredSiteUrl() || (origin.hostname.endsWith('.invalid') ? '' : origin.origin)
   const reviewEmails = await sendReviewRequests(now, site).catch(error => { console.error('[daily] review requests failed', error); return { sent: 0, skipped: 0, failed: 0, note: 'Error' } })
   const summary = await sendSummary(now, reviewEmails.sent).catch(error => { console.error('[daily] summary failed', error); return { sent: false, pushed: 0, note: 'Error' } })
-  console.log('[daily] done', { reviewEmails, summary })
-  return json({ reviewEmails, summary }, { headers: NO_STORE })
+  const weekly = await sendWeeklyReport(now).catch(error => { console.error('[daily] weekly report failed', error); return { sent: false, note: 'Error' } })
+  console.log('[daily] done', { reviewEmails, summary, weekly })
+  return json({ reviewEmails, summary, weekly }, { headers: NO_STORE })
 }

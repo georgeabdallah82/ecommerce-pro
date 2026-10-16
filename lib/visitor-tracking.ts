@@ -20,7 +20,7 @@ export const STAFF_PAUSE_KEY = 'live_visitor_staff_until'
 
 export function isTrackedPath(pathname: string) {
   const path = pathname || '/'
-  return !path.startsWith('/admin') && !path.startsWith('/api/') && !path.startsWith('/theme-editor-preview') && path !== '/maintenance'
+  return !path.startsWith('/admin') && !path.startsWith('/api/') && !path.startsWith('/theme-editor-preview') && !path.startsWith('/driver/') && path !== '/maintenance'
 }
 
 // Signed-in staff (any role but CUSTOMER) are never counted as visitors.

@@ -1,0 +1,41 @@
+/* Packing slips (components/packing-slips.tsx): A5-like slips on screen, one per printed page. */
+.page { display: grid; gap: 16px; max-width: 760px; }
+.toolbar { display: grid; gap: 8px; }
+.toolbar h1 { margin: 4px 0 0; font-size: 26px; font-weight: 850; color: var(--admin-ink); }
+.toolbar p { margin: 0; font-size: 14px; color: var(--admin-muted); }
+.back { display: inline-flex; align-items: center; gap: 6px; color: var(--admin-ink); font-weight: 700; text-decoration: none; font-size: 14px; }
+.print { justify-self: start; display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 18px; border: 0; border-radius: 12px; background: var(--admin-ink); color: var(--admin-surface); font: inherit; font-weight: 800; cursor: pointer; }
+.screen { display: grid; gap: 18px; }
+.slip { --slip-color: #121212; display: grid; gap: 16px; padding: 26px 24px; border-radius: 14px; background: #fff; color: #121212; border: 1px solid #e7e7e4; font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+.top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding-bottom: 14px; border-bottom: 3px solid var(--slip-color); }
+.logo { max-height: 54px; max-width: 200px; object-fit: contain; }
+.brand { font-size: 22px; font-weight: 900; letter-spacing: -.02em; }
+.meta { display: grid; justify-items: end; gap: 2px; text-align: end; font-size: 13px; color: #555; }
+.meta strong { font-size: 20px; color: #121212; }
+.kind { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--slip-color); }
+.to { display: grid; gap: 2px; font-size: 14.5px; line-height: 1.45; }
+.to strong { font-size: 17px; }
+.label { display: block; margin-bottom: 2px; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #6b7280; }
+.notes { margin-top: 4px; padding: 6px 10px; border-radius: 8px; background: #f6f6f4; }
+.gift { display: flex; gap: 12px; align-items: flex-start; padding: 16px; border: 2px dashed var(--slip-color); border-radius: 12px; color: var(--slip-color); }
+.gift p { margin: 2px 0 0; font-size: 17px; line-height: 1.5; color: #121212; white-space: pre-wrap; overflow-wrap: anywhere; font-style: italic; }
+.items { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+.items th { text-align: start; padding: 8px 6px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #6b7280; border-bottom: 1px solid #ddd; }
+.items td { padding: 10px 6px; border-bottom: 1px solid #eee; vertical-align: top; }
+.qty { width: 48px; font-weight: 800; font-size: 16px; }
+.check { width: 64px; text-align: center !important; }
+.box { display: inline-block; width: 18px; height: 18px; border: 2px solid #999; border-radius: 4px; }
+.variant { color: #555; }
+.count { margin: 0; font-size: 13px; color: #555; }
+.foot { padding-top: 12px; border-top: 1px solid #eee; text-align: center; }
+.foot p { margin: 0; font-size: 14px; font-weight: 700; }
+.foot .contact { margin-top: 4px; font-size: 12.5px; font-weight: 500; color: #6b7280; }
+.printHost, .printOnly { display: none; }
+@media print {
+  @page { size: A5; margin: 10mm; }
+  :global(html):has(.printHost), :global(body):has(> .printHost) { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+  :global(body):has(> .printHost) > :not(.printHost) { display: none !important; }
+  .printHost, .printOnly { display: block; }
+  .printOnly .slip { border: 0; border-radius: 0; padding: 0; break-after: page; }
+  .printOnly .slip:last-child { break-after: auto; }
+}

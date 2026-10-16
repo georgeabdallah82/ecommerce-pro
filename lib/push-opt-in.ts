@@ -13,7 +13,7 @@ export const PUSH_PROMPT_SUBSCRIBED_KEY = 'push.prompt.subscribedAt'
 
 // Pages where the popup would be in the way: the admin, checkout (never interrupt a purchase),
 // the theme editor's preview, and the account page that already has its own switch.
-const QUIET_PATHS = ['/admin', '/checkout', '/theme-editor-preview', '/account/notifications', '/maintenance']
+const QUIET_PATHS = ['/admin', '/checkout', '/theme-editor-preview', '/account/notifications', '/maintenance', '/driver']
 
 export type PushOfferInput = {
   enabled: boolean // Push campaigns > "Ask visitors" switch

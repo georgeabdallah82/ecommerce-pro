@@ -6,7 +6,7 @@ import { addressLines, customerName, customerPhone, mapsLink, shippingAddress, t
 // the whole run for the driver.
 
 type Money = (cents: number, currency: string) => string
-export type SheetOrder = FlowOrder & { id: string }
+export type SheetOrder = FlowOrder & { id: string; driverId?: string | null }
 
 export const toCollect = (order: Pick<FlowOrder, 'paymentMethod' | 'paymentStatus' | 'grandTotal'>) =>
   collectsCashOnDelivery({ paymentMethod: String(order.paymentMethod || ''), paymentStatus: order.paymentStatus }) ? order.grandTotal : 0
