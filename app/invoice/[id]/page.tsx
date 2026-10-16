@@ -1,83 +1,24 @@
-import { requireUser } from '@/lib/auth'
+import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
+import { getCurrentUser } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
 import { db } from '@/lib/prisma'
-import { getThemeState } from '@/lib/theme'
-import { notFound } from 'next/navigation'
-import InvoiceActions from '@/components/invoice-actions'
-import { money } from '@/lib/config'
+import { getStoreTimezone } from '@/lib/store-timezone'
+import { canViewOrder } from '@/lib/order-access'
+import { INVOICE_ORDER_INCLUDE, getInvoiceStore, toInvoiceOrder } from '@/lib/invoice'
+import InvoiceWorkspace from '@/components/invoice-workspace'
 
-function address(raw: string | null | undefined) {
-  if (!raw) return '—'
-  try {
-    const a = JSON.parse(raw)
-    return [
-      a.firstName && a.lastName ? `${a.firstName} ${a.lastName}` : a.firstName || a.lastName,
-      a.line1,
-      a.line2,
-      [a.city, a.region, a.postalCode].filter(Boolean).join(', '),
-      a.country,
-      a.phone,
-    ].filter(Boolean).join('\n')
-  } catch { return raw }
-}
+export const metadata: Metadata = { title: 'Invoice', robots: { index: false, follow: false } }
 
-export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
-  const viewer = await requireUser()
-  const isStaff = hasPermission(viewer, 'orders.view')
-  const { id } = await params
-  const [o, { theme }] = await Promise.all([
-    db.order.findFirst({
-      where: { id, ...(isStaff ? {} : { userId: viewer.id }) },
-      include: { items: { include: { variant: true } }, user: true },
-    }),
-    getThemeState(),
-  ])
-  if (!o) notFound()
-  const brand = theme.brandName || 'Your Brand'
-  const currency = o.currency || theme.currency || 'USD'
-
-  return <main className="invoicePage">
-    <InvoiceActions orderNumber={o.orderNumber} />
-    <article className="invoiceSheet">
-      <header className="invoiceHeader">
-        <div>
-          <div className="invoiceBrand">{theme.logoUrl ? <img src={theme.logoUrl} alt={brand} /> : <strong>{brand}</strong>}</div>
-          <div className="invoiceMuted">Invoice / Order receipt</div>
-        </div>
-        <div className="invoiceMeta">
-          <div><span>Order</span><strong>#{o.orderNumber}</strong></div>
-          <div><span>Date</span><strong>{new Date(o.createdAt).toLocaleDateString()}</strong></div>
-          <div><span>Status</span><strong>{o.status}</strong></div>
-        </div>
-      </header>
-
-      <section className="invoiceAddresses">
-        <div><small>Bill to</small><div>{o.user?.name || o.email}</div><p>{o.email}{o.phone ? `\n${o.phone}` : ''}</p><p>{address(o.billingAddressJson || o.shippingAddressJson)}</p></div>
-        <div><small>Ship to</small><p>{address(o.shippingAddressJson)}</p></div>
-      </section>
-
-      <section>
-        <table className="invoiceTable"><thead><tr><th>Item</th><th>SKU</th><th className="num">Qty</th><th className="num">Unit</th><th className="num">Total</th></tr></thead>
-          <tbody>{o.items.map(i => <tr key={i.id}><td><strong>{i.name}</strong>{i.variant?.name ? <div className="invoiceMuted">{i.variant.name}</div> : null}</td><td>{i.sku}</td><td className="num">{i.quantity}</td><td className="num">{money(i.unitPrice, currency)}</td><td className="num">{money(i.totalPrice, currency)}</td></tr>)}</tbody>
-        </table>
-      </section>
-
-      <section className="invoiceBottom">
-        <div className="invoiceNotes">
-          <small>Payment</small><p>{o.paymentMethod} · {o.paymentStatus}</p>
-          <small>Shipping</small><p>{o.shippingMethod || '—'}{o.trackingNumber ? ` · ${o.trackingNumber}` : ''}</p>
-          <div id="invoiceManualNote" className="invoiceManualNote" aria-live="polite" />
-        </div>
-        <div className="invoiceTotals">
-          <div><span>Subtotal</span><strong>{money(o.subtotal, currency)}</strong></div>
-          <div><span>Discount</span><strong>- {money(o.discountTotal, currency)}</strong></div>
-          <div><span>Shipping</span><strong>{money(o.shippingTotal, currency)}</strong></div>
-          <div><span>Tax</span><strong>{money(o.taxTotal, currency)}</strong></div>
-          <div className="grand"><span>Total</span><strong>{money(o.grandTotal, currency)}</strong></div>
-        </div>
-      </section>
-
-      <footer className="invoiceFooter"><span>Thank you for your business.</span><span>{brand}</span></footer>
-    </article>
-  </main>
+// The customer's copy of an invoice: the link staff send from Admin > Orders > Invoice
+// (/invoice/<id>?t=<view code>), or the signed-in customer who placed the order; staff can open
+// it too. Anyone else gets "not found" (no hint that the order exists).
+export default async function CustomerInvoicePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ t?: string }> }) {
+  const [{ id }, { t }, viewer] = await Promise.all([params, searchParams, getCurrentUser().catch(() => null)])
+  const order = await db.order.findUnique({ where: { id }, include: INVOICE_ORDER_INCLUDE })
+  if (!order) notFound()
+  const staff = !!viewer && hasPermission(viewer, 'orders.view')
+  if (!staff && !canViewOrder(order, { userId: viewer?.id, token: t })) notFound()
+  const [store, timezone] = await Promise.all([getInvoiceStore(), getStoreTimezone()])
+  return <main><InvoiceWorkspace mode="customer" order={toInvoiceOrder(order)} store={store} timezone={timezone}/></main>
 }

@@ -1,7 +1,8 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 
 // Who may see an order's details (thank-you page, guest order page). An order number alone is
-// never enough: they follow ORD-<timestamp>-<4 chars>, so they can be guessed. Access needs one of
+// never enough: they count up (1001, 1002, ...; older ones ORD-<timestamp>-<4 chars>), so they can
+// be guessed. Access needs one of
 //  - the signed-in customer who placed it,
 //  - the email the order was placed with (what guest order lookup asks for), or
 //  - the view code checkout and the card-payment return put in the thank-you link: an HMAC of the
