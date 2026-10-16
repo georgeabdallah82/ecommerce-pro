@@ -107,6 +107,17 @@ describe('lib/validation', () => {
       const result = checkoutSchema.safeParse({ ...validCheckout, email: 'nope' })
       assert.equal(result.success, false)
     })
+
+    it('lets customers check out without an email (phone only), and tidies a typed one', () => {
+      const { email, ...noEmail } = validCheckout
+      const without = checkoutSchema.safeParse(noEmail)
+      assert.equal(without.success, true)
+      assert.equal(without.success && without.data.email, '')
+      const blank = checkoutSchema.safeParse({ ...validCheckout, email: '' })
+      assert.equal(blank.success && blank.data.email, '')
+      const typed = checkoutSchema.safeParse({ ...validCheckout, email: 'Jane@Example.com' })
+      assert.equal(typed.success && typed.data.email, 'jane@example.com')
+    })
   })
 })
 

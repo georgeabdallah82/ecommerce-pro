@@ -21,7 +21,8 @@ export default async function Shipping() {
     <div className={ui.card} style={{ padding: 18, marginBottom: 16, display: 'grid', gap: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
         <div><strong style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Truck size={16} /> Delivery times shown on your store</strong>
-          <p className={ui.muted} style={{ margin: '4px 0 0', fontSize: 13 }}>{delivery.enabled === false ? 'The delivery bar is switched off.' : 'Shoppers pick their area under the header and see this time there and on every product page.'}</p></div>
+          <p className={ui.muted} style={{ margin: '4px 0 0', fontSize: 13 }}>{delivery.enabled === false ? 'The delivery bar is switched off.' : 'Shoppers pick their area under the header and at checkout, and see this time there and on every product page.'}</p>
+          <p className={ui.muted} style={{ margin: '6px 0 0', fontSize: 13 }}><strong>Different price per area:</strong> add a zone for Lebanon with the areas it covers (for example Beirut at $3), and keep one zone with no areas for everywhere else (for example $5).</p></div>
         <Link className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/online-store/theme-editor?settings=delivery">Edit areas &amp; times</Link>
       </div>
       {areas.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -29,5 +30,5 @@ export default async function Shipping() {
       </div>}
     </div>
   )
-  return <ShippingAdminPro initial={JSON.parse(JSON.stringify(initial))} deliveryTimes={deliveryTimes} />
+  return <ShippingAdminPro initial={JSON.parse(JSON.stringify(initial))} deliveryTimes={deliveryTimes} areaNames={areas.map(a => a.name)} />
 }

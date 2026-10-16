@@ -13,6 +13,7 @@ import ui from './admin-ui.module.css'
 import DeliveryTrackingAdmin from './delivery-tracking-admin'
 import { WHATSAPP_OUTCOMES, whatsappConfirmLink, whatsappPhoneProblem } from '@/lib/whatsapp-confirm'
 import { internationalPhone } from '@/lib/phone'
+import { reviewRequestMessage } from '@/lib/order-reviews'
 import { useConfirm } from './admin-confirm'
 
 // Admin > Orders > one order. Top to bottom: where the order is (a progress line), the one thing
@@ -65,7 +66,7 @@ function Menu({ children }: { children: React.ReactNode }) {
   )
 }
 
-export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTimezone, storeName = '', storeCountry = 'Lebanon', phoneBlocked = false }: { initial: any; canStartOrderEdit?: boolean; storeTimezone?: string; storeName?: string; storeCountry?: string; phoneBlocked?: boolean }) {
+export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTimezone, storeName = '', storeCountry = 'Lebanon', phoneBlocked = false, reviewLink = '' }: { initial: any; canStartOrderEdit?: boolean; storeTimezone?: string; storeName?: string; storeCountry?: string; phoneBlocked?: boolean; reviewLink?: string }) {
   const [o, setO] = useState(initial)
   const confirm = useConfirm()
   const router = useRouter()
@@ -88,6 +89,15 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
   // WhatsApp: the "please confirm" message for new orders, a plain chat otherwise.
   const confirmLink = useMemo(() => whatsappConfirmLink(o, storeName, storeCountry, money), [o, storeName, storeCountry])
   const chatLink = useMemo(() => { const digits = internationalPhone(phoneNumber, storeCountry); return digits ? `https://wa.me/${digits}` : '' }, [phoneNumber, storeCountry])
+  const reviewWhatsapp = useMemo(() => {
+    const digits = internationalPhone(phoneNumber, storeCountry)
+    if (!reviewLink || !digits) return ''
+    let address: any = {}
+    try { address = JSON.parse(o.shippingAddressJson || '{}') || {} } catch {}
+    const firstName = String(address.firstName || o.user?.name || '').trim().split(/\s+/)[0] || ''
+    return `https://wa.me/${digits}?text=${encodeURIComponent(reviewRequestMessage({ storeName, firstName, orderNumber: String(o.orderNumber), link: reviewLink }))}`
+  }, [reviewLink, phoneNumber, storeCountry, storeName, o])
+  const reviewEmailSent = (o.events || []).some((e: any) => String(e.message || '').startsWith('Review request sent by email'))
   const whatsappProblem = useMemo(() => confirmLink ? '' : whatsappPhoneProblem(o, storeCountry), [o, confirmLink, storeCountry])
   const call = telLink(o, storeCountry)
   const map = mapsLink(o)
@@ -272,6 +282,16 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
         {o.status !== 'PENDING' && <a className={`${ui.btn} ${ui.btnSecondary}`} href={driverShareLink(o, storeName, money)} target="_blank" rel="noreferrer"><Send size={15}/> Send to driver</a>}
       </div>
       {lastAnswer === 'cancel_requested' && <button type="button" className={`${ui.btn} ${ui.btnDanger}`} onClick={cancelOrder} disabled={moving}><XCircle size={15}/> Cancel this order</button>}
+    </section>}
+
+    {/* Delivered: ask the customer to rate what they bought (app/review/[orderNumber]). */}
+    {!editing && o.status === 'DELIVERED' && reviewLink && <section className={`${ui.card} ${s.nextCard}`}>
+      <div className={s.nextHead}><span className={s.nextLabel}>Delivered</span><h2>Ask for a review</h2></div>
+      <p className={ui.muted} style={{ margin: 0 }}>Send the customer a link to rate what they bought. Reviews show on the product page after you approve them in Reviews.{reviewEmailSent ? ' A review email was already sent to this customer.' : o.email ? ' Customers with an email also get it by email 1 day after delivery.' : ''}</p>
+      <div className={s.rowButtons}>
+        {reviewWhatsapp && <a className={`${ui.btn} ${s.whatsappBtn}`} href={reviewWhatsapp} target="_blank" rel="noreferrer"><MessageCircle size={16}/> Ask for a review on WhatsApp</a>}
+        <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => copy(reviewLink, 'review')}>{copied === 'review' ? <Check size={15}/> : <Copy size={15}/>} {copied === 'review' ? 'Link copied' : 'Copy review link'}</button>
+      </div>
     </section>}
 
     {trackingOpen && <section className={ui.card}>

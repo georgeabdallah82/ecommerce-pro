@@ -456,3 +456,46 @@ export async function sendAbandonedCheckoutEmail(abandonedCheckoutId: string, op
   const headers = options.oneClickUnsubscribeUrl ? { 'List-Unsubscribe': `<${options.oneClickUnsubscribeUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } : undefined
   return sendEmail(checkout.email, 'You left something in your cart', html, text, headers ? { headers } : undefined)
 }
+
+// "How was your order?" -- sent by the morning job (/api/internal/daily) a day after delivery,
+// once per order, to orders placed with an email. The button opens app/review/[orderNumber].
+export async function sendReviewRequestEmail(order: { email: string; orderNumber: string; firstName: string; products: Array<{ name: string; image: string }> }, reviewUrl: string) {
+  const brand = await emailBrand()
+  const products = order.products.slice(0, 4).map(p => `<tr>
+      <td width="56" style="padding:8px 12px 8px 0">${/^https:\/\//i.test(p.image) ? `<img src="${escapeHtml(p.image)}" width="48" height="48" alt="" style="display:block;width:48px;height:48px;border-radius:8px;object-fit:cover;border:0">` : ''}</td>
+      <td style="padding:8px 0;font-size:14px;color:#121212">${escapeHtml(p.name)}</td>
+    </tr>`).join('')
+  const html = layout(`
+    <h1 style="font-size:20px;margin:0 0 8px">How was your order${order.firstName ? `, ${escapeHtml(order.firstName)}` : ''}?</h1>
+    <p style="font-size:14px;line-height:1.6;color:#3f3f46;margin:0 0 16px">Thank you for shopping with ${escapeHtml(brand.name)}. We hope you like order #${escapeHtml(order.orderNumber)}. Could you rate what you bought? It takes 30 seconds and helps other customers choose.</p>
+    ${products ? `<table role="presentation" width="100%" style="border-collapse:collapse">${products}</table>` : ''}
+    ${button(reviewUrl, 'Rate my order', brand)}
+  `, brand)
+  const text = `How was your order #${order.orderNumber}? Rate what you bought (30 seconds): ${reviewUrl}`
+  return sendEmail(order.email, `How was your order #${order.orderNumber}?`, html, text)
+}
+
+// The owner's morning summary (lib/daily-summary.ts works out the numbers and words).
+export async function sendDailySummaryEmail(to: string, summary: { subject: string; dayLabel: string; ordersYesterday: number; sales: string; waiting: string[]; lowStock: Array<{ name: string; left: number }>; reviewEmailsSent: number }) {
+  const brand = await emailBrand()
+  const admin = siteUrl() ? `${siteUrl()}/admin` : ''
+  const link = (path: string, label: string) => admin ? `<a href="${escapeHtml(`${admin}${path}`)}" style="color:${brand.color};font-weight:700;text-decoration:none">${escapeHtml(label)}</a>` : ''
+  const stat = (value: string, label: string) => `<td width="50%" style="padding:14px 16px;background:#f6f6f4;border-radius:10px"><div style="font-size:22px;font-weight:800;color:#121212">${escapeHtml(value)}</div><div style="font-size:12px;color:#6b7280;margin-top:2px">${escapeHtml(label)}</div></td>`
+  const html = layout(`
+    <h1 style="font-size:20px;margin:0 0 4px">Good morning</h1>
+    <p style="font-size:14px;color:#3f3f46;margin:0 0 18px">Here is how ${escapeHtml(summary.dayLabel)} went.</p>
+    <table role="presentation" width="100%" style="border-collapse:separate;border-spacing:8px 0;margin:0 -8px"><tr>${stat(String(summary.ordersYesterday), summary.ordersYesterday === 1 ? 'order' : 'orders')}${stat(summary.sales, 'sales')}</tr></table>
+    <p style="font-size:15px;font-weight:800;margin:24px 0 8px">Waiting for you</p>
+    ${summary.waiting.length
+      ? `<ul style="margin:0;padding:0 0 0 18px;font-size:14px;line-height:1.8;color:#121212">${summary.waiting.map(line => `<li>${escapeHtml(line)}</li>`).join('')}</ul>`
+      : '<p style="font-size:14px;color:#3f3f46;margin:0">Nothing. Have a good day!</p>'}
+    ${summary.lowStock.length ? `<p style="font-size:15px;font-weight:800;margin:24px 0 8px">Low on stock</p>
+    <table role="presentation" width="100%" style="border-collapse:collapse">${summary.lowStock.slice(0, 10).map(item => `<tr><td style="padding:6px 0;font-size:14px;border-bottom:1px solid #eee">${escapeHtml(item.name)}</td><td style="padding:6px 0;font-size:14px;text-align:right;border-bottom:1px solid #eee;font-weight:700;color:${item.left <= 0 ? '#b42318' : '#121212'}">${item.left <= 0 ? 'sold out' : `${item.left} left`}</td></tr>`).join('')}</table>
+    ${summary.lowStock.length > 10 ? `<p style="font-size:13px;color:#6b7280;margin:6px 0 0">and ${summary.lowStock.length - 10} more</p>` : ''}` : ''}
+    ${summary.reviewEmailsSent ? `<p style="font-size:13px;color:#6b7280;margin:20px 0 0">This morning ${summary.reviewEmailsSent} customer${summary.reviewEmailsSent === 1 ? ' was' : 's were'} asked by email to rate their order.</p>` : ''}
+    ${admin ? `<p style="font-size:14px;margin:24px 0 0">${[link('/orders', 'Open orders'), link('/inventory', 'Stock'), link('/reviews', 'Reviews')].join(' &nbsp;·&nbsp; ')}</p>` : ''}
+    <p style="font-size:12px;color:#6b7280;margin:24px 0 0">You can turn this email off in Admin &gt; Settings &gt; Notifications.</p>
+  `, brand)
+  const text = [`Good morning. ${summary.dayLabel}: ${summary.ordersYesterday} order(s), ${summary.sales}.`, ...(summary.waiting.length ? ['Waiting for you:', ...summary.waiting.map(line => `- ${line}`)] : ['Nothing waiting for you.']), ...(admin ? [`Admin: ${admin}`] : [])].join('\n')
+  return sendEmail(to, summary.subject, html, text)
+}

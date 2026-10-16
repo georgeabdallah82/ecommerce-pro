@@ -19,11 +19,26 @@ async function api(path: string, init?: RequestInit) {
 const initialForm = { name: '', countries: 'Lebanon', regions: '', rateName: 'Standard', price: '0', freeAbove: '', estimatedDays: '2', isActive: true }
 const initialRateForm = { name: '', price: '0', freeAbove: '', estimatedDays: '2' }
 
+// Delivery price by area: a zone's areas are the names customers pick at checkout (the delivery
+// bar's list). Tapping an area adds or removes it, so the names always match exactly.
+function AreaField({ value, onChange, areas }: { value: string; onChange: (value: string) => void; areas: string[] }) {
+  const chosen = value.split(',').map(x => x.trim()).filter(Boolean)
+  const toggle = (name: string) => onChange((chosen.some(c => c.toLowerCase() === name.toLowerCase()) ? chosen.filter(c => c.toLowerCase() !== name.toLowerCase()) : [...chosen, name]).join(', '))
+  return <label className={ui.fieldLabel}>Areas (optional)
+    <input className={ui.input} value={value} onChange={e => onChange(e.target.value)} placeholder="Beirut, Metn"/>
+    {areas.length > 0 && <span style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>{areas.map(name => {
+      const on = chosen.some(c => c.toLowerCase() === name.toLowerCase())
+      return <button key={name} type="button" className={`${ui.btn} ${on ? '' : ui.btnSecondary} ${ui.btnSmall}`} aria-pressed={on} onClick={() => toggle(name)}>{on ? <Check size={13}/> : <Plus size={13}/>} {name}</button>
+    })}</span>}
+    <small className={ui.muted}>This price is only for these areas (what customers choose at checkout). Leave empty to use this zone for every other area of the country.</small>
+  </label>
+}
+
 function dollars(cents: number | null) {
   return cents === null ? '' : String(cents / 100)
 }
 
-export default function ShippingAdminPro({ initial, deliveryTimes }: { initial: Zone[]; deliveryTimes?: React.ReactNode }) {
+export default function ShippingAdminPro({ initial, deliveryTimes, areaNames = [] }: { initial: Zone[]; deliveryTimes?: React.ReactNode; areaNames?: string[] }) {
   const confirm = useConfirm()
   const [rows, setRows] = useState<Zone[]>(initial || [])
   const [query, setQuery] = useState('')
@@ -215,14 +230,14 @@ export default function ShippingAdminPro({ initial, deliveryTimes }: { initial: 
     </div>)}
 
     {formOpen && <div className={ui.modalOverlay} onClick={() => !saving && setFormOpen(false)}><div className={`${ui.card} discountsModal`} onClick={e => e.stopPropagation()}><div className="inventoryModalHead"><div><span className={`${ui.muted} ${ui.tiny}`}>CREATE SHIPPING ZONE</span><h2>New zone</h2><p className={ui.muted}>Define coverage and your first customer-facing rate.</p></div><button className={ui.iconBtn} onClick={() => setFormOpen(false)} disabled={saving}><X size={17}/></button></div>
-      <form className="discountForm" onSubmit={createZone}><label className={ui.fieldLabel}>Zone name<input className={ui.input} required value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Lebanon"/></label><label className={ui.fieldLabel}>Countries<input className={ui.input} required value={form.countries} onChange={e => setForm({...form, countries: e.target.value})} placeholder="Lebanon"/><small className={ui.muted}>Country name or ISO code (e.g. Lebanon or LB), comma-separated for multiple countries.</small></label><label className={ui.fieldLabel}>Regions (optional)<input className={ui.input} value={form.regions} onChange={e => setForm({...form, regions: e.target.value})} placeholder="Beirut, Metn"/></label><div className="discountFormGrid"><label className={ui.fieldLabel}>Rate name<input className={ui.input} required value={form.rateName} onChange={e => setForm({...form, rateName: e.target.value})}/></label><label className={ui.fieldLabel}>Price<input className={ui.input} type="number" min="0" step="0.01" value={form.price} onChange={e => setForm({...form, price: e.target.value})}/></label><label className={ui.fieldLabel}>Free over<input className={ui.input} type="number" min="0" step="0.01" value={form.freeAbove} onChange={e => setForm({...form, freeAbove: e.target.value})} placeholder="None"/></label><label className={ui.fieldLabel}>Est. days<input className={ui.input} type="number" min="0" step="1" value={form.estimatedDays} onChange={e => setForm({...form, estimatedDays: e.target.value})}/></label></div><label className="toggleRow"><input type="checkbox" checked={form.isActive} onChange={e => setForm({...form, isActive: e.target.checked})}/><span><strong>Zone is active</strong><small>Customers can use this zone immediately.</small></span></label><div className="inline" style={{ justifyContent: 'flex-end', marginTop: 8 }}><button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setFormOpen(false)} disabled={saving}>Cancel</button><button className={ui.btn} disabled={saving}>{saving ? 'Creating…' : 'Create zone'}</button></div></form>
+      <form className="discountForm" onSubmit={createZone}><label className={ui.fieldLabel}>Zone name<input className={ui.input} required value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Lebanon"/></label><label className={ui.fieldLabel}>Countries<input className={ui.input} required value={form.countries} onChange={e => setForm({...form, countries: e.target.value})} placeholder="Lebanon"/><small className={ui.muted}>Country name or ISO code (e.g. Lebanon or LB), comma-separated for multiple countries.</small></label><AreaField value={form.regions} onChange={regions => setForm({...form, regions})} areas={areaNames}/><div className="discountFormGrid"><label className={ui.fieldLabel}>Rate name<input className={ui.input} required value={form.rateName} onChange={e => setForm({...form, rateName: e.target.value})}/></label><label className={ui.fieldLabel}>Price<input className={ui.input} type="number" min="0" step="0.01" value={form.price} onChange={e => setForm({...form, price: e.target.value})}/></label><label className={ui.fieldLabel}>Free over<input className={ui.input} type="number" min="0" step="0.01" value={form.freeAbove} onChange={e => setForm({...form, freeAbove: e.target.value})} placeholder="None"/></label><label className={ui.fieldLabel}>Est. days<input className={ui.input} type="number" min="0" step="1" value={form.estimatedDays} onChange={e => setForm({...form, estimatedDays: e.target.value})}/></label></div><label className="toggleRow"><input type="checkbox" checked={form.isActive} onChange={e => setForm({...form, isActive: e.target.checked})}/><span><strong>Zone is active</strong><small>Customers can use this zone immediately.</small></span></label><div className="inline" style={{ justifyContent: 'flex-end', marginTop: 8 }}><button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setFormOpen(false)} disabled={saving}>Cancel</button><button className={ui.btn} disabled={saving}>{saving ? 'Creating…' : 'Create zone'}</button></div></form>
     </div></div>}
 
     {editZone && <div className={ui.modalOverlay} onClick={() => !saving && setEditZone(null)}><div className={`${ui.card} discountsModal`} onClick={e => e.stopPropagation()}><div className="inventoryModalHead"><div><span className={`${ui.muted} ${ui.tiny}`}>EDIT SHIPPING ZONE</span><h2>{editZone.name}</h2><p className={ui.muted}>Update coverage details for this zone.</p></div><button className={ui.iconBtn} onClick={() => setEditZone(null)} disabled={saving}><X size={17}/></button></div>
       <form className="discountForm" onSubmit={saveEditZone}>
         <label className={ui.fieldLabel}>Zone name<input className={ui.input} required value={editZoneForm.name} onChange={e => setEditZoneForm({ ...editZoneForm, name: e.target.value })}/></label>
         <label className={ui.fieldLabel}>Countries<input className={ui.input} required value={editZoneForm.countries} onChange={e => setEditZoneForm({ ...editZoneForm, countries: e.target.value })}/><small className={ui.muted}>Country name or ISO code (e.g. Lebanon or LB), comma-separated for multiple countries.</small></label>
-        <label className={ui.fieldLabel}>Regions (optional)<input className={ui.input} value={editZoneForm.regions} onChange={e => setEditZoneForm({ ...editZoneForm, regions: e.target.value })}/></label>
+        <AreaField value={editZoneForm.regions} onChange={regions => setEditZoneForm({ ...editZoneForm, regions })} areas={areaNames}/>
         <div className="inline" style={{ justifyContent: 'flex-end', marginTop: 8 }}><button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setEditZone(null)} disabled={saving}>Cancel</button><button className={ui.btn} disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button></div>
       </form>
     </div></div>}

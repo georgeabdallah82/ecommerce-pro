@@ -16,7 +16,12 @@ const hooks: WeakMap<object, Array<() => unknown>> = ((globalThis as any)[REQUES
 // a gap that keeps growing means requests whose work never ends, holding their memory.
 const requestCounts: { started: number; finished: number } = ((globalThis as any)[Symbol.for('yallahaul.requestCounts')] ??= { started: 0, finished: 0 })
 
-export default {
+// The key the daily cron's request to /api/internal/daily carries (lib/internal-job.ts): random,
+// made once per Worker instance and only ever in its memory.
+const INTERNAL_JOB_KEY = Symbol.for('yallahaul.internalJobKey')
+const internalJobKey = (): string => ((globalThis as any)[INTERNAL_JOB_KEY] ??= `${crypto.randomUUID()}${crypto.randomUUID()}`)
+
+const worker = {
   async fetch(request: Request, env: unknown, ctx: ExecutionContext): Promise<Response> {
     requestCounts.started++
     const pending: Promise<unknown>[] = []
@@ -53,4 +58,17 @@ export default {
     ctx.waitUntil(finish())
     return response
   },
+
+  // The daily cron (wrangler.jsonc "triggers"): the owner's morning summary and the review-request
+  // emails. It goes through fetch() like any request, so the app code, its settings and secrets
+  // are the same; the request never leaves this Worker.
+  async scheduled(controller: { cron: string; scheduledTime: number }, env: any, ctx: ExecutionContext): Promise<void> {
+    const site = String(env?.NEXT_PUBLIC_SITE_URL || env?.APP_URL || 'https://internal.invalid').replace(/\/$/, '')
+    const request = new Request(`${site}/api/internal/daily`, { method: 'POST', headers: { 'x-internal-job': internalJobKey(), 'x-cron': controller.cron } })
+    const response = await worker.fetch(request, env, ctx)
+    const body = await response.text().catch(() => '')
+    if (!response.ok) throw new Error(`Daily job answered ${response.status}: ${body.slice(0, 300)}`)
+  },
 }
+
+export default worker

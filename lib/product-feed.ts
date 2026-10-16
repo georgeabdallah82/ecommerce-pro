@@ -1,5 +1,6 @@
-// Product catalog feed for Meta (Facebook/Instagram) and TikTok catalog ads, in the RSS/Google
-// Merchant format both accept. Each item's id is the product id -- the same id the pixels send
+// Product catalog feed for Meta (Facebook/Instagram) and TikTok catalog ads, in the Google
+// Merchant format (RSS) they accept -- and Google Merchant Center itself, for countries where
+// Google shows shopping listings. Each item's id is the product id -- the same id the pixels send
 // as content_id -- so an ad can show a visitor the exact products they viewed or added to cart.
 export type FeedProduct = {
   id: string
@@ -11,6 +12,7 @@ export type FeedProduct = {
   vendor?: string | null
   basePrice: number
   compareAtPrice?: number | null
+  barcode?: string | null
   soldOut: boolean
   images: Array<{ url: string }>
   // The store collections the product is in ("Kitchenware", "Personal Care"), in the store's
@@ -24,6 +26,17 @@ export function feedCategories(links: Array<{ collection: { name: string; isActi
   return (links || []).map(l => l.collection).filter(c => c.isActive && c.name.trim())
     .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))
     .map(c => c.name.trim())
+}
+
+// A real product barcode (GTIN: EAN-13, UPC-12, EAN-8 or GTIN-14) with a correct check digit.
+// Google asks for it when the product has one; products without one (own brand, handmade,
+// no barcode on the box) are sent with identifier_exists = no instead.
+export function validGtin(code: string | null | undefined) {
+  const digits = String(code || '').replace(/[\s-]/g, '')
+  if (!/^(\d{8}|\d{12}|\d{13}|\d{14})$/.test(digits) || /^0+$/.test(digits)) return ''
+  const body = digits.slice(0, -1).split('').reverse().map(Number)
+  const sum = body.reduce((total, d, i) => total + d * (i % 2 === 0 ? 3 : 1), 0)
+  return (10 - (sum % 10)) % 10 === Number(digits.slice(-1)) ? digits : ''
 }
 
 const xml = (value: unknown) => String(value ?? '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;')
@@ -60,6 +73,7 @@ export function productFeedXml(products: FeedProduct[], store: { name: string; u
         `<g:price>${xml(price(onSale ? p.compareAtPrice! : p.basePrice, store.currency))}</g:price>`,
         ...(onSale ? [`<g:sale_price>${xml(price(p.basePrice, store.currency))}</g:sale_price>`] : []),
         `<g:brand>${xml(p.brand || p.vendor || store.name)}</g:brand>`,
+        validGtin(p.barcode) ? `<g:gtin>${validGtin(p.barcode)}</g:gtin>` : '<g:identifier_exists>no</g:identifier_exists>',
         ...(p.categories?.length ? [`<g:product_type>${xml(p.categories.join(', ').slice(0, 750))}</g:product_type>`, `<g:custom_label_0>${xml(p.categories[0].slice(0, 100))}</g:custom_label_0>`] : []),
         '</item>',
       ].join('')
