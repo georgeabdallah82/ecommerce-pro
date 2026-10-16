@@ -91,6 +91,11 @@ const COUNTS = {
   abandonedCheckouts: `SELECT count(*)::int AS n FROM "AbandonedCheckout"`,
   newsletter: `SELECT count(*)::int AS n FROM "Setting" WHERE key LIKE 'newsletter.subscriber.%'`,
   whatsappSignups: `SELECT count(*)::int AS n FROM "PhoneSubscriber"`,
+  questions: `SELECT count(*)::int AS n FROM "ProductQuestion"`,
+  inviteCodes: `SELECT count(*)::int AS n FROM "InviteCode"`,
+  winbackContacts: `SELECT count(*)::int AS n FROM "WinbackContact"`,
+  // Thank-you codes made for test orders' inviters: one-use discounts, switched off (kept, like all discounts).
+  inviteRewardCoupons: `SELECT count(*)::int AS n FROM "Coupon" WHERE "isActive" AND code IN (SELECT r."rewardCode" FROM "InviteReward" r WHERE r."orderId" IN (SELECT id FROM (${GONE_ORDERS}) g))`,
   emailOptOuts: `SELECT count(*)::int AS n FROM "EmailOptOut"`,
   emailLog: `SELECT count(*)::int AS n FROM "EmailLog"`,
   visitorSessions: `SELECT count(*)::int AS n FROM "LiveVisitorSession"`,
@@ -165,10 +170,11 @@ function printPreview({ c, orders, stock, state, args }) {
   console.log(`  Abandoned checkouts: ${c.abandonedCheckouts} | Newsletter signups: ${c.newsletter} | WhatsApp signups: ${c.whatsappSignups} | Email opt-outs: ${c.emailOptOuts}`)
   console.log(`  Email log: ${c.emailLog} | Visitor stats: ${c.visitorSessions} | Customer push devices: ${c.customerPushDevices}`)
   console.log(`  Back-in-stock requests: ${c.backInStock} | Notifications: ${c.notifications} | Audit log: ${c.auditLog}`)
+  console.log(`  Product questions: ${c.questions} | Invite codes: ${c.inviteCodes} | Win-back messages: ${c.winbackContacts}`)
   console.log(`  Order numbers restart: the next order is #${state.counter === null ? FIRST_ORDER_NUMBER : state.counter + 1} now, #${FIRST_ORDER_NUMBER} after the clean-up${keepOrders ? ' (or the one after the highest kept number)' : ''}`)
   console.log('')
   console.log('KEPT')
-  console.log(`  Products: ${c.products} | Collections: ${c.collections} | Pages: ${c.pages} | Coupons: ${c.coupons} (use counts restart)`)
+  console.log(`  Products: ${c.products} | Collections: ${c.collections} | Pages: ${c.pages} | Coupons: ${c.coupons} (use counts restart; ${c.inviteRewardCoupons} invite thank-you code(s) from test orders switched off)`)
   console.log(`  Staff accounts: ${c.staff} | Staff phones with order alerts: ${c.staffPushDevices} | Gift cards not from tests: ${c.giftCardsKept}`)
   console.log(`  Ad spend entries: ${c.adSpend} | Purchase orders: ${c.purchaseOrders} | Theme, settings, shipping, photos: all`)
   if (state.missingOrders.length || state.missingCustomers.length) {
@@ -215,6 +221,7 @@ async function clean(client, args, before) {
   await run(`DELETE FROM "OrderEdit" WHERE "orderId" IN (SELECT id FROM gone_orders)`)
   await run(`DELETE FROM "DraftOrder" d WHERE NOT EXISTS (SELECT 1 FROM "Order" o WHERE o.id = d."completedOrderId" AND o."orderNumber" = ANY($1::text[]))`, [params[0]])
   await run(`DELETE FROM "GiftCard" WHERE note IN (SELECT 'Issued from order ' || "orderNumber" FROM gone_orders) OR "customerId" IN (SELECT id FROM gone_users)`)
+  await run(`UPDATE "Coupon" SET "isActive" = false, "updatedAt" = now() WHERE code IN (SELECT r."rewardCode" FROM "InviteReward" r WHERE r."orderId" IN (SELECT id FROM gone_orders))`)
   await run(`DELETE FROM "Order" WHERE id IN (SELECT id FROM gone_orders)`)
 
   // Customer accounts (addresses, wishlists, coins, wallet, reset links go with the account).
@@ -223,7 +230,7 @@ async function clean(client, args, before) {
   await run(`DELETE FROM "User" WHERE id IN (SELECT id FROM gone_users)`)
 
   // Everything else that only exists because of testing.
-  for (const table of ['Review', 'AbandonedCheckout', 'PhoneSubscriber', 'EmailOptOut', 'EmailLog', 'LiveVisitorSession', 'PushSubscription', 'BackInStockRequest', 'Notification', 'PasswordResetToken', 'RateLimitBucket', 'AdminLoginLockout', 'AuditLog']) {
+  for (const table of ['Review', 'ProductQuestion', 'InviteCode', 'WinbackContact', 'AbandonedCheckout', 'PhoneSubscriber', 'EmailOptOut', 'EmailLog', 'LiveVisitorSession', 'PushSubscription', 'BackInStockRequest', 'Notification', 'PasswordResetToken', 'RateLimitBucket', 'AdminLoginLockout', 'AuditLog']) {
     await run(`DELETE FROM "${table}"`)
   }
   await run(`DELETE FROM "Setting" WHERE key LIKE 'newsletter.subscriber.%'`)

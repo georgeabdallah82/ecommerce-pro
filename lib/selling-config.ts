@@ -1,6 +1,7 @@
 import { db } from '@/lib/prisma'
 import { storefrontCached } from '@/lib/storefront-cache'
-import { SELLING_KEYS, SELLING_SETTING_KEYS, freeGiftConfig, giftOptionOn, lbpConfig, welcomeConfig, whatsappOrderOn } from '@/lib/selling'
+import { SELLING_KEYS, SELLING_SETTING_KEYS, freeGiftConfig, giftOptionOn, lbpConfig, questionsOn, welcomeConfig, whatsappOrderOn } from '@/lib/selling'
+import { inviteConfig, type InviteConfig } from '@/lib/invites-shared'
 import { activeFlashSales, type FlashSale } from '@/lib/flash-sale'
 
 export type SellingConfig = {
@@ -11,6 +12,8 @@ export type SellingConfig = {
   welcome: { enabled: boolean; code: string; title: string; delaySeconds: number }
   flashSales: FlashSale[]
   searchWords: string
+  invite: InviteConfig
+  questions: boolean
 }
 
 // What the store pages and checkout need to know about the selling tools, read once and shared
@@ -32,6 +35,8 @@ export function getSellingConfig(): Promise<SellingConfig> {
       welcome: welcomeConfig(map),
       flashSales,
       searchWords: map.get(SELLING_KEYS.searchWords) || '',
+      invite: inviteConfig(map),
+      questions: questionsOn(map),
     }
   })
 }

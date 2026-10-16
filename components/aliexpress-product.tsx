@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useI18n } from '@/components/lang-provider'
 import { dateLocale } from '@/lib/i18n'
-import { BadgeCheck, CalendarClock, Check, ChevronDown, ChevronRight, Heart, MessageCircle, MessageSquareText, Minus, Plus, Share2, ShoppingBag, Star } from 'lucide-react'
+import { BadgeCheck, CalendarClock, Check, ChevronDown, ChevronRight, Heart, MessageCircle, MessageSquareText, Minus, Plus, Share2, ShoppingBag, Star, X } from 'lucide-react'
 import { useCart } from '@/components/cart-provider'
 import { useWishlist } from '@/components/use-wishlist'
 import StorefrontSections, { ProductCard, QuickView, StarRow, StoreImage, formatSold, img, money } from '@/components/storefront-sections'
@@ -19,6 +19,7 @@ import type { Suggestion } from '@/lib/recommendations'
 import { FlashCountdown, LbpNote } from '@/components/selling-client'
 import { salePrice } from '@/lib/flash-sale-shared'
 import RecentlyViewedRow from '@/components/recently-viewed-row'
+import ProductQuestions from '@/components/product-questions'
 
 type AnyMap = Record<string, any>
 
@@ -75,7 +76,7 @@ function ReviewForm({ productId }: { productId: string }) {
   )
 }
 
-export default function AliExpressProduct({ theme, product, related, variantAvailability, productAvailable, trackInventory, continueSellingWhenOutOfStock, reviewEligibility, sections = [], collections = [], vapidPublicKey, customerEmail, boughtTogether = [], flashSale = null, lbpRate = 0, storeWhatsapp = '' }: { theme: AnyMap; product: AnyMap; related: AnyMap[]; boughtTogether?: Suggestion[]; variantAvailability: Array<{ name: string; sku: string; available: number }>; productAvailable: number; trackInventory: boolean; continueSellingWhenOutOfStock: boolean; reviewEligibility: ReviewEligibility; sections?: AnyMap[]; collections?: AnyMap[]; vapidPublicKey?: string; customerEmail?: string; flashSale?: { percent: number; endsAt: string } | null; lbpRate?: number; storeWhatsapp?: string }) {
+export default function AliExpressProduct({ theme, product, related, variantAvailability, productAvailable, trackInventory, continueSellingWhenOutOfStock, reviewEligibility, sections = [], collections = [], vapidPublicKey, customerEmail, boughtTogether = [], flashSale = null, lbpRate = 0, storeWhatsapp = '', questionsEnabled = false }: { theme: AnyMap; product: AnyMap; related: AnyMap[]; boughtTogether?: Suggestion[]; variantAvailability: Array<{ name: string; sku: string; available: number }>; productAvailable: number; trackInventory: boolean; continueSellingWhenOutOfStock: boolean; reviewEligibility: ReviewEligibility; sections?: AnyMap[]; collections?: AnyMap[]; vapidPublicKey?: string; customerEmail?: string; flashSale?: { percent: number; endsAt: string } | null; lbpRate?: number; storeWhatsapp?: string; questionsEnabled?: boolean }) {
   const { t, lang, count: plural } = useI18n()
   const { addItem } = useCart()
   const { wishlist, toggleWish } = useWishlist()
@@ -204,6 +205,9 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
   }
 
   const reviews = product.reviews || []
+  // Photos customers added to their reviews, newest reviews first (lib/review-photos.ts).
+  const reviewPhotos: string[] = reviews.flatMap((r: AnyMap) => Array.isArray(r.photos) ? r.photos : []).slice(0, 12)
+  const [viewPhoto, setViewPhoto] = useState('')
   const avgRating = Number(product.rating || 0)
 
   return (
@@ -370,6 +374,10 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
             </div>
           })()}
           {reviewEligibility === 'not_purchased' && <p className="aliReviewFormNote">{t('Only customers who bought this product can review it. You can write one once your order is confirmed.')}</p>}
+          {reviewPhotos.length > 0 && <div className="aliCustomerPhotos">
+            <h3>{t('Customer photos ({n})', { n: reviewPhotos.length })}</h3>
+            <div className="aliReviewPhotos">{reviewPhotos.map(url => <button type="button" key={url} className="aliReviewPhotoBtn" onClick={() => setViewPhoto(url)} aria-label={t('See photo')}><img src={url} alt="" loading="lazy" width={76} height={76} /></button>)}</div>
+          </div>}
           {reviews.length > 0 ? (
             <div className="aliReviewList">
               {reviews.map((r: AnyMap) => (
@@ -383,6 +391,9 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
                   </div>
                   {r.title && <div className="aliReviewTitle">{r.title}</div>}
                   <p>{r.body}</p>
+                  {Array.isArray(r.photos) && r.photos.length > 0 && <div className="aliReviewPhotos">
+                    {r.photos.map((url: string) => <button type="button" key={url} className="aliReviewPhotoBtn" onClick={() => setViewPhoto(url)} aria-label={t('See photo')}><img src={url} alt="" loading="lazy" width={76} height={76} /></button>)}
+                  </div>}
                 </div>
               ))}
             </div>
@@ -391,6 +402,12 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
           )}
         </div>
       )}
+
+      {questionsEnabled && <ProductQuestions productId={product.id} questions={Array.isArray(product.questions) ? product.questions : []} />}
+      {viewPhoto && <div className="photoViewer" role="dialog" aria-modal="true" aria-label={t('Customer photo')} onClick={() => setViewPhoto('')}>
+        <img src={viewPhoto} alt="" />
+        <button type="button" onClick={() => setViewPhoto('')} aria-label={t('Close')}><X size={22} /></button>
+      </div>}
 
       {showRelated && related.length > 0 && (
         <div className="aliContainer aliSection">

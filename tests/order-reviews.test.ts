@@ -21,8 +21,15 @@ describe('"Rate your order" link', () => {
 describe('reviews sent from the page', () => {
   it('keeps rated products from this order, with optional comments', () => {
     assert.deepEqual(parseOrderReviews([{ productId: 'p1', rating: 5, body: '  Great  ' }, { productId: 'p2', rating: 3 }], inOrder), {
-      reviews: [{ productId: 'p1', rating: 5, body: 'Great' }, { productId: 'p2', rating: 3, body: null }],
+      reviews: [{ productId: 'p1', rating: 5, body: 'Great', photos: [] }, { productId: 'p2', rating: 3, body: null, photos: [] }],
     })
+  })
+  it('keeps up to 3 review photos made by this store, and nothing else', () => {
+    const photo = '/api/media/review-1760000000000-abc123.jpg'
+    assert.deepEqual(parseOrderReviews([{ productId: 'p1', rating: 5, photos: [photo, photo] }], inOrder).reviews[0].photos, [photo])
+    assert.ok(parseOrderReviews([{ productId: 'p1', rating: 5, photos: ['https://evil.example/x.jpg'] }], inOrder).error)
+    assert.ok(parseOrderReviews([{ productId: 'p1', rating: 5, photos: ['/api/media/1760000000000-logo.png'] }], inOrder).error, 'a Files upload is not a review photo')
+    assert.ok(parseOrderReviews([{ productId: 'p1', rating: 5, photos: [1, 2, 3, 4].map(n => `/api/media/review-17600000000${n}-abcdef.jpg`) }], inOrder).error)
   })
   it('refuses products not in the order, the same product twice, bad ratings and long comments', () => {
     assert.ok(parseOrderReviews([{ productId: 'other', rating: 5 }], inOrder).error)

@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   try {
     const limit = await consumeDurableRateLimit(`order-review:${clientIp(req.headers)}`, 20, 60 * 60 * 1000)
     if (!limit.allowed) return json({ error: 'Too many review submissions. Please try again later.' }, { status: 429, headers: { ...NO_STORE, 'Retry-After': String(limit.retryAfterSeconds) } })
-    if (Number(req.headers.get('content-length') || 0) > 64 * 1024) return json({ error: 'Review payload is too large' }, { status: 413, headers: NO_STORE })
+    if (Number(req.headers.get('content-length') || 0) > 96 * 1024) return json({ error: 'Review payload is too large' }, { status: 413, headers: NO_STORE })
     const b = await req.json().catch(() => null) as Record<string, unknown> | null
     if (!b || typeof b !== 'object' || Array.isArray(b)) return json({ error: 'Invalid review' }, { status: 400, headers: NO_STORE })
 
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     for (const review of toSave) {
       try {
         created.push(await db.review.create({
-          data: { productId: review.productId, userId: order.userId || null, orderId: order.id, authorName, rating: review.rating, body: review.body },
+          data: { productId: review.productId, userId: order.userId || null, orderId: order.id, authorName, rating: review.rating, body: review.body, photos: review.photos },
           select: { id: true, productId: true, rating: true },
         }))
       } catch (error) {

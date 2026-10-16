@@ -14,6 +14,12 @@ export const SELLING_KEYS = {
   welcomeTitle: 'welcome.title',
   welcomeDelay: 'welcome.delaySeconds',
   searchWords: 'search.synonyms',
+  // Invite a friend (lib/invites-shared.ts) and product questions (lib/product-questions.ts)
+  inviteEnabled: 'invite.enabled',
+  inviteFriendPercent: 'invite.friendPercent',
+  inviteReward: 'invite.reward',
+  inviteRewardDays: 'invite.rewardDays',
+  questions: 'product.questions',
 } as const
 
 export const SELLING_SETTING_KEYS = Object.values(SELLING_KEYS)
@@ -55,6 +61,7 @@ export function freeGiftProgress(subtotal: number, threshold: number) {
 // ---- Smaller switches ----
 export const giftOptionOn = (settings: Settings) => read(settings, SELLING_KEYS.giftOption) !== 'false'
 export const whatsappOrderOn = (settings: Settings) => read(settings, SELLING_KEYS.whatsappOrder) !== 'false'
+export const questionsOn = (settings: Settings) => read(settings, SELLING_KEYS.questions) !== 'false'
 
 export function welcomeConfig(settings: Settings) {
   const code = String(read(settings, SELLING_KEYS.welcomeCode)).trim().toUpperCase()

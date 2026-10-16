@@ -16,6 +16,8 @@ import { getStoreIdentity } from '@/lib/store-identity'
 import { getThemeState } from '@/lib/theme'
 import { whatsappDigits } from '@/lib/links'
 import { customerOrderMessage, whatsappMessageLink } from '@/lib/order-whatsapp'
+import { inviteCardFor } from '@/lib/invites'
+import InviteShare from '@/components/invite-share'
 import s from './success.module.css'
 
 // Advanced matching for the ad pixels: SHA-256 of the buyer's email and phone, normalised the
@@ -100,6 +102,9 @@ export default async function Success({ searchParams }: { searchParams: Promise<
     place,
   }, tr))
 
+  // Invite a friend (Settings > Selling tools): the customer's own code, made for their phone.
+  const invite = processing ? null : await inviteCardFor(record, tr).catch(() => null)
+
   return <><main className={s.page}><div className={s.wrap}>
     <section className={`${s.card} ${s.hero}`}>
       <span className={`${s.tick} ${processing ? s.tickWarn : ''}`}>{processing ? <Clock size={34} /> : <CheckCircle2 size={34} />}</span>
@@ -135,6 +140,8 @@ export default async function Success({ searchParams }: { searchParams: Promise<
       </div>
       {(a.line1 || place) && <div className={s.address}><strong>{tr('Delivery to')}</strong>{[`${a.firstName || ''} ${a.lastName || ''}`.trim(), a.line1, a.line2, place, record.phone].filter(Boolean).map((line, n) => <span key={n} dir="auto">{line}</span>)}</div>}
     </section>
+
+    {invite && <InviteShare {...invite} />}
 
     <div className={s.actions}>
       <Link className={`${s.btn} ${s.btnPrimary}`} href="/shop">{tr('Continue shopping')}</Link>

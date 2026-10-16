@@ -16,6 +16,7 @@ import { themeTemplates } from '@/lib/theme-templates'
 import { storefrontCached } from '@/lib/storefront-cache'
 import { getBoughtTogether } from '@/lib/recommendations'
 import { getSellingConfig } from '@/lib/selling-config'
+import { isReviewPhotoUrl } from '@/lib/review-photos'
 import { saleFor } from '@/lib/flash-sale'
 import { getContactInfo } from '@/lib/store-contact'
 import { whatsappDigits } from '@/lib/links'
@@ -89,6 +90,13 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       tags: true,
       collections: { include: { collection: true } },
       metafields: { include: { definition: true } },
+      // Answered questions the owner published (Admin > Questions, lib/product-questions.ts).
+      questions: {
+        where: { published: true, answer: { not: null } },
+        orderBy: { answeredAt: 'desc' },
+        take: 20,
+        select: { id: true, name: true, question: true, answer: true, answeredAt: true },
+      },
     },
   })), getUnpublishedProductIds(), getCurrentUser()])
   const sections = (themeTemplates(theme).Product || []).filter((s: any) => s && !PRODUCT_ZONE_EXCLUDE.has(s.type))
@@ -230,7 +238,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       // First name and last initial only ("Maya H.") -- enough for trust, without a full name.
       // Reviews left without an account carry the name the customer typed instead.
       user: review.user ? { name: reviewerName(review.user.name) } : review.authorName ? { name: reviewerName(review.authorName) } : null,
+      photos: (review.photos || []).filter(isReviewPhotoUrl).slice(0, 3),
     })),
+    questions: product.questions.map(q => ({ id: q.id, name: reviewerName(q.name), question: q.question, answer: q.answer, answeredAt: q.answeredAt })),
     tags: product.tags.map((tag) => ({ id: tag.id, value: tag.value })),
     collections: product.collections.map((item) => ({
       sortOrder: item.sortOrder,
@@ -313,6 +323,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         flashSale={flash ? { percent: flash.percent, endsAt: flash.endsAt } : null}
         lbpRate={selling?.lbp.show ? selling.lbp.rate : 0}
         storeWhatsapp={storeWhatsapp}
+        questionsEnabled={selling?.questions !== false}
       />
       <Footer theme={theme} />
     </>

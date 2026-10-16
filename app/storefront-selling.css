@@ -44,3 +44,54 @@
 .flashStripTitle { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; }
 .flashStrip .flashBadge { background: #fff; color: var(--store-sale, #d7261e); font-size: 13px; padding: 3px 10px; }
 .flashStripCta { text-decoration: underline; font-size: 14px; }
+
+/* Invite your friends (components/invite-share.tsx): thank-you page and order page. */
+.inviteCard { display: grid; gap: 14px; padding: 20px 18px; border-radius: 16px; border: 1px solid color-mix(in srgb, var(--store-primary, #d7261e) 30%, var(--store-border, #e7e7e4)); background: color-mix(in srgb, var(--store-primary, #d7261e) 5%, var(--store-surface, #fff)); color: var(--store-text, #121212); }
+.inviteHead { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; align-items: start; }
+.inviteIcon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--store-primary, #d7261e); color: #fff; }
+.inviteHead h2 { margin: 0 0 4px; font-size: 17px; font-weight: 850; }
+.inviteHead p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--store-muted, #6b7280); }
+.inviteCode { padding: 12px; border: 2px dashed var(--store-primary, #d7261e); border-radius: 12px; background: var(--store-surface, #fff); text-align: center; font-size: 22px; font-weight: 900; letter-spacing: .1em; }
+.inviteActions { display: grid; gap: 10px; }
+@media (min-width: 520px) { .inviteActions { grid-template-columns: 1fr 1fr; } }
+.inviteWa, .inviteCopy { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 16px; border-radius: 12px; font: inherit; font-size: 15px; font-weight: 800; text-decoration: none; cursor: pointer; }
+.inviteWa { border: 0; background: #25d366; color: #fff !important; }
+.inviteWa:hover { background: #1fa855; }
+.inviteCopy { border: 1px solid var(--store-border, #e7e7e4); background: var(--store-surface, #fff); color: var(--store-text, #121212); }
+
+/* Review photos: adding them (components/review-photo-picker.tsx) and showing them (product page). */
+.reviewPhotos { display: grid; gap: 8px; }
+.reviewPhotoList, .aliReviewPhotos { display: flex; flex-wrap: wrap; gap: 8px; }
+.reviewPhotoThumb { position: relative; width: 72px; height: 72px; border-radius: 10px; overflow: hidden; border: 1px solid var(--store-border, #e7e7e4); }
+.reviewPhotoThumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.reviewPhotoThumb button { position: absolute; top: 3px; inset-inline-end: 3px; width: 24px; height: 24px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(0, 0, 0, .65); color: #fff; cursor: pointer; }
+.reviewPhotoAdd { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 14px; border: 1px dashed var(--store-border, #cfcfc8); border-radius: 12px; background: transparent; color: var(--store-text, #121212); font: inherit; font-size: 14.5px; font-weight: 700; cursor: pointer; }
+.reviewPhotoAdd:disabled { opacity: .6; cursor: progress; }
+.reviewPhotoError { margin: 0; color: #b42318; font-size: 13.5px; font-weight: 700; }
+.aliReviewPhotoBtn { width: 76px; height: 76px; padding: 0; border: 1px solid var(--store-border, #e7e7e4); border-radius: 10px; overflow: hidden; background: none; cursor: zoom-in; }
+.aliReviewPhotoBtn img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.aliCustomerPhotos { display: grid; gap: 8px; margin: 4px 0 14px; }
+.aliCustomerPhotos h3 { margin: 0; font-size: 15px; font-weight: 800; }
+.aliCustomerPhotos .aliReviewPhotos { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+.aliCustomerPhotos .aliReviewPhotoBtn { flex: none; }
+.photoViewer { position: fixed; inset: 0; z-index: 2700; display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, .86); }
+.photoViewer img { max-width: 100%; max-height: 86vh; border-radius: 10px; object-fit: contain; }
+.photoViewer button { position: absolute; top: 14px; inset-inline-end: 14px; width: 42px; height: 42px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .16); color: #fff; cursor: pointer; }
+
+/* Questions & answers on the product page (components/product-questions.tsx). */
+.aliQuestions { display: grid; gap: 14px; padding: 36px 0; border-top: 1px solid var(--store-border, #eaded4); scroll-margin-top: 120px; }
+.aliQuestions h2 { margin: 0; font-size: 22px; }
+.aliQaList { display: grid; gap: 12px; }
+.aliQaItem { display: grid; gap: 6px; padding: 14px 16px; border: 1px solid var(--store-border, #eaded4); border-radius: 12px; background: var(--store-surface, #fff); }
+.aliQaItem p { margin: 0; font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-line; }
+.aliQaQ { font-weight: 800; }
+.aliQaQ > span:first-child, .aliQaA > span:first-child { color: var(--store-primary, #d7261e); font-weight: 900; }
+.aliQaItem small { font-size: 12.5px; color: var(--store-muted, #6b7280); }
+.aliQaAsk { justify-self: start; display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 18px; border: 1px solid var(--store-text, #121212); border-radius: 12px; background: var(--store-surface, #fff); color: var(--store-text, #121212); font: inherit; font-size: 15px; font-weight: 800; cursor: pointer; }
+.aliQaForm { display: grid; gap: 12px; max-width: 520px; padding: 16px; border: 1px solid var(--store-border, #eaded4); border-radius: 12px; background: var(--store-secondary, #fff0e8); }
+.aliQaForm label { display: grid; gap: 6px; font-size: 14px; font-weight: 700; }
+.aliQaForm small { font-weight: 500; color: var(--store-muted, #6b7280); }
+.aliQaForm input, .aliQaForm textarea { width: 100%; box-sizing: border-box; min-height: 46px; padding: 10px 12px; border: 1px solid var(--store-border, #e7e7e4); border-radius: 10px; background: var(--store-surface, #fff); color: var(--store-text, #121212); font: inherit; font-size: 16px; }
+.aliQaForm .aliQaAsk { justify-self: stretch; justify-content: center; border-color: var(--store-primary, #d7261e); background: var(--store-primary, #d7261e); color: #fff; }
+.aliQaTrap { position: absolute !important; width: 1px !important; height: 1px !important; opacity: 0 !important; pointer-events: none !important; inset-inline-start: -9999px; }
+.aliQaSent { display: flex; align-items: center; gap: 8px; margin: 0; padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, #15803d 10%, var(--store-surface, #fff)); color: #15803d; font-weight: 700; font-size: 14.5px; line-height: 1.45; }

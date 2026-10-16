@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { Check, Copy, Gift, X } from 'lucide-react'
 import { useI18n } from '@/components/lang-provider'
 import { useSelling } from '@/components/selling-client'
+import { INVITE_STORAGE_KEY } from '@/components/invite-landing'
 
 const KEY = 'yh-welcome-v1'
 const SKIP = ['/checkout', '/cart', '/admin', '/account', '/order', '/review', '/orders', '/invoice', '/pay-invoice', '/track', '/theme-editor-preview', '/maintenance']
@@ -26,9 +27,12 @@ export default function WelcomePopup() {
 
   useEffect(() => {
     if (!welcome?.enabled || SKIP.some(p => pathname.startsWith(p))) return
-    try { if (localStorage.getItem(KEY)) return } catch { return }
+    // A friend's invite link already gave a first-order code (components/invite-landing.tsx).
+    const invited = () => { try { return !!localStorage.getItem(INVITE_STORAGE_KEY) } catch { return false } }
+    try { if (localStorage.getItem(KEY) || invited() || new URLSearchParams(window.location.search).has('invite')) return } catch { return }
     document.documentElement.dataset.welcomePopup = 'pending'
     const timer = window.setTimeout(() => {
+      if (invited()) { delete document.documentElement.dataset.welcomePopup; return }
       setOpen(true)
       try { localStorage.setItem(KEY, 'shown') } catch {}
     }, (welcome.delaySeconds || 0) * 1000)

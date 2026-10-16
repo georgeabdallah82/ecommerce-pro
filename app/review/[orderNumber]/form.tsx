@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { CheckCircle2, Star } from 'lucide-react'
 import { useI18n } from '@/components/lang-provider'
 import { markT } from '@/lib/i18n'
+import ReviewPhotoPicker from '@/components/review-photo-picker'
 import s from './review.module.css'
 
 type Product = { id: string; name: string; slug: string; image: string; alt: string; rated: boolean }
@@ -16,6 +17,8 @@ export default function OrderReviewForm({ orderNumber, token, defaultName, produ
   const [name, setName] = useState(defaultName)
   const [ratings, setRatings] = useState<Record<string, number>>({})
   const [bodies, setBodies] = useState<Record<string, string>>({})
+  const [photos, setPhotos] = useState<Record<string, string[]>>({})
+  const [uploading, setUploading] = useState<Record<string, boolean>>({})
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
@@ -24,7 +27,7 @@ export default function OrderReviewForm({ orderNumber, token, defaultName, produ
   async function submit(e: FormEvent) {
     e.preventDefault()
     setError('')
-    const reviews = open.filter(p => ratings[p.id]).map(p => ({ productId: p.id, rating: ratings[p.id], body: (bodies[p.id] || '').trim() }))
+    const reviews = open.filter(p => ratings[p.id]).map(p => ({ productId: p.id, rating: ratings[p.id], body: (bodies[p.id] || '').trim(), photos: photos[p.id] || [] }))
     if (!reviews.length) { setError(t('Choose a star rating for at least one product.')); return }
     if (!name.trim()) { setError(t('Please add your name.')); return }
     setBusy(true)
@@ -74,6 +77,9 @@ export default function OrderReviewForm({ orderNumber, token, defaultName, produ
             {rating > 0 && <label className={s.field}><span>{t('Your comment (optional)')}</span>
               <textarea rows={3} maxLength={2000} value={bodies[p.id] || ''} onChange={e => setBodies(b => ({ ...b, [p.id]: e.target.value }))} placeholder={t('What did you like? How is the quality?')} dir="auto" />
             </label>}
+            {rating > 0 && <ReviewPhotoPicker orderNumber={orderNumber} token={token} photos={photos[p.id] || []}
+              onChange={list => setPhotos(current => ({ ...current, [p.id]: list }))}
+              onBusy={busyNow => setUploading(current => ({ ...current, [p.id]: busyNow }))} />}
           </>}
       </section>
     })}
@@ -84,7 +90,7 @@ export default function OrderReviewForm({ orderNumber, token, defaultName, produ
         <small>{t('Shown with your review as first name and initial, for example "Maya H."')}</small>
       </label>
       {error && <p className={s.error} role="alert">{error}</p>}
-      <button className={`${s.btn} ${s.btnPrimary}`} type="submit" disabled={busy}>{busy ? t('Sending…') : t('Send my review')}</button>
+      <button className={`${s.btn} ${s.btnPrimary}`} type="submit" disabled={busy || Object.values(uploading).some(Boolean)}>{busy ? t('Sending…') : Object.values(uploading).some(Boolean) ? t('Adding photo…') : t('Send my review')}</button>
     </section>
   </form></main>
 }

@@ -194,6 +194,7 @@ model Product {
   collections        CollectionProduct[]
   metafields         MetafieldValue[]
   backInStockRequests BackInStockRequest[]
+  questions          ProductQuestion[]
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
   @@index([status])
@@ -271,6 +272,8 @@ model Review {
   rating     Int
   title      String?
   body       String?
+  // Up to 3 photos the customer added (lib/review-photos.ts), stored in R2 like other uploads.
+  photos     String[] @default([])
   approved   Boolean  @default(false)
   featured   Boolean  @default(false)
   createdAt  DateTime @default(now())
@@ -391,6 +394,7 @@ model Order {
   reviews             Review[]
   notesHistory        OrderNote[]
   paymentTransactions PaymentTransaction[]
+  inviteReward        InviteReward?
   @@index([createdAt])
   @@index([status])
   @@index([userId])
@@ -785,4 +789,49 @@ model PhoneSubscriber {
   name       String?
   source     String   @default("welcome-popup")
   createdAt  DateTime @default(now())
+}
+
+// Questions shoppers ask on a product page (lib/product-questions.ts). They stay private until the
+// owner answers and publishes them in Admin > Questions; the phone, if given, is only for telling
+// the shopper the answer on WhatsApp.
+model ProductQuestion {
+  id         String    @id @default(cuid())
+  productId  String
+  name       String
+  phone      String?
+  question   String
+  answer     String?
+  answeredAt DateTime?
+  published  Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  @@index([productId, published])
+  @@index([createdAt])
+}
+
+// "Invite a friend" (lib/invites.ts): each customer's own code, one per phone number. A friend
+// who orders with it gets the first-order discount set in Settings > Selling tools.
+model InviteCode {
+  code      String   @id
+  phone     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+}
+
+// The thank-you code the inviter gets once the friend's order is delivered: a one-use discount
+// created in Discounts (rewardCode), one per friend's order.
+model InviteReward {
+  orderId    String   @id
+  inviteCode String
+  rewardCode String   @unique
+  createdAt  DateTime @default(now())
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  @@index([inviteCode])
+}
+
+// Admin > Customers > Win back: when a past customer was last messaged from the list, so the
+// same person is not messaged again too soon.
+model WinbackContact {
+  phone       String   @id
+  contactedAt DateTime @default(now())
 }

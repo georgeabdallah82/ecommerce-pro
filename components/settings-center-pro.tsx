@@ -14,7 +14,7 @@ const groups = [
   { key: 'Payments', label: 'Payments', icon: CreditCard, desc: 'Payment methods and checkout status' },
   { key: 'Shipping', label: 'Shipping & delivery', icon: Truck, desc: 'Shipping defaults and checkout behavior' },
   { key: 'Markets', label: 'Markets', icon: Globe2, desc: 'Currency and localization' },
-  { key: 'Selling', label: 'Selling tools', icon: Gift, desc: 'Free gift, gift option, welcome discount, WhatsApp button, search words' },
+  { key: 'Selling', label: 'Selling tools', icon: Gift, desc: 'Free gift, gift option, welcome discount, invite a friend, questions, WhatsApp button, search words' },
   { key: 'Notifications', label: 'Notifications', icon: Bell, desc: 'Order and operational alerts' },
   { key: 'Email', label: 'Email & messaging', icon: Mail, desc: 'Customer communication preferences' },
   { key: 'Security', label: 'Security & access', icon: ShieldCheck, desc: 'Staff access and account protection' },
@@ -71,6 +71,9 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
     'welcome.title': map.get('welcome.title') || '',
     'welcome.delaySeconds': map.get('welcome.delaySeconds') || '8',
     'search.synonyms': map.get('search.synonyms') || '',
+    'invite.friendPercent': map.get('invite.friendPercent') || '10',
+    'invite.reward': map.get('invite.reward') || '5',
+    'invite.rewardDays': map.get('invite.rewardDays') || '60',
     'store.address': map.get('store.address') || '',
     'policy.returnDays': map.get('policy.returnDays') || POLICY_DEFAULTS.returnDays,
     'policy.refundTime': map.get('policy.refundTime') || POLICY_DEFAULTS.refundTime,
@@ -103,10 +106,10 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
       'payment.cod', 'payment.card', 'payment.bank', 'payment.wallet',
       'checkout.guestCheckout', 'notifications.orderEmail', 'notifications.lowStock',
       'notifications.reviews', 'notifications.dailySummary', 'email.customerOrder', 'email.fulfillment', 'email.abandonedCheckout', 'email.giftCard', 'email.returnStatus', 'email.orderEdit', 'email.reviewRequest',
-      'checkout.giftOption', 'product.whatsappOrder',
+      'checkout.giftOption', 'product.whatsappOrder', 'product.questions',
     ].map(k => [k, map.get(k) !== 'false'])),
     // Off until switched on.
-    ...Object.fromEntries(['currency.showLbp', 'freeGift.enabled', 'welcome.enabled'].map(k => [k, map.get(k) === 'true'])),
+    ...Object.fromEntries(['currency.showLbp', 'freeGift.enabled', 'welcome.enabled', 'invite.enabled'].map(k => [k, map.get(k) === 'true'])),
     'maintenance.enabled': map.get('maintenance.enabled') === 'true',
   }))
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig>(defaultPaymentConfig)
@@ -348,6 +351,17 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
               <Field label="Title" value={values['welcome.title']} placeholder="A gift for your first order" onChange={v => set('welcome.title', v)} />
               <Field label="Show after (seconds)" value={values['welcome.delaySeconds']} placeholder="8" onChange={v => set('welcome.delaySeconds', v.replace(/[^\d]/g, ''))} />
               <p className={ui.muted}><a className={ui.textLink} href="/admin/customers/whatsapp">See the WhatsApp list ({whatsappListCount})</a></p>
+            </Card>
+            <Card title="Invite a friend" desc="Every customer gets their own code on the thank-you page to share on WhatsApp. Friends get a discount on their first order. When a friend's order is delivered, you send the customer a thank-you code from Marketing > Invite a friend.">
+              <Toggle label="Turn on invite a friend" keyName="invite.enabled" value={flags['invite.enabled']} onChange={() => toggle('invite.enabled')} />
+              <Field label="Friend's discount on their first order (%)" value={values['invite.friendPercent']} placeholder="10" onChange={v => set('invite.friendPercent', v.replace(/[^\d]/g, '').slice(0, 2))} />
+              <Field label="Thank-you amount for the customer (in your currency)" value={values['invite.reward']} placeholder="5" onChange={v => set('invite.reward', v.replace(/[^\d.]/g, ''))} />
+              <Field label="Thank-you code valid for (days)" value={values['invite.rewardDays']} placeholder="60" onChange={v => set('invite.rewardDays', v.replace(/[^\d]/g, '').slice(0, 3))} />
+              <p className={ui.muted}><a className={ui.textLink} href="/admin/marketing/invites">See friends&apos; orders and thank-you codes</a></p>
+            </Card>
+            <Card title="Questions on product pages" desc="Shoppers can ask about a product. You answer in Content > Questions, and published answers show on the product page for everyone.">
+              <Toggle label="Show the Ask a question form" keyName="product.questions" value={flags['product.questions']} onChange={() => toggle('product.questions')} />
+              <p className={ui.muted}><a className={ui.textLink} href="/admin/questions">See the questions</a></p>
             </Card>
             <Card title="Order on WhatsApp button" desc="A button on every product page that sends the product, option, quantity and price to your WhatsApp.">
               <Toggle label="Show the button" keyName="product.whatsappOrder" value={flags['product.whatsappOrder']} onChange={() => toggle('product.whatsappOrder')} />

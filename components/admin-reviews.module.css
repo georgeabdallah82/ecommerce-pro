@@ -64,3 +64,9 @@
 .pillButton > span { white-space: nowrap; }
 .pillButton:disabled { opacity: .55; cursor: default; }
 @media (max-width: 640px) { .reviewCell { min-width: 0; } .snippet { max-width: none; } }
+
+/* Customer photos on a review (lib/review-photos.ts): open, or remove one. */
+.photos { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.photo { position: relative; width: 64px; height: 64px; border-radius: 8px; overflow: hidden; border: 1px solid var(--admin-border); }
+.photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo button { position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(0, 0, 0, .65); color: #fff; cursor: pointer; }

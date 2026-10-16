@@ -25,6 +25,7 @@ import { markCheckoutsRecovered, maybeSendCartReminders } from '@/lib/cart-remin
 import { internationalPhone } from '@/lib/phone'
 import { freeGiftFor } from '@/lib/free-gift'
 import { orderedBefore } from '@/lib/customer-history'
+import { checkInvite } from '@/lib/invites'
 import { adContextFromRequest, sendMetaPurchase } from '@/lib/meta-capi'
 import { orderSuccessPath } from '@/lib/order-access'
 import { BLOCKED_MESSAGE, BLOCKED_PHONES_KEY, isBlocked, parseBlockedPhones } from '@/lib/blocked-phones'
@@ -74,6 +75,7 @@ const SAFE_CHECKOUT_MESSAGES = new Set([
   'This coupon requires a customer account',
   'This coupon is for first orders only',
   'This coupon is no longer available',
+  'This is your own invite code. Share it with your friends.',
   'Your cart is empty.',
   'One or more products are unavailable',
   'Invalid product option selected.',
@@ -254,6 +256,8 @@ export async function POST(req: Request) {
     // "First order only" without an account (the welcome-popup code): this phone number or email
     // must not have ordered before.
     if (coupon?.firstOrderOnly && !user?.id && await orderedBefore(input.phone || input.shippingAddress.phone, orderEmail, settings['store.country'] || 'Lebanon')) throw new Error('This coupon is for first orders only')
+    // A friend's invite code (lib/invites.ts): new customers only, and not the inviter's own.
+    if (coupon?.invite) await checkInvite(coupon.invite, { phone: input.phone || input.shippingAddress.phone, email: orderEmail, userId: user?.id }, settings['store.country'] || 'Lebanon')
     const discountedSubtotal = Math.max(0, subtotal - discount.total)
     // Free gift above an amount (lib/free-gift.ts): added at 0 after the prices are worked out, so
     // no discount, bundle or tax ever counts it; reserved below with the other items.
@@ -359,7 +363,8 @@ export async function POST(req: Request) {
           const reserved = await reserveStock(tx, byId.get(item.productId)!, item.variantId, item.quantity, orderNumber)
           if (reserved.length) undo.push(() => undoReservations(tx, reserved, orderNumber, 'Checkout failed before the order was placed'))
         }
-        if (coupon) {
+        // Invite codes are not discounts in Discounts: nothing to count (lib/invites.ts).
+        if (coupon && !coupon.invite) {
           const couponUpdate = await tx.coupon.updateMany({ where: { id: coupon.id, isActive: true, ...(coupon.maxUses !== null ? { usedCount: { lt: coupon.maxUses } } : {}) }, data: { usedCount: { increment: 1 } } })
           if (couponUpdate.count !== 1) throw new Error('This coupon is no longer available')
           undo.push(() => tx.coupon.updateMany({ where: { id: coupon.id, usedCount: { gt: 0 } }, data: { usedCount: { decrement: 1 } } }))
