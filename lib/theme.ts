@@ -8,6 +8,7 @@ import {parseJson} from '@/lib/utils'
 import {defaultTheme,defaultSections,defaultNavigation} from './theme-defaults'
 import { setThemeTemplates } from '@/lib/theme-templates'
 import { switchToMarket, isMarket, MARKET_COLORS } from '@/lib/storefront-market'
+import { siteHeaderSections } from '@/lib/site-header'
 export type ThemeConfig=typeof defaultTheme
 export {defaultTheme,defaultSections,defaultNavigation}
 
@@ -154,10 +155,10 @@ async function loadThemeState(){
     if(key!=='Home page') editorTemplates[key]=headerFirst(value as any[])
   }
   // Server code reads every page template (product/collection/cart/custom page sections),
-  // but the browser only needs each template's header + announcement settings (the header
-  // component picks them by route). Pages pass `theme` into client components, so the full
-  // templates were serialized into every page's HTML. They're kept server-side instead (read
-  // them with themeTemplates(theme)); headerTemplates is the slim copy the browser gets.
+  // but the browser only needs the site-wide header + announcement (lib/site-header.ts).
+  // Pages pass `theme` into client components, so the full templates were serialized into
+  // every page's HTML. They're kept server-side instead (read them with themeTemplates(theme));
+  // siteHeader is the slim copy the browser gets.
   delete theme.editorTemplates
   // English or Arabic for this visitor (lib/i18n.ts): the owner's Arabic texts and the
   // dictionary replace the English ones here, so every storefront page gets them.
@@ -165,7 +166,7 @@ async function loadThemeState(){
   const localTemplates=localize(editorTemplates,lang)
   const localTheme:any=localize(theme,lang)
   setThemeTemplates(localTheme,localTemplates)
-  localTheme.headerTemplates=Object.fromEntries(Object.entries(localTemplates).map(([key,list])=>[key,(Array.isArray(list)?list:[]).filter((section:any)=>section?.type==='header'||section?.type==='announcement')]))
+  localTheme.siteHeader=siteHeaderSections(localTemplates)
 
   return {theme:localTheme,sections:localize(sections,lang),navigation:localize(withAbsoluteUrls(parseJson<any[]>(navigationSetting?.value,defaultNavigation)),lang),lang,switchable,languagePreview:preview}
 }
