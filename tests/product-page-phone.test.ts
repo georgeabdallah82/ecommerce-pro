@@ -19,4 +19,11 @@ describe('product page on phones', () => {
   it('does not show empty stars and "0 reviews" before the first review', () => {
     assert.match(page, /reviews\.length > 0 && <span className="aliProductRating">/)
   })
+
+  it('leaves no blank block when every added section is hidden', () => {
+    // An empty .focalStorefront wrapper takes min-height:60vh (storefront-legacy.css): a hidden
+    // Trust strip on the Product tab left ~600px of blank space above the footer.
+    const sections = readFileSync('components/storefront-sections.tsx', 'utf8')
+    assert.match(sections, /if\(!visible\.length&&!preview\)return null;/)
+  })
 })
