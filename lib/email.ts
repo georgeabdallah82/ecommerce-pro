@@ -2,6 +2,7 @@ import { db } from '@/lib/prisma'
 import { issueGiftCardsForOrder } from '@/lib/gift-cards'
 import { runInBackground } from '@/lib/background'
 import type { WeeklyFacts } from '@/lib/weekly-report'
+import { securityAlertText, type SecurityAlert } from '@/lib/sign-in-devices'
 
 function credentials() {
   const apiKey = process.env.RESEND_API_KEY
@@ -499,6 +500,23 @@ export async function sendDailySummaryEmail(to: string, summary: { subject: stri
   `, brand)
   const text = [`Good morning. ${summary.dayLabel}: ${summary.ordersYesterday} order(s), ${summary.sales}.`, ...(summary.waiting.length ? ['Waiting for you:', ...summary.waiting.map(line => `- ${line}`)] : ['Nothing waiting for you.']), ...(admin ? [`Admin: ${admin}`] : [])].join('\n')
   return sendEmail(to, summary.subject, html, text)
+}
+
+// A sign-in from a new device, or an account locked by wrong passwords or 2-step codes
+// (lib/sign-in-alerts.ts). Sent to the account's owner and the super admins.
+export async function sendSecurityAlertEmail(to: string, alert: SecurityAlert) {
+  const brand = await emailBrand()
+  const message = securityAlertText(alert)
+  const settings = siteUrl() ? `${siteUrl()}/admin/settings` : ''
+  const html = layout(`
+    <h1 style="font-size:20px;margin:0 0 12px;color:#b42318">Security alert</h1>
+    ${message.lines.map(line => `<p style="font-size:14px;line-height:1.6;color:#3f3f46;margin:0 0 10px">${escapeHtml(line)}</p>`).join('')}
+    ${alert.ip ? `<p style="font-size:12px;color:#6b7280;margin:14px 0 0">Address: ${escapeHtml(alert.ip)}</p>` : ''}
+    ${settings ? button(settings, 'Open settings', brand) : ''}
+    <p style="font-size:12px;color:#6b7280;margin:20px 0 0">You can turn these alerts off in Admin &gt; Settings &gt; Notifications.</p>
+  `, brand)
+  const text = [message.subject, '', ...message.lines, ...(settings ? ['', `Settings: ${settings}`] : [])].join('\n')
+  return sendEmail(to, message.subject, html, text)
 }
 
 // The owner's weekly report (Mondays, app/api/internal/daily/route.ts, lib/weekly-report.ts).

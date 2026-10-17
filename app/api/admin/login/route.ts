@@ -4,6 +4,7 @@ import { verifyPassword, setSession } from '@/lib/auth'
 import { consumeRateLimit, clearRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { setTwoStepTicket } from '@/lib/two-step'
+import { alertLockout, recordSignIn } from '@/lib/sign-in-alerts'
 
 const STAFF_ROLES = ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'SUPPORT', 'EDITOR'] as const
 const WINDOW_MS = 15 * 60 * 1000
@@ -58,6 +59,8 @@ export async function POST(request: Request) {
       create: { email, failedCount, lockedUntil },
       update: { failedCount, lockedUntil },
     })
+    // Locked by this attempt, and the account is a real staff account: tell the owner.
+    if (lockedUntil && user && user.isActive && STAFF_ROLES.includes(user.role as typeof STAFF_ROLES[number])) await alertLockout(request.headers, user, 'password_lockout')
     return NextResponse.json({ error: 'Invalid admin credentials' }, { status: 401, headers })
   }
 
@@ -73,5 +76,6 @@ export async function POST(request: Request) {
   }
   await db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
   await setSession(user.id)
+  await recordSignIn(request.headers, user)
   return NextResponse.json({ ok: true }, { headers })
 }

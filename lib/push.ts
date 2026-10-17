@@ -207,6 +207,14 @@ export async function checkLowStockAlerts(inventoryIds: Iterable<string>) {
   return sendToSubscriptions({ title: `Low stock: ${low.length} item${low.length === 1 ? '' : 's'}`, body, url: '/admin/inventory', lowStock: true })
 }
 
+// A security alert (lib/sign-in-alerts.ts): a sign-in from a new device, or an account locked
+// by wrong passwords. Only the devices of the people it is about (the account's owner and the
+// super admins); `userIds` is never empty, so it can't fall back to every staff device.
+export async function sendSecurityAlertPush(userIds: string[], payload: { title: string; body: string }) {
+  if (!userIds.length) return { sent: 0, skipped: true, failed: 0 }
+  return sendToSubscriptions({ ...payload, url: '/admin/settings', security: true }, undefined, 'staff', userIds)
+}
+
 // The owner's morning summary on the phone (lib/daily-summary.ts), to staff who turned
 // notifications on.
 export async function sendDailySummaryPush(payload: { title: string; body: string }) {

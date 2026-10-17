@@ -8,6 +8,7 @@ import ui from './admin-ui.module.css'
 import MediaPicker from './media-picker'
 import AppIconCard from './app-icon-card'
 import TwoStepCard from './two-step-card'
+import SignInAlertsCard from './sign-in-alerts-card'
 import { REGION_CODES, countryName, deliveryCountries } from '@/lib/delivery-countries'
 import { POLICY_DEFAULTS } from '@/lib/policy-defaults'
 
@@ -107,7 +108,7 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
     ...Object.fromEntries([
       'payment.cod', 'payment.card', 'payment.bank', 'payment.wallet',
       'checkout.guestCheckout', 'notifications.orderEmail', 'notifications.lowStock',
-      'notifications.reviews', 'notifications.dailySummary', 'notifications.weeklyReport', 'email.customerOrder', 'email.fulfillment', 'email.abandonedCheckout', 'email.giftCard', 'email.returnStatus', 'email.orderEdit', 'email.reviewRequest',
+      'notifications.reviews', 'notifications.security', 'notifications.dailySummary', 'notifications.weeklyReport', 'email.customerOrder', 'email.fulfillment', 'email.abandonedCheckout', 'email.giftCard', 'email.returnStatus', 'email.orderEdit', 'email.reviewRequest',
       'checkout.giftOption', 'product.whatsappOrder', 'product.questions',
     ].map(k => [k, map.get(k) !== 'false'])),
     // Off until switched on.
@@ -383,6 +384,7 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
               <Toggle label="New order notifications" keyName="notifications.orderEmail" value={flags['notifications.orderEmail']} onChange={() => toggle('notifications.orderEmail')} />
               <Toggle label="Low stock alerts" keyName="notifications.lowStock" value={flags['notifications.lowStock']} onChange={() => toggle('notifications.lowStock')} />
               <Toggle label="Review moderation alerts" keyName="notifications.reviews" value={flags['notifications.reviews']} onChange={() => toggle('notifications.reviews')} />
+              <Toggle label="Sign-in alerts: a new device signed in to the admin, or an account was locked by wrong passwords" keyName="notifications.security" value={flags['notifications.security']} onChange={() => toggle('notifications.security')} />
             </Card>
             <Card title="Morning summary" desc="Every morning at about 8:30 (store time): yesterday's orders and sales, orders waiting for you, low stock and new reviews. Sent by email and as a phone notification to staff who turned notifications on. On Mondays, a weekly report email too: last week's sales against the week before, best sellers and top areas.">
               <Toggle label="Send the morning summary" keyName="notifications.dailySummary" value={flags['notifications.dailySummary']} onChange={() => toggle('notifications.dailySummary')} />
@@ -423,6 +425,7 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
               <a className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/users">Manage users &amp; roles</a>
             </Card>
             <TwoStepCard />
+            <SignInAlertsCard />
             <BlockedPhonesCard />
             </>
           )}
