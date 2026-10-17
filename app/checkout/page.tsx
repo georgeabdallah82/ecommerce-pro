@@ -12,6 +12,7 @@ import { CartNotices } from '@/components/cart-notices'
 import { useI18n } from '@/components/lang-provider'
 import { internationalPhone } from '@/lib/phone'
 import { LbpNote } from '@/components/selling-client'
+import { countryName } from '@/lib/delivery-countries'
 import s from './checkout.module.css'
 
 // Checkout: phone first, email optional (many customers in Lebanon don't want to give one), the
@@ -28,7 +29,7 @@ type PaymentDetails = {
   bank: { bankName: string; accountName: string; iban: string; instructions: string } | null
   wallet: { provider: string; accountName: string; accountNumber: string; instructions: string } | null
 }
-type StoreSettings = { payment: { cod: boolean; card: boolean; bank: boolean; wallet: boolean; details: PaymentDetails }; checkout: { guestCheckout: boolean }; selling?: { giftOption?: boolean; lbp?: { show: boolean; rate: number } } | null }
+type StoreSettings = { payment: { cod: boolean; card: boolean; bank: boolean; wallet: boolean; details: PaymentDetails }; checkout: { guestCheckout: boolean; countries?: Array<{ code: string; name: string }> }; selling?: { giftOption?: boolean; lbp?: { show: boolean; rate: number } } | null }
 type ClientCheckout = { type: 'mpgs'; merchantId: string; sessionId: string; scriptUrl: string }
 type ShippingRate = { id: string | null; name: string; price: number; freeAbove: number | null; estimatedDays: number | null }
 type DeliveryArea = { name: string; eta: string }
@@ -41,7 +42,7 @@ const FIELD_ORDER = ['phone', 'email', 'area', 'firstName', 'lastName', 'city', 
 declare global { interface Window { Checkout?: { configure: (options: unknown) => void; showPaymentPage: () => void } } }
 
 export default function Checkout() {
-  const { t, count: plural } = useI18n()
+  const { t, count: plural, lang } = useI18n()
   const { selectedItems: items, selectedSubtotal: subtotal, clearSelected, addItem, ready: cartReady, items: cartItems } = useCart()
   const [recovering, setRecovering] = useState(false)
   // Ads: the shopper reached checkout with these items (once per visit for the same cart).
@@ -152,9 +153,9 @@ export default function Checkout() {
   const [coinsToUse, setCoinsToUse] = useState(0)
   const [summaryOpen, setSummaryOpen] = useState(false)
 
-  // Where it goes: country (Lebanon unless changed), the area from the store's list, the rate.
+  // Where it goes: a country the store delivers to (Settings > Shipping & delivery; its own
+  // country first, so Lebanon unless changed), the area from the store's list, the rate.
   const [country, setCountry] = useState('Lebanon')
-  const [countryOpen, setCountryOpen] = useState(false)
   const [areas, setAreas] = useState<DeliveryArea[]>([])
   const [area, setArea] = useState('')
   const [shippingRates, setShippingRates] = useState<ShippingRate[]>([])
@@ -253,6 +254,9 @@ export default function Checkout() {
     settings.payment.cod && ['COD', t('Cash on delivery')], settings.payment.card && ['CARD', t('Card')], settings.payment.bank && ['BANK_TRANSFER', t('Bank transfer')], settings.payment.wallet && authenticated && ['WALLET', t('Wallet · {amount} available', { amount: money(walletBalance, walletCurrency) })],
   ].filter(Boolean) as [string, string][] : []
   const guestBlocked = Boolean(settings && sessionLoaded && !authenticated && settings.checkout.guestCheckout === false)
+  // Only the countries the store delivers to; the first is its own country.
+  const countries = useMemo(() => settings?.checkout.countries?.length ? settings.checkout.countries : [{ code: 'LB', name: 'Lebanon' }], [settings])
+  useEffect(() => { if (!countries.some(c => c.name === country)) setCountry(countries[0].name) }, [countries, country])
   const enabledMethodSignature = enabledMethods.map(([value]) => value).join('|')
   useEffect(() => { if (enabledMethods.length && !enabledMethods.some(([value]) => value === paymentMethod)) setPaymentMethod(enabledMethods[0][0]) }, [enabledMethodSignature, paymentMethod])
 
@@ -472,9 +476,12 @@ export default function Checkout() {
         <label className={s.field}><span className={s.label}>{t('Floor, apartment, landmark')} <i>{t('(optional)')}</i></span><input className={s.input} name="line2" autoComplete="address-line2" placeholder={t('e.g. 3rd floor, near the pharmacy')} /></label>
         {!useAreaList && <label className={s.field}><span className={s.label}>{t('Area / region')} <i>{t('(optional)')}</i></span><input className={s.input} name="region" autoComplete="address-level1" /></label>}
         {!inLebanon && <label className={s.field}><span className={s.label}>{t('Postal code')} <i>{t('(optional)')}</i></span><input className={s.input} name="postalCode" autoComplete="postal-code" /></label>}
-        {countryOpen
-          ? <label className={fieldClass('country')}><span className={s.label}>{t('Country')}</span><input className={s.input} name="country" autoComplete="country-name" value={country} onChange={e => setCountry(e.target.value)} aria-invalid={!!errors.country} />{fieldError('country')}</label>
-          : <div className={s.countryLine}><span>{t('Country:')} <strong>{country}</strong></span><button type="button" className={s.linkBtn} onClick={() => setCountryOpen(true)}>{t('Change')}</button></div>}
+        {countries.length > 1
+          ? <label className={fieldClass('country')}><span className={s.label}>{t('Country')}</span>
+            <select className={s.select} name="country" autoComplete="country-name" value={country} onChange={e => { setCountry(e.target.value); clearError('country') }} aria-invalid={!!errors.country}>
+              {countries.map(c => <option key={c.code} value={c.name}>{countryName(c.code, lang)}</option>)}
+            </select>{fieldError('country')}</label>
+          : <div className={s.countryLine}><span>{t('Country:')} <strong>{countries[0] ? countryName(countries[0].code, lang) : country}</strong></span></div>}
 
         <div className={s.field}>
           <span className={s.label}>{t('Delivery method')}</span>

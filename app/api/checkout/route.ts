@@ -5,6 +5,7 @@ import { audit } from '@/lib/audit'
 import { checkoutSchema } from '@/lib/validation'
 import { json } from '@/lib/utils'
 import { calculateShipping, getTaxRatePercent } from '@/lib/pricing'
+import { DELIVERY_COUNTRIES_KEY, countryCode, deliveryCountries } from '@/lib/delivery-countries'
 import { releaseOrderReservations, reserveStock, undoReservations } from '@/lib/inventory'
 import { getPaymentProvider } from '@/lib/payments'
 import { sendNewOrderPush } from '@/lib/push'
@@ -168,7 +169,7 @@ export async function POST(req: Request) {
     const idempotencyKey = req.headers.get('x-idempotency-key')?.trim().slice(0, 190) || null
     const paymentMethod = input.paymentMethod as PaymentMethod
     const paymentProvider = await getPaymentProvider()
-    const settingRows = await db.setting.findMany({ where: { key: { in: ['payment.cod', 'payment.card', 'payment.bank', 'payment.wallet', 'checkout.guestCheckout', BLOCKED_PHONES_KEY, 'store.country'] } }, select: { key: true, value: true } })
+    const settingRows = await db.setting.findMany({ where: { key: { in: ['payment.cod', 'payment.card', 'payment.bank', 'payment.wallet', 'checkout.guestCheckout', BLOCKED_PHONES_KEY, 'store.country', DELIVERY_COUNTRIES_KEY] } }, select: { key: true, value: true } })
     const settings = Object.fromEntries(settingRows.map(row => [row.key, row.value]))
     const guestCheckoutEnabled = settings['checkout.guestCheckout'] !== 'false'
     const paymentEnabled: Record<PaymentMethod, boolean> = {
@@ -181,6 +182,10 @@ export async function POST(req: Request) {
     if (paymentMethod === PaymentMethod.WALLET && !user?.id) return json({ error: 'Wallet checkout requires a customer account.' }, { status: 400 })
     if (!paymentEnabled[paymentMethod]) return json({ error: 'This payment method is currently unavailable.' }, { status: 400 })
     if (input.coinsToUse > 0 && !user?.id) return json({ error: 'Sign in to use your coins.' }, { status: 400 })
+    // Only the countries the store delivers to (Settings > Shipping & delivery).
+    if (!deliveryCountries(settings[DELIVERY_COUNTRIES_KEY], settings['store.country']).includes(countryCode(input.shippingAddress.country))) {
+      return json({ error: "We don't deliver to this country yet. Please choose a country from the list." }, { status: 400 })
+    }
     // Numbers the store blocked (repeatedly refused cash-on-delivery packages) can't order online.
     if (isBlocked(parseBlockedPhones(settings[BLOCKED_PHONES_KEY]), [input.phone, input.shippingAddress.phone], settings['store.country'])) return json({ error: BLOCKED_MESSAGE }, { status: 403 })
 

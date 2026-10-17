@@ -4,11 +4,12 @@ import { json } from '@/lib/utils'
 import { getPublicPaymentMethods } from '@/lib/payment-methods-public'
 import { config } from '@/lib/config'
 import { getSellingConfig } from '@/lib/selling-config'
+import { DELIVERY_COUNTRIES_KEY, deliveryCountries, deliveryCountryOptions } from '@/lib/delivery-countries'
 
 const PUBLIC_KEYS = [
   'payment.cod', 'payment.card', 'payment.bank', 'payment.wallet',
   'checkout.guestCheckout', 'checkout.freeShippingThreshold', 'checkout.taxRatePercent',
-  'store.currency', 'store.country', 'contact.email', 'contact.phone',
+  'store.currency', 'store.country', 'contact.email', 'contact.phone', DELIVERY_COUNTRIES_KEY,
 ]
 
 export async function GET(){
@@ -29,7 +30,8 @@ export async function GET(){
         wallet:map['payment.wallet']==='true',
         details: paymentMethods,
       },
-      checkout:{guestCheckout:map['checkout.guestCheckout']!=='false',freeShippingThreshold:map['checkout.freeShippingThreshold']||'100',taxRatePercent:map['checkout.taxRatePercent']||'0'},
+      // The countries checkout offers (Settings > Shipping & delivery), the store's own first.
+      checkout:{guestCheckout:map['checkout.guestCheckout']!=='false',freeShippingThreshold:map['checkout.freeShippingThreshold']||'100',taxRatePercent:map['checkout.taxRatePercent']||'0',countries:deliveryCountryOptions(deliveryCountries(map[DELIVERY_COUNTRIES_KEY],map['store.country']))},
       store:{currency:map['store.currency']||'USD',country:map['store.country']||'Lebanon'},
       contact:{email:map['contact.email']?.trim()||config.supportEmail,phone:map['contact.phone']?.trim()||config.whatsapp},
       selling:selling?{lbp:selling.lbp,freeGift:selling.freeGift,giftOption:selling.giftOption,welcome:selling.welcome,flashSales:selling.flashSales,occasions:selling.occasions}:null,
