@@ -45,3 +45,24 @@ export async function PATCH(req: Request) {
     return json({ driver })
   } catch (error) { return routeError(error, 'Unable to save the driver', 400) }
 }
+
+// Delete a driver who no longer works for the store. Not while they still hold cash you haven't
+// received (Cash received first). Their open orders go back to the delivery sheet without a
+// driver; delivered orders keep "Delivered by ..." in their history (the order's driver link is
+// cleared by the database, ON DELETE SET NULL).
+export async function DELETE(req: Request) {
+  try {
+    const actor = await requirePermission('orders.manage')
+    const id = clean(new URL(req.url).searchParams.get('id'), 64)
+    const driver = id ? await db.driver.findUnique({ where: { id }, select: { id: true, name: true } }) : null
+    if (!driver) return json({ error: 'Driver not found' }, { status: 404 })
+    const cash = await db.order.aggregate({ where: { driverId: id, cashCollected: { gt: 0 }, cashSettledAt: null }, _sum: { cashCollected: true }, _count: { _all: true } })
+    if (cash._count._all > 0) return json({ error: `${driver.name} still has cash from ${cash._count._all} deliver${cash._count._all === 1 ? 'y' : 'ies'} to hand over. Tap "Cash received" first.` }, { status: 409 })
+    const [open] = await db.$transaction([
+      db.order.updateMany({ where: { driverId: id, status: { in: ['CONFIRMED', 'PROCESSING', 'SHIPPED'] } }, data: { driverId: null } }),
+      db.driver.delete({ where: { id } }),
+    ])
+    await audit(actor.id, 'driver.deleted', 'Driver', id, { name: driver.name, openOrdersUnassigned: open.count })
+    return json({ ok: true, openOrders: open.count })
+  } catch (error) { return routeError(error, 'Unable to delete the driver', 400) }
+}

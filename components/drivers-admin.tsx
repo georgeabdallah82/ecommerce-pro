@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from '@/components/admin-link'
-import { ArrowLeft, Check, Copy, ExternalLink, MessageCircle, RefreshCw, Truck, UserPlus, Wallet } from 'lucide-react'
+import { ArrowLeft, Check, Copy, ExternalLink, MessageCircle, RefreshCw, Trash2, Truck, UserPlus, Wallet } from 'lucide-react'
 import { money } from '@/lib/config'
 import { formatAdminDateTime } from '@/lib/admin-datetime'
 import { displayPhone, whatsappChatLink } from '@/lib/checkout-followup'
@@ -74,6 +74,19 @@ export default function DriversAdmin({ initial, storeName, timezone, canManage }
     finally { setBusy('') }
   }
 
+  async function remove(row: DriverRow) {
+    if (!await confirm({ title: `Delete ${row.name}?`, message: 'Their link stops working for good. Orders given to them and not delivered yet go back to the delivery sheet without a driver. Past deliveries stay in each order\'s history. To stop them for a while instead, use Turn off.', confirmLabel: 'Delete driver' })) return
+    setBusy(row.id); setError(''); setNotice('')
+    try {
+      const r = await fetch(`/api/admin/drivers?id=${encodeURIComponent(row.id)}`, { method: 'DELETE' })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(d.error || 'Unable to delete the driver')
+      setRows(current => current.filter(r => r.id !== row.id))
+      setNotice(`${row.name} was deleted.${d.openOrders ? ` ${d.openOrders} open order${d.openOrders === 1 ? ' is' : 's are'} back on the delivery sheet without a driver.` : ''}`)
+    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to delete the driver') }
+    finally { setBusy('') }
+  }
+
   const copy = async (row: DriverRow) => { try { await navigator.clipboard.writeText(row.link); setCopied(row.id); setTimeout(() => setCopied(''), 1500) } catch {} }
   const totalCash = rows.reduce((sum, r) => sum + r.cash.reduce((a, c) => a + c.amount, 0), 0)
 
@@ -116,6 +129,7 @@ export default function DriversAdmin({ initial, storeName, timezone, canManage }
             {row.active && <a className={`${ui.btn} ${ui.btnSecondary}`} href={row.link} target="_blank" rel="noreferrer"><ExternalLink size={16} /> Open their page</a>}
             {row.active && <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} disabled={busy === row.id} onClick={() => newLink(row)}><RefreshCw size={16} /> New link</button>}
             <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} disabled={busy === row.id} onClick={() => update(row, { active: !row.active }, row.active ? `${row.name} is turned off: their link no longer works.` : `${row.name} is back on.`)}>{row.active ? 'Turn off' : 'Turn on'}</button>
+            {cash === 0 && <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} style={{ color: 'var(--admin-danger, #b42318)' }} disabled={busy === row.id} onClick={() => remove(row)} aria-label={`Delete ${row.name}`}><Trash2 size={16} /> Delete driver</button>}
           </div>}
         </article>
       })}</div>}
