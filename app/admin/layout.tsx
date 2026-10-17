@@ -71,6 +71,7 @@ const groups: AdminSidebarGroup[] = [
     { href: '/admin/shipping', label: 'Shipping', permission: 'shipping.view', icon: 'shipping' },
     { href: '/admin/tax', label: 'Tax', permission: 'tax.view', icon: 'tax' },
     { href: '/admin/system', label: 'System health', permission: 'settings.view', icon: 'system' },
+    { href: '/admin/launch', label: 'Launch checklist', permission: 'settings.manage', icon: 'launch' },
     { href: '/admin/website-status', label: 'Website status', permission: 'settings.manage', icon: 'websiteStatus' },
     { href: '/admin/users', label: 'Users & roles', permission: 'users.view', icon: 'users' },
     { href: '/admin/activity', label: 'Activity log', permission: 'activity.view', icon: 'activity' },

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from '@/components/admin-link'
-import { ArrowLeft, Ban, Check, ChevronDown, Copy, FileEdit, FileText, Mail, MapPin, MessageCircle, MoreHorizontal, PackageCheck, Pencil, Phone, Plus, Save, Send, SlidersHorizontal, Truck, X, XCircle, Gift } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Ban, Check, ChevronDown, Copy, FileEdit, FileText, Mail, MapPin, MessageCircle, MoreHorizontal, PackageCheck, Pencil, Phone, Plus, Save, Send, SlidersHorizontal, Truck, X, XCircle, Gift } from 'lucide-react'
 import { money } from '@/lib/config'
 import { formatAdminDate, formatAdminDateTime } from '@/lib/admin-datetime'
 import { canTransitionOrder, canTransitionPayment } from '@/lib/orders'
@@ -16,6 +16,7 @@ import { internationalPhone } from '@/lib/phone'
 import { reviewRequestMessage } from '@/lib/order-reviews'
 import { customerUpdateLink, updateForStatus } from '@/lib/order-updates'
 import type { PhoneHistory } from '@/lib/customer-history'
+import type { Risk } from '@/lib/order-risk'
 import { useConfirm } from './admin-confirm'
 
 // Admin > Orders > one order. Top to bottom: where the order is (a progress line), the one thing
@@ -68,7 +69,7 @@ function Menu({ children }: { children: React.ReactNode }) {
   )
 }
 
-export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTimezone, storeName = '', storeCountry = 'Lebanon', phoneBlocked = false, reviewLink = '', trackLink = '', history = null }: { initial: any; canStartOrderEdit?: boolean; storeTimezone?: string; storeName?: string; storeCountry?: string; phoneBlocked?: boolean; reviewLink?: string; trackLink?: string; history?: PhoneHistory | null }) {
+export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTimezone, storeName = '', storeCountry = 'Lebanon', phoneBlocked = false, reviewLink = '', trackLink = '', history = null, risk = null }: { initial: any; canStartOrderEdit?: boolean; storeTimezone?: string; storeName?: string; storeCountry?: string; phoneBlocked?: boolean; reviewLink?: string; trackLink?: string; history?: PhoneHistory | null; risk?: Risk | null }) {
   const [o, setO] = useState(initial)
   const confirm = useConfirm()
   const router = useRouter()
@@ -260,6 +261,20 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
     </div>
 
     {msg && <div className={`${ui.alert} ${msgIsError ? ui.alertDanger : ''}`} role="status">{msg}</div>}
+
+    {risk && <section className={`${s.riskBanner}${risk.level === 'high' ? ` ${s.riskHigh}` : ''}`} aria-label="Risky order">
+      <AlertTriangle size={20} aria-hidden="true" />
+      <div className={s.riskBody}>
+        <strong>{risk.headline}</strong>
+        <ul>{risk.reasons.map(reason => <li key={reason}>{reason}</li>)}</ul>
+        <span className={ui.muted}>{risk.context}. Cash on delivery: a short call now saves a wasted trip.</span>
+        <div className={s.rowButtons}>
+          {call && <a className={`${ui.btn} ${ui.btnSecondary}`} href={call}><Phone size={15}/> Call</a>}
+          {chatLink && <a className={`${ui.btn} ${ui.btnSecondary}`} href={chatLink} target="_blank" rel="noreferrer"><MessageCircle size={15}/> WhatsApp</a>}
+          {phoneNumber && !blocked && <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={toggleBlock}><Ban size={15}/> Block this number</button>}
+        </div>
+      </div>
+    </section>}
 
     {o.status === 'CANCELLED' || o.status === 'REFUNDED'
       ? <div className={`${s.closedBanner} ${o.status === 'CANCELLED' ? s.toneDanger : s.toneNeutral}`}><XCircle size={18}/> This order was {o.status === 'CANCELLED' ? 'cancelled' : 'refunded'}. Nothing more to do.</div>
