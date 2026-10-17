@@ -47,6 +47,7 @@ const CLIENT_SETTING_KEYS = new Set([
   'currency.showLbp', 'currency.lbpRate', 'freeGift.enabled', 'freeGift.threshold', 'freeGift.productId', 'checkout.giftOption',
   'product.whatsappOrder', 'welcome.enabled', 'welcome.code', 'welcome.title', 'welcome.delaySeconds', 'search.synonyms',
   'invite.enabled', 'invite.friendPercent', 'invite.reward', 'invite.rewardDays', 'product.questions',
+  'orders.guestCancel.enabled', 'orders.guestCancel.minutes',
   'tracking.metaPixelId',
   'tracking.gaMeasurementId',
   'tracking.tiktokPixelId',

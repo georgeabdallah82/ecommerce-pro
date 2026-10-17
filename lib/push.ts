@@ -175,6 +175,15 @@ export async function sendDriverUpdatePush(update: { title: string; body: string
   return sendToSubscriptions({ title: update.title, body: update.body, url: `/admin/orders/${update.orderId}`, orderId: update.orderId })
 }
 
+// A customer cancelled a new order from the order page (app/api/orders/cancel), so there is
+// nothing to confirm or prepare. Uses the new-order alerts switch, as it is about the same order.
+export async function sendOrderCancelledPush(order: { id: string; orderNumber: string; grandTotal: number; currency: string }) {
+  const settings = await db.setting.findMany({ where: { key: { in: ['notifications.newOrder', 'notifications.orderEmail'] } }, select: { key: true, value: true } })
+  const configured = Object.fromEntries(settings.map(setting => [setting.key, setting.value]))
+  if ((configured['notifications.newOrder'] ?? configured['notifications.orderEmail']) === 'false') return { sent: 0, skipped: true, failed: 0 }
+  return sendToSubscriptions({ title: 'Order cancelled by the customer', body: `#${order.orderNumber} · ${(order.grandTotal / 100).toFixed(2)} ${order.currency}: nothing to confirm or prepare`, url: `/admin/orders/${order.id}`, orderId: order.id })
+}
+
 // A shopper asked about a product (app/api/questions): staff answer it in Admin > Questions. Uses
 // the review alerts switch (Settings > Notifications), as both wait for the owner.
 export async function sendNewQuestionAlert(question: { id: string; productName: string }) {

@@ -1,0 +1,12 @@
+.box { display: grid; gap: 10px; padding: 16px 18px; border: 1px solid var(--store-border, #ececec); border-radius: var(--store-card-radius, 14px); background: var(--store-surface, #ffffff); color: var(--store-text, #121212); }
+.text { display: grid; gap: 4px; }
+.text strong { font-size: 16px; }
+.text span { font-size: 14px; color: var(--store-muted, #6b7280); }
+.confirm { display: grid; gap: 8px; font-weight: 700; }
+.buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.plain, .danger { min-height: 44px; padding: 0 18px; border-radius: var(--store-button-radius, 10px); font: inherit; font-weight: 700; cursor: pointer; }
+.plain { border: 1.5px solid var(--store-border, #d4d4d4); background: transparent; color: var(--store-text, #121212); justify-self: start; }
+.danger { border: 0; background: #b42318; color: #ffffff; }
+.plain:disabled, .danger:disabled { opacity: .6; cursor: not-allowed; }
+.error { margin: 0; font-size: 14px; font-weight: 700; color: #b42318; }
+.link { font-size: 14px; font-weight: 700; color: var(--store-primary, #d7261e); }

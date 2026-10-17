@@ -1,8 +1,7 @@
 import { db } from '@/lib/prisma'
 import { requireUser } from '@/lib/auth'
 import { canCustomerCancel } from '@/lib/orders'
-import { releaseOrderReservations } from '@/lib/inventory'
-import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
+import { cancelOrderForCustomer } from '@/lib/customer-cancel'
 import { json } from '@/lib/utils'
 
 const CUSTOMER_CANCEL_MESSAGES = new Set([
@@ -19,15 +18,6 @@ function cancelFailure(error: unknown) {
   return { status: 500, error: 'Unable to cancel order right now' }
 }
 
-function redeemedCoins(paymentTransactions: Array<{ provider: string; rawJson: string | null }>) {
-  const checkout = paymentTransactions.find(t => t.provider === 'checkout' && t.rawJson)
-  if (!checkout?.rawJson) return 0
-  try {
-    const parsed = JSON.parse(checkout.rawJson) as { coinsUsed?: unknown }
-    return Number.isSafeInteger(parsed.coinsUsed) ? Math.max(0, Number(parsed.coinsUsed)) : 0
-  } catch { return 0 }
-}
-
 export async function POST(_req: Request, { params }: { params: Promise<{ orderNumber: string }> }) {
   try {
     const user = await requireUser()
@@ -41,53 +31,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ orderN
       if (!canCustomerCancel(order.status)) throw new Error('This order can no longer be cancelled online')
       if (order.paymentStatus === 'PAID' || order.paymentStatus === 'PARTIALLY_REFUNDED') throw new Error('Paid orders cannot be cancelled online; use the refund workflow')
 
-      await releaseOrderReservations(tx, order.id, 'Customer cancelled order')
-
-      const coinsUsed = redeemedCoins(order.paymentTransactions)
-      if (coinsUsed > 0) {
-        const reversalId = `coin_${user.id}_${order.orderNumber}_reversal`
-        await tx.coinTransaction.upsert({
-          where: { id: reversalId },
-          create: {
-            id: reversalId,
-            userId: user.id,
-            amount: coinsUsed,
-            type: 'REVERSAL',
-            reason: 'Cancelled order coin restoration',
-            referenceId: `coin-reversal:${order.orderNumber}`,
-          },
-          update: {},
-        })
-      }
-
-      const redeemed = redeemedGiftCard(order.paymentTransactions)
-      if (redeemed) await restoreGiftCardBalance(tx, order.id, redeemed, order.grandTotal, order.grandTotal)
-
-      // Matches the admin-cancel path (app/api/admin/orders/route.ts) and checkout's own
-      // failure/expiry cleanup (checkout.ts, the areeba webhook) -- a coupon's usedCount is
-      // released the same way regardless of who or what cancelled the order, so a customer
-      // self-cancelling doesn't permanently burn a use of a limited-use coupon that a staff
-      // cancellation or a failed payment would have correctly given back.
-      if (order.couponCode) await tx.coupon.updateMany({ where: { code: order.couponCode, usedCount: { gt: 0 } }, data: { usedCount: { decrement: 1 } } })
-
-      const updated = await tx.order.update({
-        where: { id: order.id },
-        data: {
-          status: 'CANCELLED',
-          fulfillmentStatus: 'UNFULFILLED',
-          paymentStatus: order.paymentStatus,
-          events: { create: { status: 'CANCELLED', message: 'Order cancelled by customer.' } },
-        },
-        select: {
-          id: true,
-          orderNumber: true,
-          status: true,
-          paymentStatus: true,
-          fulfillmentStatus: true,
-          grandTotal: true,
-          currency: true,
-        },
-      })
+      const updated = await cancelOrderForCustomer(tx, order, 'Order cancelled by customer.')
 
       return { updated, userId: order.userId }
     })
