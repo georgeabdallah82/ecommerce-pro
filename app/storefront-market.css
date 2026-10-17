@@ -518,6 +518,35 @@ html body.mk .aliCollectionBannerOverlay p { display: -webkit-box; -webkit-line-
 .summaryCard .summaryLine > span:first-child { min-width: 0; overflow-wrap: anywhere; }
 .summaryCard .summaryLine > strong { flex: none; }
 
+/* ---------------- Product page ---------------- */
+/* One arrow per accordion row (an older rule added a "-" after the open row's arrow, pushing
+   the arrow to the middle); the arrow turns up while the row is open. */
+html body.mk .focalStorefront .focalAccordions details[open] summary:after { content: none; }
+html body.mk .focalAccordions summary svg { flex: none; transition: transform .2s ease; }
+html body.mk .focalAccordions details[open] summary svg { transform: rotate(180deg); }
+/* Even gaps between the blocks under the product: no tall empty boxes for "No reviews yet" or
+   "No questions yet", no double gap above the reviews. */
+html body.mk .aliProductPage .aliEmptyState { padding: 12px 0; text-align: start; }
+html body.mk .aliProductPage .aliReviewsSection { margin-top: 0; }
+@media (max-width: 700px) {
+  html body.mk .aliProductPage { padding-bottom: 12px; }
+  html body.mk .aliProductPage .aliSection, html body.mk .aliProductPage .aliQuestions { padding: 22px 0; }
+  html body.mk .aliProductPage .aliReviewsSection { padding: 22px 0; }
+  html body.mk .aliProductPage .aliReviewsSection h2 { margin-bottom: 14px; font-size: 20px; }
+  html body.mk .aliProductPage .aliQuestions h2 { font-size: 20px; }
+  /* Add to cart with the heart and share beside it, Buy now on its own line underneath, both
+     in full-size text (four buttons on one line squeezed "Add to cart" onto two lines). */
+  html body.mk .aliBuyRow:has(.aliAddToCart) { flex-wrap: wrap; gap: 10px; }
+  html body.mk .aliBuyRow .aliAddToCart { flex: 1 1 0; min-width: 0; }
+  html body.mk .aliBuyRow .aliBuyNow { order: 1; flex: 1 0 100%; }
+  html body.mk .aliBuyRow .aliAddToCart, html body.mk .aliBuyRow .aliBuyNow { font-size: 15px; padding: 0 14px; }
+  html body.mk .aliBuyRow .focalWishlist { width: 50px !important; height: 50px !important; margin: 0; }
+  /* The three promises (secure checkout, easy returns, free delivery) side by side in one
+     short row instead of three tall boxes. */
+  html body.mk .focalStorefront .focalTrustGrid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 6px !important; margin: 14px 0 !important; padding: 0 !important; background: none !important; border: 0 !important; }
+  html body.mk .focalStorefront .focalTrustGrid span { min-height: 0; padding: 8px 4px !important; font-size: 11.5px !important; line-height: 1.3 !important; }
+}
+
 /* ---------------- Arabic (right to left) ----------------
    Most of the layout is flex/grid and mirrors by itself under <html dir="rtl">; these are the
    pieces placed by left/right. Arabic letters join up, so no letter spacing on Arabic text. */

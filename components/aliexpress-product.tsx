@@ -209,6 +209,7 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
   const reviewPhotos: string[] = reviews.flatMap((r: AnyMap) => Array.isArray(r.photos) ? r.photos : []).slice(0, 12)
   const [viewPhoto, setViewPhoto] = useState('')
   const avgRating = Number(product.rating || 0)
+  const canWriteReview = reviewEligibility !== 'already_reviewed' && reviewEligibility !== 'not_purchased'
 
   return (
     <div className="focalStorefront aliProductPage">
@@ -240,8 +241,9 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
           {showVendor && product.vendor && <span className="aliProductVendor">{product.vendor}</span>}
           <h1>{product.name}</h1>
           <div className="aliProductMeta">
-            <span className="aliProductRating"><StarRow rating={avgRating} size={14} /> {avgRating > 0 && avgRating.toFixed(1)}</span>
-            <a href="#reviews" className="aliProductReviewsLink">{plural(reviews.length, 'review')}{reviewEligibility !== 'already_reviewed' && reviewEligibility !== 'not_purchased' ? ` · ${t('Write a review')}` : ''}</a>
+            {/* No reviews yet: no empty stars and "0 reviews", just the invitation to write one. */}
+            {reviews.length > 0 && <span className="aliProductRating"><StarRow rating={avgRating} size={14} /> {avgRating > 0 && avgRating.toFixed(1)}</span>}
+            {(reviews.length > 0 || canWriteReview) && <a href="#reviews" className="aliProductReviewsLink">{[reviews.length > 0 && plural(reviews.length, 'review'), canWriteReview && t('Write a review')].filter(Boolean).join(' · ')}</a>}
             {Number(product.soldCount || 0) > 0 && <span>{formatSold(Number(product.soldCount))}</span>}
           </div>
           <div className="aliProductPrice">
