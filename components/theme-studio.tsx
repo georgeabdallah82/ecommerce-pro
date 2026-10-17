@@ -76,6 +76,7 @@ import { isPageTemplateKey, pageIdFromKey, pageTemplateKey } from '@/lib/custom-
 import styles from './theme-studio.module.css'
 import { marketHomeSections, marketSectionDefaults } from '@/lib/storefront-market'
 import { NumInput } from './num-input'
+import { siteHeaderSections } from '@/lib/site-header'
 
 // Deliberately not under /admin -- see app/theme-editor-preview/page.tsx's top comment.
 const PREVIEW_PATH = '/theme-editor-preview'
@@ -626,13 +627,14 @@ export default function ThemeStudio({ initial }: Props) {
       blogPosts: page === 'BlogPages' ? blogPosts : [],
       theme,
       sections: current,
+      siteHeader: siteHeaderSections(templates),
       navigation: initial.navigation,
       products,
       collections,
       selectedId,
       lang: editLang,
     }, window.location.origin)
-  }, [previewReadyToken, page, activePage, blogPosts, theme, current, initial.navigation, products, collections, selectedId, editLang])
+  }, [previewReadyToken, page, activePage, blogPosts, theme, current, templates, initial.navigation, products, collections, selectedId, editLang])
 
   const commit = (nextTemplates: Record<string, Section[]>, nextTheme = theme) => {
     setHistory(history => [...history, { theme: clone(theme), templates: clone(templates), page, selectedId }].slice(-50))
@@ -1048,6 +1050,7 @@ export default function ThemeStudio({ initial }: Props) {
                       ? `Build this page from sections -- banners, product lists, collection lists, FAQs and more. ${activePage && activePage.status !== 'PUBLISHED' ? 'It is a draft: visitors cannot see it until you click Make visible.' : 'Changes go live when you publish.'}`
                       : 'Pick a page above, or create a new one, then build it from the same sections as your homepage.')
                     : <>{`${PAGE_ZONE_COPY[page]?.body} The page's own content -- ${PAGE_OWN_CONTENT[page] || 'its built-in content'} -- is built in and always stays above it.`}{' '}Page-level options live under the Theme tab.</>}
+                {!isHome && ' The announcement bar, header and footer are the same on every page: change them on the Home tab.'}
               </div>
               <div className={styles.rows}>
                 {onPagesTab && !isCustomPage ? <div className={styles.emptyZone}>{pages.length ? 'Choose a page above to start designing it.' : 'You have no pages yet. Create one above, for example “Summer sale”, then add banners, products and collections to it.'}</div> : (() => {

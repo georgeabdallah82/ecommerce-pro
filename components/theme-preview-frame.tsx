@@ -55,6 +55,8 @@ type PreviewState = {
   blogPosts: AnyMap[]
   theme: AnyMap
   sections: AnyMap[]
+  // The site-wide header + announcement bar from the Home list (lib/site-header.ts).
+  siteHeader: AnyMap[]
   navigation: any[]
   products: AnyMap[]
   collections: AnyMap[]
@@ -66,9 +68,10 @@ type PreviewState = {
 // The theme editor (components/theme-studio.tsx) renders this page inside
 // a same-origin iframe and posts the draft state below across on every change.
 // Message shapes:
-//   parent -> frame: { source: 'theme-editor', type: 'state', page, theme, sections, navigation, products, collections, selectedId }
+//   parent -> frame: { source: 'theme-editor', type: 'state', page, theme, sections, siteHeader, navigation, products, collections, selectedId }
 //   `page` is the template being edited ('Home page' | 'Product' | 'Collection' | 'Cart'); `sections` is
-//   that page's full list for Home, or just its addable content zone for the other three.
+//   that page's full list for Home, or just its addable content zone for the other three. `siteHeader`
+//   is the header + announcement bar from the Home list, shown on every page like the live site.
 //   frame -> parent: { source: 'theme-preview', type: 'ready' }
 //   frame -> parent: { source: 'theme-preview', type: 'select', sectionId }
 //   frame -> parent: { source: 'theme-preview', type: 'height', height }
@@ -88,6 +91,7 @@ export default function ThemePreviewFrame() {
         blogPosts: Array.isArray(data.blogPosts) ? data.blogPosts : [],
         theme: data.theme,
         sections: Array.isArray(data.sections) ? data.sections : [],
+        siteHeader: Array.isArray(data.siteHeader) ? data.siteHeader : [],
         navigation: Array.isArray(data.navigation) ? data.navigation : [],
         products: Array.isArray(data.products) ? data.products : [],
         collections: Array.isArray(data.collections) ? data.collections : [],
@@ -161,12 +165,11 @@ export default function ThemePreviewFrame() {
   }, [state?.lang])
 
   if (!state) return <div style={{ minHeight: '100vh' }} />
-  const view = state.lang === 'ar' ? { ...state, theme: localize(state.theme, 'ar'), sections: localize(state.sections, 'ar'), navigation: localize(state.navigation, 'ar') } : state
+  const view = state.lang === 'ar' ? { ...state, theme: localize(state.theme, 'ar'), sections: localize(state.sections, 'ar'), siteHeader: localize(state.siteHeader, 'ar'), navigation: localize(state.navigation, 'ar') } : state
 
-  // StoreNavFixed reads the header's live settings off theme.editorTemplates.Pages
-  // rather than theme.editorTemplates['Home page'], so the nav bar reflects
-  // in-progress header edits made on any template page, not just Home.
-  const navTheme = { ...view.theme, editorTemplates: { ...(view.theme.editorTemplates || {}), Pages: view.sections } }
+  // The nav bar shows the header + announcement bar being edited in the Home list, on every
+  // page, like the live site (lib/site-header.ts).
+  const navTheme = { ...view.theme, siteHeader: view.siteHeader }
 
   const select = (sectionId: string) => window.parent.postMessage({ source: 'theme-preview', type: 'select', sectionId }, window.location.origin)
   const sample = pageSample(view)

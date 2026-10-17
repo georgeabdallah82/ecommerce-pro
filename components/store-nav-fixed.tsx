@@ -11,6 +11,7 @@ import CartSuggestions from './cart-suggestions'
 import { useShopper } from './use-shopper'
 import { money as formatMoney } from '@/lib/config'
 import { loadStoreSettings } from '@/lib/store-settings-client'
+import { siteHeaderSections } from '@/lib/site-header'
 
 type NavItem = { id: string; label: string; url?: string | null; parentId?: string | null; group?: string | null; imageUrl?: string | null }
 type TreeItem = NavItem & { children: TreeItem[] }
@@ -194,17 +195,6 @@ const css = `
 @media(max-width:600px){.focalNavInner{height:66px}.focalNavIcon{width:38px;height:38px}.focalLogo{font-size:18px}.focalAnnouncementGlobalInner{font-size:11px;min-height:38px}}
 `
 
-function templateForPath(pathname: string) {
-  if (pathname === '/') return 'Home page'
-  if (pathname.startsWith('/shop')) return 'Products'
-  if (pathname.startsWith('/product/')) return 'Product'
-  if (pathname === '/collections') return 'Collections'
-  if (pathname.startsWith('/collections/')) return 'Collection'
-  if (pathname.startsWith('/cart')) return 'Cart'
-  if (pathname.startsWith('/blog')) return 'Blog'
-  return 'Pages'
-}
-
 function buildTree(items: NavItem[]): TreeItem[] {
   const byId = new Map(items.map(item => [item.id, { ...item, children: [] as TreeItem[] }]))
   const roots: TreeItem[] = []
@@ -306,13 +296,11 @@ function DesktopNode({ item, openId, setOpenId }: { item: TreeItem; openId: stri
 export default function StoreNavFixed({ theme, navigation }: { theme: any; navigation: NavItem[] }) {
   const pathname = usePathname() || '/'
   const { t, count: plural } = useI18n()
-  const templateKey = templateForPath(pathname)
-  // Storefront pages send only headerTemplates (header + announcement per template); the theme
-  // editor preview still passes full editorTemplates.
-  const templates = theme.headerTemplates ?? theme.editorTemplates
-  const template = Array.isArray(templates?.[templateKey]) ? templates[templateKey] : null
-  const headerSection = template?.find((section: any) => section.type === 'header')
-  const announcementSection = template?.find((section: any) => section.type === 'announcement')
+  // One header and announcement bar for the whole site (lib/site-header.ts): storefront pages
+  // send theme.siteHeader; the theme editor preview sends the Home list it is editing.
+  const siteSections: any[] = theme.siteHeader ?? siteHeaderSections(theme.editorTemplates)
+  const headerSection = siteSections.find((section: any) => section.type === 'header')
+  const announcementSection = siteSections.find((section: any) => section.type === 'announcement')
   const headerSettings = { ...(theme.header || {}), ...(headerSection?.settings || {}) }
   const headerEnabled = theme.header?.enabled !== false && headerSection?.enabled !== false
   const market = theme.design === 'market'
