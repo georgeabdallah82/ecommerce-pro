@@ -8,6 +8,7 @@ import ui from './admin-ui.module.css'
 import MediaPicker from './media-picker'
 import AppIconCard from './app-icon-card'
 import TwoStepCard from './two-step-card'
+import { REGION_CODES, countryName, deliveryCountries } from '@/lib/delivery-countries'
 import { POLICY_DEFAULTS } from '@/lib/policy-defaults'
 
 const groups = [
@@ -305,6 +306,7 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
           )}
 
           {tab === 'Shipping' && (
+            <>
             <Card title="Shipping & delivery" desc="Configure checkout defaults; detailed shipping rates are managed in Shipping and per-country tax rates in Tax.">
               <div className={ui.twoCol}>
                 <Field label="Free shipping threshold" value={values['checkout.freeShippingThreshold']} onChange={v => set('checkout.freeShippingThreshold', v)} />
@@ -313,6 +315,8 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
               <p className={ui.muted}>The default tax rate above applies only when no Tax rate zone matches the customer's country.</p>
               <Toggle label="Guest checkout" keyName="checkout.guestCheckout" value={flags['checkout.guestCheckout']} onChange={() => toggle('checkout.guestCheckout')} />
             </Card>
+            <DeliveryCountriesCard value={values['checkout.countries']} storeCountry={values['store.country']} onChange={v => set('checkout.countries', v)} />
+            </>
           )}
 
           {tab === 'Markets' && (
@@ -532,6 +536,33 @@ function Card({ title, desc, children }: { title: string; desc: string; children
       </header>
       <div className={styles.cardBody}>{children}</div>
     </section>
+  )
+}
+
+// The countries checkout offers and accepts (lib/delivery-countries.ts). Nothing saved: the store's
+// own country only. Saved with the page's Save button, as a list of country codes.
+function DeliveryCountriesCard({ value, storeCountry, onChange }: { value: string; storeCountry: string; onChange: (v: string) => void }) {
+  const codes = deliveryCountries(value, storeCountry)
+  const others = REGION_CODES.filter(c => !codes.includes(c)).map(c => ({ code: c, name: countryName(c) })).sort((a, b) => a.name.localeCompare(b.name))
+  const save = (list: string[]) => onChange(JSON.stringify(list))
+  return (
+    <Card title="Countries you deliver to" desc="Checkout only offers these countries, and orders for any other country are refused. With one country, customers just see it written; with more, they choose from a list.">
+      <div className="inline" style={{ gap: 8, flexWrap: 'wrap' }}>
+        {codes.map(code => (
+          <span key={code} className={ui.statusPill} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {countryName(code)}
+            {codes.length > 1 && <button type="button" onClick={() => save(codes.filter(c => c !== code))} aria-label={`Remove ${countryName(code)}`} style={{ border: 0, background: 'transparent', cursor: 'pointer', padding: 0, fontSize: 15, lineHeight: 1 }}>&times;</button>}
+          </span>
+        ))}
+      </div>
+      <label className={ui.fieldLabel}>Add a country
+        <select className={ui.select} value="" onChange={e => { if (e.target.value) save([...codes, e.target.value]) }}>
+          <option value="">Choose a country</option>
+          {others.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+        </select>
+      </label>
+      <p className={ui.muted}>Then tap Save. For a new country, also add its delivery price in Shipping, or checkout uses the default delivery price.</p>
+    </Card>
   )
 }
 

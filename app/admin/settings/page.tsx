@@ -18,6 +18,7 @@ const CLIENT_SETTING_KEYS = new Set([
   'policy.updatedAt',
   'seo.image',
   'checkout.freeShippingThreshold',
+  'checkout.countries',
   'checkout.taxRatePercent',
   'seo.title',
   'seo.description',

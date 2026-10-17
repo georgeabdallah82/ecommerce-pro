@@ -6,6 +6,8 @@ import { getThemeState } from '@/lib/theme'
 import { normalizeCountry } from '@/lib/countries'
 import { parseDeliveryAreas } from '@/lib/storefront-market'
 import { getStoreIdentity } from '@/lib/store-identity'
+import { DELIVERY_COUNTRIES_KEY, countryCode, deliveryCountries } from '@/lib/delivery-countries'
+import { db } from '@/lib/prisma'
 
 // Public quote endpoint the checkout page calls with the delivery country and area, so it can
 // offer the real choice of rates (e.g. Standard vs. Express) for that area -- delivery can cost
@@ -20,10 +22,15 @@ export async function GET(req: Request) {
   const region = (url.searchParams.get('region') || '').trim().slice(0, 100)
   if (!country) return json({ error: 'country is required' }, { status: 400 })
 
-  const [rates, themeState, store] = await Promise.all([
+  const [store, saved] = await Promise.all([
+    getStoreIdentity().catch(() => ({ country: 'Lebanon' })),
+    db.setting.findUnique({ where: { key: DELIVERY_COUNTRIES_KEY }, select: { value: true } }).catch(() => null),
+  ])
+  // A country the store doesn't deliver to gets no delivery options (checkout refuses it too).
+  if (!deliveryCountries(saved?.value, store.country).includes(countryCode(country))) return json({ rates: [], areas: [], notDelivered: true })
+  const [rates, themeState] = await Promise.all([
     listShippingRates(country, region || null),
     getThemeState().catch(() => null),
-    getStoreIdentity().catch(() => ({ country: 'Lebanon' })),
   ])
   const delivery = (themeState?.theme as any)?.delivery || {}
   const sameCountry = normalizeCountry(country) === normalizeCountry(store.country || 'Lebanon')
