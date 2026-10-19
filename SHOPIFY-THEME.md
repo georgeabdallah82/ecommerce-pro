@@ -3,12 +3,12 @@
 The current downloadable theme is the **Fresh-inspired v2 package** built for Yalla Haul. It follows the reference's visual rhythm—scrolling dark announcement ticker, centered condensed wordmark, vivid citrus-lime lifestyle hero, large condensed uppercase type, bright editorial category tiles, and a clean product rail—while using Yalla Haul copy and an original home/personal-care product direction.
 
 ## Downloadable package
-Use the `yalla-haul-shopify-theme.zip` delivered in ChatGPT as the uploadable Shopify theme. It contains the complete 52-file Online Store 2.0 package and three original bundled lifestyle images. This source branch is for review and iteration; the binary lifestyle assets are included in the ZIP.
+Use the `yalla-haul-shopify-theme.zip` delivered in ChatGPT as the uploadable Shopify theme. It contains the complete 52-file Online Store 2.0 package and three original bundled lifestyle images. This GitHub branch contains selected source references and settings for review; it is **not a complete standalone upload bundle**.
 
 ## Brand guardrails
 - Yalla Haul sells surprising small finds for home and personal care, not electronics.
 - Tone is playful, discovery-led, a little Gen-Z, and never generic marketplace copy.
-- The current default art direction uses citrus yellow/lime, black, pink, and lilac, with a centered wordmark and high-impact photography.
+- Current default art direction uses citrus yellow/lime, black, pink, and lilac, with a centered wordmark and high-impact photography.
 - Replace bundled placeholder photography and the text wordmark with the approved Yalla Haul logo/product images before launch.
 
 ## Safe Shopify setup
