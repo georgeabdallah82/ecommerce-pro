@@ -1,21 +1,24 @@
-# Yalla Haul Shopify Theme — Haul Fresh
+# Yalla Haul Shopify Theme — Merchant Editable Edition
 
-The current downloadable theme is the **Fresh-inspired v2 package** built for Yalla Haul. It follows the reference's visual rhythm—scrolling dark announcement ticker, centered condensed wordmark, vivid citrus-lime lifestyle hero, large condensed uppercase type, bright editorial category tiles, and a clean product rail—while using Yalla Haul copy and an original home/personal-care product direction.
+The current downloadable theme is the merchant-editable Shopify Online Store 2.0 package, version 3.0.0. Its defaults follow Yalla Haul's actual brand guidelines, not the inspiration theme's colors.
 
-## Downloadable package
-Use the `yalla-haul-shopify-theme.zip` delivered in ChatGPT as the uploadable Shopify theme. It contains the complete 52-file Online Store 2.0 package and three original bundled lifestyle images. This GitHub branch contains selected source references and settings for review; it is **not a complete standalone upload bundle**.
+## Brand system
+- Yalla Red: `#D7261E`
+- Haul Orange: `#FF7A1A`
+- Ink: `#121212`
+- Page Grey: `#F6F6F4`
+- White: `#FFFFFF`
+- Blush: `#FDECEA`
+- Line: `#ECECEC`
+- DM Sans for headings/body; IBM Plex Sans Arabic option
+- 46px sentence-case buttons, 10px button corners, 14px cards, no gradients
 
-## Brand guardrails
-- Yalla Haul sells surprising small finds for home and personal care, not electronics.
-- Tone is playful, discovery-led, a little Gen-Z, and never generic marketplace copy.
-- Current default art direction uses citrus yellow/lime, black, pink, and lilac, with a centered wordmark and high-impact photography.
-- Replace bundled placeholder photography and the text wordmark with the approved Yalla Haul logo/product images before launch.
+## What can be edited
+Global Theme settings include logo variants, footer logo, brand icon/favicon/social image, brand colors, fonts, content width/spacing, card/button shapes, icon stroke, labels, product card behavior, social/contact links. Section settings and blocks control the header, announcement ticker, slides, category collections, featured collection tabs, banners, image/text sections, text, newsletter and footer. The Theme Editor also supports adding/removing/reordering sections, plus reusable icon promises, content cards, and Custom Liquid.
 
-## Safe Shopify setup
-1. Upload the ZIP through Shopify Admin → Online Store → Themes → Add theme → Upload zip file.
-2. Keep it unpublished; preview desktop and mobile.
-3. Assign category tiles to real Shopify collections, choose the featured and new-arrivals collections, and configure menus.
-4. Configure product import, inventory, delivery rates, COD/manual payment, policies, customer notifications, and contact/social links.
-5. Test the entire order flow before considering any domain change.
+## Package and installation
+The complete uploadable `yalla-haul-shopify-theme.zip` was delivered in ChatGPT and saved to the user's Library at `/Business/Yalla Haul/yalla-haul-shopify-theme.zip`. This GitHub branch is for source notes/reference; its selected source files are not the binary ZIP.
 
-The existing Next.js storefront and its database/admin panel are not migrated by this theme. Keep current hosting and DNS unchanged until the Shopify version has been approved and tested.
+Upload through Shopify Admin → Online Store → Themes → Add theme → Upload zip file. Keep it unpublished while editing and testing. Upload the approved light/dark/icon logo variants under Theme settings → Brand & logos, then assign real collections and replace starter lifestyle images.
+
+The existing Next.js site, main branch, database and domain are not changed or migrated by the ZIP. Shopify Theme Check and an actual Shopify storefront preview still need to be run after upload.
