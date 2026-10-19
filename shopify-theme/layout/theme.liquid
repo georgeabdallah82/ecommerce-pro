@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="{{ request.locale.iso_code }}" data-currency="{{ cart.currency.iso_code | default: shop.currency }}" dir="{% if request.locale.iso_code contains 'ar' %}rtl{% else %}ltr{% endif %}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="{{ settings.color_primary }}">
+  <link rel="canonical" href="{{ canonical_url }}">
+  <title>{{ page_title | default: shop.name | escape }}{% unless page_title contains shop.name %} · {{ shop.name | escape }}{% endunless %}</title>
+  {% if page_description %}<meta name="description" content="{{ page_description | escape }}">{% endif %}
+  {{ content_for_header }}
+  {{ 'base.css' | asset_url | stylesheet_tag }}
+  <style>:root{--page-width:{{ settings.page_width }}px;--color-bg:{{ settings.color_background }};--color-surface:{{ settings.color_surface }};--color-text:{{ settings.color_text }};--color-muted:{{ settings.color_muted }};--color-primary:{{ settings.color_primary }};--color-accent:{{ settings.color_accent }};--color-border:{{ settings.color_border }};--radius-card:{{ settings.card_radius }}px;--radius-button:{{ settings.button_radius }}px}</style>
+  <script src="{{ 'theme.js' | asset_url }}" defer></script>
+</head>
+<body class="template-{{ template.name | handle }}">
+  <a class="skip-link" href="#MainContent">Skip to content</a>
+  {% sections 'header-group' %}
+  <main id="MainContent" role="main" tabindex="-1">{{ content_for_layout }}</main>
+  {% sections 'footer-group' %}
+</body>
+</html>

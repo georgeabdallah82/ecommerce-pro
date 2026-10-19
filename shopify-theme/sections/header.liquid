@@ -1,0 +1,10 @@
+<header class="site-header" data-site-header>
+<div class="container header-inner">
+  <button class="icon-button mobile-menu-toggle" type="button" aria-label="Open menu" aria-expanded="false" data-menu-toggle>☰</button>
+  <a class="brand" href="{{ routes.root_url }}">{% if settings.logo != blank %}{{ settings.logo | image_url: width: 520 | image_tag: class: 'brand-logo', widths: '180,240,320,420,520', width: settings.logo_width, alt: shop.name }}{% else %}<span class="wordmark">YALLA <b>HAUL<span>.</span></b></span>{% endif %}</a>
+  <nav class="desktop-nav" aria-label="Main navigation">{% for link in section.settings.menu.links %}<a class="nav-link" href="{{ link.url }}">{{ link.title | escape }}</a>{% endfor %}</nav>
+  <div class="header-actions"><a class="icon-button" href="{{ routes.search_url }}" aria-label="Search">⌕</a>{% if shop.customer_accounts_enabled %}<a class="icon-button" href="{{ routes.account_url }}" aria-label="Account">♙</a>{% endif %}<a class="cart-trigger" href="{{ routes.cart_url }}">Bag <span class="cart-count" data-cart-count>{{ cart.item_count }}</span></a></div>
+</div>
+<nav class="mobile-nav" aria-label="Mobile navigation" data-mobile-menu hidden>{% for link in section.settings.menu.links %}<a href="{{ link.url }}">{{ link.title | escape }}</a>{% endfor %}</nav>
+</header>
+{% schema %}{"name":"Header","settings":[{"type":"link_list","id":"menu","label":"Menu","default":"main-menu"},{"type":"checkbox","id":"sticky","label":"Sticky header","default":true}],"presets":[{"name":"Header"}]}{% endschema %}
