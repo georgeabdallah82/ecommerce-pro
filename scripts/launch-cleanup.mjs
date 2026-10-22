@@ -93,6 +93,8 @@ const COUNTS = {
   whatsappSignups: `SELECT count(*)::int AS n FROM "PhoneSubscriber"`,
   questions: `SELECT count(*)::int AS n FROM "ProductQuestion"`,
   inviteCodes: `SELECT count(*)::int AS n FROM "InviteCode"`,
+  // Payments written down for influencers (the influencers and their codes are kept, like all discounts).
+  influencerPayouts: `SELECT count(*)::int AS n FROM "InfluencerPayout"`,
   winbackContacts: `SELECT count(*)::int AS n FROM "WinbackContact"`,
   // Thank-you codes made for test orders' inviters: one-use discounts, switched off (kept, like all discounts).
   inviteRewardCoupons: `SELECT count(*)::int AS n FROM "Coupon" WHERE "isActive" AND code IN (SELECT r."rewardCode" FROM "InviteReward" r WHERE r."orderId" IN (SELECT id FROM (${GONE_ORDERS}) g))`,
@@ -172,7 +174,7 @@ function printPreview({ c, orders, stock, state, args }) {
   console.log(`  Abandoned checkouts: ${c.abandonedCheckouts} | Newsletter signups: ${c.newsletter} | WhatsApp signups: ${c.whatsappSignups} | Email opt-outs: ${c.emailOptOuts}`)
   console.log(`  Email log: ${c.emailLog} | Visitor stats: ${c.visitorSessions} | Customer push devices: ${c.customerPushDevices}`)
   console.log(`  Back-in-stock requests: ${c.backInStock} | Notifications: ${c.notifications} | Audit log: ${c.auditLog}`)
-  console.log(`  Product questions: ${c.questions} | Invite codes: ${c.inviteCodes} | Win-back messages: ${c.winbackContacts}`)
+  console.log(`  Product questions: ${c.questions} | Invite codes: ${c.inviteCodes} | Win-back messages: ${c.winbackContacts} | Influencer payments: ${c.influencerPayouts}`)
   console.log(`  Order numbers restart: the next order is #${state.counter === null ? FIRST_ORDER_NUMBER : state.counter + 1} now, #${FIRST_ORDER_NUMBER} after the clean-up${keepOrders ? ' (or the one after the highest kept number)' : ''}`)
   console.log('')
   console.log('KEPT')
@@ -232,7 +234,7 @@ async function clean(client, args, before) {
   await run(`DELETE FROM "User" WHERE id IN (SELECT id FROM gone_users)`)
 
   // Everything else that only exists because of testing.
-  for (const table of ['Review', 'ProductQuestion', 'InviteCode', 'WinbackContact', 'AbandonedCheckout', 'PhoneSubscriber', 'EmailOptOut', 'EmailLog', 'LiveVisitorSession', 'PushSubscription', 'BackInStockRequest', 'Notification', 'PasswordResetToken', 'RateLimitBucket', 'AdminLoginLockout', 'AuditLog']) {
+  for (const table of ['Review', 'ProductQuestion', 'InviteCode', 'InfluencerPayout', 'WinbackContact', 'AbandonedCheckout', 'PhoneSubscriber', 'EmailOptOut', 'EmailLog', 'LiveVisitorSession', 'PushSubscription', 'BackInStockRequest', 'Notification', 'PasswordResetToken', 'RateLimitBucket', 'AdminLoginLockout', 'AuditLog']) {
     await run(`DELETE FROM "${table}"`)
   }
   await run(`DELETE FROM "Setting" WHERE key LIKE 'newsletter.subscriber.%'`)

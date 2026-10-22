@@ -844,6 +844,36 @@ model InviteReward {
   @@index([inviteCode])
 }
 
+// "Influencer codes" (lib/influencers.ts): a person who promotes the store with their own code. The
+// code is a normal discount in Discounts (same text, percent set here); every order that used it
+// counts for them, and they earn commissionPercent on what was delivered. Payments made to them
+// are InfluencerPayout rows; what is still owed is earned minus paid.
+model Influencer {
+  id                String             @id @default(cuid())
+  name              String
+  handle            String?
+  phone             String?
+  code              String             @unique
+  customerPercent   Int
+  commissionPercent Int
+  isActive          Boolean            @default(true)
+  notes             String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  payouts           InfluencerPayout[]
+}
+
+model InfluencerPayout {
+  id           String     @id @default(cuid())
+  influencerId String
+  amount       Int
+  note         String?
+  paidAt       DateTime   @default(now())
+  createdById  String?
+  influencer   Influencer @relation(fields: [influencerId], references: [id], onDelete: Cascade)
+  @@index([influencerId])
+}
+
 // Admin > Customers > Win back: when a past customer was last messaged from the list, so the
 // same person is not messaged again too soon.
 model WinbackContact {

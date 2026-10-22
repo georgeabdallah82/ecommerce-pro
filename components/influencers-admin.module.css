@@ -1,0 +1,28 @@
+/* Admin > Marketing > Influencers (components/influencers-admin.tsx). Shares the page, stat and card
+   styles of bring-back.module.css; these are the extras. Phone first. */
+.top { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.form { display: grid; gap: 12px; padding: 16px 18px; }
+.formTitle { margin: 0; font-size: 17px; font-weight: 800; color: var(--admin-ink); }
+.fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field.wide { grid-column: 1 / -1; }
+.label { font-size: 13px; font-weight: 700; color: var(--admin-ink); }
+.label i { font-style: normal; font-weight: 600; color: var(--admin-muted); }
+.help { font-size: 12.5px; color: var(--admin-muted); }
+.pct { display: flex; align-items: center; gap: 8px; }
+.pct input { flex: 1 1 auto; min-width: 0; }
+.pct span { font-weight: 800; color: var(--admin-ink); }
+.numbers { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+.numbers > div { display: grid; gap: 1px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--admin-ink) 5%, var(--admin-surface)); }
+.numbers strong { font-size: 17px; font-weight: 850; color: var(--admin-ink); }
+.numbers span { font-size: 12.5px; color: var(--admin-muted); }
+.owe { background: color-mix(in srgb, #f59e0b 16%, var(--admin-surface)) !important; }
+.codeLine { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 14px; color: var(--admin-muted); }
+.paused { opacity: .75; }
+.pay { display: grid; gap: 10px; padding: 12px; border: 1px dashed var(--admin-border); border-radius: 12px; }
+.list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.list li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: 14px; color: var(--admin-ink); }
+.list small { color: var(--admin-muted); font-size: 12.5px; }
+.sub { margin: 0; font-size: 13px; font-weight: 800; color: var(--admin-ink); }
+.warn { margin: 0; font-size: 13px; font-weight: 700; color: #b45309; }
+@media (max-width: 520px) { .fields { grid-template-columns: 1fr; } }
