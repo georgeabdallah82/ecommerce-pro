@@ -603,3 +603,30 @@ html[dir="rtl"] body.mk .aliTrustItem { text-align: right !important; }
 .mkMenuLang { display: block; width: 100%; margin-top: 14px; padding: 12px 14px; border: 1px solid var(--mk-line); background: var(--mk-page); color: var(--mk-ink); text-align: center; }
 .langSwitch { padding: 6px 12px; border: 1px solid var(--focal-line, #e5e7eb); background: #fff; color: inherit; }
 @media (max-width: 760px) { .focalNavActions .mkNavLang { display: none; } } /* on phones it is in the menu */
+
+/* ---- Keyboard and touch (UI audit) ------------------------------------------------------------
+   1. A focus ring you can actually see: the older rules draw it at 18% opacity.
+   2. Tap targets of at least 44px for the controls a thumb has to hit (40px inside the dense header
+      bar); the dots, the dismiss cross and the links get a bigger invisible hit area instead of a
+      bigger look.
+   3. "Skip to content" for keyboard users. */
+html body :is(a, button, input, select, textarea, summary, [role="button"], [role="tab"]):focus-visible { outline: 3px solid var(--mk-red, #d7261e); outline-offset: 2px; box-shadow: none; }
+html body.mk .mkHeader :is(a, button, input, select):focus-visible, html body.mk .focalFooter :is(a, button, input):focus-visible, html body.mk .mkHero :is(a, button):focus-visible { outline-color: #fff; box-shadow: 0 0 0 5px rgba(0,0,0,.55); }
+
+html body.mk .focalNavIcon { min-width: 44px; min-height: 44px; }
+html body.mk .aliNavSearchSubmit, html body.mk .aliNavSearchBar input { min-height: 40px; }
+html body.mk .mkDeliveryInner select { min-height: 36px; }
+html body.mk .mkCardWish { width: 40px; height: 40px; }
+html body.mk .focalQty button { min-width: 44px; min-height: 44px; }
+html body.mk .mkTabs button { min-height: 40px; }
+html body.mk .aliCategoryList a { display: flex; align-items: center; min-height: 44px; }
+html body.mk .mkLink { display: inline-flex; align-items: center; min-height: 44px; }
+html body.mk .focalFooter .footerGrid p:has(> a) { margin: 0; }
+html body.mk .focalFooter .footerGrid p > a { display: flex; align-items: center; min-height: 44px; }
+html body.mk .mkDots button, html body.mk .focalAnnouncementDismiss { position: relative; }
+html body.mk .mkDots button::after { content: ""; position: absolute; inset: -18px -4px; }
+html body.mk .focalAnnouncementDismiss::after { content: ""; position: absolute; inset: -10px; }
+
+.skipLink { position: fixed; top: 8px; inset-inline-start: 8px; z-index: 10000; padding: 12px 18px; border-radius: 8px; background: #111; color: #fff; font-weight: 700; font-size: 15px; text-decoration: none; transform: translateY(-250%); }
+.skipLink:focus { transform: none; outline: 3px solid #fff; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .skipLink { transition: none; } }

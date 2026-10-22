@@ -41,6 +41,7 @@ export default async function Home(){
   ]
   return <div className="aliHome">
     <script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(structuredData).replace(/</g,'\\u003c')}}/>
+    <main>
     {announcements.map(block=>{
       let text=block.title||''
       try{const parsed=JSON.parse(block.contentJson||'{}');if(parsed?.text)text=String(parsed.text)}catch{}
@@ -61,6 +62,7 @@ export default async function Home(){
         </div>
       </section>
     )}
+    </main>
     <Footer theme={theme}/>
   </div>
 }
