@@ -5,6 +5,8 @@ import { getCloudflareContext } from '@opennextjs/cloudflare'
 // on the bucket), so uploaded assets are served back through the app instead.
 export async function GET(_req: Request, { params }: { params: Promise<{ key: string }> }) {
   const { key } = await params
+  // Payment screenshots share the bucket but are private: only staff read them, through the admin route.
+  if (key.startsWith('proof-')) return new Response('Not found', { status: 404 })
   try {
     const { env } = await getCloudflareContext({ async: true })
     const bucket = (env as any).MEDIA_BUCKET

@@ -901,6 +901,26 @@ export const AR: Record<string, string> = {
   "Out for delivery": "في الطريق إليك",
   // Low stock (Settings > Selling tools > Only a few left)
   "Only {n} left": "بقي {n} فقط",
+  // Payment screenshot (components/payment-proof-box.tsx, lib/payment-proof.ts)
+  "Paid by transfer? Send us the screenshot": "دفعت بالتحويل؟ أرسل لنا لقطة الشاشة",
+  "Take a screenshot of the transfer and add it here. It helps us confirm your payment faster.": "التقط لقطة شاشة للتحويل وأضفها هنا. تساعدنا على تأكيد دفعتك أسرع.",
+  "Thank you, we received your screenshot": "شكرًا، استلمنا لقطة الشاشة",
+  "We will check it and confirm your payment soon.": "سنراجعها ونؤكد دفعتك قريبًا.",
+  "Screenshot sent.": "تم إرسال لقطة الشاشة.",
+  "Choose the screenshot": "اختر لقطة الشاشة",
+  "Send another screenshot": "أرسل لقطة أخرى",
+  "Send your payment screenshot": "أرسل لقطة شاشة الدفع",
+  "That picture is larger than 5 MB. Please choose a smaller one.": "هذه الصورة أكبر من 5 ميغابايت. اختر صورة أصغر.",
+  "Please choose a photo or screenshot (JPG, PNG or WebP) up to 5 MB.": "اختر صورة أو لقطة شاشة (JPG أو PNG أو WebP) بحجم حتى 5 ميغابايت.",
+  "This order is not paid by transfer, so there is nothing to upload.": "هذا الطلب غير مدفوع بالتحويل، فلا شيء لرفعه.",
+  "This order is already marked as paid. Thank you!": "تم تسجيل هذا الطلب كمدفوع. شكرًا لك!",
+  "This order is closed, so a payment screenshot cannot be added.": "هذا الطلب مغلق، لذا لا يمكن إضافة لقطة شاشة.",
+  "You have already sent the most screenshots allowed for this order. We will check them soon.": "أرسلت الحد الأقصى من لقطات الشاشة لهذا الطلب. سنراجعها قريبًا.",
+  "We could not save your screenshot right now. Please send it to us on WhatsApp.": "تعذّر حفظ لقطة الشاشة الآن. يرجى إرسالها لنا عبر واتساب.",
+  "Pay {amount} with {provider}": "ادفع {amount} عبر {provider}",
+  "Pay {amount} by wallet transfer": "ادفع {amount} بتحويل إلى المحفظة",
+  "Account number": "رقم الحساب",
+  "We'll contact you with the payment details.": "سنتواصل معك بتفاصيل الدفع.",
   // Keyboard users (components/skip-link.tsx)
   "Skip to content": "تخطَّ إلى المحتوى",
 }
