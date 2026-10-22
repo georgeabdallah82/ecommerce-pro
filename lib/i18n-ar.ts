@@ -899,6 +899,8 @@ export const AR: Record<string, string> = {
   // The customer's order history (lib/order-timeline.ts)
   "Preparing": "قيد التجهيز",
   "Out for delivery": "في الطريق إليك",
+  // Low stock (Settings > Selling tools > Only a few left)
+  "Only {n} left": "بقي {n} فقط",
   // Keyboard users (components/skip-link.tsx)
   "Skip to content": "تخطَّ إلى المحتوى",
 }

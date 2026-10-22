@@ -20,6 +20,8 @@ export const SELLING_KEYS = {
   inviteReward: 'invite.reward',
   inviteRewardDays: 'invite.rewardDays',
   questions: 'product.questions',
+  // "Only 3 left" on the product page when real stock is at or below this number (empty or 0 = off).
+  lowStock: 'product.lowStockThreshold',
 } as const
 
 export const SELLING_SETTING_KEYS = Object.values(SELLING_KEYS)
@@ -62,6 +64,21 @@ export function freeGiftProgress(subtotal: number, threshold: number) {
 export const giftOptionOn = (settings: Settings) => read(settings, SELLING_KEYS.giftOption) !== 'false'
 export const whatsappOrderOn = (settings: Settings) => read(settings, SELLING_KEYS.whatsappOrder) !== 'false'
 export const questionsOn = (settings: Settings) => read(settings, SELLING_KEYS.questions) !== 'false'
+
+// ---- "Only 3 left" ----
+// The warning uses the real stock only: a product that is not counted, or is sold even when out of
+// stock, never shows it (nothing is made up to push a sale).
+export const MAX_LOW_STOCK = 99
+export function lowStockThreshold(settings: Settings) {
+  const n = Math.floor(Number(String(read(settings, SELLING_KEYS.lowStock)).trim()))
+  return Number.isFinite(n) && n >= 1 ? Math.min(n, MAX_LOW_STOCK) : 0
+}
+// How many are left to say "Only N left" about, or 0 when the warning must not show.
+export function lowStockLeft({ threshold, available, trackInventory, continueSelling }: { threshold: number; available: number; trackInventory: boolean; continueSelling: boolean }) {
+  if (!(threshold >= 1) || !trackInventory || continueSelling) return 0
+  const left = Math.floor(Number(available))
+  return left >= 1 && left <= threshold ? left : 0
+}
 
 export function welcomeConfig(settings: Settings) {
   const code = String(read(settings, SELLING_KEYS.welcomeCode)).trim().toUpperCase()

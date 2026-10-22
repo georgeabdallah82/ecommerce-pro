@@ -713,3 +713,6 @@ html body.mk :is(.aliProductReviewsLink, .aliReviewSignInAlt, a.muted, .aliBread
   html body.mk .aliCouponRow input { flex: 1 1 calc(100% - 34px); min-height: 44px; font-size: 16px; }
   html body.mk .aliCouponRow .focalButton { flex: 1 1 100%; min-height: 44px; }
 }
+
+/* "Only 3 left" (Settings > Selling tools): the stock line turns amber and bold, same size so nothing jumps. */
+html body.mk .focalStorefront .focalStock.isLow { color: #92400e; font-weight: 700; }

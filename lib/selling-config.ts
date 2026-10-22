@@ -1,6 +1,6 @@
 import { db } from '@/lib/prisma'
 import { storefrontCached } from '@/lib/storefront-cache'
-import { SELLING_KEYS, SELLING_SETTING_KEYS, freeGiftConfig, giftOptionOn, lbpConfig, questionsOn, welcomeConfig, whatsappOrderOn } from '@/lib/selling'
+import { SELLING_KEYS, SELLING_SETTING_KEYS, freeGiftConfig, giftOptionOn, lbpConfig, lowStockThreshold, questionsOn, welcomeConfig, whatsappOrderOn } from '@/lib/selling'
 import { inviteConfig, type InviteConfig } from '@/lib/invites-shared'
 import { activeFlashSales, type FlashSale } from '@/lib/flash-sale'
 import { getQuantityDeals } from '@/lib/quantity-deals'
@@ -19,6 +19,8 @@ export type SellingConfig = {
   searchWords: string
   invite: InviteConfig
   questions: boolean
+  // Show "Only N left" when real stock is at or below this (0 = off).
+  lowStock: number
   // Marketing > Occasions still to come; each page checks its own day (lib/occasions.ts).
   occasions: Occasion[]
 }
@@ -46,6 +48,7 @@ export function getSellingConfig(): Promise<SellingConfig> {
       searchWords: map.get(SELLING_KEYS.searchWords) || '',
       invite: inviteConfig(map),
       questions: questionsOn(map),
+      lowStock: lowStockThreshold(map),
       // A day of slack for shoppers whose day starts before the server's.
       occasions: upcomingOccasions(readOccasions(map.get(OCCASIONS_KEY)), addDays(new Date().toISOString().slice(0, 10), -1)),
     }

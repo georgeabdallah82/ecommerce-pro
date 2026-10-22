@@ -74,6 +74,7 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
     'welcome.title': map.get('welcome.title') || '',
     'welcome.delaySeconds': map.get('welcome.delaySeconds') || '8',
     'search.synonyms': map.get('search.synonyms') || '',
+    'product.lowStockThreshold': map.get('product.lowStockThreshold') || '',
     'invite.friendPercent': map.get('invite.friendPercent') || '10',
     'invite.reward': map.get('invite.reward') || '5',
     'invite.rewardDays': map.get('invite.rewardDays') || '60',
@@ -376,6 +377,9 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
             </Card>
             <Card title="Order on WhatsApp button" desc="A button on every product page that sends the product, option, quantity and price to your WhatsApp.">
               <Toggle label="Show the button" keyName="product.whatsappOrder" value={flags['product.whatsappOrder']} onChange={() => toggle('product.whatsappOrder')} />
+            </Card>
+            <Card title="Only a few left" desc="When a product's real stock is at or below this number, its page says &quot;Only 3 left&quot;. It uses the stock you keep in Products, so it is always true, and it never shows for products that are not counted or that you sell when out of stock.">
+              <Field label="Show it when stock is at or below (leave empty to switch off)" value={values['product.lowStockThreshold']} placeholder="e.g. 5" onChange={v => set('product.lowStockThreshold', v.replace(/[^\d]/g, '').slice(0, 2))} />
             </Card>
             <Card title="Search words" desc="Words people type for your products, one group per line, e.g. soap = sabon, saboun. Arabic words work too. Search already forgives small typos.">
               <label className={ui.fieldLabel}>Word groups<textarea className={ui.textarea} rows={5} value={values['search.synonyms']} onChange={e => set('search.synonyms', e.target.value)} placeholder={'soap = sabon, saboun\ntissue = tissues, mahareem'} dir="auto" /></label>
