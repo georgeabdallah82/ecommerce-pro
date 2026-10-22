@@ -695,3 +695,21 @@ html body .focalAnnouncementGlobalInner > span { text-align: center; text-wrap: 
 html body .focalAnnouncementGlobal .focalAnnouncementDismiss { position: absolute; inset-inline-end: 12px; top: 50%; transform: translateY(-50%); }
 html body .focalAnnouncementGlobal .focalAnnouncementDismiss::after { content: ""; position: absolute; inset: -8px; }
 html body.mk .focalNav.mkHeader .aliNavSearchSubmit { height: 40px; align-self: center; }
+
+/* ---- Small controls from the UI audit (phone) -------------------------------------------------
+   Every control a thumb has to hit gets at least a 44px target (40px inside the dense header bar).
+   Where the look must stay small (links in a sentence, the tick box) the target grows invisibly
+   with padding that is cancelled by an equal negative margin, so nothing moves. The coupon box
+   stacks on narrow phones so its hint is read in full. */
+html body.mk .cartPage .qtyUX button { width: 44px; height: 44px; }
+html body.mk .cartPage .qtyUX input { height: 44px; }
+html body.mk .cartPage .removeUX { min-height: 44px; padding-inline: 14px; }
+html body.mk .aliCartRowCheckHit { display: grid; place-items: center; width: 44px; height: 44px; cursor: pointer; }
+html body.mk .aliFilterToggle { min-height: 44px; }
+html body.mk .mkDeliveryInner select { min-height: 40px; }
+html body.mk :is(.aliProductReviewsLink, .aliReviewSignInAlt, a.muted, .aliBreadcrumbs a) { display: inline-block; padding-block: 13px; margin-block: -13px; }
+@media (max-width: 560px) {
+  html body.mk .aliCouponRow { flex-wrap: wrap; }
+  html body.mk .aliCouponRow input { flex: 1 1 calc(100% - 34px); min-height: 44px; font-size: 16px; }
+  html body.mk .aliCouponRow .focalButton { flex: 1 1 100%; min-height: 44px; }
+}

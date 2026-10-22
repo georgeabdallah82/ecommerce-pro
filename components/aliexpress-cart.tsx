@@ -133,7 +133,7 @@ export default function AliExpressCart({ theme, recommended, sections = [], zone
               return (
                 <article className={`cartRowUX aliCartRow ${checked ? '' : 'unselected'}`} key={key}>
                   <div className="aliCartRowMedia">
-                    <input type="checkbox" className="aliCartRowCheck" checked={checked} onChange={() => toggleSelected(key)} aria-label={t('Select {name} for checkout', { name: item.name })} />
+                    <label className="aliCartRowCheckHit"><input type="checkbox" className="aliCartRowCheck" checked={checked} onChange={() => toggleSelected(key)} aria-label={t('Select {name} for checkout', { name: item.name })} /></label>
                     <img className="cartImageUX" src={item.image || '/placeholder-product.svg'} alt="" loading="lazy" decoding="async" width={116} height={116} />
                   </div>
                   <div className="cartInfoUX">

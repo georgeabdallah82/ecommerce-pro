@@ -67,3 +67,15 @@ describe('storefront: header fits', () => {
     assert.doesNotMatch(css, /aliNavSearchBar \{ height: 44px !important; \}/)
   })
 })
+
+describe('storefront: small controls', () => {
+  it('gives the cart controls a 44px target and stacks the coupon box on narrow phones', () => {
+    assert.match(css, /\.cartPage \.qtyUX button \{ width: 44px; height: 44px; \}/)
+    assert.match(css, /\.cartPage \.removeUX \{ min-height: 44px;/)
+    assert.match(css, /\.aliCartRowCheckHit \{[^}]*width: 44px; height: 44px;/)
+    assert.match(css, /\.aliCouponRow \{ flex-wrap: wrap; \}/)
+  })
+  it('wraps the cart tick box in a label so the whole 44px square toggles it', () => {
+    assert.match(read('components/aliexpress-cart.tsx'), /<label className="aliCartRowCheckHit"><input type="checkbox" className="aliCartRowCheck"/)
+  })
+})
