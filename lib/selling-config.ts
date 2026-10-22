@@ -3,6 +3,8 @@ import { storefrontCached } from '@/lib/storefront-cache'
 import { SELLING_KEYS, SELLING_SETTING_KEYS, freeGiftConfig, giftOptionOn, lbpConfig, questionsOn, welcomeConfig, whatsappOrderOn } from '@/lib/selling'
 import { inviteConfig, type InviteConfig } from '@/lib/invites-shared'
 import { activeFlashSales, type FlashSale } from '@/lib/flash-sale'
+import { getQuantityDeals } from '@/lib/quantity-deals'
+import { publicDeals, type PublicDeal } from '@/lib/quantity-deals-shared'
 import { OCCASIONS_KEY, addDays, readOccasions, upcomingOccasions, type Occasion } from '@/lib/occasions'
 
 export type SellingConfig = {
@@ -12,6 +14,8 @@ export type SellingConfig = {
   whatsappOrder: boolean
   welcome: { enabled: boolean; code: string; title: string; delaySeconds: number }
   flashSales: FlashSale[]
+  // "Buy 2, save 10%" offers the shopper can see (lib/quantity-deals-shared.ts); the price itself is worked out at checkout.
+  quantityDeals: PublicDeal[]
   searchWords: string
   invite: InviteConfig
   questions: boolean
@@ -26,9 +30,10 @@ export function getSellingConfig(): Promise<SellingConfig> {
     const rows = await db.setting.findMany({ where: { key: { in: [...SELLING_SETTING_KEYS, OCCASIONS_KEY] } }, select: { key: true, value: true } })
     const map = new Map(rows.map(r => [r.key, r.value]))
     const gift = freeGiftConfig(map)
-    const [giftProduct, flashSales] = await Promise.all([
+    const [giftProduct, flashSales, quantityDeals] = await Promise.all([
       gift.enabled ? db.product.findFirst({ where: { id: gift.productId, status: 'ACTIVE' }, select: { id: true, name: true, slug: true, images: { select: { url: true }, orderBy: { sortOrder: 'asc' }, take: 1 } } }) : null,
       activeFlashSales().catch(() => [] as FlashSale[]),
+      getQuantityDeals().then(publicDeals).catch(() => [] as PublicDeal[]),
     ])
     return {
       lbp: lbpConfig(map),
@@ -37,6 +42,7 @@ export function getSellingConfig(): Promise<SellingConfig> {
       whatsappOrder: whatsappOrderOn(map),
       welcome: welcomeConfig(map),
       flashSales,
+      quantityDeals,
       searchWords: map.get(SELLING_KEYS.searchWords) || '',
       invite: inviteConfig(map),
       questions: questionsOn(map),

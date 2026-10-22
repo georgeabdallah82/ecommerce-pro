@@ -14,7 +14,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  Activity, ArrowLeftRight, Rocket, BarChart3, Boxes, ClipboardList, CreditCard, FileEdit, FileText, Gauge, Image as ImageIcon, Layers3,
+  Activity, ArrowLeftRight, Rocket, Star, BarChart3, Boxes, ClipboardList, CreditCard, FileEdit, FileText, Gauge, Image as ImageIcon, Layers3,
   LayoutDashboard, LogOut, Mail, Megaphone, Menu, MessageSquare, PackageCheck, Palette, Percent, Radio, RotateCcw, Search, Settings2,
   ShoppingBag, MoreHorizontal, Store, Tag, Truck, UserCog, Users, UsersRound, Workflow, X, PackagePlus, MessageCircleQuestion, HeartHandshake, UserPlus, PackageSearch, ScanBarcode, Barcode, BadgeDollarSign, Contact, CalendarHeart, type LucideIcon,
 } from 'lucide-react'
@@ -35,7 +35,7 @@ const iconMap: Record<string, LucideIcon> = {
   draftOrders: ClipboardList, returns: RotateCcw,
   segments: UsersRound, giftCards: CreditCard,
   liveVisitors: Radio, pushCampaigns: Megaphone, newsletter: Mail, bundles: PackagePlus,
-  questions: MessageCircleQuestion, winback: HeartHandshake, invites: UserPlus, drivers: Truck, reorder: PackageSearch, stockCount: ScanBarcode, labels: Barcode, prices: BadgeDollarSign, suppliers: Contact, occasions: CalendarHeart,
+  questions: MessageCircleQuestion, winback: HeartHandshake, invites: UserPlus, influencers: Star, quantityDeals: Layers3, drivers: Truck, reorder: PackageSearch, stockCount: ScanBarcode, labels: Barcode, prices: BadgeDollarSign, suppliers: Contact, occasions: CalendarHeart,
 }
 
 function normalizePath(pathname: string) { return pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname }

@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { CalendarHeart, Gift, Zap } from 'lucide-react'
+import { CalendarHeart, Gift, Layers, Zap } from 'lucide-react'
 import { useI18n } from '@/components/lang-provider'
 import { loadStoreSettings } from '@/lib/store-settings-client'
 import { formatLbp, freeGiftProgress, lbpAmount } from '@/lib/selling'
 import { countdown, type FlashSale } from '@/lib/flash-sale-shared'
 import { money } from '@/lib/config'
+import { bestDeal, nextOffer, type PublicDeal, type QuantityTier } from '@/lib/quantity-deals-shared'
 import { activeOccasion, dayKeyOf, type Occasion } from '@/lib/occasions'
 
 export type ClientSelling = {
@@ -15,6 +16,7 @@ export type ClientSelling = {
   giftOption: boolean
   welcome: { enabled: boolean; code: string; title: string; delaySeconds: number }
   flashSales: FlashSale[]
+  quantityDeals?: PublicDeal[]
   occasions?: Occasion[]
 }
 
@@ -130,4 +132,48 @@ export function OccasionNote() {
   const shown = useOccasionText()
   if (!shown) return null
   return <p className="occasionNote"><CalendarHeart size={15} aria-hidden="true" /> {shown.title}</p>
+}
+
+// "Buy 2, save 10%" / "3 for $20.00": one offer of a quantity deal, in the shopper's language.
+function useOfferText() {
+  const { t } = useI18n()
+  return (tier: QuantityTier) => tier.kind === 'percent'
+    ? t('Buy {quantity}, save {percent}%', { quantity: tier.quantity, percent: tier.value })
+    : t('{quantity} for {price}', { quantity: tier.quantity, price: money(tier.value) })
+}
+
+// Product page: the offers that cover this product (Marketing > Quantity deals). The deals come
+// from the server with the page, so nothing jumps in after it loads.
+export function QuantityDealsBox({ deals }: { deals: PublicDeal[] }) {
+  const { t } = useI18n()
+  const offerText = useOfferText()
+  const seen = new Set<string>()
+  const tiers = deals.flatMap(d => d.tiers).filter(tier => { const key = `${tier.quantity}:${tier.kind}:${tier.value}`; if (seen.has(key)) return false; seen.add(key); return true }).sort((a, b) => a.quantity - b.quantity)
+  if (!tiers.length) return null
+  return <div className="qtyDealBox" role="group" aria-label={t('Buy more, save more')}>
+    <strong><Layers size={16} aria-hidden="true" /> {t('Buy more, save more')}</strong>
+    <ul>{tiers.map(tier => <li key={`${tier.quantity}:${tier.kind}:${tier.value}`}>{offerText(tier)}</li>)}</ul>
+  </div>
+}
+
+// Cart: how close the shopper is to the next offer, or what they already save. The price itself
+// is worked out at checkout from the same rules (lib/checkout-discounts.ts).
+export function QuantityDealBar({ items }: { items: Array<{ productId: string; quantity: number; price: number }> }) {
+  const { t } = useI18n()
+  const selling = useSelling()
+  const deals = selling?.quantityDeals || []
+  if (!deals.length || !items.length) return null
+  const lines = items.map(i => ({ productId: i.productId, quantity: i.quantity, unitPrice: i.price, totalPrice: i.price * i.quantity, taxable: true }))
+  const saving = bestDeal({ enabled: true, deals: deals.map(d => ({ ...d, name: '', active: true })) }, lines)
+  const next = nextOffer(deals, items)
+  if (!saving && !next) return null
+  return <div className={`freeGiftBar${saving && !next ? ' reached' : ''}`} role="status">
+    <Layers size={18} aria-hidden="true" />
+    <div>
+      {saving && <p>{t('You save {amount} with a quantity deal. It is taken off at checkout.', { amount: money(saving.split.total) })}</p>}
+      {next && <p>{next.tier.kind === 'percent'
+        ? t('Add {count} more to save {percent}% on these items.', { count: next.more, percent: next.tier.value })
+        : t('Add {count} more to get {quantity} for {price}.', { count: next.more, quantity: next.tier.quantity, price: money(next.tier.value) })}</p>}
+    </div>
+  </div>
 }

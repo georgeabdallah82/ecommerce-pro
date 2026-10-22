@@ -74,6 +74,9 @@ await insert('PhoneSubscriber', { phone: '96170000001' })
 await insert('ProductQuestion', { productId: product.id, name: 'Maya', question: 'Is it big?' })
 await insert('InviteCode', { code: 'MAYALC1', phone: '96170000002' })
 await insert('WinbackContact', { phone: '96170000003' })
+// An influencer and a payment written down for them: the payment is test data, the influencer (and their code) stays.
+await insert('Influencer', { id: 'lc_inf', name: 'Maya', code: 'MAYALC10', customerPercent: 10, commissionPercent: 10 })
+await insert('InfluencerPayout', { influencerId: 'lc_inf', amount: 500 })
 // Drivers and running costs are the store's own, not test data: they stay.
 await insert('Driver', { id: 'lc_driver', name: 'Ali', token: 'lc-driver-token-0123456789abcdef' })
 await insert('Expense', { name: 'Rent', amount: 30000, startsOn: new Date('2026-10-01') })
@@ -128,6 +131,7 @@ ok(await n(`SELECT count(*) AS n FROM "Review"`) === 0 && await n(`SELECT count(
 ok(await n(`SELECT count(*) AS n FROM "Driver"`) === 1 && await n(`SELECT count(*) AS n FROM "Expense"`) === 1, 'clean: drivers and running costs stay')
 ok((await one(`SELECT "isActive" FROM "Coupon" WHERE code = 'THANKSLC1'`)).isActive === false && (await one(`SELECT "isActive" FROM "Coupon" WHERE code = 'LCTEST'`)).isActive === true, 'clean: test thank-you code switched off, other discounts untouched')
 for (const table of ['AbandonedCheckout', 'PhoneSubscriber', 'ProductQuestion', 'InviteCode', 'InviteReward', 'WinbackContact', 'EmailLog', 'LiveVisitorSession', 'Notification']) ok(await n(`SELECT count(*) AS n FROM "${table}"`) === 0, `clean: ${table} emptied`)
+ok(await n(`SELECT count(*) AS n FROM "InfluencerPayout"`) === 0 && await n(`SELECT count(*) AS n FROM "Influencer" WHERE code = 'MAYALC10'`) === 1, 'clean: influencer payments gone, the influencer and their code stay')
 ok(await n(`SELECT count(*) AS n FROM "Setting" WHERE key LIKE 'newsletter.subscriber.%'`) === 0, 'clean: newsletter signups gone')
 ok(await n(`SELECT count(*) AS n FROM "Setting" WHERE key NOT LIKE 'newsletter.subscriber.%'`) === settingsBefore, 'clean: all other settings stay (staff phone alerts, maintenance)')
 ok((await one(`SELECT "usedCount" FROM "Coupon" WHERE code = 'LCTEST'`)).usedCount === 1, 'clean: coupon use count = kept orders using it')
