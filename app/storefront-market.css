@@ -33,9 +33,9 @@ html body.mk .focalNav.mkHeader .focalLogo { color: #fff !important; }
 html body.mk .focalNav.mkHeader .focalLogo img { max-height: 40px !important; }
 html body.mk .focalNav.mkHeader .focalLogo img.mkLogoWhite { filter: brightness(0) invert(1) !important; }
 html body.mk .focalNav.mkHeader .aliNavSearchWrap { max-width: none !important; margin: 0 !important; }
-html body.mk .focalNav.mkHeader .aliNavSearchBar { height: 46px !important; border: 0 !important; border-radius: 10px !important; padding: 5px !important; background: #fff !important; }
+html body.mk .focalNav.mkHeader .aliNavSearchBar { height: 50px !important; border: 0 !important; border-radius: 12px !important; padding: 5px !important; background: #fff !important; }
 html body.mk .focalNav.mkHeader .aliNavSearchBar input { height: auto !important; border: 0 !important; background: transparent !important; box-shadow: none !important; border-radius: 0 !important; padding: 0 10px !important; font-size: 14.5px !important; font-weight: 500 !important; color: var(--mk-ink) !important; }
-html body.mk .focalNav.mkHeader .aliNavSearchSubmit { border-radius: 8px !important; padding: 0 18px !important; background: var(--mk-red) !important; font-size: 13.5px !important; font-weight: 700 !important; }
+html body.mk .focalNav.mkHeader .aliNavSearchSubmit { border-radius: 9px !important; padding: 0 18px !important; background: var(--mk-red) !important; font-size: 13.5px !important; font-weight: 700 !important; }
 html body.mk .focalNav.mkHeader .aliNavSearchSubmit:hover { background: var(--mk-red-dark) !important; }
 html body.mk .focalNav.mkHeader .focalNavActions { gap: 8px !important; }
 html body.mk .focalNav.mkHeader .focalNavIcon { width: auto !important; min-width: 42px !important; height: 42px !important; padding: 0 12px !important; gap: 8px !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; border: 0 !important; border-radius: 10px !important; background: rgba(255,255,255,.15) !important; color: #fff !important; font-size: 13.5px !important; font-weight: 600 !important; text-decoration: none !important; }
@@ -52,7 +52,6 @@ html body.mk .focalNav.mkHeader:not(.mkHeaderLight) .navAvatar { background: #ff
   html body.mk .focalNav.mkHeader .focalLogo { justify-content: flex-start !important; }
   html body.mk .focalNav.mkHeader .focalLogo img { max-height: 32px !important; }
   html body.mk .focalNav.mkHeader .aliNavSearchWrap { display: block !important; grid-column: 1 / -1 !important; order: 5 !important; }
-  html body.mk .focalNav.mkHeader .aliNavSearchBar { height: 44px !important; }
   html body.mk .focalNav.mkHeader .focalNavIcon { min-width: 40px !important; height: 40px !important; padding: 0 10px !important; }
   html body.mk .focalNav.mkHeader .focalNavActions .focalNavIcon:nth-child(2) { display: inline-flex !important; }
 }
@@ -623,9 +622,8 @@ html body.mk .aliCategoryList a { display: flex; align-items: center; min-height
 html body.mk .mkLink { display: inline-flex; align-items: center; min-height: 44px; }
 html body.mk .focalFooter .footerGrid p:has(> a) { margin: 0; }
 html body.mk .focalFooter .footerGrid p > a { display: flex; align-items: center; min-height: 44px; }
-html body.mk .mkDots button, html body.mk .focalAnnouncementDismiss { position: relative; }
+html body.mk .mkDots button { position: relative; }
 html body.mk .mkDots button::after { content: ""; position: absolute; inset: -18px -4px; }
-html body.mk .focalAnnouncementDismiss::after { content: ""; position: absolute; inset: -10px; }
 
 .skipLink { position: fixed; top: 8px; inset-inline-start: 8px; z-index: 10000; padding: 12px 18px; border-radius: 8px; background: #111; color: #fff; font-weight: 700; font-size: 15px; text-decoration: none; transform: translateY(-250%); }
 .skipLink:focus { transform: none; outline: 3px solid #fff; outline-offset: 2px; }
@@ -687,3 +685,13 @@ html body.mk .summaryUX { border-radius: var(--mk-radius) !important; box-shadow
   html body.mk .mkCard, html body.mk .mkCardAdd, html body.mk .mkCardMedia img { transition: none !important; transform: none !important; }
   html body.mk .mkCard:hover { transform: none !important; }
 }
+
+/* Header fixes found on the live store: the search button sits centred inside its outline (a 50px bar
+   holds the 40px button with 5px all round), and the announcement text is centred on the screen.
+   The dismiss cross stays in the corner (absolute) so it never pushes the text, and the phone padding
+   is the same on both sides. */
+html body .focalAnnouncementGlobalInner { padding-inline: 42px !important; }
+html body .focalAnnouncementGlobalInner > span { text-align: center; text-wrap: balance; }
+html body .focalAnnouncementGlobal .focalAnnouncementDismiss { position: absolute; inset-inline-end: 12px; top: 50%; transform: translateY(-50%); }
+html body .focalAnnouncementGlobal .focalAnnouncementDismiss::after { content: ""; position: absolute; inset: -8px; }
+html body.mk .focalNav.mkHeader .aliNavSearchSubmit { height: 40px; align-self: center; }

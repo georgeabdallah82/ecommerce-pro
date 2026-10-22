@@ -47,3 +47,23 @@ describe('storefront: keyboard and touch', () => {
     assert.match(footer, /\.focalFooterNewsletterForm input\[aria-hidden="true"\]\{min-width:0;flex:none\}/)
   })
 })
+
+// Found by the owner on the live store (phone): the search button hung over its outline and the
+// announcement text sat left of centre. Both came from the first round of touch-target fixes.
+describe('storefront: header fits', () => {
+  it('keeps the announcement dismiss cross in the corner so it never pushes the text off-centre', () => {
+    assert.doesNotMatch(css, /focalAnnouncementDismiss \{ position: relative; \}/)
+    assert.match(css, /\.focalAnnouncementGlobal \.focalAnnouncementDismiss \{ position: absolute; inset-inline-end: 12px;/)
+    assert.doesNotMatch(css, /focalAnnouncementDismiss \{[^}]*\bright: auto/)
+  })
+  it('pads the announcement the same on both sides and centres wrapped lines', () => {
+    assert.match(css, /focalAnnouncementGlobalInner \{ padding-inline: 42px !important; \}/)
+    assert.match(css, /focalAnnouncementGlobalInner > span \{ text-align: center;/)
+  })
+  it('makes the search bar tall enough for its 40px button plus padding', () => {
+    const bar = css.match(/\.aliNavSearchBar \{ height: (\d+)px !important;[^}]*padding: (\d+)px !important;/)
+    assert.ok(bar, 'search bar rule found')
+    assert.ok(Number(bar![1]) >= 40 + 2 * Number(bar![2]), 'bar is at least button + padding')
+    assert.doesNotMatch(css, /aliNavSearchBar \{ height: 44px !important; \}/)
+  })
+})
