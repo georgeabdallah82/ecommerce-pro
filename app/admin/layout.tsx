@@ -62,6 +62,7 @@ const groups: AdminSidebarGroup[] = [
     { href: '/admin/marketing/win-back', label: 'Win back', permission: 'customers.view', icon: 'winback' },
     { href: '/admin/marketing/invites', label: 'Invite a friend', permission: 'customers.view', icon: 'invites' },
     { href: '/admin/marketing/influencers', label: 'Influencers', permission: 'coupons.view', icon: 'influencers' },
+    { href: '/admin/marketing/quantity-deals', label: 'Quantity deals', permission: 'coupons.view', icon: 'quantityDeals' },
     { href: '/admin/marketing/occasions', label: 'Occasions', permission: 'coupons.view', icon: 'occasions' },
   ]},
   { id: 'analytics', label: 'Analytics', items: [

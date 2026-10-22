@@ -16,6 +16,7 @@ import { themeTemplates } from '@/lib/theme-templates'
 import { storefrontCached } from '@/lib/storefront-cache'
 import { getBoughtTogether } from '@/lib/recommendations'
 import { getSellingConfig } from '@/lib/selling-config'
+import { dealsForProduct } from '@/lib/quantity-deals-shared'
 import { isReviewPhotoUrl } from '@/lib/review-photos'
 import { saleFor } from '@/lib/flash-sale'
 import { getContactInfo } from '@/lib/store-contact'
@@ -321,6 +322,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         customerEmail={currentUser?.role === 'CUSTOMER' ? currentUser.email || undefined : undefined}
         boughtTogether={boughtTogether}
         flashSale={flash ? { percent: flash.percent, endsAt: flash.endsAt } : null}
+        quantityDeals={dealsForProduct(selling?.quantityDeals || [], product.id)}
         lbpRate={selling?.lbp.show ? selling.lbp.rate : 0}
         storeWhatsapp={storeWhatsapp}
         questionsEnabled={selling?.questions !== false}

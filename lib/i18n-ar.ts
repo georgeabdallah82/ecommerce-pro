@@ -889,4 +889,11 @@ export const AR: Record<string, string> = {
   "Location is blocked for this site. Allow it in your browser settings, or skip this step. Your address is enough.": "الموقع محظور لهذا الموقع. اسمح به من إعدادات المتصفح، أو تخطَّ هذه الخطوة. عنوانك يكفي.",
   "We could not find your location. You can try again, or skip this step.": "تعذّر تحديد موقعك. يمكنك المحاولة مرة أخرى أو تخطي هذه الخطوة.",
   "This location is outside the country we deliver this order to. Please write your address instead.": "هذا الموقع خارج البلد الذي نوصل إليه هذا الطلب. يرجى كتابة عنوانك بدلاً من ذلك.",
+  // Quantity deals (components/selling-client.tsx)
+  "Buy more, save more": "اشترِ أكثر، ووفّر أكثر",
+  "Buy {quantity}, save {percent}%": "اشترِ {quantity} ووفّر {percent}%",
+  "{quantity} for {price}": "{quantity} بسعر {price}",
+  "You save {amount} with a quantity deal. It is taken off at checkout.": "توفّر {amount} بفضل عرض الكمية. يُخصم عند إتمام الطلب.",
+  "Add {count} more to save {percent}% on these items.": "أضف {count} أخرى لتوفّر {percent}% على هذه المنتجات.",
+  "Add {count} more to get {quantity} for {price}.": "أضف {count} أخرى لتحصل على {quantity} بسعر {price}.",
 }

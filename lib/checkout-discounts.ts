@@ -1,6 +1,8 @@
 import { db } from '@/lib/prisma'
 import { discountAmount, misconfigured, zeroSplit, type DiscountSplit, type LineItem } from '@/lib/discounts'
 import { inviteCoupon } from '@/lib/invites'
+import { getQuantityDeals } from '@/lib/quantity-deals'
+import { bestDeal } from '@/lib/quantity-deals-shared'
 
 // The discount a cart gets at checkout: a code the customer typed, or else the best automatic
 // discount. Shared by checkout (app/api/checkout/route.ts) and the order summary's live price
@@ -64,6 +66,13 @@ export async function findAutomaticDiscount(subtotal: number, userId: string | n
     const discount = await discountAmount(coupon, items)
     if (discount.total === 0 && coupon.type !== 'FREE_SHIPPING') continue
     if (!best || discount.total > best.discount.total) best = { discount, coupon }
+  }
+  // Quantity deals (Marketing > Quantity deals: "Buy 2, save 10%") compete like any automatic
+  // discount: the one that saves the shopper most wins, and a typed code replaces them all. They
+  // have no row to count uses on, so the "coupon" is a stand-in with no id (like an invite code).
+  const quantity = bestDeal(await getQuantityDeals().catch(() => ({ enabled: false, deals: [] })), items)
+  if (quantity && (!best || quantity.split.total > best.discount.total)) {
+    best = { discount: quantity.split, coupon: { id: null, code: `QTY-${quantity.deal.id.slice(-6).toUpperCase()}`, type: 'FIXED', value: 0, isActive: true, isAutomatic: true, maxUses: null, usedCount: 0, firstOrderOnly: false, quantityDeal: { id: quantity.deal.id, name: quantity.deal.name } } }
   }
   return best ?? { discount: zeroSplit(), coupon: null as any }
 }

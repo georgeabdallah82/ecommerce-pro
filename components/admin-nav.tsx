@@ -35,7 +35,7 @@ const iconMap: Record<string, LucideIcon> = {
   draftOrders: ClipboardList, returns: RotateCcw,
   segments: UsersRound, giftCards: CreditCard,
   liveVisitors: Radio, pushCampaigns: Megaphone, newsletter: Mail, bundles: PackagePlus,
-  questions: MessageCircleQuestion, winback: HeartHandshake, invites: UserPlus, influencers: Star, drivers: Truck, reorder: PackageSearch, stockCount: ScanBarcode, labels: Barcode, prices: BadgeDollarSign, suppliers: Contact, occasions: CalendarHeart,
+  questions: MessageCircleQuestion, winback: HeartHandshake, invites: UserPlus, influencers: Star, quantityDeals: Layers3, drivers: Truck, reorder: PackageSearch, stockCount: ScanBarcode, labels: Barcode, prices: BadgeDollarSign, suppliers: Contact, occasions: CalendarHeart,
 }
 
 function normalizePath(pathname: string) { return pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname }

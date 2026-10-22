@@ -16,7 +16,8 @@ import { trackViewContent } from '@/lib/tracking-events'
 import BackInStockButton from '@/components/back-in-stock-button'
 import BoughtTogether from '@/components/bought-together'
 import type { Suggestion } from '@/lib/recommendations'
-import { FlashCountdown, LbpNote, OccasionNote } from '@/components/selling-client'
+import type { PublicDeal } from '@/lib/quantity-deals-shared'
+import { FlashCountdown, LbpNote, OccasionNote, QuantityDealsBox } from '@/components/selling-client'
 import { salePrice } from '@/lib/flash-sale-shared'
 import RecentlyViewedRow from '@/components/recently-viewed-row'
 import ProductQuestions from '@/components/product-questions'
@@ -76,7 +77,7 @@ function ReviewForm({ productId }: { productId: string }) {
   )
 }
 
-export default function AliExpressProduct({ theme, product, related, variantAvailability, productAvailable, trackInventory, continueSellingWhenOutOfStock, reviewEligibility, sections = [], collections = [], vapidPublicKey, customerEmail, boughtTogether = [], flashSale = null, lbpRate = 0, storeWhatsapp = '', questionsEnabled = false }: { theme: AnyMap; product: AnyMap; related: AnyMap[]; boughtTogether?: Suggestion[]; variantAvailability: Array<{ name: string; sku: string; available: number }>; productAvailable: number; trackInventory: boolean; continueSellingWhenOutOfStock: boolean; reviewEligibility: ReviewEligibility; sections?: AnyMap[]; collections?: AnyMap[]; vapidPublicKey?: string; customerEmail?: string; flashSale?: { percent: number; endsAt: string } | null; lbpRate?: number; storeWhatsapp?: string; questionsEnabled?: boolean }) {
+export default function AliExpressProduct({ theme, product, related, variantAvailability, productAvailable, trackInventory, continueSellingWhenOutOfStock, reviewEligibility, sections = [], collections = [], vapidPublicKey, customerEmail, boughtTogether = [], flashSale = null, lbpRate = 0, storeWhatsapp = '', questionsEnabled = false, quantityDeals = [] }: { theme: AnyMap; product: AnyMap; related: AnyMap[]; boughtTogether?: Suggestion[]; variantAvailability: Array<{ name: string; sku: string; available: number }>; productAvailable: number; trackInventory: boolean; continueSellingWhenOutOfStock: boolean; reviewEligibility: ReviewEligibility; sections?: AnyMap[]; collections?: AnyMap[]; vapidPublicKey?: string; customerEmail?: string; flashSale?: { percent: number; endsAt: string } | null; lbpRate?: number; storeWhatsapp?: string; questionsEnabled?: boolean; quantityDeals?: PublicDeal[] }) {
   const { t, lang, count: plural } = useI18n()
   const { addItem } = useCart()
   const { wishlist, toggleWish } = useWishlist()
@@ -254,6 +255,7 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
           {lbpRate > 0 && <LbpNote cents={shownPrice} rate={lbpRate} />}
           {flashSale && <FlashCountdown endsAt={flashSale.endsAt} />}
           <OccasionNote />
+          <QuantityDealsBox deals={quantityDeals} />
 
           {variants.length > 0 && (
             <div className="aliProductVariants">

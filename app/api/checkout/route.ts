@@ -373,7 +373,7 @@ export async function POST(req: Request) {
           if (reserved.length) undo.push(() => undoReservations(tx, reserved, orderNumber, 'Checkout failed before the order was placed'))
         }
         // Invite codes are not discounts in Discounts: nothing to count (lib/invites.ts).
-        if (coupon && !coupon.invite) {
+        if (coupon?.id && !coupon.invite) {
           const couponUpdate = await tx.coupon.updateMany({ where: { id: coupon.id, isActive: true, ...(coupon.maxUses !== null ? { usedCount: { lt: coupon.maxUses } } : {}) }, data: { usedCount: { increment: 1 } } })
           if (couponUpdate.count !== 1) throw new Error('This coupon is no longer available')
           undo.push(() => tx.coupon.updateMany({ where: { id: coupon.id, usedCount: { gt: 0 } }, data: { usedCount: { decrement: 1 } } }))

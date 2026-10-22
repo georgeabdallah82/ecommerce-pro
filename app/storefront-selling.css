@@ -101,3 +101,10 @@
 .aliQaForm .aliQaAsk { justify-self: stretch; justify-content: center; border-color: var(--store-primary, #d7261e); background: var(--store-primary, #d7261e); color: #fff; }
 .aliQaTrap { position: absolute !important; width: 1px !important; height: 1px !important; opacity: 0 !important; pointer-events: none !important; inset-inline-start: -9999px; }
 .aliQaSent { display: flex; align-items: center; gap: 8px; margin: 0; padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, #15803d 10%, var(--store-surface, #fff)); color: #15803d; font-weight: 700; font-size: 14.5px; line-height: 1.45; }
+
+/* Quantity deals: the offers box on the product page (components/selling-client.tsx) */
+.qtyDealBox { display: grid; gap: 6px; margin: 4px 0 12px; padding: 12px 14px; border-radius: 12px; border: 1px dashed color-mix(in srgb, var(--store-primary, #d7261e) 55%, transparent); background: color-mix(in srgb, var(--store-primary, #d7261e) 6%, var(--store-surface, #fff)); color: var(--store-text, #121212); }
+.qtyDealBox strong { display: flex; align-items: center; gap: 8px; font-size: 14.5px; }
+.qtyDealBox svg { color: var(--store-primary, #d7261e); flex: none; }
+.qtyDealBox ul { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px 8px; }
+.qtyDealBox li { padding: 4px 10px; border-radius: 999px; background: var(--store-surface, #fff); border: 1px solid var(--store-border, #e7e7e4); font-size: 13.5px; font-weight: 700; }
