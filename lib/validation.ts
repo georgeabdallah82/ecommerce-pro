@@ -29,6 +29,10 @@ export const checkoutSchema = z.object({
     postalCode: z.string().trim().max(30).optional().or(z.literal('')),
     country: z.string().trim().min(2).max(80),
     phone: z.string().trim().max(40).optional().or(z.literal('')),
+    // "Share my exact location" (lib/location-pin.ts): checked and rounded again by the checkout route.
+    lat: z.number().finite().min(-90).max(90).optional(),
+    lng: z.number().finite().min(-180).max(180).optional(),
+    locationAccuracy: z.number().finite().min(0).max(100000).optional(),
   }),
   items: z.array(z.object({ productId: z.string().min(1), variantId: z.string().nullable().optional(), quantity: z.number().int().min(1).max(99), bundleId: z.string().max(64).nullable().optional() })).min(1).max(100)
 })

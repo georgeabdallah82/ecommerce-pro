@@ -15,6 +15,8 @@ import { OrderStatus, PaymentStatus, Prisma } from '@prisma/client'
 import { runInBackground } from '@/lib/background'
 import { whatsappOutcomeNote } from '@/lib/whatsapp-confirm'
 import { orderCounts } from '@/lib/order-counts'
+import { withRisk } from '@/lib/order-risk'
+import { getStoreIdentity } from '@/lib/store-identity'
 
 const ORDER_UPDATE_CONFLICT_MESSAGE = 'This order was just modified — please retry.'
 
@@ -59,7 +61,7 @@ export async function GET(req: Request) {
       // How many orders each view holds (with the same search), for the list's view buttons.
       sp.get('counts') === '1' ? orderCounts(search) : Promise.resolve(null),
     ])
-    return json({ rows, pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total/limit)) }, ...(byStatus ? { counts: byStatus } : {}) })
+    return json({ rows: await withRisk(rows, (await getStoreIdentity()).country), pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total/limit)) }, ...(byStatus ? { counts: byStatus } : {}) })
   } catch (e) {
     return routeError(e, 'Forbidden', 403)
   }

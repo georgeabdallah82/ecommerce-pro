@@ -1,5 +1,6 @@
 import { collectsCashOnDelivery } from '@/lib/orders'
 import { internationalPhone } from '@/lib/phone'
+import { pinFromAddress, pinMapUrl } from '@/lib/location-pin'
 
 // The admin's words for an order's journey, and the one next step each order is waiting for.
 // Used by the orders list and the order page so both say the same thing:
@@ -117,10 +118,18 @@ export function telLink(order: Pick<FlowOrder, 'phone' | 'shippingAddressJson'>,
   const digits = internationalPhone(customerPhone(order), storeCountry)
   return digits ? `tel:+${digits}` : ''
 }
+// The exact spot when the customer shared their location at checkout (lib/location-pin.ts),
+// otherwise a search for the typed address.
+export const orderPin = (order: Pick<FlowOrder, 'shippingAddressJson'>) => pinFromAddress(shippingAddress(order.shippingAddressJson))
 export function mapsLink(order: Pick<FlowOrder, 'shippingAddressJson'>) {
+  const pin = orderPin(order)
+  if (pin) return pinMapUrl(pin)
   const lines = addressLines(order)
   return lines.length ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lines.join(', '))}` : ''
 }
+
+// "Exact location" when the customer shared their position, "Map" when it is only the typed address.
+export const mapLabel = (order: Pick<FlowOrder, 'shippingAddressJson'>) => orderPin(order) ? 'Exact location' : 'Map'
 
 // What to send the delivery driver (opened in WhatsApp, the driver is picked there): who, where,
 // what, and how much cash to bring back.
@@ -136,7 +145,7 @@ export function driverMessage(order: FlowOrder, storeName: string, formatMoney: 
     ...(a.notes ? [`Note: ${String(a.notes).trim()}`] : []),
     ...items,
     cod ? `Collect: ${formatMoney(order.grandTotal, order.currency)} cash` : 'Already paid: collect nothing',
-    ...(mapsLink(order) ? [`Map: ${mapsLink(order)}`] : []),
+    ...(mapsLink(order) ? [`${mapLabel(order)}: ${mapsLink(order)}`] : []),
   ].join('\n')
 }
 export const driverShareLink = (order: FlowOrder, storeName: string, formatMoney: (cents: number, currency: string) => string) =>

@@ -8,6 +8,7 @@ import ui from './admin-ui.module.css'
 import MediaPicker from './media-picker'
 import AppIconCard from './app-icon-card'
 import TwoStepCard from './two-step-card'
+import SignInAlertsCard from './sign-in-alerts-card'
 import { REGION_CODES, countryName, deliveryCountries } from '@/lib/delivery-countries'
 import { POLICY_DEFAULTS } from '@/lib/policy-defaults'
 
@@ -16,7 +17,7 @@ const groups = [
   { key: 'Payments', label: 'Payments', icon: CreditCard, desc: 'Payment methods and checkout status' },
   { key: 'Shipping', label: 'Shipping & delivery', icon: Truck, desc: 'Shipping defaults and checkout behavior' },
   { key: 'Markets', label: 'Markets', icon: Globe2, desc: 'Currency and localization' },
-  { key: 'Selling', label: 'Selling tools', icon: Gift, desc: 'Free gift, gift option, welcome discount, invite a friend, questions, WhatsApp button, search words' },
+  { key: 'Selling', label: 'Selling tools', icon: Gift, desc: 'Free gift, gift option, cancel an order, welcome discount, invite a friend, questions, WhatsApp button, search words' },
   { key: 'Notifications', label: 'Notifications', icon: Bell, desc: 'Order and operational alerts' },
   { key: 'Email', label: 'Email & messaging', icon: Mail, desc: 'Customer communication preferences' },
   { key: 'Security', label: 'Security & access', icon: ShieldCheck, desc: 'Staff access and account protection' },
@@ -76,6 +77,7 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
     'invite.friendPercent': map.get('invite.friendPercent') || '10',
     'invite.reward': map.get('invite.reward') || '5',
     'invite.rewardDays': map.get('invite.rewardDays') || '60',
+    'orders.guestCancel.minutes': map.get('orders.guestCancel.minutes') || '30',
     'store.address': map.get('store.address') || '',
     'policy.returnDays': map.get('policy.returnDays') || POLICY_DEFAULTS.returnDays,
     'policy.refundTime': map.get('policy.refundTime') || POLICY_DEFAULTS.refundTime,
@@ -107,8 +109,8 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
     ...Object.fromEntries([
       'payment.cod', 'payment.card', 'payment.bank', 'payment.wallet',
       'checkout.guestCheckout', 'notifications.orderEmail', 'notifications.lowStock',
-      'notifications.reviews', 'notifications.dailySummary', 'notifications.weeklyReport', 'email.customerOrder', 'email.fulfillment', 'email.abandonedCheckout', 'email.giftCard', 'email.returnStatus', 'email.orderEdit', 'email.reviewRequest',
-      'checkout.giftOption', 'product.whatsappOrder', 'product.questions',
+      'notifications.reviews', 'notifications.security', 'notifications.dailySummary', 'notifications.weeklyReport', 'email.customerOrder', 'email.fulfillment', 'email.abandonedCheckout', 'email.giftCard', 'email.returnStatus', 'email.orderEdit', 'email.reviewRequest',
+      'checkout.giftOption', 'product.whatsappOrder', 'product.questions', 'orders.guestCancel.enabled',
     ].map(k => [k, map.get(k) !== 'false'])),
     // Off until switched on.
     ...Object.fromEntries(['currency.showLbp', 'freeGift.enabled', 'welcome.enabled', 'invite.enabled'].map(k => [k, map.get(k) === 'true'])),
@@ -350,6 +352,10 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
             <Card title="Gift option at checkout" desc="Customers can tick This is a gift and write a message. You see it on the order and on the packing slip.">
               <Toggle label="Offer the gift option" keyName="checkout.giftOption" value={flags['checkout.giftOption']} onChange={() => toggle('checkout.giftOption')} />
             </Card>
+            <Card title="Cancel an order without an account" desc="On the thank-you page and Track my order, customers can cancel a new order themselves for a short time, until you confirm it. Orders already confirmed or paid online are not offered it. You get a notification when one is cancelled.">
+              <Toggle label="Let customers cancel a new order" keyName="orders.guestCancel.enabled" value={flags['orders.guestCancel.enabled']} onChange={() => toggle('orders.guestCancel.enabled')} />
+              <Field label="They can cancel for (minutes, 5 to 240)" value={values['orders.guestCancel.minutes']} placeholder="30" onChange={v => set('orders.guestCancel.minutes', v.replace(/[^\d]/g, '').slice(0, 3))} />
+            </Card>
             <Card title="Welcome discount" desc="First-time visitors are offered your first-order code for their WhatsApp number. Create the code first in Discounts (tick First order only).">
               <Toggle label="Show the welcome popup" keyName="welcome.enabled" value={flags['welcome.enabled']} onChange={() => toggle('welcome.enabled')} />
               <Field label="Discount code to give" value={values['welcome.code']} placeholder="e.g. WELCOME10" onChange={v => set('welcome.code', v.toUpperCase().replace(/\s+/g, ''))} />
@@ -383,6 +389,7 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
               <Toggle label="New order notifications" keyName="notifications.orderEmail" value={flags['notifications.orderEmail']} onChange={() => toggle('notifications.orderEmail')} />
               <Toggle label="Low stock alerts" keyName="notifications.lowStock" value={flags['notifications.lowStock']} onChange={() => toggle('notifications.lowStock')} />
               <Toggle label="Review moderation alerts" keyName="notifications.reviews" value={flags['notifications.reviews']} onChange={() => toggle('notifications.reviews')} />
+              <Toggle label="Sign-in alerts: a new device signed in to the admin, or an account was locked by wrong passwords" keyName="notifications.security" value={flags['notifications.security']} onChange={() => toggle('notifications.security')} />
             </Card>
             <Card title="Morning summary" desc="Every morning at about 8:30 (store time): yesterday's orders and sales, orders waiting for you, low stock and new reviews. Sent by email and as a phone notification to staff who turned notifications on. On Mondays, a weekly report email too: last week's sales against the week before, best sellers and top areas.">
               <Toggle label="Send the morning summary" keyName="notifications.dailySummary" value={flags['notifications.dailySummary']} onChange={() => toggle('notifications.dailySummary')} />
@@ -423,6 +430,7 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
               <a className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/users">Manage users &amp; roles</a>
             </Card>
             <TwoStepCard />
+            <SignInAlertsCard />
             <BlockedPhonesCard />
             </>
           )}

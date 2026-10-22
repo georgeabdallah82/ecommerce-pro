@@ -14,7 +14,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  Activity, ArrowLeftRight, BarChart3, Boxes, ClipboardList, CreditCard, FileEdit, FileText, Gauge, Image as ImageIcon, Layers3,
+  Activity, ArrowLeftRight, Rocket, BarChart3, Boxes, ClipboardList, CreditCard, FileEdit, FileText, Gauge, Image as ImageIcon, Layers3,
   LayoutDashboard, LogOut, Mail, Megaphone, Menu, MessageSquare, PackageCheck, Palette, Percent, Radio, RotateCcw, Search, Settings2,
   ShoppingBag, MoreHorizontal, Store, Tag, Truck, UserCog, Users, UsersRound, Workflow, X, PackagePlus, MessageCircleQuestion, HeartHandshake, UserPlus, PackageSearch, ScanBarcode, Barcode, BadgeDollarSign, Contact, CalendarHeart, type LucideIcon,
 } from 'lucide-react'
@@ -30,7 +30,7 @@ const iconMap: Record<string, LucideIcon> = {
   dashboard: LayoutDashboard, orders: ShoppingBag, products: Boxes, inventory: PackageCheck, operations: Workflow,
   customers: Users, collections: Layers3, discounts: Tag, reviews: MessageSquare,
   shipping: Truck, tax: Percent, store: ShoppingBag, theme: Palette, navigation: Menu, content: FileText, files: ImageIcon,
-  analytics: BarChart3, system: Activity, websiteStatus: Gauge, users: UserCog, activity: Activity, settings: Settings2,
+  analytics: BarChart3, system: Activity, websiteStatus: Gauge, launch: Rocket, users: UserCog, activity: Activity, settings: Settings2,
   orderEdits: FileEdit, purchaseOrders: ClipboardList, transfers: ArrowLeftRight,
   draftOrders: ClipboardList, returns: RotateCcw,
   segments: UsersRound, giftCards: CreditCard,

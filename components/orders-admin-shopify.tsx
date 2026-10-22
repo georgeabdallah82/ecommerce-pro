@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from '@/components/admin-link'
-import { ChevronDown, ChevronLeft, ChevronRight, FileText, MessageCircle, MoreHorizontal, PackageCheck, Phone, Plus, RefreshCw, Search, Send, ShoppingCart, Truck, X, XCircle } from 'lucide-react'
+import { AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, FileText, MessageCircle, MoreHorizontal, PackageCheck, Phone, Plus, RefreshCw, Search, Send, ShoppingCart, Truck, X, XCircle } from 'lucide-react'
 import { money } from '@/lib/config'
 import { formatAdminDateTime } from '@/lib/admin-datetime'
 import { canTransitionOrder } from '@/lib/orders'
@@ -273,6 +273,7 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone, 
               </div>
               <Link className={styles.cardBody} href={`/admin/orders/${o.id}`} tabIndex={-1}>
                 <div className={styles.who}><strong>{customerName(o)}</strong>{phone ? <span>{phone}</span> : null}{city ? <span>{city}</span> : null}</div>
+                {o.risk ? <div className={`${styles.risk}${o.risk.level === 'high' ? ` ${styles.riskHigh}` : ''}`}><AlertTriangle size={14} aria-hidden="true" /> <span>{o.risk.level === 'high' ? 'Call first' : 'Check'}: {o.risk.reasons.join(' · ').toLowerCase()}</span></div> : null}
                 <div className={styles.what}>{itemsSummary(o)}</div>
                 <div className={styles.money}><strong>{money(o.grandTotal, o.currency)}</strong><span className={`${styles.payment} ${TONE[payment.tone]}`}>{payment.label}</span></div>
                 {o.trackingNumber ? <div className={styles.meta}>Tracking: {o.trackingNumber}</div> : null}

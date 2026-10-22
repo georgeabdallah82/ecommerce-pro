@@ -6,6 +6,7 @@ import { getStoreIdentity } from '@/lib/store-identity'
 import { getBlockedPhones, isBlocked } from '@/lib/blocked-phones'
 import { orderReviewPath, orderViewToken } from '@/lib/order-access'
 import { phoneHistory } from '@/lib/customer-history'
+import { BEFORE_SENDING, riskForOrders } from '@/lib/order-risk'
 import { requestOrigin } from '@/lib/site-url'
 import OrderDetailAdmin from '@/components/order-detail-admin'
 import ui from '@/components/admin-ui.module.css'
@@ -40,5 +41,8 @@ export default async function OrderDetail({params}:{params:Promise<{id:string}>}
   const reviewLink = order.status === 'DELIVERED' ? `${origin}${orderReviewPath(order.orderNumber)}` : ''
   // Other orders from the same phone number (lib/customer-history.ts); the page works without it.
   const history = await phoneHistory(order.id, order.phone || (() => { try { return JSON.parse(order.shippingAddressJson || '{}').phone } catch { return '' } })(), store.country).catch(error => { console.error('[orders] phone history failed', error); return null })
-  return <OrderDetailAdmin reviewLink={reviewLink} trackLink={trackLink} history={history} initial={JSON.parse(JSON.stringify({ ...order, fulfillments, issuedGiftCards }))} canStartOrderEdit={canStartOrderEdit} storeTimezone={storeTimezone} storeName={store.name} storeCountry={store.country} phoneBlocked={isBlocked(blockedList, [order.phone, (() => { try { return JSON.parse(order.shippingAddressJson || '{}').phone } catch { return '' } })()], store.country)}/>
+  // A number that refused a parcel or did not answer the driver before (lib/order-risk.ts); only
+  // while the order can still be stopped. The page works without it.
+  const risk = BEFORE_SENDING.has(order.status) ? (await riskForOrders([order], store.country).catch(error => { console.error('[orders] risk check failed', error); return null }))?.get(order.id) || null : null
+  return <OrderDetailAdmin reviewLink={reviewLink} trackLink={trackLink} history={history} risk={risk} initial={JSON.parse(JSON.stringify({ ...order, fulfillments, issuedGiftCards }))} canStartOrderEdit={canStartOrderEdit} storeTimezone={storeTimezone} storeName={store.name} storeCountry={store.country} phoneBlocked={isBlocked(blockedList, [order.phone, (() => { try { return JSON.parse(order.shippingAddressJson || '{}').phone } catch { return '' } })()], store.country)}/>
 }

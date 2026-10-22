@@ -111,3 +111,13 @@
 .giftNote { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; margin-top: 12px; padding: 12px 14px; border-radius: var(--admin-radius-md); border: 1px solid color-mix(in srgb, #7c3aed 35%, transparent); background: color-mix(in srgb, #7c3aed 8%, transparent); font-size: 14px; color: var(--admin-ink); }
 .giftNote svg { color: #7c3aed; margin-top: 2px; }
 .giftNote strong { display: block; }
+
+/* Risky order warning (lib/order-risk.ts): a number that refused a parcel or did not answer before. */
+.riskBanner { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 12px; padding: 14px 16px; border-radius: var(--admin-radius-md); border: 1px solid color-mix(in srgb, #b7791f 45%, transparent); background: color-mix(in srgb, #b7791f 11%, transparent); }
+.riskBanner > svg { color: #b7791f; margin-top: 1px; }
+.riskHigh { border-color: color-mix(in srgb, #d92d20 55%, transparent); background: color-mix(in srgb, #d92d20 11%, transparent); }
+.riskHigh > svg { color: #d92d20; }
+.riskBody { display: grid; gap: 6px; min-width: 0; font-size: 14px; }
+.riskBody strong { font-size: 15.5px; color: var(--admin-ink); }
+.riskBody ul { margin: 0; padding-inline-start: 18px; display: grid; gap: 2px; font-weight: 750; }
+.riskHigh .riskBody ul { color: #b42318; }

@@ -18,6 +18,9 @@ import { whatsappDigits } from '@/lib/links'
 import { customerOrderMessage, whatsappMessageLink } from '@/lib/order-whatsapp'
 import { inviteCardFor } from '@/lib/invites'
 import InviteShare from '@/components/invite-share'
+import GuestCancelBox from '@/components/guest-cancel-box'
+import { guestCancelState } from '@/lib/guest-cancel'
+import { getGuestCancelConfig } from '@/lib/guest-cancel-server'
 import s from './success.module.css'
 
 // Advanced matching for the ad pixels: SHA-256 of the buyer's email and phone, normalised the
@@ -41,7 +44,7 @@ export default async function Success({ searchParams }: { searchParams: Promise<
 
   const record = await db.order.findUnique({
     where: { orderNumber: order },
-    select: { orderNumber: true, userId: true, subtotal: true, discountTotal: true, shippingTotal: true, taxTotal: true, grandTotal: true, currency: true, status: true, paymentStatus: true, paymentMethod: true, email: true, phone: true, shippingAddressJson: true, shippingMethod: true, items: { select: { productId: true, name: true, quantity: true, unitPrice: true, totalPrice: true } } },
+    select: { orderNumber: true, userId: true, createdAt: true, subtotal: true, discountTotal: true, shippingTotal: true, taxTotal: true, grandTotal: true, currency: true, status: true, paymentStatus: true, paymentMethod: true, email: true, phone: true, shippingAddressJson: true, shippingMethod: true, items: { select: { productId: true, name: true, quantity: true, unitPrice: true, totalPrice: true } } },
   })
   // An order number alone shows nothing: details need the owner's session, the view code in the
   // link checkout gave, or the order's email (lib/order-access.ts). Without one the page reads the
@@ -62,6 +65,18 @@ export default async function Success({ searchParams }: { searchParams: Promise<
   const viewOrderHref = isOwner
     ? `/account/orders/${encodeURIComponent(order)}`
     : `/account/orders/${encodeURIComponent(order)}?t=${encodeURIComponent(orderViewToken(record.orderNumber))}`
+
+  // Cancelled by the customer (Cancel my order below) or by the store, not a failed payment.
+  if (record.status === 'CANCELLED' && payment !== 'failed' && record.paymentStatus !== 'FAILED') {
+    return <><main className={s.page}><div className={s.wrap}><section className={`${s.card} ${s.hero}`}>
+      <span className={`${s.tick} ${s.tickWarn}`}><Clock size={34} /></span>
+      <h1 className={s.title}>{tr('Order #{order} was cancelled', { order })}</h1>
+      <p className={s.lead}>{tr('Nothing to pay. If you cancelled by mistake, you can order again, or message us on WhatsApp.')}</p>
+      <div className={s.actions} style={{ width: '100%' }}>
+        <Link className={`${s.btn} ${s.btnPrimary}`} href="/shop">{tr('Continue shopping')}</Link>
+      </div>
+    </section></div></main><StoreFooter /></>
+  }
 
   // The card gateway sends customers here for every outcome (?payment=paid|failed|pending).
   // A failed or cancelled order must not read as "confirmed" or be reported as a sale.
@@ -102,6 +117,9 @@ export default async function Success({ searchParams }: { searchParams: Promise<
     place,
   }, tr))
 
+  // "Changed your mind?": cancel without an account for a short time, until the store confirms it.
+  const cancelState = guestCancelState(record, await getGuestCancelConfig().catch(() => ({ enabled: false, minutes: 30 })))
+
   // Invite a friend (Settings > Selling tools): the customer's own code, made for their phone.
   const invite = processing ? null : await inviteCardFor(record, tr).catch(() => null)
 
@@ -116,6 +134,8 @@ export default async function Success({ searchParams }: { searchParams: Promise<
         <a className={s.waBtn} href={whatsappHref} target="_blank" rel="noopener noreferrer"><MessageCircle size={20} /> {tr('Send my order on WhatsApp')}</a>
       </div>}
     </section>
+
+    {cancelState.allowed && !processing && <GuestCancelBox orderNumber={record.orderNumber} token={orderViewToken(record.orderNumber)} deadline={cancelState.deadline.toISOString()} />}
 
     {!processing && <section className={s.card}>
       <h2 className={s.cardTitle}>{tr('What happens next')}</h2>

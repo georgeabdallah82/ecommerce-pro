@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/prisma'
 import { setSession } from '@/lib/auth'
 import { audit } from '@/lib/audit'
+import { alertLockout, recordSignIn } from '@/lib/sign-in-alerts'
 import { consumeDurableRateLimit, clearDurableRateLimit } from '@/lib/rate-limit'
 import { alreadyUsedTotp, clearTwoStepTicket, matchBackupCode, matchTotp, openSecret, readTwoStepTicket } from '@/lib/two-step'
 
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Too many wrong codes. Wait 15 minutes and try again.' }, { status: 429, headers: { ...headers, 'Retry-After': String(limit.retryAfterSeconds) } })
   }
 
-  const user = await db.user.findUnique({ where: { id: userId }, select: { id: true, role: true, isActive: true, totpSecret: true, totpEnabledAt: true, totpLastStep: true, totpBackupCodes: true } })
+  const user = await db.user.findUnique({ where: { id: userId }, select: { id: true, email: true, name: true, role: true, isActive: true, totpSecret: true, totpEnabledAt: true, totpLastStep: true, totpBackupCodes: true } })
   if (!user || !user.isActive || user.role === 'CUSTOMER' || !user.totpEnabledAt || !user.totpSecret) { await clearTwoStepTicket(); return restart() }
   const secret = await openSecret(user.totpSecret)
   if (!secret) {
@@ -41,7 +42,11 @@ export async function POST(request: Request) {
   } else {
     const hash = await matchBackupCode(code, user.totpBackupCodes)
     if (!hash && await alreadyUsedTotp(secret, code, Date.now(), user.totpLastStep)) return NextResponse.json({ error: 'This code was already used. Wait for the next one in the app.' }, { status: 401, headers })
-    if (!hash) return NextResponse.json({ error: 'That code is not right. Check the 6 digits in the app and try again.' }, { status: 401, headers })
+    if (!hash) {
+      // The last allowed try: they knew the password but not the code. Tell the owner.
+      if (limit.remaining === 0) await alertLockout(request.headers, user, 'code_lockout')
+      return NextResponse.json({ error: 'That code is not right. Check the 6 digits in the app and try again.' }, { status: 401, headers })
+    }
     const rest = user.totpBackupCodes.filter(h => h !== hash)
     const used = await db.user.updateMany({ where: { id: user.id, totpBackupCodes: { has: hash } }, data: { totpBackupCodes: { set: rest }, lastLoginAt: new Date() } })
     if (!used.count) return NextResponse.json({ error: 'This backup code was already used.' }, { status: 401, headers })
@@ -52,5 +57,6 @@ export async function POST(request: Request) {
   await clearDurableRateLimit(limitKey)
   await clearTwoStepTicket()
   await setSession(user.id)
+  await recordSignIn(request.headers, user)
   return NextResponse.json({ ok: true, backupLeft }, { headers })
 }

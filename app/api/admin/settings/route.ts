@@ -5,7 +5,9 @@ import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { isAllowedSenderAddress, senderDomain } from '@/lib/email'
 
-const PRIVATE_PREFIXES = ['push.subscription.']
+// push.subscription.*: staff phone notification devices. security.devices.*: the browsers each
+// account signed in from (lib/sign-in-alerts.ts); nobody can add one here to dodge the alert.
+const PRIVATE_PREFIXES = ['push.subscription.', 'security.devices.']
 function isPrivateKey(key: string) { return PRIVATE_PREFIXES.some(prefix => key.startsWith(prefix)) }
 // Write-only secrets: saved through this route but never sent back to the browser.
 const SECRET_KEYS = new Set(['tracking.metaCapiToken'])
