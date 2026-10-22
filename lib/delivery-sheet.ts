@@ -1,5 +1,5 @@
 import { collectsCashOnDelivery } from '@/lib/orders'
-import { addressLines, customerName, customerPhone, mapsLink, shippingAddress, type FlowOrder } from '@/lib/order-flow'
+import { addressLines, customerName, customerPhone, mapLabel, mapsLink, shippingAddress, type FlowOrder } from '@/lib/order-flow'
 
 // The daily delivery sheet (Admin > Orders > Delivery sheet): orders ready to go out and out for
 // delivery, grouped by area, with the cash the driver brings back, and one WhatsApp message with
@@ -47,7 +47,7 @@ export function driverRunMessage(orders: FlowOrder[], storeName: string, dayLabe
       ...(a.notes ? [`Note: ${String(a.notes).trim()}`] : []),
       ...(items ? [items] : []),
       collect ? `Collect: ${money(collect, order.currency)} cash` : 'Paid: collect nothing',
-      ...(mapsLink(order) ? [`Map: ${mapsLink(order)}`] : []),
+      ...(mapsLink(order) ? [`${mapLabel(order)}: ${mapsLink(order)}`] : []),
     ].join('\n')
   })
   return [

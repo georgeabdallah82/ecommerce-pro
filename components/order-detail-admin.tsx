@@ -7,7 +7,7 @@ import { AlertTriangle, ArrowLeft, Ban, Check, ChevronDown, Copy, FileEdit, File
 import { money } from '@/lib/config'
 import { formatAdminDate, formatAdminDateTime } from '@/lib/admin-datetime'
 import { canTransitionOrder, canTransitionPayment } from '@/lib/orders'
-import { JOURNEY, addressLines, customerName, customerPhone, driverShareLink, mapsLink, nextStep, paymentInfo, paymentMethodLabel, statusInfo, telLink } from '@/lib/order-flow'
+import { JOURNEY, addressLines, customerName, customerPhone, driverShareLink, mapsLink, nextStep, orderPin, paymentInfo, paymentMethodLabel, statusInfo, telLink } from '@/lib/order-flow'
 import s from './admin-order-page.module.css'
 import ui from './admin-ui.module.css'
 import DeliveryTrackingAdmin from './delivery-tracking-admin'
@@ -361,7 +361,7 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
             {o.shippingMethod && <div className={ui.muted}>Delivery: {o.shippingMethod}</div>}
             {o.trackingNumber && <div className={ui.muted}>Tracking: <strong>{o.trackingNumber}</strong></div>}
             <div className={s.rowButtons}>
-              {map && <a className={`${ui.btn} ${ui.btnSecondary}`} href={map} target="_blank" rel="noreferrer"><MapPin size={15}/> Open in Maps</a>}
+              {map && <a className={`${ui.btn} ${ui.btnSecondary}`} href={map} target="_blank" rel="noreferrer"><MapPin size={15}/> {orderPin(o) ? 'Open exact location' : 'Open in Maps'}</a>}
               {lines.length > 0 && <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => copy([customerName(o), phoneNumber, ...lines].filter(Boolean).join('\n'), 'address')}>{copied === 'address' ? <Check size={15}/> : <Copy size={15}/>} {copied === 'address' ? 'Copied' : 'Copy address'}</button>}
             </div>
           </div>

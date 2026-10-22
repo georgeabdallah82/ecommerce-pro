@@ -12,7 +12,9 @@ import { CartNotices } from '@/components/cart-notices'
 import { useI18n } from '@/components/lang-provider'
 import { internationalPhone } from '@/lib/phone'
 import { LbpNote } from '@/components/selling-client'
-import { countryName } from '@/lib/delivery-countries'
+import { countryCode as isoCountryCode, countryName } from '@/lib/delivery-countries'
+import { type LocationPin } from '@/lib/location-pin'
+import LocationPinButton from './location-pin'
 import s from './checkout.module.css'
 
 // Checkout: phone first, email optional (many customers in Lebanon don't want to give one), the
@@ -156,6 +158,8 @@ export default function Checkout() {
   // Where it goes: a country the store delivers to (Settings > Shipping & delivery; its own
   // country first, so Lebanon unless changed), the area from the store's list, the rate.
   const [country, setCountry] = useState('Lebanon')
+  // The customer's shared location, if they tapped "Share my exact location" (app/checkout/location-pin.tsx).
+  const [pin, setPin] = useState<LocationPin | null>(null)
   const [areas, setAreas] = useState<DeliveryArea[]>([])
   const [area, setArea] = useState('')
   const [shippingRates, setShippingRates] = useState<ShippingRate[]>([])
@@ -352,7 +356,7 @@ export default function Checkout() {
       email: value('email').toLowerCase(), phone: value('phone'), paymentMethod,
       couponCode: appliedCode, giftCardCode: value('giftCardCode'), coinsToUse, shippingRateId: selectedRateId,
       isGift, giftMessage: isGift ? giftMessage.trim() : '',
-      shippingAddress: { firstName: value('firstName'), lastName: value('lastName'), line1: value('line1'), line2: value('line2'), city: value('city'), region: useAreaList ? area : value('region'), postalCode: value('postalCode'), country: country.trim(), phone: value('phone') },
+      shippingAddress: { firstName: value('firstName'), lastName: value('lastName'), line1: value('line1'), line2: value('line2'), city: value('city'), region: useAreaList ? area : value('region'), postalCode: value('postalCode'), country: country.trim(), phone: value('phone'), ...(pin ? { lat: pin.lat, lng: pin.lng, ...(pin.accuracy !== null ? { locationAccuracy: pin.accuracy } : {}) } : {}) },
       items: items.map(item => ({ productId: item.productId, variantId: item.variantId || null, quantity: item.quantity, bundleId: item.bundleId || null })),
     }
     try {
@@ -474,6 +478,7 @@ export default function Checkout() {
         <label className={fieldClass('city')}><span className={s.label}>{t('Town / city')}</span><input className={s.input} name="city" autoComplete="address-level2" placeholder={t('e.g. Jounieh')} aria-invalid={!!errors.city} />{fieldError('city')}</label>
         <label className={fieldClass('line1')}><span className={s.label}>{t('Street and building')}</span><input className={s.input} name="line1" autoComplete="address-line1" placeholder={t('e.g. Main street, Abi Nader building')} aria-invalid={!!errors.line1} />{fieldError('line1')}</label>
         <label className={s.field}><span className={s.label}>{t('Floor, apartment, landmark')} <i>{t('(optional)')}</i></span><input className={s.input} name="line2" autoComplete="address-line2" placeholder={t('e.g. 3rd floor, near the pharmacy')} /></label>
+        <LocationPinButton pin={pin} onChange={setPin} countryCode={isoCountryCode(country)} />
         {!useAreaList && <label className={s.field}><span className={s.label}>{t('Area / region')} <i>{t('(optional)')}</i></span><input className={s.input} name="region" autoComplete="address-level1" /></label>}
         {!inLebanon && <label className={s.field}><span className={s.label}>{t('Postal code')} <i>{t('(optional)')}</i></span><input className={s.input} name="postalCode" autoComplete="postal-code" /></label>}
         {countries.length > 1

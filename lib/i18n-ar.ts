@@ -878,4 +878,15 @@ export const AR: Record<string, string> = {
   "This order was paid online, so it cannot be cancelled here. Please contact us.": "تم دفع هذا الطلب عبر الإنترنت، لذلك لا يمكن إلغاؤه من هنا. يرجى التواصل معنا.",
   "The time to cancel online has passed. Please contact us on WhatsApp.": "انتهى وقت الإلغاء عبر الموقع. يرجى التواصل معنا عبر واتساب.",
   "Unable to cancel the order right now. Please contact us on WhatsApp.": "تعذّر إلغاء الطلب الآن. يرجى التواصل معنا عبر واتساب.",
+  // Share my exact location at checkout (app/checkout/location-pin.tsx)
+  "Help the driver find you": "ساعد السائق في الوصول إليك",
+  "Only share it if you are at the delivery address right now. We use it only for your delivery.": "شارك موقعك فقط إذا كنت في عنوان التوصيل الآن. نستخدمه فقط لتوصيل طلبك.",
+  "Share my exact location": "مشاركة موقعي بدقة",
+  "Finding you…": "جارٍ تحديد موقعك…",
+  "Your location is saved with this order.": "تم حفظ موقعك مع هذا الطلب.",
+  "The signal is weak (about {metres} m). You can try again.": "الإشارة ضعيفة (بدقة نحو {metres} م). يمكنك المحاولة مرة أخرى.",
+  "Check on the map": "تحقق على الخريطة",
+  "Location is blocked for this site. Allow it in your browser settings, or skip this step. Your address is enough.": "الموقع محظور لهذا الموقع. اسمح به من إعدادات المتصفح، أو تخطَّ هذه الخطوة. عنوانك يكفي.",
+  "We could not find your location. You can try again, or skip this step.": "تعذّر تحديد موقعك. يمكنك المحاولة مرة أخرى أو تخطي هذه الخطوة.",
+  "This location is outside the country we deliver this order to. Please write your address instead.": "هذا الموقع خارج البلد الذي نوصل إليه هذا الطلب. يرجى كتابة عنوانك بدلاً من ذلك.",
 }

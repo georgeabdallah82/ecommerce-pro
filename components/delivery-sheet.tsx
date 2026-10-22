@@ -5,7 +5,7 @@ import Link from '@/components/admin-link'
 import { ArrowLeft, Check, FileText, MapPin, MessageCircle, Phone, Printer, Truck, Users } from 'lucide-react'
 import { money } from '@/lib/config'
 import { internationalPhone } from '@/lib/phone'
-import { addressLines, customerName, customerPhone, itemsSummary, mapsLink, statusInfo, telLink } from '@/lib/order-flow'
+import { addressLines, customerName, customerPhone, itemsSummary, mapsLink, orderPin, statusInfo, telLink } from '@/lib/order-flow'
 import { driverRunMessage, groupByArea, toCollect, type SheetOrder } from '@/lib/delivery-sheet'
 import { useConfirm } from './admin-confirm'
 import s from './delivery-sheet.module.css'
@@ -173,7 +173,7 @@ export default function DeliverySheet({ initial, deliveredToday, areaOrder, dayL
               <div className={s.items}>{itemsSummary(order)}</div>
               <div className={`${s.actions} ${s.noPrint}`}>
                 {call && <a className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} href={call}><Phone size={14} /> Call</a>}
-                {map && <a className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} href={map} target="_blank" rel="noreferrer"><MapPin size={14} /> Map</a>}
+                {map && <a className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} href={map} target="_blank" rel="noreferrer"><MapPin size={14} /> {orderPin(order) ? 'Exact spot' : 'Map'}</a>}
                 {canManage && order.status !== 'SHIPPED' && <button type="button" className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} disabled={busy === order.id} onClick={() => sendOut(order)}><Truck size={14} /> Out for delivery</button>}
                 {canManage && order.status === 'SHIPPED' && <button type="button" className={`${ui.btn} ${ui.btnSmall}`} disabled={busy === order.id} onClick={() => delivered(order)}><Check size={14} /> {collect ? `Delivered · ${money(collect, order.currency)} collected` : 'Delivered'}</button>}
               </div>

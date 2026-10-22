@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { AlertTriangle, Check, MapPin, MessageCircle, Package, Phone, Wallet } from 'lucide-react'
 import { money } from '@/lib/config'
 import { internationalPhone } from '@/lib/phone'
-import { addressLines, customerName, customerPhone, mapsLink, shippingAddress, type FlowOrder } from '@/lib/order-flow'
+import { addressLines, customerName, customerPhone, mapsLink, orderPin, shippingAddress, type FlowOrder } from '@/lib/order-flow'
 import { toCollect } from '@/lib/delivery-sheet'
 import { PROBLEM_REASONS, cashToHandOver } from '@/lib/drivers-shared'
 import s from './driver-run.module.css'
@@ -80,7 +80,7 @@ export default function DriverRun({ token, driverName, storeName, storeCountry, 
         <div className={s.contact}>
           {digits && <a className={s.btn} href={`tel:+${digits}`}><Phone size={18} /> Call</a>}
           {digits && <a className={`${s.btn} ${s.wa}`} href={`https://wa.me/${digits}`} target="_blank" rel="noreferrer"><MessageCircle size={18} /> WhatsApp</a>}
-          {map && <a className={s.btn} href={map} target="_blank" rel="noreferrer"><MapPin size={18} /> Map</a>}
+          {map && <a className={s.btn} href={map} target="_blank" rel="noreferrer"><MapPin size={18} /> {orderPin(order) ? 'Exact spot' : 'Map'}</a>}
         </div>
         {confirming === order.id
           ? <div className={s.confirm}>

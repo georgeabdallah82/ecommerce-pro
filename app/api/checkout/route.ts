@@ -6,6 +6,7 @@ import { checkoutSchema } from '@/lib/validation'
 import { json } from '@/lib/utils'
 import { calculateShipping, getTaxRatePercent } from '@/lib/pricing'
 import { DELIVERY_COUNTRIES_KEY, countryCode, deliveryCountries } from '@/lib/delivery-countries'
+import { addressWithPin } from '@/lib/location-pin'
 import { releaseOrderReservations, reserveStock, undoReservations } from '@/lib/inventory'
 import { getPaymentProvider } from '@/lib/payments'
 import { sendNewOrderPush } from '@/lib/push'
@@ -165,6 +166,8 @@ export async function POST(req: Request) {
     if (rawBody.length > 100_000) return json({ error: 'Checkout request is too large.' }, { status: 413, headers: { 'Cache-Control': 'no-store' } })
 
     const input = checkoutSchema.parse(JSON.parse(rawBody))
+    // A shared location is kept only when it is real and inside the delivery country (lib/location-pin.ts).
+    input.shippingAddress = addressWithPin(input.shippingAddress, countryCode(input.shippingAddress.country))
     // Email is optional (phone-only checkout); a signed-in customer's account email fills in.
     const orderEmail = input.email || String(user?.email || '').trim().toLowerCase()
     const idempotencyKey = req.headers.get('x-idempotency-key')?.trim().slice(0, 190) || null
