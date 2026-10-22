@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
-import { ProductCard, CollectionCard, QuickView, StoreImage, HeroSection } from '@/components/storefront-sections'
+import { ProductCard, CollectionCard, QuickView, StoreImage, HeroSection, CategoryIcon } from '@/components/storefront-sections'
 import { useWishlist } from '@/components/use-wishlist'
 
 type AnyMap = Record<string, any>
@@ -51,7 +51,7 @@ export default function AliExpressHome({ theme, hero, products, collections, ico
           <div className="aliContainer aliCategoryRow">
             {iconCollections.slice(0, Number(categoryStrip?.settings?.limit) || 12).map(c => (
               <Link key={c.id} href={`/shop?collection=${c.slug}`} className="aliCategoryItem">
-                <span className="aliCategoryIcon"><StoreImage src={c.imageUrl || '/placeholder-product.svg'} alt={c.name} /></span>
+                <CategoryIcon name={c.name} src={c.imageUrl} />
                 <span>{c.name}</span>
               </Link>
             ))}
