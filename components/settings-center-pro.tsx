@@ -74,6 +74,11 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
     'welcome.title': map.get('welcome.title') || '',
     'welcome.delaySeconds': map.get('welcome.delaySeconds') || '8',
     'search.synonyms': map.get('search.synonyms') || '',
+    'payment.bank.label': map.get('payment.bank.label') || '',
+    'payment.bank.name': map.get('payment.bank.name') || '',
+    'payment.bank.accountName': map.get('payment.bank.accountName') || '',
+    'payment.bank.iban': map.get('payment.bank.iban') || '',
+    'payment.bank.instructions': map.get('payment.bank.instructions') || '',
     'product.lowStockThreshold': map.get('product.lowStockThreshold') || '',
     'invite.friendPercent': map.get('invite.friendPercent') || '10',
     'invite.reward': map.get('invite.reward') || '5',
@@ -268,7 +273,15 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
                 <Toggle label="Cash on delivery" keyName="payment.cod" value={flags['payment.cod']} onChange={() => toggle('payment.cod')} />
                 <Toggle label="Online card" keyName="payment.card" value={flags['payment.card']} onChange={() => toggle('payment.card')} />
                 <Toggle label="Bank transfer" keyName="payment.bank" value={flags['payment.bank']} onChange={() => toggle('payment.bank')} />
-                <Toggle label="Wallet" keyName="payment.wallet" value={flags['payment.wallet']} onChange={() => toggle('payment.wallet')} />
+                <Toggle label="Store wallet (signed-in customers pay from their balance)" keyName="payment.wallet" value={flags['payment.wallet']} onChange={() => toggle('payment.wallet')} />
+              </Card>
+
+              <Card title="Bank transfer, Whish or OMT details" desc="Customers who choose Bank transfer see these details at checkout and on their thank-you page, and can send you a screenshot of the transfer. Use it for a bank account, Whish Money or OMT. Switch Bank transfer on above to offer it.">
+                <Field label="Name shown at checkout (empty = Bank transfer)" value={values['payment.bank.label']} placeholder="e.g. Whish / OMT / bank transfer" onChange={v => set('payment.bank.label', v.slice(0, 40))} />
+                <Field label="Bank or service name" value={values['payment.bank.name']} placeholder="e.g. Whish Money, OMT, Bank Audi" onChange={v => set('payment.bank.name', v.slice(0, 80))} />
+                <Field label="Account name" value={values['payment.bank.accountName']} placeholder="The name on the account" onChange={v => set('payment.bank.accountName', v.slice(0, 80))} />
+                <Field label="Account number, IBAN or phone number" value={values['payment.bank.iban']} placeholder="e.g. 03 123 456 or LB00 0000 0000" onChange={v => set('payment.bank.iban', v.slice(0, 80))} />
+                <label className={ui.fieldLabel}>Instructions for customers (optional)<textarea className={ui.textarea} rows={3} value={values['payment.bank.instructions']} maxLength={500} onChange={e => set('payment.bank.instructions', e.target.value)} placeholder="e.g. Write your order number in the transfer note." /></label>
               </Card>
 
               <Card title="Online payment provider" desc="Connect and switch gateways without changing checkout code.">

@@ -2,7 +2,7 @@ import { db } from '@/lib/prisma'
 
 const KEYS = [
   'payment.cod', 'payment.card', 'payment.bank', 'payment.wallet',
-  'payment.bank.name', 'payment.bank.accountName', 'payment.bank.iban', 'payment.bank.instructions',
+  'payment.bank.label', 'payment.bank.name', 'payment.bank.accountName', 'payment.bank.iban', 'payment.bank.instructions',
   'payment.wallet.provider', 'payment.wallet.accountName', 'payment.wallet.accountNumber', 'payment.wallet.instructions',
 ]
 
@@ -13,6 +13,8 @@ export async function getPublicPaymentMethods() {
     cod: m.get('payment.cod') !== 'false',
     card: m.get('payment.card') === 'true',
     bank: m.get('payment.bank') === 'true' ? {
+      // What customers see the method called (empty = "Bank transfer"); the owner may write "Whish / OMT / bank transfer".
+      label: (m.get('payment.bank.label') || '').trim(),
       bankName: m.get('payment.bank.name') || '',
       accountName: m.get('payment.bank.accountName') || '',
       iban: m.get('payment.bank.iban') || '',

@@ -184,7 +184,7 @@ export async function sendOrderCancelledPush(order: { id: string; orderNumber: s
   return sendToSubscriptions({ title: 'Order cancelled by the customer', body: `#${order.orderNumber} · ${(order.grandTotal / 100).toFixed(2)} ${order.currency}: nothing to confirm or prepare`, url: `/admin/orders/${order.id}`, orderId: order.id })
 }
 
-// A customer uploaded a screenshot of their bank or wallet transfer (app/api/orders/payment-proof):
+// A customer uploaded a screenshot of their bank transfer (a bank, Whish or OMT) (app/api/orders/payment-proof):
 // the owner checks it and taps "Mark as paid". Uses the new-order alerts switch, as it is the same order.
 export async function sendPaymentProofPush(order: { id: string; orderNumber: string; grandTotal: number; currency: string }) {
   const settings = await db.setting.findMany({ where: { key: { in: ['notifications.newOrder', 'notifications.orderEmail'] } }, select: { key: true, value: true } })

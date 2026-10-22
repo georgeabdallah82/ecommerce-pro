@@ -7,7 +7,7 @@ import { getPaymentMethodConfig } from '@/lib/payment-provider-config'
 
 const fields = [
   'payment.cod', 'payment.card', 'payment.bank', 'payment.wallet',
-  'payment.bank.name', 'payment.bank.accountName', 'payment.bank.iban', 'payment.bank.instructions',
+  'payment.bank.label', 'payment.bank.name', 'payment.bank.accountName', 'payment.bank.iban', 'payment.bank.instructions',
   'payment.wallet.provider', 'payment.wallet.accountName', 'payment.wallet.accountNumber', 'payment.wallet.instructions',
 ] as const
 
