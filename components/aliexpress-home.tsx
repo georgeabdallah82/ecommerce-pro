@@ -37,7 +37,7 @@ export default function AliExpressHome({ theme, hero, products, collections, ico
   const ss = totalSec % 60
 
   return (
-    <div className="focalStorefront aliHome">
+    <main className="focalStorefront aliHome">
       {(announcements || []).map(block => {
         let text = block.title || ''
         try { const parsed = JSON.parse(block.contentJson || '{}'); if (parsed?.text) text = String(parsed.text) } catch {}
@@ -127,6 +127,6 @@ export default function AliExpressHome({ theme, hero, products, collections, ico
       )}
 
       {quickProduct && <QuickView product={quickProduct} theme={theme} onClose={() => setQuickProduct(null)} />}
-    </div>
+    </main>
   )
 }

@@ -93,7 +93,8 @@ export function Footer({ theme }: { theme?: any }) {
 .focalFooterPayments span{border:1px solid rgba(255,255,255,.22);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;letter-spacing:.02em}
 .focalFooterNewsletter p{margin:8px 0 12px}
 .focalFooterNewsletterForm{display:flex;gap:8px;flex-wrap:wrap}
-.focalFooterNewsletterForm input{flex:1;min-width:160px;height:42px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.06);border-radius:8px;padding:0 12px;color:#fff;font-size:13px}
+.focalFooterNewsletterForm input{flex:1 1 140px;min-width:min(160px,100%);height:42px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.06);border-radius:8px;padding:0 12px;color:#fff;font-size:13px}
+.focalFooterNewsletterForm input[aria-hidden="true"]{min-width:0;flex:none}
 .focalFooterNewsletterForm input::placeholder{color:rgba(255,255,255,.5)}
 .focalFooterNewsletterForm button{border:0;border-radius:8px;padding:0 16px;background:var(--store-primary,#d42a2a);color:#fff;font-weight:700;font-size:13px;cursor:pointer}
 @media(max-width:700px){

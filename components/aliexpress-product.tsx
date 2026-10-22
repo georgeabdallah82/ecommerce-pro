@@ -213,7 +213,7 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
   const canWriteReview = reviewEligibility !== 'already_reviewed' && reviewEligibility !== 'not_purchased'
 
   return (
-    <div className="focalStorefront aliProductPage">
+    <main className="focalStorefront aliProductPage">
       {showBreadcrumbs && (
         <div className="aliContainer aliBreadcrumbs">
           <Link href="/">{t('Home')}</Link><ChevronRight size={12} className="flipRtl" />
@@ -438,6 +438,6 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
       {sections.length > 0 && <StorefrontSections theme={theme} sections={sections} products={related} collections={collections} />}
 
       {quickProduct && <QuickView product={quickProduct} theme={theme} onClose={() => setQuickProduct(null)} />}
-    </div>
+    </main>
   )
 }
