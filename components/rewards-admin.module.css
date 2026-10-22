@@ -1,0 +1,13 @@
+/* Admin > Marketing > Rewards (components/rewards-admin.tsx); the cards and chips come from bring-back.module.css. */
+.switchCard { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 18px; }
+.switchCard p { margin: 4px 0 0; }
+.switch { flex: none; width: 48px; height: 28px; border-radius: 999px; border: 0; background: #d4d4d8; position: relative; cursor: pointer; padding: 0; transition: background .15s ease; }
+.switch i { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: transform .15s ease; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.switch.on { background: #15803d; }
+.switch.on i { transform: translateX(20px); }
+.switch:disabled { opacity: .6; cursor: not-allowed; }
+.switch:focus-visible { outline: 3px solid var(--admin-ink, #121212); outline-offset: 2px; }
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.fields label { display: grid; gap: 4px; }
+.heading { margin: 8px 0 0; font-size: 18px; font-weight: 800; color: var(--admin-ink); }
+@media (prefers-reduced-motion: reduce) { .switch, .switch i { transition: none; } }
