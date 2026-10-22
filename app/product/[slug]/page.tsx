@@ -326,6 +326,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         lbpRate={selling?.lbp.show ? selling.lbp.rate : 0}
         storeWhatsapp={storeWhatsapp}
         questionsEnabled={selling?.questions !== false}
+        lowStockThreshold={selling?.lowStock || 0}
       />
       <Footer theme={theme} />
     </>

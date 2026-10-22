@@ -17,6 +17,7 @@ import BackInStockButton from '@/components/back-in-stock-button'
 import BoughtTogether from '@/components/bought-together'
 import type { Suggestion } from '@/lib/recommendations'
 import type { PublicDeal } from '@/lib/quantity-deals-shared'
+import { lowStockLeft } from '@/lib/selling'
 import { FlashCountdown, LbpNote, OccasionNote, QuantityDealsBox } from '@/components/selling-client'
 import { salePrice } from '@/lib/flash-sale-shared'
 import RecentlyViewedRow from '@/components/recently-viewed-row'
@@ -77,7 +78,7 @@ function ReviewForm({ productId }: { productId: string }) {
   )
 }
 
-export default function AliExpressProduct({ theme, product, related, variantAvailability, productAvailable, trackInventory, continueSellingWhenOutOfStock, reviewEligibility, sections = [], collections = [], vapidPublicKey, customerEmail, boughtTogether = [], flashSale = null, lbpRate = 0, storeWhatsapp = '', questionsEnabled = false, quantityDeals = [] }: { theme: AnyMap; product: AnyMap; related: AnyMap[]; boughtTogether?: Suggestion[]; variantAvailability: Array<{ name: string; sku: string; available: number }>; productAvailable: number; trackInventory: boolean; continueSellingWhenOutOfStock: boolean; reviewEligibility: ReviewEligibility; sections?: AnyMap[]; collections?: AnyMap[]; vapidPublicKey?: string; customerEmail?: string; flashSale?: { percent: number; endsAt: string } | null; lbpRate?: number; storeWhatsapp?: string; questionsEnabled?: boolean; quantityDeals?: PublicDeal[] }) {
+export default function AliExpressProduct({ theme, product, related, variantAvailability, productAvailable, trackInventory, continueSellingWhenOutOfStock, reviewEligibility, sections = [], collections = [], vapidPublicKey, customerEmail, boughtTogether = [], flashSale = null, lbpRate = 0, storeWhatsapp = '', questionsEnabled = false, quantityDeals = [], lowStockThreshold = 0 }: { theme: AnyMap; product: AnyMap; related: AnyMap[]; boughtTogether?: Suggestion[]; variantAvailability: Array<{ name: string; sku: string; available: number }>; productAvailable: number; trackInventory: boolean; continueSellingWhenOutOfStock: boolean; reviewEligibility: ReviewEligibility; sections?: AnyMap[]; collections?: AnyMap[]; vapidPublicKey?: string; customerEmail?: string; flashSale?: { percent: number; endsAt: string } | null; lbpRate?: number; storeWhatsapp?: string; questionsEnabled?: boolean; quantityDeals?: PublicDeal[]; lowStockThreshold?: number }) {
   const { t, lang, count: plural } = useI18n()
   const { addItem } = useCart()
   const { wishlist, toggleWish } = useWishlist()
@@ -159,7 +160,8 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
   }, [])
   const area = deliveryAreas.find(a => a.name === deliveryArea) || deliveryAreas[0]
   const deliveryLabel = area?.eta ? t('Delivery to {area}: {eta}', { area: area.name, eta: area.eta }) : ''
-  const stockLabel = !canSell ? t('Out of stock') : isPreorder ? t('Pre-order') : [trackInventory && available > 0 ? t('{n} available', { n: available }) : t('In stock'), deliveryLabel].filter(Boolean).join(' · ')
+  const lowLeft = canSell && !isPreorder ? lowStockLeft({ threshold: lowStockThreshold, available, trackInventory, continueSelling: continueSellingWhenOutOfStock }) : 0
+  const stockLabel = !canSell ? t('Out of stock') : isPreorder ? t('Pre-order') : [lowLeft ? t('Only {n} left', { n: lowLeft }) : trackInventory && available > 0 ? t('{n} available', { n: available }) : t('In stock'), deliveryLabel].filter(Boolean).join(' · ')
 
   const buildItem = () => ({
     productId: product.id,
@@ -268,9 +270,9 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
             </div>
           )}
 
-          {showStockCounter && (
-            <div className="focalStock">
-              <span className="focalStockDot" style={!canSell ? { background: 'var(--store-muted,#746b64)' } : undefined} /> {stockLabel}
+          {(showStockCounter || lowLeft > 0) && (
+            <div className={`focalStock${lowLeft ? ' isLow' : ''}`}>
+              <span className="focalStockDot" style={!canSell ? { background: 'var(--store-muted,#746b64)' } : lowLeft ? { background: '#d97706' } : undefined} /> {stockLabel}
             </div>
           )}
 
