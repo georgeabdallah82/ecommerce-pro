@@ -630,3 +630,60 @@ html body.mk .focalAnnouncementDismiss::after { content: ""; position: absolute;
 .skipLink { position: fixed; top: 8px; inset-inline-start: 8px; z-index: 10000; padding: 12px 18px; border-radius: 8px; background: #111; color: #fff; font-weight: 700; font-size: 15px; text-decoration: none; transform: translateY(-250%); }
 .skipLink:focus { transform: none; outline: 3px solid #fff; outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .skipLink { transition: none; } }
+
+/* ---- Stage 2 visual refresh -------------------------------------------------------------------
+   One small set of shared values (shadow, radius, motion) and the places that looked flat or empty:
+   section headings, product cards, the trust strip, category circles without a photo, the product
+   page promise chips, and the cart summary. Colours still come from the theme (--store-*), so the
+   Theme Studio keeps control. Hover movement only on devices that really hover, and none for people
+   who ask for less motion. */
+body.mk {
+  --mk-shadow-1: 0 1px 2px rgba(18, 18, 18, .06), 0 2px 8px -4px rgba(18, 18, 18, .08);
+  --mk-shadow-2: 0 14px 28px -16px rgba(18, 18, 18, .35);
+  --mk-radius-sm: 10px;
+  --mk-ease: cubic-bezier(.2, .7, .2, 1);
+}
+
+/* Headings: a short two-tone bar, the speed-lines idea from the logo, before every section title. */
+html body.mk .mkHead h2 { display: flex; align-items: center; gap: 10px; }
+html body.mk .mkHead h2::before { content: ""; flex: none; width: 5px; height: 1.05em; border-radius: 3px; background: linear-gradient(180deg, var(--mk-red) 0 62%, var(--mk-yellow) 62% 100%); }
+html body.mk .mkHead p { margin-inline-start: 15px; }
+
+/* Product cards: a resting edge and shadow, a bolder price, a thumb-sized button. */
+html body.mk .mkCard { box-shadow: var(--mk-shadow-1), 0 0 0 1px var(--mk-line); transition: box-shadow .2s var(--mk-ease), transform .2s var(--mk-ease); }
+html body.mk .mkCardBadge { border-radius: 999px; padding: 4px 9px; letter-spacing: .01em; box-shadow: 0 1px 2px rgba(0, 0, 0, .12); }
+html body.mk .mkCardPrice strong { font-size: 17px; letter-spacing: -.01em; }
+html body.mk .mkCardAdd { min-height: 44px; border-radius: var(--mk-radius-sm); transition: background-color .15s ease, transform .1s ease; }
+html body.mk .mkCardAdd:active { transform: scale(.98); }
+@media (hover: hover) {
+  html body.mk .mkCard:hover { box-shadow: var(--mk-shadow-2), 0 0 0 1px var(--mk-line); transform: translateY(-2px); }
+}
+
+/* Trust strip: a round icon next to each promise. The words stay exactly what the owner wrote. */
+html body.mk .aliTrustItem { grid-template-columns: 44px minmax(0, 1fr) !important; column-gap: 12px !important; align-items: center !important; }
+html body.mk .aliTrustItem .aliTrustIcon { grid-row: 1 / span 2; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--mk-red-soft); color: var(--mk-red); }
+html body.mk .aliTrustItem strong { color: var(--mk-ink) !important; font-size: 14.5px !important; line-height: 1.25 !important; overflow-wrap: anywhere; }
+html body.mk .aliTrustItem span:not(.aliTrustIcon) { line-height: 1.35 !important; overflow-wrap: anywhere; }
+html body.mk .aliTrustStrip .aliContainer { box-shadow: var(--mk-shadow-1), 0 0 0 1px var(--mk-line) !important; gap: 14px 18px !important; }
+@media (max-width: 759px) { html body.mk .aliTrustStrip .aliContainer { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
+@media (max-width: 400px) {
+  html body.mk .aliTrustItem { grid-template-columns: minmax(0, 1fr) !important; row-gap: 6px !important; align-content: start !important; }
+  html body.mk .aliTrustItem .aliTrustIcon { grid-row: auto; width: 38px; height: 38px; }
+  html body.mk .aliTrustItem strong, html body.mk .aliTrustItem span:not(.aliTrustIcon) { overflow-wrap: break-word; }
+}
+html[dir="rtl"] body.mk .aliTrustItem { text-align: right !important; }
+
+/* Category circles with no photo yet: the first letter instead of an empty disc. */
+html body.mk .aliCategoryInitial { width: 100%; height: 100%; display: grid; place-items: center; font-family: var(--store-font-heading); font-size: 28px; font-weight: 800; color: var(--mk-red); background: var(--mk-red-soft); }
+@media (min-width: 760px) { html body.mk .aliCategoryInitial { font-size: 34px; } }
+
+/* Product page: the three promise chips read as chips, with room for a thumb and for longer words. */
+html body.mk .focalStorefront .focalTrustGrid span { display: flex !important; align-items: center; justify-content: center; text-align: center; min-height: 44px; border-radius: var(--mk-radius-sm) !important; background: var(--mk-card) !important; box-shadow: 0 0 0 1px var(--mk-line) !important; border: 0 !important; color: var(--mk-ink) !important; font-weight: 600 !important; overflow-wrap: anywhere; }
+
+/* Cart and checkout summary cards share the card edge. */
+html body.mk .summaryUX { border-radius: var(--mk-radius) !important; box-shadow: var(--mk-shadow-1), 0 0 0 1px var(--mk-line) !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  html body.mk .mkCard, html body.mk .mkCardAdd, html body.mk .mkCardMedia img { transition: none !important; transform: none !important; }
+  html body.mk .mkCard:hover { transform: none !important; }
+}

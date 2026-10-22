@@ -8,6 +8,7 @@ import {getUnpublishedProductIds} from '@/lib/sales-channels'
 import {storefrontCached} from '@/lib/storefront-cache'
 import StorefrontSections from '@/components/storefront-sections'
 import {Footer} from '@/components/footer'
+import TrustIcon from '@/components/trust-icon'
 import type { Metadata } from 'next'
 import { absoluteUrl, siteUrl } from '@/lib/seo'
 
@@ -55,6 +56,7 @@ export default async function Home(){
         <div className="aliContainer aliTrustRow">
           {trustItems.map(block=>(
             <div className="aliTrustItem" key={block.id}>
+              <TrustIcon title={block.title} text={block.subtitle}/>
               <strong>{block.title||t('Why shop with us')}</strong>
               {block.subtitle&&<span>{block.subtitle}</span>}
             </div>
