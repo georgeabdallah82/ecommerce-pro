@@ -896,4 +896,7 @@ export const AR: Record<string, string> = {
   "You save {amount} with a quantity deal. It is taken off at checkout.": "توفّر {amount} بفضل عرض الكمية. يُخصم عند إتمام الطلب.",
   "Add {count} more to save {percent}% on these items.": "أضف {count} أخرى لتوفّر {percent}% على هذه المنتجات.",
   "Add {count} more to get {quantity} for {price}.": "أضف {count} أخرى لتحصل على {quantity} بسعر {price}.",
+  // The customer's order history (lib/order-timeline.ts)
+  "Preparing": "قيد التجهيز",
+  "Out for delivery": "في الطريق إليك",
 }
