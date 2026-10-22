@@ -9,7 +9,7 @@ import { reviewPhotoKey } from '@/lib/review-photos'
 // MEDIA_BUCKET in wrangler.jsonc) whenever that binding is available, and are served back via
 // /api/media/[key]. Outside Workers (plain `next dev`, no R2 binding) this falls back to writing
 // into public/uploads, since a real filesystem is available there.
-async function getMediaBucket(): Promise<any | null> {
+export async function getMediaBucket(): Promise<any | null> {
   try {
     const { env } = await getCloudflareContext({ async: true })
     return (env as any).MEDIA_BUCKET || null

@@ -407,6 +407,7 @@ model Order {
   reviews             Review[]
   notesHistory        OrderNote[]
   paymentTransactions PaymentTransaction[]
+  paymentProofs       PaymentProof[]
   inviteReward        InviteReward?
   driver              Driver?              @relation(fields: [driverId], references: [id], onDelete: SetNull)
   @@index([createdAt])
@@ -447,6 +448,20 @@ model OrderNote {
   createdAt DateTime @default(now())
   order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// A screenshot of a bank or wallet transfer that the customer uploaded from the order page
+// (lib/payment-proof.ts). The picture sits in private storage under `key` and is only shown to
+// staff on the order; it never has a public address.
+model PaymentProof {
+  id          String   @id @default(cuid())
+  orderId     String
+  key         String   @unique
+  contentType String
+  sizeBytes   Int
+  createdAt   DateTime @default(now())
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  @@index([orderId])
 }
 
 model PaymentTransaction {

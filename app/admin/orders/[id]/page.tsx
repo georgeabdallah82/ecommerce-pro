@@ -23,7 +23,9 @@ export default async function OrderDetail({params}:{params:Promise<{id:string}>}
       items:{include:{product:{include:{images:true}},variant:true}},
       events:{orderBy:{createdAt:'desc'}},
       notesHistory:{include:{user:true},orderBy:{createdAt:'desc'}},
-      paymentTransactions:{orderBy:{createdAt:'desc'}}
+      paymentTransactions:{orderBy:{createdAt:'desc'}},
+      // Screenshots of a bank or wallet transfer the customer sent (lib/payment-proof.ts); the pictures load through a staff-only route.
+      paymentProofs:{select:{id:true,createdAt:true,sizeBytes:true},orderBy:{createdAt:'desc'}}
     }
   })
   if(!order)return <div className={ui.empty}>Order not found.</div>

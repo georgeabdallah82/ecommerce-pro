@@ -409,6 +409,10 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
             <span>{collect ? <>Driver collects <strong>{money(o.grandTotal, o.currency)}</strong> in cash</> : payment.label}</span>
             {canMarkPaid && <button type="button" className={`${ui.btn} ${ui.btnSmall}`} onClick={markPaid} disabled={moving}><Check size={14}/> Mark as paid</button>}
           </div>
+          {(o.paymentProofs||[]).length>0&&<div className={s.proofs}>
+            <p className={s.proofsText}><strong>{o.paymentProofs.length} payment screenshot{o.paymentProofs.length===1?'':'s'} from the customer.</strong>{canMarkPaid?' Check that the money really arrived, then tap Mark as paid.':''} <span className={ui.muted}>Only staff can see these.</span></p>
+            <div className={s.proofList}>{o.paymentProofs.map((p:any)=><a key={p.id} className={s.proofThumb} href={`/api/admin/orders/${o.id}/payment-proof/${p.id}`} target="_blank" rel="noopener noreferrer"><img src={`/api/admin/orders/${o.id}/payment-proof/${p.id}`} alt="Payment screenshot from the customer" loading="lazy"/><span>{new Date(p.createdAt).toLocaleString()}</span></a>)}</div>
+          </div>}
         </section>
 
         {(o.issuedGiftCards||[]).length>0&&<section className={ui.card}>
