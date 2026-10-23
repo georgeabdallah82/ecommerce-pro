@@ -95,7 +95,7 @@ export default function AliExpressCart({ theme, recommended, sections = [], zone
       <div className="focalContainer">
         <header className="cartHeader">
           <div>
-            <span className="focalEyebrow">{t('YOUR BAG')}</span>
+            <span className="focalEyebrow">{t('Your bag')}</span>
             <h1>{t('Ready to checkout?')}</h1>
             <p>{t('{count} saved for checkout.', { count: plural(itemCount, 'item') })}</p>
           </div>

@@ -887,3 +887,10 @@ html body.mk .aliCategoryInitial { font-family: var(--mk-display); font-weight: 
   html body.mk .aliCategoryIcon { width: 104px !important; height: 104px !important; border-radius: 22px !important; }
 }
 [dir="rtl"] body.mk .mkSlideCopy .mkTag { letter-spacing: 0; }
+
+/* ---- Identity pass 3: cart ---------------------------------------------------------------------
+   The bag title gets the display face and the all-caps eyebrow becomes plain small text. The
+   checkout page has the same treatment in app/checkout/checkout.module.css (display titles,
+   ink instead of red for the chosen delivery and payment option; red stays on Place order). */
+html body.mk .cartPage .cartHeader h1 { font-family: var(--mk-display) !important; font-weight: 700; letter-spacing: -.025em; line-height: 1.05; font-size: clamp(30px, 8vw, 44px); }
+html body.mk .cartPage .cartHeader .focalEyebrow { font-size: 13px !important; font-weight: 600 !important; letter-spacing: 0 !important; text-transform: none; color: var(--mk-muted); background: none !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; min-height: 0 !important; }
