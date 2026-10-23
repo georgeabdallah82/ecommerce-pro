@@ -138,6 +138,20 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
   const shownPrice = flashSale ? salePrice(currentPrice, flashSale.percent) : currentPrice
   const compareAt = flashSale ? Math.max(currentPrice, Number(selectedVariant?.compareAtPrice ?? product.compareAtPrice ?? 0)) : Number(selectedVariant?.compareAtPrice ?? product.compareAtPrice ?? 0)
   const discountPct = compareAt > shownPrice ? Math.round((1 - shownPrice / compareAt) * 100) : 0
+  // Swipe the main photo sideways to change it (the small pictures below still work as buttons).
+  const swipeStart = useRef<{ x: number; y: number } | null>(null)
+  const swipeCount = Math.min(gallery.length, 8)
+  const onSwipeEnd = (e: React.TouchEvent) => {
+    const start = swipeStart.current
+    swipeStart.current = null
+    if (!start || swipeCount < 2) return
+    const touch = e.changedTouches[0]
+    const dx = touch.clientX - start.x
+    const dy = touch.clientY - start.y
+    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy) * 1.5) return
+    const forward = (dx < 0) !== (document.documentElement.dir === 'rtl')
+    setActiveImgIndex(i => (i + (forward ? 1 : -1) + swipeCount) % swipeCount)
+  }
   const activeImage = gallery[activeImgIndex]?.url || gallery[0]?.url || '/placeholder-product.svg'
   const wished = Boolean(wishlist[product.id])
 
@@ -226,7 +240,7 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
       )}
       <div className="aliContainer aliProductLayout">
         <div className="aliProductGallery">
-          <div className="aliProductMainImage">
+          <div className="aliProductMainImage" onTouchStart={e => { swipeStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY } }} onTouchEnd={onSwipeEnd}>
             <StoreImage src={activeImage} alt={gallery[activeImgIndex]?.alt || product.name} eager />
             {discountPct > 0 && <span className="focalBadge aliProductDiscountBadge">-{discountPct}%</span>}
           </div>

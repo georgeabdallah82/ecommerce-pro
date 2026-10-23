@@ -743,13 +743,13 @@ html body.mk .focalNav.mkHeaderCheckout .focalNavInner { grid-template-columns: 
 /* Product page, phones: sticky Add to cart once the real buttons have scrolled out of view. */
 .stickyBuy { display: none; }
 @media (max-width: 899px) {
-  .stickyBuy { display: flex; align-items: center; justify-content: space-between; gap: 14px; position: fixed; inset-inline: 0; bottom: 0; z-index: 60; padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); background: var(--mk-card, #fff); border-top: 1px solid var(--mk-line, #e7e2dc); box-shadow: 0 -6px 18px rgba(0,0,0,.08); }
+  .stickyBuy { display: flex; align-items: center; justify-content: space-between; gap: 14px; position: fixed; inset-inline: 0; bottom: 0; z-index: 60; padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px)); background: var(--mk-card, #fff); border-top: 1px solid var(--mk-line, #e7e2dc); box-shadow: 0 -6px 18px rgba(0,0,0,.08); }
   .stickyBuyPrice { display: grid; line-height: 1.15; min-width: 0; }
   .stickyBuyPrice strong { font-size: 18px; font-weight: 800; color: var(--mk-red, #d7261e); }
   .stickyBuyPrice del { font-size: 12px; color: var(--mk-muted, #746b64); }
   .stickyBuyBtn { flex: 1 1 auto; max-width: 240px; min-height: 46px; }
-  body.hasStickyBuy { padding-bottom: 76px; }
-  body.hasStickyBuy .mkWhatsApp { bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+  body.hasStickyBuy { padding-bottom: 70px; }
+  body.hasStickyBuy .mkWhatsApp { bottom: calc(82px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* Shop page, phones: the header already has a search box, so the in-page one and its button are hidden
@@ -764,3 +764,19 @@ html body.mk .cartTrustUX strong { font-size: 12.5px !important; }
 html body.mk .cartTrustUX small { font-size: 12px !important; }
 .mkDots button { position: relative; }
 .mkDots button::after { content: ''; position: absolute; inset: -14px -4px; }
+
+/* Product page, phones: the search box becomes a small search button, so the title and photo start higher
+   (shoppers arriving from an ad want the product, not a search). The button opens the same search. */
+@media (max-width: 899px) {
+  html body.mk .focalNav.mkHeader.mkHeaderProduct .aliNavSearchWrap { display: none !important; }
+  html body.mk .focalNav.mkHeader.mkHeaderProduct .aliNavSearchIconMobile { display: inline-flex !important; }
+  .aliProductMainImage { touch-action: pan-y; }
+}
+
+/* Small phones (360 px wide): the delivery strip fits on one line and the photo thumbnails are a little smaller, so
+   the product title is not hidden behind the sticky bar on a 740 px tall screen. */
+@media (max-width: 400px) {
+  .mkDeliveryInner { gap: 4px 8px; font-size: 12px; }
+  .mkDelivery select { padding: 6px 6px; }
+  .aliProductThumbs button { width: 56px; height: 56px; }
+}
