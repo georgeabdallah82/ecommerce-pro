@@ -770,6 +770,10 @@ model VisitorSession {
   country      String?
   city         String?
   region       String?
+  // Where the visitor's network says they are, rounded to one decimal (about 10 km): a dot on the live map,
+  // never a street. Not GPS.
+  placeLat     Float?
+  placeLng     Float?
   device       String?
   browser      String?
   os           String?

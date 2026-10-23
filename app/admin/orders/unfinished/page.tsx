@@ -15,7 +15,7 @@ export default async function UnfinishedCheckoutsPage() {
   const [rows, recovered, store, timezone] = await Promise.all([
     db.abandonedCheckout.findMany({
       where: { status: 'OPEN', lastActivity: { gte: since }, OR: [{ phone: { not: null } }, { email: { not: null } }] },
-      select: { id: true, name: true, phone: true, email: true, cartJson: true, subtotal: true, currency: true, recoveryUrl: true, lastActivity: true, whatsappAt: true, reminderState: true, reminderAt: true, reminderNote: true },
+      select: { id: true, name: true, phone: true, email: true, cartJson: true, subtotal: true, currency: true, recoveryUrl: true, lastActivity: true, whatsappAt: true, reminderState: true, reminderAt: true, reminderNote: true, city: true, area: true, pinLat: true, pinLng: true },
       orderBy: { lastActivity: 'desc' },
       take: 200,
     }),

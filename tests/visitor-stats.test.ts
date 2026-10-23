@@ -119,16 +119,17 @@ test('only link tags that say where a visitor came from are kept', () => {
 
 const read = (path: string) => readFileSync(path, 'utf8')
 
-test('privacy: no IP address and no GPS are stored, and the old map is gone', () => {
+test('privacy: no IP address and no GPS are stored, only a place rounded to about 10 km, and the old map table is gone', () => {
   const schema = read('prisma/schema.prisma')
   const model = schema.slice(schema.indexOf('model VisitorSession'), schema.indexOf('model RateLimitBucket'))
   assert.ok(model.includes('model VisitorPageView'))
-  assert.ok(!/ipAddress|latitude|longitude|isp\b/i.test(model), 'no address or coordinates in the tables')
+  assert.ok(!/ipAddress|latitude|longitude|isp\b|accuracy/i.test(model), 'no address, GPS fields or accuracy in the tables')
+  assert.match(model, /placeLat\s+Float\?/)
   assert.ok(!schema.includes('LiveVisitorSession'))
   const record = read('lib/visitors.ts') + read('app/api/analytics/visit/route.ts')
-  assert.ok(!/clientIp\(req\.headers\)\s*[,)]\s*[^,]*ipAddress/.test(record))
-  assert.ok(!/ipAddress|latitude|longitude/.test(record), 'recording code never mentions an IP address or coordinates')
-  assert.ok(!read('package.json').includes('leaflet'))
+  assert.ok(!/ipAddress/.test(record), 'recording code never mentions an IP address')
+  assert.match(read('lib/visitors.ts'), /roundPlace\(cf\.latitude, cf\.longitude\)/)
+  assert.ok(!/body\??\.(latitude|longitude|lat|lng)|input\.(latitude|longitude|lat|lng)/.test(record), 'a visitor\'s own browser never sends coordinates')
 })
 
 test('wiring: the tracker is on the store, the route skips staff and robots, the report is staff-only', () => {

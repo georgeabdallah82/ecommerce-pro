@@ -1,10 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { Pause, Play, RefreshCw, ShoppingCart, Users, CreditCard, Receipt, Smartphone, Monitor, Tablet, UserRound, Repeat } from 'lucide-react'
 import type { LiveReport, OnlineRow, TodayReport } from '@/lib/visitor-report'
 import { STAGES, STAGE_LABELS, type Stage } from '@/lib/visitor-tracking'
 import s from './visitors-live.module.css'
+
+// Leaflet reads `window` as soon as it is imported: load the map only in the browser.
+const VisitorsMap = dynamic(() => import('./visitors-map'), { ssr: false, loading: () => <div className={s.mapLoading}>Loading the map…</div> })
 
 // Admin > Live visitors. Numbers come from lib/visitor-report.ts through /api/admin/visitors. The
 // "online now" part refreshes often and the day's summary less often, only while this page is on
@@ -146,6 +150,16 @@ export default function VisitorsLive({ initialLive, initialToday }: { initialLiv
           </button>
         </li>)}
       </ul>
+    </section>
+
+    <section className={s.panel} aria-labelledby="vl-map">
+      <h2 id="vl-map" className={s.h2}>Where they are</h2>
+      <VisitorsMap visitors={live.visitors} pins={live.pins} currency={live.currency} />
+      <ul className={s.legend}>
+        <li><i className={s.legendDot} aria-hidden="true" /><span>Visitors online now: <b>approximate</b> place (about 10 km, from their internet connection), not a street.</span></li>
+        <li><i className={s.legendPin} aria-hidden="true" /><span>Exact spot shared at checkout by someone who has not ordered yet.</span></li>
+      </ul>
+      {live.pins.length ? <ul className={s.pinList}>{live.pins.map(p => <li key={p.id}><span><b>{p.name}</b> · {p.place}</span><span>left {p.minutesAgo < 60 ? `${p.minutesAgo} min` : `${Math.round(p.minutesAgo / 60)} h`} ago</span></li>)}<li><a href="/admin/orders/unfinished">Open unfinished checkouts</a></li></ul> : null}
     </section>
 
     <section className={s.panel} aria-labelledby="vl-who">

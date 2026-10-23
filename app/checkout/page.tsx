@@ -131,7 +131,10 @@ export default function Checkout() {
     const phone = String(fd.get('phone') || '').trim()
     const name = String(fd.get('firstName') || '').trim()
     if (!email && phone.replace(/\D/g, '').length < 7) return
-    const payload = { token: checkoutToken.current, email, phone, name, items: items.map(item => ({ productId: item.productId, variantId: item.variantId || null, name: item.name, quantity: item.quantity, unitPrice: item.price })) }
+    // Where they are: the town and area typed so far, and the exact spot if they shared it.
+    const city = String(fd.get('city') || '').trim()
+    const areaTyped = String(fd.get('area') || fd.get('region') || '').trim()
+    const payload = { token: checkoutToken.current, email, phone, name, city, area: areaTyped, pin: pin ? { lat: pin.lat, lng: pin.lng, accuracy: pin.accuracy } : null, items: items.map(item => ({ productId: item.productId, variantId: item.variantId || null, name: item.name, quantity: item.quantity, unitPrice: item.price })) }
     const key = JSON.stringify(payload)
     setContact(current => current.phone === phone && current.email === email ? current : { phone, email })
     if (key === lastProgress.current) return
@@ -160,6 +163,9 @@ export default function Checkout() {
   const [country, setCountry] = useState('Lebanon')
   // The customer's shared location, if they tapped "Share my exact location" (app/checkout/location-pin.tsx).
   const [pin, setPin] = useState<LocationPin | null>(null)
+  // Sharing the exact spot is saved with the unfinished checkout too (once a phone or email is typed).
+  const formRef = useRef<HTMLFormElement>(null)
+  useEffect(() => { if (pin) captureCheckoutProgress(formRef.current) }, [pin])
   const [areas, setAreas] = useState<DeliveryArea[]>([])
   const [area, setArea] = useState('')
   const [shippingRates, setShippingRates] = useState<ShippingRate[]>([])
@@ -444,7 +450,7 @@ export default function Checkout() {
   return <main className={s.page}><div className={s.wrap}>
     <div className={s.head}><h1 className={s.title}>{t('Checkout')}</h1><span className={s.secure}><ShieldCheck size={16} /> {t('Secure checkout')}</span></div>
     {summary}
-    <form className={s.form} onSubmit={submit} noValidate onInput={e => clearError((e.target as HTMLInputElement).name)}>
+    <form ref={formRef} className={s.form} onSubmit={submit} noValidate onInput={e => clearError((e.target as HTMLInputElement).name)}>
       <CartNotices />
       {!settings && <div className={s.info}>{t('Loading checkout settings…')}</div>}
       {guestBlocked && <div className={s.alert}>{t('Guest checkout is disabled.')} <Link href="/account/login?next=%2Fcheckout">{t('Sign in to continue')}</Link></div>}
@@ -465,7 +471,7 @@ export default function Checkout() {
       <section className={s.step} aria-labelledby="co-delivery">
         <h2 id="co-delivery" className={s.stepHead}><span className={s.stepNum}>2</span>{t('Delivery')}</h2>
         {useAreaList && <label className={fieldClass('area')}><span className={s.label}>{t('Area')}</span>
-          <select className={s.select} name="area" value={area} onChange={e => { setArea(e.target.value); clearError('area') }} aria-invalid={!!errors.area}>
+          <select className={s.select} name="area" value={area} onChange={e => { setArea(e.target.value); clearError('area'); captureCheckoutProgress(e.currentTarget.form) }} aria-invalid={!!errors.area}>
             <option value="">{t('Choose your area')}</option>
             {areas.map(a => <option key={a.name} value={a.name}>{a.name}</option>)}
           </select>
@@ -475,7 +481,7 @@ export default function Checkout() {
           <label className={fieldClass('firstName')}><span className={s.label}>{t('First name')}</span><input ref={firstNameRef} className={s.input} name="firstName" autoComplete="given-name" aria-invalid={!!errors.firstName} onBlur={e => captureCheckoutProgress(e.currentTarget.form)} />{fieldError('firstName')}</label>
           <label className={fieldClass('lastName')}><span className={s.label}>{t('Last name')}</span><input ref={lastNameRef} className={s.input} name="lastName" autoComplete="family-name" aria-invalid={!!errors.lastName} />{fieldError('lastName')}</label>
         </div>
-        <label className={fieldClass('city')}><span className={s.label}>{t('Town / city')}</span><input className={s.input} name="city" autoComplete="address-level2" placeholder={t('e.g. Jounieh')} aria-invalid={!!errors.city} />{fieldError('city')}</label>
+        <label className={fieldClass('city')}><span className={s.label}>{t('Town / city')}</span><input className={s.input} name="city" autoComplete="address-level2" placeholder={t('e.g. Jounieh')} aria-invalid={!!errors.city} onBlur={e => captureCheckoutProgress(e.currentTarget.form)} />{fieldError('city')}</label>
         <label className={fieldClass('line1')}><span className={s.label}>{t('Street and building')}</span><input className={s.input} name="line1" autoComplete="address-line1" placeholder={t('e.g. Main street, Abi Nader building')} aria-invalid={!!errors.line1} />{fieldError('line1')}</label>
         <label className={s.field}><span className={s.label}>{t('Floor, apartment, landmark')} <i>{t('(optional)')}</i></span><input className={s.input} name="line2" autoComplete="address-line2" placeholder={t('e.g. 3rd floor, near the pharmacy')} /></label>
         <LocationPinButton pin={pin} onChange={setPin} countryCode={isoCountryCode(country)} />
