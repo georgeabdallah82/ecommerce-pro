@@ -41,7 +41,13 @@ export type LaunchFacts = {
   manual: Record<string, string>
   // The free database hours in one line (lib/database-hours.ts), when the daily check can be read.
   databaseHours?: string
+  // Product photos heavier than HEAVY_PHOTO_KB (sizes recorded at upload, lib/media-storage.ts).
+  heavyPhotos?: Array<{ product: string; kb: number }>
 }
+
+// A product photo above this slows a phone on a slow connection: cards show it at ~200px, and
+// Cloudflare's free plan cannot shrink a stored file. Uploading it again shrinks it in the browser.
+export const HEAVY_PHOTO_KB = 300
 
 // The Settings key holding the ticks: { "<id>": "<date ticked>" }.
 export const LAUNCH_MANUAL_KEY = 'launch.checklist'
@@ -105,6 +111,13 @@ export function buildChecklist(f: LaunchFacts): { items: ChecklistItem[]; before
       : missing
         ? { id: 'products', group: 'before', title: 'Products ready to sell', status: 'warn', detail: [f.productsWithoutPhoto ? `${plural(f.productsWithoutPhoto, 'product')} without a photo` : '', f.productsWithoutPrice ? `${plural(f.productsWithoutPrice, 'product')} with no price` : ''].filter(Boolean).join(' · '), href: '/admin/products', fix: 'Products' }
         : { id: 'products', group: 'before', title: 'Products ready to sell', status: 'ok', detail: `${plural(f.activeProducts, 'active product')}, all with a photo and a price` },
+  )
+
+  const heavy = f.heavyPhotos || []
+  items.push(
+    heavy.length
+      ? { id: 'photosize', group: 'before', title: 'Product photos light enough for phones', status: 'warn', detail: `${plural(heavy.length, 'photo')} over ${HEAVY_PHOTO_KB} KB slow the store on a phone: ${heavy.slice(0, 3).map(h => `${h.product} (${h.kb} KB)`).join(', ')}${heavy.length > 3 ? ' and more' : ''}. Open the product, remove the photo and add it again: it is made smaller automatically.`, href: '/admin/products', fix: 'Products' }
+      : { id: 'photosize', group: 'before', title: 'Product photos light enough for phones', status: 'ok', detail: `Every product photo is under ${HEAVY_PHOTO_KB} KB` },
   )
 
   items.push(
