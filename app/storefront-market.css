@@ -780,3 +780,72 @@ html body.mk .cartTrustUX small { font-size: 12px !important; }
   .mkDelivery select { padding: 6px 6px; }
   .aliProductThumbs button { width: 56px; height: 56px; }
 }
+
+/* ---- Identity pass 1 (UI/UX Pro Max review) ----------------------------------------------------
+   The store worked but looked like every marketplace: one font weight everywhere, boxed cards, a
+   red button on every product, tight sections. This pass keeps the brand red and yellow speed-lines
+   and changes the composition:
+   - one display face (Bricolage Grotesque) for headlines only; body text stays the theme font
+   - products sit directly on the page (photo first, no box); red is kept for the main action,
+     the price and sale labels, so the "Add" button is quiet until a shopper reaches for it
+   - more space between sections so the page reads as chapters, not a wall of rows
+   Colours still come from the theme (--store-*). Arabic keeps the theme heading font because the
+   display face has no Arabic letters. Nothing here changes data, prices or behaviour. */
+body.mk {
+  --mk-display: var(--font-bricolage), var(--store-font-heading), system-ui, sans-serif;
+  --mk-section-gap: 40px;
+}
+@media (min-width: 760px) { body.mk { --mk-section-gap: 64px; } }
+html[dir="rtl"] body.mk { --mk-display: var(--store-font-heading), system-ui, sans-serif; }
+
+/* Display type: headlines only. */
+html body.mk .mkHead h2,
+html body.mk .mkSlideCopy h1,
+html body.mk .mkSlideCopy h2,
+html body.mk .mkOffer h3,
+html body.mk .mkSpotBanner h3,
+html body.mk .aliProductInfo h1 { font-family: var(--mk-display) !important; font-optical-sizing: auto; }
+html body.mk .aliProductInfo h1 { font-weight: 700; letter-spacing: -.02em; line-height: 1.15; }
+html body.mk .mkHead h2 { font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
+html body.mk .mkSlideCopy h1, html body.mk .mkSlideCopy h2 { font-weight: 700; }
+@media (min-width: 760px) { html body.mk .mkHead h2 { font-size: 30px; } }
+html body.mk .mkHead p { font-size: 14px; }
+
+/* Section rhythm. */
+html body.mk .mkSection { padding-block: var(--mk-section-gap) 0; }
+html body.mk .aliCategoryStrip { padding-top: calc(var(--mk-section-gap) - 12px) !important; }
+
+/* Product cards: photo first, no box. */
+html body.mk .mkCard { background: transparent; padding: 0; box-shadow: none !important; gap: 10px; border-radius: 0; transform: none !important; }
+html body.mk .mkCardMedia { border-radius: 14px; aspect-ratio: 1; box-shadow: 0 0 0 1px var(--mk-line); }
+html body.mk .mkCardBody { gap: 4px; padding-inline: 2px; }
+html body.mk .mkCard h3 { font-size: 14.5px; font-weight: 600; line-height: 1.35; min-height: 0; -webkit-line-clamp: 2; }
+html body.mk .mkCardPrice strong { font-size: 18px; font-weight: 800; color: var(--mk-ink); }
+html body.mk .mkCardPrice:has(del) strong { color: var(--mk-red); }
+html body.mk .mkCardNote { font-size: 12px; font-weight: 500; color: var(--mk-muted); }
+html body.mk .mkCardNote svg { color: var(--mk-green); }
+html body.mk .mkCardBadge { top: 10px; left: 10px; border-radius: 6px; background: var(--mk-ink); color: #fff; font-weight: 700; letter-spacing: .01em; box-shadow: none; }
+html[dir="rtl"] body.mk .mkCardBadge { left: auto; right: 10px; }
+html body.mk .mkCardWish { top: 10px; right: 10px; box-shadow: 0 1px 4px rgba(0, 0, 0, .14); }
+html[dir="rtl"] body.mk .mkCardWish { right: auto; left: 10px; }
+html body.mk .mkCardAdd { background: transparent; color: var(--mk-ink); box-shadow: inset 0 0 0 1.5px var(--mk-ink); font-weight: 700; margin-top: 6px; transition: background-color .15s ease, color .15s ease, box-shadow .15s ease, transform .1s ease; }
+html body.mk .mkCardAdd:hover { background: var(--mk-ink); color: #fff; }
+html body.mk .mkCardAdd:focus-visible { outline: 3px solid color-mix(in srgb, var(--mk-red) 60%, #fff); outline-offset: 2px; }
+html body.mk .mkCardAdd.done { background: var(--mk-green); color: #fff; box-shadow: none; }
+@media (hover: hover) {
+  html body.mk .mkCard:hover { box-shadow: none !important; transform: none !important; }
+  html body.mk .mkCard:hover .mkCardMedia { box-shadow: 0 0 0 1px var(--mk-ink); }
+}
+/* Rank label sits on the photo corner, not over the old card edge. */
+html body.mk .mkRank { left: 10px; top: 10px; }
+html body.mk .mkCardSlot:has(.mkCardBadge) .mkRank { top: 40px; }
+html[dir="rtl"] body.mk .mkRank { left: auto; right: 10px; }
+
+/* Tabs: ink instead of red, so red stays for the main action. */
+html body.mk .mkTabs { border-radius: 999px; padding: 4px; }
+html body.mk .mkTabs button { border-radius: 999px; padding: 8px 16px; min-height: 40px; }
+html body.mk .mkTabs button[aria-selected="true"] { background: var(--mk-ink); color: #fff; }
+
+@media (prefers-reduced-motion: reduce) {
+  html body.mk .mkCardAdd { transition: none !important; }
+}
