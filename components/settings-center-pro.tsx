@@ -80,6 +80,7 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
     'payment.bank.iban': map.get('payment.bank.iban') || '',
     'payment.bank.instructions': map.get('payment.bank.instructions') || '',
     'product.lowStockThreshold': map.get('product.lowStockThreshold') || '',
+    'notifications.stuckOrderMinutes': map.get('notifications.stuckOrderMinutes') || '',
     'invite.friendPercent': map.get('invite.friendPercent') || '10',
     'invite.reward': map.get('invite.reward') || '5',
     'invite.rewardDays': map.get('invite.rewardDays') || '60',
@@ -115,7 +116,7 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
     ...Object.fromEntries([
       'payment.cod', 'payment.card', 'payment.bank', 'payment.wallet',
       'checkout.guestCheckout', 'notifications.orderEmail', 'notifications.lowStock',
-      'notifications.reviews', 'notifications.security', 'notifications.dailySummary', 'notifications.weeklyReport', 'email.customerOrder', 'email.fulfillment', 'email.abandonedCheckout', 'email.giftCard', 'email.returnStatus', 'email.orderEdit', 'email.reviewRequest',
+      'notifications.reviews', 'notifications.security', 'notifications.orderProblems', 'notifications.dailySummary', 'notifications.weeklyReport', 'email.customerOrder', 'email.fulfillment', 'email.abandonedCheckout', 'email.giftCard', 'email.returnStatus', 'email.orderEdit', 'email.reviewRequest',
       'checkout.giftOption', 'product.whatsappOrder', 'product.questions', 'orders.guestCancel.enabled',
     ].map(k => [k, map.get(k) !== 'false'])),
     // Off until switched on.
@@ -407,6 +408,10 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
               <Toggle label="Low stock alerts" keyName="notifications.lowStock" value={flags['notifications.lowStock']} onChange={() => toggle('notifications.lowStock')} />
               <Toggle label="Review moderation alerts" keyName="notifications.reviews" value={flags['notifications.reviews']} onChange={() => toggle('notifications.reviews')} />
               <Toggle label="Sign-in alerts: a new device signed in to the admin, or an account was locked by wrong passwords" keyName="notifications.security" value={flags['notifications.security']} onChange={() => toggle('notifications.security')} />
+            </Card>
+            <Card title="Order problems" desc="An instant phone notification and email when a customer could not place an order, or when a new order has not been confirmed for too long. No reminders at night (11 pm to 8 am store time): they wait for the morning.">
+              <Toggle label="Tell me about order problems" keyName="notifications.orderProblems" value={flags['notifications.orderProblems']} onChange={() => toggle('notifications.orderProblems')} />
+              <Field label="Remind me when a new order waits this many minutes (empty = 60, 0 = never)" value={values['notifications.stuckOrderMinutes']} placeholder="60" onChange={v => set('notifications.stuckOrderMinutes', v.replace(/[^\d]/g, '').slice(0, 3))} />
             </Card>
             <Card title="Morning summary" desc="Every morning at about 8:30 (store time): yesterday's orders and sales, orders waiting for you, low stock and new reviews. Sent by email and as a phone notification to staff who turned notifications on. On Mondays, a weekly report email too: last week's sales against the week before, best sellers and top areas.">
               <Toggle label="Send the morning summary" keyName="notifications.dailySummary" value={flags['notifications.dailySummary']} onChange={() => toggle('notifications.dailySummary')} />

@@ -519,6 +519,20 @@ export async function sendSecurityAlertEmail(to: string, alert: SecurityAlert) {
   return sendEmail(to, message.subject, html, text)
 }
 
+// "A customer could not place an order" / "An order is waiting": short and plain, with one button.
+export async function sendOrderProblemEmail(to: string, message: { subject: string; lines: string[]; path: string; button: string }) {
+  const brand = await emailBrand()
+  const link = siteUrl() ? `${siteUrl()}${message.path}` : ''
+  const html = layout(`
+    <h1 style="font-size:20px;margin:0 0 12px;color:#b42318">${escapeHtml(message.subject)}</h1>
+    ${message.lines.map(line => `<p style="font-size:14px;line-height:1.6;color:#3f3f46;margin:0 0 10px">${escapeHtml(line)}</p>`).join('')}
+    ${link ? button(link, message.button, brand) : ''}
+    <p style="font-size:12px;color:#6b7280;margin:20px 0 0">You can turn these alerts off in Admin &gt; Settings &gt; Notifications.</p>
+  `, brand)
+  const text = [message.subject, '', ...message.lines, ...(link ? ['', `${message.button}: ${link}`] : [])].join('\n')
+  return sendEmail(to, message.subject, html, text)
+}
+
 // The owner's weekly report (Mondays, app/api/internal/daily/route.ts, lib/weekly-report.ts).
 export async function sendWeeklyReportEmail(to: string, r: { subject: string; weekLabel: string; currency: string; facts: WeeklyFacts; ordersChange: string; salesChange: string; cashWithDrivers: number; lowStock: number; adSpend: number }) {
   const brand = await emailBrand()

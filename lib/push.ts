@@ -233,6 +233,12 @@ export async function sendSecurityAlertPush(userIds: string[], payload: { title:
   return sendToSubscriptions({ ...payload, url: '/admin/settings', security: true }, undefined, 'staff', userIds)
 }
 
+// Something on order day needs the owner: a customer could not place an order, or an order has waited
+// too long for confirmation (lib/order-alerts.ts). To every staff device that turned notifications on.
+export async function sendOrderProblemPush(payload: { title: string; body: string; url: string }) {
+  return sendToSubscriptions({ ...payload, orderProblem: true })
+}
+
 // The owner's morning summary on the phone (lib/daily-summary.ts), to staff who turned
 // notifications on.
 export async function sendDailySummaryPush(payload: { title: string; body: string }) {

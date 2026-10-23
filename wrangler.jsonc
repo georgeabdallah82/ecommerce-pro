@@ -24,8 +24,10 @@
   // Once a day at 05:37 UTC (08:37 in Beirut): the owner's morning summary and the review-request
   // emails (worker.ts scheduled() -> /api/internal/daily). Right before the 05:41 database-hours
   // check, so both use the same database wake-up.
+  // Every 15 minutes: the order watch (lib/order-watch.ts). It reads a small marker file first and
+  // only asks the database when an order is being watched, so it costs no database hours otherwise.
   "triggers": {
-    "crons": ["37 5 * * *"]
+    "crons": ["37 5 * * *", "*/15 * * * *"]
   },
   "vars": {
     "EMAIL_FROM": "Yalla Haul <orders@yallahaul.com>"

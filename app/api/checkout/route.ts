@@ -10,6 +10,8 @@ import { addressWithPin } from '@/lib/location-pin'
 import { releaseOrderReservations, reserveStock, undoReservations } from '@/lib/inventory'
 import { getPaymentProvider } from '@/lib/payments'
 import { sendNewOrderPush } from '@/lib/push'
+import { alertCheckoutFailure } from '@/lib/order-alerts'
+import { armOrderWatch } from '@/lib/order-watch-storage'
 import { riskNote } from '@/lib/order-risk'
 import { sendAbandonedCheckoutEmail, sendOrderConfirmationEmail } from '@/lib/email'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
@@ -466,6 +468,8 @@ export async function POST(req: Request) {
     runInBackground(riskNote(order.id, settings['store.country'] || 'Lebanon').catch(() => '')
       .then(note => sendNewOrderPush({ id: order.id, orderNumber: order.orderNumber, grandTotal: order.grandTotal, currency: order.currency }, note))
       .catch(error => console.error('[push] new-order notification failed', error)))
+    // The owner confirms cash and transfer orders: watch this one, so a reminder comes if it waits too long.
+    if (paymentMethod !== PaymentMethod.CARD) runInBackground(armOrderWatch())
     if (paymentMethod !== PaymentMethod.CARD || order.grandTotal === 0) {
       runInBackground(sendOrderConfirmationEmail(order.id).catch(error => console.error('[email] order confirmation failed', error)))
       // Report the sale to Meta from the server too (card orders are reported once paid).
@@ -480,6 +484,8 @@ export async function POST(req: Request) {
     return json({ order: { id: order.id, orderNumber: order.orderNumber, total: order.grandTotal, successPath: orderSuccessPath(order.orderNumber) }, payment: clientCheckout, rewards: { coinsUsed: requestedCoins, coinDiscount, giftCardAmount: giftCardDiscount } }, { status: 201, headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {
     const failure = checkoutFailure(error)
+    // An unexpected failure on a customer's order: tell the owner now (throttled, no personal details).
+    if (failure.status >= 500) runInBackground(alertCheckoutFailure(error))
     return json({ error: failure.message }, { status: failure.status, headers: { 'Cache-Control': 'no-store' } })
   }
 }

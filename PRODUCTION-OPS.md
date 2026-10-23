@@ -82,6 +82,15 @@ Admin → Operations lets a store owner register endpoints (`WebhookEndpoint`) f
 
 `/api/admin/orders/:id` supports authenticated order viewing and controlled status updates. Cancelling an order releases reservations. Moving an inventory-tracked order to `SHIPPED` or `DELIVERED` fulfills its reserved stock exactly once.
 
+## Order-day alerts
+
+Two alerts reach the owner on the phone (web push) and by email, switched on or off in Settings > Notifications > Order problems:
+
+- **A customer could not place an order.** Sent from `app/api/checkout/route.ts` when an order fails with an unexpected error (not a normal "out of stock" or "wrong details" answer). At most one every 20 minutes; the text never carries customer details.
+- **An order is waiting.** A new cash or transfer order not confirmed after N minutes (default 60, 0 = never). No reminders from 11 pm to 8 am store time; they wait for the morning.
+
+The waiting-order check costs no database hours when nothing is waiting. Checkout writes a small marker file (`ops/order-watch.json`, in the media bucket, never public) when an order arrives. The Worker's 15-minute cron (`wrangler.jsonc` "triggers") reads only that file; only if it says "watching" and it is daytime does it call `/api/internal/order-watch`, which asks the database. The daily job re-arms the watch if an order is waiting, in case the marker file was lost. Rules: `lib/order-watch.ts`.
+
 ## Health check
 
 `GET /api/health` is the production health endpoint. It runs one tiny database query (timing out after 8 s) and returns HTTP `200` with `{ ok: true }` when the app and database are healthy, or HTTP `503` when the database is unreachable or too slow. Each call wakes the Neon database if it was asleep (Neon's free plan counts compute hours), so an uptime monitor should call it about hourly and check `/robots.txt`, which needs no database, every few minutes.
