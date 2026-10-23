@@ -87,6 +87,8 @@
 /* Questions & answers on the product page (components/product-questions.tsx). */
 .aliQuestions { display: grid; gap: 14px; padding: 36px 0; border-top: 1px solid var(--store-border, #eaded4); scroll-margin-top: 120px; }
 .aliQuestions h2 { margin: 0; font-size: 22px; }
+/* No questions yet: the heading and the Ask button share one row instead of a whole empty section. */
+.aliQuestions.aliQaEmpty { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 20px 0; }
 .aliQaList { display: grid; gap: 12px; }
 .aliQaItem { display: grid; gap: 6px; padding: 14px 16px; border: 1px solid var(--store-border, #eaded4); border-radius: 12px; background: var(--store-surface, #fff); }
 .aliQaItem p { margin: 0; font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-line; }

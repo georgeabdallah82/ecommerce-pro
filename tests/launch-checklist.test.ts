@@ -24,7 +24,8 @@ describe('launch checklist: amounts in the top bar', () => {
   })
 
   it('catches the top bar promising a different amount than the store uses', () => {
-    assert.equal(topBarMismatch('Free Delivery for orders above 49$ - Cash On Delivery', 50), 49)
+    assert.equal(topBarMismatch('Free delivery over $49, or $5 off your first order', 50), 49)
+    assert.equal(topBarMismatch('Free Delivery for orders above 49$ - Cash On Delivery', 50), null, 'one amount is kept in step automatically')
     assert.equal(topBarMismatch('Free delivery on orders over $50', 50), null)
     assert.equal(topBarMismatch('Free delivery on orders over $50, or $5 off your first order', 50), null, 'one of the amounts is the right one')
   })
@@ -61,7 +62,7 @@ describe('launch checklist: ticking itself', () => {
   })
 
   it('the top bar item warns with both amounts, in plain words', () => {
-    const top = item({ ...ready, announcementText: 'Free Delivery for orders above 49$ - Cash On Delivery' }, 'topbar')
+    const top = item({ ...ready, announcementText: 'Free delivery over 49$, or $5 off your first order' }, 'topbar')
     assert.equal(top.status, 'warn')
     assert.match(top.detail, /says \$49, but free delivery starts at \$50/)
   })
@@ -103,8 +104,10 @@ describe('launch checklist: ticking itself', () => {
 
 describe('launch checklist: wired in', () => {
   const read = (path: string) => readFileSync(path, 'utf8')
-  it('is in the admin menu, owner only, and its save route checks the permission', () => {
-    assert.match(read('app/admin/layout.tsx'), /href: '\/admin\/launch', label: 'Launch checklist', permission: 'settings\.manage'/)
+  it('is reachable from the Health menu entry, owner only, and its save route checks the permission', () => {
+    assert.match(read('app/admin/layout.tsx'), /label: 'Health'.*alsoActive: \['\/admin\/launch'/)
+    assert.match(read('components/health-tabs.tsx'), /href: '\/admin\/launch', label: 'Launch checklist'/)
+    assert.match(read('app/admin/launch/page.tsx'), /<HealthTabs current="launch"/)
     assert.match(read('app/admin/launch/page.tsx'), /requirePermission\('settings\.manage'\)/)
     assert.match(read('app/api/admin/launch-checklist/route.ts'), /requirePermission\('settings\.manage'\)/)
   })

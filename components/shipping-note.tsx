@@ -46,6 +46,6 @@ export function ShippingNote() {
   const { t } = useI18n()
   return <>
     {free && <>{t('Free delivery on orders over {amount}.', { amount: free })} </>}
-    {t('The delivery fee and estimated delivery time are shown at checkout.')} <Link href="/refund-policy">{t('Delivery & refund policy')}</Link>
+    {t('The delivery fee and estimated delivery time are shown at checkout.')} <Link href="/refund-policy" className="aliTapLink">{t('Delivery & refund policy')}</Link>
   </>
 }

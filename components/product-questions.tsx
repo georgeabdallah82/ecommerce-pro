@@ -39,7 +39,7 @@ export default function ProductQuestions({ productId, questions }: { productId: 
     }
   }
 
-  return <div className="aliContainer aliQuestions" id="questions">
+  return <div className={`aliContainer aliQuestions${questions.length === 0 && !open && !sent ? ' aliQaEmpty' : ''}`} id="questions">
     <h2>{t('Questions & answers')}</h2>
     {questions.length > 0
       ? <div className="aliQaList">{questions.map(q => <div className="aliQaItem" key={q.id}>
@@ -47,7 +47,7 @@ export default function ProductQuestions({ productId, questions }: { productId: 
         <p className="aliQaA"><span aria-hidden="true">{t('A:')}</span> <span dir="auto">{q.answer}</span></p>
         <small>{t('Asked by {name}', { name: q.name || t('Customer') })}{q.answeredAt ? ` · ${new Date(q.answeredAt).toLocaleDateString(dateLocale(lang))}` : ''}</small>
       </div>)}</div>
-      : <p className="aliEmptyState">{t('No questions yet. Ask the first one.')}</p>}
+      : null}
     {sent
       ? <p className="aliQaSent" role="status"><CheckCircle2 size={18} /> {t('Thank you! We will answer soon. If you left your WhatsApp number, we will message you the answer.')}</p>
       : !open

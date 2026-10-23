@@ -71,3 +71,8 @@ a.check { cursor: pointer; }
   .totals { justify-content: space-between; }
   .totals > div { text-align: left; }
 }
+
+.healthyBox { margin-top: 16px; }
+.healthyBox > summary { cursor: pointer; display: flex; align-items: center; min-height: 44px; font-size: 14px; font-weight: 700; color: var(--admin-muted); }
+.healthyBox > summary:hover { color: var(--admin-ink); }
+.healthyBox[open] > summary { margin-bottom: 8px; }

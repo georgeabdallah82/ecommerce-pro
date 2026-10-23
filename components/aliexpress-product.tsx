@@ -412,7 +412,7 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
                 </div>
               ))}
             </div>
-          ) : (
+          ) : reviewEligibility === 'not_purchased' || reviewEligibility === 'guest' ? null : (
             <p className="aliEmptyState">{t('No reviews yet.')}</p>
           )}
         </div>

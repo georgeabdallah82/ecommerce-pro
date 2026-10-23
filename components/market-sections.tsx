@@ -163,7 +163,8 @@ export function ProductTabs(c: Common) {
     const deals = products.filter(onSale).sort((a, b) => (Number(b.compareAtPrice) - Number(b.basePrice)) / Number(b.compareAtPrice) - (Number(a.compareAtPrice) - Number(a.basePrice)) / Number(a.compareAtPrice))
     const best = bestOf(products)
     if (s.showDeals !== false && deals.length) out.push({ key: 'deals', label: s.dealsLabel || tr('Deals'), items: deals })
-    if (s.showBest !== false) out.push(best.length ? { key: 'best', label: s.bestLabel || tr('Best sellers'), items: best } : { key: 'popular', label: tr('Popular'), items: products })
+    // Before the first sale there is no best-seller list; a "Popular" tab would only repeat the New tab.
+    if (s.showBest !== false && best.length) out.push({ key: 'best', label: s.bestLabel || tr('Best sellers'), items: best })
     if (s.showNew !== false) out.push({ key: 'new', label: s.newLabel || tr('New'), items: newest(products) })
     return out.filter(l => l.items.length)
   }, [products, s.showDeals, s.showBest, s.showNew, s.dealsLabel, s.bestLabel, s.newLabel, tr])
@@ -173,7 +174,7 @@ export function ProductTabs(c: Common) {
   return (
     <section className={`mkSection ${selected ? 'isSelected' : ''}`} onClick={e => click(section.id, e)}>
       <div className="mkWrap">
-        <Head heading={s.heading || tr("Today's deals")} sub={s.subheading} right={lists.length > 1 ? (
+        <Head heading={lists.length === 1 && active.key === 'new' && !s.newOnlyKeepHeading ? tr('New arrivals') : (s.heading || tr("Today's deals"))} sub={s.subheading} right={lists.length > 1 ? (
           <div className="mkTabs" role="tablist">
             {lists.map((l, i) => <button type="button" role="tab" key={l.key} aria-selected={l === active} onClick={e => { e.stopPropagation(); setTab(i) }}>{l.label}</button>)}
           </div>
@@ -204,6 +205,10 @@ export function ProductRail(c: Common) {
   const track = useRef<HTMLDivElement>(null)
   const { t: tr, dir: textDir } = useI18n()
   const list = items.slice(0, n(s.limit, 12))
+  // Before the first sale this row would show the same products as the row above it; it stays
+  // hidden unless the merchant wrote a heading for that time ("Heading before the first sale").
+  const repeatsRowAbove = source === 'best' && !ranked && !String(s.emptyHeading || '').trim()
+  if (repeatsRowAbove) return <Hidden preview={preview} name={s.heading || 'Product row'} reason="No sales yet, so this row would repeat the row above. It appears after the first sales." id={section.id} selected={selected} click={click} />
   if (list.length < n(s.minProducts, 4)) return <Hidden preview={preview} name={s.heading || 'Product row'} reason={`It has ${list.length} product${list.length === 1 ? '' : 's'}; it needs ${n(s.minProducts, 4)}.`} id={section.id} selected={selected} click={click} />
   const noSalesYet = source === 'best' && !ranked
   const heading = noSalesYet ? (s.emptyHeading || tr('Popular right now')) : (s.heading || tr('Best sellers'))
