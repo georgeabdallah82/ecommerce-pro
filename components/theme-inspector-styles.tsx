@@ -41,6 +41,15 @@ export default function ThemeInspectorStyles() {
 .themeImageRemove{color:var(--admin-danger)!important}
 .themeImageEmpty{height:64px;width:100%;border:1px dashed var(--admin-border);border-radius:var(--admin-radius-sm);background:var(--admin-bg);display:flex;align-items:center;justify-content:center;gap:8px;font:inherit;font-size:11px;font-weight:800;color:var(--admin-muted);cursor:pointer}
 .themeImageEmpty:hover{border-color:var(--admin-accent);background:var(--admin-surface);color:var(--admin-ink)}
+.themeSwatches{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.themeSwatch{width:34px;height:34px;border-radius:50%;border:1px solid rgba(0,0,0,.18);padding:0;cursor:pointer;box-shadow:inset 0 0 0 2px #fff}
+.themeSwatch.isOn{outline:2px solid var(--admin-accent);outline-offset:2px}
+.themeSwatchDefault{height:34px;border:1px solid var(--admin-border);border-radius:17px;background:var(--admin-surface);color:var(--admin-ink);padding:0 12px;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.themeSwatchDefault.isOn{border-color:var(--admin-accent);color:var(--admin-accent);background:var(--admin-accent-soft)}
+.themeDesignLink{display:block;width:calc(100% - 24px);margin:4px 12px 16px;border:1px dashed var(--admin-border);border-radius:var(--admin-radius-sm);background:transparent;padding:11px 12px;font:inherit;font-size:12.5px;font-weight:700;color:var(--admin-accent);cursor:pointer;text-align:start}
+.themeDesignLink:hover{border-color:var(--admin-accent)}
+.themeInspectorNote{margin:0;font-size:12px;line-height:1.45;color:var(--admin-muted)}
+.themeInspectorNote.isWarn{color:#b45309;font-weight:700}
 .themeColorRow{display:flex;gap:8px;align-items:center}
 .themeColorRow input[type=color]{width:38px;height:38px;padding:2px;border:1px solid var(--admin-border);border-radius:var(--admin-radius-sm);background:var(--admin-surface);cursor:pointer;flex:0 0 auto}
 .themeColorRow input[type=text]{flex:1}

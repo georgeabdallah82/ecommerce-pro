@@ -5,6 +5,7 @@ import { parseDeliveryAreas } from '@/lib/storefront-market'
 import { GripVertical, ImagePlus, Plus, Trash2, X } from 'lucide-react'
 import MediaPicker from './media-picker'
 import { isTranslatableKey } from '@/lib/i18n'
+import { NO_SECTION_COLORS, contrastRatio, isHexColor, readableTextOn } from '@/lib/section-colors'
 
 type Section = { id: string; type: string; enabled?: boolean; settings?: Record<string, any>; blocks?: any[] }
 
@@ -125,16 +126,26 @@ export function Range({ label, value, min, max, step = 1, unit = '', onChange }:
   return <label className="themeInspectorRange"><div><span>{label}</span><b>{value}{unit}</b></div><input type="range" value={Number.isFinite(value) ? value : min} min={min} max={max} step={step} onChange={event => onChange(Number(event.target.value))} /></label>
 }
 const HEX_RE = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i
-export function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+// Swatches: one tap picks a colour (easier than the colour wheel on a phone). allowDefault adds
+// "Default", which clears the colour so the theme's normal look comes back.
+export function ColorField({ label, value, onChange, swatches, allowDefault }: { label: string; value: string; onChange: (value: string) => void; swatches?: string[]; allowDefault?: boolean }) {
   const [text, setText] = useState(value ?? '')
+  useEffect(() => { setText(value ?? '') }, [value])
+  const current = (value || '').toLowerCase()
   return (
-    <label className="themeInspectorField themeColorField">
+    <div className="themeInspectorField themeColorField">
       <span>{label}</span>
+      {(swatches?.length || allowDefault) && (
+        <div className="themeSwatches" role="group" aria-label={`${label} quick colours`}>
+          {allowDefault && <button type="button" className={`themeSwatchDefault${current ? '' : ' isOn'}`} aria-pressed={!current} onClick={() => { setText(''); onChange('') }}>Default</button>}
+          {swatches?.map(color => <button key={color} type="button" className={`themeSwatch${current === color.toLowerCase() ? ' isOn' : ''}`} style={{ background: color }} aria-label={color} aria-pressed={current === color.toLowerCase()} title={color} onClick={() => { setText(color); onChange(color) }} />)}
+        </div>
+      )}
       <div className="themeColorRow">
         <input type="color" value={HEX_RE.test(value) && value.length === 7 ? value : '#000000'} onChange={event => { setText(event.target.value); onChange(event.target.value) }} aria-label={`${label} swatch`} />
-        <input type="text" value={text} onChange={event => { setText(event.target.value); if (HEX_RE.test(event.target.value)) onChange(event.target.value) }} placeholder="#000000" />
+        <input type="text" value={text} onChange={event => { setText(event.target.value); if (HEX_RE.test(event.target.value)) onChange(event.target.value); else if (allowDefault && !event.target.value.trim()) onChange('') }} placeholder={allowDefault ? 'Default' : '#000000'} aria-label={`${label} code`} />
       </div>
-    </label>
+    </div>
   )
 }
 export function SectionPanel({ title, children }: { title: string; children: React.ReactNode }) {
@@ -169,7 +180,8 @@ function BlocksEditor({ section, type, onUpdateBlocks, lang = 'en' }: { section:
 // whose settings live on theme[group] instead of section.settings), instead
 // of maintaining a second, differently-styled field system for it.
 export type SettingsMap = Record<string, any>
-export type FieldCtx = { s: SettingsMap; products: any[]; collections: any[]; loadError?: string; lang?: 'en' | 'ar' }
+// swatches: the theme's own colours, offered as one-tap choices on colour fields.
+export type FieldCtx = { s: SettingsMap; products: any[]; collections: any[]; loadError?: string; lang?: 'en' | 'ar'; swatches?: string[] }
 export type OptionList = Array<{ value: string; label: string }> | string[]
 export type OptionsSource = OptionList | ((ctx: FieldCtx) => OptionList)
 
@@ -180,7 +192,7 @@ export type FieldSchema =
   | { kind: 'select'; label: string; options: OptionsSource; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
   | { kind: 'toggle'; label: string; get: (s: SettingsMap) => boolean; set: (value: boolean) => Record<string, any> }
   | { kind: 'range'; label: string; min: number; max: number; step?: number; unit?: string; get: (s: SettingsMap) => number; set: (value: number) => Record<string, any> }
-  | { kind: 'color'; label: string; get: (s: SettingsMap) => string; set: (value: string) => Record<string, any> }
+  | { kind: 'color'; label: string; allowDefault?: boolean; get: (s: SettingsMap) => string; set: (value: string) => Record<string, any> }
   | { kind: 'picker'; label: string; source: 'products' | 'collections'; hint?: string; get: (s: SettingsMap) => string[]; set: (ids: string[]) => Record<string, any> }
   | { kind: 'blocks'; label: string; blockType: string }
   | { kind: 'deliveryAreas'; label: string; get: (s: SettingsMap) => string; set: (value: string) => Record<string, any> }
@@ -675,7 +687,7 @@ export function renderField(schema: FieldSchema, ctx: FieldCtx, set: (patch: Rec
     case 'range':
       return <Range key={schema.label} label={schema.label} min={schema.min} max={schema.max} step={schema.step} unit={schema.unit} value={schema.get(s)} onChange={value => set(schema.set(value))} />
     case 'color':
-      return <ColorField key={schema.label} label={schema.label} value={schema.get(s)} onChange={value => set(schema.set(value))} />
+      return <ColorField key={schema.label} label={schema.label} value={schema.get(s)} swatches={ctx.swatches} allowDefault={schema.allowDefault} onChange={value => set(schema.set(value))} />
     case 'picker':
       return <ItemPicker key={schema.label} label={schema.label} hint={schema.hint} source={schema.source} items={pickerItems(schema.source, ctx)} value={schema.get(s)} onChange={ids => set(schema.set(ids))} loadError={ctx.loadError} />
     case 'blocks':
@@ -697,6 +709,33 @@ export function renderPanel(panel: PanelSchema, ctx: FieldCtx, set: (patch: Reco
         }
         return renderField(entry, ctx, set)
       })}
+    </SectionPanel>
+  )
+}
+
+// The Design tab of a section: its own background and text colour (lib/section-colors.ts).
+// Sections without a band of their own say where their colours are set instead.
+const COLOR_ELSEWHERE: Record<string, string> = {
+  announcement_strip: 'This strip has its own Background and Text colours in the Content tab.',
+  announcement: 'The announcement bar colours are in Theme settings > Colors.',
+  header: 'The header colours are in Theme settings > Colors.',
+  footer: 'The footer colours are in Theme settings > Footer.',
+}
+export function SectionDesign({ section, swatches, onUpdate }: { section: Section; swatches?: string[]; onUpdate: (patch: Record<string, any>) => void }) {
+  const s = section.settings || {}
+  if (NO_SECTION_COLORS.has(section.type)) {
+    return <SectionPanel title="Colours"><p className="themeInspectorNote">{COLOR_ELSEWHERE[section.type] || 'This section is covered by its photo, so it has no background colour. Change the photo or the slide texts in the Content tab.'}</p></SectionPanel>
+  }
+  const bg = isHexColor(s.sectionBg) ? s.sectionBg : ''
+  const fg = isHexColor(s.sectionText) ? s.sectionText : ''
+  const shownText = fg || (bg ? readableTextOn(bg) : '')
+  const hard = bg && shownText && contrastRatio(bg, shownText) < 4.5
+  return (
+    <SectionPanel title="Colours">
+      <ColorField label="Background" value={bg} swatches={swatches} allowDefault onChange={value => onUpdate({ sectionBg: value })} />
+      <ColorField label="Headings and links" value={fg} swatches={swatches} allowDefault onChange={value => onUpdate({ sectionText: value })} />
+      <p className="themeInspectorNote">{bg && !fg ? 'Default text: white or black, whichever is easier to read on this background. ' : ''}Product cards keep their white background.</p>
+      {hard && <p className="themeInspectorNote isWarn" role="status">These two colours are hard to read together. Pick a darker or lighter one.</p>}
     </SectionPanel>
   )
 }
