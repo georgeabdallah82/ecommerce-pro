@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { db } from '@/lib/prisma'
 import { cleanTrackingIds } from '@/lib/tracking'
 import { internationalPhone, isLebanon } from '@/lib/phone'
+import { SESSION_COOKIE } from '@/lib/visitor-tracking'
 
 // Meta Conversions API: the store's server reports each sale to Meta directly, alongside the
 // browser pixel. Sales still count when the shopper's browser blocks the pixel (ad blockers,
@@ -9,8 +10,10 @@ import { internationalPhone, isLebanon } from '@/lib/phone'
 // `purchase-<order number>` the browser pixel sends, so Meta counts a sale once even when both
 // arrive. Nothing is sent until a Pixel ID and an access token are saved in Settings › Tracking.
 const GRAPH_VERSION = 'v23.0'
+// Tests point this at a stand-in server; the live store always talks to Meta.
+const graphBase = () => process.env.META_GRAPH_BASE_URL || 'https://graph.facebook.com'
 
-export type AdClientContext = { ip?: string; userAgent?: string; fbp?: string; fbc?: string; sourceUrl?: string }
+export type AdClientContext = { ip?: string; userAgent?: string; fbp?: string; fbc?: string; sourceUrl?: string; sid?: string }
 
 type PurchaseOrder = {
   orderNumber: string
@@ -40,6 +43,8 @@ export function adContextFromRequest(req: Request): AdClientContext {
     fbp: cookies._fbp || undefined,
     fbc: fbc || undefined,
     sourceUrl: referer || undefined,
+    // The store's own anonymous visitor id (no name, no address): lets Meta tie a visitor's events together.
+    sid: /^[a-f0-9]{32}$/.test(cookies[SESSION_COOKIE] || '') ? cookies[SESSION_COOKIE] : undefined,
   }
 }
 
@@ -49,6 +54,8 @@ export function buildMetaPurchaseEvent(order: PurchaseOrder, opts: { storeCountr
   const phone = internationalPhone(order.phone || String(address.phone || ''), opts.storeCountry)
   const country = String(address.country || opts.storeCountry || '')
   const ctx = opts.context || {}
+  // Who the sale belongs to: the account (or email) and, when known, the store's anonymous visitor id.
+  const externalIds = [...new Set([...(order.userId ? [sha256(order.userId)] : hashed(order.email) ?? []), ...(ctx.sid ? [sha256(ctx.sid)] : [])])]
   const userData = Object.fromEntries(Object.entries({
     em: hashed(order.email),
     ph: phone ? [sha256(phone)] : undefined,
@@ -56,7 +63,7 @@ export function buildMetaPurchaseEvent(order: PurchaseOrder, opts: { storeCountr
     ln: hashed(String(address.lastName || '')),
     ct: hashed(String(address.city || '').replace(/[^\p{L}]/gu, '')),
     country: isLebanon(country) ? [sha256('lb')] : undefined,
-    external_id: order.userId ? [sha256(order.userId)] : hashed(order.email),
+    external_id: externalIds.length ? externalIds : undefined,
     client_ip_address: ctx.ip,
     client_user_agent: ctx.userAgent,
     fbp: ctx.fbp,
@@ -81,7 +88,16 @@ export function buildMetaPurchaseEvent(order: PurchaseOrder, opts: { storeCountr
   }
 }
 
+// Read at most once a minute: add-to-cart and checkout reports arrive often, and each must not wake the database.
+let configCache: { at: number; value: Awaited<ReturnType<typeof loadMetaCapiConfig>> } | null = null
 export async function metaCapiConfig() {
+  if (configCache && Date.now() - configCache.at < 60_000) return configCache.value
+  const value = await loadMetaCapiConfig()
+  configCache = { at: Date.now(), value }
+  return value
+}
+
+async function loadMetaCapiConfig() {
   const rows = await db.setting.findMany({ where: { key: { in: ['tracking.metaPixelId', 'tracking.metaCapiToken', 'tracking.metaCapiTestCode', 'store.country'] } } })
   const map = new Map(rows.map(r => [r.key, r.value]))
   const pixelId = cleanTrackingIds({ metaPixelId: map.get('tracking.metaPixelId') || '' }).metaPixelId
@@ -89,12 +105,12 @@ export async function metaCapiConfig() {
   return { pixelId, token, testCode: (map.get('tracking.metaCapiTestCode') || '').trim(), storeCountry: map.get('store.country') || 'Lebanon', enabled: !!(pixelId && token) }
 }
 
-export async function sendMetaEvents(events: unknown[], config: { pixelId: string; token: string; testCode?: string }) {
-  const res = await fetch(`https://graph.facebook.com/${GRAPH_VERSION}/${config.pixelId}/events?access_token=${encodeURIComponent(config.token)}`, {
+export async function sendMetaEvents(events: unknown[], config: { pixelId: string; token: string; testCode?: string }, timeoutMs = 10000) {
+  const res = await fetch(`${graphBase()}/${GRAPH_VERSION}/${config.pixelId}/events?access_token=${encodeURIComponent(config.token)}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ data: events, ...(config.testCode ? { test_event_code: config.testCode } : {}) }),
-    signal: AbortSignal.timeout(10000),
+    signal: AbortSignal.timeout(timeoutMs),
   })
   const body = await res.json().catch(() => ({})) as { events_received?: number; error?: { message?: string } }
   if (!res.ok) throw new Error(body.error?.message || `Meta returned ${res.status}`)
@@ -112,5 +128,78 @@ export async function sendMetaPurchase(orderId: string, opts: { context?: AdClie
     await sendMetaEvents([buildMetaPurchaseEvent(order, { storeCountry: config.storeCountry, storeUrl: opts.storeUrl, context: opts.context })], config)
   } catch (error) {
     console.error('[meta-capi] purchase not sent', orderId, error instanceof Error ? error.message : error)
+  }
+}
+
+
+// ---- Add to cart / checkout start, reported by the shopper's browser (/api/analytics/meta) ----
+
+export const FUNNEL_EVENTS = ['AddToCart', 'InitiateCheckout'] as const
+export type FunnelEvent = {
+  name: (typeof FUNNEL_EVENTS)[number]
+  eventId: string
+  currency: string
+  value: number
+  url?: string
+  items: Array<{ id: string; quantity: number; price: number }>
+}
+
+// What the browser sends is only trusted as far as is needed to report it: known event names, plain ids,
+// sane numbers, a handful of items. Anything else is dropped.
+export function readFunnelEvent(raw: unknown): FunnelEvent | null {
+  const body = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  const name = FUNNEL_EVENTS.find(n => n === body.name)
+  const eventId = typeof body.eventId === 'string' && /^[A-Za-z0-9_-]{8,64}$/.test(body.eventId) ? body.eventId : ''
+  const currency = typeof body.currency === 'string' && /^[A-Za-z]{3}$/.test(body.currency) ? body.currency.toUpperCase() : ''
+  const value = Number(body.value)
+  const items = (Array.isArray(body.items) ? body.items : []).slice(0, 30).map(item => {
+    const i = (item && typeof item === 'object' ? item : {}) as Record<string, unknown>
+    return { id: typeof i.id === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(i.id) ? i.id : '', quantity: Math.floor(Number(i.quantity)), price: Number(i.price) }
+  }).filter(i => i.id && Number.isFinite(i.quantity) && i.quantity >= 1 && i.quantity <= 1000 && Number.isFinite(i.price) && i.price >= 0 && i.price <= 1_000_000)
+  if (!name || !eventId || !currency || !items.length || !Number.isFinite(value) || value < 0 || value > 10_000_000) return null
+  return { name, eventId, currency, value: Math.round(value * 100) / 100, url: typeof body.url === 'string' ? body.url.slice(0, 500) : undefined, items }
+}
+
+export function buildMetaFunnelEvent(event: FunnelEvent, opts: { storeUrl?: string; context?: AdClientContext; userId?: string | null; now?: number }) {
+  const ctx = opts.context || {}
+  const externalIds = [...new Set([...(opts.userId ? [sha256(opts.userId)] : []), ...(ctx.sid ? [sha256(ctx.sid)] : [])])]
+  // Only the store's own pages count as the source of the event.
+  let sourceUrl = ctx.sourceUrl
+  try { if (event.url && opts.storeUrl && new URL(event.url).origin === new URL(opts.storeUrl).origin) sourceUrl = event.url } catch {}
+  const userData = Object.fromEntries(Object.entries({
+    external_id: externalIds.length ? externalIds : undefined,
+    client_ip_address: ctx.ip,
+    client_user_agent: ctx.userAgent,
+    fbp: ctx.fbp,
+    fbc: ctx.fbc,
+  }).filter(([, v]) => v !== undefined && v !== ''))
+  return {
+    event_name: event.name,
+    event_time: Math.floor((opts.now ?? Date.now()) / 1000),
+    event_id: event.eventId,
+    action_source: 'website',
+    event_source_url: sourceUrl || opts.storeUrl,
+    user_data: userData,
+    custom_data: {
+      currency: event.currency,
+      value: event.value,
+      content_type: 'product',
+      content_ids: event.items.map(i => i.id),
+      contents: event.items.map(i => ({ id: i.id, quantity: i.quantity, item_price: i.price })),
+      num_items: event.items.reduce((sum, i) => sum + i.quantity, 0),
+    },
+  }
+}
+
+// Forwards one reported event to Meta. Never throws: a reporting problem must not affect the shopper.
+export async function sendMetaFunnelEvent(event: FunnelEvent, opts: { context?: AdClientContext; storeUrl?: string; userId?: string | null }) {
+  try {
+    const config = await metaCapiConfig()
+    if (!config.enabled) return false
+    await sendMetaEvents([buildMetaFunnelEvent(event, opts)], config, 5000)
+    return true
+  } catch (error) {
+    console.error('[meta-capi] event not sent', event.name, error instanceof Error ? error.message : error)
+    return false
   }
 }

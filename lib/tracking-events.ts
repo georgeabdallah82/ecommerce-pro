@@ -19,6 +19,22 @@ export type TrackedLineItem = {
 }
 
 const safely = (fn: () => void) => { try { fn() } catch {} }
+
+// Each add-to-cart / checkout start gets an id. The Meta pixel sends it with the event, and the same
+// event is also reported to our own server (/api/analytics/meta), which forwards it to Meta with the
+// same id -- so Meta counts it once, and still hears about it when the browser blocks the pixel.
+const newEventId = (name: string) => `${name.toLowerCase()}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+function reportToServer(name: 'AddToCart' | 'InitiateCheckout', eventId: string, items: TrackedLineItem[], total: number, currency: string) {
+  if (!window.__metaPixelId) return
+  safely(() => {
+    fetch('/api/analytics/meta', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify({ name, eventId, currency, value: total, url: location.href, items: items.map(i => ({ id: i.id, quantity: i.quantity, price: i.price })) }),
+    }).catch(() => {})
+  })
+}
 const value = (items: TrackedLineItem[]) => Math.round(items.reduce((s, i) => s + i.price * i.quantity, 0) * 100) / 100
 
 export function trackViewContent(item: Omit<TrackedLineItem, 'quantity'>, currency: string) {
@@ -31,7 +47,9 @@ export function trackViewContent(item: Omit<TrackedLineItem, 'quantity'>, curren
 export function trackAddToCart(item: TrackedLineItem, currency: string) {
   if (typeof window === 'undefined') return
   const total = value([item])
-  safely(() => window.fbq?.('track', 'AddToCart', { content_ids: [item.id], content_name: item.name, content_type: 'product', contents: [{ id: item.id, quantity: item.quantity }], value: total, currency }))
+  const eventID = newEventId('AddToCart')
+  safely(() => window.fbq?.('track', 'AddToCart', { content_ids: [item.id], content_name: item.name, content_type: 'product', contents: [{ id: item.id, quantity: item.quantity }], value: total, currency }, { eventID }))
+  reportToServer('AddToCart', eventID, [item], total, currency)
   safely(() => window.gtag?.('event', 'add_to_cart', { currency, value: total, items: [{ item_id: item.id, item_name: item.name, price: item.price, quantity: item.quantity }] }))
   safely(() => window.ttq?.track('AddToCart', { contents: [{ content_id: item.id, content_name: item.name, price: item.price, quantity: item.quantity }], content_type: 'product', value: total, currency }))
 }
@@ -42,7 +60,9 @@ export function trackInitiateCheckout(items: TrackedLineItem[], currency: string
   const key = `tracked-checkout:${items.map(i => `${i.id}x${i.quantity}`).sort().join(',')}`
   try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, '1') } catch {}
   const total = value(items)
-  safely(() => window.fbq?.('track', 'InitiateCheckout', { content_ids: items.map(i => i.id), contents: items.map(i => ({ id: i.id, quantity: i.quantity })), content_type: 'product', num_items: items.reduce((s, i) => s + i.quantity, 0), value: total, currency }))
+  const eventID = newEventId('InitiateCheckout')
+  safely(() => window.fbq?.('track', 'InitiateCheckout', { content_ids: items.map(i => i.id), contents: items.map(i => ({ id: i.id, quantity: i.quantity })), content_type: 'product', num_items: items.reduce((s, i) => s + i.quantity, 0), value: total, currency }, { eventID }))
+  reportToServer('InitiateCheckout', eventID, items, total, currency)
   safely(() => window.gtag?.('event', 'begin_checkout', { currency, value: total, items: items.map(i => ({ item_id: i.id, item_name: i.name, price: i.price, quantity: i.quantity })) }))
   safely(() => window.ttq?.track('InitiateCheckout', { contents: items.map(i => ({ content_id: i.id, content_name: i.name, price: i.price, quantity: i.quantity })), content_type: 'product', value: total, currency }))
 }

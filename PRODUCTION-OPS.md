@@ -203,3 +203,13 @@ Without `CLOUDFLARE_API_TOKEN` set, the `deploy` job fails fast with a clear err
 10. Create the `ecommerce-pro-media` R2 bucket (`npx wrangler r2 bucket create ecommerce-pro-media`) before the first deploy, and verify an admin file upload from `/admin/media` round-trips (uploads, then loads back via its `/api/media/[key]` URL).
 11. Set `RESEND_API_KEY` and `EMAIL_FROM`, then verify a real order confirmation and a real password reset email both arrive.
 12. If this is an existing deployment with prior inventory data, run `scripts/backfill-inventory-locations.mjs` once (see "Inventory" above) to migrate legacy free-text locations onto real `StoreLocation` records.
+
+## Meta events sent from the server (add to cart, checkout start, purchase)
+
+- The browser pixel and the server both report **AddToCart**, **InitiateCheckout** and **Purchase** to Meta, with the same event id, so Meta counts each once. Sales and carts still count when a shopper's browser blocks the pixel.
+- The server side needs a Pixel ID and an access token (Settings > Tracking). Without them nothing is sent and nothing breaks.
+- `POST /api/analytics/meta` receives the cart and checkout reports. It checks the input, ignores robots and staff, is rate limited (60 a minute per address), stores nothing, and forwards to Meta after answering the shopper.
+- Meta's match score uses what the server adds: the shopper's address and browser, the Facebook cookies (`_fbp`, `_fbc`) and the store's anonymous visitor id (hashed). No name, phone or email is sent with cart and checkout events; a purchase still sends the hashed email and phone as before.
+- The saved access token is read from the database at most once a minute (in memory), so these reports do not wake the database by themselves.
+- To check it live: Settings > Tracking > test event code, then Meta Events Manager > Test events. Each event should show "Browser and Server" with a matching event id and be marked deduplicated.
+- `META_GRAPH_BASE_URL` exists only so tests can point at a stand-in server. Never set it in production.
