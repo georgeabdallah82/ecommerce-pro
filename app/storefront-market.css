@@ -894,3 +894,75 @@ html body.mk .aliCategoryInitial { font-family: var(--mk-display); font-weight: 
    ink instead of red for the chosen delivery and payment option; red stays on Place order). */
 html body.mk .cartPage .cartHeader h1 { font-family: var(--mk-display) !important; font-weight: 700; letter-spacing: -.025em; line-height: 1.05; font-size: clamp(30px, 8vw, 44px); }
 html body.mk .cartPage .cartHeader .focalEyebrow { font-size: 13px !important; font-weight: 600 !important; letter-spacing: 0 !important; text-transform: none; color: var(--mk-muted); background: none !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; min-height: 0 !important; }
+
+/* ---- Identity pass 5: the brand, executed with more care --------------------------------------
+   Brand facts (from the logo and the saved theme): red #D7261E / #D42A2A, orange #FF7A1A, ink
+   #121212 / #171717, cream #FFF1E6, page grey #F6F6F4. The logo is a red tile with a white bag and
+   three "speed lines". This pass brings the brand colours back into the places pass 1 turned to
+   ink, and uses the speed lines as the one signature device:
+   - section titles start with the speed-lines mark
+   - the category strip sits on brand cream; Today's deals stays a plain white section
+   - product buttons and chosen options are brand red again (outlined until touched)
+   - the hero opens with the white speed lines above its tag
+   Colours still come from the theme (--store-*), so the Theme Studio stays in control. */
+body.mk {
+  --br-red: var(--mk-red);
+  --br-orange: var(--mk-yellow);
+  --br-cream: #fff1e6;
+  --br-ink: #121212;
+}
+
+/* Speed-lines mark */
+html body.mk .mkHead h2::before { content: ""; display: block; flex: none; width: 30px; height: 20px; border-radius: 0; margin-inline-end: 2px;
+  background:
+    linear-gradient(var(--br-red), var(--br-red)) left top / 100% 4px no-repeat,
+    linear-gradient(color-mix(in srgb, var(--br-red) 68%, #fff), color-mix(in srgb, var(--br-red) 68%, #fff)) left center / 72% 4px no-repeat,
+    linear-gradient(color-mix(in srgb, var(--br-red) 40%, #fff), color-mix(in srgb, var(--br-red) 40%, #fff)) left bottom / 46% 4px no-repeat; }
+html[dir="rtl"] body.mk .mkHead h2::before { transform: scaleX(-1); }
+html body.mk .mkHead h2 { font-size: 26px; gap: 12px; }
+@media (min-width: 760px) { html body.mk .mkHead h2 { font-size: 34px; } }
+
+/* Hero: the logo's speed lines open the poster text */
+html body.mk .mkHero-full .mkSlideCopy::before { content: ""; display: block; width: 46px; height: 24px; margin-bottom: 4px;
+  background:
+    linear-gradient(#fff, #fff) left top / 100% 4px no-repeat,
+    linear-gradient(rgba(255,255,255,.7), rgba(255,255,255,.7)) left center / 72% 4px no-repeat,
+    linear-gradient(rgba(255,255,255,.4), rgba(255,255,255,.4)) left bottom / 46% 4px no-repeat; }
+html[dir="rtl"] body.mk .mkHero-full .mkSlideCopy::before { transform: scaleX(-1); transform-origin: right center; }
+html body.mk .mkSlideCopy .mkTag { background: var(--br-orange); color: var(--br-ink); }
+
+/* Product cards: brand red where a shopper acts, ink where they read */
+html body.mk .mkCardAdd { background: transparent; color: var(--br-red); box-shadow: inset 0 0 0 1.5px var(--br-red); }
+html body.mk .mkCardAdd:hover { background: var(--br-red); color: #fff; }
+html body.mk .mkCardAdd.done { background: var(--mk-green); color: #fff; box-shadow: none; }
+html body.mk .mkCardBadge { background: var(--br-red); color: #fff; }
+html body.mk .mkCardMedia { transition: box-shadow .2s var(--mk-ease), transform .2s var(--mk-ease); }
+@media (hover: hover) {
+  html body.mk .mkCard:hover .mkCardMedia { box-shadow: 0 14px 28px -16px rgba(18, 18, 18, .45), 0 0 0 1px var(--mk-line); transform: translateY(-3px); }
+}
+html body.mk .mkRank { background: var(--br-ink); }
+
+/* Tabs: brand red when chosen */
+html body.mk .mkTabs button[aria-selected="true"] { background: var(--br-red); color: #fff; }
+
+/* Category strip on brand cream: white tiles, a red ring when touched */
+html body.mk .aliCategoryStrip { background: var(--br-cream) !important; padding: 36px 0 40px !important; margin-top: var(--mk-section-gap); border-block: 1px solid color-mix(in srgb, var(--br-red) 14%, var(--br-cream)) !important; }
+html body.mk .aliCategoryIcon { background: #fff !important; box-shadow: 0 0 0 1px color-mix(in srgb, var(--br-red) 16%, #fff) !important; border-radius: 22px !important; }
+html body.mk .aliCategoryItem:hover .aliCategoryIcon, html body.mk .aliCategoryItem:focus-visible .aliCategoryIcon { box-shadow: 0 0 0 3px var(--br-red) !important; }
+html body.mk .aliCategoryItem { font-family: var(--mk-display); font-weight: 700 !important; }
+html body.mk .aliCategoryInitial { color: var(--br-red); background: #fff; font-family: var(--mk-display); }
+html body.mk .aliCategoryStrip .mkHead h2, html body.mk .aliCategoryStrip .mkStripHead h2 { color: var(--br-ink); }
+
+/* Footer: orange column titles on the ink footer */
+html body.mk .focalFooter strong { color: var(--br-orange) !important; font-family: var(--mk-display); letter-spacing: -.01em; }
+
+/* Product page: the price is the brand's red, set large in the display face */
+html body.mk .aliProductPrice { color: var(--br-red); font-family: var(--mk-display); font-weight: 800; letter-spacing: -.02em; }
+html body.mk .aliAddToCart { box-shadow: 0 12px 22px -12px color-mix(in srgb, var(--br-red) 70%, #000); }
+html body.mk .aliProductMainImage { border-radius: 20px; overflow: hidden; }
+html body.mk .focalStorefront .focalTrustGrid span { background: var(--br-cream) !important; box-shadow: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  html body.mk .mkCardMedia { transition: none !important; }
+  html body.mk .mkCard:hover .mkCardMedia { transform: none !important; }
+}
