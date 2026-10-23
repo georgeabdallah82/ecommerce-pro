@@ -51,6 +51,7 @@ export const PERMISSION_SECTIONS: PermissionSection[] = [
     { key: 'tax', label: 'Taxes', view: 'tax.view', manage: 'tax.manage' },
     { key: 'settings', label: 'Settings', hint: 'Payments, store details, checkout', view: 'settings.view', manage: 'settings.manage' },
     { key: 'apiCredentials', label: 'API keys', view: 'apiCredentials.view', manage: 'apiCredentials.manage' },
+    { key: 'notices', label: 'Post team notices', hint: 'Everyone on the staff sees the notices; this lets someone write and remove them', manage: 'notices.manage' },
     { key: 'users', label: 'See staff list', hint: 'Adding, editing and removing staff stays with the owner (super admin)', view: 'users.view' },
   ] },
 ]

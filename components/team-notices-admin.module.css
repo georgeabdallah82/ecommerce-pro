@@ -1,0 +1,19 @@
+/* Admin > Team notices (components/team-notices-admin.tsx). */
+.page { display: grid; gap: 16px; margin-top: 18px; max-width: 760px; }
+.card { display: grid; gap: 12px; padding: 18px; }
+.h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 17px; letter-spacing: -.02em; }
+.h2 small { font-size: 12.5px; font-weight: 600; color: var(--admin-muted); letter-spacing: 0; }
+.count { margin-top: -6px; text-align: end; font-size: 12px; color: var(--admin-muted); }
+.options { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px 22px; }
+.option { display: grid; gap: 6px; min-width: 180px; }
+.check { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.check input { width: 20px; height: 20px; }
+.check span { display: inline-flex; align-items: center; gap: 6px; }
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid var(--admin-border-soft, var(--admin-border)); }
+.row:first-child { border-top: 0; padding-top: 0; }
+.rowText { min-width: 0; }
+.rowText p { margin: 0; font-size: 14.5px; line-height: 1.5; overflow-wrap: anywhere; }
+.rowText span { display: block; margin-top: 3px; font-size: 12.5px; color: var(--admin-muted); }
+.remove { flex: none; min-height: 44px; }
+.none { margin: 0; font-size: 14px; color: var(--admin-muted); }

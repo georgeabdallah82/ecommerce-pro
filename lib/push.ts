@@ -239,6 +239,12 @@ export async function sendOrderProblemPush(payload: { title: string; body: strin
   return sendToSubscriptions({ ...payload, orderProblem: true })
 }
 
+// A team notice posted with "send a phone alert" (lib/team-notices.ts): to every staff device that turned
+// notifications on.
+export async function sendTeamNoticePush(payload: { title: string; body: string; url: string }) {
+  return sendToSubscriptions({ ...payload, teamNotice: true })
+}
+
 // The owner's morning summary on the phone (lib/daily-summary.ts), to staff who turned
 // notifications on.
 export async function sendDailySummaryPush(payload: { title: string; body: string }) {

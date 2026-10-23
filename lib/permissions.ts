@@ -31,6 +31,7 @@ export type Permission =
   | 'salesChannels.view' | 'salesChannels.manage'
   | 'apiCredentials.view' | 'apiCredentials.manage'
   | 'abandonedCheckouts.view' | 'abandonedCheckouts.manage'
+  | 'notices.manage'
   | 'analytics.view'
   | 'reports.view'
   | 'settings.view' | 'settings.manage'
@@ -66,6 +67,7 @@ export const ALL_PERMISSIONS: Permission[] = [
   'salesChannels.view', 'salesChannels.manage',
   'apiCredentials.view', 'apiCredentials.manage',
   'abandonedCheckouts.view', 'abandonedCheckouts.manage',
+  'notices.manage',
   'analytics.view',
   'reports.view',
   'settings.view', 'settings.manage'

@@ -11,10 +11,14 @@ import { db } from '@/lib/prisma'
 import { OrderStatus } from '@prisma/client'
 import { builtInRoleName } from '@/lib/permission-groups'
 import { getStaffRoles } from '@/lib/staff-roles'
+import TeamNotices from '@/components/team-notices'
+import { getNotices } from '@/lib/team-notices-server'
+import { activeNotices, noticeAge } from '@/lib/team-notices'
 
 const groups: AdminSidebarGroup[] = [
   { id: 'home', label: 'Home', items: [
     { href: '/admin', label: 'Dashboard', permission: 'dashboard.view', icon: 'dashboard' },
+    { href: '/admin/notices', label: 'Team notices', permission: 'notices.manage', icon: 'notices' },
   ]},
   { id: 'orders', label: 'Orders', items: [
     { href: '/admin/orders', label: 'Orders', permission: 'orders.view', icon: 'orders' },
@@ -138,6 +142,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const ordersToFulfill = hasPermission(user, 'orders.view')
     ? await db.order.count({ where: { status: { in: [OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PROCESSING] } } }).catch(() => 0)
     : 0
+  // The team notice board: staff only, and never allowed to break a page.
+  const now = new Date()
+  const notices = user.role !== 'CUSTOMER' ? activeNotices(await getNotices().catch(() => []), now).map(n => ({ id: n.id, text: n.text, authorName: n.authorName, age: noticeAge(n.createdAt, now) })) : []
   const roleLabel = user.staffRoleId ? (await getStaffRoles().catch(() => [])).find(r => r.id === user.staffRoleId)?.name || 'Staff' : builtInRoleName(user.role)
 
   return <>
@@ -146,7 +153,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="adminShell">
       <ToastProvider>
         <ConfirmProvider>
-          <AdminNav groups={visibleGroups} brand={brand} ordersToFulfill={ordersToFulfill} name={user.name} email={user.email} role={roleLabel} vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}>
+          <AdminNav groups={visibleGroups} brand={brand} ordersToFulfill={ordersToFulfill} banner={notices.length ? <TeamNotices notices={notices} /> : null} name={user.name} email={user.email} role={roleLabel} vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}>
             {children}
           </AdminNav>
         </ConfirmProvider>

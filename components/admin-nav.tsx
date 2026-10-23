@@ -30,7 +30,7 @@ const iconMap: Record<string, LucideIcon> = {
   orderEdits: FileEdit, purchaseOrders: ClipboardList, transfers: ArrowLeftRight,
   draftOrders: ClipboardList, returns: RotateCcw,
   segments: UsersRound, giftCards: CreditCard,
-  liveVisitors: Radio, pushCampaigns: Megaphone, newsletter: Mail, bundles: PackagePlus,
+  liveVisitors: Radio, notices: Megaphone, pushCampaigns: Megaphone, newsletter: Mail, bundles: PackagePlus,
   questions: MessageCircleQuestion, winback: HeartHandshake, rewards: Gift, invites: UserPlus, influencers: Star, quantityDeals: Layers3, drivers: Truck, reorder: PackageSearch, stockCount: ScanBarcode, labels: Barcode, prices: BadgeDollarSign, suppliers: Contact, occasions: CalendarHeart,
 }
 
@@ -95,8 +95,8 @@ const TAB_HREFS = [
 ]
 
 export default function AdminNav({
-  groups, name, email, role, vapidPublicKey, brand: storeBrand, ordersToFulfill = 0, children,
-}: { groups: AdminSidebarGroup[]; name: string | null; email: string; role?: string; vapidPublicKey?: string; brand?: AdminBrand; ordersToFulfill?: number; children: React.ReactNode }) {
+  groups, name, email, role, vapidPublicKey, brand: storeBrand, ordersToFulfill = 0, banner, children,
+}: { groups: AdminSidebarGroup[]; name: string | null; email: string; role?: string; vapidPublicKey?: string; brand?: AdminBrand; ordersToFulfill?: number; banner?: React.ReactNode; children: React.ReactNode }) {
   const pathname = usePathname()
   const [mounted, setMounted] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
@@ -222,6 +222,7 @@ export default function AdminNav({
               {accountMenu}
             </div>
           </header>
+          {banner}
           <main className={`adminMain ${styles.mainCol}`}>{children}</main>
         </div>
       </div>
