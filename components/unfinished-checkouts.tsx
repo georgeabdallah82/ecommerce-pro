@@ -2,7 +2,9 @@
 
 import { useState } from 'react'
 import Link from '@/components/admin-link'
-import { ArrowLeft, Check, Mail, MessageCircle, ShoppingCart, X } from 'lucide-react'
+import { ArrowLeft, Check, Mail, MapPin, MessageCircle, ShoppingCart, X } from 'lucide-react'
+import { placeLine } from '@/lib/checkout-place'
+import { pinMapUrl } from '@/lib/location-pin'
 import { money } from '@/lib/config'
 import { formatAdminDateTime } from '@/lib/admin-datetime'
 import { cartLines, displayPhone, unfinishedCheckoutMessage, whatsappChatLink } from '@/lib/checkout-followup'
@@ -10,7 +12,7 @@ import { CartReminderSettings } from './admin-operations-hub'
 import s from './unfinished-checkouts.module.css'
 import ui from './admin-ui.module.css'
 
-type Row = { id: string; name: string | null; phone: string | null; email: string | null; cartJson: string; subtotal: number; currency: string; recoveryUrl: string | null; lastActivity: string; whatsappAt: string | null; reminderState: string | null; reminderAt: string | null; reminderNote: string | null }
+type Row = { id: string; name: string | null; phone: string | null; email: string | null; cartJson: string; subtotal: number; currency: string; recoveryUrl: string | null; lastActivity: string; whatsappAt: string | null; reminderState: string | null; reminderAt: string | null; reminderNote: string | null; city: string | null; area: string | null; pinLat: number | null; pinLng: number | null }
 
 async function api(path: string, init?: RequestInit) {
   const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
@@ -80,6 +82,10 @@ export default function UnfinishedCheckouts({ initial, recovered, days, storeNam
                 {row.phone && <a href={`tel:+${row.phone}`} dir="ltr">{displayPhone(row.phone)}</a>}
                 {row.email && <span>{row.email}</span>}
               </div>
+              {(placeLine(row) || row.pinLat !== null) && <div className={s.contact}>
+                <span><MapPin size={13} aria-hidden="true" style={{ verticalAlign: '-2px' }} /> {placeLine(row) || 'Area not given'}</span>
+                {row.pinLat !== null && row.pinLng !== null && <a href={pinMapUrl({ lat: row.pinLat, lng: row.pinLng })} target="_blank" rel="noreferrer">Exact spot on the map</a>}
+              </div>}
             </div>
             <div className={s.amount}><strong>{money(row.subtotal, row.currency)}</strong><span title={formatAdminDateTime(row.lastActivity, timezone)}>left {ago(row.lastActivity)}</span></div>
           </div>

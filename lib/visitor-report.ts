@@ -5,6 +5,7 @@ import { startOfStoreDay } from '@/lib/store-day'
 import { LIVE_WINDOW_MS, STAGE_LABELS, describePath, stageOf, type Stage } from '@/lib/visitor-tracking'
 import { agentLabel } from '@/lib/visitor-agent'
 import { sourceLabel } from '@/lib/visitor-source'
+import { placeLine } from '@/lib/checkout-place'
 import { formatDuration, funnelToday, hourlyCounts, onlineSummary, pagesPerVisit, percent, topCounts, type CountRow, type FunnelRow } from '@/lib/visitor-stats'
 
 // What Admin > Live visitors shows (app/api/admin/visitors). Rules: lib/visitor-tracking.ts.
@@ -26,7 +27,14 @@ export type OnlineRow = {
   cartValue: number
   cameBefore: boolean
   name: string | null
+  // Approximate (rounded to about 10 km): a dot on the map, never a street.
+  lat: number | null
+  lng: number | null
 }
+
+// A shopper who left checkout unfinished and shared an exact spot (only staff who may see unfinished
+// checkouts get these).
+export type PinRow = { id: string; name: string; place: string; lat: number; lng: number; accuracy: number | null; minutesAgo: number; subtotal: number }
 
 export type LiveReport = {
   generatedAt: string
@@ -37,6 +45,7 @@ export type LiveReport = {
   cartValue: number
   currency: string
   visitors: OnlineRow[]
+  pins: PinRow[]
 }
 
 // Names for pages: products and collections by their address, everything else by a fixed name.
@@ -60,14 +69,22 @@ async function pageNames(paths: string[]) {
 
 const placeOf = (v: { city: string | null; country: string | null }) => [v.city, v.country].filter(Boolean).join(', ') || 'Location unknown'
 
-export async function liveReport(now = new Date()): Promise<LiveReport> {
-  const [rows, currency] = await Promise.all([
+export async function liveReport(now = new Date(), options: { pins?: boolean } = {}): Promise<LiveReport> {
+  const [rows, currency, pinRows] = await Promise.all([
     db.visitorSession.findMany({
       where: { lastSeenAt: { gte: new Date(now.getTime() - LIVE_WINDOW_MS) }, leftAt: null },
       orderBy: { lastSeenAt: 'desc' },
       take: MAX_ONLINE,
     }),
     getStoreCurrency().catch(() => 'USD'),
+    options.pins
+      ? db.abandonedCheckout.findMany({
+        where: { status: 'OPEN', pinLat: { not: null }, pinLng: { not: null }, lastActivity: { gte: new Date(now.getTime() - 48 * 60 * 60 * 1000) } },
+        select: { id: true, name: true, city: true, area: true, pinLat: true, pinLng: true, pinAccuracy: true, subtotal: true, lastActivity: true },
+        orderBy: { lastActivity: 'desc' },
+        take: 50,
+      })
+      : Promise.resolve([]),
   ])
   const userIds = [...new Set(rows.map(v => v.userId).filter((id): id is string => !!id))]
   const [users, nameOf] = await Promise.all([
@@ -92,10 +109,22 @@ export async function liveReport(now = new Date()): Promise<LiveReport> {
       cartValue: v.cartValue,
       cameBefore: v.cameBefore,
       name: v.userId ? names.get(v.userId) || null : null,
+      lat: v.placeLat,
+      lng: v.placeLng,
     }
   })
   const summary = onlineSummary(visitors)
-  return { generatedAt: now.toISOString(), windowSeconds: LIVE_WINDOW_MS / 1000, ...summary, currency, visitors }
+  const pins: PinRow[] = pinRows.flatMap(p => p.pinLat === null || p.pinLng === null ? [] : [{
+    id: p.id,
+    name: p.name || 'No name given',
+    place: placeLine(p) || 'Area not given',
+    lat: p.pinLat,
+    lng: p.pinLng,
+    accuracy: p.pinAccuracy,
+    minutesAgo: Math.max(0, Math.round((now.getTime() - p.lastActivity.getTime()) / 60000)),
+    subtotal: p.subtotal,
+  }])
+  return { generatedAt: now.toISOString(), windowSeconds: LIVE_WINDOW_MS / 1000, ...summary, currency, visitors, pins }
 }
 
 export type TodayReport = {

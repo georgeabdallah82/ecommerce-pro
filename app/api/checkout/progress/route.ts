@@ -8,6 +8,8 @@ import { runInBackground } from '@/lib/background'
 import { maybeSendCartReminders } from '@/lib/cart-reminders'
 import { sendAbandonedCheckoutEmail } from '@/lib/email'
 import { internationalPhone } from '@/lib/phone'
+import { cleanCheckoutPlace } from '@/lib/checkout-place'
+import { countryCode as isoCountryCode } from '@/lib/delivery-countries'
 
 // Public, unauthenticated capture endpoint for the checkout page -- distinct from
 // /api/admin/abandoned-checkouts, which is staff-only and used to browse the
@@ -32,6 +34,8 @@ export async function POST(req: Request) {
     const country = typedPhone ? (await db.setting.findUnique({ where: { key: 'store.country' } }).catch(() => null))?.value : ''
     const phone = internationalPhone(typedPhone, country || 'Lebanon')
     const name = typeof b.name === 'string' ? b.name.replace(/\s+/g, ' ').trim().slice(0, 60) : ''
+    // Where the shopper is: the town and area they typed, and the exact spot if they chose to share it.
+    const place = cleanCheckoutPlace(b, isoCountryCode(country || 'Lebanon'))
     const items = Array.isArray(b.items) ? b.items.slice(0, 100) : []
     // Nothing worth recording yet -- not an error, just too early to capture.
     if ((!email && !phone) || !items.length) return json({ ok: true })
@@ -76,8 +80,8 @@ export async function POST(req: Request) {
       where: { token },
       // A box left empty keeps what was saved before (the email typed earlier stays when the phone
       // arrives next).
-      update: { customerId: user?.id ?? null, ...(email ? { email } : {}), ...(phone ? { phone } : {}), ...(name ? { name } : {}), cartJson: JSON.stringify(cartItems), subtotal, currency, recoveryUrl, status: 'OPEN', lastActivity: new Date() },
-      create: { token, customerId: user?.id ?? null, email: email || null, phone: phone || null, name: name || null, cartJson: JSON.stringify(cartItems), subtotal, currency, recoveryUrl },
+      update: { customerId: user?.id ?? null, ...(email ? { email } : {}), ...(phone ? { phone } : {}), ...(name ? { name } : {}), ...(place.city ? { city: place.city } : {}), ...(place.area ? { area: place.area } : {}), ...(place.pin ? { pinLat: place.pin.lat, pinLng: place.pin.lng, pinAccuracy: place.pin.accuracy } : {}), cartJson: JSON.stringify(cartItems), subtotal, currency, recoveryUrl, status: 'OPEN', lastActivity: new Date() },
+      create: { token, customerId: user?.id ?? null, email: email || null, phone: phone || null, name: name || null, city: place.city || null, area: place.area || null, pinLat: place.pin?.lat ?? null, pinLng: place.pin?.lng ?? null, pinAccuracy: place.pin?.accuracy ?? null, cartJson: JSON.stringify(cartItems), subtotal, currency, recoveryUrl },
     })
     // The database is awake anyway: a good moment for the (rare, throttled) reminder check.
     runInBackground(maybeSendCartReminders(sendAbandonedCheckoutEmail))

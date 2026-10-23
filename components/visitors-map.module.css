@@ -1,0 +1,11 @@
+/* The live map (components/visitors-map.tsx). Leaflet draws its own tiles and controls (its styles come
+   from leaflet/dist/leaflet.css); only our two kinds of dot are styled here. */
+.wrap { position: relative; border-radius: var(--admin-radius-md); overflow: hidden; border: 1px solid var(--admin-border); background: var(--admin-bg); isolation: isolate; }
+.map { height: 320px; width: 100%; }
+@media (min-width: 720px) { .map { height: 420px; } }
+.empty { position: absolute; inset: auto 12px 12px 12px; z-index: 500; padding: 8px 12px; border-radius: var(--admin-radius-md); background: var(--admin-surface); color: var(--admin-muted); font-size: 13px; text-align: center; box-shadow: var(--admin-shadow-sm); pointer-events: none; }
+/* A group of visitors at one approximate place: a number in a blue bubble. */
+.count { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #2563eb; color: #fff; font: 800 13px/1 system-ui, sans-serif; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .35); }
+/* An exact spot shared at checkout: a solid red pin. */
+.pin { display: block; width: 22px; height: 22px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: #d7261e; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .4); }
+.wrap :global(.leaflet-popup-content) { font-size: 13px; line-height: 1.45; }

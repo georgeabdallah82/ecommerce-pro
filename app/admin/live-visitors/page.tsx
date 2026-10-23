@@ -1,11 +1,12 @@
 import { requirePermission } from '@/lib/auth'
+import { hasPermission } from '@/lib/permissions'
 import VisitorsLive from '@/components/visitors-live'
 import { liveReport, todayReport } from '@/lib/visitor-report'
 import ui from '@/components/admin-ui.module.css'
 
 export default async function LiveVisitors() {
-  await requirePermission('reports.view')
-  const [live, today] = await Promise.all([liveReport(), todayReport()])
+  const user = await requirePermission('reports.view')
+  const [live, today] = await Promise.all([liveReport(new Date(), { pins: hasPermission(user, 'abandonedCheckouts.view') }), todayReport()])
   return <div>
     <div className={ui.sectionHead}>
       <div>

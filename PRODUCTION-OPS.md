@@ -88,6 +88,7 @@ Admin → Operations lets a store owner register endpoints (`WebhookEndpoint`) f
 
 - **Not counted:** the admin, the theme editor preview, anyone signed in as staff, and robots (recognised by their User-Agent, `lib/visitor-agent.ts`).
 - **Privacy:** no IP address and no GPS are stored. Kept: the page (without its query string), where the visitor came from (`lib/visitor-source.ts`), the approximate country and city Cloudflare reports, and the kind of device. The visit cookie `yh_sid` is random, HttpOnly and lasts 30 minutes; `yh_rv` (90 days) only says "came before".
+- **Live map:** soft blue circles are visitors' APPROXIMATE places (the network's position rounded to about 10 km, `lib/visitor-map.ts`), never a street. Solid red pins are exact spots that shoppers chose to share at checkout ("Share my exact location") and who have not ordered yet (`AbandonedCheckout.pinLat/pinLng`, kept with the town and area they typed); only staff with the unfinished-checkouts permission receive them. Map tiles come from OpenStreetMap (attribution shown); the page's content-security-policy already allows https images.
 - **Retention:** visits 90 days, page views 30 days; the daily job deletes older rows.
 - **Database hours:** the admin page refreshes only while it is on screen. Pages stop reporting after 5 minutes without touch.
 
