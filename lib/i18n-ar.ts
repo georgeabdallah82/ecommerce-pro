@@ -948,4 +948,8 @@ export const AR: Record<string, string> = {
   "Try another collection or price range.": "جرّب مجموعة أو نطاق سعر آخر.",
   "See all products": "عرض كل المنتجات",
   "Loading products…": "جارٍ تحميل المنتجات…",
+  // Shop active filter chips (components/aliexpress-shop.tsx)
+  "Search: {query}": "بحث: {query}",
+  "Remove filter: {name}": "إزالة الفلتر: {name}",
+  "Clear all": "مسح الكل",
 }

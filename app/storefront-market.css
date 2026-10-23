@@ -1046,3 +1046,10 @@ html body.mk .shopEmpty .focalButton { margin-top: 6px; }
 .skelSearch { height: 46px; border-radius: 999px; }
 @keyframes skelShine { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 @media (prefers-reduced-motion: reduce) { .skelBox, .skelBar { animation: none; } }
+
+/* Shop: what is filtering the list, each removable (components/aliexpress-shop.tsx) */
+.shopActiveFilters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0 10px; }
+.shopFilterChip { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 999px; background: var(--br-cream, #fff1e6); color: var(--mk-ink, #121212); font-size: 13.5px; font-weight: 700; text-decoration: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mk-red, #d7261e) 22%, #fff); max-width: 100%; overflow-wrap: anywhere; }
+.shopFilterChip:hover { box-shadow: inset 0 0 0 1.5px var(--mk-red, #d7261e); }
+.shopFilterChip svg { flex: none; color: var(--mk-red, #d7261e); }
+.shopFilterClear { font-size: 13.5px; font-weight: 700; color: var(--mk-red, #d7261e); text-decoration: underline; text-underline-offset: 3px; min-height: 36px; display: inline-flex; align-items: center; padding: 0 4px; }
