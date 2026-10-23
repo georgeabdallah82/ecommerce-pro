@@ -9,7 +9,7 @@ import { getStoreCurrency } from '@/lib/store-currency'
 import AdminSalesChart, { type SalesDay } from '@/components/admin-sales-chart'
 import ui from '@/components/admin-ui.module.css'
 import s from '@/components/admin-dashboard.module.css'
-import { LIVE_WINDOW_MS } from '@/lib/visitor-tracking' // same window as the Live visitors page
+import { visitorCounts } from '@/lib/visitor-report' // same numbers as the Live visitors page
 
 const OPEN_STATUSES = [OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PROCESSING]
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -52,15 +52,14 @@ export default async function Admin() {
   const since = new Date(now.getTime() - 15 * DAY_MS)
   const monthStart = new Date(now.getTime() - 30 * DAY_MS)
 
-  const [recentSales, toFulfill, inventoryRows, pendingReviews, orders, top, visitorsNow, visitorsToday] = await Promise.all([
+  const [recentSales, toFulfill, inventoryRows, pendingReviews, orders, top, visits] = await Promise.all([
     db.order.findMany({ where: { createdAt: { gte: since }, status: { notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED] } }, select: { grandTotal: true, createdAt: true, paymentTransactions: { select: { status: true, amount: true } } } }),
     db.order.count({ where: { status: { in: OPEN_STATUSES } } }),
     db.inventoryItem.findMany({ select: { quantity: true, reserved: true, lowStockThreshold: true } }),
     db.review.count({ where: { approved: false } }),
     db.order.findMany({ orderBy: { createdAt: 'desc' }, take: 6, include: { user: true, items: true } }),
     db.orderItem.groupBy({ by: ['productId'], where: { order: { status: { notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED] }, createdAt: { gte: monthStart } } }, _sum: { quantity: true }, orderBy: { _sum: { quantity: 'desc' } }, take: 4 }),
-    db.liveVisitorSession.count({ where: { lastSeenAt: { gte: new Date(now.getTime() - LIVE_WINDOW_MS) } } }).catch(() => 0),
-    db.liveVisitorSession.count({ where: { lastSeenAt: { gte: new Date(now.getTime() - DAY_MS) } } }).catch(() => 0),
+    visitorCounts(now).catch(() => ({ online: 0, today: 0, ordered: 0 })),
   ])
 
   // Extended (Accelerate) client payload inference doesn't always widen nested `select`
@@ -79,7 +78,10 @@ export default async function Admin() {
   const ordersToday = ordersByDay.get(todayKey) || 0
   const salesChange = change(salesToday, salesByDay.get(lastWeekKey) || 0)
   const ordersChange = change(ordersToday, ordersByDay.get(lastWeekKey) || 0)
-  const conversion = visitorsToday ? `${((ordersToday / visitorsToday) * 100).toFixed(1)}%` : '—'
+  const visitorsNow = visits.online
+  const visitorsToday = visits.today
+  // Share of today's visits that placed an order (orders taken by phone or WhatsApp are not visits).
+  const conversion = visitorsToday ? `${((visits.ordered / visitorsToday) * 100).toFixed(1)}%` : '—'
   const lowStock = inventoryRows.filter(row => row.quantity - row.reserved <= row.lowStockThreshold).length
 
   const weekday = new Intl.DateTimeFormat('en', { timeZone: timezone, weekday: 'short' })

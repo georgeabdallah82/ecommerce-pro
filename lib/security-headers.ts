@@ -12,8 +12,8 @@ export function securityHeaders(options: { framedBySameSite?: boolean, productio
     ['X-Content-Type-Options', 'nosniff'],
     ['X-Frame-Options', options.framedBySameSite ? 'SAMEORIGIN' : 'DENY'],
     ['Referrer-Policy', 'strict-origin-when-cross-origin'],
-    // geolocation=(self): the storefront's opt-in live-map location prompt (components/live-visitor-tracker.tsx)
-    // needs it on our own pages; geolocation=() blocked it outright, so "Allow" could never work.
+    // geolocation=(self): checkout's "Share my exact location" button (the driver's map pin) needs it on
+    // our own pages; geolocation=() blocked it outright, so "Allow" could never work.
     ['Permissions-Policy', `camera=${options.camera ? '(self)' : '()'}, microphone=(), geolocation=(self)`],
     ['X-DNS-Prefetch-Control', 'on'],
     ...(production ? [['Strict-Transport-Security', 'max-age=31536000; includeSubDomains'] as [string, string]] : []),

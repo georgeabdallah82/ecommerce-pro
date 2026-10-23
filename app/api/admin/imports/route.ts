@@ -1,6 +1,7 @@
 import { routeError } from '@/lib/api-error'
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/prisma'
+import { audit } from '@/lib/audit'
 import { requirePermission } from '@/lib/auth'
 import { runInBackground } from '@/lib/background'
 import { sendBackInStockAlerts } from '@/lib/back-in-stock'
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
       if (mode === 'preview') return NextResponse.json({ plan, summary, ignored: parsed.ignored, backupSkus: plan.filter(p => p.kind === 'product' && p.action === 'update').map(p => p.sku) })
       if (summary.error) return NextResponse.json({ error: 'Some rows have problems. Fix them in the file and upload it again.', plan, summary }, { status: 422 })
       const result = await applyProducts(parsed, plan, lookup, options)
-      await db.auditLog.create({ data: { actorId: actor.id, action: 'ADMIN_IMPORT', entity: 'products', metadataJson: JSON.stringify({ filename: file.name, rowCount: rows.length, ...result.counts, options }) } })
+      await audit(actor.id, 'ADMIN_IMPORT', 'products', undefined, { filename: file.name, rowCount: rows.length, ...result.counts, options })
       if (result.touchedProductIds.length) runInBackground(sendBackInStockAlerts(result.touchedProductIds).catch(error => console.error('[back-in-stock] alerts after import failed', error)))
       return NextResponse.json({ ok: true, ...result.counts, summary })
     }
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
     if (mode === 'preview') return NextResponse.json({ plan, summary, ignored: parsed.ignored, backupSkus: [] })
     if (summary.error) return NextResponse.json({ error: 'Some rows have problems. Fix them in the file and upload it again.', plan, summary }, { status: 422 })
     const counts = await applyCollections(parsed, plan, existing)
-    await db.auditLog.create({ data: { actorId: actor.id, action: 'ADMIN_IMPORT', entity: 'collections', metadataJson: JSON.stringify({ filename: file.name, rowCount: rows.length, ...counts, options }) } })
+    await audit(actor.id, 'ADMIN_IMPORT', 'collections', undefined, { filename: file.name, rowCount: rows.length, ...counts, options })
     return NextResponse.json({ ok: true, ...counts, summary })
   } catch (error) { return routeError(error, 'Import failed', 400) }
 }

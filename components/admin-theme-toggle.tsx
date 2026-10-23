@@ -86,7 +86,6 @@ export default function AdminThemeToggle({ compact }: { compact?: boolean }) {
         /* Empty/error states and live map */
         html[data-admin-theme='dark'] body:has(.adminShell) .empty{background:#191c1a!important;border-color:#3a413c!important;color:#9fa8a1!important}
         html[data-admin-theme='dark'] body:has(.adminShell) .empty strong{color:#eef2ef!important}
-        html[data-admin-theme='dark'] body:has(.adminShell) .leaflet-control-attribution{background:rgba(25,28,26,.9)!important;color:#c7cec9!important}
       `}</style>
       <button type="button" className="adminThemeToggle" data-compact={compact ? 'true' : undefined} onClick={toggle} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}>
         {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}

@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto'
 import { db } from '@/lib/prisma'
+import { audit } from '@/lib/audit'
 import { requirePermission } from '@/lib/auth'
 import { json } from '@/lib/utils'
 
@@ -92,15 +93,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       },
     })
 
-    await db.auditLog.create({
-      data: {
-        actorId: actor?.id || null,
-        action: disable ? 'DELIVERY_TRACKING_DISABLED' : 'DELIVERY_TRACKING_UPDATED',
-        entity: 'Order',
-        entityId: id,
-        metadataJson: JSON.stringify({ etaMinutes: disable ? null : etaMinutes, active: !disable, locationUpdated: !disable }),
-      },
-    })
+    await audit(actor?.id, disable ? 'DELIVERY_TRACKING_DISABLED' : 'DELIVERY_TRACKING_UPDATED', 'Order', id, { etaMinutes: disable ? null : etaMinutes, active: !disable, locationUpdated: !disable })
 
     return json({
       tracking: {

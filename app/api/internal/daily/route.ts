@@ -12,6 +12,8 @@ import { isOptedOut } from '@/lib/cart-reminders'
 import { sendDailySummaryEmail, sendReviewRequestEmail } from '@/lib/email'
 import { sendWeeklyReport } from '@/lib/weekly-report-job'
 import { sendDailySummaryPush } from '@/lib/push'
+import { armOrderWatch } from '@/lib/order-watch-storage'
+import { pruneVisitorData } from '@/lib/visitors'
 import { REVIEW_REQUESTS_PER_DAY, REVIEW_REQUEST_MARK, dailySummaryMessage, dayLabel, reviewRequestWindow, storeDayKey, yesterdayKey } from '@/lib/daily-summary'
 
 const NO_STORE = { 'Cache-Control': 'private, no-store' }
@@ -119,6 +121,14 @@ async function sendSummary(now: Date, reviewEmailsSent: number) {
   return { sent: !!email.sent, pushed: push.sent, note: to ? '' : 'No email address for the summary' }
 }
 
+// Safety net for the order watch (lib/order-watch.ts): if an order is waiting for confirmation, make
+// sure it is being watched, even if the marker file was lost. The database is already awake here.
+async function rearmOrderWatch() {
+  const waiting = await db.order.count({ where: { status: OrderStatus.PENDING, NOT: { paymentMethod: 'CARD', paymentStatus: { not: 'PAID' } } } })
+  if (waiting) await armOrderWatch()
+  return waiting
+}
+
 // Run once a day by the Worker's cron (worker.ts scheduled()). Each part runs on its own, so a
 // problem with one doesn't stop the other.
 export async function POST(req: Request) {
@@ -131,6 +141,8 @@ export async function POST(req: Request) {
   const reviewEmails = await sendReviewRequests(now, site).catch(error => { console.error('[daily] review requests failed', error); return { sent: 0, skipped: 0, failed: 0, note: 'Error' } })
   const summary = await sendSummary(now, reviewEmails.sent).catch(error => { console.error('[daily] summary failed', error); return { sent: false, pushed: 0, note: 'Error' } })
   const weekly = await sendWeeklyReport(now).catch(error => { console.error('[daily] weekly report failed', error); return { sent: false, note: 'Error' } })
-  console.log('[daily] done', { reviewEmails, summary, weekly })
-  return json({ reviewEmails, summary, weekly }, { headers: NO_STORE })
+  const visitors = await pruneVisitorData(now).catch(error => { console.error('[daily] visitor cleanup failed', error); return { sessions: -1, views: -1 } })
+  const waiting = await rearmOrderWatch().catch(error => { console.error('[daily] order watch failed', error); return -1 })
+  console.log('[daily] done', { reviewEmails, summary, weekly, waiting, visitors })
+  return json({ reviewEmails, summary, weekly, waiting }, { headers: NO_STORE })
 }

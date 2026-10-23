@@ -8,6 +8,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ key: str
   const { key } = await params
   // Payment screenshots share the bucket but are private: only staff read them, through the admin route.
   if (key.startsWith('proof-')) return new Response('Not found', { status: 404 })
+  // Internal files (ops/...) are never public either.
+  if (key.includes('/')) return new Response('Not found', { status: 404 })
   try {
     const { env } = await getCloudflareContext({ async: true })
     const bucket = (env as any).MEDIA_BUCKET

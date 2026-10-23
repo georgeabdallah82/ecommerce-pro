@@ -1,4 +1,4 @@
-import { db } from '@/lib/prisma'
+import { audit } from '@/lib/audit'
 import { requirePermission } from '@/lib/auth'
 import { json } from '@/lib/utils'
 import { sendCustomerPushCampaign } from '@/lib/push'
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     if (url && !url.startsWith('/')) return json({ error: 'URL must be a relative path starting with /' }, { status: 400 })
 
     const result = await sendCustomerPushCampaign({ title, body: message, url: url || undefined, icon: await notificationIcon() })
-    await db.auditLog.create({ data: { actorId: actor.id, action: 'ADMIN_PUSH_CAMPAIGN', entity: 'customer', metadataJson: JSON.stringify({ title, sent: result.sent, failed: result.failed }) } })
+    await audit(actor.id, 'ADMIN_PUSH_CAMPAIGN', 'customer', undefined, { title, sent: result.sent, failed: result.failed })
     return json(result)
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to send push campaign'
