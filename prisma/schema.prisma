@@ -188,6 +188,8 @@ model Product {
   // 2 weeks") on the product page, in the cart and on the order.
   preorder           Boolean              @default(false)
   preorderNote       String?
+  // A short clip shown on the product page (lib/product-video.ts): the address of a file uploaded in the product editor.
+  videoUrl           String?
   giftCard           Boolean              @default(false)
   salesChannelsJson  String?
   productTemplate    String?              @default("product")

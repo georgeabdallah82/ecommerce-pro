@@ -1,3 +1,4 @@
+import { cleanVideoUrl } from '@/lib/product-video'
 import { db } from '@/lib/prisma'
 import { getThemeState } from '@/lib/theme'
 import { getCurrentUser } from '@/lib/auth'
@@ -198,6 +199,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     basePrice: product.basePrice,
     preorder: product.preorder,
     preorderNote: product.preorderNote,
+    videoUrl: cleanVideoUrl(product.videoUrl),
     compareAtPrice: product.compareAtPrice,
     rating: ownStats?.rating || 0,
     reviewCount: ownStats?.reviewCount || 0,

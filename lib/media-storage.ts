@@ -4,6 +4,7 @@ import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { db } from '@/lib/prisma'
 import { isPublicHttpUrl } from '@/lib/product-import'
 import { reviewPhotoKey } from '@/lib/review-photos'
+import { VIDEO_CONTENT_TYPES, VIDEO_KEY_PREFIX, type VideoType } from '@/lib/product-video'
 
 // Cloudflare Workers has no writable local filesystem, so uploaded files go to R2 (bound as
 // MEDIA_BUCKET in wrangler.jsonc) whenever that binding is available, and are served back via
@@ -43,6 +44,23 @@ export async function saveMediaBytes(bytes: Uint8Array, contentType: string, nam
     url = `/uploads/${key}`
   }
   return db.mediaAsset.create({ data: { url, name, alt: alt || name, mimeType: contentType, sizeBytes: bytes.byteLength } })
+}
+
+// Stores a product video (lib/product-video.ts) under a random public name and returns its address.
+// Videos are shown on the product page, so unlike payment screenshots they are public.
+export async function saveVideoBytes(bytes: Uint8Array, type: VideoType) {
+  const key = `${VIDEO_KEY_PREFIX}${Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('')}.${type}`
+  const contentType = VIDEO_CONTENT_TYPES[type]
+  const bucket = await getMediaBucket()
+  if (bucket) {
+    await bucket.put(key, bytes, { httpMetadata: { contentType } })
+    return { key, url: `/api/media/${key}`, sizeBytes: bytes.byteLength }
+  }
+  if (process.env.NODE_ENV === 'production') throw new Error('File uploads are not configured for this deployment. Create and bind an R2 bucket — see PRODUCTION-OPS.md.')
+  const dir = path.join(process.cwd(), 'public', 'uploads')
+  await mkdir(dir, { recursive: true })
+  await writeFile(path.join(dir, key), bytes)
+  return { key, url: `/uploads/${key}`, sizeBytes: bytes.byteLength }
 }
 
 // Copies an image from another website into the store's own storage, so a product's photos

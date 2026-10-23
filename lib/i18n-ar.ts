@@ -923,6 +923,9 @@ export const AR: Record<string, string> = {
   "Send the payment to the account below; we ship once it arrives.": "أرسل المبلغ إلى الحساب أدناه؛ نشحن الطلب فور وصوله.",
   "Account number:": "رقم الحساب:",
   "Pay to": "ادفع إلى",
+  // Product video (Products > a product > Product video)
+  "Watch it in action": "شاهده أثناء الاستخدام",
+  "Product video": "فيديو المنتج",
   // Keyboard users (components/skip-link.tsx)
   "Skip to content": "تخطَّ إلى المحتوى",
 }

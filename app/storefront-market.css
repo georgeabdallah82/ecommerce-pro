@@ -716,3 +716,8 @@ html body.mk :is(.aliProductReviewsLink, .aliReviewSignInAlt, a.muted, .aliBread
 
 /* "Only 3 left" (Settings > Selling tools): the stock line turns amber and bold, same size so nothing jumps. */
 html body.mk .focalStorefront .focalStock.isLow { color: #92400e; font-weight: 700; }
+
+/* Product video (Products > a product > Product video): under the photos, same corners as the cards. */
+html body.mk .aliProductVideo { display: grid; gap: 8px; margin-top: 14px; }
+html body.mk .aliProductVideo > span { font-size: 14px; font-weight: 700; color: var(--mk-ink); }
+html body.mk .aliProductVideo video { display: block; width: 100%; max-height: 72vh; border-radius: var(--mk-radius); background: #000; box-shadow: var(--mk-shadow-1); }
