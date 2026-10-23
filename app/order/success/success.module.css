@@ -8,6 +8,7 @@
   --ok-card: var(--store-surface, #fff);
   --ok-bg: var(--store-bg, #f6f6f4);
   --ok-green: #15803d;
+  --ok-display: var(--font-bricolage), var(--store-font-heading), system-ui, sans-serif;
   background: var(--ok-bg);
   color: var(--ok-ink);
   padding: 24px 16px 48px;
@@ -19,7 +20,8 @@
 .tick { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: color-mix(in srgb, var(--ok-green) 12%, var(--ok-card)); color: var(--ok-green); }
 .tickWarn { background: color-mix(in srgb, #b45309 12%, var(--ok-card)); color: #b45309; }
 .tickBad { background: color-mix(in srgb, #b42318 10%, var(--ok-card)); color: #b42318; }
-.title { margin: 0; font-size: 26px; font-weight: 850; letter-spacing: -.02em; }
+.title { margin: 0; font-family: var(--ok-display); font-size: 28px; font-weight: 700; letter-spacing: -.02em; }
+:global([dir="rtl"]) .page { --ok-display: var(--store-font-heading), system-ui, sans-serif; }
 .lead { margin: 0; font-size: 15px; color: var(--ok-muted); line-height: 1.55; }
 .number { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; background: var(--ok-bg); font-size: 15px; font-weight: 800; }
 
