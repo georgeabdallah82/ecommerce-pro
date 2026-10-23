@@ -966,3 +966,15 @@ html body.mk .focalStorefront .focalTrustGrid span { background: var(--br-cream)
   html body.mk .mkCardMedia { transition: none !important; }
   html body.mk .mkCard:hover .mkCardMedia { transform: none !important; }
 }
+
+/* Small grey notes on the grey page were 4.47:1; a touch darker reaches 4.5:1 and more. */
+html body.mk .mkCardNote { color: color-mix(in srgb, var(--mk-ink) 72%, var(--mk-page)); }
+html body.mk .mkCardNote svg { color: var(--mk-green); }
+
+/* Hero on tablets and small laptops: the slide arrows sat on top of the headline, so the text
+   starts a little further in until the page is wide enough to leave room for them. */
+@media (min-width: 760px) and (max-width: 1399px) {
+  html body.mk .mkHero-full .mkSlideCopy { margin-inline-start: 56px; }
+}
+/* Arabic: the speed lines above the hero text belong on the right, with the text. */
+html[dir="rtl"] body.mk .mkHero-full .mkSlideCopy::before { justify-self: start; margin-inline-start: 0; transform: scaleX(-1); transform-origin: center; }
