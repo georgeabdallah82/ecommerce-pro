@@ -10,12 +10,18 @@ self.addEventListener('push', event => {
   const options = {
     body: data.body || (marketing ? '' : 'A new order needs your attention.'),
     ...(data.icon ? { icon: data.icon, badge: data.icon } : {}),
-    tag: data.tag || (data.orderId ? `order-${data.orderId}` : marketing ? 'store-offer' : 'new-order'),
+    // A team notice and an order problem each keep their own place on the lock screen: they must not
+    // replace an unread "new order" alert (or each other).
+    tag: data.tag || (data.orderId ? `order-${data.orderId}` : marketing ? 'store-offer' : data.teamNotice ? 'team-notice' : data.orderProblem ? 'order-problem' : 'new-order'),
     renotify: true,
     requireInteraction: !marketing,
     data: { url: data.url || (marketing ? '/' : '/admin/orders'), orderId: data.orderId || null },
   }
-  event.waitUntil(self.registration.showNotification(title, options))
+  event.waitUntil(Promise.all([
+    self.registration.showNotification(title, options),
+    // A team notice: pages already open in the admin fetch the notice board at once (components/team-notices.tsx).
+    data.teamNotice === true ? self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(pages => pages.forEach(page => page.postMessage({ type: 'team-notice' }))) : Promise.resolve(),
+  ]))
 })
 
 self.addEventListener('notificationclick', event => {

@@ -112,3 +112,18 @@ test('wiring: posting needs the permission, is audited and rate limited; only st
   assert.ok(!/team\.notices/.test(read('scripts/launch-cleanup.mjs')), 'the launch wipe may only delete a short fixed list of settings; notices can be real messages')
   assert.ok(!/team\.notices|TEAM_NOTICES/.test(read('app/api/store/settings/route.ts')), 'never public')
 })
+
+test('open pages keep the banner up to date by themselves, and notice alerts keep their own place on the lock screen', () => {
+  const banner = read('components/team-notices.tsx')
+  assert.match(banner, /fetch\('\/api\/admin\/notices'/)
+  assert.match(banner, /useEffect\(\(\) => \{ refresh\(\) \}, \[pathname, refresh\]\)/, 'asks again on every page change')
+  assert.match(banner, /addEventListener\('visibilitychange'/, 'and when the app is opened or switched back to')
+  assert.match(banner, /event\.data\?\.type === 'team-notice'/, 'and when the phone alert arrives')
+  assert.match(banner, /setInterval\(/, 'and every couple of minutes while on screen')
+  assert.match(banner, /document\.visibilityState === 'visible'/, 'but never while the page is hidden')
+  assert.match(read('app/admin/layout.tsx'), /banner=\{user\.role !== 'CUSTOMER' \? <TeamNotices notices=\{notices\} \/> : null\}/, 'drawn even when nothing shows yet, so a first notice can appear')
+  assert.match(read('app/api/admin/notices/route.ts'), /export async function GET\(\) \{\s*try \{\s*await requireStaff\(\)/, 'any staff may read, nobody else')
+  const worker = read('public/sw.js')
+  assert.match(worker, /data\.teamNotice \? 'team-notice' : data\.orderProblem \? 'order-problem' : 'new-order'/)
+  assert.match(worker, /page\.postMessage\(\{ type: 'team-notice' \}\)/)
+})
