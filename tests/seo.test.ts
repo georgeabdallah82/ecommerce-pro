@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { describe, it } from 'node:test'
-import { isShareableImage, metaText } from '@/lib/seo'
+import { fromPrice, isShareableImage, metaText, productShareText, shareMeta, sharePrice } from '@/lib/seo'
 import { fitWithin } from '@/lib/optimize-image'
 
 describe('lib/seo', () => {
@@ -29,3 +30,57 @@ describe('lib/optimize-image', () => {
     assert.deepEqual(fitWithin(800, 600), { width: 800, height: 600 })
   })
 })
+
+describe('lib/seo: shared product links', () => {
+  it('shows the price in the store currency', () => {
+    assert.equal(sharePrice(3900, 'USD'), '$39.00')
+    assert.equal(sharePrice(1250, 'usd'), '$12.50')
+    assert.equal(sharePrice(-5, 'USD'), '$0.00')
+    assert.equal(sharePrice(500, 'NOPE'), '5.00 NOPE', 'an unknown currency still gives a readable price')
+  })
+
+  it('uses the lowest option price as the "from" price', () => {
+    assert.equal(fromPrice(3900), 3900)
+    assert.equal(fromPrice(3900, []), 3900)
+    assert.equal(fromPrice(3900, [{ price: null }, { price: undefined }]), 3900)
+    assert.equal(fromPrice(3900, [{ price: 4500 }, { price: null }, { price: 2900 }]), 2900)
+  })
+
+  it('puts the price and stock first in the title and the description', () => {
+    const t = productShareText({ name: 'Essential Starter Kit', description: 'Thoughtfully selected essentials with a clean, premium presentation.', cents: 3900, currency: 'USD', soldOut: false })
+    assert.equal(t.title, 'Essential Starter Kit · $39.00')
+    assert.equal(t.description, '$39.00 · In stock. Thoughtfully selected essentials with a clean, premium presentation.')
+    assert.equal(t.stock, 'In stock')
+  })
+
+  it('says when it is out of stock and shows the old price on a sale', () => {
+    const t = productShareText({ name: 'Bowl', description: 'Blue stoneware.', cents: 299, compareAtCents: 499, currency: 'USD', soldOut: true })
+    assert.equal(t.description, '$2.99 (was $4.99) · Out of stock. Blue stoneware.')
+    assert.equal(productShareText({ name: 'Bowl', cents: 299, compareAtCents: 299, currency: 'USD', soldOut: false }).description.includes('was'), false, 'no "was" when the prices are equal')
+  })
+
+  it('falls back to a plain sentence without a description, keeps a long text short, and does not repeat a price in the name', () => {
+    assert.equal(productShareText({ name: 'Kit', cents: 1000, currency: 'USD', soldOut: false }).description, '$10.00 · In stock. Buy Kit online with fast delivery.')
+    const long = productShareText({ name: 'Kit', description: 'word '.repeat(100), cents: 1000, currency: 'USD', soldOut: false }).description
+    assert.ok(long.length <= 200 && long.endsWith('…'), long.length + '')
+    assert.equal(productShareText({ name: 'Kit $10.00', cents: 1000, currency: 'USD', soldOut: false }).title, 'Kit $10.00')
+  })
+
+  it('can leave og:type out so the product page writes its own', () => {
+    assert.equal(shareMeta({ title: 'T', url: 'https://x.example/p' }).openGraph.type, 'website')
+    assert.equal('type' in shareMeta({ title: 'T', url: 'https://x.example/p', type: null }).openGraph, false)
+  })
+
+  it('is wired into the product page: price and stock in the preview, product tags in the head', () => {
+    const page = readFileSync('app/product/[slug]/page.tsx', 'utf8')
+    assert.match(page, /productShareText\(\{/)
+    assert.match(page, /shareMeta\(\{ title: share\.title, description: share\.description, url, type: null,/)
+    assert.match(page, /<meta property="og:type" content="product" \/>/)
+    assert.match(page, /<meta property="product:price:amount"/)
+    assert.match(page, /<meta property="product:availability" content=\{inStock \? 'in stock' : 'out of stock'\} \/>/)
+    assert.match(page, /<ProductShareTags cents=\{fromPrice\(product\.basePrice, product\.variants\)\}/)
+    // Search results keep the plain title and description.
+    assert.match(page, /\n    title,\n    description,\n    alternates: \{ canonical: url \},/)
+  })
+})
+

@@ -11,7 +11,7 @@ import type { Metadata } from 'next'
 import { Footer } from '@/components/footer'
 import AliExpressProduct from '@/components/aliexpress-product'
 import { descriptionHtml } from '@/lib/sanitize-html'
-import { absoluteUrl, getSiteSeo, isShareableImage, metaText, shareMeta, siteUrl } from '@/lib/seo'
+import { absoluteUrl, fromPrice, getSiteSeo, isShareableImage, metaText, productShareText, shareMeta, siteUrl } from '@/lib/seo'
 import { validGtin } from '@/lib/product-feed'
 import { themeTemplates } from '@/lib/theme-templates'
 import { storefrontCached } from '@/lib/storefront-cache'
@@ -29,7 +29,7 @@ export const revalidate = 0
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
-  const product = await storefrontCached(`product-meta:${slug}`, () => db.product.findUnique({
+  const [product, settings] = await Promise.all([storefrontCached(`product-meta:${slug}`, () => db.product.findUnique({
     where: { slug },
     select: {
       name: true,
@@ -38,9 +38,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       seoTitle: true,
       seoDescription: true,
       seoImageUrl: true,
+      basePrice: true,
+      compareAtPrice: true,
+      trackInventory: true,
+      continueSellingWhenOutOfStock: true,
+      ...CARD_STOCK_INCLUDE,
       images: { orderBy: { sortOrder: 'asc' }, take: 1 },
     },
-  }))
+  })), getStorefrontSettings().catch(() => new Map<string, string>())])
   if (!product) return {}
   // Placeholder text like "0" is skipped (lib/seo.ts metaText) so Google and WhatsApp show
   // real copy; SVGs are skipped because share previews can't render them.
@@ -50,12 +55,36 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     || metaText(`Buy ${product.name} online with fast delivery.`)
   const title = product.seoTitle || product.name
   const url = `${siteUrl()}/product/${slug}`
+  // A shared link (WhatsApp, Instagram, Facebook) shows the price and stock first; search results keep
+  // the plain title and description above.
+  const { soldOut } = withCardStock([product])[0]
+  const share = productShareText({
+    name: title,
+    description: metaText(product.seoDescription) || metaText(product.shortDescription) || metaText(product.description),
+    cents: fromPrice(product.basePrice, product.variants),
+    compareAtCents: product.compareAtPrice,
+    currency: settings.get('store.currency')?.trim() || process.env.NEXT_PUBLIC_CURRENCY || 'USD',
+    soldOut,
+  })
   return {
     title,
     description,
     alternates: { canonical: url },
-    ...shareMeta({ title, description, url, image: image || (await getSiteSeo().catch(() => null))?.image }),
+    // og:type is written by the page itself as "product" (see ProductShareTags below).
+    ...shareMeta({ title: share.title, description: share.description, url, type: null, image: image || (await getSiteSeo().catch(() => null))?.image }),
   }
+}
+
+// The product tags Facebook and Instagram read for a shared link or a catalog ad. They need the
+// "property" attribute, which Next's own metadata cannot write for these names, so the page renders them
+// itself and React moves them into the page head.
+function ProductShareTags({ cents, currency, inStock }: { cents: number; currency: string; inStock: boolean }) {
+  return <>
+    <meta property="og:type" content="product" />
+    <meta property="product:price:amount" content={(Math.max(0, cents) / 100).toFixed(2)} />
+    <meta property="product:price:currency" content={currency} />
+    <meta property="product:availability" content={inStock ? 'in stock' : 'out of stock'} />
+  </>
 }
 
 // theme.editorTemplates.Product already exists in the theme's stored data
@@ -309,6 +338,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, '\\u003c') }} />
+      <ProductShareTags cents={fromPrice(product.basePrice, product.variants)} currency={storeCurrency} inStock={isAvailable} />
       <AliExpressProduct
         theme={theme}
         product={publicProduct}

@@ -79,12 +79,43 @@ async function loadSiteSeo(): Promise<SiteSeo> {
   return { brand, title, description, image: image ? absoluteUrl(image) : undefined }
 }
 
+// "$39.00" for a price in cents, in the store's currency; falls back to "39.00 LBP" for a currency the
+// browser's formatter does not know.
+export function sharePrice(cents: number, currency: string): string {
+  const amount = Math.max(0, cents) / 100
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount)
+  } catch {
+    return `${amount.toFixed(2)} ${currency}`
+  }
+}
+
+// The price a product is "from" in cents: the lowest option price, or the base price when no option has its own.
+export function fromPrice(basePrice: number, variants?: Array<{ price?: number | null }> | null): number {
+  const prices = (variants || []).map(v => (typeof v.price === 'number' ? v.price : basePrice))
+  return prices.length ? Math.min(...prices) : basePrice
+}
+
+// What a shared product link says in WhatsApp, Instagram and Facebook: the price and whether it is in stock
+// come first (they are the first thing a friend wants to know, and the preview cuts the rest), then the
+// product's own description. A sale shows the old price too.
+export function productShareText(p: { name: string; description?: string; cents: number; compareAtCents?: number | null; currency: string; soldOut: boolean }) {
+  const price = sharePrice(p.cents, p.currency)
+  const was = p.compareAtCents && p.compareAtCents > p.cents ? ` (was ${sharePrice(p.compareAtCents, p.currency)})` : ''
+  const stock = p.soldOut ? 'Out of stock' : 'In stock'
+  const title = p.name.includes(price) ? p.name : `${p.name} \u00b7 ${price}`
+  const facts = `${price}${was} \u00b7 ${stock}`
+  const description = metaText(p.description ? `${facts}. ${p.description}` : `${facts}. Buy ${p.name} online with fast delivery.`, 200)
+  return { title, description: description || facts, price, stock }
+}
+
 // openGraph + twitter for one page. Next.js replaces (not merges) a parent's openGraph, so
 // every page that sets its own passes the share image again (falling back to the site's).
-export function shareMeta({ title, description, url, image }: { title: string; description?: string; url: string; image?: string }) {
+export function shareMeta({ title, description, url, image, type = 'website' }: { title: string; description?: string; url: string; image?: string; type?: 'website' | null }) {
   const images = image ? [{ url: image, alt: title }] : undefined
   return {
-    openGraph: { type: 'website' as const, title, description, url, images },
+    // type: null leaves og:type out so the page can write its own (a product page says "product").
+    openGraph: { ...(type ? { type } : {}), title, description, url, images },
     twitter: { card: image ? 'summary_large_image' as const : 'summary' as const, title, description, images: image ? [image] : undefined },
   }
 }
