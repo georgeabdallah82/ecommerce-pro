@@ -13,6 +13,7 @@ import { FreeDeliveryBadge, ShippingNote, merchantShippingText } from '@/compone
 import { DELIVERY_AREA_EVENT, readDeliveryArea } from '@/components/market-chrome'
 import { parseDeliveryAreas } from '@/lib/storefront-market'
 import { trackViewContent } from '@/lib/tracking-events'
+import StickyBuyBar from './sticky-buy-bar'
 import BackInStockButton from '@/components/back-in-stock-button'
 import BoughtTogether from '@/components/bought-together'
 import type { Suggestion } from '@/lib/recommendations'
@@ -419,6 +420,7 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
       )}
 
       {questionsEnabled && <ProductQuestions productId={product.id} questions={Array.isArray(product.questions) ? product.questions : []} />}
+      {canSell && <StickyBuyBar watch=".aliBuyRow" price={money(shownPrice, theme.currency || 'USD')} compareAt={compareAt > shownPrice ? money(compareAt, theme.currency || 'USD') : undefined} addLabel={t('Add to Cart')} addedLabel={t('Added')} added={added} disabled={!purchaseAllowed} onAdd={addToCart} />}
       {viewPhoto && <div className="photoViewer" role="dialog" aria-modal="true" aria-label={t('Customer photo')} onClick={() => setViewPhoto('')}>
         <img src={viewPhoto} alt="" />
         <button type="button" onClick={() => setViewPhoto('')} aria-label={t('Close')}><X size={22} /></button>

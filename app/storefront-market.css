@@ -732,3 +732,35 @@ html body.mk .mkCardBadge { font-size: 12px; }
 .mkOfferText small { font-size: 11.5px; }
 .mkSpotText small { font-size: 11.5px; }
 html body.mk .aliProductPage .aliTapLink { display: inline-block; padding-block: 11px; }
+
+/* Checkout: logo, language switch and the account button only -- no menu, search, cart or category tabs --
+   so nothing pulls a shopper away from paying (returning customers can still sign in). */
+html body.mk .focalNav.mkHeaderCheckout .focalNavMobile,
+html body.mk .focalNav.mkHeaderCheckout .aliNavSearchWrap,
+html body.mk .focalNav.mkHeaderCheckout .focalNavActions .focalNavIcon { display: none !important; }
+html body.mk .focalNav.mkHeaderCheckout .focalNavInner { grid-template-columns: 1fr auto !important; }
+
+/* Product page, phones: sticky Add to cart once the real buttons have scrolled out of view. */
+.stickyBuy { display: none; }
+@media (max-width: 899px) {
+  .stickyBuy { display: flex; align-items: center; justify-content: space-between; gap: 14px; position: fixed; inset-inline: 0; bottom: 0; z-index: 60; padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); background: var(--mk-card, #fff); border-top: 1px solid var(--mk-line, #e7e2dc); box-shadow: 0 -6px 18px rgba(0,0,0,.08); }
+  .stickyBuyPrice { display: grid; line-height: 1.15; min-width: 0; }
+  .stickyBuyPrice strong { font-size: 18px; font-weight: 800; color: var(--mk-red, #d7261e); }
+  .stickyBuyPrice del { font-size: 12px; color: var(--mk-muted, #746b64); }
+  .stickyBuyBtn { flex: 1 1 auto; max-width: 240px; min-height: 46px; }
+  body.hasStickyBuy { padding-bottom: 76px; }
+  body.hasStickyBuy .mkWhatsApp { bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* Shop page, phones: the header already has a search box, so the in-page one and its button are hidden
+   (still sent with the sort form, so a search is kept when you change the sort). */
+@media (max-width: 700px) {
+  .aliShopToolbar .aliShopSearch, .aliShopToolbar button[type=submit] { display: none; }
+  .aliShopToolbar select { width: 100%; }
+}
+
+/* Small text and small controls (customer journey audit). */
+html body.mk .cartTrustUX strong { font-size: 12.5px !important; }
+html body.mk .cartTrustUX small { font-size: 12px !important; }
+.mkDots button { position: relative; }
+.mkDots button::after { content: ''; position: absolute; inset: -14px -4px; }

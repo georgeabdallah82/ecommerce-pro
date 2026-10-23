@@ -134,11 +134,11 @@ const css = `
 .focalCartInfo strong{font-size:13.5px;font-weight:800;color:var(--focal-ink);line-height:1.3}
 .focalCartInfo small{font-size:13px;font-weight:750;color:var(--focal-muted)}
 .focalCartQty{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--focal-line);border-radius:8px;padding:2px 4px;background:#fff;width:fit-content}
-.focalCartQty button{width:24px;height:24px;border:0;background:transparent;border-radius:6px;display:grid;place-items:center;cursor:pointer;color:var(--focal-ink);transition:background-color .12s ease}
+.focalCartQty button{width:36px;height:36px;border:0;background:transparent;border-radius:6px;display:grid;place-items:center;cursor:pointer;color:var(--focal-ink);transition:background-color .12s ease}
 .focalCartQty button:hover{background:var(--focal-soft)}
 .focalCartQty button:active{transform:scale(.9)}
 .focalCartQty span{min-width:20px;text-align:center;font-size:12px;font-weight:800}
-.focalCartDeleteBtn{border:0;background:transparent;color:var(--focal-muted);cursor:pointer;padding:6px;border-radius:8px;display:grid;place-items:center;transition:all .15s ease}
+.focalCartDeleteBtn{border:0;background:transparent;color:var(--focal-muted);cursor:pointer;padding:10px;min-width:40px;min-height:40px;border-radius:8px;display:grid;place-items:center;transition:all .15s ease}
 .focalCartDeleteBtn:hover{color:#dc2626;background:#fee2e2}
 
 .focalCartFoot{border-top:1px solid var(--focal-line);padding:20px 22px;background:#fff;box-shadow:0 -10px 25px rgba(0,0,0,.03)}
@@ -417,7 +417,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
     <style dangerouslySetInnerHTML={{ __html: css }} />
     {announcementEnabled && announcementPosition !== 'below' && <AnnouncementBar theme={theme} announcementSection={announcementSection} closed={announcementClosed} onDismiss={dismissAnnouncement}/>}
 
-    <header className={`focalNav${market ? ` mkHeader${lightHeader ? ' mkHeaderLight' : ''}` : transparent ? ' focalNavTransparent' : ''}`} style={market ? { position: headerSettings.sticky === false ? 'relative' : 'sticky', top: 0, ...(theme.header?.background ? { '--mk-header-bg': theme.header.background } : {}) } as React.CSSProperties : { background: transparent ? 'transparent' : theme.colors.surface, borderColor: theme.colors.border, position: headerSettings.sticky ? 'sticky' : 'relative', top: 0 }}>
+    <header className={`focalNav${market ? ` mkHeader${lightHeader ? ' mkHeaderLight' : ''}${pathname === '/checkout' ? ' mkHeaderCheckout' : ''}` : transparent ? ' focalNavTransparent' : ''}`} style={market ? { position: headerSettings.sticky === false ? 'relative' : 'sticky', top: 0, ...(theme.header?.background ? { '--mk-header-bg': theme.header.background } : {}) } as React.CSSProperties : { background: transparent ? 'transparent' : theme.colors.surface, borderColor: theme.colors.border, position: headerSettings.sticky ? 'sticky' : 'relative', top: 0 }}>
       <div className="focalNavInner focalContainer">
         <button className="focalNavMobile" aria-label={t('Menu')} onClick={() => setMenu(true)}><Menu size={19}/></button>
         <Link href="/" className="focalLogo" style={{ fontFamily: theme.typography.heading }}>{logoSrc ? <img src={logoSrc} alt={theme.brandName} className={logoWhite ? 'mkLogoWhite' : undefined} style={{ maxWidth: headerSettings.logoWidth || 160 }} /> : <span>{theme.brandName}</span>}</Link>
@@ -477,7 +477,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
       </div>}
     </header>
     {market && <DeliveryBar theme={theme} />}
-    {market && headerSettings.showCategoryTabs !== false && <CategoryTabs navigation={navigation} phone={headerSettings.showCategoryTabsPhone === true} />}
+    {market && pathname !== '/checkout' && headerSettings.showCategoryTabs !== false && <CategoryTabs navigation={navigation} phone={headerSettings.showCategoryTabsPhone === true} />}
     {announcementEnabled && announcementPosition === 'below' && <AnnouncementBar theme={theme} announcementSection={announcementSection} closed={announcementClosed} onDismiss={dismissAnnouncement}/>}
 
     {/* PREDICTIVE LIVE SEARCH OVERLAY */}

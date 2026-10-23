@@ -90,7 +90,7 @@ export function Footer({ theme }: { theme?: any }) {
 .focalFooterSocial a:hover{opacity:.85}
 .focalFooterBottom{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:20px 0;margin-top:12px;border-top:1px solid rgba(255,255,255,.12);font-size:12px}
 .focalFooterPayments{display:flex;gap:8px;flex-wrap:wrap}
-.focalFooterPayments span{border:1px solid rgba(255,255,255,.22);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;letter-spacing:.02em}
+.focalFooterPayments span{border:1px solid rgba(255,255,255,.22);border-radius:6px;padding:6px 10px;font-size:12px;font-weight:700;letter-spacing:.02em}
 .focalFooterNewsletter p{margin:8px 0 12px}
 .focalFooterNewsletterForm{display:flex;gap:8px;flex-wrap:wrap}
 .focalFooterNewsletterForm input{flex:1 1 140px;min-width:min(160px,100%);height:42px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.06);border-radius:8px;padding:0 12px;color:#fff;font-size:13px}
