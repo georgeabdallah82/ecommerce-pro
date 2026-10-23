@@ -30,7 +30,7 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  height: 34px;
+  height: 40px;
   border: 1px solid var(--store-primary, #d7261e);
   border-radius: 10px;
   background: transparent;
