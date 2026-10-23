@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from '@/components/admin-link'
-import { AlertTriangle, ArrowLeft, Ban, Check, ChevronDown, Copy, FileEdit, FileText, Mail, MapPin, MessageCircle, MoreHorizontal, PackageCheck, Pencil, Phone, Plus, Save, Send, SlidersHorizontal, Truck, X, XCircle, Gift } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Ban, Check, ChevronDown, Copy, FileEdit, FileText, Mail, MapPin, MessageCircle, MoreHorizontal, PackageCheck, Pencil, Phone, Plus, Save, Send, SlidersHorizontal, Truck, X, XCircle, Gift, Clock } from 'lucide-react'
 import { money } from '@/lib/config'
 import { formatAdminDate, formatAdminDateTime } from '@/lib/admin-datetime'
 import { canTransitionOrder, canTransitionPayment } from '@/lib/orders'
-import { JOURNEY, addressLines, customerName, customerPhone, driverShareLink, mapsLink, nextStep, orderPin, paymentInfo, paymentMethodLabel, statusInfo, telLink } from '@/lib/order-flow'
+import { JOURNEY, addressLines, customerName, customerPhone, driverShareLink, mapsLink, nextStep, orderPin, orderSlot, paymentInfo, paymentMethodLabel, statusInfo, telLink } from '@/lib/order-flow'
 import s from './admin-order-page.module.css'
 import ui from './admin-ui.module.css'
 import DeliveryTrackingAdmin from './delivery-tracking-admin'
@@ -190,12 +190,13 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
   const statusLocked = availableStatuses.length <= 1
   const paymentLocked = availablePaymentStatuses.length <= 1
 
-  function addressPayload(a:any) { return JSON.stringify({ ...a, firstName:a.firstName.trim(), lastName:a.lastName.trim(), line1:a.line1.trim(), line2:a.line2.trim()||undefined, city:a.city.trim(), region:a.region.trim()||undefined, postalCode:a.postalCode.trim()||undefined, country:a.country.trim(), phone:a.phone.trim()||undefined }) }
+  // The fields the form does not show (delivery time, driver note, exact location) are kept as they were.
+  function addressPayload(a:any, base?:string|null) { let extra:any = {}; try { extra = base ? JSON.parse(base) || {} : {} } catch {} return JSON.stringify({ ...extra, ...a, firstName:a.firstName.trim(), lastName:a.lastName.trim(), line1:a.line1.trim(), line2:a.line2.trim()||undefined, city:a.city.trim(), region:a.region.trim()||undefined, postalCode:a.postalCode.trim()||undefined, country:a.country.trim(), phone:a.phone.trim()||undefined }) }
   function beginEdit(){ setEmail(o.email||''); setPhone(o.phone||''); setShipping(parseAddress(o.shippingAddressJson)); setBilling(parseAddress(o.billingAddressJson)); setNotesValue(o.notes||''); setEditing(true); say(''); window.scrollTo({ top: 0, behavior: 'smooth' }) }
   async function saveDetails(){
     setSaving(true); say('')
     try {
-      const body = { id:o.id, email, phone, shippingAddressJson:addressPayload(shipping), billingAddressJson:(billing.line1||billing.city||billing.country)?addressPayload(billing):null, notes:notesValue }
+      const body = { id:o.id, email, phone, shippingAddressJson:addressPayload(shipping, o.shippingAddressJson), billingAddressJson:(billing.line1||billing.city||billing.country)?addressPayload(billing):null, notes:notesValue }
       const d = await api('/api/admin/orders',{method:'PATCH',body:JSON.stringify(body)})
       setO({ ...o, email, phone, shippingAddressJson: body.shippingAddressJson, billingAddressJson: body.billingAddressJson, notes: notesValue, ...(d.order || {}) })
       setEditing(false); say('Details saved.')
@@ -359,6 +360,7 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
           <div className={s.address}>
             <div className={s.contactRow}><MapPin size={14}/> <span>{lines.length ? lines.join(', ') : 'No delivery address'}</span></div>
             {o.shippingMethod && <div className={ui.muted}>Delivery: {o.shippingMethod}</div>}
+            {orderSlot(o) && <div className={s.slot}><Clock size={14}/> Delivery time: <strong>{orderSlot(o)}</strong></div>}
             {o.trackingNumber && <div className={ui.muted}>Tracking: <strong>{o.trackingNumber}</strong></div>}
             <div className={s.rowButtons}>
               {map && <a className={`${ui.btn} ${ui.btnSecondary}`} href={map} target="_blank" rel="noreferrer"><MapPin size={15}/> {orderPin(o) ? 'Open exact location' : 'Open in Maps'}</a>}

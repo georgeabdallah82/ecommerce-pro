@@ -1,10 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertTriangle, Check, MapPin, MessageCircle, Package, Phone, Wallet } from 'lucide-react'
+import { AlertTriangle, Check, MapPin, MessageCircle, Package, Phone, Wallet, Clock } from 'lucide-react'
 import { money } from '@/lib/config'
 import { internationalPhone } from '@/lib/phone'
-import { addressLines, customerName, customerPhone, mapsLink, orderPin, shippingAddress, type FlowOrder } from '@/lib/order-flow'
+import { addressLines, customerName, customerPhone, mapsLink, orderPin, orderSlot, shippingAddress, type FlowOrder } from '@/lib/order-flow'
 import { toCollect } from '@/lib/delivery-sheet'
 import { PROBLEM_REASONS, cashToHandOver } from '@/lib/drivers-shared'
 import s from './driver-run.module.css'
@@ -75,6 +75,7 @@ export default function DriverRun({ token, driverName, storeName, storeCountry, 
         </div>
         <div className={s.name}>{customerName(order)}</div>
         <div className={s.address}>{addressLines(order).join(', ') || 'No address: call the customer'}</div>
+        {orderSlot(order) && <div className={s.slot}><Clock size={16} /> Deliver: {orderSlot(order)}</div>}
         {a.notes && <div className={s.note}>Note: {String(a.notes)}</div>}
         <ul className={s.items}>{(order.items || []).map((item, i) => <li key={i}><Package size={14} /> {item.quantity} × {item.name}{item.variant?.name && item.variant.name !== 'Default Title' ? ` (${item.variant.name})` : ''}</li>)}</ul>
         <div className={s.contact}>

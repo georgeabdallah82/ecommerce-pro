@@ -128,3 +128,6 @@
 .proofList { display: flex; flex-wrap: wrap; gap: 10px; }
 .proofThumb { display: grid; gap: 4px; width: 120px; font-size: 11px; color: var(--ui-muted, #66707a); text-decoration: none; }
 .proofThumb img { width: 120px; height: 120px; object-fit: cover; border-radius: 8px; border: 1px solid var(--ui-border, #e4e7eb); background: #f1f1ef; }
+
+/* The delivery time the customer chose at checkout (lib/delivery-slots.ts). */
+.slot { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 14px; color: var(--ui-text, #1f2328); }

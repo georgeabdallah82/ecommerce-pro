@@ -1,0 +1,16 @@
+/* Admin > Shipping > Delivery times customers can choose (components/delivery-slots-admin.tsx). */
+.card { display: grid; gap: 12px; padding: 18px; margin-bottom: 16px; }
+.head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.head p { margin: 4px 0 0; font-size: 13px; }
+.title { display: inline-flex; align-items: center; gap: 8px; }
+.switch { flex: none; width: 48px; height: 28px; border-radius: 999px; border: 0; background: #d4d4d8; position: relative; cursor: pointer; padding: 0; transition: background .15s ease; }
+.switch i { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: transform .15s ease; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.switch.on { background: #15803d; }
+.switch.on i { transform: translateX(20px); }
+.switch:disabled { opacity: .6; cursor: not-allowed; }
+.switch:focus-visible { outline: 3px solid var(--admin-ink, #121212); outline-offset: 2px; }
+.list { display: grid; gap: 8px; }
+.row { display: flex; align-items: center; gap: 8px; }
+.row input { flex: 1 1 auto; min-width: 0; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+@media (prefers-reduced-motion: reduce) { .switch, .switch i { transition: none; } }

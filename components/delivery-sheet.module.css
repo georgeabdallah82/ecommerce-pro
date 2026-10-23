@@ -36,3 +36,6 @@
 .driver, .order { padding: 16px 18px; }
 @media (max-width: 560px) { .driver, .order { padding: 14px; } }
 @media print { .order { padding: 8px 0; border: 0; border-bottom: 1px solid #ccc; border-radius: 0; box-shadow: none; } }
+
+/* The delivery time the customer chose (lib/delivery-slots.ts). */
+.slot { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 700; color: var(--admin-ink); }

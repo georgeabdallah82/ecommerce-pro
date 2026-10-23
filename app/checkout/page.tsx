@@ -31,7 +31,7 @@ type PaymentDetails = {
   bank: { label?: string; bankName: string; accountName: string; iban: string; instructions: string } | null
   wallet: { provider: string; accountName: string; accountNumber: string; instructions: string } | null
 }
-type StoreSettings = { payment: { cod: boolean; card: boolean; bank: boolean; wallet: boolean; details: PaymentDetails }; checkout: { guestCheckout: boolean; countries?: Array<{ code: string; name: string }> }; selling?: { giftOption?: boolean; lbp?: { show: boolean; rate: number } } | null }
+type StoreSettings = { payment: { cod: boolean; card: boolean; bank: boolean; wallet: boolean; details: PaymentDetails }; checkout: { guestCheckout: boolean; countries?: Array<{ code: string; name: string }>; deliverySlots?: Array<{ id: string; label: string }> }; selling?: { giftOption?: boolean; lbp?: { show: boolean; rate: number } } | null }
 type ClientCheckout = { type: 'mpgs'; merchantId: string; sessionId: string; scriptUrl: string }
 type ShippingRate = { id: string | null; name: string; price: number; freeAbove: number | null; estimatedDays: number | null }
 type DeliveryArea = { name: string; eta: string }
@@ -160,6 +160,8 @@ export default function Checkout() {
   const [country, setCountry] = useState('Lebanon')
   // The customer's shared location, if they tapped "Share my exact location" (app/checkout/location-pin.tsx).
   const [pin, setPin] = useState<LocationPin | null>(null)
+  // The delivery time the customer chose (the owner's list, Admin > Shipping); '' = any time.
+  const [slotId, setSlotId] = useState('')
   const [areas, setAreas] = useState<DeliveryArea[]>([])
   const [area, setArea] = useState('')
   const [shippingRates, setShippingRates] = useState<ShippingRate[]>([])
@@ -356,7 +358,7 @@ export default function Checkout() {
       email: value('email').toLowerCase(), phone: value('phone'), paymentMethod,
       couponCode: appliedCode, giftCardCode: value('giftCardCode'), coinsToUse, shippingRateId: selectedRateId,
       isGift, giftMessage: isGift ? giftMessage.trim() : '',
-      shippingAddress: { firstName: value('firstName'), lastName: value('lastName'), line1: value('line1'), line2: value('line2'), city: value('city'), region: useAreaList ? area : value('region'), postalCode: value('postalCode'), country: country.trim(), phone: value('phone'), ...(pin ? { lat: pin.lat, lng: pin.lng, ...(pin.accuracy !== null ? { locationAccuracy: pin.accuracy } : {}) } : {}) },
+      shippingAddress: { firstName: value('firstName'), lastName: value('lastName'), line1: value('line1'), line2: value('line2'), city: value('city'), region: useAreaList ? area : value('region'), postalCode: value('postalCode'), country: country.trim(), phone: value('phone'), ...(pin ? { lat: pin.lat, lng: pin.lng, ...(pin.accuracy !== null ? { locationAccuracy: pin.accuracy } : {}) } : {}), ...(slotId ? { deliverySlotId: slotId } : {}) },
       items: items.map(item => ({ productId: item.productId, variantId: item.variantId || null, quantity: item.quantity, bundleId: item.bundleId || null })),
     }
     try {
@@ -506,6 +508,20 @@ export default function Checkout() {
                 })}
               </div>}
         </div>
+
+        {(settings?.checkout.deliverySlots?.length ?? 0) > 0 && <div className={s.field}>
+          <span className={s.label}>{t('When would you like it delivered?')}</span>
+          <div className={s.choices} role="radiogroup" aria-label={t('When would you like it delivered?')}>
+            {[{ id: '', label: t('Any time') }, ...(settings?.checkout.deliverySlots || [])].map(slot => {
+              const on = slotId === slot.id
+              return <label key={slot.id || 'any'} className={`${s.choice} ${on ? s.choiceOn : ''}`}>
+                <input type="radio" name="deliverySlot" checked={on} onChange={() => setSlotId(slot.id)} />
+                <span className={s.choiceDot} aria-hidden="true" />
+                <span className={s.choiceText}><strong>{slot.label}</strong></span>
+              </label>
+            })}
+          </div>
+        </div>}
       </section>
 
       <section className={s.step} aria-labelledby="co-payment">

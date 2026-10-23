@@ -20,6 +20,7 @@ import { inviteCardFor } from '@/lib/invites'
 import InviteShare from '@/components/invite-share'
 import GuestCancelBox from '@/components/guest-cancel-box'
 import PaymentProofBox from '@/components/payment-proof-box'
+import { slotFromAddress } from '@/lib/delivery-slots'
 import { proofState } from '@/lib/payment-proof'
 import { guestCancelState } from '@/lib/guest-cancel'
 import { getGuestCancelConfig } from '@/lib/guest-cancel-server'
@@ -164,7 +165,7 @@ export default async function Success({ searchParams }: { searchParams: Promise<
         {record.taxTotal > 0 && <div><span>{tr('Tax')}</span><strong>{money(record.taxTotal, record.currency)}</strong></div>}
         <div className={s.grand}><span>{tr('Total')}</span><span>{totalText}</span></div>
       </div>
-      {(a.line1 || place) && <div className={s.address}><strong>{tr('Delivery to')}</strong>{[`${a.firstName || ''} ${a.lastName || ''}`.trim(), a.line1, a.line2, place, record.phone].filter(Boolean).map((line, n) => <span key={n} dir="auto">{line}</span>)}</div>}
+      {(a.line1 || place) && <div className={s.address}><strong>{tr('Delivery to')}</strong>{[`${a.firstName || ''} ${a.lastName || ''}`.trim(), a.line1, a.line2, place, record.phone, slotFromAddress(a) ? `${tr('Delivery time')}: ${slotFromAddress(a)}` : ''].filter(Boolean).map((line, n) => <span key={n} dir="auto">{line}</span>)}</div>}
     </section>
 
     {invite && <InviteShare {...invite} />}

@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from '@/components/admin-link'
-import { ArrowLeft, Check, FileText, MapPin, MessageCircle, Phone, Printer, Truck, Users } from 'lucide-react'
+import { ArrowLeft, Check, FileText, MapPin, MessageCircle, Phone, Printer, Truck, Users, Clock } from 'lucide-react'
 import { money } from '@/lib/config'
 import { internationalPhone } from '@/lib/phone'
-import { addressLines, customerName, customerPhone, itemsSummary, mapsLink, orderPin, statusInfo, telLink } from '@/lib/order-flow'
+import { addressLines, customerName, customerPhone, itemsSummary, mapsLink, orderPin, orderSlot, statusInfo, telLink } from '@/lib/order-flow'
 import { driverRunMessage, groupByArea, toCollect, type SheetOrder } from '@/lib/delivery-sheet'
 import { useConfirm } from './admin-confirm'
 import s from './delivery-sheet.module.css'
@@ -170,6 +170,7 @@ export default function DeliverySheet({ initial, deliveredToday, areaOrder, dayL
               </div>
               <div className={s.customer}>{customerName(order)}{customerPhone(order) ? <> · <span dir="ltr">{customerPhone(order)}</span></> : null}</div>
               <div className={s.address}>{addressLines(order).join(', ') || 'No address'}</div>
+              {orderSlot(order) && <div className={s.slot}><Clock size={13} /> {orderSlot(order)}</div>}
               <div className={s.items}>{itemsSummary(order)}</div>
               <div className={`${s.actions} ${s.noPrint}`}>
                 {call && <a className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} href={call}><Phone size={14} /> Call</a>}

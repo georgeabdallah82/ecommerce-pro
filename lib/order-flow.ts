@@ -1,6 +1,7 @@
 import { collectsCashOnDelivery } from '@/lib/orders'
 import { internationalPhone } from '@/lib/phone'
 import { pinFromAddress, pinMapUrl } from '@/lib/location-pin'
+import { slotFromAddress } from '@/lib/delivery-slots'
 
 // The admin's words for an order's journey, and the one next step each order is waiting for.
 // Used by the orders list and the order page so both say the same thing:
@@ -120,6 +121,8 @@ export function telLink(order: Pick<FlowOrder, 'phone' | 'shippingAddressJson'>,
 }
 // The exact spot when the customer shared their location at checkout (lib/location-pin.ts),
 // otherwise a search for the typed address.
+// The delivery time the customer chose at checkout (lib/delivery-slots.ts), '' when they did not choose.
+export const orderSlot = (order: Pick<FlowOrder, 'shippingAddressJson'>) => slotFromAddress(shippingAddress(order.shippingAddressJson))
 export const orderPin = (order: Pick<FlowOrder, 'shippingAddressJson'>) => pinFromAddress(shippingAddress(order.shippingAddressJson))
 export function mapsLink(order: Pick<FlowOrder, 'shippingAddressJson'>) {
   const pin = orderPin(order)
