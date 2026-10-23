@@ -929,4 +929,17 @@ export const AR: Record<string, string> = {
   "Product video": "فيديو المنتج",
   // Keyboard users (components/skip-link.tsx)
   "Skip to content": "تخطَّ إلى المحتوى",
+  // Product page delivery and payment box (components/delivery-promise.tsx)
+  "Delivery and payment": "التوصيل والدفع",
+  "Delivery to {area}": "التوصيل إلى {area}",
+  "Free delivery on this order": "توصيل مجاني لهذا الطلب",
+  "free over {amount}": "مجاني فوق {amount}",
+  "Pay when it arrives": "ادفع عند وصول طلبك",
+  "Also: {methods}": "أيضاً: {methods}",
+  "Read the returns policy": "اقرأ سياسة الإرجاع",
+  // Product photo zoom (components/photo-zoom.tsx)
+  "Zoom photo": "تكبير الصورة",
+  "Photo {n} of {total}": "الصورة {n} من {total}",
+  "Previous photo": "الصورة السابقة",
+  "Next photo": "الصورة التالية",
 }
