@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto'
-import { requirePermission } from '@/lib/auth'
+import { requirePermission, requireStaff } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { runInBackground } from '@/lib/background'
 import { consumeDurableRateLimit } from '@/lib/rate-limit'
 import { sendTeamNoticePush } from '@/lib/push'
 import { json } from '@/lib/utils'
 import { getNotices, saveNotices } from '@/lib/team-notices-server'
-import { addNotice, cleanNoticeText, expiryFor, keepChoice, noticeAlert, removeNotice } from '@/lib/team-notices'
+import { activeNotices, addNotice, cleanNoticeText, expiryFor, keepChoice, noticeAge, noticeAlert, removeNotice } from '@/lib/team-notices'
 
 const NO_STORE = { 'Cache-Control': 'private, no-store' }
 
@@ -15,6 +15,18 @@ function failure(error: unknown) {
   if (error instanceof Error && error.message === 'UNAUTHORIZED') return json({ error: 'Unauthorized' }, { status: 401, headers: NO_STORE })
   console.error('[admin/notices] failure', error)
   return json({ error: 'Unable to save the notice' }, { status: 500, headers: NO_STORE })
+}
+
+// What the banner shows right now, for any signed-in staff member: open pages ask for it when the app is
+// opened, on a page change, when a phone alert arrives and every couple of minutes while on screen
+// (components/team-notices.tsx), so a notice reaches pages that are already open.
+export async function GET() {
+  try {
+    await requireStaff()
+    const now = new Date()
+    const notices = activeNotices(await getNotices(), now).map(n => ({ id: n.id, text: n.text, authorName: n.authorName, age: noticeAge(n.createdAt, now) }))
+    return json({ notices }, { headers: NO_STORE })
+  } catch (error) { return failure(error) }
 }
 
 // Admin > Team notices: post a notice (optionally with a phone alert to the team) and remove one.

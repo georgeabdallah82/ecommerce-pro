@@ -98,7 +98,7 @@ A short message from the owner or a manager that every staff member sees at the 
 
 - **Who:** staff with the "Post team notices" permission (`notices.manage`: owner, admins, managers, or a custom role) write and remove notices; every staff member reads them. Customers and the public never see them.
 - **Limits:** 300 characters, 5 showing at a time, kept 1 day / 3 days / 7 days or until removed; at most 10 posts per person per hour (the phone alert reaches the whole team). "Got it" hides a notice on that device only.
-- **Storage:** one setting (`team.notices`), so there is no table. The launch clean-up deliberately leaves it (it only deletes a fixed list of test-data settings); remove test notices on the Team notices page. The banner is drawn when an admin page is loaded (a page already open shows a new notice after a reload; the phone alert opens the admin fresh).
+- **Storage:** one setting (`team.notices`), so there is no table. The launch clean-up deliberately leaves it (it only deletes a fixed list of test-data settings); remove test notices on the Team notices page. Pages that are already open keep the banner up to date themselves: they ask `GET /api/admin/notices` when the app is opened or switched back to, on every page change, when a notice's phone alert arrives (the service worker `public/sw.js` tells open pages) and every 2 minutes while on screen (never while hidden), at most once every 15 seconds.
 
 ## Order-day alerts
 
