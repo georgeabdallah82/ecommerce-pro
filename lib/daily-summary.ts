@@ -16,6 +16,8 @@ export type DailySummaryFacts = {
   reviewEmailsSent: number
   // Unfinished checkouts from the last 2 days nobody has messaged yet (Admin > Orders > Unfinished).
   unfinished?: number
+  // One line when the free database hours need attention (lib/database-hours.ts); empty otherwise.
+  databaseHours?: string
 }
 
 type Money = (cents: number, currency: string) => string
@@ -51,6 +53,7 @@ export function waitingLines(f: DailySummaryFacts) {
     f.lowStock.length ? `${plural(f.lowStock.length, 'product')} low on stock` : '',
     f.pendingReviews ? `${plural(f.pendingReviews, 'review')} to approve` : '',
     f.unfinished ? `${plural(f.unfinished, 'unfinished checkout')} to follow up` : '',
+    f.databaseHours || '',
   ].filter(Boolean)
 }
 

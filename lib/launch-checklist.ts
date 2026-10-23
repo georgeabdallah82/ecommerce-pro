@@ -39,6 +39,8 @@ export type LaunchFacts = {
   adTracking: boolean
   footerText: string
   manual: Record<string, string>
+  // The free database hours in one line (lib/database-hours.ts), when the daily check can be read.
+  databaseHours?: string
 }
 
 // The Settings key holding the ticks: { "<id>": "<date ticked>" }.
@@ -47,6 +49,7 @@ export const LAUNCH_MANUAL_KEY = 'launch.checklist'
 export const MANUAL_ITEMS = [
   { id: 'accounts2fa', group: 'before', title: '2-step verification on your other accounts', detail: 'Turn it on for Gmail, GitHub, Cloudflare, Neon, Resend and where you bought the domain. If someone takes one of these over, they can take the store.' },
   { id: 'testorder', group: 'before', title: 'One test order, followed to the end', detail: 'Order from your phone, confirm it, send it to a driver, mark it delivered. Check the emails, the WhatsApp message and the notification on your phone.' },
+  { id: 'dbplan', group: 'before', title: 'Database plan chosen for real visitors', detail: 'The free database plan includes 100 hours a month. A store with visitors all day uses about 6 hours a day, so the free hours would be gone in about two weeks and the store would stop until the month renews. Move the database to Neon\'s pay-as-you-go plan (Neon > Billing) before you launch, then tick this.', href: '/admin/website-status', fix: 'Website status' },
   { id: 'backup', group: 'before', title: 'Last night\'s backup worked', detail: 'Open Website status and check that the backup ran.', href: '/admin/website-status', fix: 'Website status' },
   { id: 'searchconsole', group: 'after', title: 'Google Search Console', detail: 'Free, 5 minutes: Google shows your products faster. Steps are in the guide.' },
   { id: 'instagramshop', group: 'after', title: 'Instagram Shop', detail: 'Show your products as a shop on Instagram. Steps are in the guide.' },
@@ -142,7 +145,7 @@ export function buildChecklist(f: LaunchFacts): { items: ChecklistItem[]; before
   )
 
   for (const m of MANUAL_ITEMS.filter(item => item.group === 'before')) {
-    items.push({ id: m.id, group: 'before', title: m.title, status: done(m.id) ? 'ok' : 'todo', detail: m.detail, manual: true, ...('href' in m ? { href: m.href, fix: m.fix } : {}) })
+    items.push({ id: m.id, group: 'before', title: m.title, status: done(m.id) ? 'ok' : 'todo', detail: m.id === 'dbplan' && f.databaseHours ? `${m.detail} Right now: ${f.databaseHours}.` : m.detail, manual: true, ...('href' in m ? { href: m.href, fix: m.fix } : {}) })
   }
 
   items.push(
