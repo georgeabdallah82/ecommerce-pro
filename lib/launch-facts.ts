@@ -2,6 +2,7 @@ import { db } from '@/lib/prisma'
 import { getThemeState } from '@/lib/theme'
 import { hasPushSubscription } from '@/lib/push'
 import { LAUNCH_MANUAL_KEY, MANUAL_IDS, type LaunchFacts } from '@/lib/launch-checklist'
+import { loadDatabaseHoursAdvice } from '@/lib/database-hours-server'
 
 const KEYS = ['contact.phone', 'payment.cod', 'payment.card', 'checkout.freeShippingThreshold', 'maintenance.enabled', LAUNCH_MANUAL_KEY, 'tracking.metaPixelId', 'tracking.gaMeasurementId', 'tracking.tiktokPixelId']
 
@@ -16,7 +17,7 @@ export function parseManual(raw: string | null | undefined): Record<string, stri
 // Everything the checklist looks at, read from the store as it is right now (Admin > Launch
 // checklist). Nothing here writes, and nothing leaves the database or the environment.
 export async function launchFacts(user: { id: string; totpEnabledAt: Date | null }): Promise<LaunchFacts> {
-  const [settings, themeState, shippingZones, activeProducts, productsWithoutPhoto, productsWithoutPrice, orderCount, phoneAlertsOn] = await Promise.all([
+  const [settings, themeState, shippingZones, activeProducts, productsWithoutPhoto, productsWithoutPrice, orderCount, phoneAlertsOn, hoursAdvice] = await Promise.all([
     db.setting.findMany({ where: { key: { in: KEYS } }, select: { key: true, value: true } }),
     getThemeState(),
     db.shippingZone.count({ where: { isActive: true, rates: { some: { isActive: true } } } }),
@@ -25,6 +26,7 @@ export async function launchFacts(user: { id: string; totpEnabledAt: Date | null
     db.product.count({ where: { status: 'ACTIVE', basePrice: { lte: 0 } } }),
     db.order.count(),
     hasPushSubscription(user.id).catch(() => false),
+    loadDatabaseHoursAdvice(4000),
   ])
   const map = new Map(settings.map(s => [s.key, s.value]))
   const theme: any = themeState.theme || {}
@@ -54,5 +56,6 @@ export async function launchFacts(user: { id: string; totpEnabledAt: Date | null
     adTracking: ['tracking.metaPixelId', 'tracking.gaMeasurementId', 'tracking.tiktokPixelId'].some(k => String(map.get(k) || '').trim()),
     footerText: String(theme.footer?.text || ''),
     manual: parseManual(map.get(LAUNCH_MANUAL_KEY)),
+    databaseHours: hoursAdvice?.short,
   }
 }
