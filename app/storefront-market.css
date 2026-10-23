@@ -978,3 +978,24 @@ html body.mk .mkCardNote svg { color: var(--mk-green); }
 }
 /* Arabic: the speed lines above the hero text belong on the right, with the text. */
 html[dir="rtl"] body.mk .mkHero-full .mkSlideCopy::before { justify-self: start; margin-inline-start: 0; transform: scaleX(-1); transform-origin: center; }
+
+/* The speed-lines mark, drawn like the logo itself: three orange lines, the middle one longer,
+   thicker and stronger (logo: 50/65/50 long, 6/8/6 thick, 35%/65%/35% opacity). */
+html body.mk .mkHead h2::before { width: 30px; height: 20px;
+  background:
+    linear-gradient(color-mix(in srgb, var(--br-orange) 45%, transparent), color-mix(in srgb, var(--br-orange) 45%, transparent)) left 1px / 77% 3px no-repeat,
+    linear-gradient(color-mix(in srgb, var(--br-orange) 80%, transparent), color-mix(in srgb, var(--br-orange) 80%, transparent)) left center / 100% 4px no-repeat,
+    linear-gradient(color-mix(in srgb, var(--br-orange) 45%, transparent), color-mix(in srgb, var(--br-orange) 45%, transparent)) left calc(100% - 1px) / 77% 3px no-repeat; }
+html body.mk .mkHero-full .mkSlideCopy::before {
+  background:
+    linear-gradient(rgba(255,255,255,.55), rgba(255,255,255,.55)) left 1px / 77% 4px no-repeat,
+    linear-gradient(#fff, #fff) left center / 100% 5px no-repeat,
+    linear-gradient(rgba(255,255,255,.55), rgba(255,255,255,.55)) left calc(100% - 1px) / 77% 4px no-repeat; }
+
+/* The catalogue is mostly product-on-white packshots (scissors, boxes, bottles). Cropping them to
+   fill the square cut products off, so the whole product is shown on white with a little air. */
+html body.mk .mkCardMedia { background: #fff; }
+html body.mk .mkCardMedia img { object-fit: contain; padding: 6%; background: #fff !important; }
+html body.mk .aliProductMainImage { background: #fff; }
+html body.mk .aliProductMainImage img { object-fit: contain; background: #fff !important; }
+html body.mk .aliProductThumbs img { object-fit: contain; background: #fff; }
