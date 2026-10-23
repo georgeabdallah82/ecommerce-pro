@@ -103,7 +103,8 @@ const COUNTS = {
   inviteRewardCoupons: `SELECT count(*)::int AS n FROM "Coupon" WHERE "isActive" AND code IN (SELECT r."rewardCode" FROM "InviteReward" r WHERE r."orderId" IN (SELECT id FROM (${GONE_ORDERS}) g))`,
   emailOptOuts: `SELECT count(*)::int AS n FROM "EmailOptOut"`,
   emailLog: `SELECT count(*)::int AS n FROM "EmailLog"`,
-  visitorSessions: `SELECT count(*)::int AS n FROM "LiveVisitorSession"`,
+  visitorSessions: `SELECT count(*)::int AS n FROM "VisitorSession"`,
+  visitorPageViews: `SELECT count(*)::int AS n FROM "VisitorPageView"`,
   customerPushDevices: `SELECT count(*)::int AS n FROM "PushSubscription"`,
   backInStock: `SELECT count(*)::int AS n FROM "BackInStockRequest"`,
   notifications: `SELECT count(*)::int AS n FROM "Notification"`,
@@ -175,7 +176,7 @@ function printPreview({ c, orders, stock, state, args }) {
   console.log(`  Gift cards from these orders/customers: ${c.giftCardsGone}`)
   console.log(`  Reviews: ${c.reviews} | Wishlist items: ${c.wishlist}`)
   console.log(`  Abandoned checkouts: ${c.abandonedCheckouts} | Newsletter signups: ${c.newsletter} | WhatsApp signups: ${c.whatsappSignups} | Email opt-outs: ${c.emailOptOuts}`)
-  console.log(`  Email log: ${c.emailLog} | Visitor stats: ${c.visitorSessions} | Customer push devices: ${c.customerPushDevices}`)
+  console.log(`  Email log: ${c.emailLog} | Visitor stats: ${c.visitorSessions} visits, ${c.visitorPageViews} page views | Customer push devices: ${c.customerPushDevices}`)
   console.log(`  Back-in-stock requests: ${c.backInStock} | Notifications: ${c.notifications} | Audit log: ${c.auditLog}`)
   console.log(`  Product questions: ${c.questions} | Invite codes: ${c.inviteCodes} | Win-back messages: ${c.winbackContacts} | Reward codes: ${c.phoneRewards} (${c.phoneRewardCoupons} switched off) | Influencer payments: ${c.influencerPayouts}`)
   console.log(`  Order numbers restart: the next order is #${state.counter === null ? FIRST_ORDER_NUMBER : state.counter + 1} now, #${FIRST_ORDER_NUMBER} after the clean-up${keepOrders ? ' (or the one after the highest kept number)' : ''}`)
@@ -240,7 +241,7 @@ async function clean(client, args, before) {
   await run(`UPDATE "Coupon" SET "isActive" = false, "updatedAt" = now() WHERE code IN (SELECT code FROM "PhoneReward")`)
 
   // Everything else that only exists because of testing.
-  for (const table of ['Review', 'ProductQuestion', 'InviteCode', 'InfluencerPayout', 'WinbackContact', 'PhoneReward', 'AbandonedCheckout', 'PhoneSubscriber', 'EmailOptOut', 'EmailLog', 'LiveVisitorSession', 'PushSubscription', 'BackInStockRequest', 'Notification', 'PasswordResetToken', 'RateLimitBucket', 'AdminLoginLockout', 'AuditLog']) {
+  for (const table of ['Review', 'ProductQuestion', 'InviteCode', 'InfluencerPayout', 'WinbackContact', 'PhoneReward', 'AbandonedCheckout', 'PhoneSubscriber', 'EmailOptOut', 'EmailLog', 'VisitorSession', 'VisitorPageView', 'PushSubscription', 'BackInStockRequest', 'Notification', 'PasswordResetToken', 'RateLimitBucket', 'AdminLoginLockout', 'AuditLog']) {
     await run(`DELETE FROM "${table}"`)
   }
   await run(`DELETE FROM "Setting" WHERE key LIKE 'newsletter.subscriber.%'`)

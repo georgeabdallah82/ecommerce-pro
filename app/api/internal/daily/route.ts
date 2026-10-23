@@ -13,6 +13,7 @@ import { sendDailySummaryEmail, sendReviewRequestEmail } from '@/lib/email'
 import { sendWeeklyReport } from '@/lib/weekly-report-job'
 import { sendDailySummaryPush } from '@/lib/push'
 import { armOrderWatch } from '@/lib/order-watch-storage'
+import { pruneVisitorData } from '@/lib/visitors'
 import { REVIEW_REQUESTS_PER_DAY, REVIEW_REQUEST_MARK, dailySummaryMessage, dayLabel, reviewRequestWindow, storeDayKey, yesterdayKey } from '@/lib/daily-summary'
 
 const NO_STORE = { 'Cache-Control': 'private, no-store' }
@@ -140,7 +141,8 @@ export async function POST(req: Request) {
   const reviewEmails = await sendReviewRequests(now, site).catch(error => { console.error('[daily] review requests failed', error); return { sent: 0, skipped: 0, failed: 0, note: 'Error' } })
   const summary = await sendSummary(now, reviewEmails.sent).catch(error => { console.error('[daily] summary failed', error); return { sent: false, pushed: 0, note: 'Error' } })
   const weekly = await sendWeeklyReport(now).catch(error => { console.error('[daily] weekly report failed', error); return { sent: false, note: 'Error' } })
+  const visitors = await pruneVisitorData(now).catch(error => { console.error('[daily] visitor cleanup failed', error); return { sessions: -1, views: -1 } })
   const waiting = await rearmOrderWatch().catch(error => { console.error('[daily] order watch failed', error); return -1 })
-  console.log('[daily] done', { reviewEmails, summary, weekly, waiting })
+  console.log('[daily] done', { reviewEmails, summary, weekly, waiting, visitors })
   return json({ reviewEmails, summary, weekly, waiting }, { headers: NO_STORE })
 }

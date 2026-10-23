@@ -82,6 +82,15 @@ Admin → Operations lets a store owner register endpoints (`WebhookEndpoint`) f
 
 `/api/admin/orders/:id` supports authenticated order viewing and controlled status updates. Cancelling an order releases reservations. Moving an inventory-tracked order to `SHIPPED` or `DELIVERED` fulfills its reserved stock exactly once.
 
+## Visitor analytics (Admin > Live visitors)
+
+`components/visitor-tracker.tsx` reports each store page view and a heartbeat (every 45 s while the page is on screen) to `/api/analytics/visit`. One row per visit (`VisitorSession`, a visit ends after 30 minutes without activity) and one per page viewed (`VisitorPageView`). The admin page and the dashboard read them through `lib/visitor-report.ts`.
+
+- **Not counted:** the admin, the theme editor preview, anyone signed in as staff, and robots (recognised by their User-Agent, `lib/visitor-agent.ts`).
+- **Privacy:** no IP address and no GPS are stored. Kept: the page (without its query string), where the visitor came from (`lib/visitor-source.ts`), the approximate country and city Cloudflare reports, and the kind of device. The visit cookie `yh_sid` is random, HttpOnly and lasts 30 minutes; `yh_rv` (90 days) only says "came before".
+- **Retention:** visits 90 days, page views 30 days; the daily job deletes older rows.
+- **Database hours:** the admin page refreshes only while it is on screen. Pages stop reporting after 5 minutes without touch.
+
 ## Order-day alerts
 
 Two alerts reach the owner on the phone (web push) and by email, switched on or off in Settings > Notifications > Order problems:
