@@ -321,6 +321,14 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
             </div>
           )}
 
+          {/* Under the buy buttons, so the price and Add to cart stay near the top on a phone. */}
+          {product.videoUrl && (
+            <div className="aliProductVideo">
+              <span>{t('Watch it in action')}</span>
+              <video src={product.videoUrl} controls playsInline preload="metadata" aria-label={t('Product video')} />
+            </div>
+          )}
+
           <div className="focalAccordions">
             {showDescription && product.descriptionHtml && <details open><summary>{t('Description')}<ChevronDown size={16} /></summary><div className="pdpRichText" dangerouslySetInnerHTML={{ __html: product.descriptionHtml }} /></details>}
             <details><summary>{t('Product information')}<ChevronDown size={16} /></summary><p>{t('SKU')} {selectedVariant?.sku || product.sku || '—'}</p></details>

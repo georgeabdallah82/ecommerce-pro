@@ -5,6 +5,7 @@ import { json, slugify } from '@/lib/utils'
 import { productInputError } from '@/lib/product-input'
 import { setProductCollections } from '@/lib/product-collections'
 import { cleanBarcode, freeProductSlug, productConflict, uniqueConflictMessage, variantConflict } from '@/lib/product-uniqueness'
+import { cleanVideoUrl } from '@/lib/product-video'
 
 export async function GET(req: Request) {
   try {
@@ -90,6 +91,7 @@ export async function POST(req: Request) {
         weight: b.weight !== undefined && b.weight !== '' ? Number(b.weight) : null, weightUnit: b.weightUnit || null,
         requiresShipping: b.requiresShipping !== false, taxable: b.taxable !== false, trackInventory: b.trackInventory !== false, continueSellingWhenOutOfStock: Boolean(b.continueSellingWhenOutOfStock) || Boolean(b.preorder), giftCard: Boolean(b.giftCard),
         preorder: Boolean(b.preorder), preorderNote: b.preorder && b.preorderNote ? String(b.preorderNote).trim().slice(0, 120) : null,
+        videoUrl: cleanVideoUrl(b.videoUrl),
         salesChannelsJson: b.salesChannelsJson ? String(b.salesChannelsJson).slice(0, 5000) : JSON.stringify(['online_store']), productTemplate: b.productTemplate ? String(b.productTemplate).slice(0, 100) : 'product', publishedAt: b.status === 'ACTIVE' ? (b.publishedAt ? new Date(b.publishedAt) : new Date()) : null,
         images: { create: images },
         inventory: variants.length === 0 || sharedPool ? { create: { quantity: Math.max(0, Math.trunc(Number(b.quantity) || 0)), reserved: 0, lowStockThreshold: Math.max(0, Math.trunc(Number(b.lowStockThreshold) || 5)), locationId: b.locationId ? String(b.locationId) : null } } : undefined,

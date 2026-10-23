@@ -9,6 +9,7 @@ import { sendBackInStockAlerts } from '@/lib/back-in-stock'
 import { productInputError } from '@/lib/product-input'
 import { setProductCollections } from '@/lib/product-collections'
 import { cleanBarcode, productConflict, uniqueConflictMessage, variantConflict } from '@/lib/product-uniqueness'
+import { cleanVideoUrl } from '@/lib/product-video'
 
 async function getProduct(id:string){
   const product=await db.product.findUnique({where:{id},include:{images:{orderBy:{sortOrder:'asc'}},variants:{include:{inventory:{include:{location:true}}}},inventory:{where:{variantId:null},include:{location:true}},tags:true,collections:{include:{collection:true}},metafields:{include:{definition:true}}}})
@@ -39,6 +40,8 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
     // Pre-order keeps selling at zero stock (checkout's stock rule), so it turns that on too.
     if(data.preorder===true)data.continueSellingWhenOutOfStock=true
     if(b.preorderNote!==undefined)data.preorderNote=b.preorderNote?String(b.preorderNote).trim().slice(0,120):null
+    // The product video: only the store's own uploaded file (lib/product-video.ts); anything else clears it.
+    if(b.videoUrl!==undefined)data.videoUrl=cleanVideoUrl(b.videoUrl)
     if(b.status!==undefined)data.status=b.status;if(b.publishedAt!==undefined)data.publishedAt=b.publishedAt?new Date(b.publishedAt):null
 
     if(Array.isArray(b.variants)){

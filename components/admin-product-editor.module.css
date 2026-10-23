@@ -182,3 +182,11 @@
 .collectionOption span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .collectionOption small { font-size: 11px; color: var(--admin-muted, #6b7280); }
 .collectionEmpty { padding: 10px; font-size: 13px; color: var(--admin-muted, #6b7280); }
+
+/* Product video (components/product-editor-v2.tsx): a short clip shown on the product page. */
+.videoBox { display: grid; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--admin-border, #e4e7eb); }
+.videoBox p { margin: 0; }
+.videoPreview { width: 100%; max-width: 360px; max-height: 420px; border-radius: 10px; background: #000; }
+.videoFile { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; clip-path: inset(50%); }
+.videoFile:focus-visible + label { outline: 3px solid var(--admin-ink, #121212); outline-offset: 2px; }
+.videoError { font-size: 14px; font-weight: 700; color: #b42318; }

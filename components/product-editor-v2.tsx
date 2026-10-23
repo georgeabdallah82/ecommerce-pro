@@ -22,6 +22,7 @@ type Product = {
   weight?: number | null; weightUnit?: string | null
   requiresShipping: boolean; taxable: boolean; trackInventory: boolean; continueSellingWhenOutOfStock: boolean; giftCard: boolean
   preorder?: boolean; preorderNote?: string | null
+  videoUrl?: string | null
   productTemplate?: string | null; publishedAt?: string | null
   images: ImageItem[]; variants: Variant[]; inventory: any[]; tags: any[]; metafields?: any[]
   sharedInventory?: boolean; quantity?: number; lowStockThreshold?: number; locationId?: string | null
@@ -98,6 +99,8 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false)
   const [productPublications, setProductPublications] = useState<any[]>(publications || [])
   const [seoMediaPickerOpen, setSeoMediaPickerOpen] = useState(false)
+  const [videoBusy, setVideoBusy] = useState(false)
+  const [videoError, setVideoError] = useState('')
   const initialCollectionIds = (initial.collections || []).map(c => c.collectionId)
   const [collectionIds, setCollectionIds] = useState<string[]>(initialCollectionIds)
 
@@ -133,6 +136,21 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
 
   function update(p: Partial<Product>) { setProduct(x => ({ ...x, ...p })); setDirty(true); setMessage('') }
   function updateVariant(i: number, p: Partial<Variant>) { update({ variants: product.variants.map((v, n) => n === i ? { ...v, ...p } : v) }) }
+
+  // The product video (lib/product-video.ts): uploaded on its own, then saved with the product.
+  async function uploadVideo(file: File | undefined) {
+    if (!file) return
+    setVideoError('')
+    if (file.size > 25 * 1024 * 1024) { setVideoError('That video is larger than 25 MB. Please choose a shorter or smaller one.'); return }
+    setVideoBusy(true)
+    try {
+      const body = new FormData(); body.set('file', file)
+      const r = await fetch('/api/admin/media/video', { method: 'POST', body })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(d.error || 'Unable to upload the video')
+      update({ videoUrl: d.url })
+    } catch (e) { setVideoError(e instanceof Error ? e.message : 'Unable to upload the video') } finally { setVideoBusy(false) }
+  }
 
   async function save() {
     if (!product.name.trim()) { setError('Title is required'); setTab('General'); return }
@@ -248,6 +266,17 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
                 </div>
               </div>)}
               <button className={s.mediaAdd} onClick={() => setMediaPickerOpen(true)}><Plus size={18} /> Add media</button>
+            </div>
+            <div className={s.videoBox}>
+              <strong>Product video <span className={ui.muted}>(optional)</span></strong>
+              <p className={ui.muted}>A short clip shown on the product page, like an Instagram reel. MP4 or WebM, up to 25 MB. Save the product after adding it.</p>
+              {product.videoUrl && <video className={s.videoPreview} src={product.videoUrl} controls playsInline preload="metadata" aria-label="Product video preview" />}
+              {videoError && <p className={s.videoError} role="alert">{videoError}</p>}
+              <div className="inline">
+                <input id="product-video-file" className={s.videoFile} type="file" accept="video/mp4,video/webm" disabled={videoBusy} onChange={e => { uploadVideo(e.target.files?.[0]); e.target.value = '' }} />
+                <label htmlFor="product-video-file" className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`}>{videoBusy ? 'Uploading…' : product.videoUrl ? 'Replace video' : 'Upload a video'}</label>
+                {product.videoUrl && !videoBusy && <button type="button" className={`${ui.textButton} ${ui.textButtonDanger}`} onClick={() => update({ videoUrl: null })}><Trash2 size={14} /> Remove video</button>}
+              </div>
             </div>
           </Card>
 
