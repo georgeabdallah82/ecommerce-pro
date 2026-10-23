@@ -9,11 +9,12 @@ type Photo = { url: string; alt?: string }
 // The product photo full screen, on white like the packshots themselves. Click (or tap) the
 // photo to see it twice as large where you pointed; move the mouse to look around. Arrows or
 // the buttons go to the next photo; Esc, the cross or the background close it. Focus moves to
-// the close button and comes back to the photo that opened it.
+// the close button, stays inside while it is open, and comes back to the button that opened it.
 export default function PhotoZoom({ photos, index, onIndex, onClose }: { photos: Photo[]; index: number; onIndex: (i: number) => void; onClose: () => void }) {
   const { t } = useI18n()
   const [zoom, setZoom] = useState<{ x: number; y: number } | null>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
   const count = photos.length
   const go = (step: number) => { setZoom(null); onIndex((index + step + count) % count) }
 
@@ -27,6 +28,14 @@ export default function PhotoZoom({ photos, index, onIndex, onClose }: { photos:
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
+      else if (e.key === 'Tab') {
+        // Keep Tab inside the open photo: close, previous, next, round again.
+        const buttons = [...(dialogRef.current?.querySelectorAll<HTMLButtonElement>('button') || [])]
+        if (!buttons.length) return
+        const at = buttons.indexOf(document.activeElement as HTMLButtonElement)
+        e.preventDefault()
+        buttons[(at + (e.shiftKey ? -1 : 1) + buttons.length) % buttons.length].focus()
+      }
       else if (count > 1 && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
         const forward = (e.key === 'ArrowRight') !== (document.documentElement.dir === 'rtl')
         go(forward ? 1 : -1)
@@ -44,7 +53,7 @@ export default function PhotoZoom({ photos, index, onIndex, onClose }: { photos:
   if (!photo) return null
   // Drawn on <body>, above the sticky header and the page's own layers.
   return createPortal(
-    <div className="pdpZoom" role="dialog" aria-modal="true" aria-label={t('Photo {n} of {total}', { n: index + 1, total: count })} onClick={onClose}>
+    <div ref={dialogRef} className="pdpZoom" role="dialog" aria-modal="true" aria-label={t('Photo {n} of {total}', { n: index + 1, total: count })} onClick={onClose}>
       <button ref={closeRef} type="button" className="pdpZoomClose" onClick={onClose} aria-label={t('Close')}><X size={22} /></button>
       <figure className={`pdpZoomStage${zoom ? ' isZoomed' : ''}`} onClick={e => { e.stopPropagation(); setZoom(zoom ? null : point(e)) }} onMouseMove={e => { if (zoom) setZoom(point(e)) }}>
         <img src={photo.url} alt={photo.alt || ''} style={zoom ? { transformOrigin: `${zoom.x}% ${zoom.y}%` } : undefined} />
