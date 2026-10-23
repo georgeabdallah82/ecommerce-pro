@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { feedCategories, plainText, productFeedXml } from '@/lib/product-feed'
+import { feedCategories, feedTitle, plainText, productFeedXml } from '@/lib/product-feed'
 
 const store = { name: 'Yalla Haul', url: 'https://shop.example', currency: 'USD' }
 const base = { id: 'p1', name: 'Baloo tissues', slug: 'baloo-tissues', basePrice: 450, soldOut: false, images: [{ url: '/api/media/1.webp' }, { url: 'https://cdn.example/2.jpg' }] }
@@ -37,5 +37,15 @@ describe('product feed', () => {
   })
   it('turns descriptions into plain text', () => {
     assert.equal(plainText('<h2>Size</h2><p>Big&nbsp;one<br>Two</p><script>x()</script>'), 'Size\nBig one\nTwo')
+  })
+
+  it('sends all-capital names in normal capitalisation but leaves mixed-case names alone', () => {
+    assert.equal(feedTitle('CHOOSING STONEWARE BOWL BLUE'), 'Choosing Stoneware Bowl Blue')
+    assert.equal(feedTitle('ARM&HAMMER PLUS OXI CLEAN STAIN FIGHTER'), 'Arm&Hammer Plus Oxi Clean Stain Fighter')
+    assert.equal(feedTitle('AYL.GOODS PORCELAIN DINNER SET 2.5L'), 'Ayl.Goods Porcelain Dinner Set 2.5L')
+    assert.equal(feedTitle('Joseph Joseph PowerGrip Kitchen Scissors'), 'Joseph Joseph PowerGrip Kitchen Scissors')
+    assert.equal(feedTitle('METALTEX ORBIT STRG RACK 3TIER 26x27x65'), 'METALTEX ORBIT STRG RACK 3TIER 26x27x65')
+    assert.equal(feedTitle('\u0645\u0646\u0638\u0641 \u0627\u0644\u0645\u0637\u0628\u062e'), '\u0645\u0646\u0638\u0641 \u0627\u0644\u0645\u0637\u0628\u062e')
+    assert.ok(productFeedXml([{ ...base, name: 'CHOOSING STONEWARE BOWL BLUE' }], store).includes('<g:title>Choosing Stoneware Bowl Blue</g:title>'))
   })
 })
