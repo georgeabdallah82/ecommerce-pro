@@ -12,6 +12,8 @@ import { useShopper } from './use-shopper'
 import { money as formatMoney } from '@/lib/config'
 import { loadStoreSettings } from '@/lib/store-settings-client'
 import { siteHeaderSections } from '@/lib/site-header'
+import { useFreeDeliveryAmount } from './shipping-note'
+import { syncFreeDeliveryAmount } from '@/lib/topbar-amount'
 
 type NavItem = { id: string; label: string; url?: string | null; parentId?: string | null; group?: string | null; imageUrl?: string | null }
 type TreeItem = NavItem & { children: TreeItem[] }
@@ -40,6 +42,7 @@ function AnnouncementBar({ theme, announcementSection, closed, onDismiss }: { th
   const messages = blocks.length
     ? blocks.map((b: any) => ({ text: b.settings?.text || '', link: b.settings?.link || '' }))
     : [{ text: s.text || g.text || t('Free shipping on orders over $50'), link: s.link || g.link || '' }]
+  const free = useFreeDeliveryAmount()
   const [index, setIndex] = useState(0)
   useEffect(() => {
     if (!autoplay || messages.length < 2) return
@@ -53,7 +56,7 @@ function AnnouncementBar({ theme, announcementSection, closed, onDismiss }: { th
     <div className="focalAnnouncementGlobal">
       <div className="focalAnnouncementGlobalInner" style={{ '--focal-announcement-height': `${height}px`, textTransform: uppercase ? 'uppercase' : 'none' } as React.CSSProperties}>
         {showIcon && <span className="focalAnnouncementIcon"><Icon size={13}/></span>}
-        <span>{current.text}</span>
+        <span>{syncFreeDeliveryAmount(current.text, free)}</span>
         {current.link && <Link href={current.link}>{t('Learn more')}</Link>}
         {dismissible && <button className="focalAnnouncementDismiss" aria-label={t('Dismiss')} onClick={onDismiss}><X size={13}/></button>}
       </div>

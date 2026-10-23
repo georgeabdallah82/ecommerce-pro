@@ -56,7 +56,7 @@
 
 .sidebarNav { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; margin: 0 -4px; padding: 0 4px; scrollbar-width: thin; scrollbar-color: var(--admin-sidebar-hover) transparent; }
 .sidebarGroup { margin-bottom: 4px; }
-.sidebarGroupLabel { padding: 12px 11px 5px; color: var(--admin-sidebar-muted); font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.sidebarGroupLabel { padding: 12px 11px 5px; color: var(--admin-sidebar-muted); font-size: 11.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .sidebarItem {
   display: flex;
   flex-direction: row;
@@ -75,6 +75,10 @@
 .sidebarItem svg { opacity: .8; flex: 0 0 auto; }
 .sidebarItemActive, .sidebarItemActive:hover { background: var(--admin-accent); color: var(--admin-accent-ink); }
 .sidebarItemActive svg { opacity: 1; }
+.sidebarMore { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 11px; margin: 1px 0; border: 0; border-radius: 8px; background: transparent; color: var(--admin-sidebar-muted); font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; text-align: left; min-height: 36px; }
+.sidebarMore:hover { color: #fff; background: rgba(255,255,255,.06); }
+.sidebarMore svg { transition: transform .15s; flex: none; transform: rotate(-90deg); }
+.sidebarMore svg.sidebarMoreOpen { transform: rotate(0); }
 .navBadge { margin-left: auto; min-width: 20px; padding: 1px 7px; border-radius: 99px; background: var(--admin-accent); color: var(--admin-accent-ink); font-size: 11px; font-weight: 800; text-align: center; }
 .sidebarItemActive .navBadge { background: var(--admin-accent-ink); color: var(--admin-accent); }
 
@@ -212,7 +216,7 @@
   background: transparent;
   color: var(--admin-sidebar-muted);
   font: inherit;
-  font-size: 10.5px;
+  font-size: 11.5px;
   font-weight: 700;
   text-decoration: none;
   cursor: pointer;

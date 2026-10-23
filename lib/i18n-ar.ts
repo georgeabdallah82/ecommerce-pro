@@ -25,6 +25,7 @@ export const AR: Record<string, string> = {
   "Back to account": "العودة إلى الحساب",
   "No notifications yet.": "لا توجد إشعارات بعد.",
   "New": "جديد",
+  "New arrivals": "وصل حديثاً",
   "Previous": "السابق",
   "Next": "التالي",
   "Look up another order": "ابحث عن طلب آخر",

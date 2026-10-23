@@ -6,6 +6,7 @@ import { getStoreTimezone } from '@/lib/store-timezone'
 import { BackupCard, CARDS, CardSkeleton, CloudflareCard, DatabaseCard, EmailCard, GithubCard, StatusSummary, UptimeCard } from '@/components/website-status'
 import styles from '@/components/admin-website-status.module.css'
 import ui from '@/components/admin-ui.module.css'
+import HealthTabs from '@/components/health-tabs'
 
 // The owner's view of everything the website runs on: database, backups, hosting, emails,
 // uptime and the automatic jobs (lib/website-status.ts). Owner only (settings.manage): it shows
@@ -14,6 +15,7 @@ export default async function WebsiteStatusPage() {
   await requirePermission('settings.manage')
   const timezone = await getStoreTimezone().catch(() => DEFAULT_STORE_TIMEZONE)
   return <div className={styles.page}>
+    <HealthTabs current="status" canManage />
     <div className={ui.sectionHead}>
       <div><span className={ui.muted}>OWNER</span><h1 className={ui.title}>Website status</h1><p className={ui.muted}>Your database, hosting, emails, uptime and automatic jobs in one place.</p></div>
       <a className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/website-status"><RefreshCw size={15} aria-hidden="true" /> Refresh</a>

@@ -35,7 +35,8 @@
 .list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; font-size: 14px; line-height: 1.4; }
 .unticked .name, .unticked .price { opacity: .5; }
-.checkLabel { position: relative; display: inline-grid; cursor: pointer; }
+.checkLabel { position: relative; display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; margin: -10px; cursor: pointer; }
+.name a { display: inline-block; padding-block: 10px; }
 .checkLabel input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
 .tick {
   width: 22px;

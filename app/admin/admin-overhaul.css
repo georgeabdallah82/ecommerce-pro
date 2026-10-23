@@ -195,6 +195,9 @@ body:has(.adminShell) .catalogPagination{background:var(--admin-surface)!importa
    as two plain muted numbers with no visual line separating them. */
 body:has(.adminShell) .strike{text-decoration:line-through!important}
 body:has(.adminShell) input[type=checkbox]{accent-color:var(--admin-accent)}
+/* Row checkboxes (orders, products, customers, collections) were 13-18px, too small for a thumb.
+   24px is the smallest comfortable size without growing the rows. */
+body:has(.adminShell) .adminMain input[type=checkbox]{width:22px;height:22px;margin:0;cursor:pointer;flex:none}
 /* Reviews table cell content -- .ratingStars and .reviewSnippet had no rule
    anywhere, so the star rating rendered in plain inherited text color instead
    of the amber tone used for "attention" elsewhere in the admin, and a long

@@ -50,7 +50,7 @@ a.kpi:hover { box-shadow: var(--admin-shadow-md); }
 .panel { padding: 20px; border-radius: var(--admin-card-radius); background: var(--admin-surface); box-shadow: var(--admin-card-shadow); min-width: 0; }
 .panelHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .panelHead h2 { margin: 0; font-size: 16px; letter-spacing: -.01em; color: var(--admin-ink); }
-.panelHead a { font-size: 12.5px; font-weight: 700; color: var(--admin-accent-strong); text-decoration: none; }
+.panelHead a { font-size: 13px; font-weight: 700; color: var(--admin-accent-strong); text-decoration: none; display: inline-flex; align-items: center; min-height: 40px; padding-inline: 4px; margin: -10px -4px; }
 .panelHead a:hover { text-decoration: underline; }
 
 /* Sales chart */
@@ -90,6 +90,7 @@ a.kpi:hover { box-shadow: var(--admin-shadow-md); }
 /* Recent orders + top products */
 .ordersTable td { vertical-align: middle; }
 .orderLink { font-weight: 800; color: var(--admin-accent-strong); text-decoration: none; }
+@media (max-width: 900px) { .orderLink { display: inline-block; padding: 12px 0; } }
 .product { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--admin-border-soft); color: var(--admin-ink); text-decoration: none; font-size: 13px; }
 .product:last-child { border-bottom: 0; }
 .product:hover strong { color: var(--admin-accent-strong); }

@@ -48,7 +48,7 @@ html body.mk .focalNav.mkHeader .navAvatar { width: 24px; height: 24px; font-siz
 html body.mk .focalNav.mkHeader:not(.mkHeaderLight) .navAvatar { background: #fff; color: var(--mk-red); }
 @media (min-width: 900px) { .mkNavLabel { display: inline; } }
 @media (max-width: 900px) {
-  html body.mk .focalNav.mkHeader .focalNavInner { grid-template-columns: auto 1fr auto !important; row-gap: 10px !important; padding-block: 10px !important; min-height: 0 !important; }
+  html body.mk .focalNav.mkHeader .focalNavInner { grid-template-columns: auto 1fr auto !important; row-gap: 8px !important; padding-block: 8px !important; min-height: 0 !important; }
   html body.mk .focalNav.mkHeader .focalLogo { justify-content: flex-start !important; }
   html body.mk .focalNav.mkHeader .focalLogo img { max-height: 32px !important; }
   html body.mk .focalNav.mkHeader .aliNavSearchWrap { display: block !important; grid-column: 1 / -1 !important; order: 5 !important; }
@@ -78,10 +78,10 @@ html body.mk .focalNav.mkHeader.mkHeaderLight .focalCartCount { background: var(
 
 /* Delivery bar + category tabs (not sticky; the red header is) */
 .mkDelivery { background: var(--mk-card); border-bottom: 1px solid var(--mk-line); font-size: 13px; color: var(--mk-ink); }
-.mkDeliveryInner { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding-block: 8px; }
+.mkDeliveryInner { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding-block: 5px; }
 .mkDeliveryPin { color: var(--mk-red); flex: none; }
 .mkDelivery b { color: var(--mk-red); font-weight: 700; }
-.mkDelivery select { border: 0; background: var(--mk-red-soft); color: var(--mk-red-dark); font: inherit; font-weight: 700; border-radius: 8px; padding: 4px 8px; cursor: pointer; }
+.mkDelivery select { border: 0; background: var(--mk-red-soft); color: var(--mk-red-dark); font: inherit; font-weight: 700; border-radius: 8px; padding: 6px 8px; min-height: 36px; cursor: pointer; }
 .mkSep { color: #cfd2d8; display: none; }
 @media (min-width: 760px) { .mkSep { display: inline; } }
 @media (max-width: 759px) { .mkDeliveryNote { display: none; } }
@@ -721,3 +721,14 @@ html body.mk .focalStorefront .focalStock.isLow { color: #92400e; font-weight: 7
 html body.mk .aliProductVideo { display: grid; gap: 8px; margin-top: 14px; }
 html body.mk .aliProductVideo > span { font-size: 14px; font-weight: 700; color: var(--mk-ink); }
 html body.mk .aliProductVideo video { display: block; width: 100%; max-height: 72vh; border-radius: var(--mk-radius); background: #000; box-shadow: var(--mk-shadow-1); }
+
+/* Readability and thumb size (UX audit): nothing a shopper has to read is under 12px, and the small
+   controls have room for a finger. */
+html body .focalAnnouncementGlobalInner { font-size: 12.5px !important; }
+html body .focalAnnouncementDismiss { display: inline-grid; place-items: center; min-width: 40px; min-height: 40px; margin: -8px; }
+html body.mk .focalStorefront .focalTrustGrid span { font-size: 12px !important; }
+html body.mk .focalNav.mkHeader .focalCartCount { font-size: 12px !important; }
+html body.mk .mkCardBadge { font-size: 12px; }
+.mkOfferText small { font-size: 11.5px; }
+.mkSpotText small { font-size: 11.5px; }
+html body.mk .aliProductPage .aliTapLink { display: inline-block; padding-block: 11px; }

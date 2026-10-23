@@ -71,7 +71,9 @@ export function mentionedAmounts(text: string): number[] {
 export function topBarMismatch(text: string, threshold: number | null) {
   if (!threshold || !/free/i.test(text)) return null
   const amounts = mentionedAmounts(text)
-  if (!amounts.length || amounts.includes(threshold)) return null
+  // A single amount is shown as the store's real one automatically (lib/topbar-amount.ts); only
+  // messages with several amounts, none of them right, still need a person to fix them.
+  if (amounts.length < 2 || amounts.includes(threshold)) return null
   return amounts[0]
 }
 

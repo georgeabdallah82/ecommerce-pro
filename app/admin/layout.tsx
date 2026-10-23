@@ -20,27 +20,25 @@ const groups: AdminSidebarGroup[] = [
     { href: '/admin', label: 'Dashboard', permission: 'dashboard.view', icon: 'dashboard' },
     { href: '/admin/notices', label: 'Team notices', permission: 'notices.manage', icon: 'notices' },
   ]},
-  { id: 'orders', label: 'Orders', items: [
+  { id: 'orders', label: 'Orders', moreLabel: 'Advanced', items: [
     { href: '/admin/orders', label: 'Orders', permission: 'orders.view', icon: 'orders' },
     { href: '/admin/orders/drivers', label: 'Drivers', permission: 'orders.view', icon: 'drivers' },
-    { href: '/admin/draft-orders', label: 'Draft orders', permission: 'draftOrders.view', icon: 'draftOrders' },
     { href: '/admin/returns', label: 'Returns', permission: 'returns.view', icon: 'returns' },
-    { href: '/admin/order-edits', label: 'Order edits', permission: 'orderEdits.view', icon: 'orderEdits' },
+    { href: '/admin/draft-orders', label: 'Draft orders', permission: 'draftOrders.view', icon: 'draftOrders', more: true },
+    { href: '/admin/order-edits', label: 'Order edits', permission: 'orderEdits.view', icon: 'orderEdits', more: true },
   ]},
-  { id: 'products', label: 'Products', items: [
+  { id: 'products', label: 'Products', moreLabel: 'Stock tools', items: [
     { href: '/admin/products', label: 'Products', permission: 'products.view', icon: 'products' },
+    { href: '/admin/collections', label: 'Collections', permission: 'collections.view', icon: 'collections' },
     { href: '/admin/inventory', label: 'Inventory', permission: 'inventory.view', icon: 'inventory' },
     { href: '/admin/inventory/reorder', label: 'What to reorder', permission: 'inventory.view', icon: 'reorder' },
-    { href: '/admin/inventory/count', label: 'Stock count', permission: 'inventory.view', icon: 'stockCount' },
-    { href: '/admin/inventory/labels', label: 'Barcode stickers', permission: 'inventory.view', icon: 'labels' },
     { href: '/admin/products/prices', label: 'Change prices', permission: 'products.manage', icon: 'prices' },
-    { href: '/admin/inventory/suppliers', label: 'Suppliers', permission: 'inventory.view', icon: 'suppliers' },
-    { href: '/admin/purchase-orders', label: 'Purchase orders', permission: 'purchaseOrders.view', icon: 'purchaseOrders' },
-    { href: '/admin/inventory/transfers', label: 'Transfers', permission: 'transfers.view', icon: 'transfers' },
-    { href: '/admin/operations', label: 'Operations', permission: 'inventory.view', icon: 'operations' },
-  ]},
-  { id: 'collections', label: 'Collections', items: [
-    { href: '/admin/collections', label: 'Collections', permission: 'collections.view', icon: 'collections' },
+    { href: '/admin/inventory/count', label: 'Stock count', permission: 'inventory.view', icon: 'stockCount', more: true },
+    { href: '/admin/inventory/labels', label: 'Barcode stickers', permission: 'inventory.view', icon: 'labels', more: true },
+    { href: '/admin/inventory/suppliers', label: 'Suppliers', permission: 'inventory.view', icon: 'suppliers', more: true },
+    { href: '/admin/purchase-orders', label: 'Purchase orders', permission: 'purchaseOrders.view', icon: 'purchaseOrders', more: true },
+    { href: '/admin/inventory/transfers', label: 'Transfers', permission: 'transfers.view', icon: 'transfers', more: true },
+    { href: '/admin/operations', label: 'Operations', permission: 'inventory.view', icon: 'operations', more: true },
   ]},
   { id: 'customers', label: 'Customers', items: [
     { href: '/admin/customers', label: 'Customers', permission: 'customers.view', icon: 'customers' },
@@ -58,17 +56,17 @@ const groups: AdminSidebarGroup[] = [
     { href: '/admin/online-store/navigation', label: 'Navigation', permission: 'content.view', icon: 'navigation' },
     { href: '/admin/online-store/policies', label: 'Policies', permission: 'content.view', icon: 'content' },
   ]},
-  { id: 'marketing', label: 'Marketing', items: [
+  { id: 'marketing', label: 'Marketing', moreLabel: 'More marketing', items: [
     { href: '/admin/coupons', label: 'Discounts', permission: 'coupons.view', icon: 'discounts' },
     { href: '/admin/bundles', label: 'Bundles', permission: 'products.view', icon: 'bundles' },
+    { href: '/admin/marketing/quantity-deals', label: 'Quantity deals', permission: 'coupons.view', icon: 'quantityDeals' },
     { href: '/admin/newsletter', label: 'Email subscribers', permission: 'customers.view', icon: 'newsletter' },
     { href: '/admin/push-campaigns', label: 'Push campaigns', permission: 'customers.manage', icon: 'pushCampaigns' },
     { href: '/admin/marketing/win-back', label: 'Win back', permission: 'customers.view', icon: 'winback' },
-    { href: '/admin/marketing/invites', label: 'Invite a friend', permission: 'customers.view', icon: 'invites' },
-    { href: '/admin/marketing/rewards', label: 'Rewards', permission: 'customers.view', icon: 'rewards' },
     { href: '/admin/marketing/influencers', label: 'Influencers', permission: 'coupons.view', icon: 'influencers' },
-    { href: '/admin/marketing/quantity-deals', label: 'Quantity deals', permission: 'coupons.view', icon: 'quantityDeals' },
-    { href: '/admin/marketing/occasions', label: 'Occasions', permission: 'coupons.view', icon: 'occasions' },
+    { href: '/admin/marketing/rewards', label: 'Rewards', permission: 'customers.view', icon: 'rewards', more: true },
+    { href: '/admin/marketing/invites', label: 'Invite a friend', permission: 'customers.view', icon: 'invites', more: true },
+    { href: '/admin/marketing/occasions', label: 'Occasions', permission: 'coupons.view', icon: 'occasions', more: true },
   ]},
   { id: 'analytics', label: 'Analytics', items: [
     { href: '/admin/reports', label: 'Analytics & reports', permission: 'reports.view', icon: 'analytics' },
@@ -77,9 +75,8 @@ const groups: AdminSidebarGroup[] = [
   { id: 'settings', label: 'Settings', items: [
     { href: '/admin/shipping', label: 'Shipping', permission: 'shipping.view', icon: 'shipping' },
     { href: '/admin/tax', label: 'Tax', permission: 'tax.view', icon: 'tax' },
-    { href: '/admin/system', label: 'System health', permission: 'settings.view', icon: 'system' },
-    { href: '/admin/launch', label: 'Launch checklist', permission: 'settings.manage', icon: 'launch' },
-    { href: '/admin/website-status', label: 'Website status', permission: 'settings.manage', icon: 'websiteStatus' },
+    // One "Health" entry; its tabs (components/health-tabs.tsx) switch between the three pages.
+    { href: '/admin/system', label: 'Health', permission: 'settings.view', icon: 'system', alsoActive: ['/admin/launch', '/admin/website-status'] },
     { href: '/admin/users', label: 'Users & roles', permission: 'users.view', icon: 'users' },
     { href: '/admin/activity', label: 'Activity log', permission: 'activity.view', icon: 'activity' },
     { href: '/admin/settings', label: 'Settings', permission: 'settings.view', icon: 'settings' },

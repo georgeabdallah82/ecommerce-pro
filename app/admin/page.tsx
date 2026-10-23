@@ -22,7 +22,7 @@ function netSales(order: SalesOrder) {
 }
 
 function change(current: number, previous: number) {
-  if (!previous) return current ? { text: 'New vs last week', up: true } : { text: 'Same as last week', up: true }
+  if (!previous) return current ? { text: 'No sales this day last week', up: true } : { text: 'No sales yet', up: true }
   const pct = Math.round(((current - previous) / previous) * 100)
   return { text: `${pct >= 0 ? '+' : ''}${pct}% vs same day last week`, up: pct >= 0 }
 }

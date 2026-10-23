@@ -27,8 +27,10 @@ export function DeliveryBar({ theme }: { theme: any }) {
   const areas = parseDeliveryAreas(d.areas)
   const [area, setArea] = useState('')
   const { t } = useI18n()
+  const pathname = usePathname()
   useEffect(() => { const saved = readDeliveryArea(); if (saved) setArea(saved) }, [])
-  if (d.enabled === false || !areas.length) return null
+  // The cart and checkout have their own delivery details, so the strip would only push them down.
+  if (d.enabled === false || !areas.length || /^\/(cart|checkout|order)(\/|$)/.test(pathname || '')) return null
   const current = areas.find(a => a.name === area) || areas[0]
   const choose = (name: string) => { setArea(name); try { localStorage.setItem(DELIVERY_AREA_KEY, name) } catch {} window.dispatchEvent(new Event(DELIVERY_AREA_EVENT)) }
   return (

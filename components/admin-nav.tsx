@@ -13,14 +13,16 @@ import Link from '@/components/admin-link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Activity, ArrowLeftRight, Rocket, Star, BarChart3, Boxes, ClipboardList, CreditCard, FileEdit, FileText, Gauge, Image as ImageIcon, Layers3, LayoutDashboard, LogOut, Mail, Megaphone, Menu, MessageSquare, PackageCheck, Palette, Percent, Radio, RotateCcw, Search, Settings2, ShoppingBag, MoreHorizontal, Store, Tag, Truck, UserCog, Users, UsersRound, Workflow, X, PackagePlus, MessageCircleQuestion, HeartHandshake, UserPlus, PackageSearch, ScanBarcode, Barcode, BadgeDollarSign, Contact, CalendarHeart, type LucideIcon, Gift } from 'lucide-react'
+import { Activity, ArrowLeftRight, ChevronDown, Rocket, Star, BarChart3, Boxes, ClipboardList, CreditCard, FileEdit, FileText, Gauge, Image as ImageIcon, Layers3, LayoutDashboard, LogOut, Mail, Megaphone, Menu, MessageSquare, PackageCheck, Palette, Percent, Radio, RotateCcw, Search, Settings2, ShoppingBag, MoreHorizontal, Store, Tag, Truck, UserCog, Users, UsersRound, Workflow, X, PackagePlus, MessageCircleQuestion, HeartHandshake, UserPlus, PackageSearch, ScanBarcode, Barcode, BadgeDollarSign, Contact, CalendarHeart, type LucideIcon, Gift } from 'lucide-react'
 import AdminThemeToggle from '@/components/admin-theme-toggle'
 import OrderAlerts from '@/components/order-alerts'
 import type { Permission } from '@/lib/permissions'
 import styles from './admin-nav.module.css'
 
-export type AdminSidebarItem = { href: string; label: string; permission: Permission; icon: string }
-export type AdminSidebarGroup = { id: string; label: string; items: AdminSidebarItem[] }
+// `more` items sit behind a "More" toggle under their group (rarely used pages); `alsoActive` lists
+// other addresses that count as this item (the pages of one tabbed section).
+export type AdminSidebarItem = { href: string; label: string; permission: Permission; icon: string; more?: boolean; alsoActive?: string[] }
+export type AdminSidebarGroup = { id: string; label: string; moreLabel?: string; items: AdminSidebarItem[] }
 
 const iconMap: Record<string, LucideIcon> = {
   dashboard: LayoutDashboard, orders: ShoppingBag, products: Boxes, inventory: PackageCheck, operations: Workflow,
@@ -60,28 +62,49 @@ function useFocusTrap(active: boolean, containerRef: React.RefObject<HTMLElement
   }, [active, containerRef, onClose])
 }
 
+function itemActive(pathname: string, item: AdminSidebarItem) {
+  return isActivePath(pathname, item.href) || !!item.alsoActive?.some(href => isActivePath(pathname, href))
+}
+
+function NavLink({ item, pathname, onNavigate, badge }: { item: AdminSidebarItem; pathname: string; onNavigate?: () => void; badge?: string }) {
+  const active = itemActive(pathname, item)
+  const Icon = iconMap[item.icon] ?? Boxes
+  return (
+    <Link
+      href={item.href}
+      className={`${styles.sidebarItem}${active ? ` ${styles.sidebarItemActive}` : ''}`}
+      onClick={onNavigate}
+      aria-current={active ? 'page' : undefined}
+    >
+      <Icon size={16} aria-hidden="true" /><span>{item.label}</span>{badge && <span className={styles.navBadge}>{badge}</span>}
+    </Link>
+  )
+}
+
+function NavGroup({ group, pathname, onNavigate, badges }: { group: AdminSidebarGroup; pathname: string; onNavigate?: () => void; badges: Record<string, string> }) {
+  const main = group.items.filter(item => !item.more)
+  const more = group.items.filter(item => item.more)
+  // Opens by itself when you are on one of the tucked-away pages, so the menu never hides where you are.
+  const onMorePage = more.some(item => itemActive(pathname, item))
+  const [open, setOpen] = useState(onMorePage)
+  useEffect(() => { if (onMorePage) setOpen(true) }, [onMorePage])
+  return (
+    <div className={styles.sidebarGroup}>
+      <div className={styles.sidebarGroupLabel}>{group.label}</div>
+      {main.map(item => <NavLink key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} badge={badges[item.href]} />)}
+      {more.length > 0 && <>
+        <button type="button" className={styles.sidebarMore} onClick={() => setOpen(value => !value)} aria-expanded={open}>
+          <ChevronDown size={14} aria-hidden="true" className={open ? styles.sidebarMoreOpen : undefined} />
+          <span>{group.moreLabel || 'More'}</span>
+        </button>
+        {open && more.map(item => <NavLink key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} badge={badges[item.href]} />)}
+      </>}
+    </div>
+  )
+}
+
 function NavGroups({ groups, pathname, onNavigate, badges = {} }: { groups: AdminSidebarGroup[]; pathname: string; onNavigate?: () => void; badges?: Record<string, string> }) {
-  return <>
-    {groups.map(group => (
-      <div className={styles.sidebarGroup} key={group.id}>
-        <div className={styles.sidebarGroupLabel}>{group.label}</div>
-        {group.items.map(item => {
-          const active = isActivePath(pathname, item.href)
-          const Icon = iconMap[item.icon] ?? Boxes
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`${styles.sidebarItem}${active ? ` ${styles.sidebarItemActive}` : ''}`}
-              onClick={onNavigate}
-            >
-              <Icon size={16} aria-hidden="true" /><span>{item.label}</span>{badges[item.href] && <span className={styles.navBadge}>{badges[item.href]}</span>}
-            </Link>
-          )
-        })}
-      </div>
-    ))}
-  </>
+  return <>{groups.map(group => <NavGroup key={group.id} group={group} pathname={pathname} onNavigate={onNavigate} badges={badges} />)}</>
 }
 
 export type AdminBrand = { name: string; logoUrl?: string; logoDarkUrl?: string; iconUrl?: string }
@@ -150,6 +173,21 @@ export default function AdminNav({
   useFocusTrap(mobileOpen, mobilePanelRef, () => setMobileOpen(false))
 
   const allItems = useMemo(() => groups.flatMap(group => group.items.map(item => ({ ...item, group: group.label }))), [groups])
+  // The browser tab names the page ("Orders · Admin") instead of the store name on every page. Pages
+  // set their own title as they load, so the title is re-applied if something else changes it.
+  useEffect(() => {
+    const current = allItems.filter(item => itemActive(pathname, item)).sort((a, b) => b.href.length - a.href.length)[0]
+    if (!current) return
+    const wanted = `${current.label} \u00b7 Admin`
+    const titleEl = document.querySelector('title')
+    const apply = () => { if (document.title !== wanted) document.title = wanted }
+    apply()
+    if (!titleEl) return
+    const observer = new MutationObserver(apply)
+    observer.observe(titleEl, { childList: true, characterData: true, subtree: true })
+    return () => observer.disconnect()
+  }, [allItems, pathname])
+
   const normalizedQuery = query.trim().toLowerCase()
   const results = useMemo(
     () => (!normalizedQuery ? [] : allItems.filter(item => `${item.group} ${item.label}`.toLowerCase().includes(normalizedQuery)).slice(0, 8)),

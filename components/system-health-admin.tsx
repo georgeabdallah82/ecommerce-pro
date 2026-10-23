@@ -76,25 +76,34 @@ export default function SystemHealthAdmin({ initial, canRepair }: { initial: Hea
 
   const counts = health.checks.reduce((a, c) => { a[c.severity] += 1; return a }, { ok: 0, warning: 0, critical: 0 })
 
+  // Problems first (worst on top); the checks that are fine are tucked into one collapsed list.
+  const problems = health.checks.filter(c => c.severity !== 'ok').sort((a, b) => Number(b.severity === 'critical') - Number(a.severity === 'critical'))
+  const healthy = health.checks.filter(c => c.severity === 'ok')
+  const renderCheck = (check: Check) => {
+    const href = CHECK_LINKS[check.key]
+    const body = <>
+      <div className={styles.checkHead}><span className={`${ui.statusPill} ${TONE[check.severity]}`}><StatusIcon severity={check.severity} /> {check.severity}</span>{typeof check.count === 'number' && <strong>{check.count}</strong>}</div>
+      <h3>{check.label}</h3>
+      <p>{check.message}</p>
+      {href && <span className={styles.checkAction}>{check.severity === 'ok' ? 'Open section' : 'Fix this'} <ChevronRight size={13} /></span>}
+    </>
+    const className = `${ui.card} ${styles.check} ${CHECK_TONE[check.severity]}`
+    return href
+      ? <Link href={href} className={className} key={check.key}>{body}</Link>
+      : <div className={className} key={check.key}>{body}</div>
+  }
+
   return <div className={styles.page}>
-    <div className={ui.sectionHead}><div><span className={ui.muted}>OPERATIONS</span><h1 className={ui.title}>System health</h1><p className={ui.muted}>A live control plane for backend configuration, data integrity and operational readiness.</p></div><div className="inline"><button className={`${ui.btn} ${ui.btnSecondary}`} onClick={refresh} disabled={busy}><RefreshCw size={15} /> {busy ? 'Checking…' : 'Refresh'}</button>{canRepair && <button className={ui.btn} onClick={repair} disabled={busy} title="Publishes active products missing a publish date, and disables expired coupons that are still marked active. Other warnings need to be fixed in their own admin section.">
+    <div className={ui.sectionHead}><div><span className={ui.muted}>Health</span><h1 className={ui.title}>System health</h1><p className={ui.muted}>Checks your store's settings and data. Anything that needs attention is shown first.</p></div><div className="inline"><button className={`${ui.btn} ${ui.btnSecondary}`} onClick={refresh} disabled={busy}><RefreshCw size={15} /> {busy ? 'Checking…' : 'Refresh'}</button>{canRepair && <button className={ui.btn} onClick={repair} disabled={busy} title="Publishes active products missing a publish date, and disables expired coupons that are still marked active. Other warnings need to be fixed in their own admin section.">
         <Wrench size={15} /> Safe repair
       </button>}</div></div>
     {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
-    {canRepair && <p className={`${ui.muted} ${ui.tiny} ${styles.repairNote}`}>Safe repair only fixes two things automatically: unpublished active products and expired-but-active coupons. Every other card below links to the admin section where you can fix it.</p>}
+    {canRepair && <p className={`${ui.muted} ${styles.repairNote}`}>Safe repair only fixes two things automatically: unpublished active products and expired-but-active coupons. Every other card links to the page where you can fix it.</p>}
     <div className={`${ui.card} ${styles.hero}`}><div><span className={`${ui.statusPill} ${TONE[health.status]}`}><StatusIcon severity={health.status} /> {health.status === 'ok' ? 'All systems healthy' : health.status === 'warning' ? 'Attention required' : 'Critical issues detected'}</span><div className={styles.timestamp}>Last checked {new Date(health.generatedAt).toLocaleString()}</div></div><div className={styles.totals}><div><strong>{counts.ok}</strong><span>Healthy</span></div><div><strong>{counts.warning}</strong><span>Warnings</span></div><div><strong>{counts.critical}</strong><span>Critical</span></div></div></div>
-    <div className={styles.grid}>{health.checks.map(check => {
-      const href = CHECK_LINKS[check.key]
-      const body = <>
-        <div className={styles.checkHead}><span className={`${ui.statusPill} ${TONE[check.severity]}`}><StatusIcon severity={check.severity} /> {check.severity}</span>{typeof check.count === 'number' && <strong>{check.count}</strong>}</div>
-        <h3>{check.label}</h3>
-        <p>{check.message}</p>
-        {href && <span className={styles.checkAction}>{check.severity === 'ok' ? 'Open section' : 'Fix this'} <ChevronRight size={13} /></span>}
-      </>
-      const className = `${ui.card} ${styles.check} ${CHECK_TONE[check.severity]}`
-      return href
-        ? <Link href={href} className={className} key={check.key}>{body}</Link>
-        : <div className={className} key={check.key}>{body}</div>
-    })}</div>
+    {problems.length > 0 && <div className={styles.grid}>{problems.map(renderCheck)}</div>}
+    {healthy.length > 0 && <details className={styles.healthyBox} open={problems.length === 0}>
+      <summary>{healthy.length} checks are healthy</summary>
+      <div className={styles.grid}>{healthy.map(renderCheck)}</div>
+    </details>}
   </div>
 }
