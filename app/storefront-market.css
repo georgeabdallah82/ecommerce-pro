@@ -1026,3 +1026,23 @@ html body.mk .aliProductThumbs img { object-fit: contain; background: #fff; }
 .pdpZoomClose:hover, .pdpZoomNav:hover { background: var(--mk-red, #d7261e); color: #fff; }
 .pdpZoomCount { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); font-size: 14px; font-weight: 700; color: var(--mk-ink, #121212); background: var(--mk-well, #f1f1ef); padding: 6px 12px; border-radius: 999px; }
 @media (prefers-reduced-motion: reduce) { .pdpZoomStage img { transition: none; } }
+
+/* Shop: no result (components/aliexpress-shop.tsx) */
+html body.mk .shopEmpty { display: grid; justify-items: center; gap: 10px; padding: 48px 20px; background: var(--mk-card, #fff); border-radius: 16px; box-shadow: 0 0 0 1px var(--mk-line, #ececec); color: var(--mk-ink, #121212); }
+html body.mk .shopEmpty svg { color: var(--mk-red, #d7261e); }
+html body.mk .shopEmpty strong { font-family: var(--mk-display); font-size: 20px; font-weight: 700; overflow-wrap: anywhere; }
+html body.mk .shopEmpty p { margin: 0; font-size: 14.5px; color: color-mix(in srgb, var(--mk-ink, #121212) 72%, #fff); }
+html body.mk .shopEmpty .focalButton { margin-top: 6px; }
+
+/* Shop loading skeleton (app/shop/loading.tsx) */
+.shopSkeleton { padding-block: 24px 48px; }
+.skelGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }
+@media (min-width: 760px) { .skelGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; } }
+.skelCard { display: grid; gap: 10px; }
+.skelBox, .skelBar { border-radius: 12px; background: linear-gradient(90deg, #ececea 0%, #f6f6f4 50%, #ececea 100%); background-size: 200% 100%; animation: skelShine 1.2s ease-in-out infinite; }
+.skelBox { aspect-ratio: 1; border-radius: 14px; }
+.skelBar { height: 14px; border-radius: 7px; }
+.skelBar.short { width: 45%; height: 18px; }
+.skelSearch { height: 46px; border-radius: 999px; }
+@keyframes skelShine { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) { .skelBox, .skelBar { animation: none; } }

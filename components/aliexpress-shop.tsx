@@ -96,7 +96,13 @@ export default function AliExpressShop({ theme, products, collections, query, se
               ))}
             </div>
           ) : (
-            <div className="aliEmptyState">{t('No products match your filters.')}</div>
+            // No result: say what was searched and offer the way out (a shorter word, or everything).
+            <div className="aliEmptyState shopEmpty">
+              <Search size={28} aria-hidden="true" />
+              <strong>{query.q ? t('No results for "{query}"', { query: query.q }) : t('No products match your filters.')}</strong>
+              <p>{query.q ? t('Check the spelling or try a shorter word.') : t('Try another collection or price range.')}</p>
+              <Link className="focalButton primary" href="/shop">{t('See all products')}</Link>
+            </div>
           )}
 
           {pagination && pagination.pages > 1 && (

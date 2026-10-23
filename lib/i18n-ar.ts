@@ -942,4 +942,10 @@ export const AR: Record<string, string> = {
   "Photo {n} of {total}": "الصورة {n} من {total}",
   "Previous photo": "الصورة السابقة",
   "Next photo": "الصورة التالية",
+  // Shop page with no result (components/aliexpress-shop.tsx)
+  'No results for "{query}"': 'لا نتائج لـ "{query}"',
+  "Check the spelling or try a shorter word.": "تأكد من الكتابة أو جرّب كلمة أقصر.",
+  "Try another collection or price range.": "جرّب مجموعة أو نطاق سعر آخر.",
+  "See all products": "عرض كل المنتجات",
+  "Loading products…": "جارٍ تحميل المنتجات…",
 }
