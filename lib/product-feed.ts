@@ -55,8 +55,11 @@ export function plainText(html: string | null | undefined) {
 // Such names are sent in normal capitalisation; sizes and codes with digits ("2.5L", "3TIER") and
 // Arabic (which has no capitals) are left alone. Names that already mix cases are never touched.
 export function feedTitle(name: string) {
-  const letters = name.match(/[A-Za-z]/g) || []
-  if (letters.length < 4 || /[a-z]/.test(name.replace(/\b\d+[a-z]+\b/gi, ''))) return name
+  // Only the words without digits decide: sizes and codes like "26x27x65" or "3TIER" are left
+  // as they are, so a name typed in capitals with a size in it is still fixed.
+  const words = name.split(/\s+/).filter(word => !/\d/.test(word))
+  const letters = words.join('').match(/[A-Za-z]/g) || []
+  if (letters.length < 4 || words.some(word => /[a-z]/.test(word))) return name
   return name.split(/(\s+)/).map(word => /\d/.test(word) ? word : word.replace(/[A-Za-z]+/g, w => w[0] + w.slice(1).toLowerCase())).join('')
 }
 
@@ -67,7 +70,10 @@ export function productFeedXml(products: FeedProduct[], store: { name: string; u
     .map(p => {
       const images = p.images.map(i => i.url).filter(url => url && !/\.svg(\?|$)/i.test(url)).map(absolute)
       const onSale = !!p.compareAtPrice && p.compareAtPrice > p.basePrice
-      const description = (plainText(p.description) || plainText(p.shortDescription) || p.name).slice(0, 4990)
+      // A description that is only a number or a stray character ("0") says nothing, so the name
+      // stands in; one typed in capitals gets the same fix as the title (Meta flags both).
+      const written = plainText(p.description) || plainText(p.shortDescription)
+      const description = feedTitle(written && written.replace(/[\d\s.,:;-]/g, '').length >= 3 ? written : p.name).slice(0, 4990)
       return [
         '<item>',
         `<g:id>${xml(p.id)}</g:id>`,

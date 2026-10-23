@@ -44,8 +44,20 @@ describe('product feed', () => {
     assert.equal(feedTitle('ARM&HAMMER PLUS OXI CLEAN STAIN FIGHTER'), 'Arm&Hammer Plus Oxi Clean Stain Fighter')
     assert.equal(feedTitle('AYL.GOODS PORCELAIN DINNER SET 2.5L'), 'Ayl.Goods Porcelain Dinner Set 2.5L')
     assert.equal(feedTitle('Joseph Joseph PowerGrip Kitchen Scissors'), 'Joseph Joseph PowerGrip Kitchen Scissors')
-    assert.equal(feedTitle('METALTEX ORBIT STRG RACK 3TIER 26x27x65'), 'METALTEX ORBIT STRG RACK 3TIER 26x27x65')
+    assert.equal(feedTitle('METALTEX ORBIT STRG RACK 3TIER 26x27x65'), 'Metaltex Orbit Strg Rack 3TIER 26x27x65', 'sizes and codes keep their own spelling')
+    assert.equal(feedTitle('Persil Liquid Laundry detergent 2.5L'), 'Persil Liquid Laundry detergent 2.5L')
     assert.equal(feedTitle('\u0645\u0646\u0638\u0641 \u0627\u0644\u0645\u0637\u0628\u062e'), '\u0645\u0646\u0638\u0641 \u0627\u0644\u0645\u0637\u0628\u062e')
     assert.ok(productFeedXml([{ ...base, name: 'CHOOSING STONEWARE BOWL BLUE' }], store).includes('<g:title>Choosing Stoneware Bowl Blue</g:title>'))
+  })
+})
+
+describe('feed descriptions Meta accepts', () => {
+  it('fixes a description typed in capitals and replaces one that says nothing', () => {
+    const caps = productFeedXml([{ ...base, description: 'CHOOSING STONEWARE BOWL BLUE' }], store)
+    assert.match(caps, /<g:description>Choosing Stoneware Bowl Blue<\/g:description>/)
+    const zero = productFeedXml([{ ...base, name: 'Baloo Tissues', description: '0' }], store)
+    assert.match(zero, /<g:description>Baloo Tissues<\/g:description>/)
+    const own = productFeedXml([{ ...base, description: 'Soft tissues, 3 ply.' }], store)
+    assert.match(own, /<g:description>Soft tissues, 3 ply.<\/g:description>/)
   })
 })
