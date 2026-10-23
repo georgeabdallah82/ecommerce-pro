@@ -1,6 +1,7 @@
 import './globals.css'
 import './storefront-legacy.css'
 import './storefront-market.css'
+import './storefront-haul.css'
 import './storefront-selling.css'
 import { headers } from 'next/headers'
 import { db } from '@/lib/prisma'
