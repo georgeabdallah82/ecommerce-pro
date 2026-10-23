@@ -859,6 +859,22 @@ model InviteReward {
   @@index([inviteCode])
 }
 
+// "Rewards by phone number" (Admin > Marketing > Rewards, lib/rewards.ts): a customer who reaches
+// every N delivered orders earns a thank-you code. Most customers order without an account, so the
+// customer is the phone number (digits with the country code). One row per code made: `milestone`
+// is which reward it is for that phone (1 = the first N orders, 2 = the next N, ...), so the same
+// reward is never made twice. The code itself is a one-use discount in Discounts.
+model PhoneReward {
+  id        String   @id @default(cuid())
+  phone     String
+  milestone Int
+  code      String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  @@unique([phone, milestone])
+  @@index([createdAt])
+}
+
 // "Influencer codes" (lib/influencers.ts): a person who promotes the store with their own code. The
 // code is a normal discount in Discounts (same text, percent set here); every order that used it
 // counts for them, and they earn commissionPercent on what was delivered. Payments made to them

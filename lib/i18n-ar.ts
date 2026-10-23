@@ -918,9 +918,11 @@ export const AR: Record<string, string> = {
   "You have already sent the most screenshots allowed for this order. We will check them soon.": "أرسلت الحد الأقصى من لقطات الشاشة لهذا الطلب. سنراجعها قريبًا.",
   "We could not save your screenshot right now. Please send it to us on WhatsApp.": "تعذّر حفظ لقطة الشاشة الآن. يرجى إرسالها لنا عبر واتساب.",
   "Pay {amount} with {provider}": "ادفع {amount} عبر {provider}",
-  "Pay {amount} by wallet transfer": "ادفع {amount} بتحويل إلى المحفظة",
   "Account number": "رقم الحساب",
-  "We'll contact you with the payment details.": "سنتواصل معك بتفاصيل الدفع.",
+  "Payment details": "تفاصيل الدفع",
+  "Send the payment to the account below; we ship once it arrives.": "أرسل المبلغ إلى الحساب أدناه؛ نشحن الطلب فور وصوله.",
+  "Account number:": "رقم الحساب:",
+  "Pay to": "ادفع إلى",
   // Keyboard users (components/skip-link.tsx)
   "Skip to content": "تخطَّ إلى المحتوى",
 }

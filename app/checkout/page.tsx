@@ -28,7 +28,7 @@ const LEBANON = new RegExp('^(lebanon|lb|\\u0644\\u0628\\u0646\\u0627\\u0646)$',
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 type PaymentDetails = {
-  bank: { bankName: string; accountName: string; iban: string; instructions: string } | null
+  bank: { label?: string; bankName: string; accountName: string; iban: string; instructions: string } | null
   wallet: { provider: string; accountName: string; accountNumber: string; instructions: string } | null
 }
 type StoreSettings = { payment: { cod: boolean; card: boolean; bank: boolean; wallet: boolean; details: PaymentDetails }; checkout: { guestCheckout: boolean; countries?: Array<{ code: string; name: string }> }; selling?: { giftOption?: boolean; lbp?: { show: boolean; rate: number } } | null }
@@ -255,7 +255,7 @@ export default function Checkout() {
   }, [clientCheckout])
 
   const enabledMethods = settings ? [
-    settings.payment.cod && ['COD', t('Cash on delivery')], settings.payment.card && ['CARD', t('Card')], settings.payment.bank && ['BANK_TRANSFER', t('Bank transfer')], settings.payment.wallet && authenticated && ['WALLET', t('Wallet · {amount} available', { amount: money(walletBalance, walletCurrency) })],
+    settings.payment.cod && ['COD', t('Cash on delivery')], settings.payment.card && ['CARD', t('Card')], settings.payment.bank && ['BANK_TRANSFER', settings.payment.details.bank?.label || t('Bank transfer')], settings.payment.wallet && authenticated && ['WALLET', t('Wallet · {amount} available', { amount: money(walletBalance, walletCurrency) })],
   ].filter(Boolean) as [string, string][] : []
   const guestBlocked = Boolean(settings && sessionLoaded && !authenticated && settings.checkout.guestCheckout === false)
   // Only the countries the store delivers to; the first is its own country.
@@ -391,7 +391,7 @@ export default function Checkout() {
   const deliveryCost = quote ? quote.shipping : selectedRate ? rateCost(selectedRate) : null
   const total = quote ? Math.max(0, quote.total - coinsToUse) : subtotal + (deliveryCost || 0) - coinsToUse
   const areaEta = areas.find(a => a.name === area)?.eta || ''
-  const paymentNotes: Record<string, string> = { COD: t('Pay in cash when your order arrives.'), CARD: t('Pay securely by card on the next step.'), BANK_TRANSFER: t('Transfer to our bank account; we ship once it arrives.'), WALLET: t('Use your store wallet balance.') }
+  const paymentNotes: Record<string, string> = { COD: t('Pay in cash when your order arrives.'), CARD: t('Pay securely by card on the next step.'), BANK_TRANSFER: settings?.payment.details.bank?.label ? t('Send the payment to the account below; we ship once it arrives.') : t('Transfer to our bank account; we ship once it arrives.'), WALLET: t('Use your store wallet balance.') }
   const showBankDetails = paymentMethod === 'BANK_TRANSFER' && bankDetails
   const fieldClass = (name: string) => `${s.field} ${errors[name] ? s.invalid : ''}`
   const clearError = (name: string) => { if (errors[name]) setErrors(current => { const next = { ...current }; delete next[name]; return next }) }
@@ -525,7 +525,7 @@ export default function Checkout() {
             </div>
           : settings ? <div className={s.alert}>{t('No payment methods are currently enabled. Please contact the store.')}</div> : null}
         {paymentMethod === 'WALLET' && authenticated && <div className={s.note}><strong>{t('Store wallet')}</strong>{t('{amount} available for this order.', { amount: money(walletBalance, walletCurrency) })}</div>}
-        {showBankDetails && <div className={s.note}><strong>{t('Bank transfer details')}</strong>{t('Bank:')} {bankDetails.bankName || '—'}<br />{t('Account name:')} {bankDetails.accountName || '—'}<br />IBAN: <span dir="ltr">{bankDetails.iban || '—'}</span>{bankDetails.instructions && <><br />{bankDetails.instructions}</>}</div>}
+        {showBankDetails && <div className={s.note}><strong>{bankDetails.label ? t('Payment details') : t('Bank transfer details')}</strong>{bankDetails.bankName && <>{bankDetails.bankName}<br /></>}{bankDetails.accountName && <>{t('Account name:')} {bankDetails.accountName}<br /></>}{bankDetails.iban && <>{t('Account number:')} <span dir="ltr">{bankDetails.iban}</span></>}{bankDetails.instructions && <><br />{bankDetails.instructions}</>}{!bankDetails.bankName && !bankDetails.accountName && !bankDetails.iban && !bankDetails.instructions && t("We'll contact you with the bank details.")}</div>}
         {authenticated && coinBalance > 0 && <div className={s.note}><strong>{t('Use loyalty coins')}</strong><span className={s.small}>{t('1 coin = 0.01 in store currency.')}</span><div className={s.code} style={{ marginTop: 8 }}><input className={s.input} type="number" min="0" max={coinBalance} step="1" inputMode="numeric" value={coinsToUse || ''} onChange={e => setCoinsToUse(Math.max(0, Math.min(coinBalance, Number(e.target.value) || 0)))} placeholder={t('Coins to use')} aria-label={t('Coins to use')} /><button className={s.codeBtn} type="button" onClick={() => setCoinsToUse(coinBalance)}>{t('Use all')}</button></div></div>}
         {giftOpen
           ? <label className={s.field}><span className={s.label}>{t('Gift card')}</span><input className={s.input} name="giftCardCode" autoCapitalize="characters" placeholder={t('Gift card code')} /><span className={s.help}>{t('Applied when you place the order.')}</span></label>

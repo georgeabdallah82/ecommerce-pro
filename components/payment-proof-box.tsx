@@ -8,7 +8,7 @@ import { MAX_PROOFS_PER_ORDER, MAX_PROOF_BYTES } from '@/lib/payment-proof'
 import styles from './payment-proof-box.module.css'
 
 // "I paid by transfer: send a screenshot" on the thank-you page and the order page, for orders paid by
-// bank or wallet transfer that are not marked paid yet (lib/payment-proof.ts). `token` is the order's
+// bank transfer (a bank, Whish or OMT) that are not marked paid yet (lib/payment-proof.ts). `token` is the order's
 // view code, made on the server for a visitor who already passed the order's access check.
 export default function PaymentProofBox({ orderNumber, token, count }: { orderNumber: string; token: string; count: number }) {
   const { t } = useI18n()

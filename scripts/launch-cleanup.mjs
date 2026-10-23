@@ -96,6 +96,9 @@ const COUNTS = {
   // Payments written down for influencers (the influencers and their codes are kept, like all discounts).
   influencerPayouts: `SELECT count(*)::int AS n FROM "InfluencerPayout"`,
   winbackContacts: `SELECT count(*)::int AS n FROM "WinbackContact"`,
+  // Rewards by phone number (Marketing > Rewards): the list of codes made for test customers goes; the codes themselves are one-use discounts, switched off (kept, like all discounts).
+  phoneRewards: `SELECT count(*)::int AS n FROM "PhoneReward"`,
+  phoneRewardCoupons: `SELECT count(*)::int AS n FROM "Coupon" WHERE "isActive" AND code IN (SELECT code FROM "PhoneReward")`,
   // Thank-you codes made for test orders' inviters: one-use discounts, switched off (kept, like all discounts).
   inviteRewardCoupons: `SELECT count(*)::int AS n FROM "Coupon" WHERE "isActive" AND code IN (SELECT r."rewardCode" FROM "InviteReward" r WHERE r."orderId" IN (SELECT id FROM (${GONE_ORDERS}) g))`,
   emailOptOuts: `SELECT count(*)::int AS n FROM "EmailOptOut"`,
@@ -174,7 +177,7 @@ function printPreview({ c, orders, stock, state, args }) {
   console.log(`  Abandoned checkouts: ${c.abandonedCheckouts} | Newsletter signups: ${c.newsletter} | WhatsApp signups: ${c.whatsappSignups} | Email opt-outs: ${c.emailOptOuts}`)
   console.log(`  Email log: ${c.emailLog} | Visitor stats: ${c.visitorSessions} | Customer push devices: ${c.customerPushDevices}`)
   console.log(`  Back-in-stock requests: ${c.backInStock} | Notifications: ${c.notifications} | Audit log: ${c.auditLog}`)
-  console.log(`  Product questions: ${c.questions} | Invite codes: ${c.inviteCodes} | Win-back messages: ${c.winbackContacts} | Influencer payments: ${c.influencerPayouts}`)
+  console.log(`  Product questions: ${c.questions} | Invite codes: ${c.inviteCodes} | Win-back messages: ${c.winbackContacts} | Reward codes: ${c.phoneRewards} (${c.phoneRewardCoupons} switched off) | Influencer payments: ${c.influencerPayouts}`)
   console.log(`  Order numbers restart: the next order is #${state.counter === null ? FIRST_ORDER_NUMBER : state.counter + 1} now, #${FIRST_ORDER_NUMBER} after the clean-up${keepOrders ? ' (or the one after the highest kept number)' : ''}`)
   console.log('')
   console.log('KEPT')
@@ -233,8 +236,11 @@ async function clean(client, args, before) {
   await run(`DELETE FROM "CustomerSegmentMember" WHERE "customerId" IN (SELECT id FROM gone_users)`)
   await run(`DELETE FROM "User" WHERE id IN (SELECT id FROM gone_users)`)
 
+  // Reward codes made for test customers stop working before their list is cleared (the discount rows stay, like all discounts).
+  await run(`UPDATE "Coupon" SET "isActive" = false, "updatedAt" = now() WHERE code IN (SELECT code FROM "PhoneReward")`)
+
   // Everything else that only exists because of testing.
-  for (const table of ['Review', 'ProductQuestion', 'InviteCode', 'InfluencerPayout', 'WinbackContact', 'AbandonedCheckout', 'PhoneSubscriber', 'EmailOptOut', 'EmailLog', 'LiveVisitorSession', 'PushSubscription', 'BackInStockRequest', 'Notification', 'PasswordResetToken', 'RateLimitBucket', 'AdminLoginLockout', 'AuditLog']) {
+  for (const table of ['Review', 'ProductQuestion', 'InviteCode', 'InfluencerPayout', 'WinbackContact', 'PhoneReward', 'AbandonedCheckout', 'PhoneSubscriber', 'EmailOptOut', 'EmailLog', 'LiveVisitorSession', 'PushSubscription', 'BackInStockRequest', 'Notification', 'PasswordResetToken', 'RateLimitBucket', 'AdminLoginLockout', 'AuditLog']) {
     await run(`DELETE FROM "${table}"`)
   }
   await run(`DELETE FROM "Setting" WHERE key LIKE 'newsletter.subscriber.%'`)

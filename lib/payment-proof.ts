@@ -1,10 +1,12 @@
-// Payment proof: a customer who pays by bank or wallet transfer (Whish, OMT, a bank) uploads a
+// Payment proof: a customer who pays by bank transfer (a bank account, Whish or OMT: the owner's
+// "Bank transfer" method, Settings > Payments) uploads a
 // screenshot of the transfer from the order page; staff see it on the order and tap "Mark as paid".
 // The rules that need no database, shared by the upload route, the pages and the tests.
 
 export const MAX_PROOF_BYTES = 5 * 1024 * 1024
 export const MAX_PROOFS_PER_ORDER = 3
-export const PROOF_METHODS = ['BANK_TRANSFER', 'WALLET']
+// The store wallet (WALLET) is the customer's own balance, paid at once, so it never needs a screenshot.
+export const PROOF_METHODS = ['BANK_TRANSFER']
 
 export const PROOF_MESSAGES = {
   method: 'This order is not paid by transfer, so there is nothing to upload.',

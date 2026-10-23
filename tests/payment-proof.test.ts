@@ -4,16 +4,17 @@ import { describe, it } from 'node:test'
 import { MAX_PROOFS_PER_ORDER, MAX_PROOF_BYTES, PROOF_MESSAGES, isProofKey, proofState, sniffProofType } from '@/lib/payment-proof'
 
 const read = (path: string) => readFileSync(path, 'utf8')
-const order = { paymentMethod: 'WALLET', paymentStatus: 'UNPAID', status: 'PENDING' }
+const order = { paymentMethod: 'BANK_TRANSFER', paymentStatus: 'UNPAID', status: 'PENDING' }
 const bytes = (...b: number[]) => new Uint8Array([...b, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 
 describe('payment proof: when a screenshot can be added', () => {
-  it('allows bank and wallet transfers that are not paid yet, up to the limit', () => {
+  it('allows bank transfers (a bank, Whish or OMT) that are not paid yet, up to the limit', () => {
     assert.deepEqual(proofState(order, 0), { allowed: true })
-    assert.deepEqual(proofState({ ...order, paymentMethod: 'BANK_TRANSFER' }, MAX_PROOFS_PER_ORDER - 1), { allowed: true })
+    assert.deepEqual(proofState(order, MAX_PROOFS_PER_ORDER - 1), { allowed: true })
     assert.deepEqual(proofState({ ...order, paymentStatus: 'PENDING' }, 0), { allowed: true })
   })
-  it('refuses cash on delivery, card, paid, refunded and closed orders, and a full order', () => {
+  it('refuses cash on delivery, card, the store wallet (the customer\'s own balance), paid, refunded and closed orders, and a full order', () => {
+    assert.deepEqual(proofState({ ...order, paymentMethod: 'WALLET' }, 0), { allowed: false, reason: 'method' })
     assert.deepEqual(proofState({ ...order, paymentMethod: 'COD' }, 0), { allowed: false, reason: 'method' })
     assert.deepEqual(proofState({ ...order, paymentMethod: 'CARD' }, 0), { allowed: false, reason: 'method' })
     assert.deepEqual(proofState({ ...order, paymentStatus: 'PAID' }, 0), { allowed: false, reason: 'paid' })
@@ -83,10 +84,13 @@ describe('payment proof: the database change only adds', () => {
     assert.doesNotMatch(sql, /DROP |TRUNCATE|DELETE FROM|UPDATE "/)
     assert.match(read('prisma/schema.prisma'), /paymentProofs\s+PaymentProof\[\]/)
   })
-  it('is wired into the thank-you page, the order page and the admin order page, with wallet instructions', () => {
+  it('is wired into the thank-you page, the order page and the admin order page', () => {
     assert.match(read('app/order/success/page.tsx'), /<PaymentProofBox orderNumber=\{record\.orderNumber\}/)
     assert.match(read('app/account/orders/[orderNumber]/page.tsx'), /<PaymentProofBox orderNumber=\{order\.orderNumber\}/)
     assert.match(read('components/order-detail-admin.tsx'), /payment-proof\/\$\{p\.id\}/)
-    assert.match(read('components/payment-instructions.tsx'), /method === 'WALLET'/)
+    // The store wallet is paid at once: no payment instructions for it, only for bank transfers.
+    const instructions = read('components/payment-instructions.tsx')
+    assert.doesNotMatch(instructions, /method === 'WALLET'/)
+    assert.match(instructions, /if \(method !== 'BANK_TRANSFER'\) return null/)
   })
 })
