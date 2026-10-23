@@ -220,7 +220,7 @@ export const AR: Record<string, string> = {
   "Nothing here yet.": "لا شيء هنا بعد.",
   "Browse the store, compare products, and add your favourites to start a fast checkout.": "تصفّح المتجر، قارن المنتجات، وأضف ما يعجبك لتُنهي طلبك بسرعة.",
   "You might also like": "قد يعجبك أيضاً",
-  "YOUR BAG": "حقيبتك",
+  "Your bag": "حقيبتك",
   "Ready to checkout?": "جاهز لإتمام الطلب؟",
   "{count} saved for checkout.": "{count} في انتظار إتمام الطلب.",
   "{count} in cart": "{count} في السلة",
