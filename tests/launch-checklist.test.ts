@@ -112,3 +112,18 @@ describe('launch checklist: wired in', () => {
     assert.match(read('app/api/admin/launch-checklist/route.ts'), /requirePermission\('settings\.manage'\)/)
   })
 })
+
+describe('launch checklist: heavy product photos', () => {
+  it('names the heavy photos and says how to shrink them', () => {
+    const c = buildChecklist({ ...ready, heavyPhotos: [{ product: 'Tissue', kb: 598 }] })
+    const photo = c.items.find(i => i.id === 'photosize')!
+    assert.equal(photo.status, 'warn')
+    assert.match(photo.detail, /Tissue \(598 KB\)/)
+    assert.match(photo.detail, /add it again/)
+    assert.equal(c.ready, false)
+  })
+  it('is fine when every photo is light, or when sizes are unknown', () => {
+    assert.equal(buildChecklist({ ...ready, heavyPhotos: [] }).items.find(i => i.id === 'photosize')!.status, 'ok')
+    assert.equal(buildChecklist(ready).items.find(i => i.id === 'photosize')!.status, 'ok')
+  })
+})

@@ -1,10 +1,21 @@
 import { db } from '@/lib/prisma'
 import { getThemeState } from '@/lib/theme'
 import { hasPushSubscription } from '@/lib/push'
-import { LAUNCH_MANUAL_KEY, MANUAL_IDS, type LaunchFacts } from '@/lib/launch-checklist'
+import { HEAVY_PHOTO_KB, LAUNCH_MANUAL_KEY, MANUAL_IDS, type LaunchFacts } from '@/lib/launch-checklist'
 import { loadDatabaseHoursAdvice } from '@/lib/database-hours-server'
 
 const KEYS = ['contact.phone', 'payment.cod', 'payment.card', 'checkout.freeShippingThreshold', 'maintenance.enabled', LAUNCH_MANUAL_KEY, 'tracking.metaPixelId', 'tracking.gaMeasurementId', 'tracking.tiktokPixelId']
+
+// Active products' photos that are heavier than HEAVY_PHOTO_KB, from the sizes Files recorded
+// at upload. Photos linked from elsewhere have no recorded size and are not counted.
+async function heavyProductPhotos(): Promise<Array<{ product: string; kb: number }>> {
+  const images = await db.productImage.findMany({ where: { product: { status: 'ACTIVE' } }, select: { url: true, product: { select: { name: true } } }, take: 2000 })
+  if (!images.length) return []
+  const heavy = await db.mediaAsset.findMany({ where: { url: { in: [...new Set(images.map(i => i.url))] }, sizeBytes: { gt: HEAVY_PHOTO_KB * 1024 } }, select: { url: true, sizeBytes: true } })
+  const size = new Map(heavy.map(h => [h.url, Math.round(Number(h.sizeBytes || 0) / 1024)]))
+  const seen = new Set<string>()
+  return images.filter(i => size.has(i.url) && !seen.has(i.url) && seen.add(i.url)).map(i => ({ product: i.product.name, kb: size.get(i.url)! })).sort((a, b) => b.kb - a.kb)
+}
 
 export function parseManual(raw: string | null | undefined): Record<string, string> {
   try {
@@ -17,7 +28,7 @@ export function parseManual(raw: string | null | undefined): Record<string, stri
 // Everything the checklist looks at, read from the store as it is right now (Admin > Launch
 // checklist). Nothing here writes, and nothing leaves the database or the environment.
 export async function launchFacts(user: { id: string; totpEnabledAt: Date | null }): Promise<LaunchFacts> {
-  const [settings, themeState, shippingZones, activeProducts, productsWithoutPhoto, productsWithoutPrice, orderCount, phoneAlertsOn, hoursAdvice] = await Promise.all([
+  const [settings, themeState, shippingZones, activeProducts, productsWithoutPhoto, productsWithoutPrice, orderCount, phoneAlertsOn, hoursAdvice, heavyPhotos] = await Promise.all([
     db.setting.findMany({ where: { key: { in: KEYS } }, select: { key: true, value: true } }),
     getThemeState(),
     db.shippingZone.count({ where: { isActive: true, rates: { some: { isActive: true } } } }),
@@ -27,6 +38,7 @@ export async function launchFacts(user: { id: string; totpEnabledAt: Date | null
     db.order.count(),
     hasPushSubscription(user.id).catch(() => false),
     loadDatabaseHoursAdvice(4000),
+    heavyProductPhotos().catch(() => undefined),
   ])
   const map = new Map(settings.map(s => [s.key, s.value]))
   const theme: any = themeState.theme || {}
@@ -57,5 +69,6 @@ export async function launchFacts(user: { id: string; totpEnabledAt: Date | null
     footerText: String(theme.footer?.text || ''),
     manual: parseManual(map.get(LAUNCH_MANUAL_KEY)),
     databaseHours: hoursAdvice?.short,
+    heavyPhotos,
   }
 }
