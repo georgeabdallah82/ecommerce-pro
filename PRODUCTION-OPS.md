@@ -92,6 +92,14 @@ Admin → Operations lets a store owner register endpoints (`WebhookEndpoint`) f
 - **Retention:** visits 90 days, page views 30 days; the daily job deletes older rows.
 - **Database hours:** the admin page refreshes only while it is on screen. Pages stop reporting after 5 minutes without touch.
 
+## Team notices (Admin > Team notices)
+
+A short message from the owner or a manager that every staff member sees at the top of every admin page (`components/team-notices.tsx`), optionally with a phone alert to staff devices that turned notifications on (`sendTeamNoticePush`). Rules: `lib/team-notices.ts`.
+
+- **Who:** staff with the "Post team notices" permission (`notices.manage`: owner, admins, managers, or a custom role) write and remove notices; every staff member reads them. Customers and the public never see them.
+- **Limits:** 300 characters, 5 showing at a time, kept 1 day / 3 days / 7 days or until removed; at most 10 posts per person per hour (the phone alert reaches the whole team). "Got it" hides a notice on that device only.
+- **Storage:** one setting (`team.notices`), so there is no table. The launch clean-up deliberately leaves it (it only deletes a fixed list of test-data settings); remove test notices on the Team notices page. The banner is drawn when an admin page is loaded (a page already open shows a new notice after a reload; the phone alert opens the admin fresh).
+
 ## Order-day alerts
 
 Two alerts reach the owner on the phone (web push) and by email, switched on or off in Settings > Notifications > Order problems:
