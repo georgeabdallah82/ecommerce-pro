@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useI18n } from '@/components/lang-provider'
-import { Search, SlidersHorizontal } from 'lucide-react'
+import { Search, SlidersHorizontal, X } from 'lucide-react'
 import StorefrontSections, { ProductCard, QuickView } from '@/components/storefront-sections'
 import { useWishlist } from '@/components/use-wishlist'
 import { SearchTracker } from '@/components/search-tracker'
@@ -14,9 +14,10 @@ export default function AliExpressShop({ theme, products, collections, query, se
   const { t, count: plural } = useI18n()
   const { wishlist, toggleWish } = useWishlist()
   const [quickProduct, setQuickProduct] = useState<AnyMap | null>(null)
-  // On phones the price filter folds away behind a button so products show on the first screen.
+  // On phones the price filter folds away behind a button so products show on the first screen;
+  // an active price shows as a chip above the results, so the panel stays closed until asked for.
   const priceActive = Boolean(query.min || query.max)
-  const [priceOpen, setPriceOpen] = useState(priceActive)
+  const [priceOpen, setPriceOpen] = useState(false)
   const sort = query.sort || 'newest'
   const cp = theme.collectionPage || {}
   const showFilters = cp.showFilters !== false
@@ -31,6 +32,19 @@ export default function AliExpressShop({ theme, products, collections, query, se
     const qs = params.toString()
     return qs ? `/shop?${qs}` : '/shop'
   }
+
+  // What is narrowing the list right now, each with a link that drops just that one.
+  const without = (...keys: string[]) => {
+    const params = new URLSearchParams(Object.entries(query).filter(([k, v]) => v && k !== 'page' && !keys.includes(k)) as [string, string][])
+    const qs = params.toString()
+    return qs ? `/shop?${qs}` : '/shop'
+  }
+  const activeCollection = collections.find(c => c.slug === query.collection)
+  const activeFilters = [
+    query.q ? { label: t('Search: {query}', { query: query.q }), href: without('q') } : null,
+    activeCollection ? { label: activeCollection.name, href: without('collection') } : null,
+    priceActive ? { label: t('Price: {min} to {max}', { min: query.min || '0', max: query.max || t('any') }), href: without('min', 'max') } : null,
+  ].filter(Boolean) as { label: string; href: string }[]
 
   return (
     <div className="focalStorefront aliShopPage">
@@ -87,6 +101,12 @@ export default function AliExpressShop({ theme, products, collections, query, se
             <button type="submit" className="focalButton primary">{t('Search')}</button>
           </form>
 
+          {activeFilters.length > 0 && (
+            <div className="shopActiveFilters">
+              {activeFilters.map(f => <Link key={f.href} href={f.href} className="shopFilterChip" aria-label={t('Remove filter: {name}', { name: f.label })}>{f.label} <X size={14} aria-hidden="true" /></Link>)}
+              {activeFilters.length > 1 && <Link href="/shop" className="shopFilterClear">{t('Clear all')}</Link>}
+            </div>
+          )}
           <p className="aliResultCount">{plural(total, 'product')}</p>
 
           {sorted.length > 0 ? (
@@ -96,7 +116,13 @@ export default function AliExpressShop({ theme, products, collections, query, se
               ))}
             </div>
           ) : (
-            <div className="aliEmptyState">{t('No products match your filters.')}</div>
+            // No result: say what was searched and offer the way out (a shorter word, or everything).
+            <div className="aliEmptyState shopEmpty">
+              <Search size={28} aria-hidden="true" />
+              <strong>{query.q ? t('No results for "{query}"', { query: query.q }) : t('No products match your filters.')}</strong>
+              <p>{query.q ? t('Check the spelling or try a shorter word.') : t('Try another collection or price range.')}</p>
+              <Link className="focalButton primary" href="/shop">{t('See all products')}</Link>
+            </div>
           )}
 
           {pagination && pagination.pages > 1 && (

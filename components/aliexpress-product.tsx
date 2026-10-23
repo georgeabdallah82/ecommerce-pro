@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useI18n } from '@/components/lang-provider'
 import { dateLocale } from '@/lib/i18n'
-import { BadgeCheck, CalendarClock, Check, ChevronDown, ChevronRight, Heart, MessageCircle, MessageSquareText, Minus, Plus, Share2, ShoppingBag, Star, X } from 'lucide-react'
+import { BadgeCheck, CalendarClock, Check, ChevronDown, ChevronRight, Heart, MessageCircle, MessageSquareText, Minus, Plus, Share2, ShoppingBag, Star, X, ZoomIn } from 'lucide-react'
 import { useCart } from '@/components/cart-provider'
 import { useWishlist } from '@/components/use-wishlist'
 import StorefrontSections, { ProductCard, QuickView, StarRow, StoreImage, formatSold, img, money } from '@/components/storefront-sections'
-import { FreeDeliveryBadge, ShippingNote, merchantShippingText } from '@/components/shipping-note'
+import { ShippingNote, merchantShippingText } from '@/components/shipping-note'
+import DeliveryPromise from '@/components/delivery-promise'
+import PhotoZoom from '@/components/photo-zoom'
 import { DELIVERY_AREA_EVENT, readDeliveryArea } from '@/components/market-chrome'
 import { parseDeliveryAreas } from '@/lib/storefront-market'
 import { trackViewContent } from '@/lib/tracking-events'
@@ -176,7 +178,7 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
   const area = deliveryAreas.find(a => a.name === deliveryArea) || deliveryAreas[0]
   const deliveryLabel = area?.eta ? t('Delivery to {area}: {eta}', { area: area.name, eta: area.eta }) : ''
   const lowLeft = canSell && !isPreorder ? lowStockLeft({ threshold: lowStockThreshold, available, trackInventory, continueSelling: continueSellingWhenOutOfStock }) : 0
-  const stockLabel = !canSell ? t('Out of stock') : isPreorder ? t('Pre-order') : [lowLeft ? t('Only {n} left', { n: lowLeft }) : trackInventory && available > 0 ? t('{n} available', { n: available }) : t('In stock'), deliveryLabel].filter(Boolean).join(' · ')
+  const stockLabel = !canSell ? t('Out of stock') : isPreorder ? t('Pre-order') : [lowLeft ? t('Only {n} left', { n: lowLeft }) : trackInventory && available > 0 ? t('{n} available', { n: available }) : t('In stock'), showTrustBadges ? '' : deliveryLabel].filter(Boolean).join(' · ')
 
   const buildItem = () => ({
     productId: product.id,
@@ -226,6 +228,7 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
   // Photos customers added to their reviews, newest reviews first (lib/review-photos.ts).
   const reviewPhotos: string[] = reviews.flatMap((r: AnyMap) => Array.isArray(r.photos) ? r.photos : []).slice(0, 12)
   const [viewPhoto, setViewPhoto] = useState('')
+  const [zoomOpen, setZoomOpen] = useState(false)
   const avgRating = Number(product.rating || 0)
   const canWriteReview = reviewEligibility !== 'already_reviewed' && reviewEligibility !== 'not_purchased'
 
@@ -243,6 +246,7 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
           <div className="aliProductMainImage" onTouchStart={e => { swipeStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY } }} onTouchEnd={onSwipeEnd}>
             <StoreImage src={activeImage} alt={gallery[activeImgIndex]?.alt || product.name} eager />
             {discountPct > 0 && <span className="focalBadge aliProductDiscountBadge">-{discountPct}%</span>}
+            {gallery.length > 0 && <button type="button" className="pdpZoomOpen" onClick={() => setZoomOpen(true)} aria-label={t('Zoom photo')}><ZoomIn size={18} /></button>}
           </div>
           {gallery.length > 1 && (
             <div className="aliProductThumbs">
@@ -328,13 +332,8 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
 
           {storeWhatsapp && canSell && <a className="waOrderBtn" href={`https://wa.me/${storeWhatsapp}?text=${encodeURIComponent(whatsappText)}`} target="_blank" rel="noopener noreferrer"><MessageCircle size={18} aria-hidden="true" /> {t('Order on WhatsApp')}</a>}
 
-          {showTrustBadges && (
-            <div className="focalTrustGrid">
-              <span>✓ {t('Secure checkout')}</span>
-              {product.returnsEnabled !== false && <span>✓ {t('Easy returns')}</span>}
-              <FreeDeliveryBadge />
-            </div>
-          )}
+          {/* Delivery cost for the chosen area, how to pay, returns: from the store's settings. */}
+          {showTrustBadges && <DeliveryPromise area={area?.name} eta={area?.eta} orderValue={shownPrice * qty} currency={theme.currency || 'USD'} returnsEnabled={product.returnsEnabled !== false} />}
 
           {/* Under the buy buttons, so the price and Add to cart stay near the top on a phone. */}
           {product.videoUrl && (
@@ -435,6 +434,7 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
 
       {questionsEnabled && <ProductQuestions productId={product.id} questions={Array.isArray(product.questions) ? product.questions : []} />}
       {canSell && <StickyBuyBar watch=".aliBuyRow" price={money(shownPrice, theme.currency || 'USD')} compareAt={compareAt > shownPrice ? money(compareAt, theme.currency || 'USD') : undefined} addLabel={t('Add to Cart')} addedLabel={t('Added')} added={added} disabled={!purchaseAllowed} onAdd={addToCart} />}
+      {zoomOpen && gallery.length > 0 && <PhotoZoom photos={gallery.map((im: AnyMap) => ({ url: img(im.url), alt: im.alt || product.name }))} index={activeImgIndex} onIndex={setActiveImgIndex} onClose={() => setZoomOpen(false)} />}
       {viewPhoto && <div className="photoViewer" role="dialog" aria-modal="true" aria-label={t('Customer photo')} onClick={() => setViewPhoto('')}>
         <img src={viewPhoto} alt="" />
         <button type="button" onClick={() => setViewPhoto('')} aria-label={t('Close')}><X size={22} /></button>

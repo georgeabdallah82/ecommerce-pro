@@ -999,3 +999,57 @@ html body.mk .mkCardMedia img { object-fit: contain; padding: 6%; background: #f
 html body.mk .aliProductMainImage { background: #fff; }
 html body.mk .aliProductMainImage img { object-fit: contain; background: #fff !important; }
 html body.mk .aliProductThumbs img { object-fit: contain; background: #fff; }
+
+/* Product page: delivery cost for the chosen area, how to pay, returns (components/delivery-promise.tsx) */
+.pdpPromise { list-style: none; margin: 14px 0 0; padding: 4px 16px; display: grid; background: var(--mk-card, #fff); border-radius: 14px; box-shadow: 0 0 0 1px var(--mk-line, #ececec); }
+.pdpPromise li { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 12px; align-items: center; padding: 12px 0; }
+.pdpPromise li + li { border-top: 1px solid var(--mk-line, #ececec); }
+.pdpPromise svg { width: 36px; height: 36px; padding: 8px; border-radius: 50%; background: var(--br-cream, #fff1e6); color: var(--mk-red, #d7261e); }
+.pdpPromise b { display: block; font-size: 14.5px; font-weight: 700; color: var(--mk-ink, #121212); }
+.pdpPromise small { display: block; margin-top: 2px; font-size: 13.5px; color: color-mix(in srgb, var(--mk-ink, #121212) 72%, #fff); overflow-wrap: anywhere; }
+.pdpPromise a { color: var(--mk-red, #d7261e); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; display: inline-flex; min-height: 24px; align-items: center; }
+
+/* Product photo zoom (components/photo-zoom.tsx): full screen on white, like the packshots. */
+.aliProductMainImage { cursor: zoom-in; }
+.pdpZoomOpen { position: absolute; inset-block-end: 12px; inset-inline-end: 12px; z-index: 2; width: 42px; height: 42px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .94); color: var(--mk-ink, #121212); box-shadow: 0 2px 10px -4px rgba(0, 0, 0, .35); cursor: pointer; }
+.pdpZoomOpen:hover { color: var(--mk-red, #d7261e); }
+.pdpZoom { position: fixed; inset: 0; z-index: 2800; display: grid; place-items: center; background: #fff; }
+.pdpZoomStage { margin: 0; width: min(100vw, 1100px); height: calc(100dvh - 120px); overflow: hidden; display: grid; place-items: center; cursor: zoom-in; touch-action: pinch-zoom; }
+.pdpZoomStage img { max-width: 100%; max-height: 100%; object-fit: contain; transition: transform .25s ease; }
+.pdpZoomStage.isZoomed { cursor: zoom-out; }
+.pdpZoomStage.isZoomed img { transform: scale(2.2); }
+.pdpZoomClose, .pdpZoomNav { position: absolute; width: 46px; height: 46px; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--mk-well, #f1f1ef); color: var(--mk-ink, #121212); cursor: pointer; }
+.pdpZoomClose { top: 14px; inset-inline-end: 14px; }
+.pdpZoomNav { top: 50%; transform: translateY(-50%); }
+.pdpZoomNav.prev { inset-inline-start: 14px; }
+.pdpZoomNav.next { inset-inline-end: 14px; }
+.pdpZoomClose:hover, .pdpZoomNav:hover { background: var(--mk-red, #d7261e); color: #fff; }
+.pdpZoomCount { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); font-size: 14px; font-weight: 700; color: var(--mk-ink, #121212); background: var(--mk-well, #f1f1ef); padding: 6px 12px; border-radius: 999px; }
+@media (prefers-reduced-motion: reduce) { .pdpZoomStage img { transition: none; } }
+
+/* Shop: no result (components/aliexpress-shop.tsx) */
+html body.mk .shopEmpty { display: grid; justify-items: center; gap: 10px; padding: 48px 20px; background: var(--mk-card, #fff); border-radius: 16px; box-shadow: 0 0 0 1px var(--mk-line, #ececec); color: var(--mk-ink, #121212); }
+html body.mk .shopEmpty svg { color: var(--mk-red, #d7261e); }
+html body.mk .shopEmpty strong { font-family: var(--mk-display); font-size: 20px; font-weight: 700; overflow-wrap: anywhere; }
+html body.mk .shopEmpty p { margin: 0; font-size: 14.5px; color: color-mix(in srgb, var(--mk-ink, #121212) 72%, #fff); }
+html body.mk .shopEmpty .focalButton { margin-top: 6px; }
+
+/* Shop loading skeleton (app/shop/loading.tsx) */
+.shopSkeleton { padding-block: 24px 48px; }
+.skelGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }
+@media (min-width: 760px) { .skelGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; } }
+.skelCard { display: grid; gap: 10px; }
+.skelBox, .skelBar { border-radius: 12px; background: linear-gradient(90deg, #ececea 0%, #f6f6f4 50%, #ececea 100%); background-size: 200% 100%; animation: skelShine 1.2s ease-in-out infinite; }
+.skelBox { aspect-ratio: 1; border-radius: 14px; }
+.skelBar { height: 14px; border-radius: 7px; }
+.skelBar.short { width: 45%; height: 18px; }
+.skelSearch { height: 46px; border-radius: 999px; }
+@keyframes skelShine { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) { .skelBox, .skelBar { animation: none; } }
+
+/* Shop: what is filtering the list, each removable (components/aliexpress-shop.tsx) */
+.shopActiveFilters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0 10px; }
+.shopFilterChip { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 999px; background: var(--br-cream, #fff1e6); color: var(--mk-ink, #121212); font-size: 13.5px; font-weight: 700; text-decoration: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mk-red, #d7261e) 22%, #fff); max-width: 100%; overflow-wrap: anywhere; }
+.shopFilterChip:hover { box-shadow: inset 0 0 0 1.5px var(--mk-red, #d7261e); }
+.shopFilterChip svg { flex: none; color: var(--mk-red, #d7261e); }
+.shopFilterClear { font-size: 13.5px; font-weight: 700; color: var(--mk-red, #d7261e); text-decoration: underline; text-underline-offset: 3px; min-height: 36px; display: inline-flex; align-items: center; padding: 0 4px; }
