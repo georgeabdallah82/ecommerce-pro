@@ -901,7 +901,7 @@ html body.mk .cartPage .cartHeader .focalEyebrow { font-size: 13px !important; f
    three "speed lines". This pass brings the brand colours back into the places pass 1 turned to
    ink, and uses the speed lines as the one signature device:
    - section titles start with the speed-lines mark
-   - Today's deals is a full-width brand-red band; the category strip sits on brand cream
+   - the category strip sits on brand cream; Today's deals stays a plain white section
    - product buttons and chosen options are brand red again (outlined until touched)
    - the hero opens with the white speed lines above its tag
    Colours still come from the theme (--store-*), so the Theme Studio stays in control. */
@@ -953,27 +953,6 @@ html body.mk .aliCategoryItem { font-family: var(--mk-display); font-weight: 700
 html body.mk .aliCategoryInitial { color: var(--br-red); background: #fff; font-family: var(--mk-display); }
 html body.mk .aliCategoryStrip .mkHead h2, html body.mk .aliCategoryStrip .mkStripHead h2 { color: var(--br-ink); }
 
-/* Today's deals: full-width brand-red band */
-html body.mk .mkSection:has(.mkTabs) { background: var(--br-red); color: #fff; margin-top: var(--mk-section-gap); padding-block: 36px 44px; }
-html body.mk .mkSection:has(.mkTabs) .mkHead h2 { color: #fff; }
-html body.mk .mkSection:has(.mkTabs) .mkHead h2::before {
-  background:
-    linear-gradient(#fff, #fff) left top / 100% 4px no-repeat,
-    linear-gradient(rgba(255,255,255,.7), rgba(255,255,255,.7)) left center / 72% 4px no-repeat,
-    linear-gradient(rgba(255,255,255,.4), rgba(255,255,255,.4)) left bottom / 46% 4px no-repeat; }
-html body.mk .mkSection:has(.mkTabs) .mkTabs { background: rgba(255, 255, 255, .16); border-color: rgba(255, 255, 255, .28); }
-html body.mk .mkSection:has(.mkTabs) .mkTabs button { color: #fff; }
-html body.mk .mkSection:has(.mkTabs) .mkTabs button[aria-selected="true"] { background: #fff; color: var(--br-red); }
-html body.mk .mkSection:has(.mkTabs) .mkCard { color: #fff; }
-html body.mk .mkSection:has(.mkTabs) .mkCardMedia { box-shadow: none; }
-html body.mk .mkSection:has(.mkTabs) .mkCardPrice strong, html body.mk .mkSection:has(.mkTabs) .mkCardPrice:has(del) strong { color: #fff; }
-html body.mk .mkSection:has(.mkTabs) .mkCardPrice del { color: rgba(255, 255, 255, .78); }
-html body.mk .mkSection:has(.mkTabs) .mkCardNote, html body.mk .mkSection:has(.mkTabs) .mkCardNote svg { color: rgba(255, 255, 255, .9); }
-html body.mk .mkSection:has(.mkTabs) .mkCardAdd { background: #fff; color: var(--br-red); box-shadow: none; }
-html body.mk .mkSection:has(.mkTabs) .mkCardAdd:hover { background: var(--br-ink); color: #fff; }
-html body.mk .mkSection:has(.mkTabs) .mkCardBadge { background: var(--br-ink); color: #fff; }
-@media (min-width: 760px) { html body.mk .mkGrid > .mkCardSlot:nth-child(even) { margin-top: 0; } }
-
 /* Footer: orange column titles on the ink footer */
 html body.mk .focalFooter strong { color: var(--br-orange) !important; font-family: var(--mk-display); letter-spacing: -.01em; }
 
@@ -987,5 +966,3 @@ html body.mk .focalStorefront .focalTrustGrid span { background: var(--br-cream)
   html body.mk .mkCardMedia { transition: none !important; }
   html body.mk .mkCard:hover .mkCardMedia { transform: none !important; }
 }
-/* Cream band straight into the red band, no white gap between them */
-html body.mk .aliCategoryStrip + .mkSection:has(.mkTabs) { margin-top: 0; }
