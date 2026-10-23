@@ -51,6 +51,15 @@ export function plainText(html: string | null | undefined) {
     .replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim()
 }
 
+// Meta flags titles written entirely in capitals ("PERSIL LAVENDER GEL") and may hold the ad back.
+// Such names are sent in normal capitalisation; sizes and codes with digits ("2.5L", "3TIER") and
+// Arabic (which has no capitals) are left alone. Names that already mix cases are never touched.
+export function feedTitle(name: string) {
+  const letters = name.match(/[A-Za-z]/g) || []
+  if (letters.length < 4 || /[a-z]/.test(name.replace(/\b\d+[a-z]+\b/gi, ''))) return name
+  return name.split(/(\s+)/).map(word => /\d/.test(word) ? word : word.replace(/[A-Za-z]+/g, w => w[0] + w.slice(1).toLowerCase())).join('')
+}
+
 export function productFeedXml(products: FeedProduct[], store: { name: string; url: string; currency: string }) {
   const absolute = (url: string) => /^https?:\/\//i.test(url) ? url : `${store.url}${url.startsWith('/') ? '' : '/'}${url}`
   const items = products
@@ -62,7 +71,7 @@ export function productFeedXml(products: FeedProduct[], store: { name: string; u
       return [
         '<item>',
         `<g:id>${xml(p.id)}</g:id>`,
-        `<g:title>${xml(p.name.slice(0, 150))}</g:title>`,
+        `<g:title>${xml(feedTitle(p.name).slice(0, 150))}</g:title>`,
         `<g:description>${xml(description)}</g:description>`,
         `<g:link>${xml(`${store.url}/product/${encodeURIComponent(p.slug)}`)}</g:link>`,
         `<g:image_link>${xml(images[0])}</g:image_link>`,
