@@ -7,13 +7,14 @@ const read = (path: string) => readFileSync(path, 'utf8')
 const css = read('app/storefront-market.css')
 
 describe('storefront journey', () => {
-  it('product page: sticky Add to cart only after the real buttons scroll out of view', () => {
+  it('product page: sticky Add to cart whenever the real buttons are out of view', () => {
     const product = read('components/aliexpress-product.tsx')
     assert.match(product, /<StickyBuyBar watch="\.aliBuyRow"/)
     assert.match(product, /\{canSell && <StickyBuyBar/)
     const bar = read('components/sticky-buy-bar.tsx')
     assert.match(bar, /new IntersectionObserver/)
-    assert.match(bar, /entry\.boundingClientRect\.bottom < 0/)
+    // Shown whenever the real buttons are off screen -- below the first screen as well as scrolled past.
+    assert.match(bar, /setShow\(!entry\.isIntersecting\)/)
     assert.match(bar, /classList\.toggle\('hasStickyBuy', show\)/)
     assert.match(css, /body\.hasStickyBuy \.mkWhatsApp \{ bottom:/)
     assert.match(css, /\.stickyBuy \{ display: none; \}/)
@@ -35,5 +36,15 @@ describe('storefront journey', () => {
     const nav = read('components/store-nav-fixed.tsx')
     assert.match(nav, /\.focalCartQty button\{width:36px;height:36px;/)
     assert.match(nav, /\.focalCartDeleteBtn\{[^}]*min-width:40px;min-height:40px/)
+  })
+  it('product page, phones: search becomes a button and the photos can be swiped', () => {
+    const nav = read('components/store-nav-fixed.tsx')
+    assert.match(nav, /pathname\.startsWith\('\/product\/'\) \? ' mkHeaderProduct'/)
+    assert.match(css, /\.mkHeaderProduct \.aliNavSearchWrap \{ display: none !important; \}/)
+    assert.match(css, /\.mkHeaderProduct \.aliNavSearchIconMobile \{ display: inline-flex !important; \}/)
+    const product = read('components/aliexpress-product.tsx')
+    assert.match(product, /onTouchStart=\{e => \{ swipeStart\.current =/)
+    assert.match(product, /document\.documentElement\.dir === 'rtl'/)
+    assert.match(css, /\.aliProductMainImage \{ touch-action: pan-y; \}/)
   })
 })

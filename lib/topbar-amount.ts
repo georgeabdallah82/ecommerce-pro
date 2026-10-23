@@ -6,8 +6,11 @@
 // server bundle (scripts/check-worker-charset.mjs).
 const AMOUNT = new RegExp('(?:[$\\u20ac\\u00a3]\\s?\\d+(?:[.,]\\d+)?|\\d+(?:[.,]\\d+)?\\s?(?:\\$|usd\\b|dollars?\\b))', 'gi')
 
+// "free" in English, or the Arabic word root for free (any form of it), so the Arabic top bar follows the setting too.
+const FREE = new RegExp('free|\\u0645\\u062c\\u0627\\u0646', 'i')
+
 export function syncFreeDeliveryAmount(text: string, formatted: string): string {
-  if (!formatted || !/free/i.test(text)) return text
+  if (!formatted || !FREE.test(text)) return text
   const found = text.match(AMOUNT) || []
   if (found.length !== 1) return text
   return text.replace(AMOUNT, formatted)

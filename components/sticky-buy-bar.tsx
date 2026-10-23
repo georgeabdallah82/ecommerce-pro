@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react'
 import { Check, ShoppingBag } from 'lucide-react'
 
-// Phones only: once the product page's own Buy buttons have scrolled out of view, a slim bar with the
-// price and "Add to cart" stays at the bottom, so a shopper who has read the description or the reviews
-// does not have to scroll back up to buy. It never shows while the real buttons are on screen.
+// Phones only: whenever the product page's own Buy buttons are not on screen -- below the first screen
+// when a shopper lands from an ad, or above it after scrolling to the description and reviews -- a slim bar
+// with the price and "Add to cart" stays at the bottom. It never shows while the real buttons are visible.
 export default function StickyBuyBar({ watch, price, compareAt, addLabel, addedLabel, added, disabled, onAdd }: {
   watch: string
   price: string
@@ -21,8 +21,7 @@ export default function StickyBuyBar({ watch, price, compareAt, addLabel, addedL
   useEffect(() => {
     const target = document.querySelector(watch)
     if (!target || typeof IntersectionObserver === 'undefined') return
-    // Shown only when the buttons are above the screen (scrolled past), not when they are still below it.
-    const observer = new IntersectionObserver(([entry]) => setShow(!entry.isIntersecting && entry.boundingClientRect.bottom < 0), { threshold: 0 })
+    const observer = new IntersectionObserver(([entry]) => setShow(!entry.isIntersecting), { threshold: 0 })
     observer.observe(target)
     return () => observer.disconnect()
   }, [watch])
