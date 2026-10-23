@@ -7,7 +7,6 @@ import { json } from '@/lib/utils'
 import { calculateShipping, getTaxRatePercent } from '@/lib/pricing'
 import { DELIVERY_COUNTRIES_KEY, countryCode, deliveryCountries } from '@/lib/delivery-countries'
 import { addressWithPin } from '@/lib/location-pin'
-import { DELIVERY_SLOTS_SETTING, addressWithSlot, normalizeSlots } from '@/lib/delivery-slots'
 import { releaseOrderReservations, reserveStock, undoReservations } from '@/lib/inventory'
 import { getPaymentProvider } from '@/lib/payments'
 import { sendNewOrderPush } from '@/lib/push'
@@ -174,11 +173,9 @@ export async function POST(req: Request) {
     const idempotencyKey = req.headers.get('x-idempotency-key')?.trim().slice(0, 190) || null
     const paymentMethod = input.paymentMethod as PaymentMethod
     const paymentProvider = await getPaymentProvider()
-    const settingRows = await db.setting.findMany({ where: { key: { in: ['payment.cod', 'payment.card', 'payment.bank', 'payment.wallet', 'checkout.guestCheckout', DELIVERY_SLOTS_SETTING, BLOCKED_PHONES_KEY, 'store.country', DELIVERY_COUNTRIES_KEY] } }, select: { key: true, value: true } })
+    const settingRows = await db.setting.findMany({ where: { key: { in: ['payment.cod', 'payment.card', 'payment.bank', 'payment.wallet', 'checkout.guestCheckout', BLOCKED_PHONES_KEY, 'store.country', DELIVERY_COUNTRIES_KEY] } }, select: { key: true, value: true } })
     const settings = Object.fromEntries(settingRows.map(row => [row.key, row.value]))
     const guestCheckoutEnabled = settings['checkout.guestCheckout'] !== 'false'
-    // The delivery time the customer chose is kept as the words they saw, only if it is on the owner's list (lib/delivery-slots.ts).
-    input.shippingAddress = addressWithSlot(input.shippingAddress, normalizeSlots(settings[DELIVERY_SLOTS_SETTING]))
     const paymentEnabled: Record<PaymentMethod, boolean> = {
       COD: settings['payment.cod'] !== 'false',
       CARD: settings['payment.card'] === 'true' && paymentProvider.name !== 'manual',

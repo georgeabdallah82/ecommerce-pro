@@ -5,17 +5,13 @@ import { db } from '@/lib/prisma'
 import { getThemeState } from '@/lib/theme'
 import { parseDeliveryAreas } from '@/lib/storefront-market'
 import ShippingAdminPro from '@/components/shipping-admin-pro'
-import DeliverySlotsAdmin from '@/components/delivery-slots-admin'
-import { getDeliverySlots } from '@/lib/delivery-slots-server'
-import { hasPermission } from '@/lib/permissions'
 import ui from '@/components/admin-ui.module.css'
 
 export default async function Shipping() {
-  const user = await requirePermission('shipping.view')
-  const [initial, { theme }, slots] = await Promise.all([
+  await requirePermission('shipping.view')
+  const [initial, { theme }] = await Promise.all([
     db.shippingZone.findMany({ include: { rates: true }, orderBy: { name: 'asc' } }),
     getThemeState(),
-    getDeliverySlots().catch(() => ({ enabled: false, slots: [] })),
   ])
   // The delivery times shoppers see (delivery bar, product pages) live in the theme; shown here
   // too because this is where merchants look for them.
@@ -34,5 +30,5 @@ export default async function Shipping() {
       </div>}
     </div>
   )
-  return <ShippingAdminPro initial={JSON.parse(JSON.stringify(initial))} deliveryTimes={<>{deliveryTimes}<DeliverySlotsAdmin initial={slots} canManage={hasPermission(user, 'shipping.manage')} /></>} areaNames={areas.map(a => a.name)} />
+  return <ShippingAdminPro initial={JSON.parse(JSON.stringify(initial))} deliveryTimes={deliveryTimes} areaNames={areas.map(a => a.name)} />
 }

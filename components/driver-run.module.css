@@ -42,6 +42,3 @@
 .done:first-of-type { border-top: 0; }
 .footer { margin: 4px 0 0; text-align: center; font-size: 14px; color: #6b7280; }
 .footer a { color: #121212; font-weight: 800; }
-
-/* The delivery time the customer chose (lib/delivery-slots.ts). */
-.slot { display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 800; }

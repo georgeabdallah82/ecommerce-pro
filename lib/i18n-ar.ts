@@ -926,10 +926,6 @@ export const AR: Record<string, string> = {
   // Product video (Products > a product > Product video)
   "Watch it in action": "شاهده أثناء الاستخدام",
   "Product video": "فيديو المنتج",
-  // Delivery time choice (Admin > Shipping)
-  "When would you like it delivered?": "متى تريد أن نوصّله؟",
-  "Any time": "في أي وقت",
-  "Delivery time": "وقت التوصيل",
   // Keyboard users (components/skip-link.tsx)
   "Skip to content": "تخطَّ إلى المحتوى",
 }
