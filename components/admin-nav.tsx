@@ -173,18 +173,20 @@ export default function AdminNav({
   useFocusTrap(mobileOpen, mobilePanelRef, () => setMobileOpen(false))
 
   const allItems = useMemo(() => groups.flatMap(group => group.items.map(item => ({ ...item, group: group.label }))), [groups])
-  // The browser tab names the page ("Orders · Admin") instead of the store name on every page. Pages
-  // set their own title as they load, so the title is re-applied if something else changes it.
+  // The browser tab names the page ("Orders \u00b7 Admin") instead of the store name on every page.
+  // After a click between pages Next adds a fresh <title> with the store name in front of the old one
+  // and the browser reads the first, so every <title> is kept in step, and again whenever the head changes.
   useEffect(() => {
     const current = allItems.filter(item => itemActive(pathname, item)).sort((a, b) => b.href.length - a.href.length)[0]
     if (!current) return
     const wanted = `${current.label} \u00b7 Admin`
-    const titleEl = document.querySelector('title')
-    const apply = () => { if (document.title !== wanted) document.title = wanted }
+    const apply = () => {
+      document.querySelectorAll('title').forEach(el => { if (el.textContent !== wanted) el.textContent = wanted })
+      if (document.title !== wanted) document.title = wanted
+    }
     apply()
-    if (!titleEl) return
     const observer = new MutationObserver(apply)
-    observer.observe(titleEl, { childList: true, characterData: true, subtree: true })
+    observer.observe(document.head, { childList: true, subtree: true, characterData: true })
     return () => observer.disconnect()
   }, [allItems, pathname])
 

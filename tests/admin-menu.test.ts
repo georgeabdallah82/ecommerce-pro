@@ -22,4 +22,11 @@ describe('admin menu', () => {
     assert.match(layout, /label: 'Health'.*alsoActive: \['\/admin\/launch', '\/admin\/website-status'\]/)
     for (const page of ['system', 'launch', 'website-status']) assert.ok(existsSync(`app/admin/${page}/page.tsx`))
   })
+  it('names the browser tab after the page, on every <title>, after clicks between pages too', () => {
+    // After a click Next adds a second <title> (the store name) in front of the old one; the browser
+    // shows the first, so the tab title must be applied to all of them and re-applied on head changes.
+    const nav = readFileSync('components/admin-nav.tsx', 'utf8')
+    assert.match(nav, /querySelectorAll\('title'\)/)
+    assert.match(nav, /observer\.observe\(document\.head,/)
+  })
 })
