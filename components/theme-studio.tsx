@@ -63,11 +63,12 @@ import {
   Truck,
   BadgePercent, Languages } from 'lucide-react'
 import SectionInspector, {
-  renderPanel,
+  renderPanel, SectionDesign,
   text, image, textarea, select, toggle, range, color, deliveryAreas,
   type PanelSchema, type FieldCtx,
 } from '@/components/theme-section-inspector'
 import ThemeInspectorStyles from '@/components/theme-inspector-styles'
+import { NO_SECTION_COLORS } from '@/lib/section-colors'
 import { FONT_OPTIONS } from '@/lib/font-options'
 import { mergeLegacyStrips, type LegacyBlock } from '@/lib/home-strips'
 import PageSeoPanel from '@/components/page-seo-panel'
@@ -108,6 +109,8 @@ const ZONE_HIDDEN_TYPES = new Set(['header', 'announcement', 'footer', 'main_pro
 // always first and not reorderable), Page content (everything the homepage is built
 // from -- drag to reorder, add, duplicate, delete), Footer (always last). Only page
 // content ever moves, so reordering can never push a section past the header/footer.
+// Sections whose space above and below has no other control (store pages' own sections).
+const SPACING_IN_DESIGN = new Set(['main_product', 'main_collection_banner', 'main_collection_grid'])
 const isTopSection = (section: Section) => section.type === 'header' || section.type === 'announcement'
 const isFooterSection = (section: Section) => section.type === 'footer'
 const isContentSection = (section: Section) => !isTopSection(section) && !isFooterSection(section)
@@ -457,6 +460,13 @@ export default function ThemeStudio({ initial }: Props) {
     if (initialState.migrated) next.legacyHomeBlocksMigrated = true
     return next
   })
+  // One-tap colours for a section's background and text: the theme's own colours, plus white
+  // and the logo's cream, so a section stays in the brand without typing colour codes.
+  const sectionSwatches = useMemo(() => {
+    const c = theme.colors || {}
+    const list = [c.surface || '#ffffff', c.background, '#fff1e6', c.secondary, c.primary, c.accent, c.text]
+    return [...new Set(list.filter((v: any) => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v)).map((v: string) => v.toLowerCase()))]
+  }, [theme.colors])
   const [templates, setTemplates] = useState<Record<string, Section[]>>(() => initialState.templates)
   const [page, setPage] = useState(() => (initial.openPage ? pageTemplateKey(initial.openPage) : 'Home page'))
   const [pages, setPages] = useState<PageRow[]>([])
@@ -1196,13 +1206,15 @@ export default function ThemeStudio({ initial }: Props) {
               <>
                 {editLang === 'ar' && <p className={styles.langNote}>Editing the <b>Arabic</b> texts. Empty boxes show the English (or the store&apos;s standard Arabic for texts like &quot;Shop now&quot;).</p>}
                 <SectionInspector section={selected} products={products} collections={collections} loadError={dataError} onUpdate={patch} onUpdateBlocks={patchBlocks} lang={editLang} />
+                {!NO_SECTION_COLORS.has(selected.type) && <button type="button" className="themeDesignLink" onClick={() => setDrawerTab('design')}>Background and text colours: open Design</button>}
               </>
             ) : drawerTab === 'design' ? (
               <div className="themeInspector">
-                <details className="themeInspectorPanel" open><summary>Design</summary><div>
-                  <label className="themeInspectorField"><span>Section spacing</span><NumInput value={selected.settings?.spacing ?? 72} empty={0} onValue={n => patch({ spacing: n ?? 0 })} /></label>
-                  <label className="themeInspectorField"><span>Content width</span><NumInput value={selected.settings?.contentWidth ?? 1180} empty={0} onValue={n => patch({ contentWidth: n ?? 0 })} /></label>
-                </div></details>
+                <SectionDesign section={selected} swatches={sectionSwatches} onUpdate={patch} />
+                {/* The old width box here was never read by any section; other sections have Spacing in their Content tab. */}
+                {SPACING_IN_DESIGN.has(selected.type) && <details className="themeInspectorPanel" open><summary>Spacing</summary><div>
+                  <label className="themeInspectorField"><span>Space above and below</span><NumInput value={selected.settings?.spacing ?? 72} empty={0} onValue={n => patch({ spacing: n ?? 0 })} /></label>
+                </div></details>}
               </div>
             ) : (
               <div className="themeInspector">
