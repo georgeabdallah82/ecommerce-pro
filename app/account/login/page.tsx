@@ -1,8 +1,11 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { StoreFooter } from '@/components/store-footer'
 import { login } from './server'
 import { safeNextPath } from '@/lib/links'
 import { getT } from '@/lib/i18n-server'
+
+export const metadata: Metadata = { title: 'Sign in' }
 
 export default async function Login({ searchParams }: { searchParams: Promise<{ error?: string; next?: string }> }) {
   const params = await searchParams
