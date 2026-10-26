@@ -1065,3 +1065,22 @@ html body.mk .secTint[data-bg] > section { margin-block: 0 !important; padding-b
 html body .secTint :is(.mkHead h2, .mkHead p, .mkLink, .mkStripHead h2, .aliSectionHead h2, .aliViewAll, .focalSectionHead h2, .focalSectionHead p, .focalEyebrow, .aliCategoryItem > span:last-child) { color: var(--sec-fg) !important; }
 /* On a coloured band the product cards get their white card back, so name and price stay readable. */
 html body.mk .secTint[data-bg] .mkCard { background: #fff; padding: 8px 8px 12px; border-radius: var(--mk-radius, 12px); }
+
+/* Phones: the hero's speed lines use the logo's orange (they were white, which read as a menu button). */
+@media (max-width: 759px) {
+  html body.mk .mkHero-full .mkSlideCopy::before {
+    background:
+      linear-gradient(var(--br-orange), var(--br-orange)) left 1px / 77% 4px no-repeat,
+      linear-gradient(var(--br-orange), var(--br-orange)) left center / 100% 5px no-repeat,
+      linear-gradient(var(--br-orange), var(--br-orange)) left calc(100% - 1px) / 77% 4px no-repeat; }
+  /* Phones: the discount already shows in the price row, so the badge on the photo is hidden (it
+     covered the logo on some photos). */
+  html body .aliProductDiscountBadge { display: none !important; }
+  /* Phones: the WhatsApp button slides away while the shopper scrolls down (see WhatsAppFloat). */
+  html body.mk .mkWhatsApp { transition: transform .25s ease, opacity .25s ease; }
+  html body.mk .mkWhatsApp.tucked { transform: translateY(170%); opacity: 0; pointer-events: none; }
+}
+
+/* Offer tiles: a deeper shade under the words, so the small label and the words read on bright
+   photos (the Arabic home tile was hard to read). */
+html body.mk .mkOfferText { background: linear-gradient(0deg, rgba(0,0,0,.82) 0%, rgba(0,0,0,.5) 60%, rgba(0,0,0,0) 100%); padding-top: 40px; text-shadow: 0 1px 2px rgba(0,0,0,.35); }

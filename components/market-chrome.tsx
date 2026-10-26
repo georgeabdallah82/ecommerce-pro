@@ -316,6 +316,21 @@ export function WhatsAppFloat({ theme }: { theme: any }) {
     })
     return () => { live = false }
   }, [enabled])
+  // On phones it slides away while the shopper scrolls down, so it never covers a card's button,
+  // and comes back as soon as they scroll up.
+  const [tucked, setTucked] = useState(false)
+  useEffect(() => {
+    if (!enabled) return
+    let last = window.scrollY
+    const onScroll = () => {
+      const y = window.scrollY
+      if (y > last + 4 && y > 240) setTucked(true)
+      else if (y < last - 4) setTucked(false)
+      last = y
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [enabled])
   if (!enabled || !store) return null
   // Never over the checkout form or inside the admin.
   if (pathname.startsWith('/admin') || pathname.startsWith('/checkout') || pathname.startsWith('/driver/')) return null
@@ -327,7 +342,7 @@ export function WhatsAppFloat({ theme }: { theme: any }) {
   const label = String(w.label || '').trim()
   return (
     <a
-      className={`mkWhatsApp ${w.position === 'left' ? 'left' : 'right'} ${w.showOnMobile === false ? 'desktopOnly' : ''} ${label ? 'hasLabel' : ''}`}
+      className={`mkWhatsApp ${w.position === 'left' ? 'left' : 'right'} ${w.showOnMobile === false ? 'desktopOnly' : ''} ${label ? 'hasLabel' : ''} ${tucked ? 'tucked' : ''}`}
       href={href}
       target="_blank"
       rel="noopener noreferrer"
