@@ -84,7 +84,6 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
     'invite.friendPercent': map.get('invite.friendPercent') || '10',
     'invite.reward': map.get('invite.reward') || '5',
     'invite.rewardDays': map.get('invite.rewardDays') || '60',
-    'orders.guestCancel.minutes': map.get('orders.guestCancel.minutes') || '30',
     'store.address': map.get('store.address') || '',
     'policy.returnDays': map.get('policy.returnDays') || POLICY_DEFAULTS.returnDays,
     'policy.refundTime': map.get('policy.refundTime') || POLICY_DEFAULTS.refundTime,
@@ -117,7 +116,7 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
       'payment.cod', 'payment.card', 'payment.bank', 'payment.wallet',
       'checkout.guestCheckout', 'notifications.orderEmail', 'notifications.lowStock',
       'notifications.reviews', 'notifications.security', 'notifications.orderProblems', 'notifications.dailySummary', 'notifications.weeklyReport', 'email.customerOrder', 'email.fulfillment', 'email.abandonedCheckout', 'email.giftCard', 'email.returnStatus', 'email.orderEdit', 'email.reviewRequest',
-      'checkout.giftOption', 'product.whatsappOrder', 'product.questions', 'orders.guestCancel.enabled',
+      'checkout.giftOption', 'product.whatsappOrder', 'product.questions',
     ].map(k => [k, map.get(k) !== 'false'])),
     // Off until switched on.
     ...Object.fromEntries(['currency.showLbp', 'freeGift.enabled', 'welcome.enabled', 'invite.enabled'].map(k => [k, map.get(k) === 'true'])),
@@ -366,10 +365,6 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
             </Card>
             <Card title="Gift option at checkout" desc="Customers can tick This is a gift and write a message. You see it on the order and on the packing slip.">
               <Toggle label="Offer the gift option" keyName="checkout.giftOption" value={flags['checkout.giftOption']} onChange={() => toggle('checkout.giftOption')} />
-            </Card>
-            <Card title="Cancel an order without an account" desc="On the thank-you page and Track my order, customers can cancel a new order themselves for a short time, until you confirm it. Orders already confirmed or paid online are not offered it. You get a notification when one is cancelled.">
-              <Toggle label="Let customers cancel a new order" keyName="orders.guestCancel.enabled" value={flags['orders.guestCancel.enabled']} onChange={() => toggle('orders.guestCancel.enabled')} />
-              <Field label="They can cancel for (minutes, 5 to 240)" value={values['orders.guestCancel.minutes']} placeholder="30" onChange={v => set('orders.guestCancel.minutes', v.replace(/[^\d]/g, '').slice(0, 3))} />
             </Card>
             <Card title="Welcome discount" desc="First-time visitors are offered your first-order code for their WhatsApp number. Create the code first in Discounts (tick First order only).">
               <Toggle label="Show the welcome popup" keyName="welcome.enabled" value={flags['welcome.enabled']} onChange={() => toggle('welcome.enabled')} />
