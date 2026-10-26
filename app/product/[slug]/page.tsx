@@ -303,6 +303,17 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     return offerFor(variant.price ?? product.basePrice, sellsWithoutStock || stock > 0, variant.sku)
   })
   const variesByOption = variantOffers.length > 1 && new Set(variantOffers.map((o) => `${o.price}|${o.availability}`)).size > 1
+  // Breadcrumb trail for Google ("Home > Collection > Product"); the main collection is the first one the product belongs to.
+  const mainCollection = product.collections[0]?.collection
+  const breadcrumb = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: `${siteUrl()}/` },
+      ...(mainCollection ? [{ '@type': 'ListItem', position: 2, name: mainCollection.name, item: `${siteUrl()}/collections/${mainCollection.slug}` }] : []),
+      { '@type': 'ListItem', position: mainCollection ? 3 : 2, name: product.name, item: `${siteUrl()}/product/${product.slug}` },
+    ],
+  }
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'Product',
@@ -338,6 +349,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, '\\u003c') }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb).replace(/</g, '\\u003c') }} />
       <ProductShareTags cents={fromPrice(product.basePrice, product.variants)} currency={storeCurrency} inStock={isAvailable} />
       <AliExpressProduct
         theme={theme}

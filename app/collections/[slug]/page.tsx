@@ -6,7 +6,7 @@ import { getUnpublishedProductIds } from '@/lib/sales-channels'
 import { notFound } from 'next/navigation'
 import { Footer } from '@/components/footer'
 import AliExpressCollectionDetail from '@/components/aliexpress-collection-detail'
-import { absoluteUrl, getSiteSeo, isShareableImage, metaText, shareMeta } from '@/lib/seo'
+import { absoluteUrl, getSiteSeo, isShareableImage, metaText, shareMeta, siteUrl } from '@/lib/seo'
 import type { Metadata } from 'next'
 import { themeTemplates } from '@/lib/theme-templates'
 import { storefrontCached } from '@/lib/storefront-cache'
@@ -59,8 +59,18 @@ export default async function CollectionPage({ params }: { params: Promise<{ slu
   // The raw collection still carries its full product rows (cost price, barcode); send only
   // the collection's own fields to the client -- products go through withProductStats above.
   const { products: _rows, ...collectionInfo } = collection
+  // Breadcrumb trail for Google ("Home > Collection").
+  const breadcrumb = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: `${siteUrl()}/` },
+      { '@type': 'ListItem', position: 2, name: collectionInfo.name, item: `${siteUrl()}/collections/${collectionInfo.slug}` },
+    ],
+  }
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb).replace(/</g, '\\u003c') }} />
       <AliExpressCollectionDetail theme={theme} collection={collectionInfo} products={products} sections={sections} zoneCollections={zoneCollections} />
       <Footer theme={theme} />
     </>

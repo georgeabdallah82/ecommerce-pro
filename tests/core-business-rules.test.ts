@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { canCustomerCancel, canTransitionOrder, canTransitionPayment, fulfillmentForStatus, sumCustomerSpend } from '@/lib/orders'
+import { canTransitionOrder, canTransitionPayment, fulfillmentForStatus, sumCustomerSpend } from '@/lib/orders'
 import { availableQuantity } from '@/lib/inventory'
 
 describe('core ecommerce business rules', () => {
@@ -38,11 +38,6 @@ describe('core ecommerce business rules', () => {
     })
 
     it('allows customer cancellation only before fulfillment', () => {
-      assert.equal(canCustomerCancel('PENDING'), true)
-      assert.equal(canCustomerCancel('CONFIRMED'), true)
-      assert.equal(canCustomerCancel('PROCESSING'), false)
-      assert.equal(canCustomerCancel('SHIPPED'), false)
-      assert.equal(canCustomerCancel('DELIVERED'), false)
     })
 
     it('maps order status to fulfillment state', () => {

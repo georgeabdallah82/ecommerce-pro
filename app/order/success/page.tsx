@@ -18,11 +18,8 @@ import { whatsappDigits } from '@/lib/links'
 import { customerOrderMessage, whatsappMessageLink } from '@/lib/order-whatsapp'
 import { inviteCardFor } from '@/lib/invites'
 import InviteShare from '@/components/invite-share'
-import GuestCancelBox from '@/components/guest-cancel-box'
 import PaymentProofBox from '@/components/payment-proof-box'
 import { proofState } from '@/lib/payment-proof'
-import { guestCancelState } from '@/lib/guest-cancel'
-import { getGuestCancelConfig } from '@/lib/guest-cancel-server'
 import s from './success.module.css'
 
 // Advanced matching for the ad pixels: SHA-256 of the buyer's email and phone, normalised the
@@ -119,11 +116,8 @@ export default async function Success({ searchParams }: { searchParams: Promise<
     place,
   }, tr))
 
-  // "Changed your mind?": cancel without an account for a short time, until the store confirms it.
   // Screenshots of a transfer already sent for this order (lib/payment-proof.ts).
   const proofCount = await db.paymentProof.count({ where: { order: { orderNumber: record.orderNumber } } }).catch(() => 0)
-
-  const cancelState = guestCancelState(record, await getGuestCancelConfig().catch(() => ({ enabled: false, minutes: 30 })))
 
   // Invite a friend (Settings > Selling tools): the customer's own code, made for their phone.
   const invite = processing ? null : await inviteCardFor(record, tr).catch(() => null)
@@ -140,7 +134,7 @@ export default async function Success({ searchParams }: { searchParams: Promise<
       </div>}
     </section>
 
-    {cancelState.allowed && !processing && <GuestCancelBox orderNumber={record.orderNumber} token={orderViewToken(record.orderNumber)} deadline={cancelState.deadline.toISOString()} />}
+    {!processing && <p className={s.small}>{tr('To cancel this order, message us on WhatsApp.')}</p>}
 
     {!processing && <section className={s.card}>
       <h2 className={s.cardTitle}>{tr('What happens next')}</h2>

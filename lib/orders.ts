@@ -38,8 +38,6 @@ export function sumCustomerSpend(orders: { status: OrderStatus; grandTotal: numb
   }, 0)
 }
 export function canTransitionPayment(from: PaymentStatus, to: PaymentStatus) { return from === to || paymentTransitions[from].includes(to) }
-export function canCustomerCancel(status: OrderStatus) { return status === 'PENDING' || status === 'CONFIRMED' }
-
 export function fulfillmentForStatus(status: OrderStatus): FulfillmentStatus {
   if (status === 'DELIVERED') return 'FULFILLED'
   if (status === 'SHIPPED' || status === 'PROCESSING') return 'PARTIAL'
