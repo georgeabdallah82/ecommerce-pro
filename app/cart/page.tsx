@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { db } from '@/lib/prisma'
 import { getThemeState } from '@/lib/theme'
 import { withProductStats } from '@/lib/product-stats'
@@ -7,7 +8,8 @@ import { Footer } from '@/components/footer'
 import AliExpressCart from '@/components/aliexpress-cart'
 import { themeTemplates } from '@/lib/theme-templates'
 
-export const dynamic = 'force-dynamic'
+export const metadata: Metadata = { title: 'Cart' }
+
 export const revalidate = 0
 
 // Cart has no pre-existing editorTemplates repair/defaults the way Product and
