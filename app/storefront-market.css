@@ -1084,3 +1084,11 @@ html body.mk .secTint[data-bg] .mkCard { background: #fff; padding: 8px 8px 12px
 /* Offer tiles: a deeper shade under the words, so the small label and the words read on bright
    photos (the Arabic home tile was hard to read). */
 html body.mk .mkOfferText { background: linear-gradient(0deg, rgba(0,0,0,.82) 0%, rgba(0,0,0,.5) 60%, rgba(0,0,0,0) 100%); padding-top: 40px; text-shadow: 0 1px 2px rgba(0,0,0,.35); }
+
+/* Tap targets: the footer's social icons, the small text links on the account pages and the links
+   on the policy pages get a transparent area around them, so a finger hits them easily (about
+   44 pixels) without changing how they look. */
+html body .focalFooterSocial a { position: relative; }
+html body .focalFooterSocial a::after { content: ""; position: absolute; inset: -6px; }
+html body p.muted > a, html body .aliLegalPage a { position: relative; }
+html body p.muted > a::after, html body .aliLegalPage a::after { content: ""; position: absolute; inset: -12px -6px; }
