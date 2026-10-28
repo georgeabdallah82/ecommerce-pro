@@ -2,11 +2,39 @@ import { db } from '@/lib/prisma'
 import { getUnpublishedProductIds } from '@/lib/sales-channels'
 import type { CartItem } from '@/components/cart-provider'
 
+type OrderLine = { productId: string; variantId: string | null; quantity: number; unitPrice: number; name: string }
+
 // "Order again" on a past order (app/account/orders/[orderNumber]): the same products at
 // today's price, as many as are in stock. Products no longer for sale and free gifts are left
 // out.
 export async function orderAgainItems(orderId: string): Promise<CartItem[]> {
   const items = await db.orderItem.findMany({ where: { orderId }, select: { productId: true, variantId: true, quantity: true, unitPrice: true, name: true } })
+  return cartLinesFor(items)
+}
+
+// "Buy again" on the account page: the products from the customer's latest orders (not cancelled),
+// each product once, at today's price and what's in stock, most recent first.
+export async function buyAgainItems(userId: string, limit = 8): Promise<CartItem[]> {
+  const orders = await db.order.findMany({
+    where: { userId, status: { not: 'CANCELLED' } },
+    orderBy: { createdAt: 'desc' },
+    take: 10,
+    select: { items: { select: { productId: true, variantId: true, quantity: true, unitPrice: true, name: true } } },
+  })
+  const seen = new Set<string>()
+  const items: OrderLine[] = []
+  for (const order of orders) {
+    for (const item of order.items) {
+      const key = `${item.productId}|${item.variantId ?? ''}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      items.push(item)
+    }
+  }
+  return (await cartLinesFor(items)).slice(0, limit)
+}
+
+async function cartLinesFor(items: OrderLine[]): Promise<CartItem[]> {
   const paid = items.filter(i => !(i.unitPrice === 0 && /\(Free gift\)$/.test(i.name)))
   if (!paid.length) return []
   const [hidden, products] = await Promise.all([

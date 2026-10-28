@@ -2,7 +2,7 @@ import { db } from '@/lib/prisma'
 import { storefrontCached } from '@/lib/storefront-cache'
 import { getUnpublishedProductIds } from '@/lib/sales-channels'
 import { getSellingConfig } from '@/lib/selling-config'
-import { searchDocs, type SearchDoc } from '@/lib/smart-search'
+import { searchDocs, spellingSuggestion, words, type SearchDoc } from '@/lib/smart-search'
 
 // The searchable text of every product for sale (lib/smart-search.ts): name first, then brand,
 // type, collections and tags, then the short description.
@@ -34,4 +34,16 @@ async function searchIndex(): Promise<SearchDoc[]> {
 export async function searchProductIds(query: string, limit = 200) {
   const [docs, selling] = await Promise.all([searchIndex(), getSellingConfig().catch(() => null)])
   return searchDocs(query, docs, selling?.searchWords || '', limit)
+}
+
+// The words the catalogue uses (names, brands, collections, tags), for "Did you mean" on a search
+// with no results (lib/smart-search.ts spellingSuggestion).
+export async function spellingSuggestionFor(query: string) {
+  const vocabulary = await storefrontCached('search-vocabulary', async () => {
+    const docs = await searchIndex()
+    const known = new Set<string>()
+    for (const doc of docs) for (const field of doc.fields) for (const word of words(field.text)) if (word.length >= 2) known.add(word)
+    return [...known]
+  })
+  return spellingSuggestion(query, vocabulary)
 }

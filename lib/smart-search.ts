@@ -105,3 +105,26 @@ export function searchDocs(query: string, docs: SearchDoc[], synonyms = '', limi
   const pool = all.length ? all : scored.filter(s => s.matched >= Math.max(1, Math.ceil(typed.length / 2)))
   return pool.sort((a, b) => b.score - a.score).slice(0, limit).map(s => s.id)
 }
+
+// "Did you mean": for a search with no results, the closest word the catalogue knows for each
+// typed word, when it is within the same typo allowance the search uses. Null when nothing
+// better is known (or the typed words are already right).
+export function spellingSuggestion(query: string, vocabulary: Iterable<string>) {
+  const typed = words(query)
+  if (!typed.length) return null
+  const known = new Set(vocabulary)
+  const fixed = typed.map(word => {
+    if (known.has(word) || word.length < 4) return word
+    const limit = allowed(word.length)
+    let best = word
+    let bestDistance = limit + 1
+    for (const candidate of known) {
+      if (Math.abs(candidate.length - word.length) > limit) continue
+      const d = distance(word, candidate, limit)
+      if (d < bestDistance) { bestDistance = d; best = candidate }
+    }
+    return bestDistance <= limit ? best : word
+  })
+  const suggestion = fixed.join(' ')
+  return suggestion !== typed.join(' ') ? suggestion : null
+}
