@@ -10,6 +10,7 @@ import { productInputError } from '@/lib/product-input'
 import { setProductCollections } from '@/lib/product-collections'
 import { cleanBarcode, productConflict, uniqueConflictMessage, variantConflict } from '@/lib/product-uniqueness'
 import { cleanVideoUrl } from '@/lib/product-video'
+import { deleteProductCascade } from '@/lib/product-delete'
 
 async function getProduct(id:string){
   const product=await db.product.findUnique({where:{id},include:{images:{orderBy:{sortOrder:'asc'}},variants:{include:{inventory:{include:{location:true}}}},inventory:{where:{variantId:null},include:{location:true}},tags:true,collections:{include:{collection:true}},metafields:{include:{definition:true}}}})
@@ -132,21 +133,7 @@ export async function DELETE(_req:Request,{params}:{params:Promise<{id:string}>}
     const existing=await db.product.findUnique({where:{id},include:{orderItems:{select:{id:true}},inventory:true}})
     if(!existing)return json({error:'Product not found'},{status:404})
     if(existing.orderItems.length>0)return json({error:'This product appears in past orders and cannot be deleted. Archive it instead to hide it from the storefront while keeping order history intact.'},{status:409})
-    await db.$transaction(async tx=>{
-      // No hard foreign keys under MongoDB, so every dependent collection is cleared explicitly
-      // (same manual-cascade approach the variant-removal code above already uses) rather than
-      // relying on Prisma's declared onDelete: Cascade, which MongoDB doesn't enforce.
-      for(const inv of existing.inventory)if(inv.quantity>0)await tx.inventoryMovement.create({data:{inventoryId:inv.id,type:'ADJUSTMENT',quantity:-inv.quantity,reason:'Product deleted',referenceId:id}})
-      await tx.inventoryItem.deleteMany({where:{productId:id}})
-      await tx.productImage.deleteMany({where:{productId:id}})
-      await tx.productVariant.deleteMany({where:{productId:id}})
-      await tx.productTag.deleteMany({where:{productId:id}})
-      await tx.metafieldValue.deleteMany({where:{ownerType:'PRODUCT',ownerId:id}})
-      await tx.collectionProduct.deleteMany({where:{productId:id}})
-      await tx.review.deleteMany({where:{productId:id}})
-      await tx.wishlistItem.deleteMany({where:{productId:id}})
-      await tx.product.delete({where:{id}})
-    })
+    await deleteProductCascade(db,existing)
     await audit(actor.id,'product.deleted','Product',id,{name:existing.name,sku:existing.sku})
     return json({ok:true})
   }catch(e){

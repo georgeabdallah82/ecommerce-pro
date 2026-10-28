@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from '@/components/admin-link'
-import { Archive, CheckCircle2, ChevronDown, Download, ChevronLeft, ChevronRight, MoreHorizontal, Plus, Search, Star, StarOff, Tag, Upload, X } from 'lucide-react'
+import { Archive, CheckCircle2, ChevronDown, Download, ChevronLeft, ChevronRight, MoreHorizontal, Plus, Search, Star, StarOff, Tag, Trash2, Upload, X } from 'lucide-react'
 import ProductExportDialog from './product-export-dialog'
+import { useConfirm } from './admin-confirm'
 import { money } from '@/lib/config'
 import styles from './admin-products-list.module.css'
 import ui from './admin-ui.module.css'
@@ -45,6 +46,7 @@ export default function AdminProductsList({ initial }: { initial: any }) {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [bulkOpen, setBulkOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
+  const confirm = useConfirm()
 
   async function load(nextPage = page) {
     setLoading(true)
@@ -87,6 +89,28 @@ export default function AdminProductsList({ initial }: { initial: any }) {
       await load(page)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Bulk action failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function deleteSelected() {
+    const count = selected.length
+    if (!count) return
+    if (!await confirm({ title: `Delete ${count} product${count === 1 ? '' : 's'}?`, message: 'Products that appear in past orders are kept, and you will see their names. This cannot be undone.', confirmLabel: 'Delete', tone: 'danger' })) return
+    setLoading(true)
+    setError('')
+    setNotice('')
+    setBulkOpen(false)
+    try {
+      const data = await api('/api/admin/products', { method: 'POST', body: JSON.stringify({ action: 'bulk', ids: selected, bulkAction: 'DELETE' }) })
+      const deleted = Number(data.count || 0)
+      const skipped: { name: string }[] = Array.isArray(data.skipped) ? data.skipped : []
+      await load(page)
+      const kept = skipped.length ? ` Kept ${skipped.length} because they appear in past orders (archive them instead): ${skipped.map(product => product.name).join(', ')}.` : ''
+      setNotice(`${deleted} product${deleted === 1 ? '' : 's'} deleted.${kept}`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Delete failed')
     } finally {
       setLoading(false)
     }
@@ -172,6 +196,7 @@ export default function AdminProductsList({ initial }: { initial: any }) {
             <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => bulk('ACTIVE')}><CheckCircle2 size={15} /> Activate</button>
             <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => bulk('DRAFT')}><Tag size={15} /> Draft</button>
             <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => bulk('ARCHIVED')}><Archive size={15} /> Archive</button>
+            <button className={`${ui.btn} ${ui.btnDanger}`} onClick={deleteSelected}><Trash2 size={15} /> Delete</button>
             <div className={styles.actionMenu}>
               <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setBulkOpen(value => !value)}>More <ChevronDown size={14} /></button>
               {bulkOpen && (
