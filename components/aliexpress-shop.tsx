@@ -10,7 +10,7 @@ import { SearchTracker } from '@/components/search-tracker'
 
 type AnyMap = Record<string, any>
 
-export default function AliExpressShop({ theme, products, collections, query, sections = [], pagination }: { theme: AnyMap; products: AnyMap[]; collections: AnyMap[]; query: { q?: string; collection?: string; min?: string; max?: string; sort?: string; page?: string }; sections?: AnyMap[]; pagination?: { page: number; pages: number; total: number } }) {
+export default function AliExpressShop({ theme, products, collections, query, sections = [], pagination, suggestion = null }: { theme: AnyMap; products: AnyMap[]; collections: AnyMap[]; query: { q?: string; collection?: string; min?: string; max?: string; sort?: string; page?: string }; sections?: AnyMap[]; pagination?: { page: number; pages: number; total: number }; suggestion?: string | null }) {
   const { t, count: plural } = useI18n()
   const { wishlist, toggleWish } = useWishlist()
   const [quickProduct, setQuickProduct] = useState<AnyMap | null>(null)
@@ -121,6 +121,7 @@ export default function AliExpressShop({ theme, products, collections, query, se
               <Search size={28} aria-hidden="true" />
               <strong>{query.q ? t('No results for "{query}"', { query: query.q }) : t('No products match your filters.')}</strong>
               <p>{query.q ? t('Check the spelling or try a shorter word.') : t('Try another collection or price range.')}</p>
+              {query.q && suggestion && <p><Link className="textLink" href={`/shop?q=${encodeURIComponent(suggestion)}`}>{t('Did you mean "{word}"?', { word: suggestion })}</Link></p>}
               <Link className="focalButton primary" href="/shop">{t('See all products')}</Link>
             </div>
           )}

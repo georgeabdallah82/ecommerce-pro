@@ -1,5 +1,5 @@
 import {db} from '@/lib/prisma'
-import { searchProductIds } from '@/lib/search-index'
+import { searchProductIds, spellingSuggestionFor } from '@/lib/search-index'
 import { getSellingConfig } from '@/lib/selling-config'
 import {getThemeState} from '@/lib/theme'
 import {getProductStats,withProductStats} from '@/lib/product-stats'
@@ -53,6 +53,8 @@ export default async function Shop({searchParams}:{searchParams:Promise<{q?:stri
   // Search forgives typos, Arabic spellings and the store's word list (lib/smart-search.ts); the
   // results keep their best-match order unless the shopper picks another sort.
   const searchIds=q?await searchProductIds(q):[]
+  // No match at all: the closest spelling the catalogue knows ("Did you mean").
+  const suggestion=q&&!searchIds.length?await spellingSuggestionFor(q).catch(()=>null):null
   // ?sale=flash: the products in a running flash sale (Admin > Discounts > Flash sale).
   const flashSales=sp.sale==='flash'?(await getSellingConfig().catch(()=>null))?.flashSales||[]:[]
   const flashFilter=sp.sale==='flash'&&!flashSales.some(s=>s.all)?{id:{in:[...new Set(flashSales.flatMap(s=>s.productIds))]}}:{}
@@ -90,5 +92,5 @@ export default async function Shop({searchParams}:{searchParams:Promise<{q?:stri
   const ordered=pageIds.map(id=>rowById.get(id)).filter((p):p is NonNullable<typeof p>=>Boolean(p)).map(p=>({...p,effectivePrice:effectivePriceCents(p)}))
   const products=await withProductStats(withCardStock(ordered))
   const sections=(themeTemplates(theme).Collection||[]).filter((s:any)=>s&&!COLLECTION_ZONE_EXCLUDE.has(s.type))
-  return <><AliExpressShop theme={theme} products={products} collections={collections} query={sp} sections={sections} pagination={{page,pages,total}}/><Footer theme={theme}/></>
+  return <><AliExpressShop theme={theme} products={products} collections={collections} query={sp} sections={sections} pagination={{page,pages,total}} suggestion={suggestion}/><Footer theme={theme}/></>
 }
