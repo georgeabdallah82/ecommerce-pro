@@ -4,6 +4,7 @@ import { db } from '@/lib/prisma'
 import { json, slugify } from '@/lib/utils'
 import { productInputError } from '@/lib/product-input'
 import { setProductCollections } from '@/lib/product-collections'
+import { deleteProductCascade } from '@/lib/product-delete'
 import { cleanBarcode, freeProductSlug, productConflict, uniqueConflictMessage, variantConflict } from '@/lib/product-uniqueness'
 import { cleanVideoUrl } from '@/lib/product-video'
 
@@ -46,6 +47,16 @@ export async function POST(req: Request) {
       if (!ids.length) return json({ error: 'Select at least one product' }, { status: 400 })
       if (ids.length > 500) return json({ error: 'Too many products selected' }, { status: 400 })
       const action = String(b.bulkAction || '')
+      if (action === 'DELETE') {
+        // Products in past orders are kept and reported back, the same rule as the single delete.
+        if (ids.length > 50) return json({ error: 'Delete at most 50 products at a time' }, { status: 400 })
+        const picked = await db.product.findMany({ where: { id: { in: ids } }, include: { orderItems: { select: { id: true } }, inventory: true } })
+        const kept = picked.filter(product => product.orderItems.length > 0)
+        const removable = picked.filter(product => product.orderItems.length === 0)
+        for (const product of removable) await deleteProductCascade(db, product)
+        await audit(actor.id, 'product.bulk_deleted', 'Product', undefined, { ids: removable.map(product => product.id), skipped: kept.map(product => product.id), count: removable.length })
+        return json({ ok: true, count: removable.length, skipped: kept.map(product => ({ id: product.id, name: product.name })) })
+      }
       const data: any = {}
       if (action === 'ACTIVE' || action === 'DRAFT' || action === 'ARCHIVED') { data.status = action; data.publishedAt = action === 'ACTIVE' ? new Date() : null }
       else if (action === 'FEATURED_ON') data.featured = true
