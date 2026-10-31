@@ -1,0 +1,37 @@
+{%- comment -%}
+  Slide-in cart. Lines are loaded from the Shopify cart API by theme.js, so the drawer
+  stays right after every add, change or remove without a page reload.
+{%- endcomment -%}
+<div class="mkDrawerBackdrop" data-drawer-close hidden></div>
+<aside class="mkDrawer" id="mkCartDrawer" role="dialog" aria-modal="true" aria-label="{{ 'cart.title' | t }}" hidden data-cart-drawer
+       data-free-threshold="{{ settings.cart_free_shipping_threshold }}"
+       data-free-bar="{% if settings.cart_free_shipping_bar %}true{% else %}false{% endif %}"
+       data-cart-drawer-enabled="{% if settings.cart_drawer %}true{% else %}false{% endif %}">
+  <div class="mkDrawerHead">
+    <h2>{{ 'cart.title' | t }}</h2>
+    <button type="button" class="mkDrawerX" data-drawer-close aria-label="{{ 'cart.close' | t }}">&times;</button>
+  </div>
+
+  {%- if settings.cart_free_shipping_bar -%}
+    <div class="mkFreeBar" data-free-bar-text></div>
+  {%- endif -%}
+
+  <ul class="mkDrawerLines" data-cart-lines>
+    <li class="mkDrawerEmpty" data-cart-empty>{{ 'cart.empty' | t }}</li>
+  </ul>
+
+  <div class="mkDrawerFoot">
+    {%- if settings.cart_notes -%}
+      <label class="mkDrawerNote">
+        <span>{{ 'cart.note' | t }}</span>
+        <textarea rows="2" data-cart-note>{{ cart.note }}</textarea>
+      </label>
+    {%- endif -%}
+    <p class="mkDrawerTotal">
+      <span>{{ 'cart.subtotal' | t }}</span>
+      <strong data-cart-total>{{ cart.total_price | money }}</strong>
+    </p>
+    <a class="mkBtn mkBtnPrimary mkBtnBlock" href="{{ routes.cart_url }}">{{ 'cart.view_cart' | t }}</a>
+    <a class="mkBtn mkBtnOutline mkBtnBlock" href="/checkout">{{ 'cart.checkout' | t }}</a>
+  </div>
+</aside>

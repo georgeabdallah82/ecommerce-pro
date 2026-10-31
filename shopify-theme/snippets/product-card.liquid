@@ -1,0 +1,59 @@
+{%- comment -%}
+  White product card used by every product row, grid and search result.
+  Usage: {% render 'product-card', product: product %}
+{%- endcomment -%}
+{%- liquid
+  assign variant = product.first_available_variant | default: product.variants.first
+  assign on_sale = false
+  if product.compare_at_price > product.price
+    assign on_sale = true
+  endif
+  assign created_at = product.created_at | date: '%s' | times: 1
+  assign age_seconds = 'now' | date: '%s' | times: 1 | minus: created_at
+  assign is_new = false
+  if age_seconds < 2592000
+    assign is_new = true
+  endif
+-%}
+<article class="mkCard{% if settings.card_show_badge == false %} no-badge{% endif %}" data-product-card>
+  <a class="mkCardMedia mkCardMedia--{{ settings.card_image_ratio }}" href="{{ product.url }}" tabindex="-1" aria-hidden="true">
+    {%- if product.featured_image -%}
+      {{ product.featured_image | image_url: width: 600 | image_tag: loading: 'lazy', sizes: '(min-width: 1100px) 300px, (min-width: 640px) 33vw, 50vw', widths: '300, 450, 600', alt: product.featured_image.alt | default: product.title, class: 'mkCardImg' }}
+    {%- else -%}
+      {{ 'product-1' | placeholder_svg_tag: 'mkCardPlaceholder' }}
+    {%- endif -%}
+    {%- if settings.card_show_badge -%}
+      {%- if on_sale -%}
+        <span class="mkCardBadge mkCardBadge--sale">{{ 'product.sale' | t }}</span>
+      {%- elsif is_new -%}
+        <span class="mkCardBadge">{{ 'product.new' | t }}</span>
+      {%- endif -%}
+    {%- endif -%}
+  </a>
+
+  <div class="mkCardBody">
+    {%- if settings.card_show_vendor and product.vendor != blank -%}
+      <p class="mkCardVendor">{{ product.vendor }}</p>
+    {%- endif -%}
+    <h3 class="mkCardTitle" style="--mk-title-lines: {{ settings.card_title_lines }}">
+      <a href="{{ product.url }}">{{ product.title }}</a>
+    </h3>
+    <div class="mkCardPrice">
+      {%- render 'price', product: product, show_compare: settings.card_show_compare_price -%}
+    </div>
+    {%- if settings.card_delivery_text != blank -%}
+      <p class="mkCardNote">{{ settings.card_delivery_text | escape }}</p>
+    {%- endif -%}
+    {%- if settings.card_show_quick_add -%}
+      {%- if product.available and product.variants.size == 1 and variant -%}
+        <button type="button" class="mkCardAdd" data-add-to-cart data-variant-id="{{ variant.id }}" data-product-title="{{ product.title | escape }}">
+          {{- 'product.add_to_cart' | t -}}
+        </button>
+      {%- else -%}
+        <a class="mkCardAdd" href="{{ product.url }}">
+          {%- if product.available -%}{{ 'product.choose_options' | t }}{%- else -%}{{ 'product.sold_out' | t }}{%- endif -%}
+        </a>
+      {%- endif -%}
+    {%- endif -%}
+  </div>
+</article>

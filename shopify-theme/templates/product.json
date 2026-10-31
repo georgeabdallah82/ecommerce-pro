@@ -1,0 +1,16 @@
+{
+  "sections": {
+    "main": {
+      "type": "main-product",
+      "settings": {
+        "show_vendor": true,
+        "show_short_description": false,
+        "show_description": true,
+        "shipping_text": "Free standard delivery is applied automatically to orders over $50. Cash on delivery.",
+        "show_related": true,
+        "related_limit": 8
+      }
+    }
+  },
+  "order": ["main"]
+}

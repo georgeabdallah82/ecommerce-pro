@@ -1,0 +1,41 @@
+{%- comment -%} Row of short reassurance points (cash on delivery, delivery area, returns, WhatsApp support). {%- endcomment -%}
+{%- if section.blocks.size > 0 -%}
+  <section class="mkSection mkTrust">
+    <div class="mkWrap mkTrustGrid">
+      {%- for block in section.blocks -%}
+        <div class="mkTrustItem" {{ block.shopify_attributes }}>
+          <span class="mkTrustDot" aria-hidden="true"></span>
+          <div>
+            <h2 class="mkTrustHead">{{ block.settings.heading | escape }}</h2>
+            {%- if block.settings.text != blank -%}<p class="mkTrustText">{{ block.settings.text | escape }}</p>{%- endif -%}
+          </div>
+        </div>
+      {%- endfor -%}
+    </div>
+  </section>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Trust strip",
+  "settings": [],
+  "blocks": [
+    {
+      "type": "trust_item",
+      "name": "Point",
+      "settings": [
+        { "type": "text", "id": "heading", "label": "Heading", "default": "Cash on delivery" },
+        { "type": "text", "id": "text", "label": "Text", "default": "Pay when your order arrives" }
+      ]
+    }
+  ],
+  "presets": [
+    { "name": "Trust strip", "blocks": [
+      { "type": "trust_item", "settings": { "heading": "Cash on delivery", "text": "Pay when your order arrives" } },
+      { "type": "trust_item", "settings": { "heading": "Delivery all over Lebanon", "text": "Fast and tracked" } },
+      { "type": "trust_item", "settings": { "heading": "Easy returns", "text": "See our refund policy" } },
+      { "type": "trust_item", "settings": { "heading": "WhatsApp support", "text": "Questions? Message us" } }
+    ] }
+  ]
+}
+{% endschema %}

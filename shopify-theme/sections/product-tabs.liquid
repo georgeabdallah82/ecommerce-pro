@@ -1,0 +1,61 @@
+{%- comment -%}
+  Tabbed product row (for example Today's deals, Best sellers, New arrivals).
+  Each tab is a collection; the first tab with products is shown first.
+{%- endcomment -%}
+<section class="mkSection" data-tabs>
+  <div class="mkWrap">
+    <div class="mkSectionHead">
+      <h2 class="mkSectionTitle">{{ section.settings.heading | escape }}</h2>
+    </div>
+    <div class="mkTabs" role="tablist" aria-label="{{ section.settings.heading | escape }}">
+      {%- if section.settings.tab_1_collection != blank -%}
+        <button type="button" role="tab" class="mkTab is-active" aria-selected="true" aria-controls="mkTab1" id="mkTabBtn1" data-tab="1">{{ section.settings.tab_1_label | escape }}</button>
+      {%- endif -%}
+      {%- if section.settings.tab_2_collection != blank -%}
+        <button type="button" role="tab" class="mkTab{% if section.settings.tab_1_collection == blank %} is-active{% endif %}" aria-selected="{% if section.settings.tab_1_collection == blank %}true{% else %}false{% endif %}" aria-controls="mkTab2" id="mkTabBtn2" data-tab="2">{{ section.settings.tab_2_label | escape }}</button>
+      {%- endif -%}
+      {%- if section.settings.tab_3_collection != blank -%}
+        <button type="button" role="tab" class="mkTab" aria-selected="false" aria-controls="mkTab3" id="mkTabBtn3" data-tab="3">{{ section.settings.tab_3_label | escape }}</button>
+      {%- endif -%}
+    </div>
+
+    {%- if section.settings.tab_1_collection != blank -%}
+      <div class="mkRail mkTabPanel" role="tabpanel" id="mkTab1" aria-labelledby="mkTabBtn1" data-rail>
+        {%- for product in section.settings.tab_1_collection.products limit: section.settings.limit -%}
+          {%- render 'product-card', product: product -%}
+        {%- endfor -%}
+      </div>
+    {%- endif -%}
+    {%- if section.settings.tab_2_collection != blank -%}
+      <div class="mkRail mkTabPanel" role="tabpanel" id="mkTab2" aria-labelledby="mkTabBtn2" data-rail{% if section.settings.tab_1_collection != blank %} hidden{% endif %}>
+        {%- for product in section.settings.tab_2_collection.products limit: section.settings.limit -%}
+          {%- render 'product-card', product: product -%}
+        {%- endfor -%}
+      </div>
+    {%- endif -%}
+    {%- if section.settings.tab_3_collection != blank -%}
+      <div class="mkRail mkTabPanel" role="tabpanel" id="mkTab3" aria-labelledby="mkTabBtn3" data-rail hidden>
+        {%- for product in section.settings.tab_3_collection.products limit: section.settings.limit -%}
+          {%- render 'product-card', product: product -%}
+        {%- endfor -%}
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Product tabs",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Today's deals" },
+    { "type": "range", "id": "limit", "label": "Products per tab", "min": 4, "max": 20, "step": 1, "default": 10 },
+    { "type": "text", "id": "tab_1_label", "label": "Tab 1 name", "default": "Deals" },
+    { "type": "collection", "id": "tab_1_collection", "label": "Tab 1 collection" },
+    { "type": "text", "id": "tab_2_label", "label": "Tab 2 name", "default": "Best sellers" },
+    { "type": "collection", "id": "tab_2_collection", "label": "Tab 2 collection" },
+    { "type": "text", "id": "tab_3_label", "label": "Tab 3 name", "default": "New" },
+    { "type": "collection", "id": "tab_3_collection", "label": "Tab 3 collection" }
+  ],
+  "presets": [ { "name": "Product tabs" } ]
+}
+{% endschema %}

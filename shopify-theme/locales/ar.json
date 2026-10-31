@@ -1,0 +1,94 @@
+{
+  "accessibility": {
+    "skip_to_content": "تخطي إلى المحتوى"
+  },
+  "announcement": {
+    "dismiss": "إغلاق الإعلان"
+  },
+  "cart": {
+    "added": "أُضيف إلى السلة: {{ title }}",
+    "checkout": "الدفع",
+    "close": "إغلاق السلة",
+    "continue_shopping": "متابعة التسوق",
+    "empty": "سلتك فارغة.",
+    "error": "حدث خطأ. يرجى المحاولة مرة أخرى.",
+    "free_delivery_remaining": "أضف {{ amount }} للحصول على توصيل مجاني",
+    "free_delivery_unlocked": "لديك توصيل مجاني على هذا الطلب",
+    "note": "ملاحظة على الطلب",
+    "quantity": "الكمية",
+    "remove": "إزالة",
+    "shipping_note": "يتم تأكيد الشحن والدفع عند الاستلام عند الدفع.",
+    "subtotal": "المجموع الفرعي",
+    "title": "سلتك",
+    "update": "تحديث السلة",
+    "view_cart": "عرض السلة"
+  },
+  "collection": {
+    "apply": "تطبيق",
+    "clear": "مسح الكل",
+    "empty": "لا توجد منتجات تطابق هذه الفلاتر حالياً.",
+    "filters": "الفلاتر",
+    "from": "من",
+    "pages": "الصفحات",
+    "products": "منتج",
+    "sort": "ترتيب حسب",
+    "to": "إلى"
+  },
+  "delivery": {
+    "label": "التوصيل إلى"
+  },
+  "footer": {
+    "newsletter_button": "اشتراك",
+    "newsletter_email": "بريدك الإلكتروني",
+    "newsletter_thanks": "شكراً لاشتراكك!",
+    "newsletter_title": "احصل على العروض أولاً",
+    "social": "تابعنا"
+  },
+  "header": {
+    "account": "حسابي",
+    "all_collections": "كل المجموعات",
+    "cart": "السلة",
+    "home": "الرئيسية",
+    "main_menu": "القائمة الرئيسية",
+    "menu": "القائمة",
+    "search": "بحث",
+    "search_placeholder": "ابحث عن المنتجات"
+  },
+  "home": {
+    "view_all": "عرض الكل"
+  },
+  "hero": {
+    "next": "الشريحة التالية",
+    "previous": "الشريحة السابقة"
+  },
+  "not_found": {
+    "home": "العودة إلى الرئيسية",
+    "text": "الصفحة التي تبحث عنها غير موجودة أو تم نقلها.",
+    "title": "الصفحة غير موجودة"
+  },
+  "product": {
+    "add_to_cart": "أضف إلى السلة",
+    "breadcrumb": "مسار التنقل",
+    "choose_options": "اختر الخيارات",
+    "decrease": "تقليل الكمية",
+    "details": "التفاصيل",
+    "from": "من",
+    "increase": "زيادة الكمية",
+    "new": "جديد",
+    "only_left": "متبقي {{ count }} فقط",
+    "quantity": "الكمية",
+    "related": "قد يعجبك أيضاً",
+    "sale": "تخفيض",
+    "shipping": "التوصيل",
+    "sold_out": "نفدت الكمية"
+  },
+  "search": {
+    "no_results": "لا توجد نتائج لـ \"{{ terms }}\"",
+    "results_count": "{{ count }} نتيجة",
+    "title": "بحث",
+    "try_other": "جرّب بحثاً آخر أو تصفح"
+  },
+  "whatsapp": {
+    "label": "تواصل عبر واتساب"
+  }
+}

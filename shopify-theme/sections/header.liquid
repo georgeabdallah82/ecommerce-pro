@@ -1,0 +1,70 @@
+{%- comment -%} Red market header: logo, search, menu, account and cart. Menu links come from the Main menu. {%- endcomment -%}
+<header class="mkHeader{% if settings.header_sticky %} is-sticky{% endif %}" data-header>
+  <div class="mkWrap mkHeaderInner">
+    <button type="button" class="mkMenuBtn" aria-controls="mkMobileMenu" aria-expanded="false" data-menu-toggle>
+      {{- 'header.menu' | t -}}
+    </button>
+
+    <a class="mkLogo" href="{{ routes.root_url }}" aria-label="{{ shop.name }}">
+      {%- if settings.logo -%}
+        {{ settings.logo | image_url: width: 480 | image_tag: loading: 'eager', class: 'mkLogoImg', alt: shop.name, sizes: '200px' }}
+      {%- else -%}
+        <span class="mkLogoText">{{ shop.name }}</span>
+      {%- endif -%}
+    </a>
+
+    {%- if settings.header_show_search -%}
+      <div class="mkSearchWrap" data-search-wrap>
+        <form class="mkSearch" action="{{ routes.search_url }}" method="get" role="search" autocomplete="off">
+          <input type="hidden" name="type" value="product">
+          <label class="visually-hidden" for="mkSearchInput">{{ 'header.search' | t }}</label>
+          <input id="mkSearchInput" type="search" name="q" placeholder="{{ 'header.search_placeholder' | t }}" data-search-input>
+          <button type="submit" class="mkSearchSubmit">{{ 'header.search' | t }}</button>
+        </form>
+        <div class="mkSuggest" data-suggest hidden></div>
+      </div>
+    {%- endif -%}
+
+    <nav class="mkNav" aria-label="{{ 'header.main_menu' | t }}">
+      {%- for link in linklists[section.settings.menu].links -%}
+        <a href="{{ link.url }}" class="mkNavLink{% if link.active %} is-active{% endif %}" {% if link.active %}aria-current="page"{% endif %}>{{ link.title }}</a>
+      {%- endfor -%}
+    </nav>
+
+    <div class="mkActions">
+      {%- if settings.header_show_account -%}
+        <a class="mkAction" href="{% if customer %}{{ routes.account_url }}{% else %}{{ routes.account_login_url }}{% endif %}">
+          {{- 'header.account' | t -}}
+        </a>
+      {%- endif -%}
+      {%- if settings.header_show_cart -%}
+        <button type="button" class="mkAction mkCartBtn" data-cart-open aria-controls="mkCartDrawer" aria-expanded="false">
+          {{- 'header.cart' | t }} <span class="mkCartCount" data-cart-count>{{ cart.item_count }}</span>
+        </button>
+      {%- endif -%}
+    </div>
+  </div>
+
+  <div class="mkMobileMenu" id="mkMobileMenu" hidden>
+    <div class="mkWrap">
+      {%- for link in linklists[section.settings.menu].links -%}
+        <a class="mkMobileLink" href="{{ link.url }}">{{ link.title }}</a>
+      {%- endfor -%}
+      <a class="mkMobileLink" href="{{ routes.collections_url }}">{{ 'header.all_collections' | t }}</a>
+    </div>
+  </div>
+</header>
+
+{% schema %}
+{
+  "name": "Header",
+  "settings": [
+    {
+      "type": "link_list",
+      "id": "menu",
+      "label": "Main menu",
+      "default": "main-menu"
+    }
+  ]
+}
+{% endschema %}

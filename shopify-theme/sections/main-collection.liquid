@@ -1,0 +1,110 @@
+{%- comment -%}
+  Collection page: header, filters (Shopify's built-in filtering), sorting and the product grid.
+  Filters and sorting are plain links and forms, so they work without JavaScript.
+{%- endcomment -%}
+<section class="mkWrap mkCollection">
+  <nav class="mkCrumbs" aria-label="{{ 'product.breadcrumb' | t }}">
+    <a href="{{ routes.root_url }}">{{ 'header.home' | t }}</a>
+    <span aria-hidden="true">/</span>
+    <span aria-current="page">{{ collection.title }}</span>
+  </nav>
+
+  <header class="mkCollectionHead{% unless collection.image %} no-image{% endunless %}">
+    {%- if collection.image and section.settings.show_image -%}
+      {{ collection.image | image_url: width: 1600 | image_tag: loading: 'eager', class: 'mkCollectionImg', sizes: '100vw', widths: '800, 1200, 1600', alt: collection.image.alt | default: collection.title }}
+    {%- endif -%}
+    <div class="mkCollectionCopy">
+      <h1 class="mkCollectionTitle">{{ collection.title }}</h1>
+      {%- if section.settings.show_description and collection.description != blank -%}
+        <div class="mkCollectionDesc rte">{{ collection.description }}</div>
+      {%- endif -%}
+    </div>
+  </header>
+
+  <div class="mkCollectionLayout{% unless section.settings.show_filters and collection.filters.size > 0 %} no-filters{% endunless %}">
+    {%- if section.settings.show_filters and collection.filters.size > 0 -%}
+      <aside class="mkFilters" aria-label="{{ 'collection.filters' | t }}">
+        <form method="get" action="{{ collection.url }}" class="mkFilterForm">
+          {%- for filter in collection.filters -%}
+            <fieldset class="mkFilterGroup">
+              <legend>{{ filter.label }}</legend>
+              {%- if filter.type == 'price_range' -%}
+                <div class="mkPriceInputs">
+                  <label>{{ 'collection.from' | t }}
+                    <input type="number" min="0" name="{{ filter.min_value.param_name }}" value="{{ filter.min_value.value }}" placeholder="0">
+                  </label>
+                  <label>{{ 'collection.to' | t }}
+                    <input type="number" min="0" name="{{ filter.max_value.param_name }}" value="{{ filter.max_value.value }}" placeholder="{{ filter.range_max | money_without_currency }}">
+                  </label>
+                </div>
+              {%- else -%}
+                <ul class="mkFilterValues">
+                  {%- for value in filter.values -%}
+                    <li>
+                      <label class="mkFilterValue{% if value.active %} is-active{% endif %}">
+                        <input type="checkbox" name="{{ value.param_name }}" value="{{ value.value }}"{% if value.active %} checked{% endif %}{% unless value.count > 0 %} disabled{% endunless %}>
+                        <span>{{ value.label | escape }}</span>
+                        <span class="mkFilterCount">{{ value.count }}</span>
+                      </label>
+                    </li>
+                  {%- endfor -%}
+                </ul>
+              {%- endif -%}
+            </fieldset>
+          {%- endfor -%}
+          <button type="submit" class="mkBtn mkBtnPrimary mkBtnBlock">{{ 'collection.apply' | t }}</button>
+          <a class="mkFilterClear" href="{{ collection.url }}">{{ 'collection.clear' | t }}</a>
+        </form>
+      </aside>
+    {%- endif -%}
+
+    <div class="mkCollectionMain">
+      <div class="mkCollectionBar">
+        <p class="mkCount">{{ collection.products_count }} {{ 'collection.products' | t }}</p>
+        {%- if section.settings.show_sort -%}
+          <form method="get" action="{{ collection.url }}" class="mkSortForm">
+            {%- for filter in collection.filters -%}
+              {%- for value in filter.active_values -%}
+                <input type="hidden" name="{{ value.param_name }}" value="{{ value.value }}">
+              {%- endfor -%}
+            {%- endfor -%}
+            <label>{{ 'collection.sort' | t }}
+              <select name="sort_by" onchange="this.form.submit()">
+                {%- for option in collection.sort_options -%}
+                  <option value="{{ option.value }}"{% if option.value == collection.sort_by %} selected{% endif %}>{{ option.name }}</option>
+                {%- endfor -%}
+              </select>
+            </label>
+            <noscript><button type="submit" class="mkBtn">{{ 'collection.apply' | t }}</button></noscript>
+          </form>
+        {%- endif -%}
+      </div>
+
+      {%- paginate collection.products by section.settings.per_page -%}
+        <div class="mkGrid" style="--mk-cols: {{ settings.product_columns }}">
+          {%- for product in collection.products -%}
+            {%- render 'product-card', product: product -%}
+          {%- else -%}
+            <p class="mkEmpty">{{ 'collection.empty' | t }}</p>
+          {%- endfor -%}
+        </div>
+        {%- if paginate.pages > 1 -%}
+          <nav class="mkPagination" aria-label="{{ 'collection.pages' | t }}">{{ paginate | default_pagination }}</nav>
+        {%- endif -%}
+      {%- endpaginate -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Collection grid",
+  "settings": [
+    { "type": "checkbox", "id": "show_image", "label": "Show collection photo", "default": true },
+    { "type": "checkbox", "id": "show_description", "label": "Show collection description", "default": true },
+    { "type": "checkbox", "id": "show_filters", "label": "Show filters", "default": true },
+    { "type": "checkbox", "id": "show_sort", "label": "Show sorting", "default": true },
+    { "type": "range", "id": "per_page", "label": "Products per page", "min": 12, "max": 60, "step": 12, "default": 24 }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="{{ request.locale.iso_code }}"{% if request.locale.iso_code == 'ar' %} dir="rtl"{% endif %}>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="theme-color" content="{{ settings.color_header }}">
+    <title>
+      {{ page_title }}{% unless page_title contains shop.name %} &ndash; {{ shop.name }}{% endunless %}
+    </title>
+    {% if page_description %}
+      <meta name="description" content="{{ page_description | escape }}">
+    {% endif %}
+    {% render 'social-meta-tags' %}
+    {% if settings.logo %}
+      <link rel="preconnect" href="https://cdn.shopify.com" crossorigin>
+    {% endif %}
+    <link rel="canonical" href="{{ canonical_url }}">
+    {{ settings.heading_font | font_face: font_display: 'swap' }}
+    {{ settings.body_font | font_face: font_display: 'swap' }}
+    <style>
+      :root {
+        --store-bg: {{ settings.color_background }};
+        --store-surface: {{ settings.color_surface }};
+        --store-text: {% if settings.high_contrast %}#000000{% else %}{{ settings.color_text }}{% endif %};
+        --store-muted: {{ settings.color_muted }};
+        --store-primary: {{ settings.color_primary }};
+        --store-primary-soft: {{ settings.color_secondary }};
+        --store-button-text: {{ settings.color_button_text }};
+        --store-border: {{ settings.color_border }};
+        --store-header-bg: {{ settings.color_header }};
+        --store-header-text: {{ settings.color_header_text }};
+        --store-announcement-bg: {{ settings.color_announcement_bg }};
+        --store-announcement-text: {{ settings.color_announcement_text }};
+        --store-accent: {{ settings.color_accent }};
+        --store-success: {{ settings.color_success }};
+        --store-warning: {{ settings.color_warning }};
+        --store-font-heading: {{ settings.heading_font.family }}, system-ui, sans-serif;
+        --store-font-body: {{ settings.body_font.family }}, system-ui, sans-serif;
+        --store-heading-weight: {{ settings.heading_weight }};
+        --store-body-weight: {{ settings.body_weight }};
+        --store-base-size: {{ settings.base_font_size }}px;
+        --store-line-height: {{ settings.line_height }};
+        --store-letter-spacing: {% case settings.letter_spacing %}{% when 'tight' %}-0.01em{% when 'wide' %}0.02em{% else %}normal{% endcase %};
+        --store-max-width: {{ settings.max_width }}px;
+        --store-section-gap: {{ settings.section_spacing }}px;
+        --store-gutter: {{ settings.page_gutter }}px;
+        --store-card-gap: {{ settings.card_gap }}px;
+        --store-product-columns: {{ settings.product_columns }};
+        --store-button-radius: {{ settings.button_radius }}px;
+        --store-button-height: {{ settings.button_height }}px;
+        --store-card-radius: {{ settings.card_radius }}px;
+        --store-anim: {% if settings.animations_enabled %}{{ settings.animation_duration }}ms{% else %}0ms{% endif %};
+        --store-logo-width: {{ settings.logo_width }}px;
+      }
+    </style>
+    {{ 'theme.css' | asset_url | stylesheet_tag }}
+    {% if settings.custom_css != blank %}
+      <style>{{ settings.custom_css }}</style>
+    {% endif %}
+    <script src="{{ 'theme.js' | asset_url }}" defer></script>
+    {{ content_for_header }}
+  </head>
+
+  <body class="mk{% unless settings.focus_ring %} no-focus-ring{% endunless %}{% unless settings.animations_enabled %} no-motion{% endunless %}{% if settings.button_uppercase %} button-uppercase{% endif %}{% if settings.header_nav_uppercase %} nav-uppercase{% endif %}"
+        data-card-shadow="{{ settings.card_shadow }}" data-card-hover="{{ settings.card_hover }}" data-card-show-add="{{ settings.card_show_quick_add }}"
+        data-button-hover="{{ settings.button_hover }}" data-button-shadow="{{ settings.button_shadow }}" data-button-style="{{ settings.button_style }}"
+        data-card-ratio="{{ settings.card_image_ratio }}">
+    <a class="skip-link" href="#MainContent">{{ 'accessibility.skip_to_content' | t }}</a>
+
+    {% sections 'header-group' %}
+
+    <main id="MainContent" role="main" tabindex="-1">
+      {{ content_for_layout }}
+    </main>
+
+    {% sections 'footer-group' %}
+
+    {% render 'cart-drawer' %}
+    {% render 'whatsapp-float' %}
+    {% render 'toast' %}
+
+    <script>
+      window.mkStrings = {
+        added: {{ 'cart.added' | t | json }},
+        error: {{ 'cart.error' | t | json }},
+        empty: {{ 'cart.empty' | t | json }},
+        remove: {{ 'cart.remove' | t | json }},
+        free_unlocked: {{ 'cart.free_delivery_unlocked' | t | json }},
+        free_remaining: {{ 'cart.free_delivery_remaining' | t | json }},
+        add_to_cart: {{ 'product.add_to_cart' | t | json }},
+        sold_out: {{ 'product.sold_out' | t | json }},
+        money_sample: {{ 100 | money | json }}
+      };
+    </script>
+  </body>
+</html>

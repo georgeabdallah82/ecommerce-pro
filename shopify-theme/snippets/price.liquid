@@ -1,0 +1,13 @@
+{%- comment -%}
+  Price with optional compare-at price and a sale tag.
+  Usage: {% render 'price', product: product, show_compare: true %}
+{%- endcomment -%}
+<span class="mkPrice{% if product.compare_at_price > product.price %} is-sale{% endif %}">
+  {%- if product.price_varies -%}
+    <span class="mkPriceFrom">{{ 'product.from' | t }}</span>
+  {%- endif -%}
+  <span class="mkPriceNow">{{ product.price | money }}</span>
+  {%- if show_compare and product.compare_at_price > product.price -%}
+    <s class="mkPriceCompare">{{ product.compare_at_price | money }}</s>
+  {%- endif -%}
+</span>

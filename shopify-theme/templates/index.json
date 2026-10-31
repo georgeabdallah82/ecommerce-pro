@@ -1,0 +1,119 @@
+{
+  "sections": {
+    "hero": {
+      "type": "hero-slider",
+      "blocks": {
+        "slide-1": {
+          "type": "hero_slide",
+          "settings": {
+            "tag": "Home essentials",
+            "heading": "Everything for your home,",
+            "highlight": "delivered",
+            "text": "Cash on delivery anywhere in Lebanon.",
+            "button_label": "Shop now",
+            "button_url": "shopify://collections/all",
+            "secondary_label": "Browse collections",
+            "secondary_url": "shopify://collections"
+          }
+        },
+        "slide-2": {
+          "type": "hero_slide",
+          "settings": {
+            "tag": "Stock up",
+            "heading": "Tissues & paper,",
+            "highlight": "in bulk",
+            "text": "Big packs for the whole family, delivered to your door.",
+            "button_label": "Shop tissues",
+            "button_url": "shopify://collections/all"
+          }
+        },
+        "slide-3": {
+          "type": "hero_slide",
+          "settings": {
+            "tag": "Personal care",
+            "heading": "Fresh picks for your",
+            "highlight": "routine",
+            "text": "Shampoo, body care and more.",
+            "button_label": "Discover",
+            "button_url": "shopify://collections/all"
+          }
+        }
+      },
+      "block_order": ["slide-1", "slide-2", "slide-3"],
+      "settings": {
+        "heading": "Featured",
+        "autoplay": true,
+        "height": 560,
+        "mobile_height": 460
+      }
+    },
+    "offers": {
+      "type": "offer-banners",
+      "blocks": {
+        "offer-1": {
+          "type": "offer",
+          "settings": { "kicker": "Home", "heading": "Everyday home essentials", "link_label": "Shop now", "url": "shopify://collections/all" }
+        },
+        "offer-2": {
+          "type": "offer",
+          "settings": { "kicker": "Personal care", "heading": "Care for the whole family", "link_label": "Shop now", "url": "shopify://collections/all" }
+        }
+      },
+      "block_order": ["offer-1", "offer-2"],
+      "settings": { "columns": "2" }
+    },
+    "categories": {
+      "type": "category-strip",
+      "blocks": {},
+      "block_order": [],
+      "settings": { "heading": "Shop by category" }
+    },
+    "tabs": {
+      "type": "product-tabs",
+      "settings": {
+        "heading": "Today's deals",
+        "limit": 10,
+        "tab_1_label": "Deals",
+        "tab_2_label": "Best sellers",
+        "tab_3_label": "New"
+      }
+    },
+    "rail": {
+      "type": "product-rail",
+      "settings": {
+        "heading": "Best sellers",
+        "subheading": "What customers are ordering",
+        "limit": 12,
+        "min_products": 4,
+        "show_rank": true
+      }
+    },
+    "spotlight": {
+      "type": "category-spotlight",
+      "settings": {
+        "kicker": "Featured",
+        "banner_heading": "A cleaner home in one order",
+        "button_label": "Shop now",
+        "banner_position": "left",
+        "limit": 4,
+        "min_products": 2
+      }
+    },
+    "trust": {
+      "type": "trust-strip",
+      "blocks": {
+        "trust-1": { "type": "trust_item", "settings": { "heading": "Cash on delivery", "text": "Pay when your order arrives" } },
+        "trust-2": { "type": "trust_item", "settings": { "heading": "Delivery all over Lebanon", "text": "Fast and tracked" } },
+        "trust-3": { "type": "trust_item", "settings": { "heading": "Easy returns", "text": "See our refund policy" } },
+        "trust-4": { "type": "trust_item", "settings": { "heading": "WhatsApp support", "text": "Questions? Message us" } }
+      },
+      "block_order": ["trust-1", "trust-2", "trust-3", "trust-4"],
+      "settings": {}
+    },
+    "recent": {
+      "type": "recently-viewed",
+      "settings": { "heading": "Recently viewed", "limit": 6 }
+    }
+  },
+  "order": ["hero", "offers", "categories", "tabs", "rail", "spotlight", "trust", "recent"]
+}

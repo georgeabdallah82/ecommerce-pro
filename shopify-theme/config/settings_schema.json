@@ -1,0 +1,181 @@
+[
+  {
+    "name": "theme_info",
+    "theme_name": "Yalla Haul Market",
+    "theme_author": "Yalla Haul",
+    "theme_version": "1.0.0",
+    "theme_documentation_url": "https://yallahaul.com",
+    "theme_support_email": "info@yallahaul.com"
+  },
+  {
+    "name": "Logo",
+    "settings": [
+      { "type": "image_picker", "id": "logo", "label": "Logo" },
+      { "type": "image_picker", "id": "logo_dark", "label": "Logo for dark backgrounds" },
+      { "type": "range", "id": "logo_width", "label": "Logo width", "min": 80, "max": 280, "step": 4, "unit": "px", "default": 160 }
+    ]
+  },
+  {
+    "name": "Colours",
+    "settings": [
+      { "type": "color", "id": "color_background", "label": "Page background", "default": "#f6f6f4" },
+      { "type": "color", "id": "color_surface", "label": "Cards and surfaces", "default": "#ffffff" },
+      { "type": "color", "id": "color_text", "label": "Text", "default": "#121212" },
+      { "type": "color", "id": "color_muted", "label": "Muted text", "default": "#6b7280" },
+      { "type": "color", "id": "color_primary", "label": "Primary (buttons, sale)", "default": "#d7261e" },
+      { "type": "color", "id": "color_secondary", "label": "Soft primary", "default": "#fdecea" },
+      { "type": "color", "id": "color_button_text", "label": "Button text", "default": "#ffffff" },
+      { "type": "color", "id": "color_border", "label": "Borders", "default": "#ececec" },
+      { "type": "color", "id": "color_header", "label": "Header background", "default": "#d7261e" },
+      { "type": "color", "id": "color_header_text", "label": "Header text", "default": "#ffffff" },
+      { "type": "color", "id": "color_announcement_bg", "label": "Announcement background", "default": "#121212" },
+      { "type": "color", "id": "color_announcement_text", "label": "Announcement text", "default": "#ffffff" },
+      { "type": "color", "id": "color_accent", "label": "Accent", "default": "#ff7a1a" },
+      { "type": "color", "id": "color_success", "label": "Success", "default": "#15803d" },
+      { "type": "color", "id": "color_warning", "label": "Warning", "default": "#b7791f" }
+    ]
+  },
+  {
+    "name": "Typography",
+    "settings": [
+      { "type": "font_picker", "id": "heading_font", "label": "Heading font", "default": "dm_n4" },
+      { "type": "font_picker", "id": "body_font", "label": "Body font", "default": "dm_n4" },
+      { "type": "select", "id": "heading_weight", "label": "Heading weight", "default": "800", "options": [
+        { "value": "600", "label": "Semibold" }, { "value": "700", "label": "Bold" }, { "value": "800", "label": "Extra bold" }
+      ] },
+      { "type": "select", "id": "body_weight", "label": "Body weight", "default": "400", "options": [
+        { "value": "400", "label": "Regular" }, { "value": "500", "label": "Medium" }
+      ] },
+      { "type": "range", "id": "base_font_size", "label": "Base text size", "min": 14, "max": 20, "step": 1, "unit": "px", "default": 16 },
+      { "type": "range", "id": "line_height", "label": "Line height", "min": 1.2, "max": 2, "step": 0.1, "default": 1.5 },
+      { "type": "select", "id": "letter_spacing", "label": "Letter spacing", "default": "normal", "options": [
+        { "value": "tight", "label": "Tight" }, { "value": "normal", "label": "Normal" }, { "value": "wide", "label": "Wide" }
+      ] }
+    ]
+  },
+  {
+    "name": "Layout",
+    "settings": [
+      { "type": "range", "id": "max_width", "label": "Maximum content width", "min": 1000, "max": 1600, "step": 20, "unit": "px", "default": 1328 },
+      { "type": "range", "id": "section_spacing", "label": "Space between sections", "min": 24, "max": 140, "step": 4, "unit": "px", "default": 76 },
+      { "type": "range", "id": "page_gutter", "label": "Side padding on phones", "min": 12, "max": 48, "step": 2, "unit": "px", "default": 16 },
+      { "type": "range", "id": "card_gap", "label": "Gap between cards", "min": 8, "max": 32, "step": 2, "unit": "px", "default": 16 },
+      { "type": "select", "id": "product_columns", "label": "Product columns on desktop", "default": "4", "options": [
+        { "value": "3", "label": "3" }, { "value": "4", "label": "4" }, { "value": "5", "label": "5" }
+      ] }
+    ]
+  },
+  {
+    "name": "Buttons",
+    "settings": [
+      { "type": "range", "id": "button_radius", "label": "Corner radius", "min": 0, "max": 32, "step": 1, "unit": "px", "default": 10 },
+      { "type": "range", "id": "button_height", "label": "Height", "min": 40, "max": 60, "step": 2, "unit": "px", "default": 46 },
+      { "type": "select", "id": "button_style", "label": "Style", "default": "solid", "options": [
+        { "value": "solid", "label": "Solid" }, { "value": "outline", "label": "Outline" }
+      ] },
+      { "type": "select", "id": "button_hover", "label": "Hover effect", "default": "lift", "options": [
+        { "value": "lift", "label": "Lift" }, { "value": "none", "label": "None" }
+      ] },
+      { "type": "select", "id": "button_shadow", "label": "Shadow", "default": "none", "options": [
+        { "value": "none", "label": "None" }, { "value": "sm", "label": "Small" }, { "value": "md", "label": "Medium" }
+      ] },
+      { "type": "checkbox", "id": "button_uppercase", "label": "Uppercase labels", "default": false }
+    ]
+  },
+  {
+    "name": "Product cards",
+    "settings": [
+      { "type": "range", "id": "card_radius", "label": "Corner radius", "min": 0, "max": 28, "step": 1, "unit": "px", "default": 14 },
+      { "type": "select", "id": "card_shadow", "label": "Shadow", "default": "sm", "options": [
+        { "value": "none", "label": "None" }, { "value": "sm", "label": "Small" }, { "value": "md", "label": "Medium" }
+      ] },
+      { "type": "select", "id": "card_hover", "label": "Hover effect", "default": "lift", "options": [
+        { "value": "lift", "label": "Lift" }, { "value": "zoom", "label": "Zoom photo" }, { "value": "none", "label": "None" }
+      ] },
+      { "type": "select", "id": "card_image_ratio", "label": "Photo shape", "default": "square", "options": [
+        { "value": "square", "label": "Square" }, { "value": "portrait", "label": "Portrait" }, { "value": "landscape", "label": "Landscape" }
+      ] },
+      { "type": "range", "id": "card_title_lines", "label": "Title lines", "min": 1, "max": 3, "step": 1, "default": 2 },
+      { "type": "checkbox", "id": "card_show_badge", "label": "Show sale and new badges", "default": true },
+      { "type": "checkbox", "id": "card_show_compare_price", "label": "Show compare-at price", "default": true },
+      { "type": "checkbox", "id": "card_show_vendor", "label": "Show brand", "default": false },
+      { "type": "checkbox", "id": "card_show_quick_add", "label": "Show add to cart button", "default": true },
+      { "type": "text", "id": "card_delivery_text", "label": "Line under the price", "default": "Cash on delivery" }
+    ]
+  },
+  {
+    "name": "Header",
+    "settings": [
+      { "type": "checkbox", "id": "header_sticky", "label": "Sticky header", "default": true },
+      { "type": "checkbox", "id": "header_show_search", "label": "Show search", "default": true },
+      { "type": "checkbox", "id": "header_show_account", "label": "Show account link", "default": true },
+      { "type": "checkbox", "id": "header_show_cart", "label": "Show cart", "default": true },
+      { "type": "checkbox", "id": "header_nav_uppercase", "label": "Uppercase menu links", "default": false },
+      { "type": "range", "id": "header_nav_spacing", "label": "Space between menu links", "min": 12, "max": 40, "step": 2, "unit": "px", "default": 24 }
+    ]
+  },
+  {
+    "name": "Cart",
+    "settings": [
+      { "type": "checkbox", "id": "cart_drawer", "label": "Open cart as a drawer", "default": true },
+      { "type": "checkbox", "id": "cart_notes", "label": "Show order notes", "default": true },
+      { "type": "checkbox", "id": "cart_free_shipping_bar", "label": "Show free delivery progress", "default": true },
+      { "type": "number", "id": "cart_free_shipping_threshold", "label": "Free delivery from (store currency)", "default": 50 },
+      { "type": "checkbox", "id": "cart_recommendations", "label": "Show recommendations", "default": true }
+    ]
+  },
+  {
+    "name": "Footer",
+    "settings": [
+      { "type": "richtext", "id": "footer_text", "label": "Footer text", "default": "<p>Cash on delivery across Lebanon.</p>" },
+      { "type": "select", "id": "footer_columns", "label": "Columns", "default": "4", "options": [
+        { "value": "2", "label": "2" }, { "value": "3", "label": "3" }, { "value": "4", "label": "4" }
+      ] },
+      { "type": "checkbox", "id": "footer_show_newsletter", "label": "Show newsletter signup", "default": true }
+    ]
+  },
+  {
+    "name": "Social links",
+    "settings": [
+      { "type": "url", "id": "social_instagram", "label": "Instagram" },
+      { "type": "url", "id": "social_facebook", "label": "Facebook" },
+      { "type": "url", "id": "social_tiktok", "label": "TikTok" },
+      { "type": "url", "id": "social_twitter", "label": "X (Twitter)" },
+      { "type": "url", "id": "social_youtube", "label": "YouTube" }
+    ]
+  },
+  {
+    "name": "Motion",
+    "settings": [
+      { "type": "checkbox", "id": "animations_enabled", "label": "Animations", "default": true },
+      { "type": "range", "id": "animation_duration", "label": "Animation speed", "min": 200, "max": 800, "step": 20, "unit": "ms", "default": 420 },
+      { "type": "checkbox", "id": "slideshow_autoplay", "label": "Hero slider autoplay", "default": true },
+      { "type": "range", "id": "slideshow_speed", "label": "Hero slider speed", "min": 3, "max": 10, "step": 1, "unit": "s", "default": 5 }
+    ]
+  },
+  {
+    "name": "Accessibility",
+    "settings": [
+      { "type": "checkbox", "id": "focus_ring", "label": "Visible focus ring for keyboards", "default": true },
+      { "type": "checkbox", "id": "high_contrast", "label": "High contrast text", "default": false }
+    ]
+  },
+  {
+    "name": "WhatsApp",
+    "settings": [
+      { "type": "checkbox", "id": "whatsapp_enabled", "label": "Show floating WhatsApp button", "default": false },
+      { "type": "text", "id": "whatsapp_number", "label": "WhatsApp number (with country code, digits only)" },
+      { "type": "text", "id": "whatsapp_message", "label": "Opening message", "default": "Hi! I would like to order." },
+      { "type": "select", "id": "whatsapp_position", "label": "Position", "default": "right", "options": [
+        { "value": "right", "label": "Right" }, { "value": "left", "label": "Left" }
+      ] },
+      { "type": "checkbox", "id": "whatsapp_show_on_mobile", "label": "Show on phones", "default": true }
+    ]
+  },
+  {
+    "name": "Custom CSS",
+    "settings": [
+      { "type": "textarea", "id": "custom_css", "label": "Extra CSS (advanced)", "info": "Only for small tweaks. Leave empty if unsure." }
+    ]
+  }
+]

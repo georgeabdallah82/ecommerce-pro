@@ -1,0 +1,39 @@
+{%- comment -%} One horizontal row of products from a collection, with optional ranking numbers. {%- endcomment -%}
+{%- if section.settings.collection != blank and section.settings.collection.products.size >= section.settings.min_products -%}
+  <section class="mkSection">
+    <div class="mkWrap">
+      <div class="mkSectionHead">
+        <div>
+          <h2 class="mkSectionTitle">{{ section.settings.heading | escape }}</h2>
+          {%- if section.settings.subheading != blank -%}<p class="mkSectionSub">{{ section.settings.subheading | escape }}</p>{%- endif -%}
+        </div>
+        <a class="mkSectionAll" href="{{ section.settings.collection.url }}">{{ 'home.view_all' | t }}</a>
+      </div>
+      <div class="mkRail" data-rail>
+        {%- for product in section.settings.collection.products limit: section.settings.limit -%}
+          <div class="mkRailItem{% if section.settings.show_rank %} has-rank{% endif %}">
+            {%- if section.settings.show_rank -%}
+              <span class="mkRank" aria-hidden="true">{{ forloop.index }}</span>
+            {%- endif -%}
+            {%- render 'product-card', product: product -%}
+          </div>
+        {%- endfor -%}
+      </div>
+    </div>
+  </section>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Product row",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Best sellers" },
+    { "type": "text", "id": "subheading", "label": "Subheading", "default": "What customers are ordering" },
+    { "type": "collection", "id": "collection", "label": "Collection" },
+    { "type": "range", "id": "limit", "label": "Products", "min": 4, "max": 24, "step": 1, "default": 12 },
+    { "type": "range", "id": "min_products", "label": "Hide the row until it has at least", "min": 1, "max": 12, "step": 1, "default": 4 },
+    { "type": "checkbox", "id": "show_rank", "label": "Show ranking numbers", "default": true }
+  ],
+  "presets": [ { "name": "Product row" } ]
+}
+{% endschema %}

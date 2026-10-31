@@ -1,0 +1,46 @@
+{%- comment -%} Two or three photo banners side by side, each with a short heading and a link. {%- endcomment -%}
+{%- if section.blocks.size > 0 -%}
+  <section class="mkSection">
+    <div class="mkWrap mkOffers mkOffers--{{ section.settings.columns }}">
+      {%- for block in section.blocks -%}
+        <a class="mkOffer" href="{{ block.settings.url }}" {{ block.shopify_attributes }}>
+          {%- if block.settings.image != blank -%}
+            {{ block.settings.image | image_url: width: 900 | image_tag: loading: 'lazy', class: 'mkOfferImg', sizes: '(min-width: 760px) 50vw, 100vw', widths: '450, 600, 900', alt: block.settings.image.alt | default: '' }}
+          {%- endif -%}
+          <div class="mkOfferText">
+            {%- if block.settings.kicker != blank -%}<p class="mkOfferKicker">{{ block.settings.kicker | escape }}</p>{%- endif -%}
+            <h2 class="mkOfferHead">{{ block.settings.heading | escape }}</h2>
+            {%- if block.settings.link_label != blank -%}<span class="mkOfferLink">{{ block.settings.link_label | escape }} &rarr;</span>{%- endif -%}
+          </div>
+        </a>
+      {%- endfor -%}
+    </div>
+  </section>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Offer banners",
+  "settings": [
+    { "type": "select", "id": "columns", "label": "Banners per row", "default": "2", "options": [
+      { "value": "2", "label": "2" }, { "value": "3", "label": "3" }
+    ] }
+  ],
+  "blocks": [
+    {
+      "type": "offer",
+      "name": "Banner",
+      "settings": [
+        { "type": "text", "id": "kicker", "label": "Small label", "default": "Home" },
+        { "type": "text", "id": "heading", "label": "Heading", "default": "Everyday home essentials" },
+        { "type": "text", "id": "link_label", "label": "Link text", "default": "Shop now" },
+        { "type": "url", "id": "url", "label": "Link" },
+        { "type": "image_picker", "id": "image", "label": "Photo" }
+      ]
+    }
+  ],
+  "presets": [
+    { "name": "Offer banners", "blocks": [ { "type": "offer" }, { "type": "offer" } ] }
+  ]
+}
+{% endschema %}
