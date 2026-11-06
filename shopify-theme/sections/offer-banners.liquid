@@ -4,8 +4,16 @@
     <div class="mkWrap mkOffers mkOffers--{{ section.settings.columns }}">
       {%- for block in section.blocks -%}
         <a class="mkOffer" href="{{ block.settings.url }}" {{ block.shopify_attributes }}>
+          {%- liquid
+            assign fallback_photo = 'offer-home.jpg'
+            if forloop.index == 2
+              assign fallback_photo = 'offer-care.jpg'
+            endif
+          -%}
           {%- if block.settings.image != blank -%}
             {{ block.settings.image | image_url: width: 900 | image_tag: loading: 'lazy', class: 'mkOfferImg', sizes: '(min-width: 760px) 50vw, 100vw', widths: '450, 600, 900', alt: block.settings.image.alt | default: '' }}
+          {%- else -%}
+            <img class="mkOfferImg" src="{{ fallback_photo | asset_url }}" width="900" height="600" alt="" loading="lazy">
           {%- endif -%}
           <div class="mkOfferText">
             {%- if block.settings.kicker != blank -%}<p class="mkOfferKicker">{{ block.settings.kicker | escape }}</p>{%- endif -%}

@@ -7,7 +7,7 @@
           {%- if settings.logo -%}
             {{ settings.logo | image_url: width: 360 | image_tag: loading: 'lazy', alt: shop.name, class: 'mkFooterLogoImg' }}
           {%- else -%}
-            <span>{{ shop.name }}</span>
+            <img class="mkFooterLogoImg" src="{{ 'yallahaul-logo.svg' | asset_url }}" width="909" height="142" alt="{{ shop.name | escape }}" loading="lazy">
           {%- endif -%}
         </a>
         {%- if settings.footer_text != blank -%}

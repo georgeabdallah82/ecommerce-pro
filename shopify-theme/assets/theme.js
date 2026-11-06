@@ -93,6 +93,14 @@
         if (event.key === 'ArrowLeft') { show(current - 1); restart() }
         if (event.key === 'ArrowRight') { show(current + 1); restart() }
       })
+      var startX = null
+      slider.addEventListener('touchstart', function (event) { startX = event.changedTouches[0].clientX }, { passive: true })
+      slider.addEventListener('touchend', function (event) {
+        if (startX === null) return
+        var dx = event.changedTouches[0].clientX - startX
+        startX = null
+        if (Math.abs(dx) > 40) { show(dx < 0 ? current + 1 : current - 1); restart() }
+      })
       slider.addEventListener('mouseenter', function () { clearInterval(timer) })
       slider.addEventListener('mouseleave', restart)
 

@@ -16,6 +16,7 @@ they are until you decide to move the store (see "Not covered yet").
 | Cart | `sections/main-cart.liquid`, `snippets/cart-drawer.liquid` | Cart drawer and cart page, order note, free-delivery progress bar |
 | Search, pages, 404 | `main-search.liquid`, `main-page.liquid`, `not-found.liquid` | Results per page |
 | Extras | `snippets/whatsapp-float.liquid`, `social-meta-tags.liquid` | Floating WhatsApp button, Open Graph tags for shared links |
+| Brand assets | `assets/yallahaul-logo.svg`, `assets/*.jpg` | Your logo (header, footer, browser icon) and the brand photos used until you upload your own. Upload a logo in the theme editor to replace the header and footer logo |
 | Language | `locales/en.default.json`, `locales/ar.json` | All interface text in English and Arabic (Arabic switches the page to right-to-left) |
 
 ## Set it up (run these on your own computer)

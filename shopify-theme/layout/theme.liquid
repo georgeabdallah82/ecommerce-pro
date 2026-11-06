@@ -51,8 +51,10 @@
         --store-card-radius: {{ settings.card_radius }}px;
         --store-anim: {% if settings.animations_enabled %}{{ settings.animation_duration }}ms{% else %}0ms{% endif %};
         --store-logo-width: {{ settings.logo_width }}px;
+        --mk-nav-gap: {{ settings.header_nav_spacing }}px;
       }
     </style>
+    <link rel="icon" type="image/svg+xml" href="{{ 'yallahaul-logo.svg' | asset_url }}">
     {{ 'theme.css' | asset_url | stylesheet_tag }}
     {% if settings.custom_css != blank %}
       <style>{{ settings.custom_css }}</style>

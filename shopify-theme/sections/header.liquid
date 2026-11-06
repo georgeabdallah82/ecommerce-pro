@@ -9,7 +9,7 @@
       {%- if settings.logo -%}
         {{ settings.logo | image_url: width: 480 | image_tag: loading: 'eager', class: 'mkLogoImg', alt: shop.name, sizes: '200px' }}
       {%- else -%}
-        <span class="mkLogoText">{{ shop.name }}</span>
+        <img class="mkLogoImg" src="{{ 'yallahaul-logo.svg' | asset_url }}" width="909" height="142" alt="{{ shop.name | escape }}">
       {%- endif -%}
     </a>
 

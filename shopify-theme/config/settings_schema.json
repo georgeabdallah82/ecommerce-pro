@@ -11,7 +11,6 @@
     "name": "Logo",
     "settings": [
       { "type": "image_picker", "id": "logo", "label": "Logo" },
-      { "type": "image_picker", "id": "logo_dark", "label": "Logo for dark backgrounds" },
       { "type": "range", "id": "logo_width", "label": "Logo width", "min": 80, "max": 280, "step": 4, "unit": "px", "default": 160 }
     ]
   },
@@ -21,7 +20,7 @@
       { "type": "color", "id": "color_background", "label": "Page background", "default": "#f6f6f4" },
       { "type": "color", "id": "color_surface", "label": "Cards and surfaces", "default": "#ffffff" },
       { "type": "color", "id": "color_text", "label": "Text", "default": "#121212" },
-      { "type": "color", "id": "color_muted", "label": "Muted text", "default": "#6b7280" },
+      { "type": "color", "id": "color_muted", "label": "Muted text", "default": "#5f6673" },
       { "type": "color", "id": "color_primary", "label": "Primary (buttons, sale)", "default": "#d7261e" },
       { "type": "color", "id": "color_secondary", "label": "Soft primary", "default": "#fdecea" },
       { "type": "color", "id": "color_button_text", "label": "Button text", "default": "#ffffff" },
@@ -32,7 +31,7 @@
       { "type": "color", "id": "color_announcement_text", "label": "Announcement text", "default": "#ffffff" },
       { "type": "color", "id": "color_accent", "label": "Accent", "default": "#ff7a1a" },
       { "type": "color", "id": "color_success", "label": "Success", "default": "#15803d" },
-      { "type": "color", "id": "color_warning", "label": "Warning", "default": "#b7791f" }
+      { "type": "color", "id": "color_warning", "label": "Warning", "default": "#9a5b0f" }
     ]
   },
   {
@@ -120,8 +119,7 @@
       { "type": "checkbox", "id": "cart_drawer", "label": "Open cart as a drawer", "default": true },
       { "type": "checkbox", "id": "cart_notes", "label": "Show order notes", "default": true },
       { "type": "checkbox", "id": "cart_free_shipping_bar", "label": "Show free delivery progress", "default": true },
-      { "type": "number", "id": "cart_free_shipping_threshold", "label": "Free delivery from (store currency)", "default": 50 },
-      { "type": "checkbox", "id": "cart_recommendations", "label": "Show recommendations", "default": true }
+      { "type": "number", "id": "cart_free_shipping_threshold", "label": "Free delivery from (store currency)", "default": 50 }
     ]
   },
   {
