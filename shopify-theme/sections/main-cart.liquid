@@ -1,0 +1,88 @@
+{%- comment -%} Full cart page. Quantities, removals and notes are saved through Shopify's cart form. {%- endcomment -%}
+<section class="mkWrap mkCartPage">
+  <h1 class="mkPageTitle">{{ 'cart.title' | t }}</h1>
+
+  {%- if cart.item_count == 0 -%}
+    <div class="mkEmptyBlock">
+      <p>{{ 'cart.empty' | t }}</p>
+      <a class="mkBtn mkBtnPrimary" href="{{ routes.all_products_collection_url }}">{{ 'cart.continue_shopping' | t }}</a>
+    </div>
+  {%- else -%}
+    {%- if section.settings.free_shipping_bar -%}
+      {%- assign threshold = section.settings.free_shipping_threshold | times: 100 -%}
+      <div class="mkFreeBar" role="status">
+        {%- if cart.total_price >= threshold -%}
+          <span>{{ 'cart.free_delivery_unlocked' | t }}</span>
+        {%- else -%}
+          {%- assign remaining = threshold | minus: cart.total_price | money -%}
+          <span>{{ 'cart.free_delivery_remaining' | t: amount: remaining }}</span>
+        {%- endif -%}
+      </div>
+    {%- endif -%}
+
+    <form action="{{ routes.cart_url }}" method="post" class="mkCartLayout" id="mkCartForm">
+      <ul class="mkCartLines" role="list">
+        {%- for item in cart.items -%}
+          <li class="mkCartLine" data-line-key="{{ item.key }}">
+            <a class="mkCartThumb" href="{{ item.url }}">
+              {%- if item.image -%}
+                {{ item.image | image_url: width: 240 | image_tag: loading: 'lazy', sizes: '120px', widths: '120, 240', alt: item.image.alt | default: item.product.title }}
+              {%- endif -%}
+            </a>
+            <div class="mkCartInfo">
+              <a class="mkCartName" href="{{ item.url }}">{{ item.product.title }}</a>
+              {%- unless item.variant.title == 'Default Title' -%}
+                <p class="mkCartVariant">{{ item.variant.title }}</p>
+              {%- endunless -%}
+              {%- if item.properties.size > 0 -%}
+                <ul class="mkCartProps">
+                  {%- for prop in item.properties -%}
+                    {%- unless prop.last == blank or prop.first contains '_' -%}
+                      <li>{{ prop.first }}: {{ prop.last }}</li>
+                    {%- endunless -%}
+                  {%- endfor -%}
+                </ul>
+              {%- endif -%}
+              <p class="mkCartUnit">{{ item.final_price | money }}</p>
+            </div>
+            <div class="mkCartQty">
+              <label class="visually-hidden" for="updates-{{ forloop.index }}">{{ 'cart.quantity' | t }}</label>
+              <input id="updates-{{ forloop.index }}" class="mkQtyInput" type="number" name="updates[]" value="{{ item.quantity }}" min="0" max="99" inputmode="numeric">
+              <a class="mkCartRemove" href="{{ routes.cart_change_url }}?line={{ forloop.index }}&amp;quantity=0">{{ 'cart.remove' | t }}</a>
+            </div>
+            <p class="mkCartLineTotal">{{ item.line_price | money }}</p>
+          </li>
+        {%- endfor -%}
+      </ul>
+
+      <aside class="mkCartSummary">
+        {%- if section.settings.notes -%}
+          <label class="mkCartNote">
+            <span>{{ 'cart.note' | t }}</span>
+            <textarea name="note" rows="3">{{ cart.note }}</textarea>
+          </label>
+        {%- endif -%}
+        <p class="mkCartSubtotal">
+          <span>{{ 'cart.subtotal' | t }}</span>
+          <strong>{{ cart.total_price | money }}</strong>
+        </p>
+        <p class="mkCartTax">{{ 'cart.shipping_note' | t }}</p>
+        <div class="mkCartActions">
+          <button type="submit" name="update" class="mkBtn mkBtnOutline">{{ 'cart.update' | t }}</button>
+          <button type="submit" name="checkout" class="mkBtn mkBtnPrimary mkBtnLarge">{{ 'cart.checkout' | t }}</button>
+        </div>
+      </aside>
+    </form>
+  {%- endif -%}
+</section>
+
+{% schema %}
+{
+  "name": "Cart page",
+  "settings": [
+    { "type": "checkbox", "id": "notes", "label": "Show order notes", "default": true },
+    { "type": "checkbox", "id": "free_shipping_bar", "label": "Show free delivery progress", "default": true },
+    { "type": "number", "id": "free_shipping_threshold", "label": "Free delivery from (currency units)", "default": 50 }
+  ]
+}
+{% endschema %}

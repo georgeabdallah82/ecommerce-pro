@@ -18,7 +18,7 @@ async function api(path: string, body?: unknown) {
 }
 
 // The QR code authenticator apps scan (on a computer; on the phone itself, the link opens the app).
-function QrCode({ text }: { text: string }) {
+export function QrCode({ text }: { text: string }) {
   const [path, setPath] = useState<{ d: string; size: number } | null>(null)
   useEffect(() => {
     let active = true

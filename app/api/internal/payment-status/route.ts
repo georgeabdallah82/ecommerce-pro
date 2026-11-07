@@ -1,10 +1,18 @@
 import { db } from '@/lib/prisma'
 import { canTransitionPayment } from '@/lib/orders'
 import { PaymentStatus } from '@prisma/client'
+import { timingSafeEqual } from 'node:crypto'
+
+// Compares in constant time, so the secret cannot be guessed one character at a time from response timing.
+function safeBearerEqual(header: string, secret: string) {
+  const expected = Buffer.from(`Bearer ${secret}`)
+  const given = Buffer.from(header)
+  return given.length === expected.length && timingSafeEqual(given, expected)
+}
 
 export async function POST(req: Request) {
   const configured = process.env.PAYMENT_WEBHOOK_SECRET
-  if (!configured || req.headers.get('authorization') !== `Bearer ${configured}`) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!configured || !safeBearerEqual(req.headers.get('authorization') || '', configured)) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
     const body = await req.json()

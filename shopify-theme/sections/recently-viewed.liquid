@@ -1,0 +1,23 @@
+{%- comment -%}
+  Products this visitor opened on this device. The product page saves them in localStorage
+  (theme.js); this row fills itself in and stays hidden until there is something to show.
+{%- endcomment -%}
+<section class="mkSection" data-recent hidden>
+  <div class="mkWrap">
+    <div class="mkSectionHead">
+      <h2 class="mkSectionTitle">{{ section.settings.heading | escape }}</h2>
+    </div>
+    <div class="mkRail" data-recent-list data-limit="{{ section.settings.limit }}"></div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Recently viewed",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Recently viewed" },
+    { "type": "range", "id": "limit", "label": "Products", "min": 2, "max": 12, "step": 1, "default": 6 }
+  ],
+  "presets": [ { "name": "Recently viewed" } ]
+}
+{% endschema %}

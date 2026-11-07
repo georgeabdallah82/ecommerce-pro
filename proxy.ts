@@ -26,7 +26,8 @@ async function isStaffSession(sessionToken: string | undefined) {
     // Same rule as getCurrentUser: a staff session revoked (password/role change, disabled)
     // must not keep seeing the store behind the maintenance page.
     if (typeof payload.iat !== 'number' || isSessionRevoked(payload.iat, user?.sessionsRevokedAt)) return false
-    return !!user?.isActive && user.role !== 'CUSTOMER'
+    // Staff need 2-step login on, the same rule as getCurrentUser.
+    return !!user?.isActive && user.role !== 'CUSTOMER' && !!user.totpEnabled
   } catch {
     return false
   }

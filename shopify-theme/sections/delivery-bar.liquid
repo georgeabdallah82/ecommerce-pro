@@ -1,0 +1,42 @@
+{%- comment -%}
+  Bar under the header: which area the customer is in and when the order arrives.
+  Areas are one "Area | delivery time" per line. The choice is remembered on this device.
+{%- endcomment -%}
+{%- if section.settings.enabled -%}
+  {%- assign areas = section.settings.areas | split: '\n' -%}
+  <div class="mkDelivery" data-delivery>
+    <div class="mkWrap mkDeliveryInner">
+      <label class="mkDeliveryLabel" for="mkDeliveryArea">{{ 'delivery.label' | t }}</label>
+      <select id="mkDeliveryArea" class="mkDeliverySelect" data-delivery-select>
+        {%- for line in areas -%}
+          {%- assign parts = line | strip | split: '|' -%}
+          {%- if parts.size >= 1 and parts.first != blank -%}
+            <option value="{{ parts.first | strip | escape }}" data-time="{{ parts.last | strip | escape }}">{{ parts.first | strip | escape }}</option>
+          {%- endif -%}
+        {%- endfor -%}
+      </select>
+      <span class="mkDeliveryTime" data-delivery-time></span>
+      {%- if section.settings.note != blank -%}
+        <span class="mkDeliveryNote">{{ section.settings.note | escape }}</span>
+      {%- endif -%}
+    </div>
+  </div>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Delivery bar",
+  "settings": [
+    { "type": "checkbox", "id": "enabled", "label": "Show delivery bar", "default": true },
+    {
+      "type": "textarea",
+      "id": "areas",
+      "label": "Delivery areas",
+      "info": "One per line, as: Area | delivery time",
+      "default": "Beirut | Tomorrow\nMetn | Tomorrow\nKeserwan | Within 24–48 hours\nJbeil | Within 48 hours\nNorth | Within 48 hours\nSouth | Within 48 hours\nBekaa | Within 48 hours"
+    },
+    { "type": "text", "id": "note", "label": "Note", "default": "Cash on delivery" }
+  ],
+  "presets": [ { "name": "Delivery bar" } ]
+}
+{% endschema %}

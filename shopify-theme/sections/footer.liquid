@@ -1,0 +1,83 @@
+{%- comment -%} Site footer: up to three menus, store text, social links and an optional newsletter signup. {%- endcomment -%}
+<footer class="mkFooter">
+  <div class="mkWrap">
+    <div class="mkFooterGrid" style="--mk-footer-cols: {{ settings.footer_columns }}">
+      <div class="mkFooterBrand">
+        <a class="mkFooterLogo" href="{{ routes.root_url }}">
+          {%- if settings.logo -%}
+            {{ settings.logo | image_url: width: 360 | image_tag: loading: 'lazy', alt: shop.name, class: 'mkFooterLogoImg' }}
+          {%- else -%}
+            <img class="mkFooterLogoImg" src="{{ 'yallahaul-logo.svg' | asset_url }}" width="909" height="142" alt="{{ shop.name | escape }}" loading="lazy">
+          {%- endif -%}
+        </a>
+        {%- if settings.footer_text != blank -%}
+          <div class="mkFooterText rte">{{ settings.footer_text }}</div>
+        {%- endif -%}
+        {%- if settings.social_instagram != blank or settings.social_facebook != blank or settings.social_tiktok != blank or settings.social_twitter != blank or settings.social_youtube != blank -%}
+          <ul class="mkSocial" aria-label="{{ 'footer.social' | t }}">
+            {%- if settings.social_instagram != blank -%}<li><a href="{{ settings.social_instagram }}" target="_blank" rel="noopener">Instagram</a></li>{%- endif -%}
+            {%- if settings.social_facebook != blank -%}<li><a href="{{ settings.social_facebook }}" target="_blank" rel="noopener">Facebook</a></li>{%- endif -%}
+            {%- if settings.social_tiktok != blank -%}<li><a href="{{ settings.social_tiktok }}" target="_blank" rel="noopener">TikTok</a></li>{%- endif -%}
+            {%- if settings.social_twitter != blank -%}<li><a href="{{ settings.social_twitter }}" target="_blank" rel="noopener">X</a></li>{%- endif -%}
+            {%- if settings.social_youtube != blank -%}<li><a href="{{ settings.social_youtube }}" target="_blank" rel="noopener">YouTube</a></li>{%- endif -%}
+          </ul>
+        {%- endif -%}
+      </div>
+
+      {%- assign menu_keys = 'menu_1,menu_2,menu_3' | split: ',' -%}
+      {%- for key in menu_keys -%}
+        {%- assign list = linklists[section.settings[key]] -%}
+        {%- if list and list.links.size > 0 -%}
+          <nav class="mkFooterCol" aria-label="{{ list.title | escape }}">
+            <h2 class="mkFooterHead">{{ list.title }}</h2>
+            <ul>
+              {%- for link in list.links -%}
+                <li><a href="{{ link.url }}">{{ link.title }}</a></li>
+              {%- endfor -%}
+            </ul>
+          </nav>
+        {%- endif -%}
+      {%- endfor -%}
+
+      {%- if settings.footer_show_newsletter -%}
+        <div class="mkFooterCol mkNewsletter">
+          <h2 class="mkFooterHead">{{ 'footer.newsletter_title' | t }}</h2>
+          {%- form 'customer', id: 'mkNewsletterForm', class: 'mkNewsletterForm' -%}
+            {%- if form.posted_successfully? -%}
+              <p class="mkNewsletterDone" role="status">{{ 'footer.newsletter_thanks' | t }}</p>
+            {%- else -%}
+              <input type="hidden" name="contact[tags]" value="newsletter">
+              <label class="visually-hidden" for="mkNewsletterEmail">{{ 'footer.newsletter_email' | t }}</label>
+              <input id="mkNewsletterEmail" type="email" name="contact[email]" autocomplete="email" placeholder="{{ 'footer.newsletter_email' | t }}" required>
+              <button type="submit" class="mkBtn mkBtnPrimary">{{ 'footer.newsletter_button' | t }}</button>
+              {%- if form.errors -%}
+                <p class="mkFormError" role="alert">{{ form.errors | default_errors }}</p>
+              {%- endif -%}
+            {%- endif -%}
+          {%- endform -%}
+        </div>
+      {%- endif -%}
+    </div>
+
+    <div class="mkFooterBottom">
+      <p>&copy; {{ 'now' | date: '%Y' }} {{ shop.name }}</p>
+      <ul class="mkFooterLegal">
+        {%- if shop.privacy_policy -%}<li><a href="{{ shop.privacy_policy.url }}">{{ shop.privacy_policy.title }}</a></li>{%- endif -%}
+        {%- if shop.refund_policy -%}<li><a href="{{ shop.refund_policy.url }}">{{ shop.refund_policy.title }}</a></li>{%- endif -%}
+        {%- if shop.terms_of_service -%}<li><a href="{{ shop.terms_of_service.url }}">{{ shop.terms_of_service.title }}</a></li>{%- endif -%}
+      </ul>
+    </div>
+  </div>
+</footer>
+
+{% schema %}
+{
+  "name": "Footer",
+  "settings": [
+    { "type": "link_list", "id": "menu_1", "label": "Menu 1", "default": "footer" },
+    { "type": "link_list", "id": "menu_2", "label": "Menu 2", "default": "customer-service" },
+    { "type": "link_list", "id": "menu_3", "label": "Menu 3" }
+  ],
+  "presets": [ { "name": "Footer" } ]
+}
+{% endschema %}

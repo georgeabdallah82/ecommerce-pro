@@ -1,0 +1,101 @@
+{%- comment -%} Full-photo hero slider. Slides rotate on their own when autoplay is on; arrows and dots work with touch and keyboard. {%- endcomment -%}
+{%- if section.blocks.size > 0 -%}
+  <section class="mkSection mkHero" style="--mk-hero-h: {{ section.settings.height }}px; --mk-hero-h-m: {{ section.settings.mobile_height }}px"
+           data-slider data-speed="{{ settings.slideshow_speed }}" data-autoplay="{% if settings.slideshow_autoplay and section.settings.autoplay %}true{% else %}false{% endif %}"
+           aria-roledescription="carousel" aria-label="{{ section.settings.heading | default: 'Featured' | escape }}">
+    <div class="mkHeroTrack" data-slider-track>
+      {%- for block in section.blocks -%}
+        {%- liquid
+          assign loading_mode = 'lazy'
+          if forloop.first
+            assign loading_mode = 'eager'
+          endif
+        -%}
+        <div class="mkSlide{% if forloop.first %} is-active{% endif %}" {{ block.shopify_attributes }} role="group" aria-roledescription="slide" aria-label="{{ forloop.index }} / {{ section.blocks.size }}" data-slide>
+          <div class="mkSlidePic">
+            {%- liquid
+              assign fallback_photo = 'hero-kitchen.jpg'
+              if forloop.index == 2
+                assign fallback_photo = 'hero-rolls.jpg'
+              elsif forloop.index == 3
+                assign fallback_photo = 'hero-bottles.jpg'
+              endif
+            -%}
+            {%- if block.settings.image != blank -%}
+              {{ block.settings.image | image_url: width: 1800 | image_tag: loading: loading_mode, class: 'mkSlideImg mkSlideImg--desk', sizes: '100vw', widths: '750, 1100, 1500, 1800', alt: block.settings.image.alt | default: '' }}
+            {%- else -%}
+              <img class="mkSlideImg mkSlideImg--desk" src="{{ fallback_photo | asset_url }}" width="1800" height="1000" alt="" loading="{{ loading_mode }}">
+            {%- endif -%}
+            {%- if block.settings.mobile_image != blank -%}
+              {{ block.settings.mobile_image | image_url: width: 900 | image_tag: loading: loading_mode, class: 'mkSlideImg mkSlideImg--mob', sizes: '100vw', widths: '400, 600, 900', alt: block.settings.mobile_image.alt | default: '' }}
+            {%- elsif block.settings.image != blank -%}
+              {{ block.settings.image | image_url: width: 900 | image_tag: loading: loading_mode, class: 'mkSlideImg mkSlideImg--mob', sizes: '100vw', widths: '400, 600, 900', alt: '' }}
+            {%- else -%}
+              <img class="mkSlideImg mkSlideImg--mob" src="{{ fallback_photo | asset_url }}" width="900" height="500" alt="" loading="{{ loading_mode }}">
+            {%- endif -%}
+          </div>
+          <div class="mkSlideShade" aria-hidden="true"></div>
+          <div class="mkWrap mkSlideCopy">
+            {%- if block.settings.tag != blank -%}<p class="mkSlideTag">{{ block.settings.tag | escape }}</p>{%- endif -%}
+            <h2 class="mkSlideHead">
+              {{- block.settings.heading | escape -}}
+              {%- if block.settings.highlight != blank %} <span class="mkSlideHighlight">{{ block.settings.highlight | escape }}</span>{%- endif -%}
+            </h2>
+            {%- if block.settings.text != blank -%}<p class="mkSlideText">{{ block.settings.text | escape }}</p>{%- endif -%}
+            <div class="mkSlideActions">
+              {%- if block.settings.button_label != blank -%}
+                <a class="mkBtn mkBtnPrimary" href="{{ block.settings.button_url }}">{{ block.settings.button_label | escape }}</a>
+              {%- endif -%}
+              {%- if block.settings.secondary_label != blank -%}
+                <a class="mkBtn mkBtnOutline mkBtnOnDark" href="{{ block.settings.secondary_url }}">{{ block.settings.secondary_label | escape }}</a>
+              {%- endif -%}
+            </div>
+            {%- if block.settings.badge != blank -%}<p class="mkSlideBadge">{{ block.settings.badge | escape }}</p>{%- endif -%}
+          </div>
+        </div>
+      {%- endfor -%}
+    </div>
+    {%- if section.blocks.size > 1 -%}
+      <button type="button" class="mkArrow mkArrowPrev" data-slider-prev aria-label="{{ 'hero.previous' | t }}">&lsaquo;</button>
+      <button type="button" class="mkArrow mkArrowNext" data-slider-next aria-label="{{ 'hero.next' | t }}">&rsaquo;</button>
+      <div class="mkDots" data-slider-dots></div>
+    {%- endif -%}
+  </section>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Hero slider",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Accessible name", "default": "Featured" },
+    { "type": "checkbox", "id": "autoplay", "label": "Rotate slides automatically", "default": true },
+    { "type": "range", "id": "height", "label": "Height on desktop", "min": 320, "max": 760, "step": 20, "unit": "px", "default": 560 },
+    { "type": "range", "id": "mobile_height", "label": "Height on phones", "min": 280, "max": 640, "step": 20, "unit": "px", "default": 460 }
+  ],
+  "blocks": [
+    {
+      "type": "hero_slide",
+      "name": "Slide",
+      "settings": [
+        { "type": "text", "id": "tag", "label": "Small tag", "default": "Home essentials" },
+        { "type": "text", "id": "heading", "label": "Heading", "default": "Everything for your home," },
+        { "type": "text", "id": "highlight", "label": "Highlighted word", "default": "delivered" },
+        { "type": "textarea", "id": "text", "label": "Text", "default": "Cash on delivery anywhere in Lebanon." },
+        { "type": "image_picker", "id": "image", "label": "Photo (desktop)" },
+        { "type": "image_picker", "id": "mobile_image", "label": "Photo (phone, optional)" },
+        { "type": "text", "id": "button_label", "label": "Button", "default": "Shop now" },
+        { "type": "url", "id": "button_url", "label": "Button link" },
+        { "type": "text", "id": "secondary_label", "label": "Second button" },
+        { "type": "url", "id": "secondary_url", "label": "Second button link" },
+        { "type": "text", "id": "badge", "label": "Badge text" }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Hero slider",
+      "blocks": [ { "type": "hero_slide" }, { "type": "hero_slide", "settings": { "tag": "Stock up", "heading": "Tissues & paper,", "highlight": "in bulk", "text": "Big packs for the whole family, delivered to your door.", "button_label": "Shop tissues" } } ]
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,36 @@
+{%- comment -%} Customer quotes in cards. Add a star rating or photo per quote if you want. {%- endcomment -%}
+{%- if section.blocks.size > 0 -%}
+  <section class="mkSection">
+    <div class="mkWrap">
+      <h2 class="mkSectionTitle">{{ section.settings.heading | escape }}</h2>
+      <div class="mkQuotes">
+        {%- for block in section.blocks -%}
+          <figure class="mkQuote" {{ block.shopify_attributes }}>
+            <blockquote>{{ block.settings.quote | escape }}</blockquote>
+            <figcaption>&mdash; {{ block.settings.author | escape }}</figcaption>
+          </figure>
+        {%- endfor -%}
+      </div>
+    </div>
+  </section>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Testimonials",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "What customers say" }
+  ],
+  "blocks": [
+    {
+      "type": "testimonial",
+      "name": "Quote",
+      "settings": [
+        { "type": "textarea", "id": "quote", "label": "Quote", "default": "Ordered on WhatsApp and it arrived the next day." },
+        { "type": "text", "id": "author", "label": "Name" }
+      ]
+    }
+  ],
+  "presets": [ { "name": "Testimonials", "blocks": [ { "type": "testimonial" }, { "type": "testimonial" } ] } ]
+}
+{% endschema %}

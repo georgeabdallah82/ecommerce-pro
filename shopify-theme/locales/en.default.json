@@ -1,0 +1,94 @@
+{
+  "accessibility": {
+    "skip_to_content": "Skip to content"
+  },
+  "announcement": {
+    "dismiss": "Close announcement"
+  },
+  "cart": {
+    "added": "Added to cart: {{ title }}",
+    "checkout": "Checkout",
+    "close": "Close cart",
+    "continue_shopping": "Continue shopping",
+    "empty": "Your cart is empty.",
+    "error": "Something went wrong. Please try again.",
+    "free_delivery_remaining": "Add {{ amount }} more for free delivery",
+    "free_delivery_unlocked": "You get free delivery on this order",
+    "note": "Order note",
+    "quantity": "Quantity",
+    "remove": "Remove",
+    "shipping_note": "Shipping and cash on delivery are confirmed at checkout.",
+    "subtotal": "Subtotal",
+    "title": "Your cart",
+    "update": "Update cart",
+    "view_cart": "View cart"
+  },
+  "collection": {
+    "apply": "Apply",
+    "clear": "Clear all",
+    "empty": "No products match these filters yet.",
+    "filters": "Filters",
+    "from": "From",
+    "pages": "Pages",
+    "products": "products",
+    "sort": "Sort by",
+    "to": "To"
+  },
+  "delivery": {
+    "label": "Deliver to"
+  },
+  "footer": {
+    "newsletter_button": "Subscribe",
+    "newsletter_email": "Your email",
+    "newsletter_thanks": "Thanks for subscribing!",
+    "newsletter_title": "Get offers first",
+    "social": "Follow us"
+  },
+  "header": {
+    "account": "Account",
+    "all_collections": "All collections",
+    "cart": "Cart",
+    "home": "Home",
+    "main_menu": "Main menu",
+    "menu": "Menu",
+    "search": "Search",
+    "search_placeholder": "Search products"
+  },
+  "home": {
+    "view_all": "View all"
+  },
+  "hero": {
+    "next": "Next slide",
+    "previous": "Previous slide"
+  },
+  "not_found": {
+    "home": "Back to home",
+    "text": "The page you are looking for does not exist or has moved.",
+    "title": "Page not found"
+  },
+  "product": {
+    "add_to_cart": "Add to cart",
+    "breadcrumb": "Breadcrumb",
+    "choose_options": "Choose options",
+    "decrease": "Decrease quantity",
+    "details": "Details",
+    "from": "From",
+    "increase": "Increase quantity",
+    "new": "New",
+    "only_left": "Only {{ count }} left",
+    "quantity": "Quantity",
+    "related": "You may also like",
+    "sale": "Sale",
+    "shipping": "Delivery",
+    "sold_out": "Sold out"
+  },
+  "search": {
+    "no_results": "No results for \"{{ terms }}\"",
+    "results_count": "{{ count }} results",
+    "title": "Search",
+    "try_other": "Try another search or browse"
+  },
+  "whatsapp": {
+    "label": "Chat on WhatsApp"
+  }
+}

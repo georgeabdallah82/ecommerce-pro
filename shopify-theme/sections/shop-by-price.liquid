@@ -1,0 +1,60 @@
+{%- comment -%} Price buckets. Each one opens the all-products page filtered to that price range. {%- endcomment -%}
+{%- if section.blocks.size > 0 -%}
+  <section class="mkSection">
+    <div class="mkWrap">
+      <div class="mkSectionHead">
+        <h2 class="mkSectionTitle">{{ section.settings.heading | escape }}</h2>
+      </div>
+      <ul class="mkPriceBands">
+        {%- for block in section.blocks -%}
+          {%- liquid
+            assign band_query = ''
+            if block.settings.min > 0
+              assign band_query = 'filter.v.price.gte=' | append: block.settings.min
+            endif
+            if block.settings.max > 0
+              if band_query != ''
+                assign band_query = band_query | append: '&'
+              endif
+              assign band_query = band_query | append: 'filter.v.price.lte=' | append: block.settings.max
+            endif
+            assign band_url = routes.all_products_collection_url
+            if band_query != ''
+              assign band_url = band_url | append: '?' | append: band_query
+            endif
+          -%}
+          <li {{ block.shopify_attributes }}>
+            <a class="mkPriceBand" href="{{ band_url }}">{{ block.settings.label | escape }}</a>
+          </li>
+        {%- endfor -%}
+      </ul>
+    </div>
+  </section>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Shop by price",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Shop by price" }
+  ],
+  "blocks": [
+    {
+      "type": "price_band",
+      "name": "Price band",
+      "settings": [
+        { "type": "text", "id": "label", "label": "Label", "default": "Under $8" },
+        { "type": "number", "id": "min", "label": "From (0 for none)", "default": 0 },
+        { "type": "number", "id": "max", "label": "To (0 for none)", "default": 8 }
+      ]
+    }
+  ],
+  "presets": [
+    { "name": "Shop by price", "blocks": [
+      { "type": "price_band", "settings": { "label": "Under $8", "min": 0, "max": 8 } },
+      { "type": "price_band", "settings": { "label": "$8 – $12", "min": 8, "max": 12 } },
+      { "type": "price_band", "settings": { "label": "$12 and up", "min": 12, "max": 0 } }
+    ] }
+  ]
+}
+{% endschema %}

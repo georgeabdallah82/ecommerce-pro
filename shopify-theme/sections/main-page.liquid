@@ -1,0 +1,14 @@
+{%- comment -%} Plain page (About, Contact, policies): title and formatted content. {%- endcomment -%}
+<section class="mkWrap mkPage">
+  <h1 class="mkPageTitle">{{ page.title }}</h1>
+  <div class="mkPageBody rte">
+    {{ page.content }}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Page content",
+  "settings": []
+}
+{% endschema %}

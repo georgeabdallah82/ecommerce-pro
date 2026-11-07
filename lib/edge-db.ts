@@ -31,12 +31,12 @@ export async function getSettingValue(key: string): Promise<string | null> {
   return rows[0]?.value ?? null
 }
 
-export async function getStaffAccess(userId: string): Promise<{ isActive: boolean; role: string; sessionsRevokedAt: Date | null } | null> {
+export async function getStaffAccess(userId: string): Promise<{ isActive: boolean; role: string; sessionsRevokedAt: Date | null; totpEnabled: boolean } | null> {
   if (!sql) return null
-  const rows = await sql`SELECT "isActive", "role", "sessionsRevokedAt" FROM "User" WHERE "id" = ${userId} LIMIT 1` as { isActive: boolean; role: string; sessionsRevokedAt: Date | string | null }[]
+  const rows = await sql`SELECT "isActive", "role", "sessionsRevokedAt", "totpEnabledAt" FROM "User" WHERE "id" = ${userId} LIMIT 1` as { isActive: boolean; role: string; sessionsRevokedAt: Date | string | null; totpEnabledAt: Date | string | null }[]
   const row = rows[0]
   if (!row) return null
   // Prisma stores DateTime as UTC "timestamp without time zone"; read it as UTC.
   const revoked = row.sessionsRevokedAt == null ? null : row.sessionsRevokedAt instanceof Date ? row.sessionsRevokedAt : new Date(`${row.sessionsRevokedAt}Z`)
-  return { isActive: row.isActive, role: row.role, sessionsRevokedAt: revoked }
+  return { isActive: row.isActive, role: row.role, sessionsRevokedAt: revoked, totpEnabled: row.totpEnabledAt != null }
 }

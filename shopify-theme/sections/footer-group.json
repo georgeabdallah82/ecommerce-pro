@@ -1,0 +1,10 @@
+{
+  "name": "Footer group",
+  "sections": {
+    "footer": {
+      "type": "footer",
+      "settings": { "menu_1": "footer", "menu_2": "customer-service" }
+    }
+  },
+  "order": ["footer"]
+}

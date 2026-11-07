@@ -1,0 +1,31 @@
+{%- comment -%} Email signup. Saved to Shopify customers with the "newsletter" tag. {%- endcomment -%}
+<section class="mkSection">
+  <div class="mkWrap mkNewsletterBand">
+    <div>
+      <h2 class="mkSectionTitle">{{ section.settings.heading | escape }}</h2>
+      {%- if section.settings.text != blank -%}<p class="mkSectionSub">{{ section.settings.text | escape }}</p>{%- endif -%}
+    </div>
+    {%- form 'customer', class: 'mkNewsletterForm' -%}
+      {%- if form.posted_successfully? -%}
+        <p class="mkNewsletterDone" role="status">{{ 'footer.newsletter_thanks' | t }}</p>
+      {%- else -%}
+        <input type="hidden" name="contact[tags]" value="newsletter">
+        <label class="visually-hidden" for="NewsletterEmail-{{ section.id }}">{{ 'footer.newsletter_email' | t }}</label>
+        <input id="NewsletterEmail-{{ section.id }}" type="email" name="contact[email]" autocomplete="email" placeholder="{{ 'footer.newsletter_email' | t }}" required>
+        <button type="submit" class="mkBtn mkBtnPrimary">{{ 'footer.newsletter_button' | t }}</button>
+        {%- if form.errors -%}<p class="mkFormError" role="alert">{{ form.errors | default_errors }}</p>{%- endif -%}
+      {%- endif -%}
+    {%- endform -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Newsletter",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Get offers first" },
+    { "type": "text", "id": "text", "label": "Text", "default": "New arrivals and deals, once in a while." }
+  ],
+  "presets": [ { "name": "Newsletter" } ]
+}
+{% endschema %}

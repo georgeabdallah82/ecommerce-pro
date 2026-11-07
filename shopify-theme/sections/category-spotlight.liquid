@@ -1,0 +1,43 @@
+{%- comment -%} Big photo banner with a call to action, next to a row of products from one collection. {%- endcomment -%}
+{%- if section.settings.collection != blank and section.settings.collection.products.size >= section.settings.min_products -%}
+  <section class="mkSection">
+    <div class="mkWrap mkSpotGrid">
+      <a class="mkSpotBanner{% if section.settings.banner_position == 'right' %} is-right{% endif %}" href="{{ section.settings.collection.url }}">
+        {%- if section.settings.image != blank -%}
+          {{ section.settings.image | image_url: width: 1200 | image_tag: loading: 'lazy', class: 'mkSpotImg', sizes: '(min-width: 900px) 40vw, 100vw', widths: '600, 900, 1200', alt: section.settings.image.alt | default: '' }}
+        {%- else -%}
+          <img class="mkSpotImg" src="{{ 'spot-cleaning.jpg' | asset_url }}" width="1200" height="900" alt="" loading="lazy">
+        {%- endif -%}
+        <div class="mkSpotText">
+          {%- if section.settings.kicker != blank -%}<p class="mkSpotKicker">{{ section.settings.kicker | escape }}</p>{%- endif -%}
+          <h2 class="mkSpotHead">{{ section.settings.banner_heading | escape }}</h2>
+          {%- if section.settings.button_label != blank -%}<span class="mkBtn mkBtnPrimary">{{ section.settings.button_label | escape }}</span>{%- endif -%}
+        </div>
+      </a>
+      <div class="mkSpotRail" data-rail>
+        {%- for product in section.settings.collection.products limit: section.settings.limit -%}
+          {%- render 'product-card', product: product -%}
+        {%- endfor -%}
+      </div>
+    </div>
+  </section>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Category spotlight",
+  "settings": [
+    { "type": "text", "id": "kicker", "label": "Small label", "default": "Featured" },
+    { "type": "text", "id": "banner_heading", "label": "Banner heading", "default": "A cleaner home in one order" },
+    { "type": "text", "id": "button_label", "label": "Banner button", "default": "Shop now" },
+    { "type": "image_picker", "id": "image", "label": "Banner photo" },
+    { "type": "select", "id": "banner_position", "label": "Banner side", "default": "left", "options": [
+      { "value": "left", "label": "Left" }, { "value": "right", "label": "Right" }
+    ] },
+    { "type": "collection", "id": "collection", "label": "Collection" },
+    { "type": "range", "id": "limit", "label": "Products", "min": 2, "max": 8, "step": 1, "default": 4 },
+    { "type": "range", "id": "min_products", "label": "Hide until the collection has at least", "min": 1, "max": 12, "step": 1, "default": 2 }
+  ],
+  "presets": [ { "name": "Category spotlight" } ]
+}
+{% endschema %}

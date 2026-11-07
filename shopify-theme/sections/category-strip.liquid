@@ -1,0 +1,50 @@
+{%- comment -%} Row of round category tiles, each linking to a collection. Scrolls sideways on phones. {%- endcomment -%}
+{%- if section.blocks.size > 0 -%}
+  <section class="mkSection">
+    <div class="mkWrap">
+      <div class="mkSectionHead">
+        <h2 class="mkSectionTitle">{{ section.settings.heading | escape }}</h2>
+        <a class="mkSectionAll" href="{{ routes.all_products_collection_url }}">{{ 'home.view_all' | t }}</a>
+      </div>
+      <div class="mkCatsScroller" data-rail>
+        <ul class="mkCatsTrack">
+          {%- for block in section.blocks -%}
+            {%- if block.settings.collection != blank -%}
+              <li class="mkCatsTile" {{ block.shopify_attributes }}>
+                <a href="{{ block.settings.collection.url }}">
+                  <span class="mkCatsPic">
+                    {%- if block.settings.collection.image -%}
+                      {{ block.settings.collection.image | image_url: width: 300 | image_tag: loading: 'lazy', class: 'mkCatsImg', sizes: '120px', widths: '120, 240, 300', alt: block.settings.collection.title }}
+                    {%- else -%}
+                      {{ 'collection-1' | placeholder_svg_tag: 'mkCatsImg' }}
+                    {%- endif -%}
+                  </span>
+                  <span class="mkCatsName">{{ block.settings.collection.title | escape }}</span>
+                </a>
+              </li>
+            {%- endif -%}
+          {%- endfor -%}
+        </ul>
+      </div>
+    </div>
+  </section>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Shop by category",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Shop by category" }
+  ],
+  "blocks": [
+    {
+      "type": "collection",
+      "name": "Category",
+      "settings": [
+        { "type": "collection", "id": "collection", "label": "Collection" }
+      ]
+    }
+  ],
+  "presets": [ { "name": "Shop by category" } ]
+}
+{% endschema %}

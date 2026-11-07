@@ -1,0 +1,22 @@
+{%- comment -%} Open Graph and Twitter tags, so shared links show the product or page with its photo and price. {%- endcomment -%}
+<meta property="og:site_name" content="{{ shop.name | escape }}">
+<meta property="og:url" content="{{ canonical_url }}">
+<meta property="og:title" content="{{ page_title | escape }}">
+{%- if page_description -%}
+  <meta property="og:description" content="{{ page_description | escape }}">
+{%- endif -%}
+{%- if template.name == 'product' and product -%}
+  <meta property="og:type" content="product">
+  <meta property="og:price:amount" content="{{ product.price | divided_by: 100.0 }}">
+  <meta property="og:price:currency" content="{{ cart.currency.iso_code }}">
+  {%- if product.featured_image -%}
+    <meta property="og:image" content="https:{{ product.featured_image | image_url: width: 1200 }}">
+    <meta property="og:image:width" content="1200">
+  {%- endif -%}
+{%- else -%}
+  <meta property="og:type" content="website">
+  {%- if shop.brand.cover_image -%}
+    <meta property="og:image" content="https:{{ shop.brand.cover_image | image_url: width: 1200 }}">
+  {%- endif -%}
+{%- endif -%}
+<meta name="twitter:card" content="summary_large_image">
