@@ -120,7 +120,7 @@ describe('sign-in alerts: wired into the sign-in', () => {
   })
 
   it('the list of known devices cannot be read or changed through the generic settings API', () => {
-    assert.match(read('app/api/admin/settings/route.ts'), /PRIVATE_PREFIXES = \['push\.subscription\.', 'security\.devices\.'\]/)
+    assert.match(read('app/api/admin/settings/route.ts'), /PRIVATE_PREFIXES = \['push\.subscription\.', 'security\.devices\.', 'payment\.areeba\.apiPassword'\]/)
   })
 
   it('the push goes only to the account and the super admins, never to every staff device', () => {

@@ -7,7 +7,8 @@ import { isAllowedSenderAddress, senderDomain } from '@/lib/email'
 
 // push.subscription.*: staff phone notification devices. security.devices.*: the browsers each
 // account signed in from (lib/sign-in-alerts.ts); nobody can add one here to dodge the alert.
-const PRIVATE_PREFIXES = ['push.subscription.', 'security.devices.']
+// The Areeba API password is stored encrypted and only the payment settings screen may write it.
+const PRIVATE_PREFIXES = ['push.subscription.', 'security.devices.', 'payment.areeba.apiPassword']
 function isPrivateKey(key: string) { return PRIVATE_PREFIXES.some(prefix => key.startsWith(prefix)) }
 // Write-only secrets: saved through this route but never sent back to the browser.
 const SECRET_KEYS = new Set(['tracking.metaCapiToken'])
