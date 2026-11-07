@@ -8,12 +8,37 @@
 // Needs playwright-core (installed by the workflow, not a project dependency); CHROMIUM_PATH
 // points it at a browser binary when the default download isn't used.
 import { chromium } from 'playwright-core'
+import { createHmac } from 'node:crypto'
 const B = process.env.BASE || 'http://127.0.0.1:8787'
 const ADMIN = { email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD }
 if (!ADMIN.email || !ADMIN.password) throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD are required')
 const b = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {})
 let failures = 0
 const step = (name, ok, note = '') => { if (!ok) failures++; console.log(ok ? 'PASS' : 'FAIL', name, note) }
+
+// Staff accounts need 2-step login before their first session. The seeded admin has none yet, so
+// this test sets it up through the same API the sign-in screen uses (RFC 6238 codes, 30 seconds).
+function base32Decode(text) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+  let bits = 0, value = 0
+  const out = []
+  for (const ch of text.replace(/=+$/, '').toUpperCase()) {
+    const i = alphabet.indexOf(ch)
+    if (i < 0) continue
+    value = ((value << 5) | i) & 0xffff
+    bits += 5
+    if (bits >= 8) { out.push((value >>> (bits - 8)) & 0xff); bits -= 8 }
+  }
+  return Buffer.from(out)
+}
+function totpNow(secret) {
+  const counter = Buffer.alloc(8)
+  counter.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 1000 / 30)))
+  const h = createHmac('sha1', base32Decode(secret)).update(counter).digest()
+  const o = h[h.length - 1] & 0x0f
+  const n = ((h[o] & 0x7f) << 24) | (h[o + 1] << 16) | (h[o + 2] << 8) | h[o + 3]
+  return String(n % 1000000).padStart(6, '0')
+}
 const stamp = Date.now().toString(36)
 // Rehearsal diagnostics on a preview version (PROBE_DB=1): the database error, if any, in full.
 const probe = async label => { if (!process.env.PROBE_DB) return; const r = await fetch(B + '/api/internal/db-probe').catch(e => null); console.log(`db probe (${label}):`, r ? r.status : 'no answer', r ? (await r.text()).slice(0, 3000) : '') }
@@ -87,6 +112,14 @@ const admin = await b.newContext({ viewport: { width: 1366, height: 900 } }); co
 const adminErrors = []; ap.on('pageerror', e => adminErrors.push(String(e).slice(0, 150)))
 await ap.goto(B + '/admin-login', { waitUntil: 'networkidle' })
 await ap.locator('input[name=email]').fill(ADMIN.email); await ap.locator('input[name=password]').fill(ADMIN.password); await ap.locator('button.adminLoginSubmit').click()
+const signedIn = await ap.waitForURL(/\/admin(?!-login)/, { timeout: 15000 }).then(() => true).catch(() => false)
+if (!signedIn) {
+  const setup = await ap.evaluate(async () => (await fetch('/api/admin/login/enroll', { cache: 'no-store' })).json())
+  const code = totpNow(setup.secret)
+  const done = await ap.evaluate(async code => (await fetch('/api/admin/login/enroll', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code }) })).json(), code)
+  step('admin 2-step set-up on first sign-in', done.ok === true, done.error || `backup codes=${(done.backupCodes || []).length}`)
+  await ap.goto(B + '/admin', { waitUntil: 'networkidle' })
+}
 await ap.waitForURL(/\/admin(?!-login)/, { timeout: 60000 }); step('admin login', true)
 const api = (url, method = 'GET', body) => ap.evaluate(async ([url, method, body]) => { const r = await fetch(url, { method, headers: body ? { 'content-type': 'application/json' } : undefined, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, body: await r.json().catch(() => null) } }, [url, method, body])
 
