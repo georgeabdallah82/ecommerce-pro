@@ -2,6 +2,7 @@ import './admin-overhaul.css'
 import { getCurrentUser } from '@/lib/auth'
 import { hasPermission, type Permission } from '@/lib/permissions'
 import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
 import AdminNav, { type AdminSidebarGroup } from '@/components/admin-nav'
 import { ToastProvider } from '@/components/admin-toast'
 import { ConfirmProvider } from '@/components/admin-confirm'
@@ -14,11 +15,16 @@ import { getStaffRoles } from '@/lib/staff-roles'
 import TeamNotices from '@/components/team-notices'
 import { getNotices } from '@/lib/team-notices-server'
 import { activeNotices, noticeAge } from '@/lib/team-notices'
+import { adminAppForPath, adminHostsFromEnv, appForHostname, moduleVisibleOn } from '@/lib/admin-apps'
 
 const groups: AdminSidebarGroup[] = [
   { id: 'home', label: 'Home', items: [
     { href: '/admin', label: 'Dashboard', permission: 'dashboard.view', icon: 'dashboard' },
     { href: '/admin/notices', label: 'Team notices', permission: 'notices.manage', icon: 'notices' },
+  ]},
+  // The till lives on the POS host (lib/admin-apps.ts); listed only once POS_HOST is set.
+  { id: 'pos', label: 'Point of sale', items: [
+    { href: '/admin/pos', label: 'Till', permission: 'dashboard.view', icon: 'orders' },
   ]},
   { id: 'orders', label: 'Orders', moreLabel: 'Advanced', items: [
     { href: '/admin/orders', label: 'Orders', permission: 'orders.view', icon: 'orders' },
@@ -129,7 +135,15 @@ body:has(.adminShell) .input:focus, body:has(.adminShell) .textarea:focus { outl
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser()
   if (!user) redirect('/admin/login')
-  const visibleGroups = groups.map(group => ({ ...group, items: group.items.filter(item => hasPermission(user, item.permission as Permission)) })).filter(group => group.items.length)
+  // Each host lists only its own modules (lib/admin-apps.ts). With no app host configured, every
+  // module is listed on the one host, as before. The POS entry waits until POS_HOST is set.
+  const hosts = adminHostsFromEnv(process.env)
+  const hostApp = appForHostname((await headers()).get('host'), hosts)
+  const visibleGroups = groups.map(group => ({ ...group, items: group.items.filter(item =>
+    hasPermission(user, item.permission as Permission)
+    && moduleVisibleOn(item.href, hostApp, hosts)
+    && (adminAppForPath(item.href) !== 'pos' || Boolean(hosts.pos)),
+  ) })).filter(group => group.items.length)
   // The admin's accent follows the store's published Primary colour (see lib/admin-accent.ts).
   // If the theme can't be read, the admin keeps its default accent.
   const theme = await getThemeState().then(state => state.theme).catch(() => null)

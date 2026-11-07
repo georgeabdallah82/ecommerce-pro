@@ -82,6 +82,27 @@ Options:
 
 **Hardware (POS):** keyboard-wedge barcode scanners (they type into the focused field, so no driver is needed); receipts printed through the browser with 58 mm and 80 mm CSS print styles, so no printer driver is needed for the first version. Cash drawer: opened manually, not automatically.
 
+## 5a. Module split and host routing (implemented)
+
+Every admin module is assigned to one app in `lib/admin-apps.ts`:
+
+- **ERP** (`erp.`): dashboard, team notices, orders, drivers, returns, draft orders, order edits, products, collections, inventory and stock tools, operations, purchase orders, customers and segments, gift cards, reports, shipping, tax, data transfer, users and roles, activity log, settings, health pages.
+- **Store** (stays on the storefront host): online store (theme editor, navigation, policies), content, files, metafields, discounts, bundles, marketing, newsletter, push campaigns, live visitors, reviews, questions.
+- **POS** (`pos.`): the till (`/admin/pos`), a placeholder until the POS phase.
+- **Shared** (any host): login, two-step pages and anything not listed.
+
+Routing is controlled by three environment variables. While `ERP_HOST` and `POS_HOST` are both unset, nothing changes and every admin page stays on one host.
+
+| Variable | Example | Purpose |
+| --- | --- | --- |
+| `ERP_HOST` | `erp.yallahaul.com` | Host that serves ERP modules |
+| `POS_HOST` | `pos.yallahaul.com` | Host that serves POS modules |
+| `STORE_HOST` | `yallahaul.com` | Host that serves storefront modules |
+
+`proxy.ts` redirects (308) a module request that arrives on the wrong host to the owning host. Storefront pages requested on the ERP or POS host go to that host's home. Admin APIs are not redirected, so each page calls its API on the host it is served from. Staff sign in separately on each host, because the session cookie is host-only (section 4).
+
+Before enabling: create the DNS records and attach `erp.` and `pos.` to the Worker (Phase 6 documents the steps), then set the three variables in the Worker environment.
+
 ## 6. Phased plan
 
 | Phase | Deliverable | Notes |
