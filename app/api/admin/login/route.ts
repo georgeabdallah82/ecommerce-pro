@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/prisma'
-import { verifyPassword, setSession } from '@/lib/auth'
+import { verifyPassword } from '@/lib/auth'
 import { consumeRateLimit, clearRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
-import { setTwoStepTicket } from '@/lib/two-step'
-import { alertLockout, recordSignIn } from '@/lib/sign-in-alerts'
+import { setEnrollTicket, setTwoStepTicket } from '@/lib/two-step'
+import { alertLockout } from '@/lib/sign-in-alerts'
 
 const STAFF_ROLES = ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'SUPPORT', 'EDITOR'] as const
 const WINDOW_MS = 15 * 60 * 1000
@@ -74,8 +74,8 @@ export async function POST(request: Request) {
     await setTwoStepTicket(user.id)
     return NextResponse.json({ needsCode: true }, { headers })
   }
-  await db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
-  await setSession(user.id)
-  await recordSignIn(request.headers, user)
-  return NextResponse.json({ ok: true }, { headers })
+  // Staff must turn 2-step login on before they get a session. The password only opens the set-up
+  // (app/api/admin/login/enroll), which ends in a session once the first code from the app checks out.
+  await setEnrollTicket(user.id)
+  return NextResponse.json({ needsEnrollment: true }, { headers })
 }

@@ -180,3 +180,27 @@ export async function readTwoStepTicket() {
 export async function clearTwoStepTicket() {
   ;(await cookies()).set(TWO_STEP_COOKIE, '', { ...cookieOptions, maxAge: 0 })
 }
+
+// Staff who have no 2-step login yet get a short-lived set-up ticket instead of a session. It only
+// lets them open the set-up (app/api/admin/login/enroll); the session starts once their first code checks out.
+export const ENROLL_COOKIE = 'admin_enroll'
+const enrollCookieOptions = { httpOnly: true, sameSite: 'lax' as const, secure: process.env.NODE_ENV === 'production', path: '/api/admin/login' }
+
+export async function setEnrollTicket(userId: string) {
+  const token = await new SignJWT({ sub: userId, type: 'enroll' })
+    .setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime(`${TICKET_MINUTES}m`).sign(ticketSecret())
+  ;(await cookies()).set(ENROLL_COOKIE, token, { ...enrollCookieOptions, maxAge: TICKET_MINUTES * 60 })
+}
+
+export async function readEnrollTicket() {
+  const token = (await cookies()).get(ENROLL_COOKIE)?.value
+  if (!token) return null
+  try {
+    const { payload } = await jwtVerify(token, ticketSecret())
+    return payload.type === 'enroll' && typeof payload.sub === 'string' ? payload.sub : null
+  } catch { return null }
+}
+
+export async function clearEnrollTicket() {
+  ;(await cookies()).set(ENROLL_COOKIE, '', { ...enrollCookieOptions, maxAge: 0 })
+}

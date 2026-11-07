@@ -110,7 +110,8 @@ describe('sign-in alerts: wired into the sign-in', () => {
   const read = (path: string) => readFileSync(path, 'utf8')
 
   it('both ways of signing in record the device after the session is set', () => {
-    assert.match(read('app/api/admin/login/route.ts'), /await setSession\(user\.id\)\n  await recordSignIn\(request\.headers, user\)/)
+    // Staff sign in through the set-up (first time) or the code step (every time after): both record the device once the session is set.
+    assert.match(read('app/api/admin/login/enroll/route.ts'), /await setSession\(user\.id\)[\s\S]*await recordSignIn\(req\.headers, user\)/)
     assert.match(read('app/api/admin/login/code/route.ts'), /await setSession\(user\.id\)\n  await recordSignIn\(request\.headers, user\)/)
   })
 

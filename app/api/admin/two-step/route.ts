@@ -53,6 +53,7 @@ export async function POST(req: Request) {
     // Turning it off, or new backup codes: only with a code from the app (or a backup code).
     if (action === 'off' || action === 'backup-codes') {
       if (!user.totpEnabledAt) return json({ error: '2-step login is off' }, { status: 400, headers: noStore })
+      if (action === 'off' && user.role !== 'CUSTOMER') return json({ error: '2-step login is required for staff accounts. If you lost your phone, ask the store owner to reset it.' }, { status: 400, headers: noStore })
       const secret = await openSecret(user.totpSecret)
       const step = secret ? await matchTotp(secret, code, Date.now(), user.totpLastStep) : null
       const backup = step == null ? await matchBackupCode(code, user.totpBackupCodes) : ''

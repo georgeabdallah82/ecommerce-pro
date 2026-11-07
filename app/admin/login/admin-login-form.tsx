@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from 'react'
 import { ArrowRight, Eye, EyeOff } from 'lucide-react'
+import { QrCode } from '@/components/two-step-card'
 
 export type AdminLoginBrand = { name: string; logoUrl?: string; logoDarkUrl?: string; vars?: Record<string, string> }
 
@@ -13,6 +14,34 @@ export default function AdminLoginForm({ brand }: { brand?: AdminLoginBrand }) {
   const [codeStep, setCodeStep] = useState(false)
   const [useBackup, setUseBackup] = useState(false)
   const [code, setCode] = useState('')
+  // Staff without 2-step login set it up here before they get in (app/api/admin/login/enroll).
+  const [enrollStep, setEnrollStep] = useState(false)
+  const [enrollSetup, setEnrollSetup] = useState<{ secret: string; uri: string } | null>(null)
+  const [enrollCode, setEnrollCode] = useState('')
+  const [backupCodes, setBackupCodes] = useState<string[] | null>(null)
+
+  async function loadEnrollment() {
+    setBusy(true); setError('')
+    try {
+      const response = await fetch('/api/admin/login/enroll', { cache: 'no-store' })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || 'Unable to start 2-step login set-up')
+      setEnrollSetup({ secret: data.secret, uri: data.uri })
+      setEnrollStep(true)
+    } catch (err) { setError(err instanceof Error ? err.message : 'Unable to start 2-step login set-up') }
+    finally { setBusy(false) }
+  }
+
+  async function submitEnroll(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setBusy(true); setError('')
+    try {
+      const response = await fetch('/api/admin/login/enroll', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: enrollCode }) })
+      const data = await response.json().catch(() => ({}))
+      if (data.restart) { setEnrollStep(false); setEnrollSetup(null); setEnrollCode(''); throw new Error(data.error) }
+      if (!response.ok) throw new Error(data.error || 'That code is not right')
+      setBackupCodes(data.backupCodes || [])
+    } catch (err) { setError(err instanceof Error ? err.message : 'Unable to turn on 2-step login'); setBusy(false) }
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError('')
@@ -22,6 +51,7 @@ export default function AdminLoginForm({ brand }: { brand?: AdminLoginBrand }) {
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data.error || 'Invalid admin credentials')
       if (data.needsCode) { setCodeStep(true); setBusy(false); return }
+      if (data.needsEnrollment) { setBusy(false); await loadEnrollment(); return }
       window.location.assign('/admin')
     } catch (err) { setError(err instanceof Error ? err.message : 'Unable to sign in'); setBusy(false) }
   }
@@ -70,7 +100,22 @@ export default function AdminLoginForm({ brand }: { brand?: AdminLoginBrand }) {
         </div>
         <div className="adminLoginFacts"><div className="adminLoginFact"><span />Live orders and sales</div><div className="adminLoginFact"><span />Theme studio for your storefront</div><div className="adminLoginFact"><span />Staff roles and activity log</div></div>
       </aside>
-      {codeStep ? <form onSubmit={submitCode} className="adminLoginForm">
+      {enrollStep ? <form onSubmit={submitEnroll} className="adminLoginForm">
+        <div className="adminLoginMobileLogo">{brand?.logoUrl ? <img className="adminLoginLogo" src={brand.logoUrl} alt={name} /> : <span className="adminLoginName" style={{ color: '#191512' }}>{name}</span>}</div>
+        <div className="adminLoginEyebrow">Required for staff</div><h1>Set up 2-step login</h1>
+        {backupCodes ? <>
+          <p>Save these backup codes somewhere safe. Each one works once if you lose your phone. They are shown only now.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, margin: '12px 0' }}>{backupCodes.map(c => <code key={c} style={{ padding: '6px 8px', background: '#f6f1ec', borderRadius: 6, textAlign: 'center' }}>{c}</code>)}</div>
+          <button type="button" className="adminLoginSubmit" onClick={() => window.location.assign('/admin')}>I saved them, continue</button>
+        </> : enrollSetup ? <>
+          <p>Install an authenticator app (for example Google Authenticator), then scan this code with it.</p>
+          <div style={{ margin: '12px 0' }}><QrCode text={enrollSetup.uri} /></div>
+          <p>Can&apos;t scan it? Type this key into the app: <code style={{ wordBreak: 'break-all' }}>{enrollSetup.secret}</code></p>
+          <div className="adminLoginFields"><label className="adminLoginLabel">6-digit code from the app<input className="adminLoginInput" name="code" value={enrollCode} onChange={e => setEnrollCode(e.target.value)} inputMode="numeric" autoComplete="one-time-code" /></label></div>
+          {error&&<div className="adminLoginAlert" role="alert">{error}</div>}
+          <button className="adminLoginSubmit" disabled={busy || !enrollCode.trim()}>{busy?'Checking…':'Turn on and continue'}{!busy&&<ArrowRight size={15}/>}</button>
+        </> : <p>{error || 'Loading…'}</p>}
+      </form> : codeStep ? <form onSubmit={submitCode} className="adminLoginForm">
         <div className="adminLoginMobileLogo">{brand?.logoUrl ? <img className="adminLoginLogo" src={brand.logoUrl} alt={name} /> : <span className="adminLoginName" style={{ color: '#191512' }}>{name}</span>}</div>
         <div className="adminLoginEyebrow">2-step login</div><h1>Enter your code</h1>
         <p>{useBackup ? 'Type one of the backup codes you saved when you turned on 2-step login. Each one works once.' : 'Open your authenticator app (for example Google Authenticator) and type the 6-digit code it shows for this store.'}</p>

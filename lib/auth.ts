@@ -36,6 +36,8 @@ export async function getCurrentUser() {
     if (!payload.sub || payload.type !== 'session' || typeof payload.iat !== 'number') return null
     const user = await db.user.findUnique({ where: { id: payload.sub } })
     if (!user || !user.isActive) return null
+    // Staff must have 2-step login on (app/api/admin/login/enroll). A session from before it was required is not enough.
+    if (user.role !== 'CUSTOMER' && !user.totpEnabledAt) return null
 
     // Tokens issued before the account's sessions were revoked (password, email or role
     // change, account disabled) are stale. This used to compare against updatedAt, which
