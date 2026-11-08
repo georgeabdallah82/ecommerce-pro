@@ -25,15 +25,22 @@ async function pendingStaff() {
 
 // The set-up key. A new one is made only the first time; refreshing the page shows the same key.
 export async function GET() {
-  const user = await pendingStaff()
-  if (!user) return restart()
-  let secret = await openSecret(user.totpSecret)
-  if (!secret) {
-    secret = newSecret()
-    await db.user.update({ where: { id: user.id }, data: { totpSecret: await sealSecret(secret), totpLastStep: null, totpBackupCodes: [] } })
+  try {
+    const user = await pendingStaff()
+    if (!user) return restart()
+    let secret = await openSecret(user.totpSecret)
+    if (!secret) {
+      secret = newSecret()
+      await db.user.update({ where: { id: user.id }, data: { totpSecret: await sealSecret(secret), totpLastStep: null, totpBackupCodes: [] } })
+    }
+    const issuer = (await getStoreIdentity()).name || 'Store admin'
+    return NextResponse.json({ secret, uri: otpauthUri(issuer, user.email, secret), account: user.email, issuer }, { headers })
+  } catch (error) {
+    // Say what failed (in the server log) and answer with a readable message, instead of an empty
+    // response that the sign-in screen can only show as "Unable to start 2-step login set-up".
+    console.error('[login] 2-step set-up key could not be prepared', error instanceof Error ? `${error.name}: ${error.message}` : error)
+    return NextResponse.json({ error: 'The 2-step set-up could not start. Wait a minute and try again. If it keeps happening, ask the store owner.' }, { status: 500, headers })
   }
-  const issuer = (await getStoreIdentity()).name || 'Store admin'
-  return NextResponse.json({ secret, uri: otpauthUri(issuer, user.email, secret), account: user.email, issuer }, { headers })
 }
 
 // The first code from the app turns 2-step login on, and only then is the session started.
