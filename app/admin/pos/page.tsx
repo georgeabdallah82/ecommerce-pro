@@ -1,15 +1,29 @@
 import { requirePermission } from '@/lib/auth'
+import { db } from '@/lib/prisma'
+import { tillItems, type StockRow, type TillProductInput } from '@/lib/pos-till'
+import PosTill from '@/components/pos-till'
 
-// The point-of-sale till. Only the placeholder exists yet: sales, shifts, receipts and returns at
-// the counter are built in the POS phase (docs/erp-pos-architecture.md).
+// The till: active products and their stock, for scanning and building a cart. Sales are not saved
+// yet (docs/erp-pos-architecture.md, phase 4).
 export default async function PointOfSalePage() {
-  await requirePermission('dashboard.view')
-  return (
-    <section style={{ maxWidth: 640, margin: '48px auto', padding: '0 16px' }}>
-      <h1 style={{ fontSize: 24, margin: '0 0 8px' }}>Point of sale</h1>
-      <p style={{ color: '#5f6673', lineHeight: 1.6, margin: 0 }}>
-        The till is not built yet. Sales, cashier shifts, receipts and returns at the counter will appear here.
-      </p>
-    </section>
-  )
+  await requirePermission('products.view')
+  const [products, stock] = await Promise.all([
+    db.product.findMany({
+      where: { status: 'ACTIVE' },
+      select: { id: true, name: true, sku: true, barcode: true, basePrice: true, variants: { select: { id: true, name: true, sku: true, barcode: true, price: true } } },
+      orderBy: { name: 'asc' },
+      take: 1000,
+    }),
+    db.inventoryItem.findMany({ select: { productId: true, variantId: true, quantity: true, reserved: true } }),
+  ])
+  const tillProducts: TillProductInput[] = products.map(product => ({
+    id: product.id,
+    title: product.name,
+    sku: product.sku,
+    barcode: product.barcode,
+    basePrice: product.basePrice,
+    variants: product.variants.map(variant => ({ id: variant.id, title: variant.name, sku: variant.sku, barcode: variant.barcode, price: variant.price })),
+  }))
+  const items = tillItems(tillProducts, stock satisfies StockRow[])
+  return <PosTill items={items} />
 }
