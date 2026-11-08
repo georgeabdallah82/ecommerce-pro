@@ -91,6 +91,8 @@ model StoreLocation {
   transfersTo   InventoryTransfer[] @relation("TransferTo")
   purchaseOrders PurchaseOrder[] @relation("PurchaseLocation")
   inventoryItems InventoryItem[]
+  orders         Order[]        @relation("OrderLocation")
+  registers      Register[]
   @@index([status])
 }
 
@@ -280,6 +282,8 @@ model PurchaseOrder {
   id           String              @id @default(cuid())
   number       String              @unique
   supplierName String?
+  supplierId   String?
+  supplier     Supplier?           @relation(fields: [supplierId], references: [id])
   locationId   String?
   status       PurchaseOrderStatus @default(DRAFT)
   currency     String              @default("USD")
