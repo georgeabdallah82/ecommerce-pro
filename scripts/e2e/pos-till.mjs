@@ -55,6 +55,9 @@ function totpNow(secret) {
 // ---------- Test data (unique to this run)
 const owner = await prisma.user.findUnique({ where: { email: OWNER.email }, select: { id: true } })
 if (!owner) throw new Error(`No staff account ${OWNER.email} in this database`)
+// Set up the authenticator again on every run (test database only): the sign-in below then takes the
+// first-sign-in path, which hands over the secret this script needs to compute codes.
+await prisma.user.update({ where: { id: owner.id }, data: { totpEnabledAt: null } })
 // The owner may have a shift left open by an earlier run; close it so this run starts clean.
 await prisma.cashierShift.updateMany({ where: { cashierId: owner.id, status: 'OPEN' }, data: { status: 'CLOSED', closedAt: new Date(), expectedCashCents: 0, countedCashCents: 0, discrepancyCents: 0, closeNote: 'Closed by the till browser test' } })
 const location = await prisma.storeLocation.create({ data: { name: `Till test ${tag}`, handle: `till-test-${tag}` } })
@@ -137,7 +140,18 @@ if (orderNumber) {
   step('the receipt opens with the sale and the brand', body.includes('YALLA HAUL') && body.includes(orderNumber) && body.includes('$12.50'))
   step('the receipt is set for an 80 mm printer by default', receipt.url().includes('width=80'))
   await receipt.close()
+
+  // 7b. The same receipt on a 58 mm printer: 58 mm is about 219 CSS pixels wide.
+  await page.goto(`${B}/admin/pos/receipts/${encodeURIComponent(orderNumber)}?width=58`, { waitUntil: 'networkidle' })
+  const width58 = await page.locator('article.receipt').evaluate(el => parseFloat(getComputedStyle(el).width))
+  step('the 58 mm receipt is 58 mm wide', Math.abs(width58 - 58 / 25.4 * 96) < 3, `${width58.toFixed(1)} px`)
 }
+
+// 7c. Tablet width: the till lays out without sideways scrolling.
+await page.setViewportSize({ width: 768, height: 1024 })
+await page.goto(`${B}/admin/pos`, { waitUntil: 'networkidle' })
+const tabletFits = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)
+step('till fits a 768px tablet without sideways scrolling', tabletFits)
 
 // 8. No page errors on the way.
 step('no errors on the till pages', pageErrors.length === 0, pageErrors.join(' | '))
