@@ -15,7 +15,7 @@ import { getStaffRoles } from '@/lib/staff-roles'
 import TeamNotices from '@/components/team-notices'
 import { getNotices } from '@/lib/team-notices-server'
 import { activeNotices, noticeAge } from '@/lib/team-notices'
-import { adminAppForPath, adminHostsFromEnv, appForHostname, moduleVisibleOn } from '@/lib/admin-apps'
+import { adminAppForPath, adminHostsFromEnv, appForHostname, isLocalHostname, moduleVisibleOn } from '@/lib/admin-apps'
 
 const groups: AdminSidebarGroup[] = [
   { id: 'home', label: 'Home', items: [
@@ -138,11 +138,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // Each host lists only its own modules (lib/admin-apps.ts). With no app host configured, every
   // module is listed on the one host, as before. The POS entry waits until POS_HOST is set.
   const hosts = adminHostsFromEnv(process.env)
-  const hostApp = appForHostname((await headers()).get('host'), hosts)
+  const hostHeader = (await headers()).get('host')
+  const hostApp = appForHostname(hostHeader, hosts)
+  // Localhost (development and CI) is never split, so it lists everything.
+  const scopeHosts = isLocalHostname(hostHeader) ? {} : hosts
   const visibleGroups = groups.map(group => ({ ...group, items: group.items.filter(item =>
     hasPermission(user, item.permission as Permission)
-    && moduleVisibleOn(item.href, hostApp, hosts)
-    && (adminAppForPath(item.href) !== 'pos' || Boolean(hosts.pos)),
+    && moduleVisibleOn(item.href, hostApp, scopeHosts)
+    && (adminAppForPath(item.href) !== 'pos' || Boolean(scopeHosts.pos)),
   ) })).filter(group => group.items.length)
   // The admin's accent follows the store's published Primary colour (see lib/admin-accent.ts).
   // If the theme can't be read, the admin keeps its default accent.

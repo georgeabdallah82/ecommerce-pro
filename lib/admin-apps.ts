@@ -110,6 +110,13 @@ function isAssetOrInternal(pathname: string) {
   return pathname.startsWith('/api/') || pathname.startsWith('/_next/') || /\.[a-zA-Z0-9]+$/.test(pathname)
 }
 
+// Local development and the CI browser test run on localhost. They have no staff hosts, so the
+// split never applies there: every page stays where it was asked for.
+export function isLocalHostname(hostHeader: string | null | undefined) {
+  const host = (hostHeader ?? '').trim().toLowerCase().split(':')[0]
+  return host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host === '[::1]' || host.endsWith('.localhost')
+}
+
 /**
  * The URL to send a request to when it reached the wrong host for the module it asks for,
  * or null when it can stay. Storefront pages on the ERP or POS host go to that app's home,
@@ -123,7 +130,7 @@ export function adminHostRedirect(input: {
   hosts: AdminHosts
 }): string | null {
   const { hostHeader, pathname, search, protocol, hosts } = input
-  if (!appHostsConfigured(hosts)) return null
+  if (!appHostsConfigured(hosts) || isLocalHostname(hostHeader)) return null
 
   const here = appForHostname(hostHeader, hosts)
   const isAdminPath = pathname === '/admin' || pathname.startsWith('/admin/')

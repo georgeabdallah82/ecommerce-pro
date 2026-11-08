@@ -97,6 +97,13 @@ describe('host redirects', () => {
     assert.equal(go('yallahaul.com', '/admin/login'), null)
   })
 
+  it('never splits localhost, so development and the CI browser test keep every page', () => {
+    assert.equal(go('localhost:3000', '/admin/orders', '', both), null)
+    assert.equal(go('127.0.0.1:8787', '/admin/online-store', '', both), null)
+    assert.equal(go('admin.localhost', '/admin/pos', '', both), null)
+    assert.equal(go('erp.localhost', '/products', '', both), null)
+  })
+
   it('keeps the API on whichever host calls it, so a page and its API never split', () => {
     assert.equal(go('erp.yallahaul.com', '/api/admin/products'), null)
     assert.equal(go('yallahaul.com', '/api/admin/orders'), null)
