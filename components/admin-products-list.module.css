@@ -233,6 +233,3 @@
   .productCell { min-width: 0; gap: 10px; }
   .thumb { width: 40px; height: 40px; font-size: 16px; }
 }
-
-/* The "More tools" menu opens under its button and stays inside the right edge of the phone screen */
-.toolsMenu { left: auto; right: 0; }

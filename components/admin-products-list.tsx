@@ -145,7 +145,7 @@ export default function AdminProductsList({ initial }: { initial: any }) {
           <div className={styles.actionMenu} ref={toolsRef}>
             <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} aria-expanded={toolsOpen} onClick={() => setToolsOpen(value => !value)}>More tools <ChevronDown size={14} /></button>
             {toolsOpen && (
-              <div className={`${styles.menu} ${styles.toolsMenu}`} role="menu" onClick={() => setToolsOpen(false)}>
+              <div className={styles.menu} role="menu" onClick={() => setToolsOpen(false)}>
                 <Link href="/admin/products/prices" role="menuitem"><Tag size={14} /> Change prices</Link>
                 <Link href="/admin/products/import" role="menuitem"><Upload size={14} /> Import</Link>
                 <button type="button" role="menuitem" onClick={() => setExportOpen(true)}><Download size={14} /> Export</button>

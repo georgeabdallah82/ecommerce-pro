@@ -1,5 +1,7 @@
 /* Admin > Orders (components/orders-admin-shopify.tsx): one card per order, phone first. */
-.page { display: grid; gap: 14px; }
+/* minmax(0, 1fr): the column stays the width of the screen. Without it, the quick-view row's full width
+   (it scrolls sideways) becomes the column's width and pushes the header buttons off a phone screen. */
+.page { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 .header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
 .title { margin: 0; font-size: 28px; font-weight: 850; letter-spacing: -.02em; color: var(--admin-ink); }
 .subtitle { margin: 4px 0 0; font-size: 14px; color: var(--admin-muted); }
@@ -85,7 +87,7 @@
 }
 
 /* Header "More" menu opens downward (it sits at the top of the page), with the unfinished-checkout count */
-.menuDown { bottom: auto; top: calc(100% + 6px); }
+.menuDown { bottom: auto; top: calc(100% + 6px); left: 0; right: auto; }
 .menuBadge { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; margin-left: 2px; border-radius: 999px; background: #d92d20; color: #fff; font-size: 12px; font-weight: 800; }
 .menuCount { margin-left: auto; display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: #d92d20; color: #fff; font-size: 12px; font-weight: 800; }
 
