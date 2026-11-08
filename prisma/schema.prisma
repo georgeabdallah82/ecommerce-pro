@@ -112,6 +112,7 @@ model User {
   cashierOrders    Order[]          @relation("OrderCashier")
   cashierShifts    CashierShift[]   @relation("ShiftCashier")
   cashMovements    CashMovement[]   @relation("CashMovementUser")
+  posReturns       ReturnRequest[] @relation("ReturnCashier")
   wishlist         WishlistItem[]
   auditLogs        AuditLog[]
   orderNotes       OrderNote[]

@@ -2,7 +2,7 @@
 // Revenue, cost and profit are kept apart: profit is not shown, because a sale does not yet record
 // the cost of what it sold (docs/erp-pos-architecture.md), so an estimate would be a guess.
 
-import { OrderStatus, PurchaseOrderStatus } from '@prisma/client'
+import { OrderStatus, PurchaseOrderStatus, ReturnStatus } from '@prisma/client'
 import { db } from '@/lib/prisma'
 
 export type StockRow = { productId: string; quantity: number; reserved: number; costPrice: number | null }
@@ -37,15 +37,17 @@ const OPEN_PURCHASES = [PurchaseOrderStatus.DRAFT, PurchaseOrderStatus.ORDERED, 
 /** Sales from `from` onwards, net of refunds: revenue, refunds and what is left. */
 export async function salesSince(from: Date | null) {
   const where = { status: { notIn: NOT_SOLD }, ...(from ? { createdAt: { gte: from } } : {}) }
-  const [revenue, refunds] = await Promise.all([
+  const [revenue, refunds, tillRefunds] = await Promise.all([
     db.order.aggregate({ where, _sum: { grandTotal: true }, _count: { _all: true } }),
     db.paymentTransaction.aggregate({
       where: { status: { in: REFUNDED_PAYMENTS }, order: { createdAt: from ? { gte: from } : undefined } },
       _sum: { amount: true },
     }),
+    // Refunds made at the till (lib/pos-returns.ts), dated by when they were refunded.
+    db.returnRequest.aggregate({ where: { status: ReturnStatus.REFUNDED, refundedAt: from ? { gte: from } : undefined }, _sum: { refundAmount: true } }),
   ])
   const revenueCents = revenue._sum.grandTotal ?? 0
-  const refundCents = refunds._sum.amount ?? 0
+  const refundCents = (refunds._sum.amount ?? 0) + (tillRefunds._sum.refundAmount ?? 0)
   return { revenueCents, refundCents, netCents: Math.max(0, revenueCents - refundCents), orders: revenue._count._all }
 }
 
