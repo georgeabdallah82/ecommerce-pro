@@ -109,6 +109,9 @@ model User {
   addresses        Address[]
   orders           Order[]
   reviews          Review[]
+  cashierOrders    Order[]          @relation("OrderCashier")
+  cashierShifts    CashierShift[]   @relation("ShiftCashier")
+  cashMovements    CashMovement[]   @relation("CashMovementUser")
   wishlist         WishlistItem[]
   auditLogs        AuditLog[]
   orderNotes       OrderNote[]
@@ -410,6 +413,21 @@ model Order {
   notesHistory        OrderNote[]
   paymentTransactions PaymentTransaction[]
   paymentProofs       PaymentProof[]
+  // Point of sale (prisma/models/pos.prisma). Existing online orders stay ONLINE with no till data.
+  channel             OrderChannel        @default(ONLINE)
+  locationId          String?
+  location            StoreLocation?      @relation("OrderLocation", fields: [locationId], references: [id])
+  cashierId           String?
+  cashier             User?               @relation("OrderCashier", fields: [cashierId], references: [id], onDelete: SetNull)
+  shiftId             String?
+  shift               CashierShift?       @relation(fields: [shiftId], references: [id])
+  // Set by the till for each sale; a repeated submit with the same key returns the first sale.
+  idempotencyKey      String?             @unique
+  // LBP per 1 USD used for this sale (null for online orders). Stored so later rate changes never alter it.
+  exchangeRateLbp     Int?
+  paymentLines        PaymentLine[]
+  @@index([channel, createdAt])
+  @@index([shiftId])
   inviteReward        InviteReward?
   driver              Driver?              @relation(fields: [driverId], references: [id], onDelete: SetNull)
   @@index([createdAt])

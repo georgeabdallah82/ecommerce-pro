@@ -1,0 +1,136 @@
+// Point of sale foundation (docs/erp-pos-architecture.md, phase 2).
+// Every table here is new. Existing orders keep working: channel defaults to ONLINE.
+
+// Where a sale was made. Online-store orders are ONLINE; till sales are POS.
+enum OrderChannel {
+  ONLINE
+  POS
+}
+
+// How one part of a payment was made. Whish and OMT are recorded as manual settlements.
+enum PaymentLineMethod {
+  CASH
+  CARD
+  BANK_TRANSFER
+  WHISH
+  OMT
+  OTHER
+}
+
+// The currency a payment line was taken in. LBP amounts are whole lira; USD amounts are cents.
+enum PaymentCurrency {
+  USD
+  LBP
+}
+
+enum RegisterStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ShiftStatus {
+  OPEN
+  CLOSED
+}
+
+enum CashMovementKind {
+  CASH_IN
+  CASH_OUT
+}
+
+enum SupplierStatus {
+  ACTIVE
+  INACTIVE
+}
+
+// A till at a location. Default setup is one register per location; more can be added.
+model Register {
+  id         String         @id @default(cuid())
+  name       String
+  locationId String
+  status     RegisterStatus @default(ACTIVE)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  location   StoreLocation  @relation(fields: [locationId], references: [id])
+  shifts     CashierShift[]
+
+  @@unique([locationId, name])
+  @@index([status])
+}
+
+// One cashier's time on a register, from opening cash to the closing count.
+// All amounts are USD cents. Cash taken in LBP is counted separately (see docs).
+model CashierShift {
+  id                String         @id @default(cuid())
+  registerId        String
+  cashierId         String
+  status            ShiftStatus    @default(OPEN)
+  openingCashCents  Int
+  openedAt          DateTime       @default(now())
+  closedAt          DateTime?
+  expectedCashCents Int?
+  countedCashCents  Int?
+  // counted minus expected: negative means cash is missing, positive means extra cash.
+  discrepancyCents  Int?
+  closeNote         String?
+  register          Register       @relation(fields: [registerId], references: [id])
+  cashier           User           @relation("ShiftCashier", fields: [cashierId], references: [id])
+  cashMovements     CashMovement[]
+  orders            Order[]
+
+  @@index([registerId, status])
+  @@index([cashierId])
+}
+
+// Cash put into or taken out of a drawer during a shift, with the reason and who did it.
+model CashMovement {
+  id          String           @id @default(cuid())
+  shiftId     String
+  kind        CashMovementKind
+  amountCents Int
+  reason      String
+  userId      String
+  createdAt   DateTime         @default(now())
+  shift       CashierShift     @relation(fields: [shiftId], references: [id])
+  user        User             @relation("CashMovementUser", fields: [userId], references: [id])
+
+  @@index([shiftId])
+}
+
+// One part of how an order was paid. An order can have several lines (split payment).
+model PaymentLine {
+  id        String            @id @default(cuid())
+  orderId   String
+  method    PaymentLineMethod
+  currency  PaymentCurrency
+  // USD lines: cents. LBP lines: whole lira.
+  amount    Int
+  // The same value in USD cents, fixed at the time of the sale.
+  usdCents  Int
+  // LBP per 1 USD used for this line (null for USD lines). Stored so later rate changes never alter it.
+  fxRateLbp Int?
+  reference String?
+  createdAt DateTime          @default(now())
+  order     Order             @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@index([method, createdAt])
+}
+
+// A supplier the store buys from. Purchase orders can link to one (see PurchaseOrder.supplierId).
+model Supplier {
+  id             String          @id @default(cuid())
+  name           String
+  contactName    String?
+  phone          String?
+  email          String?
+  address        String?
+  notes          String?
+  status         SupplierStatus  @default(ACTIVE)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  purchaseOrders PurchaseOrder[]
+
+  @@index([status])
+  @@index([name])
+}
