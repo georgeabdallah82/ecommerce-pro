@@ -77,10 +77,12 @@ export async function shiftExpectedCash(shiftId: string, openingCashCents: numbe
   }
   const movements = await db.cashMovement.groupBy({ by: ['kind'], where: { shiftId }, _sum: { amountCents: true } })
   const sumOf = (kind: CashMovementKind) => movements.find(m => m.kind === kind)?._sum.amountCents ?? 0
+  // Cash refunded at the till for returns on this shift leaves the drawer too.
+  const cashRefunds = await db.returnRequest.aggregate({ where: { shiftId, refundMethod: 'CASH', status: 'REFUNDED' }, _sum: { refundAmount: true } })
   return expectedShiftCash({
     openingCents: openingCashCents,
     cashSalesCents,
-    changeGivenCents,
+    changeGivenCents: changeGivenCents + (cashRefunds._sum.refundAmount ?? 0),
     cashInCents: sumOf(CashMovementKind.CASH_IN),
     cashOutCents: sumOf(CashMovementKind.CASH_OUT),
   })

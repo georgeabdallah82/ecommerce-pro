@@ -210,6 +210,13 @@ model ReturnRequest {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   items         ReturnItem[]
+  // Till returns (lib/pos-returns.ts): which shift and cashier refunded, and how the money went back.
+  shiftId       String?
+  shift         CashierShift? @relation(fields: [shiftId], references: [id])
+  cashierId     String?
+  cashier       User?         @relation("ReturnCashier", fields: [cashierId], references: [id], onDelete: SetNull)
+  refundMethod  PaymentLineMethod?
+  @@index([shiftId])
   @@index([orderId])
   @@index([status])
 }
