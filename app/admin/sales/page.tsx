@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import Link from '@/components/admin-link'
 import { requirePermission } from '@/lib/auth'
 import { db } from '@/lib/prisma'
 import { money } from '@/lib/config'
