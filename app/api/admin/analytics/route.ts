@@ -88,16 +88,14 @@ async function loadPeriod(range: Range) {
   const [orders, newCustomerRows] = await Promise.all([
     db.order.findMany({
       where: { createdAt: { gte: range.since, lt: range.until }, status: { not: OrderStatus.CANCELLED } },
-      select: { createdAt: true, grandTotal: true, discountTotal: true, userId: true, items: { select: { productId: true, quantity: true, totalPrice: true, name: true } }, paymentTransactions: { select: { status: true, amount: true } } },
+      select: { createdAt: true, grandTotal: true, discountTotal: true, userId: true, items: { select: { productId: true, quantity: true, totalPrice: true, name: true, costPrice: true } }, paymentTransactions: { select: { status: true, amount: true } } },
       orderBy: { createdAt: 'asc' },
     }),
     db.user.findMany({ where: { role: 'CUSTOMER', createdAt: { gte: range.since, lt: range.until } }, select: { createdAt: true } }),
   ])
 
-  // Product.costPrice has no snapshot on OrderItem, so margin is computed against each
-  // product's current cost rather than what it cost at the time of sale -- the same
-  // limitation the rest of this report already lives with (e.g. a product's current
-  // taxable/name fields, not what they were historically).
+  // A sale records what its items cost (OrderItem.costPrice), so margin uses that. Sales made before
+  // the cost was recorded fall back to the product's current cost, the only figure there is for them.
   const productIds = [...new Set(orders.flatMap(o => o.items.map(i => i.productId)))]
   const costRows = productIds.length ? await db.product.findMany({ where: { id: { in: productIds } }, select: { id: true, costPrice: true } }) : []
   const costByProduct = new Map(costRows.map(p => [p.id, p.costPrice ?? 0]))
@@ -116,8 +114,9 @@ async function loadPeriod(range: Range) {
     itemsSold += items
     for (const i of o.items) {
       itemsSalesValue += i.totalPrice
-      costOfGoodsSold += (costByProduct.get(i.productId) || 0) * i.quantity
-      if (!((costByProduct.get(i.productId) || 0) > 0)) salesWithoutCost += i.totalPrice
+      const unitCost = i.costPrice ?? costByProduct.get(i.productId) ?? 0
+      costOfGoodsSold += unitCost * i.quantity
+      if (!(unitCost > 0)) salesWithoutCost += i.totalPrice
     }
     if (o.userId) orderingCustomers.add(o.userId)
     const key = bucketKey(new Date(o.createdAt), range.days)

@@ -16,7 +16,8 @@ export type ProfitOrder = {
   discountTotal: number
   // Successful refunds recorded on the order (refund payment transactions).
   refunded: number
-  items: { productId: string; name: string; quantity: number; totalPrice: number }[]
+  // costPrice is what the item cost when it was sold; older sales have none and use the current cost.
+  items: { productId: string; name: string; quantity: number; totalPrice: number; costPrice?: number | null }[]
 }
 
 export type ProfitSettings = { deliveryCostPerOrder: number | null; packagingCostPerOrder: number | null }
@@ -92,11 +93,11 @@ export function computeProfit(orders: ProfitOrder[], costs: Map<string, number |
       line.units += item.quantity
       if (item.totalPrice <= 0) line.freeUnits += item.quantity
       line.sales += Math.max(0, item.totalPrice) * goodsShare
-      const lineUnit = costs.get(item.productId)
+      const lineUnit = item.costPrice ?? costs.get(item.productId)
       if (lineUnit && lineUnit > 0) line.cost += lineUnit * item.quantity
       else line.costMissing = true
       perProduct.set(item.productId, line)
-      const unit = costs.get(item.productId)
+      const unit = item.costPrice ?? costs.get(item.productId)
       if (unit && unit > 0) { cost += unit * item.quantity; continue }
       const entry = missing.get(item.productId) || { productId: item.productId, name: item.name, units: 0, sales: 0 }
       entry.units += item.quantity
