@@ -45,12 +45,14 @@
   padding: 18px 14px 14px;
   background: var(--admin-sidebar-bg);
   color: var(--admin-sidebar-ink);
+  border-right: 1px solid var(--admin-border);
   box-sizing: border-box;
-  overflow: hidden;
+  overflow: visible;
+  transition: width .25s ease, flex-basis .25s ease, padding .25s ease;
 }
 .sidebarBrand { display: flex; align-items: center; min-height: 34px; padding: 2px 10px 18px; text-decoration: none; flex: 0 0 auto; }
 .logoImg { display: block; height: 28px; width: auto; max-width: 180px; object-fit: contain; }
-.brandTextDark { font-size: 17px; font-weight: 900; letter-spacing: -.03em; color: #fff; white-space: nowrap; }
+.brandTextDark { font-size: 17px; font-weight: 900; letter-spacing: -.03em; color: var(--admin-sidebar-ink); white-space: nowrap; }
 .brandText { font-size: 15px; font-weight: 900; letter-spacing: -.03em; color: var(--admin-ink); white-space: nowrap; }
 .brand { display: flex; align-items: center; gap: 9px; text-decoration: none; }
 
@@ -71,12 +73,12 @@
   text-decoration: none;
   transition: background .12s ease, color .12s ease;
 }
-.sidebarItem:hover { background: var(--admin-sidebar-hover); color: #fff; }
+.sidebarItem:hover { background: var(--admin-sidebar-hover); color: var(--admin-ink); }
 .sidebarItem svg { opacity: .8; flex: 0 0 auto; }
-.sidebarItemActive, .sidebarItemActive:hover { background: var(--admin-accent); color: var(--admin-accent-ink); }
-.sidebarItemActive svg { opacity: 1; }
+.sidebarItemActive, .sidebarItemActive:hover { background: var(--admin-accent-soft); color: var(--admin-ink); font-weight: 700; }
+.sidebarItemActive svg { opacity: 1; color: var(--admin-accent); }
 .sidebarMore { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 11px; margin: 1px 0; border: 0; border-radius: 8px; background: transparent; color: var(--admin-sidebar-muted); font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; text-align: left; min-height: 36px; }
-.sidebarMore:hover { color: #fff; background: rgba(255,255,255,.06); }
+.sidebarMore:hover { color: var(--admin-ink); background: var(--admin-sidebar-hover); }
 .sidebarMore svg { transition: transform .15s; flex: none; transform: rotate(-90deg); }
 .sidebarMore svg.sidebarMoreOpen { transform: rotate(0); }
 .navBadge { margin-left: auto; min-width: 20px; padding: 1px 7px; border-radius: 99px; background: var(--admin-accent); color: var(--admin-accent-ink); font-size: 11px; font-weight: 800; text-align: center; }
@@ -85,10 +87,10 @@
 .userCard { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 10px; border-radius: 12px; background: var(--admin-sidebar-hover); flex: 0 0 auto; }
 .userAvatar { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--admin-accent); color: var(--admin-accent-ink); font-size: 12px; font-weight: 900; flex: none; }
 .userText { display: grid; min-width: 0; flex: 1 1 auto; }
-.userText strong { color: #fff; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.userText strong { color: var(--admin-sidebar-ink); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .userText small { color: var(--admin-sidebar-muted); font-size: 11px; text-transform: capitalize; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .userSignOut { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: var(--admin-sidebar-muted); cursor: pointer; }
-.userSignOut:hover { background: rgba(255,255,255,.08); color: #fff; }
+.userSignOut:hover { background: var(--admin-sidebar-hover); color: var(--admin-ink); }
 
 .topbar {
   position: sticky;
@@ -298,7 +300,7 @@
 .mobileNav { flex: 1 1 auto; min-height: 0; overflow-y: auto; margin-top: 10px; }
 .mobileFoot { flex: 0 0 auto; display: flex; flex-direction: column; gap: 3px; margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--admin-sidebar-hover); }
 .mobileFoot .accountItem { color: var(--admin-sidebar-ink); }
-.mobileFoot .accountItem:hover { background: var(--admin-sidebar-hover); color: #fff; }
+.mobileFoot .accountItem:hover { background: var(--admin-sidebar-hover); color: var(--admin-sidebar-ink); }
 .mobileFoot :global(.adminThemeToggle) { color: var(--admin-sidebar-ink) !important; background: transparent !important; }
 .mobileFoot .rolePill { margin: 0 0 6px 2px; }
 
@@ -324,3 +326,20 @@
     box-sizing: border-box;
   }
 }
+
+/* Sidebar collapsed to an icon rail (the choice is remembered in the browser). */
+.collapseBtn { position: absolute; right: -13px; top: 26px; z-index: 3; width: 26px; height: 26px; display: grid; place-items: center; border: 1px solid var(--admin-border); border-radius: 50%; background: var(--admin-surface); color: var(--admin-ink); cursor: pointer; box-shadow: var(--admin-shadow-sm); }
+.collapseBtn:hover { background: var(--admin-sidebar-hover); }
+.collapseBtn svg { transition: transform .25s ease; }
+.sidebarCollapsed { width: 84px; flex-basis: 84px; padding: 18px 12px 14px; }
+.sidebarCollapsed .sidebarItem { justify-content: center; padding: 0; position: relative; }
+.sidebarCollapsed .sidebarItem > span:not(.navBadge) { display: none; }
+.sidebarCollapsed .sidebarItem .navBadge { position: absolute; top: 4px; right: 6px; min-width: 8px; height: 8px; padding: 0; font-size: 0; }
+.sidebarCollapsed .sidebarMore span, .sidebarCollapsed .userText, .sidebarCollapsed .userSignOut, .sidebarCollapsed .sidebarBrand > span { display: none; }
+.sidebarCollapsed .sidebarGroupLabel { font-size: 0; height: 1px; padding: 0; margin: 10px 8px; background: var(--admin-border-soft); }
+.sidebarCollapsed .sidebarBrand { justify-content: center; padding: 2px 0 18px; }
+.sidebarCollapsed .sidebarBrand .logoImg { max-width: 34px; max-height: 34px; object-fit: contain; }
+.sidebarCollapsed .userCard { justify-content: center; padding: 10px 0; }
+.sidebarCollapsed .collapseBtn svg { transform: rotate(180deg); }
+/* Logo on a light sidebar; in dark mode the same logo is shown light. */
+:root[data-admin-theme='dark'] .sidebar .logoImg { filter: brightness(0) invert(1); }
