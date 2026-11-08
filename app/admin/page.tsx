@@ -1,4 +1,7 @@
 import { requirePermission } from '@/lib/auth'
+import { hasPermission } from '@/lib/permissions'
+import { dashboardAccess } from '@/lib/dashboard-access'
+import { formatAdminDateTime } from '@/lib/admin-datetime'
 import Link from '@/components/admin-link'
 import { ArrowUpRight, Boxes, ChevronRight, Eye, MessageSquare, PackageCheck, Plus } from 'lucide-react'
 import { db } from '@/lib/prisma'
@@ -40,9 +43,13 @@ function customerName(order: { user?: { name: string | null } | null; email: str
   return order.email
 }
 const label = (status: string) => status.charAt(0) + status.slice(1).toLowerCase().replace(/_/g, ' ')
+// Plain words for an audit action such as "product.update" on "Product".
+const activityText = (action: string, entity: string) => `${action.replace(/[._]/g, ' ').toLowerCase()} on ${entity.toLowerCase()}`
 
 export default async function Admin() {
-  await requirePermission('dashboard.view')
+  const user = await requirePermission('dashboard.view')
+  // What this person may see. Money, the activity log and stock are gated by their own permissions.
+  const access = dashboardAccess(permission => hasPermission(user, permission))
   const [timezone, currency] = await Promise.all([getStoreTimezone(), getStoreCurrency()])
   const now = new Date()
   // Days are counted in the store's own timezone (Settings > Store > Timezone).
@@ -55,7 +62,7 @@ export default async function Admin() {
   const [recentSales, toFulfill, inventoryRows, pendingReviews, orders, top, visits] = await Promise.all([
     db.order.findMany({ where: { createdAt: { gte: since }, status: { notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED] } }, select: { grandTotal: true, createdAt: true, paymentTransactions: { select: { status: true, amount: true } } } }),
     db.order.count({ where: { status: { in: OPEN_STATUSES } } }),
-    db.inventoryItem.findMany({ select: { quantity: true, reserved: true, lowStockThreshold: true } }),
+    db.inventoryItem.findMany({ select: { quantity: true, reserved: true, lowStockThreshold: true, product: { select: { name: true } } } }),
     db.review.count({ where: { approved: false } }),
     db.order.findMany({ orderBy: { createdAt: 'desc' }, take: 6, include: { user: true, items: true } }),
     db.orderItem.groupBy({ by: ['productId'], where: { order: { status: { notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED] }, createdAt: { gte: monthStart } } }, _sum: { quantity: true }, orderBy: { _sum: { quantity: 'desc' } }, take: 4 }),
@@ -66,6 +73,8 @@ export default async function Admin() {
   // relations correctly, so these results are asserted to the shape actually queried.
   const salesTyped = recentSales as unknown as SalesOrder[]
   const topTyped = top as { productId: string; _sum: { quantity: number | null } }[]
+  // The activity log is read only by people allowed to see it.
+  const activity = access.activity ? await db.auditLog.findMany({ orderBy: { createdAt: 'desc' }, take: 8, select: { id: true, action: true, entity: true, createdAt: true, actor: { select: { name: true, email: true } } } }) : []
 
   const salesByDay = new Map<string, number>(); const ordersByDay = new Map<string, number>()
   for (const order of salesTyped) {
@@ -82,7 +91,12 @@ export default async function Admin() {
   const visitorsToday = visits.today
   // Share of today's visits that placed an order (orders taken by phone or WhatsApp are not visits).
   const conversion = visitorsToday ? `${((visits.ordered / visitorsToday) * 100).toFixed(1)}%` : '—'
-  const lowStock = inventoryRows.filter(row => row.quantity - row.reserved <= row.lowStockThreshold).length
+  const inventory = inventoryRows as unknown as { quantity: number; reserved: number; lowStockThreshold: number; product: { name: string } }[]
+  const lowItems = inventory
+    .filter(row => row.quantity - row.reserved <= row.lowStockThreshold)
+    .map(row => ({ name: row.product.name, left: row.quantity - row.reserved }))
+    .sort((a, b) => a.left - b.left)
+  const lowStock = lowItems.length
 
   const weekday = new Intl.DateTimeFormat('en', { timeZone: timezone, weekday: 'short' })
   const longDate = new Intl.DateTimeFormat('en', { timeZone: timezone, weekday: 'long', day: 'numeric', month: 'short' })
@@ -95,9 +109,10 @@ export default async function Admin() {
   const productById = new Map(products.map(p => [p.id, p]))
 
   const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
+  const salesLine = access.money ? `${money(salesToday, currency)} in sales today. ` : ''
   const summary = toFulfill
-    ? `${money(salesToday, currency)} in sales today. ${plural(toFulfill, 'order')} ${toFulfill === 1 ? 'is' : 'are'} waiting to ship.`
-    : `${money(salesToday, currency)} in sales today. Every order is shipped.`
+    ? `${salesLine}${plural(toFulfill, 'order')} ${toFulfill === 1 ? 'is' : 'are'} waiting to ship.`
+    : `${salesLine}Every order is shipped.`
 
   return <div className={s.page} data-dashboard-hero>
     <section className={s.hero}>
@@ -114,22 +129,22 @@ export default async function Admin() {
 
     <div className={s.body}>
       <div className={s.kpis}>
-        <div className={s.kpi}><span>Sales today</span><strong>{money(salesToday, currency)}</strong><small className={salesChange.up ? s.up : s.down}>{salesChange.text}</small></div>
+        {access.money && <div className={s.kpi}><span>Sales today</span><strong>{money(salesToday, currency)}</strong><small className={salesChange.up ? s.up : s.down}>{salesChange.text}</small></div>}
         <div className={s.kpi}><span>Orders today</span><strong>{ordersToday}</strong><small className={ordersChange.up ? s.up : s.down}>{ordersChange.text}</small></div>
         <Link className={s.kpi} href="/admin/live-visitors"><span>Visitors now</span><strong>{visitorsNow}</strong><small className={s.up}><i className={s.liveDot} /> live now</small></Link>
         <div className={s.kpi}><span>Conversion today</span><strong>{conversion}</strong><small>{visitorsToday ? `${plural(visitorsToday, 'visitor')} today` : 'No visitors yet today'}</small></div>
       </div>
 
       <div className={s.grid}>
-        <section className={s.panel}>
+        {access.money && <section className={s.panel}>
           <div className={s.panelHead}><h2>Sales this week</h2><Link href="/admin/reports">View report</Link></div>
           <AdminSalesChart days={chartDays} currency={currency} />
-        </section>
+        </section>}
         <section className={s.panel}>
           <div className={s.panelHead}><h2>Needs your attention</h2></div>
           <div className={s.todo}>
             <Link href="/admin/orders"><span className={`${s.todoCount} ${s.todoRed}`}>{toFulfill}</span><PackageCheck size={16} className={s.todoIcon} />Orders to fulfill<ChevronRight size={16} className={s.chev} /></Link>
-            <Link href="/admin/inventory"><span className={`${s.todoCount} ${s.todoAmber}`}>{lowStock}</span><Boxes size={16} className={s.todoIcon} />Products low on stock<ChevronRight size={16} className={s.chev} /></Link>
+            {access.stock && <Link href="/admin/inventory"><span className={`${s.todoCount} ${s.todoAmber}`}>{lowStock}</span><Boxes size={16} className={s.todoIcon} />Products low on stock{lowItems.length > 0 && <small className={s.todoNames}>{lowItems.slice(0, 3).map(item => item.name).join(', ')}</small>}<ChevronRight size={16} className={s.chev} /></Link>}
             <Link href="/admin/reviews"><span className={`${s.todoCount} ${s.todoGreen}`}>{pendingReviews}</span><MessageSquare size={16} className={s.todoIcon} />Reviews to approve<ChevronRight size={16} className={s.chev} /></Link>
           </div>
         </section>
@@ -157,12 +172,22 @@ export default async function Admin() {
             return <Link className={s.product} key={x.productId} href={`/admin/products/${x.productId}`}>
               <span className={s.thumb}>{product?.images?.[0]?.url ? <img src={product.images[0].url} alt="" /> : <Boxes size={16} />}</span>
               <span className={s.productText}><strong>{product?.name || 'Deleted product'}</strong><small>{x._sum.quantity || 0} sold · last 30 days</small></span>
-              {product && <em>{money(product.basePrice, currency)}</em>}
+              {product && access.money && <em>{money(product.basePrice, currency)}</em>}
               <ArrowUpRight size={14} className={s.chev} />
             </Link>
           }) : <div className={s.empty}><strong>No sales yet</strong><p>Your best sellers from the last 30 days appear here.</p></div>}
         </section>
       </div>
+
+      {access.activity && <div className={s.grid}>
+        <section className={s.panel} aria-labelledby="activity-h">
+          <div className={s.panelHead}><h2 id="activity-h">Recent activity</h2></div>
+          {activity.length ? <ol className={s.activity}>{activity.map(entry => <li key={entry.id}>
+            <span><strong>{entry.actor?.name || entry.actor?.email || 'System'}</strong> {activityText(entry.action, entry.entity)}</span>
+            <small><time dateTime={entry.createdAt.toISOString()}>{formatAdminDateTime(entry.createdAt, timezone)}</time></small>
+          </li>)}</ol> : <div className={s.empty}><strong>No activity yet</strong><p>Changes staff make to orders, products and settings are listed here.</p></div>}
+        </section>
+      </div>}
     </div>
   </div>
 }
