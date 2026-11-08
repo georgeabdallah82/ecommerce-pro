@@ -1,7 +1,4 @@
 import { requirePermission } from '@/lib/auth'
-import { hasPermission } from '@/lib/permissions'
-import { dashboardAccess } from '@/lib/dashboard-access'
-import { formatAdminDateTime } from '@/lib/admin-datetime'
 import Link from '@/components/admin-link'
 import { ArrowUpRight, Boxes, ChevronRight, Eye, MessageSquare, PackageCheck, Plus } from 'lucide-react'
 import { db } from '@/lib/prisma'
@@ -9,9 +6,13 @@ import { money } from '@/lib/config'
 import { OrderStatus } from '@prisma/client'
 import { getStoreTimezone } from '@/lib/store-timezone'
 import { getStoreCurrency } from '@/lib/store-currency'
-import AdminSalesChart, { type SalesDay } from '@/components/admin-sales-chart'
+import { hasPermission } from '@/lib/permissions'
+import { dashboardAccess } from '@/lib/dashboard-access'
+import { formatAdminDateTime } from '@/lib/admin-datetime'
+import { MonthlyBars, YearAreas, Gauge } from '@/components/admin-dashboard-charts'
 import ui from '@/components/admin-ui.module.css'
 import s from '@/components/admin-dashboard.module.css'
+import v from '@/components/admin-dashboard-v2.module.css'
 import { visitorCounts } from '@/lib/visitor-report' // same numbers as the Live visitors page
 
 const OPEN_STATUSES = [OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PROCESSING]
@@ -54,10 +55,23 @@ export default async function Admin() {
   const now = new Date()
   // Days are counted in the store's own timezone (Settings > Store > Timezone).
   const dayKey = (date: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(date)
+  const monthKey = (date: Date) => dayKey(date).slice(0, 7)
   const keys = [...new Set(Array.from({ length: 15 }, (_, i) => dayKey(new Date(now.getTime() - (14 - i) * DAY_MS))))].slice(-14)
   const todayKey = keys[keys.length - 1]
   const since = new Date(now.getTime() - 15 * DAY_MS)
-  const monthStart = new Date(now.getTime() - 30 * DAY_MS)
+  // The last 24 calendar months, oldest first, for the charts.
+  const monthKeys: string[] = []
+  for (let i = 23; i >= 0; i--) { const d = new Date(now); d.setUTCDate(15); d.setUTCMonth(d.getUTCMonth() - i); monthKeys.push(monthKey(d)) }
+  const monthStart = new Date(`${monthKeys[0]}-01T00:00:00Z`)
+  const monthStartDay = new Date(monthStart.getTime() - DAY_MS)
+  const monthly = await db.order.findMany({ where: { createdAt: { gte: monthStartDay }, status: { notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED] } }, select: { grandTotal: true, createdAt: true, paymentTransactions: { select: { status: true, amount: true } } } })
+  const montho = monthly as unknown as SalesOrder[]
+  const monthlySales = new Map<string, number>(); const monthlyOrders = new Map<string, number>()
+  for (const order of montho) {
+    const key = monthKey(order.createdAt)
+    monthlySales.set(key, (monthlySales.get(key) || 0) + netSales(order))
+    monthlyOrders.set(key, (monthlyOrders.get(key) || 0) + 1)
+  }
 
   const [recentSales, toFulfill, inventoryRows, pendingReviews, orders, top, visits] = await Promise.all([
     db.order.findMany({ where: { createdAt: { gte: since }, status: { notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED] } }, select: { grandTotal: true, createdAt: true, paymentTransactions: { select: { status: true, amount: true } } } }),
@@ -65,16 +79,16 @@ export default async function Admin() {
     db.inventoryItem.findMany({ select: { quantity: true, reserved: true, lowStockThreshold: true, product: { select: { name: true } } } }),
     db.review.count({ where: { approved: false } }),
     db.order.findMany({ orderBy: { createdAt: 'desc' }, take: 6, include: { user: true, items: true } }),
-    db.orderItem.groupBy({ by: ['productId'], where: { order: { status: { notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED] }, createdAt: { gte: monthStart } } }, _sum: { quantity: true }, orderBy: { _sum: { quantity: 'desc' } }, take: 4 }),
+    db.orderItem.groupBy({ by: ['productId'], where: { order: { status: { notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED] }, createdAt: { gte: new Date(now.getTime() - 30 * DAY_MS) } } }, _sum: { quantity: true }, orderBy: { _sum: { quantity: 'desc' } }, take: 4 }),
     visitorCounts(now).catch(() => ({ online: 0, today: 0, ordered: 0 })),
   ])
+  // The activity log is read only by people allowed to see it.
+  const activity = access.activity ? await db.auditLog.findMany({ orderBy: { createdAt: 'desc' }, take: 8, select: { id: true, action: true, entity: true, createdAt: true, actor: { select: { name: true, email: true } } } }) : []
 
   // Extended (Accelerate) client payload inference doesn't always widen nested `select`
   // relations correctly, so these results are asserted to the shape actually queried.
   const salesTyped = recentSales as unknown as SalesOrder[]
-  const topTyped = top as { productId: string; _sum: { quantity: number | null } }[]
-  // The activity log is read only by people allowed to see it.
-  const activity = access.activity ? await db.auditLog.findMany({ orderBy: { createdAt: 'desc' }, take: 8, select: { id: true, action: true, entity: true, createdAt: true, actor: { select: { name: true, email: true } } } }) : []
+  const topTyped = top as unknown as { productId: string; _sum: { quantity: number | null } }[]
 
   const salesByDay = new Map<string, number>(); const ordersByDay = new Map<string, number>()
   for (const order of salesTyped) {
@@ -91,19 +105,29 @@ export default async function Admin() {
   const visitorsToday = visits.today
   // Share of today's visits that placed an order (orders taken by phone or WhatsApp are not visits).
   const conversion = visitorsToday ? `${((visits.ordered / visitorsToday) * 100).toFixed(1)}%` : '—'
+
   const inventory = inventoryRows as unknown as { quantity: number; reserved: number; lowStockThreshold: number; product: { name: string } }[]
   const lowItems = inventory
     .filter(row => row.quantity - row.reserved <= row.lowStockThreshold)
-    .map(row => ({ name: row.product.name, left: row.quantity - row.reserved }))
+    .map(row => ({ name: row.product.name, left: row.quantity - row.reserved, threshold: row.lowStockThreshold }))
     .sort((a, b) => a.left - b.left)
   const lowStock = lowItems.length
 
-  const weekday = new Intl.DateTimeFormat('en', { timeZone: timezone, weekday: 'short' })
-  const longDate = new Intl.DateTimeFormat('en', { timeZone: timezone, weekday: 'long', day: 'numeric', month: 'short' })
-  const chartDays: SalesDay[] = keys.slice(-7).map((key, i) => {
-    const date = new Date(`${key}T12:00:00Z`)
-    return { label: weekday.format(date), date: longDate.format(date), current: salesByDay.get(key) || 0, previous: salesByDay.get(keys[i]) || 0 }
-  })
+  // Month so far against all of last month: a pace figure from real sales, no target needed.
+  const thisMonth = monthKeys[monthKeys.length - 1]
+  const lastMonth = monthKeys[monthKeys.length - 2]
+  const monthSoFar = monthlySales.get(thisMonth) || 0
+  const lastMonthTotal = monthlySales.get(lastMonth) || 0
+  const paceRaw = lastMonthTotal ? (monthSoFar / lastMonthTotal) * 100 : null
+  const [yearNow, monthNow] = thisMonth.split('-').map(Number)
+  const daysInMonth = new Date(Date.UTC(yearNow, monthNow, 0)).getUTCDate()
+  const daysLeft = daysInMonth - Number(todayKey.slice(8, 10))
+
+  const shortMonth = new Intl.DateTimeFormat('en', { month: 'short', timeZone: 'UTC' })
+  const monthLabel = (key: string) => shortMonth.format(new Date(`${key}-15T12:00:00Z`))
+  const formatCompact = (cents: number) => new Intl.NumberFormat('en', { style: 'currency', currency, notation: 'compact', maximumFractionDigits: 1 }).format(cents / 100)
+  const bars = monthKeys.slice(12).map(key => ({ label: monthLabel(key), value: monthlyOrders.get(key) || 0, title: `${monthLabel(key)}: ${monthlyOrders.get(key) || 0} orders`, highlight: key === thisMonth }))
+  const busiest = bars.reduce((best, bar) => (bar.value > best.value ? bar : best), bars[0] || { label: '', value: 0, title: '', highlight: false })
 
   const products = await db.product.findMany({ where: { id: { in: topTyped.map(x => x.productId) } }, select: { id: true, name: true, basePrice: true, images: { select: { url: true }, orderBy: { sortOrder: 'asc' }, take: 1 } } })
   const productById = new Map(products.map(p => [p.id, p]))
@@ -113,81 +137,138 @@ export default async function Admin() {
   const summary = toFulfill
     ? `${salesLine}${plural(toFulfill, 'order')} ${toFulfill === 1 ? 'is' : 'are'} waiting to ship.`
     : `${salesLine}Every order is shipped.`
+  // The greeting follows the store's clock, not the server's.
+  const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: timezone, hour: '2-digit', hourCycle: 'h23' }).format(now))
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
 
-  return <div className={s.page} data-dashboard-hero>
-    <section className={s.hero}>
-      <div className={s.heroText}>
-        <span className={s.eyebrow}>{longDate.format(now)}</span>
-        <h1 className={s.greeting}>Yalla, let&rsquo;s sell! <span aria-hidden="true">🚀</span></h1>
-        <p className={s.summary}>{summary}</p>
+  return <div className={v.page}>
+    <header className={v.head}>
+      <div>
+        <div className={v.eyebrow}>{new Intl.DateTimeFormat('en', { timeZone: timezone, weekday: 'long', day: 'numeric', month: 'long' }).format(now)}</div>
+        <h1 className={v.title}>{greeting}</h1>
+        <p className={v.summary}>{summary}</p>
       </div>
-      <div className={s.heroActions}>
-        <Link className={`${ui.btn} ${s.heroGhost}`} href="/" target="_blank"><Eye size={16} /> View store</Link>
-        <Link className={`${ui.btn} ${s.heroPrimary}`} href="/admin/products/new"><Plus size={16} /> Add product</Link>
+      <div className={v.actions}>
+        <Link className={ui.btn} href="/" target="_blank"><Eye size={16} /> View store</Link>
+        <Link className={ui.btn} href="/admin/orders/new"><Plus size={16} /> Create order</Link>
       </div>
+    </header>
+
+    <section className={v.needs} aria-label="Needs attention">
+      <span className={v.needsLabel}>Needs attention</span>
+      <Link className={v.needsItem} href="/admin/orders"><b>{toFulfill}</b> orders to fulfill <span>Review</span></Link>
+      {access.stock && <Link className={v.needsItem} href="/admin/inventory"><b>{lowStock}</b> low on stock <span>Restock</span></Link>}
+      <Link className={v.needsItem} href="/admin/reviews"><b>{pendingReviews}</b> reviews to approve <span>Open</span></Link>
     </section>
 
-    <div className={s.body}>
-      <div className={s.kpis}>
-        {access.money && <div className={s.kpi}><span>Sales today</span><strong>{money(salesToday, currency)}</strong><small className={salesChange.up ? s.up : s.down}>{salesChange.text}</small></div>}
-        <div className={s.kpi}><span>Orders today</span><strong>{ordersToday}</strong><small className={ordersChange.up ? s.up : s.down}>{ordersChange.text}</small></div>
-        <Link className={s.kpi} href="/admin/live-visitors"><span>Visitors now</span><strong>{visitorsNow}</strong><small className={s.up}><i className={s.liveDot} /> live now</small></Link>
-        <div className={s.kpi}><span>Conversion today</span><strong>{conversion}</strong><small>{visitorsToday ? `${plural(visitorsToday, 'visitor')} today` : 'No visitors yet today'}</small></div>
-      </div>
-
-      <div className={s.grid}>
-        {access.money && <section className={s.panel}>
-          <div className={s.panelHead}><h2>Sales this week</h2><Link href="/admin/reports">View report</Link></div>
-          <AdminSalesChart days={chartDays} currency={currency} />
-        </section>}
-        <section className={s.panel}>
-          <div className={s.panelHead}><h2>Needs your attention</h2></div>
-          <div className={s.todo}>
-            <Link href="/admin/orders"><span className={`${s.todoCount} ${s.todoRed}`}>{toFulfill}</span><PackageCheck size={16} className={s.todoIcon} />Orders to fulfill<ChevronRight size={16} className={s.chev} /></Link>
-            {access.stock && <Link href="/admin/inventory"><span className={`${s.todoCount} ${s.todoAmber}`}>{lowStock}</span><Boxes size={16} className={s.todoIcon} />Products low on stock{lowItems.length > 0 && <small className={s.todoNames}>{lowItems.slice(0, 3).map(item => item.name).join(', ')}</small>}<ChevronRight size={16} className={s.chev} /></Link>}
-            <Link href="/admin/reviews"><span className={`${s.todoCount} ${s.todoGreen}`}>{pendingReviews}</span><MessageSquare size={16} className={s.todoIcon} />Reviews to approve<ChevronRight size={16} className={s.chev} /></Link>
-          </div>
-        </section>
-      </div>
-
-      <div className={s.grid}>
-        <section className={s.panel}>
-          <div className={s.panelHead}><h2>Recent orders</h2><Link href="/admin/orders">View all</Link></div>
-          {orders.length ? <div className={ui.tableWrap}><table className={`${ui.table} ${ui.cardTable} ${s.ordersTable}`}>
-            <thead><tr><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Payment</th><th>Fulfillment</th></tr></thead>
-            <tbody>{orders.map(o => <tr key={o.id}>
-              <td data-cell="primary"><Link className={s.orderLink} href={`/admin/orders/${o.id}`}>#{o.orderNumber}</Link></td>
-              <td data-label="Customer"><strong>{customerName(o)}</strong></td>
-              <td data-cell="hide">{o.items.reduce((a, x) => a + x.quantity, 0)}</td>
-              <td data-label="Total"><strong>{money(o.grandTotal, o.currency)}</strong></td>
-              <td data-label="Payment"><span className={`${ui.statusPill} ${paymentTone(o.paymentStatus)}`}>{label(o.paymentStatus)}</span></td>
-              <td data-label="Fulfillment"><span className={`${ui.statusPill} ${fulfillmentTone(o.status)}`}>{label(o.status)}</span></td>
-            </tr>)}</tbody>
-          </table></div> : <div className={s.empty}><strong>No orders yet</strong><p>New orders show up here as soon as customers check out.</p><Link className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/orders/new">Create an order</Link></div>}
-        </section>
-        <section className={s.panel}>
-          <div className={s.panelHead}><h2>Top products</h2><Link href="/admin/products">All</Link></div>
-          {topTyped.length ? topTyped.map(x => {
-            const product = productById.get(x.productId)
-            return <Link className={s.product} key={x.productId} href={`/admin/products/${x.productId}`}>
-              <span className={s.thumb}>{product?.images?.[0]?.url ? <img src={product.images[0].url} alt="" /> : <Boxes size={16} />}</span>
-              <span className={s.productText}><strong>{product?.name || 'Deleted product'}</strong><small>{x._sum.quantity || 0} sold · last 30 days</small></span>
-              {product && access.money && <em>{money(product.basePrice, currency)}</em>}
-              <ArrowUpRight size={14} className={s.chev} />
-            </Link>
-          }) : <div className={s.empty}><strong>No sales yet</strong><p>Your best sellers from the last 30 days appear here.</p></div>}
-        </section>
-      </div>
-
-      {access.activity && <div className={s.grid}>
-        <section className={s.panel} aria-labelledby="activity-h">
-          <div className={s.panelHead}><h2 id="activity-h">Recent activity</h2></div>
-          {activity.length ? <ol className={s.activity}>{activity.map(entry => <li key={entry.id}>
-            <span><strong>{entry.actor?.name || entry.actor?.email || 'System'}</strong> {activityText(entry.action, entry.entity)}</span>
-            <small><time dateTime={entry.createdAt.toISOString()}>{formatAdminDateTime(entry.createdAt, timezone)}</time></small>
-          </li>)}</ol> : <div className={s.empty}><strong>No activity yet</strong><p>Changes staff make to orders, products and settings are listed here.</p></div>}
-        </section>
+    <div className={v.kpis}>
+      {access.money && <div className={v.kpi}>
+        <span className={v.kpiLabel}>Sales today</span>
+        <div className={v.kpiRow}><strong className={v.kpiValue}>{money(salesToday, currency)}</strong><span className={salesChange.up ? v.delta : v.deltaDown}>{salesChange.text}</span></div>
       </div>}
+      <div className={v.kpi}>
+        <span className={v.kpiLabel}>Orders today</span>
+        <div className={v.kpiRow}><strong className={v.kpiValue}>{ordersToday}</strong><span className={ordersChange.up ? v.delta : v.deltaDown}>{ordersChange.text}</span></div>
+      </div>
+      <Link className={v.kpi} href="/admin/live-visitors">
+        <span className={v.kpiLabel}>Visitors now</span>
+        <div className={v.kpiRow}><strong className={v.kpiValue}>{visitorsNow}</strong><span className={v.delta}><i className={v.live} />live now</span></div>
+      </Link>
+      <div className={v.kpi}>
+        <span className={v.kpiLabel}>Conversion today</span>
+        <div className={v.kpiRow}><strong className={v.kpiValue}>{conversion}</strong><span className={v.deltaNeutral}>{visitorsToday ? `${plural(visitorsToday, 'visitor')} today` : 'No visitors yet today'}</span></div>
+      </div>
+    </div>
+
+    <div className={v.row}>
+      <section className={v.card} aria-labelledby="orders-by-month">
+        <div className={v.cardHead}>
+          <div><h2 id="orders-by-month" className={v.cardTitle}>Orders per month</h2><p className={v.cardSub}>Last 12 months{busiest.value ? `, busiest in ${busiest.label}` : ''}</p></div>
+        </div>
+        <MonthlyBars bars={bars} label={`Orders per month for the last 12 months. ${busiest.label ? `Busiest month ${busiest.label} with ${busiest.value} orders.` : 'No orders yet.'}`} />
+      </section>
+      {access.money && <section className={v.card} aria-labelledby="pace">
+        <div className={v.cardHead}>
+          <div><h2 id="pace" className={v.cardTitle}>This month so far</h2><p className={v.cardSub}>Sales so far against all of last month</p></div>
+        </div>
+        <div className={v.gaugeWrap}>
+          <Gauge percent={paceRaw} label={paceRaw == null ? 'No sales last month to compare with' : `${Math.round(paceRaw)} percent of last month's sales so far`} />
+          <div className={v.gaugePct}>{paceRaw == null ? '—' : `${Math.round(paceRaw)}%`}</div>
+        </div>
+        <div className={v.gaugeFacts}>
+          <div><span>So far</span><strong>{formatCompact(monthSoFar)}</strong></div>
+          <div><span>Last month</span><strong>{formatCompact(lastMonthTotal)}</strong></div>
+          <div><span>Days left</span><strong>{daysLeft}</strong></div>
+        </div>
+      </section>}
+    </div>
+
+    {access.money && <section className={v.card} aria-labelledby="stats-h">
+      <div className={v.cardHead}>
+        <div><h2 id="stats-h" className={v.cardTitle}>Sales, last 12 months</h2><p className={v.cardSub}>Net sales per month, against the same months last year</p></div>
+        <div className={v.legend}><span><i style={{ background: 'var(--admin-accent)' }} />This year</span><span><i style={{ background: 'var(--admin-muted-soft)' }} />Last year</span></div>
+      </div>
+      <YearAreas
+        labels={monthKeys.slice(12).map(monthLabel)}
+        current={monthKeys.slice(12).map(key => monthlySales.get(key) || 0)}
+        previous={monthKeys.slice(0, 12).map(key => monthlySales.get(key) || 0)}
+        format={formatCompact}
+        label="Net sales per month this year against last year"
+      />
+    </section>}
+
+    <div className={v.row}>
+      <section className={s.panel} aria-labelledby="recent-orders">
+        <div className={s.panelHead}><h2 id="recent-orders">Recent orders</h2><Link href="/admin/orders">View all</Link></div>
+        {orders.length ? <div className={ui.tableWrap}><table className={`${ui.table} ${ui.cardTable} ${s.ordersTable}`}>
+          <thead><tr><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Payment</th><th>Fulfillment</th></tr></thead>
+          <tbody>{orders.map(o => <tr key={o.id}>
+            <td data-cell="primary"><Link className={s.orderLink} href={`/admin/orders/${o.id}`}>#{o.orderNumber}</Link></td>
+            <td data-label="Customer"><strong>{customerName(o)}</strong></td>
+            <td data-cell="hide">{o.items.reduce((a, x) => a + x.quantity, 0)}</td>
+            <td data-label="Total"><strong>{money(o.grandTotal, o.currency)}</strong></td>
+            <td data-label="Payment"><span className={`${ui.statusPill} ${paymentTone(o.paymentStatus)}`}>{label(o.paymentStatus)}</span></td>
+            <td data-label="Fulfillment"><span className={`${ui.statusPill} ${fulfillmentTone(o.status)}`}>{label(o.status)}</span></td>
+          </tr>)}</tbody>
+        </table></div> : <div className={s.empty}><strong>No orders yet</strong><p>New orders show up here as soon as customers check out.</p><Link className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/orders/new">Create an order</Link></div>}
+      </section>
+
+      {access.stock && <section className={v.card} aria-labelledby="low-stock">
+        <div className={v.cardHead}>
+          <div><h2 id="low-stock" className={v.cardTitle}>Low stock</h2><p className={v.cardSub}>{lowStock ? `${plural(lowStock, 'product')} at or below the threshold` : 'Nothing is running low'}</p></div>
+          <Link className={v.cardLink} href="/admin/inventory">Inventory</Link>
+        </div>
+        {lowItems.length ? <div className={v.lowList}>{lowItems.slice(0, 4).map(item => {
+          const pct = Math.max(0, Math.min(100, Math.round((item.left / Math.max(1, item.threshold)) * 100)))
+          return <div className={v.lowRow} key={item.name + item.left}>
+            <div className={v.lowTop}><b>{item.name}</b><small>{item.left} left</small></div>
+            <div className={`${v.meter} ${item.left <= 0 ? v.meterOut : ''}`} aria-hidden="true"><span style={{ width: `${pct}%` }} /></div>
+          </div>
+        })}</div> : <div className={s.empty}><strong>All stocked</strong><p>Products appear here when they reach their low-stock threshold.</p></div>}
+      </section>}
+    </div>
+
+    <div className={v.row}>
+      <section className={s.panel} aria-labelledby="top-products">
+        <div className={s.panelHead}><h2 id="top-products">Top products</h2><Link href="/admin/products">All</Link></div>
+        {topTyped.length ? topTyped.map(x => {
+          const product = productById.get(x.productId)
+          return <Link className={s.product} key={x.productId} href={`/admin/products/${x.productId}`}>
+            <span className={s.thumb}>{product?.images?.[0]?.url ? <img src={product.images[0].url} alt="" /> : <Boxes size={16} />}</span>
+            <span className={s.productText}><strong>{product?.name || 'Deleted product'}</strong><small>{x._sum.quantity || 0} sold · last 30 days</small></span>
+            {product && access.money && <em>{money(product.basePrice, currency)}</em>}
+            <ArrowUpRight size={14} className={s.chev} />
+          </Link>
+        }) : <div className={s.empty}><strong>No sales yet</strong><p>Your best sellers from the last 30 days appear here.</p></div>}
+      </section>
+
+      {access.activity && <section className={s.panel} aria-labelledby="activity-h">
+        <div className={s.panelHead}><h2 id="activity-h">Recent activity</h2></div>
+        {activity.length ? <ol className={s.activity}>{activity.map(entry => <li key={entry.id}>
+          <span><strong>{entry.actor?.name || entry.actor?.email || 'System'}</strong> {activityText(entry.action, entry.entity)}</span>
+          <small><time dateTime={entry.createdAt.toISOString()}>{formatAdminDateTime(entry.createdAt, timezone)}</time></small>
+        </li>)}</ol> : <div className={s.empty}><strong>No activity yet</strong><p>Changes staff make to orders, products and settings are listed here.</p></div>}
+      </section>}
     </div>
   </div>
 }
