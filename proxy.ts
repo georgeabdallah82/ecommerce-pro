@@ -5,6 +5,7 @@ import { countRedirectHit, findRedirect, getSettingValue, getStaffAccess } from 
 import { isSessionRevoked } from '@/lib/session-revocation'
 import { contentSecurityPolicy } from '@/lib/csp'
 import { httpsRedirectTarget, wwwRedirectTarget } from '@/lib/www-redirect'
+import { adminHostRedirect, adminHostsFromEnv } from '@/lib/admin-apps'
 import { CAMERA_PATHS, applySecurityHeaders } from '@/lib/security-headers'
 import { isBlockedDuringMaintenance, skipsMaintenanceCheck } from '@/lib/maintenance-paths'
 
@@ -66,6 +67,10 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   if (httpsTarget) return NextResponse.redirect(httpsTarget, 308)
   const wwwTarget = wwwRedirectTarget(request.url, request.headers.get('host'))
   if (wwwTarget) return NextResponse.redirect(wwwTarget, 308)
+  // ERP and POS modules live on their own hosts once ERP_HOST / POS_HOST are set (lib/admin-apps.ts).
+  // Unset, this returns null and every admin page stays where it is today.
+  const appHostTarget = adminHostRedirect({ hostHeader: request.headers.get('host'), pathname: request.nextUrl.pathname, search: request.nextUrl.search, protocol: request.nextUrl.protocol, hosts: adminHostsFromEnv(process.env) })
+  if (appHostTarget) return NextResponse.redirect(appHostTarget, 308)
 
   const pathname = request.nextUrl.pathname
   const nonce = btoa(crypto.randomUUID())
