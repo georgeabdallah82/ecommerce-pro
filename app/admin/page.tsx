@@ -173,8 +173,10 @@ export default async function Admin() {
         <div className={s.kpi}><span>POS sales</span><strong>{erp.posOrders}</strong><small>From the till</small></div>
         <div className={s.kpi}><span>Products</span><strong>{erp.products}</strong><small>{plural(erp.stock.outOfStock, 'out of stock product')}</small></div>
         <div className={s.kpi}><span>Inventory at cost</span><strong>{money(erp.stock.valuationCents, currency)}</strong><small>{erp.stock.productsWithoutCost ? `${plural(erp.stock.productsWithoutCost, 'product')} without a cost price` : 'Stock on hand × cost price'}</small></div>
+        <div className={s.kpi}><span>Gross profit this month</span><strong>{money(erp.profit.month.profitCents, currency)}</strong><small>On {money(erp.profit.month.costedRevenueCents, currency)} of sales · cost {money(erp.profit.month.costCents, currency)}{erp.profit.month.coveragePct !== null ? ` · ${erp.profit.month.coveragePct}% of sales costed` : ''}</small></div>
+        <div className={s.kpi}><span>Gross profit, all time</span><strong>{money(erp.profit.allTime.profitCents, currency)}</strong><small>On {money(erp.profit.allTime.costedRevenueCents, currency)} of sales · cost {money(erp.profit.allTime.costCents, currency)}</small></div>
       </div>
-      <p className={s.summary} style={{ margin: 0 }}>Revenue here is what customers paid, net of refunds. Profit is not shown: sales do not yet record what the items cost.</p>
+      <p className={s.summary} style={{ margin: 0 }}>Revenue is what customers paid, net of refunds. Gross profit covers only items whose cost was recorded when they were sold; the coverage shows how much of the sales that is.</p>
 
       <div className={s.grid}>
         <section className={s.panel}>

@@ -1,6 +1,6 @@
 // Business numbers for the ERP overview. Every figure comes from database records.
-// Revenue, cost and profit are kept apart: profit is not shown, because a sale does not yet record
-// the cost of what it sold (docs/erp-pos-architecture.md), so an estimate would be a guess.
+// Revenue, cost and profit are kept apart. Cost is copied onto each sold item when it is sold, so
+// profit only counts items that have a cost recorded; the coverage figure says how much that is.
 
 import { OrderStatus, PurchaseOrderStatus, ReturnStatus } from '@prisma/client'
 import { db } from '@/lib/prisma'
@@ -51,6 +51,59 @@ export async function salesSince(from: Date | null) {
   return { revenueCents, refundCents, netCents: Math.max(0, revenueCents - refundCents), orders: revenue._count._all }
 }
 
+export type ProfitLine = { quantity: number; totalPrice: number; costPrice: number | null; ratio: number }
+
+/**
+ * Revenue, cost and profit for the lines that have a cost recorded. `quantity` and `totalPrice` are
+ * already net of returns; `ratio` is the share of the list price the customer paid (after discount).
+ * Lines without a cost are counted as revenue only, so profit is never inflated by missing costs.
+ */
+export function profitFromLines(lines: ProfitLine[]) {
+  let costedRevenueCents = 0
+  let uncostedRevenueCents = 0
+  let costCents = 0
+  for (const line of lines) {
+    const revenue = Math.round(line.totalPrice * line.ratio)
+    if (line.costPrice === null) {
+      uncostedRevenueCents += revenue
+      continue
+    }
+    costedRevenueCents += revenue
+    costCents += line.quantity * line.costPrice
+  }
+  const revenueCents = costedRevenueCents + uncostedRevenueCents
+  return {
+    revenueCents,
+    costedRevenueCents,
+    costCents,
+    profitCents: costedRevenueCents - costCents,
+    coveragePct: revenueCents > 0 ? Math.round((costedRevenueCents / revenueCents) * 100) : null,
+  }
+}
+
+/** Profit from items sold since `from` (or ever), net of units returned at the till or online. */
+export async function profitSince(from: Date | null) {
+  const items = await db.orderItem.findMany({
+    where: { order: { status: { notIn: NOT_SOLD }, ...(from ? { createdAt: { gte: from } } : {}) } },
+    select: { id: true, quantity: true, unitPrice: true, costPrice: true, order: { select: { grandTotal: true, subtotal: true } } },
+  })
+  if (items.length === 0) return profitFromLines([])
+  const returned = await db.returnItem.groupBy({
+    by: ['orderItemId'],
+    where: { orderItemId: { in: items.map(item => item.id) }, returnRequest: { status: ReturnStatus.REFUNDED } },
+    _sum: { quantity: true },
+  })
+  const returnedByItem = new Map(returned.map(row => [row.orderItemId, row._sum.quantity ?? 0]))
+  const lines: ProfitLine[] = []
+  for (const item of items) {
+    const netQuantity = Math.max(0, item.quantity - (returnedByItem.get(item.id) ?? 0))
+    if (netQuantity === 0) continue
+    const ratio = item.order.subtotal > 0 ? item.order.grandTotal / item.order.subtotal : 1
+    lines.push({ quantity: netQuantity, totalPrice: item.unitPrice * netQuantity, costPrice: item.costPrice, ratio })
+  }
+  return profitFromLines(lines)
+}
+
 /**
  * Midnight at the start of the month `now` falls in, in the store's timezone. Daylight-saving
  * changes can move the boundary by an hour; that is accepted for a monthly total.
@@ -90,9 +143,11 @@ export async function loadErpOverview(now: Date, timezone: string) {
 
   const channelCount = (channel: string) => channels.find(row => row.channel === channel)?._count._all ?? 0
   const stock = stockOverview(stockRows.map(row => ({ productId: row.productId, quantity: row.quantity, reserved: row.reserved, costPrice: row.product.costPrice })))
+  const [profitAllTime, profitMonth] = await Promise.all([profitSince(null), profitSince(startOfStoreMonth(now, timezone))])
   return {
     allTime,
     month,
+    profit: { allTime: profitAllTime, month: profitMonth },
     onlineOrders: channelCount('ONLINE'),
     posOrders: channelCount('POS'),
     products,

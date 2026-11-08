@@ -118,6 +118,8 @@ export async function recordPosSale(rawInput: unknown, cashierId: string): Promi
           quantity: item.quantity,
           unitPrice,
           totalPrice: unitPrice * item.quantity,
+          // Copied now, so later cost changes never rewrite this sale's profit.
+          costPrice: product.costPrice ?? null,
         }
       })
 
