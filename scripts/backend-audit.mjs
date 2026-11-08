@@ -15,17 +15,6 @@ async function walk(dir) {
   return out
 }
 
-// The text of the lib/ modules a route imports (one level), e.g. '@/lib/pos-sale' -> lib/pos-sale.ts.
-async function libImportsText(text) {
-  const parts = []
-  for (const match of text.matchAll(/from\s+['"]@\/(lib\/[^'"]+)['"]/g)) {
-    for (const candidate of [join(root, `${match[1]}.ts`), join(root, match[1], 'index.ts')]) {
-      try { parts.push(await readFile(candidate, 'utf8')); break } catch { /* not a file of that name */ }
-    }
-  }
-  return parts.join('\n')
-}
-
 const adminFiles = await walk(adminApiRoot)
 const apiFiles = await walk(apiRoot)
 const failures = []
@@ -43,10 +32,7 @@ for (const file of adminFiles) {
   // Login (password, then the 2-step code or set-up) is intentionally the authentication boundary: it
   // must establish identity before a permission check can exist. All are staff-role restricted.
   if (mutates && !protectedRoute && !isLoginRoute) failures.push(`${relative}: mutation route has no permission guard`)
-  // A route often records its audit entry in the library it calls (lib/pos-*.ts, lib/returns...), so the
-  // audit call is looked for in the route and in the lib/ modules it imports directly.
-  const reachable = text + (await libImportsText(text))
-  if (mutates && !/audit\(/.test(reachable) && !relative.includes('/notifications/') && !isLoginRoute) warnings.push(`${relative}: mutation route has no visible audit() call`)
+  if (mutates && !/audit\(/.test(text) && !relative.includes('/notifications/') && !isLoginRoute) warnings.push(`${relative}: mutation route has no visible audit() call`)
   if (/TODO|FIXME|COMING SOON|not implemented/i.test(text)) warnings.push(`${relative}: contains a TODO/placeholder marker`)
 }
 

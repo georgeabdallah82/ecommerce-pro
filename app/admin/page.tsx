@@ -10,7 +10,6 @@ import AdminSalesChart, { type SalesDay } from '@/components/admin-sales-chart'
 import ui from '@/components/admin-ui.module.css'
 import s from '@/components/admin-dashboard.module.css'
 import { visitorCounts } from '@/lib/visitor-report' // same numbers as the Live visitors page
-import { loadErpOverview } from '@/lib/erp-overview'
 
 const OPEN_STATUSES = [OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PROCESSING]
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -94,7 +93,6 @@ export default async function Admin() {
 
   const products = await db.product.findMany({ where: { id: { in: topTyped.map(x => x.productId) } }, select: { id: true, name: true, basePrice: true, images: { select: { url: true }, orderBy: { sortOrder: 'asc' }, take: 1 } } })
   const productById = new Map(products.map(p => [p.id, p]))
-  const erp = await loadErpOverview(now, timezone)
 
   const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
   const summary = toFulfill
@@ -163,43 +161,6 @@ export default async function Admin() {
               <ArrowUpRight size={14} className={s.chev} />
             </Link>
           }) : <div className={s.empty}><strong>No sales yet</strong><p>Your best sellers from the last 30 days appear here.</p></div>}
-        </section>
-      </div>
-
-      <div className={s.kpis} aria-label="Business overview">
-        <div className={s.kpi}><span>Net sales this month</span><strong>{money(erp.month.netCents, currency)}</strong><small>{plural(erp.month.orders, 'order')} · refunds {money(erp.month.refundCents, currency)}</small></div>
-        <div className={s.kpi}><span>Net sales, all time</span><strong>{money(erp.allTime.netCents, currency)}</strong><small>{plural(erp.allTime.orders, 'order')} · refunds {money(erp.allTime.refundCents, currency)}</small></div>
-        <div className={s.kpi}><span>Online orders</span><strong>{erp.onlineOrders}</strong><small>From the store</small></div>
-        <div className={s.kpi}><span>POS sales</span><strong>{erp.posOrders}</strong><small>From the till</small></div>
-        <div className={s.kpi}><span>Products</span><strong>{erp.products}</strong><small>{plural(erp.stock.outOfStock, 'out of stock product')}</small></div>
-        <div className={s.kpi}><span>Inventory at cost</span><strong>{money(erp.stock.valuationCents, currency)}</strong><small>{erp.stock.productsWithoutCost ? `${plural(erp.stock.productsWithoutCost, 'product')} without a cost price` : 'Stock on hand × cost price'}</small></div>
-        <div className={s.kpi}><span>Gross profit this month</span><strong>{money(erp.profit.month.profitCents, currency)}</strong><small>On {money(erp.profit.month.costedRevenueCents, currency)} of sales · cost {money(erp.profit.month.costCents, currency)}{erp.profit.month.coveragePct !== null ? ` · ${erp.profit.month.coveragePct}% of sales costed` : ''}</small></div>
-        <div className={s.kpi}><span>Gross profit, all time</span><strong>{money(erp.profit.allTime.profitCents, currency)}</strong><small>On {money(erp.profit.allTime.costedRevenueCents, currency)} of sales · cost {money(erp.profit.allTime.costCents, currency)}</small></div>
-      </div>
-      <p className={s.summary} style={{ margin: 0 }}>Revenue is what customers paid, net of refunds. Gross profit covers only items whose cost was recorded when they were sold; the coverage shows how much of the sales that is.</p>
-
-      <div className={s.grid}>
-        <section className={s.panel}>
-          <div className={s.panelHead}><h2>Recent stock movements</h2><Link href="/admin/inventory">Inventory</Link></div>
-          {erp.movements.length ? <div className={ui.tableWrap}><table className={`${ui.table} ${ui.cardTable}`}>
-            <thead><tr><th>When</th><th>Product</th><th>Change</th><th>Reason</th></tr></thead>
-            <tbody>{erp.movements.map((m, i) => <tr key={i}>
-              <td data-label="When">{new Date(m.createdAt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}</td>
-              <td data-label="Product"><strong>{m.inventory.product.name}</strong></td>
-              <td data-label="Change">{m.quantity > 0 ? `+${m.quantity}` : m.quantity}</td>
-              <td data-label="Reason">{label(m.type)}{m.reason ? ` · ${m.reason}` : ''}{m.referenceId ? ` · ${m.referenceId}` : ''}</td>
-            </tr>)}</tbody>
-          </table></div> : <div className={s.empty}><strong>No stock movements yet</strong><p>Every sale, receipt and adjustment is recorded here.</p></div>}
-        </section>
-        <section className={s.panel}>
-          <div className={s.panelHead}><h2>Recent till sales</h2><span className={s.summary} style={{ margin: 0 }}>{erp.pendingPurchases} open purchase {erp.pendingPurchases === 1 ? 'order' : 'orders'}</span></div>
-          {erp.posSales.length ? <div className={s.todo}>
-            {erp.posSales.map(sale => <Link key={sale.orderNumber} href={`/admin/pos/receipts/${encodeURIComponent(sale.orderNumber)}`}>
-              <span className={s.todoCount}>{money(sale.grandTotal, currency)}</span>
-              {sale.orderNumber}<small style={{ marginLeft: 8, color: '#5f6673' }}>{sale.cashier?.name ?? ''}</small>
-              <ChevronRight size={16} className={s.chev} />
-            </Link>)}
-          </div> : <div className={s.empty}><strong>No till sales yet</strong><p>Sales made on the till appear here with their receipts.</p></div>}
         </section>
       </div>
     </div>
