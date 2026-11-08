@@ -935,6 +935,12 @@ html body.mk .mkSlideCopy .mkTag { background: var(--br-orange); color: var(--br
 html body.mk .mkCardAdd { background: transparent; color: var(--br-red); box-shadow: inset 0 0 0 1.5px var(--br-red); }
 html body.mk .mkCardAdd:hover { background: var(--br-red); color: #fff; }
 html body.mk .mkCardAdd.done { background: var(--mk-green); color: #fff; box-shadow: none; }
+/* Phones have no hover, so the outline button reads as a weak link there: solid red is the one tap target. */
+@media (max-width: 640px) {
+  html body.mk .mkCardAdd { background: var(--br-red); color: #fff; box-shadow: none; }
+  html body.mk .mkCardAdd:hover { background: var(--br-red); color: #fff; }
+  html body.mk .mkCardAdd.done { background: var(--mk-green); color: #fff; box-shadow: none; }
+}
 html body.mk .mkCardBadge { background: var(--br-red); color: #fff; }
 html body.mk .mkCardMedia { transition: box-shadow .2s var(--mk-ease), transform .2s var(--mk-ease); }
 @media (hover: hover) {

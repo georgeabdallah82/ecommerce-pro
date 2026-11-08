@@ -84,12 +84,20 @@
   .cardBody, .actions { padding-left: 0; }
 }
 
-/* Shortcuts under the title: delivery sheet, unfinished checkouts */
-.shortcuts { display: flex; flex-wrap: wrap; gap: 8px; }
-.shortcut { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: var(--admin-radius-md); border: 1px solid var(--admin-border); background: var(--admin-surface); color: var(--admin-ink); font-size: 13.5px; font-weight: 750; text-decoration: none; }
-.shortcut:hover { border-color: var(--admin-ink-soft); }
-.shortcut span { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--admin-border); font-size: 12px; }
-.shortcutAlert span { background: #d92d20; color: #fff; }
+/* Header "More" menu opens downward (it sits at the top of the page), with the unfinished-checkout count */
+.menuDown { bottom: auto; top: calc(100% + 6px); }
+.menuBadge { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; margin-left: 2px; border-radius: 999px; background: #d92d20; color: #fff; font-size: 12px; font-weight: 800; }
+.menuCount { margin-left: auto; display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: #d92d20; color: #fff; font-size: 12px; font-weight: 800; }
+
+/* Order count with the refresh button, on the list header */
+.listMeta { display: inline-flex; align-items: center; gap: 4px; }
+
+/* Quick views: a fade on the right edge while more views are scrolled out of sight on a phone */
+.viewsWrap { position: relative; }
+@media (max-width: 900px) {
+  .viewsWrap.viewsMore::after { content: ""; position: absolute; top: 0; right: 0; bottom: 2px; width: 44px; pointer-events: none; background: linear-gradient(to right, rgba(0, 0, 0, 0), var(--admin-bg, #f6f7f9)); }
+}
+
 
 /* Risky order warning on a new order (lib/order-risk.ts). */
 .risk { display: flex; align-items: flex-start; gap: 6px; padding: 7px 10px; border-radius: 10px; font-size: 13px; font-weight: 800; color: #8a5a00; background: color-mix(in srgb, #b7791f 13%, transparent); }
