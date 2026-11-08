@@ -13,7 +13,7 @@ import Link from '@/components/admin-link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Activity, ArrowLeftRight, ChevronDown, Rocket, Star, BarChart3, Boxes, ClipboardList, CreditCard, FileEdit, FileText, Gauge, Image as ImageIcon, Layers3, LayoutDashboard, LogOut, Mail, Megaphone, Menu, MessageSquare, PackageCheck, Palette, Percent, Radio, RotateCcw, Search, Settings2, ShoppingBag, MoreHorizontal, Store, Tag, Truck, UserCog, Users, UsersRound, Workflow, X, PackagePlus, MessageCircleQuestion, HeartHandshake, UserPlus, PackageSearch, ScanBarcode, Barcode, BadgeDollarSign, Contact, CalendarHeart, type LucideIcon, Gift } from 'lucide-react'
+import { Activity, ArrowLeftRight, ChevronDown, Rocket, Star, BarChart3, Boxes, ClipboardList, CreditCard, FileEdit, FileText, Gauge, Image as ImageIcon, Layers3, LayoutDashboard, LogOut, Mail, Megaphone, Menu, MessageSquare, PackageCheck, Palette, Percent, Radio, RotateCcw, Search, Settings2, ShoppingBag, MoreHorizontal, Store, Tag, Truck, UserCog, Users, UsersRound, Workflow, X, PackagePlus, MessageCircleQuestion, HeartHandshake, UserPlus, PackageSearch, ScanBarcode, Barcode, BadgeDollarSign, Contact, CalendarHeart, type LucideIcon, Gift, ChevronLeft } from 'lucide-react'
 import AdminThemeToggle from '@/components/admin-theme-toggle'
 import OrderAlerts from '@/components/order-alerts'
 import type { Permission } from '@/lib/permissions'
@@ -197,6 +197,12 @@ export default function AdminNav({
   )
 
   const storeName = storeBrand?.name || 'Control Center'
+  // The sidebar collapses to an icon rail. The choice is remembered in this browser.
+  const [collapsed, setCollapsed] = useState(false)
+  useEffect(() => { try { setCollapsed(window.localStorage.getItem('admin.sidebar') === 'collapsed') } catch {} }, [])
+  function toggleCollapsed() {
+    setCollapsed(value => { const next = !value; try { window.localStorage.setItem('admin.sidebar', next ? 'collapsed' : 'open') } catch {} return next })
+  }
   const initials = (name || email || 'A').split(/[\s@.]+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase()
   const allowedHrefs = new Set(allItems.map(item => item.href))
   const tabs = TAB_HREFS.filter(tab => allowedHrefs.has(tab.href))
@@ -235,8 +241,9 @@ export default function AdminNav({
   return (
     <>
       <div className={styles.shell}>
-        <aside className={styles.sidebar} aria-label="Admin sections">
-          <Link href="/admin" className={styles.sidebarBrand} aria-label={`${storeName} admin home`}>{darkLogo}</Link>
+        <aside className={`${styles.sidebar}${collapsed ? ` ${styles.sidebarCollapsed}` : ''}`} aria-label="Admin sections">
+          <button type="button" className={styles.collapseBtn} onClick={toggleCollapsed} aria-expanded={!collapsed} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}><ChevronLeft size={14} aria-hidden="true" /></button>
+          <Link href="/admin" className={styles.sidebarBrand} aria-label={`${storeName} admin home`}>{lightLogo}</Link>
           <nav className={styles.sidebarNav}>
             <NavGroups groups={groups} pathname={pathname} badges={{ '/admin/orders': badge }} />
           </nav>

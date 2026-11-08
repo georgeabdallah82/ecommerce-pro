@@ -25,8 +25,7 @@ export function MonthlyBars({ bars, label }: { bars: { label: string; value: num
     {bars.map((b, i) => {
       const cx = PAD.left + slot * (i + 0.5)
       const h = (b.value / max) * plotH
-      return <g key={b.label}>
-        <title>{b.title}</title>
+      return <g key={b.label} role="group" aria-label={b.title}>
         <rect x={cx - slot * 0.25} y={PAD.top + plotH - h} width={slot * 0.5} height={Math.max(0, h)} rx={4} className={b.highlight ? s.barHi : s.bar} style={{ animationDelay: `${i * 40}ms` }} />
         <text x={cx} y={H - 8} textAnchor="middle" className={s.axis}>{b.label}</text>
       </g>
@@ -65,6 +64,6 @@ export function Gauge({ percent, label }: { percent: number | null; label: strin
   const ey = 130 - 100 * Math.sin(theta)
   return <svg viewBox="0 0 260 150" role="img" aria-label={label} className={s.gauge}>
     <path d="M 30 130 A 100 100 0 0 1 230 130" pathLength={100} className={s.gaugeTrack} />
-    <path d={`M 30 130 A 100 100 0 0 1 ${ex.toFixed(1)} ${ey.toFixed(1)}`} pathLength={100} className={s.gaugeProgress} style={{ ['--p' as string]: String(p) } as CSSProperties} />
+    {p > 0 && <path d={`M 30 130 A 100 100 0 0 1 ${ex.toFixed(1)} ${ey.toFixed(1)}`} pathLength={100} className={s.gaugeProgress} style={{ ['--p' as string]: String(p) } as CSSProperties} />}
   </svg>
 }

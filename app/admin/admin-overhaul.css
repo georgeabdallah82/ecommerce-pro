@@ -72,12 +72,12 @@ body:has(.adminShell){
   --admin-shadow-md:0 8px 24px rgba(27,26,22,.07);
   --admin-shadow-lg:0 26px 80px rgba(27,26,22,.18);
   --admin-font-sans:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  --admin-topbar-bg:rgba(246,245,240,.88);
+  --admin-topbar-bg:rgba(255,255,255,.92);
   /* Dark sidebar + phone tab bar (follows the brand's text colour when the theme sets one). */
-  --admin-sidebar-bg:#191512;
-  --admin-sidebar-ink:#d9d0c8;
-  --admin-sidebar-muted:#8d8178;
-  --admin-sidebar-hover:#2a2420;
+  --admin-sidebar-bg:#FFFFFF;
+  --admin-sidebar-ink:#121212;
+  --admin-sidebar-muted:#6B7280;
+  --admin-sidebar-hover:#F5F4F1;
   /* Cards: borderless, rounded, softly lifted. */
   --admin-card-radius:20px;
   --admin-card-shadow:0 1px 2px rgba(25,21,18,.04),0 6px 24px rgba(120,20,10,.06);

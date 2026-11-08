@@ -1,6 +1,6 @@
 import { requirePermission } from '@/lib/auth'
 import Link from '@/components/admin-link'
-import { ArrowUpRight, Boxes, ChevronRight, Eye, MessageSquare, PackageCheck, Plus } from 'lucide-react'
+import { ArrowUpRight, Boxes, ChevronRight, Eye, MessageSquare, PackageCheck, Percent, Plus, ShoppingBag, Users, Wallet } from 'lucide-react'
 import { db } from '@/lib/prisma'
 import { money } from '@/lib/config'
 import { OrderStatus } from '@prisma/client'
@@ -45,6 +45,7 @@ function customerName(order: { user?: { name: string | null } | null; email: str
 }
 const label = (status: string) => status.charAt(0) + status.slice(1).toLowerCase().replace(/_/g, ' ')
 // Plain words for an audit action such as "product.update" on "Product".
+const nextStep = (status: string) => status === 'PENDING' ? 'Confirm' : status === 'CONFIRMED' || status === 'PROCESSING' ? 'Mark shipped' : status === 'SHIPPED' ? 'Mark delivered' : 'View'
 const activityText = (action: string, entity: string) => `${action.replace(/[._]/g, ' ').toLowerCase()} on ${entity.toLowerCase()}`
 
 export default async function Admin() {
@@ -123,6 +124,10 @@ export default async function Admin() {
   const daysInMonth = new Date(Date.UTC(yearNow, monthNow, 0)).getUTCDate()
   const daysLeft = daysInMonth - Number(todayKey.slice(8, 10))
 
+  const last12 = monthKeys.slice(12).reduce((t, k) => t + (monthlySales.get(k) || 0), 0)
+  const previous12 = monthKeys.slice(0, 12).reduce((t, k) => t + (monthlySales.get(k) || 0), 0)
+  const yoy = previous12 ? ((last12 - previous12) / previous12) * 100 : null
+  const quarterGroups = (keys: string[]) => Array.from({ length: Math.ceil(keys.length / 3) }, (_, i) => keys.slice(i * 3, i * 3 + 3))
   const shortMonth = new Intl.DateTimeFormat('en', { month: 'short', timeZone: 'UTC' })
   const monthLabel = (key: string) => shortMonth.format(new Date(`${key}-15T12:00:00Z`))
   const formatCompact = (cents: number) => new Intl.NumberFormat('en', { style: 'currency', currency, notation: 'compact', maximumFractionDigits: 1 }).format(cents / 100)
@@ -163,19 +168,19 @@ export default async function Admin() {
 
     <div className={v.kpis}>
       {access.money && <div className={v.kpi}>
-        <span className={v.kpiLabel}>Sales today</span>
+        <span className={v.kpiTop}><span className={v.kpiIcon}><Wallet size={18} /></span><span className={v.kpiLabel}>Sales today</span></span>
         <div className={v.kpiRow}><strong className={v.kpiValue}>{money(salesToday, currency)}</strong><span className={salesChange.up ? v.delta : v.deltaDown}>{salesChange.text}</span></div>
       </div>}
       <div className={v.kpi}>
-        <span className={v.kpiLabel}>Orders today</span>
+        <span className={v.kpiTop}><span className={v.kpiIcon}><ShoppingBag size={18} /></span><span className={v.kpiLabel}>Orders today</span></span>
         <div className={v.kpiRow}><strong className={v.kpiValue}>{ordersToday}</strong><span className={ordersChange.up ? v.delta : v.deltaDown}>{ordersChange.text}</span></div>
       </div>
       <Link className={v.kpi} href="/admin/live-visitors">
-        <span className={v.kpiLabel}>Visitors now</span>
+        <span className={v.kpiTop}><span className={v.kpiIcon}><Users size={18} /></span><span className={v.kpiLabel}>Visitors now</span></span>
         <div className={v.kpiRow}><strong className={v.kpiValue}>{visitorsNow}</strong><span className={v.delta}><i className={v.live} />live now</span></div>
       </Link>
       <div className={v.kpi}>
-        <span className={v.kpiLabel}>Conversion today</span>
+        <span className={v.kpiTop}><span className={v.kpiIcon}><Percent size={18} /></span><span className={v.kpiLabel}>Conversion today</span></span>
         <div className={v.kpiRow}><strong className={v.kpiValue}>{conversion}</strong><span className={v.deltaNeutral}>{visitorsToday ? `${plural(visitorsToday, 'visitor')} today` : 'No visitors yet today'}</span></div>
       </div>
     </div>
@@ -189,39 +194,53 @@ export default async function Admin() {
       </section>
       {access.money && <section className={v.card} aria-labelledby="pace">
         <div className={v.cardHead}>
-          <div><h2 id="pace" className={v.cardTitle}>This month so far</h2><p className={v.cardSub}>Sales so far against all of last month</p></div>
+          <div><h2 id="pace" className={v.cardTitle}>This month so far</h2><p className={v.cardSub}>Sales so far against all of last month, {daysLeft} days left</p></div>
         </div>
         <div className={v.gaugeWrap}>
           <Gauge percent={paceRaw} label={paceRaw == null ? 'No sales last month to compare with' : `${Math.round(paceRaw)} percent of last month's sales so far`} />
           <div className={v.gaugePct}>{paceRaw == null ? '—' : `${Math.round(paceRaw)}%`}</div>
         </div>
         <div className={v.gaugeFacts}>
-          <div><span>So far</span><strong>{formatCompact(monthSoFar)}</strong></div>
           <div><span>Last month</span><strong>{formatCompact(lastMonthTotal)}</strong></div>
-          <div><span>Days left</span><strong>{daysLeft}</strong></div>
+          <div><span>This month</span><strong>{formatCompact(monthSoFar)}</strong></div>
+          <div><span>Today</span><strong>{formatCompact(salesToday)}</strong></div>
         </div>
       </section>}
     </div>
 
     {access.money && <section className={v.card} aria-labelledby="stats-h">
+      <input type="radio" name="sales-period" id="stats-m" className={v.radio} defaultChecked />
+      <input type="radio" name="sales-period" id="stats-q" className={v.radio} />
+      <input type="radio" name="sales-period" id="stats-a" className={v.radio} />
       <div className={v.cardHead}>
-        <div><h2 id="stats-h" className={v.cardTitle}>Sales, last 12 months</h2><p className={v.cardSub}>Net sales per month, against the same months last year</p></div>
-        <div className={v.legend}><span><i style={{ background: 'var(--admin-accent)' }} />This year</span><span><i style={{ background: 'var(--admin-muted-soft)' }} />Last year</span></div>
+        <div><h2 id="stats-h" className={v.cardTitle}>Sales</h2><p className={v.cardSub}>Net sales against the same period a year earlier</p></div>
+        <div className={v.tabs} role="group" aria-label="Period">
+          <label htmlFor="stats-m" className={v.tab}>Monthly</label>
+          <label htmlFor="stats-q" className={v.tab}>Quarterly</label>
+          <label htmlFor="stats-a" className={v.tab}>Annually</label>
+        </div>
       </div>
-      <YearAreas
-        labels={monthKeys.slice(12).map(monthLabel)}
-        current={monthKeys.slice(12).map(key => monthlySales.get(key) || 0)}
-        previous={monthKeys.slice(0, 12).map(key => monthlySales.get(key) || 0)}
-        format={formatCompact}
-        label="Net sales per month this year against last year"
-      />
+      <div className={v.legend}><span><i style={{ background: 'var(--admin-accent)' }} />Last 12 months</span><span><i style={{ background: 'var(--admin-muted-soft)' }} />Same period last year</span></div>
+      <div className={v.panelM}>
+        <YearAreas labels={monthKeys.slice(12).map(monthLabel)} current={monthKeys.slice(12).map(key => monthlySales.get(key) || 0)} previous={monthKeys.slice(0, 12).map(key => monthlySales.get(key) || 0)} format={formatCompact} label="Net sales per month, last 12 months against the same months a year earlier" />
+      </div>
+      <div className={v.panelQ}>
+        <YearAreas labels={quarterGroups(monthKeys.slice(12)).map(group => `${group[0]}–${group[group.length - 1]}`)} current={quarterGroups(monthKeys.slice(12)).map(group => group.reduce((t, k) => t + (monthlySales.get(k) || 0), 0))} previous={quarterGroups(monthKeys.slice(0, 12)).map(group => group.reduce((t, k) => t + (monthlySales.get(k) || 0), 0))} format={formatCompact} label="Net sales per quarter, last 12 months against the same quarters a year earlier" />
+      </div>
+      <div className={v.panelA}>
+        <div className={v.annual}>
+          <div><span>Previous 12 months</span><strong>{formatCompact(previous12)}</strong></div>
+          <div><span>Last 12 months</span><strong>{formatCompact(last12)}</strong></div>
+          {yoy == null ? <span className={v.deltaNeutral}>No sales a year earlier</span> : <span className={yoy >= 0 ? v.delta : v.deltaDown}>{yoy >= 0 ? '+' : ''}{Math.round(yoy)}% vs previous 12 months</span>}
+        </div>
+      </div>
     </section>}
 
     <div className={v.row}>
       <section className={s.panel} aria-labelledby="recent-orders">
         <div className={s.panelHead}><h2 id="recent-orders">Recent orders</h2><Link href="/admin/orders">View all</Link></div>
         {orders.length ? <div className={ui.tableWrap}><table className={`${ui.table} ${ui.cardTable} ${s.ordersTable}`}>
-          <thead><tr><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Payment</th><th>Fulfillment</th></tr></thead>
+          <thead><tr><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Payment</th><th>Fulfillment</th><th>Next step</th></tr></thead>
           <tbody>{orders.map(o => <tr key={o.id}>
             <td data-cell="primary"><Link className={s.orderLink} href={`/admin/orders/${o.id}`}>#{o.orderNumber}</Link></td>
             <td data-label="Customer"><strong>{customerName(o)}</strong></td>
@@ -229,6 +248,7 @@ export default async function Admin() {
             <td data-label="Total"><strong>{money(o.grandTotal, o.currency)}</strong></td>
             <td data-label="Payment"><span className={`${ui.statusPill} ${paymentTone(o.paymentStatus)}`}>{label(o.paymentStatus)}</span></td>
             <td data-label="Fulfillment"><span className={`${ui.statusPill} ${fulfillmentTone(o.status)}`}>{label(o.status)}</span></td>
+              <td data-label="Next step"><Link className={`${ui.btn} ${ui.btnSecondary}`} href={`/admin/orders/${o.id}`}>{nextStep(o.status)}</Link></td>
           </tr>)}</tbody>
         </table></div> : <div className={s.empty}><strong>No orders yet</strong><p>New orders show up here as soon as customers check out.</p><Link className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/orders/new">Create an order</Link></div>}
       </section>
