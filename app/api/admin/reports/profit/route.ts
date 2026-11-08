@@ -18,7 +18,7 @@ export async function GET(req: Request) {
     const [orders, settings, adSpend, currency, expenseRows] = await Promise.all([
       db.order.findMany({
         where: { createdAt: { gte: range.since, lt: range.until } },
-        select: { status: true, paymentStatus: true, paymentMethod: true, currency: true, grandTotal: true, taxTotal: true, shippingTotal: true, discountTotal: true, items: { select: { productId: true, name: true, quantity: true, totalPrice: true, costPrice: true } }, paymentTransactions: { select: { status: true, amount: true } } },
+        select: { status: true, paymentStatus: true, paymentMethod: true, currency: true, grandTotal: true, taxTotal: true, shippingTotal: true, discountTotal: true, items: { select: { productId: true, name: true, quantity: true, totalPrice: true } }, paymentTransactions: { select: { status: true, amount: true } } },
         take: 20000,
       }),
       db.setting.findMany({ where: { key: { in: ['profit.deliveryCostPerOrder', 'profit.packagingCostPerOrder'] } } }),

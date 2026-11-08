@@ -43,7 +43,7 @@ export async function POST(req: Request) {
 
     let subtotal = 0
     const normalized: any[] = []
-    for (const line of merged.values()) { const p = byId.get(line.productId)!; const productVariants = variantsByProduct.get(line.productId) || []; const variant = line.variantId ? productVariants.find(v => v.id === line.variantId) : undefined; if (line.variantId && !variant) return json({ error: `Invalid variant for ${p.name}` }, { status: 400 }); const unitPrice = variant?.price ?? p.basePrice; subtotal += unitPrice * line.quantity; normalized.push({ productId: p.id, variantId: variant?.id ?? null, name: p.name + (variant ? ` — ${variant.name}` : ''), sku: variant?.sku ?? p.sku, quantity: line.quantity, unitPrice, totalPrice: unitPrice * line.quantity, costPrice: p.costPrice ?? null }) }
+    for (const line of merged.values()) { const p = byId.get(line.productId)!; const productVariants = variantsByProduct.get(line.productId) || []; const variant = line.variantId ? productVariants.find(v => v.id === line.variantId) : undefined; if (line.variantId && !variant) return json({ error: `Invalid variant for ${p.name}` }, { status: 400 }); const unitPrice = variant?.price ?? p.basePrice; subtotal += unitPrice * line.quantity; normalized.push({ productId: p.id, variantId: variant?.id ?? null, name: p.name + (variant ? ` — ${variant.name}` : ''), sku: variant?.sku ?? p.sku, quantity: line.quantity, unitPrice, totalPrice: unitPrice * line.quantity }) }
 
     const discount = Math.max(0, Math.min(subtotal, Math.round(Number(body.discount || 0))))
     const shippingTotal = Math.max(0, Math.round(Number(body.shippingTotal || 0)))

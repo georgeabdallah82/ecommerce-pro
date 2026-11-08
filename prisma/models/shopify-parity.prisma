@@ -91,8 +91,6 @@ model StoreLocation {
   transfersTo   InventoryTransfer[] @relation("TransferTo")
   purchaseOrders PurchaseOrder[] @relation("PurchaseLocation")
   inventoryItems InventoryItem[]
-  orders         Order[]        @relation("OrderLocation")
-  registers      Register[]
   @@index([status])
 }
 
@@ -210,13 +208,6 @@ model ReturnRequest {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   items         ReturnItem[]
-  // Till returns (lib/pos-returns.ts): which shift and cashier refunded, and how the money went back.
-  shiftId       String?
-  shift         CashierShift? @relation(fields: [shiftId], references: [id])
-  cashierId     String?
-  cashier       User?         @relation("ReturnCashier", fields: [cashierId], references: [id], onDelete: SetNull)
-  refundMethod  PaymentLineMethod?
-  @@index([shiftId])
   @@index([orderId])
   @@index([status])
 }
@@ -289,8 +280,6 @@ model PurchaseOrder {
   id           String              @id @default(cuid())
   number       String              @unique
   supplierName String?
-  supplierId   String?
-  supplier     Supplier?           @relation(fields: [supplierId], references: [id])
   locationId   String?
   status       PurchaseOrderStatus @default(DRAFT)
   currency     String              @default("USD")

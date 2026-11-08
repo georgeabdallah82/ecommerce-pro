@@ -232,7 +232,7 @@ export async function POST(req: Request) {
       const totalPrice = unitPrice * raw.quantity
       subtotal += totalPrice
       if (p.taxable) taxableSubtotal += totalPrice
-      normalized.push({ productId: p.id, variantId: variant?.id ?? null, name: p.name + (variant ? ` — ${variant.name}` : '') + (preordered ? ' (Pre-order)' : ''), sku: variant?.sku ?? p.sku, quantity: raw.quantity, unitPrice, totalPrice, taxable: p.taxable, costPrice: p.costPrice ?? null })
+      normalized.push({ productId: p.id, variantId: variant?.id ?? null, name: p.name + (variant ? ` — ${variant.name}` : '') + (preordered ? ' (Pre-order)' : ''), sku: variant?.sku ?? p.sku, quantity: raw.quantity, unitPrice, totalPrice, taxable: p.taxable })
     }
 
     // requiresShipping defaults to true (a merchant's admin toggle for "Physical product --

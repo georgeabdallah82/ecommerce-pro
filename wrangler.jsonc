@@ -30,10 +30,6 @@
     "crons": ["37 5 * * *", "*/15 * * * *"]
   },
   "vars": {
-    "EMAIL_FROM": "Yalla Haul <orders@yallahaul.com>",
-    // Staff hosts (lib/admin-apps.ts): ERP and POS modules live on their own hosts, the rest on the store.
-    "ERP_HOST": "erp.yallahaul.com",
-    "POS_HOST": "pos.yallahaul.com",
-    "STORE_HOST": "yallahaul.com"
+    "EMAIL_FROM": "Yalla Haul <orders@yallahaul.com>"
   }
 }

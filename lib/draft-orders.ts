@@ -56,7 +56,7 @@ export async function completeDraftOrder(draftId: string, paymentMethod: Payment
         status: 'PENDING',
         paymentStatus: 'UNPAID',
         fulfillmentStatus: 'UNFULFILLED',
-        items: { create: draft.items.map(i => ({ productId: i.productId, variantId: i.variantId, name: i.name, sku: i.sku, quantity: i.quantity, unitPrice: i.unitPrice, totalPrice: i.totalPrice, costPrice: byId.get(i.productId)?.costPrice ?? null })) },
+        items: { create: draft.items.map(i => ({ productId: i.productId, variantId: i.variantId, name: i.name, sku: i.sku, quantity: i.quantity, unitPrice: i.unitPrice, totalPrice: i.totalPrice })) },
         events: { create: { status: 'PENDING', message: `Created from draft order ${draft.orderNumber}.` } },
         paymentTransactions: { create: { provider: 'manual', status: 'created', amount: draft.grandTotal, currency: draft.currency } },
       },
