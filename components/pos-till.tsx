@@ -40,6 +40,9 @@ export default function PosTill({ items }: { items: TillItem[] }) {
   const [submitting, setSubmitting] = useState(false)
   const [receipt, setReceipt] = useState<Receipt | null>(null)
   const [width, setWidth] = useState<'58' | '80'>('80')
+  const [customer, setCustomer] = useState<{ id: string; name: string; phone: string | null } | null>(null)
+  const [customerQuery, setCustomerQuery] = useState('')
+  const [customerResults, setCustomerResults] = useState<Array<{ id: string; name: string; email: string; phone: string | null }>>([])
   const inputRef = useRef<HTMLInputElement>(null)
   // One key per sale attempt. Any change to the cart or the payment starts a new attempt, so a
   // retry of the same attempt can never create a second sale.
@@ -59,6 +62,21 @@ export default function PosTill({ items }: { items: TillItem[] }) {
   }, [])
 
   useEffect(() => { void loadTill() }, [loadTill])
+
+  // Customer search: waits for a pause in typing, so one search runs per pause rather than per key.
+  useEffect(() => {
+    if (customerQuery.trim().length < 2) {
+      setCustomerResults([])
+      return
+    }
+    const timer = setTimeout(() => {
+      fetch(`/api/admin/pos/customers?q=${encodeURIComponent(customerQuery.trim())}`, { cache: 'no-store' })
+        .then(response => (response.ok ? response.json() : []))
+        .then(list => setCustomerResults(Array.isArray(list) ? list : []))
+        .catch(() => setCustomerResults([]))
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [customerQuery])
 
   const results = useMemo(() => searchItems(items, query), [items, query])
   const totals = tillTotals(lines)
@@ -135,6 +153,8 @@ export default function PosTill({ items }: { items: TillItem[] }) {
     setDiscount('')
     setReceipt(null)
     setMessage('')
+    setCustomer(null)
+    setCustomerQuery('')
     saleKeyRef.current = null
     inputRef.current?.focus()
   }
@@ -160,6 +180,7 @@ export default function PosTill({ items }: { items: TillItem[] }) {
           idempotencyKey: saleKeyRef.current,
           items: lines.map(line => ({ productId: line.productId, variantId: line.variantId, quantity: line.quantity })),
           discountCents,
+          customerId: customer?.id ?? null,
           payments,
         }),
       })
@@ -172,6 +193,8 @@ export default function PosTill({ items }: { items: TillItem[] }) {
       setLines([])
       setPayLines([newLine()])
       setDiscount('')
+      setCustomer(null)
+      setCustomerQuery('')
       saleKeyRef.current = null
       router.refresh()
     } catch {
@@ -272,6 +295,32 @@ export default function PosTill({ items }: { items: TillItem[] }) {
             <span style={{ fontSize: 26, fontWeight: 700 }}>{money(grandTotal)}</span>
           </div>
           {rate > 0 && grandTotal > 0 && <p style={{ margin: 0, color: '#5f6673', fontSize: 13, textAlign: 'right' }}>About LBP {lbpFromUsdCents(grandTotal, rate).toLocaleString('en-US')} at {rate.toLocaleString('en-US')}</p>}
+
+          <div style={{ display: 'grid', gap: 6 }}>
+            <strong style={{ fontSize: 15 }}>Customer</strong>
+            {customer ? (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                <span>{customer.name}{customer.phone ? ` · ${customer.phone}` : ''}</span>
+                <button type="button" onClick={() => { setCustomer(null); changed() }} style={button}>Remove</button>
+              </div>
+            ) : (
+              <>
+                <input value={customerQuery} onChange={event => setCustomerQuery(event.target.value)} placeholder="Name, phone or email (optional)" aria-label="Find a customer" style={field} />
+                {customerResults.length > 0 && (
+                  <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 4 }}>
+                    {customerResults.map(found => (
+                      <li key={found.id}>
+                        <button type="button" onClick={() => { setCustomer({ id: found.id, name: found.name, phone: found.phone }); setCustomerQuery(''); setCustomerResults([]); changed() }} style={{ ...button, width: '100%', textAlign: 'left', display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                          <span>{found.name}</span>
+                          <span style={{ color: '#5f6673', fontSize: 13 }}>{found.phone ?? found.email}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+          </div>
 
           {!receipt && (
             <div style={{ display: 'grid', gap: 8 }}>

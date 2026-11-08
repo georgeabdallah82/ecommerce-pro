@@ -26,6 +26,8 @@ export const posSaleInput = z.object({
     quantity: z.number().int().min(1).max(999),
   })).min(1, 'Add at least one item.').max(100),
   discountCents: z.number().int().min(0).default(0),
+  // A store customer, when the cashier chose one. Staff accounts are refused.
+  customerId: z.string().min(1).max(64).nullable().optional(),
   payments: z.array(z.object({
     method: z.enum(PAYMENT_METHODS),
     currency: z.enum(['USD', 'LBP']),
@@ -135,6 +137,10 @@ export async function recordPosSale(rawInput: unknown, cashierId: string): Promi
       if (!check.ok) throw new SaleError(check.errors.join(' '))
 
       const primary = check.lines.reduce((best, line) => (line.usdCents > best.usdCents ? line : best), check.lines[0])
+      const customer = input.customerId
+        ? await tx.user.findFirst({ where: { id: input.customerId, role: 'CUSTOMER' }, select: { id: true } })
+        : null
+      if (input.customerId && !customer) throw new SaleError('That customer is not a store customer. Choose the customer again.')
       const orderNumber = await nextOrderNumber(tx)
       const order = await tx.order.create({
         data: {
@@ -152,6 +158,7 @@ export async function recordPosSale(rawInput: unknown, cashierId: string): Promi
           channel: OrderChannel.POS,
           locationId: shift.register.locationId,
           cashierId,
+          userId: customer?.id ?? null,
           shiftId: shift.id,
           idempotencyKey: input.idempotencyKey,
           exchangeRateLbp: check.lines.some(line => line.currency === 'LBP') ? rate : null,
