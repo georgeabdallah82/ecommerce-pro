@@ -101,7 +101,8 @@
   box-shadow: var(--admin-shadow-lg);
   z-index: 30;
 }
-.menu button {
+.menu button,
+.menu a {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -116,7 +117,12 @@
   color: var(--admin-ink-soft);
   cursor: pointer;
 }
-.menu button:hover { background: var(--admin-border-soft); color: var(--admin-ink); }
+.menu button:hover,
+.menu a:hover { background: var(--admin-border-soft); color: var(--admin-ink); }
+.menu a { text-decoration: none; }
+
+/* Header toolbar: "More tools" and "Add product" sit together on one line, Add product last */
+.toolbar { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 
 .tableCard { overflow: hidden; }
 .tableMeta {
@@ -214,4 +220,19 @@
   .viewBar { align-items: stretch; flex-direction: column; }
   .views { width: 100%; flex-wrap: wrap; overflow: visible; }
   .view { flex: 1; justify-content: center; }
+
+  .toolbar { width: 100%; flex-wrap: nowrap; }
+  .toolbar > a { flex: 1; justify-content: center; }
+  .toolbar > .actionMenu { flex: 1; }
+  .actionMenu > button { width: 100%; justify-content: center; }
+
+  /* Compact rows: a smaller thumbnail and tighter padding, so more products fit on one screen */
+  .productTable tr { padding: 10px 12px; gap: 8px 12px; }
+  .productTable tr:has(> td[data-cell="check"]) { padding-left: 40px; }
+  .productTable td[data-cell="check"] { top: 12px; left: 12px; }
+  .productCell { min-width: 0; gap: 10px; }
+  .thumb { width: 40px; height: 40px; font-size: 16px; }
 }
+
+/* The "More tools" menu opens under its button and stays inside the right edge of the phone screen */
+.toolsMenu { left: auto; right: 0; }

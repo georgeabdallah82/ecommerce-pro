@@ -117,7 +117,7 @@ export default async function Admin() {
         <div className={s.kpi}><span>Sales today</span><strong>{money(salesToday, currency)}</strong><small className={salesChange.up ? s.up : s.down}>{salesChange.text}</small></div>
         <div className={s.kpi}><span>Orders today</span><strong>{ordersToday}</strong><small className={ordersChange.up ? s.up : s.down}>{ordersChange.text}</small></div>
         <Link className={s.kpi} href="/admin/live-visitors"><span>Visitors now</span><strong>{visitorsNow}</strong><small className={s.up}><i className={s.liveDot} /> live now</small></Link>
-        <div className={s.kpi}><span>Conversion today</span><strong>{conversion}</strong><small>{plural(visitorsToday, 'visitor')} today</small></div>
+        <div className={s.kpi}><span>Conversion today</span><strong>{conversion}</strong><small>{visitorsToday ? `${plural(visitorsToday, 'visitor')} today` : 'No visitors yet today'}</small></div>
       </div>
 
       <div className={s.grid}>

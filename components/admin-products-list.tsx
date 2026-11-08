@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from '@/components/admin-link'
 import { Archive, CheckCircle2, ChevronDown, Download, ChevronLeft, ChevronRight, MoreHorizontal, Plus, Search, Star, StarOff, Tag, Trash2, Upload, X } from 'lucide-react'
 import ProductExportDialog from './product-export-dialog'
@@ -46,6 +46,14 @@ export default function AdminProductsList({ initial }: { initial: any }) {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [bulkOpen, setBulkOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
+  const [toolsOpen, setToolsOpen] = useState(false)
+  const toolsRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!toolsOpen) return
+    const close = (event: Event) => { if (!toolsRef.current?.contains(event.target as Node)) setToolsOpen(false) }
+    document.addEventListener('pointerdown', close)
+    return () => document.removeEventListener('pointerdown', close)
+  }, [toolsOpen])
   const confirm = useConfirm()
 
   async function load(nextPage = page) {
@@ -133,10 +141,17 @@ export default function AdminProductsList({ initial }: { initial: any }) {
             <span className={styles.countPill}>{total.toLocaleString()}</span>
           </div>
         </div>
-        <div className="inline" style={{ gap: 8 }}>
-          <Link className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/products/prices"><Tag size={16} /> Change prices</Link>
-          <Link className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/products/import"><Upload size={16} /> Import</Link>
-          <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setExportOpen(true)}><Download size={16} /> Export</button>
+        <div className={styles.toolbar}>
+          <div className={styles.actionMenu} ref={toolsRef}>
+            <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} aria-expanded={toolsOpen} onClick={() => setToolsOpen(value => !value)}>More tools <ChevronDown size={14} /></button>
+            {toolsOpen && (
+              <div className={`${styles.menu} ${styles.toolsMenu}`} role="menu" onClick={() => setToolsOpen(false)}>
+                <Link href="/admin/products/prices" role="menuitem"><Tag size={14} /> Change prices</Link>
+                <Link href="/admin/products/import" role="menuitem"><Upload size={14} /> Import</Link>
+                <button type="button" role="menuitem" onClick={() => setExportOpen(true)}><Download size={14} /> Export</button>
+              </div>
+            )}
+          </div>
           <Link className={ui.btn} href="/admin/products/new"><Plus size={16} /> Add product</Link>
         </div>
       </div>

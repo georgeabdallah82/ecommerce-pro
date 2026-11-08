@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from '@/components/admin-link'
 import { AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, FileText, MessageCircle, MoreHorizontal, PackageCheck, Phone, Plus, RefreshCw, Search, Send, ShoppingCart, Truck, X, XCircle } from 'lucide-react'
 import { money } from '@/lib/config'
@@ -29,7 +29,7 @@ async function api(path: string, init?: RequestInit) {
 
 const TONE: Record<string, string> = { warning: styles.toneWarning, info: styles.toneInfo, success: styles.toneSuccess, danger: styles.toneDanger, neutral: styles.toneNeutral }
 
-function MoreMenu({ label, children }: { label: string; children: React.ReactNode }) {
+function MoreMenu({ label, children, badge = 0, down = false }: { label: string; children: React.ReactNode; badge?: number; down?: boolean }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -42,8 +42,8 @@ function MoreMenu({ label, children }: { label: string; children: React.ReactNod
   }, [open])
   return (
     <div className={styles.more} ref={ref}>
-      <button type="button" className={`${ui.btn} ${ui.btnSecondary} ${styles.actionBtn}`} aria-expanded={open} aria-label={label} onClick={() => setOpen(!open)}><MoreHorizontal size={16} /> More <ChevronDown size={14} /></button>
-      {open && <div className={styles.menu} role="menu" onClick={() => setOpen(false)}>{children}</div>}
+      <button type="button" className={`${ui.btn} ${ui.btnSecondary} ${styles.actionBtn}`} aria-expanded={open} aria-label={label} onClick={() => setOpen(!open)}><MoreHorizontal size={16} /> More <ChevronDown size={14} />{badge ? <span className={styles.menuBadge}>{badge}</span> : null}</button>
+      {open && <div className={`${styles.menu}${down ? ` ${styles.menuDown}` : ''}`} role="menu" onClick={() => setOpen(false)}>{children}</div>}
     </div>
   )
 }
@@ -195,6 +195,20 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone, 
 
   const toConfirm = counts.PENDING || 0
 
+  // The quick-view row scrolls sideways on a phone; the fade on its right edge shows only while
+  // more views are hidden past that edge.
+  const viewsRef = useRef<HTMLElement>(null)
+  const [viewsMore, setViewsMore] = useState(false)
+  const checkViews = useCallback(() => {
+    const el = viewsRef.current
+    if (el) setViewsMore(el.scrollLeft + el.clientWidth < el.scrollWidth - 4)
+  }, [])
+  useEffect(() => {
+    checkViews()
+    window.addEventListener('resize', checkViews)
+    return () => window.removeEventListener('resize', checkViews)
+  }, [checkViews, counts])
+
   return (
     <div className={styles.page}>
       <div className={styles.header}>
@@ -203,26 +217,26 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone, 
           <p className={styles.subtitle}>{toConfirm ? <><strong>{toConfirm} new order{toConfirm === 1 ? '' : 's'}</strong> to confirm with the customer.</> : 'No new orders waiting to be confirmed.'}</p>
         </div>
         <div className={styles.headerActions}>
-          <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => load(page)} disabled={loading || busy !== null}><RefreshCw size={15} /> Refresh</button>
+          <MoreMenu label="More order pages" down badge={unfinishedCount}>
+            <Link href="/admin/orders/deliveries"><Truck size={15} /> Delivery sheet</Link>
+            <Link href="/admin/orders/unfinished"><ShoppingCart size={15} /> Unfinished checkouts{unfinishedCount ? <span className={styles.menuCount}>{unfinishedCount}</span> : null}</Link>
+          </MoreMenu>
           <Link className={ui.btn} href="/admin/orders/new"><Plus size={15} /> Create order</Link>
         </div>
       </div>
 
-      <div className={styles.shortcuts}>
-        <Link className={styles.shortcut} href="/admin/orders/deliveries"><Truck size={16} /> Delivery sheet</Link>
-        <Link className={`${styles.shortcut}${unfinishedCount ? ` ${styles.shortcutAlert}` : ''}`} href="/admin/orders/unfinished"><ShoppingCart size={16} /> Unfinished checkouts{unfinishedCount ? <span>{unfinishedCount}</span> : null}</Link>
+      <div className={`${styles.viewsWrap}${viewsMore ? ` ${styles.viewsMore}` : ''}`}>
+        <nav ref={viewsRef} className={styles.views} aria-label="Order views" onScroll={checkViews}>
+          {ORDER_VIEWS.map(v => {
+            const n = viewCount(counts, v)
+            return (
+              <button key={v.id} type="button" className={`${styles.view}${view === v.id ? ` ${styles.viewActive}` : ''}${v.id === 'action' && n ? ` ${styles.viewAlert}` : ''}`} aria-pressed={view === v.id} onClick={() => setView(v.id)}>
+                {v.label}<span>{n}</span>
+              </button>
+            )
+          })}
+        </nav>
       </div>
-
-      <nav className={styles.views} aria-label="Order views">
-        {ORDER_VIEWS.map(v => {
-          const n = viewCount(counts, v)
-          return (
-            <button key={v.id} type="button" className={`${styles.view}${view === v.id ? ` ${styles.viewActive}` : ''}${v.id === 'action' && n ? ` ${styles.viewAlert}` : ''}`} aria-pressed={view === v.id} onClick={() => setView(v.id)}>
-              {v.label}<span>{n}</span>
-            </button>
-          )
-        })}
-      </nav>
 
       <div className={styles.search}>
         <Search size={16} />
@@ -246,7 +260,10 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone, 
 
       <div className={styles.listHead}>
         <label className={styles.selectAll}><input type="checkbox" checked={allSelected} onChange={() => setSelected(allSelected ? [] : rows.map(o => o.id))} /> Select all</label>
-        <span>{loading ? 'Loading…' : `${total.toLocaleString()} order${total === 1 ? '' : 's'}`}</span>
+        <span className={styles.listMeta}>
+          {loading ? 'Loading…' : `${total.toLocaleString()} order${total === 1 ? '' : 's'}`}
+          <button type="button" className={ui.iconBtn} aria-label="Refresh orders" title="Refresh" onClick={() => load(page)} disabled={loading || busy !== null}><RefreshCw size={15} /></button>
+        </span>
       </div>
 
       <div className={styles.list}>
