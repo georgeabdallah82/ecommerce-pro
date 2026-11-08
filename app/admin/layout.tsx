@@ -30,6 +30,7 @@ const groups: AdminSidebarGroup[] = [
   ]},
   { id: 'orders', label: 'Orders', moreLabel: 'Advanced', items: [
     { href: '/admin/orders', label: 'Orders', permission: 'orders.view', icon: 'orders' },
+    { href: '/admin/sales', label: 'Sales', permission: 'orders.view', icon: 'analytics' },
     { href: '/admin/orders/drivers', label: 'Drivers', permission: 'orders.view', icon: 'drivers' },
     { href: '/admin/returns', label: 'Returns', permission: 'returns.view', icon: 'returns' },
     { href: '/admin/draft-orders', label: 'Draft orders', permission: 'draftOrders.view', icon: 'draftOrders', more: true },

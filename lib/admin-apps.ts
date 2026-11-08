@@ -32,6 +32,7 @@ const APP_PREFIXES: Array<[string, AdminApp]> = [
 
   ['/admin/notices', 'erp'],
   ['/admin/orders', 'erp'],
+  ['/admin/sales', 'erp'],
   ['/admin/returns', 'erp'],
   ['/admin/draft-orders', 'erp'],
   ['/admin/order-edits', 'erp'],
