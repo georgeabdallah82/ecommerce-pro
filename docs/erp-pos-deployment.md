@@ -107,4 +107,14 @@ npm run lint                               # typecheck
 npx next build                             # production build
 ```
 
+The till browser test runs against a built app on a test database. It writes test data and closes the owner's open shift, so use a throwaway database only:
+
+```bash
+npx next start -p 3100                     # after npx next build, with DATABASE_URL and AUTH_SECRET set
+BASE_URL=http://localhost:3100 DATABASE_URL=postgresql://... \
+  OWNER_EMAIL=owner@test.local OWNER_PASSWORD=... node scripts/e2e/pos-till.mjs
+```
+
+It needs `playwright-core` (or a global `playwright`). It is not in CI yet: the CI sign-in for the seeded admin already uses the authenticator, so a later step needs its own test account with a known authenticator secret.
+
 The database tests create their own location, till, cashier, and products under a random tag, so they can run against a shared test database.
