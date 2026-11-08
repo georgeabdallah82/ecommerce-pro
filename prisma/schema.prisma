@@ -109,10 +109,6 @@ model User {
   addresses        Address[]
   orders           Order[]
   reviews          Review[]
-  cashierOrders    Order[]          @relation("OrderCashier")
-  cashierShifts    CashierShift[]   @relation("ShiftCashier")
-  cashMovements    CashMovement[]   @relation("CashMovementUser")
-  posReturns       ReturnRequest[] @relation("ReturnCashier")
   wishlist         WishlistItem[]
   auditLogs        AuditLog[]
   orderNotes       OrderNote[]
@@ -414,21 +410,6 @@ model Order {
   notesHistory        OrderNote[]
   paymentTransactions PaymentTransaction[]
   paymentProofs       PaymentProof[]
-  // Point of sale (prisma/models/pos.prisma). Existing online orders stay ONLINE with no till data.
-  channel             OrderChannel        @default(ONLINE)
-  locationId          String?
-  location            StoreLocation?      @relation("OrderLocation", fields: [locationId], references: [id])
-  cashierId           String?
-  cashier             User?               @relation("OrderCashier", fields: [cashierId], references: [id], onDelete: SetNull)
-  shiftId             String?
-  shift               CashierShift?       @relation(fields: [shiftId], references: [id])
-  // Set by the till for each sale; a repeated submit with the same key returns the first sale.
-  idempotencyKey      String?             @unique
-  // LBP per 1 USD used for this sale (null for online orders). Stored so later rate changes never alter it.
-  exchangeRateLbp     Int?
-  paymentLines        PaymentLine[]
-  @@index([channel, createdAt])
-  @@index([shiftId])
   inviteReward        InviteReward?
   driver              Driver?              @relation(fields: [driverId], references: [id], onDelete: SetNull)
   @@index([createdAt])
@@ -447,8 +428,6 @@ model OrderItem {
   quantity   Int
   unitPrice  Int
   totalPrice Int
-  // What one unit cost when it was sold (a copy, so later cost changes do not rewrite past profit).
-  costPrice  Int?
   order      Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product    Product          @relation(fields: [productId], references: [id])
   variant    ProductVariant?  @relation(fields: [variantId], references: [id])

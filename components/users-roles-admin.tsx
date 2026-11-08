@@ -7,7 +7,6 @@ import s from './admin-users.module.css'
 import { useConfirm } from './admin-confirm'
 import { BUILT_IN_ROLES, PERMISSION_SECTIONS, builtInRoleName } from '@/lib/permission-groups'
 import { ROLE_PERMISSIONS, type Permission } from '@/lib/permissions'
-import { ROLE_PRESETS } from '@/lib/permission-presets'
 
 type UserRow = { id: string; name: string; email: string; phone?: string | null; role: string; staffRoleId?: string | null; isActive: boolean; lastLoginAt?: string | null; twoStep?: boolean; totpEnabledAt?: string | null }
 const hasTwoStep = (u: UserRow) => Boolean(u.twoStep || u.totpEnabledAt)
@@ -263,10 +262,6 @@ function RoleModal({ form, setForm, busy, onSubmit, onClose }: { form: { id?: st
         <label className={ui.fieldLabel}>Role name<input className={ui.input} required maxLength={60} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Delivery coordinator" autoFocus /></label>
         <label className={ui.fieldLabel}>Description (optional)<input className={ui.input} maxLength={200} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="What this person does" /></label>
       </div>
-      {!form.id && <div className={s.permHead} style={{ flexWrap: 'wrap', gap: 8 }}>
-        <span className={ui.muted}>Start from a preset:</span>
-        {ROLE_PRESETS.map(preset => <button key={preset.key} type="button" className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} onClick={() => setForm({ ...form, name: form.name || preset.name, description: form.description || preset.description, permissions: preset.permissions })}>{preset.name}</button>)}
-      </div>}
       <div className={s.permHead}><strong>What can this role do?</strong><span className={ui.muted}>{form.permissions.length} of {total} selected · “Change” includes “See”</span></div>
       <div className={s.permSections}>
         {PERMISSION_SECTIONS.map(sec => <div key={sec.title} className={s.permSection}>
