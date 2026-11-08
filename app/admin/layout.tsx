@@ -25,6 +25,7 @@ const groups: AdminSidebarGroup[] = [
   // The till lives on the POS host (lib/admin-apps.ts); listed only once POS_HOST is set.
   { id: 'pos', label: 'Point of sale', items: [
     { href: '/admin/pos', label: 'Till', permission: 'dashboard.view', icon: 'orders' },
+    { href: '/admin/pos/registers', label: 'Registers', permission: 'settings.manage', icon: 'settings' },
   ]},
   { id: 'orders', label: 'Orders', moreLabel: 'Advanced', items: [
     { href: '/admin/orders', label: 'Orders', permission: 'orders.view', icon: 'orders' },
