@@ -27,6 +27,8 @@ export async function login(formData: FormData) {
     redirect(`/account/login?error=invalid${back}`)
   }
 
+  if (!user.emailVerifiedAt) redirect('/account/check-email?error=unverified')
+
   await clearDurableRateLimit(emailKey)
   await db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
   await setSession(user.id)

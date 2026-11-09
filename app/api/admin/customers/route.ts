@@ -120,7 +120,7 @@ export async function POST(req: Request) {
     const existing = await db.user.findUnique({ where: { email }, select: { id: true } })
     if (existing) return json({ error: 'A customer with this email already exists' }, { status: 409 })
     const passwordHash = await bcrypt.hash(password || `${crypto.randomUUID()}-${Date.now()}`, 12)
-    const customer = await db.user.create({ data: { name, email, phone, passwordHash, role: Role.CUSTOMER, isActive: true } })
+    const customer = await db.user.create({ data: { name, email, phone, passwordHash, role: Role.CUSTOMER, isActive: true, emailVerifiedAt: new Date() } })
     await audit(actor.id, 'customer.created', 'User', customer.id, { email: customer.email })
     runInBackground(dispatchWebhookEvent('customer.created', { id: customer.id, name: customer.name, email: customer.email }).catch(error => console.error('[webhook] customer.created dispatch failed', error)))
     return json({ customer: { id: customer.id, name: customer.name, email: customer.email, phone: customer.phone, isActive: customer.isActive } }, { status: 201 })

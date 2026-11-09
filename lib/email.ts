@@ -564,3 +564,31 @@ export async function sendWeeklyReportEmail(to: string, r: { subject: string; we
   const text = [`Your week (${r.weekLabel}): ${f.orders} order(s), ${m(f.sales)} in sales (${r.salesChange || 'no change'} vs last week).`, `${f.delivered} delivered, ${f.cancelled} cancelled, ${f.newCustomers} new customer${f.newCustomers === 1 ? "" : "s"}.`, ...(f.topProducts.length ? ['Best sellers:', ...f.topProducts.map(p => `- ${p.name}: ${p.units}`)] : []), ...(admin ? [`Admin: ${admin}`] : [])].join('\n')
   return sendEmail(to, r.subject, html, text)
 }
+
+// Sign-up: confirm the address. Sent to every new sign-up, so the sign-up itself reveals nothing.
+export async function sendEmailVerificationEmail(to: string, verifyUrl: string, hours: number) {
+  const brand = await emailBrand()
+  const html = layout(`
+    <h1 style="font-size:20px;margin:0 0 12px">Confirm your email</h1>
+    <p style="font-size:14px;line-height:1.6;color:#3f3f46">Thanks for creating an account. Confirm this address to finish; the link expires in ${hours} hours.</p>
+    <p style="margin:24px 0"><a href="${escapeHtml(verifyUrl)}" style="display:inline-block;background:${brand.color};color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:700">Confirm email</a></p>
+    <p style="font-size:12px;color:#6b7280">If you did not create an account, you can ignore this email.</p>
+  `, brand)
+  const text = `Confirm your email: ${verifyUrl} (expires in ${hours} hours). If you did not create an account, ignore this email.`
+  return sendEmail(to, 'Confirm your email', html, text)
+}
+
+// Sign-up with an address that already has an account: tells the owner of that address, and
+// gives them the way to sign in or reset the password. Nothing is created.
+export async function sendAlreadyRegisteredEmail(to: string, loginUrl: string, resetUrl: string) {
+  const brand = await emailBrand()
+  const html = layout(`
+    <h1 style="font-size:20px;margin:0 0 12px">You already have an account</h1>
+    <p style="font-size:14px;line-height:1.6;color:#3f3f46">Someone tried to create an account with this email address. If that was you, sign in, or reset your password if you have forgotten it.</p>
+    <p style="margin:24px 0"><a href="${escapeHtml(loginUrl)}" style="display:inline-block;background:${brand.color};color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:700">Sign in</a></p>
+    <p style="font-size:14px;line-height:1.6"><a href="${escapeHtml(resetUrl)}">Reset your password</a></p>
+    <p style="font-size:12px;color:#6b7280">If this was not you, you can ignore this email.</p>
+  `, brand)
+  const text = `You already have an account. Sign in: ${loginUrl} . Reset your password: ${resetUrl} . If this was not you, ignore this email.`
+  return sendEmail(to, 'You already have an account', html, text)
+}

@@ -108,7 +108,7 @@ export async function POST(req: Request) {
     if (await db.user.findUnique({ where: { email }, select: { id: true } })) return json({ error: 'An account with this email already exists' }, { status: 409 })
     if (requestedRole === 'SUPER_ADMIN' && actor.role !== 'SUPER_ADMIN') return json({ error: 'Only the super admin can create a super admin' }, { status: 403 })
     if (actor.role !== 'SUPER_ADMIN' && !staffRoles.has(requestedRole)) return json({ error: 'You cannot assign this role' }, { status: 403 })
-    const u = await db.user.create({ data: { name: String(b.name || 'Staff').trim().slice(0, 120), email, phone: b.phone ? String(b.phone).trim().slice(0, 40) : null, passwordHash: await hashPassword(password), role: requestedRole, staffRoleId: choice.staffRoleId }, select: safeUserSelect })
+    const u = await db.user.create({ data: { name: String(b.name || 'Staff').trim().slice(0, 120), email, phone: b.phone ? String(b.phone).trim().slice(0, 40) : null, passwordHash: await hashPassword(password), emailVerifiedAt: new Date(), role: requestedRole, staffRoleId: choice.staffRoleId }, select: safeUserSelect })
     await audit(actor.id, 'user.created', 'User', u.id, { role: u.role })
     return json({ user: u }, { status: 201, headers: { 'Cache-Control': 'private, no-store' } })
   } catch (e) {

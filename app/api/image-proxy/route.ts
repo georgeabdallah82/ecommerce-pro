@@ -2,6 +2,7 @@ import dns from 'node:dns/promises'
 import { NextResponse } from 'next/server'
 import { consumeRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
+import { imageHostAllowed } from '@/lib/image-hosts'
 
 const NO_STORE = { 'Cache-Control': 'no-store' }
 
@@ -45,11 +46,13 @@ function normalizeRemote(raw:string){
   return value
 }
 
-async function fetchSafeImage(initial:string){
+async function fetchSafeImage(initial:string, ownHost:string){
   let current=initial
   for(let redirects=0;redirects<=3;redirects++){
     const parsed=new URL(current)
     if(!['http:','https:'].includes(parsed.protocol)) throw new Error('Unsupported protocol')
+    // Every hop, including redirects, must be a listed host (lib/image-hosts.ts).
+    if(!imageHostAllowed(parsed.hostname, ownHost)) throw new Error('Host not allowed')
     await assertPublicHostname(parsed.hostname)
 
     const upstream=await fetch(parsed.toString(),{
@@ -87,10 +90,11 @@ export async function GET(req:Request){
     let parsed:URL
     try{ parsed=new URL(target) }catch{return new NextResponse('Invalid url',{status:400,headers:NO_STORE})}
     if(!['http:','https:'].includes(parsed.protocol)) return new NextResponse('Unsupported protocol',{status:400,headers:NO_STORE})
+    if(!imageHostAllowed(parsed.hostname,new URL(req.url).hostname)) return new NextResponse('Image host not allowed',{status:403,headers:NO_STORE})
     if(target.length>2048) return new NextResponse('URL is too long',{status:400,headers:NO_STORE})
     await assertPublicHostname(parsed.hostname)
 
-    const {upstream}=await fetchSafeImage(parsed.toString())
+    const {upstream}=await fetchSafeImage(parsed.toString(), new URL(req.url).hostname)
     if(!upstream.ok) return new NextResponse('Upstream image request failed',{status:502,headers:NO_STORE})
 
     const contentType=upstream.headers.get('content-type')||''
