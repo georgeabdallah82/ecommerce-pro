@@ -254,7 +254,7 @@ export default function AnalyticsAdmin() {
                   <h3>Top products</h3>
                   <p className={ui.muted}>Best performers by sales</p>
                 </div>
-                <button className={ui.iconBtn} title="Export CSV" onClick={exportTopProductsCsv}><Download size={15} /></button>
+                <button className={ui.iconBtn} title="Export CSV" aria-label="Export CSV" onClick={exportTopProductsCsv}><Download size={15} /></button>
               </div>
               <div className={styles.rankList}>
                 {!data.topProducts.length ? (

@@ -26,6 +26,8 @@ export default function RequestReturn({ orderNumber, items, returns }: { orderNu
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  // The return to cancel, while the customer is asked to confirm (no browser dialog).
+  const [askCancel, setAskCancel] = useState<string | null>(null)
 
   const returnable = items.filter(i => i.remaining > 0)
 
@@ -51,7 +53,7 @@ export default function RequestReturn({ orderNumber, items, returns }: { orderNu
   }
 
   async function cancelRequest(id: string) {
-    if (!confirm('Cancel this return request?')) return
+    setAskCancel(null)
     setBusy(true); setError('')
     try {
       await api(`/api/account/orders/${encodeURIComponent(orderNumber)}/return?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
@@ -79,7 +81,13 @@ export default function RequestReturn({ orderNumber, items, returns }: { orderNu
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
           <span className="pill">{t(STATUS_LABEL[r.status] || r.status)}</span>
-          {r.status === 'REQUESTED' && <button className="textLink" type="button" disabled={busy} onClick={() => cancelRequest(r.id)}>{t('Cancel request')}</button>}
+          {r.status === 'REQUESTED' && (askCancel === r.id
+            ? <span style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
+              <span>{t('Cancel this return request?')}</span>
+              <button className="textLink" type="button" disabled={busy} onClick={() => cancelRequest(r.id)}>{t('Yes, cancel it')}</button>
+              <button className="textLink" type="button" disabled={busy} onClick={() => setAskCancel(null)}>{t('Keep it')}</button>
+            </span>
+            : <button className="textLink" type="button" disabled={busy} onClick={() => setAskCancel(r.id)}>{t('Cancel request')}</button>)}
         </div>
       </div>)}
     </div>}

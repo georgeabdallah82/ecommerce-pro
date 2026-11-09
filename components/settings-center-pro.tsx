@@ -6,6 +6,8 @@ import { MAINTENANCE_DEFAULTS, maintenanceText } from '@/lib/maintenance-default
 import styles from './admin-settings-center.module.css'
 import ui from './admin-ui.module.css'
 import MediaPicker from './media-picker'
+import UnsavedBar from './admin-unsaved-bar'
+import { useConfirm } from './admin-confirm'
 import AppIconCard from './app-icon-card'
 import TwoStepCard from './two-step-card'
 import SignInAlertsCard from './sign-in-alerts-card'
@@ -55,6 +57,9 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
   const [tab, setTab] = useState('General')
   const [search, setSearch] = useState('')
   const [saving, setSaving] = useState(false)
+  // Any edit on this page marks it unsaved (the bar and the leave warning below); a save clears it.
+  const [dirty, setDirty] = useState(false)
+  const confirm = useConfirm()
   const [notice, setNotice] = useState('')
   const [shareImageOpen, setShareImageOpen] = useState(false)
   const [values, setValues] = useState<Record<string, string>>({
@@ -128,6 +133,13 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
   const [paymentLoading, setPaymentLoading] = useState(false)
 
   useEffect(() => {
+    if (!dirty) return
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [dirty])
+
+  useEffect(() => {
     if (tab !== 'Payments') return
     setPaymentLoading(true)
     api('/api/admin/payment-provider')
@@ -139,6 +151,12 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
   const filtered = groups.filter(g => `${g.label} ${g.desc}`.toLowerCase().includes(search.toLowerCase()))
   const set = (key: string, value: string) => setValues(v => ({ ...v, [key]: value }))
   const toggle = (key: string) => setFlags(v => ({ ...v, [key]: !v[key] }))
+
+  // Discard: the page reloads the saved values from the server.
+  async function discardChanges() {
+    if (!(await confirm({ title: 'Discard your changes?', message: 'Settings you changed on this page go back to their saved values.', confirmLabel: 'Discard changes' }))) return
+    window.location.reload()
+  }
 
   async function save() {
     setSaving(true)
@@ -158,6 +176,7 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
       if (policyChanged) savedPolicy.current = { ...values }
       if (savedPayment) setPaymentConfig({ ...defaultPaymentConfig, ...savedPayment, apiPassword: '' })
       if (capiToken.trim()) { setCapiTokenSaved(true); setCapiToken('') }
+      setDirty(false)
       setNotice('All settings saved')
     } catch (e) {
       setNotice(e instanceof Error ? e.message : 'Unable to save settings')
@@ -167,7 +186,7 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
   }
 
   return (
-    <div className={styles.page}>
+    <div className={styles.page} onChangeCapture={() => setDirty(true)}>
       <div className={styles.head}>
         <div>
           <span className={`${ui.muted} ${ui.tiny}`}>SETTINGS</span>
@@ -185,6 +204,7 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
         </div>
       </div>
 
+      <UnsavedBar dirty={dirty} saving={saving} onDiscard={discardChanges} onSave={save} />
       {notice && <div className={ui.alert} style={{ marginBottom: 14 }}>{notice}</div>}
 
       <div className={styles.layout}>

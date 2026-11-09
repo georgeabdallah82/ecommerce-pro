@@ -13,7 +13,7 @@
 .header { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 20px; }
 .eyebrow { font-size: 11px; letter-spacing: .09em; font-weight: 800; color: var(--admin-muted); margin-bottom: 4px; text-transform: uppercase; }
 .titleRow { display: flex; align-items: center; gap: 10px; }
-.title { margin: 0; font-size: 36px; letter-spacing: -.04em; color: var(--admin-ink); }
+.title { margin: 0; font-size: var(--admin-page-title); letter-spacing: -.04em; color: var(--admin-ink); }
 .countPill {
   display: inline-flex;
   align-items: center;
@@ -59,7 +59,7 @@
 .viewActive { background: var(--admin-accent); color: var(--admin-accent-ink); }
 /* Redesign: tabs are pills; the selected one is filled with the brand colour. */
 .view, .viewActive { border-radius: 999px; }
-.viewActive small { color: inherit; opacity: .78; }
+.viewActive small { color: inherit; opacity: 1; }
 .chevron { transition: transform .15s ease; }
 .chevronOpen { transform: rotate(180deg); }
 
@@ -226,10 +226,30 @@
   .toolbar > .actionMenu { flex: 1; }
   .actionMenu > button { width: 100%; justify-content: center; }
 
-  /* Compact rows: a smaller thumbnail and tighter padding, so more products fit on one screen */
-  .productTable tr { padding: 10px 12px; gap: 8px 12px; }
-  .productTable tr:has(> td[data-cell="check"]) { padding-left: 40px; }
-  .productTable td[data-cell="check"] { top: 12px; left: 12px; }
+  /* Phones: each product is a card (name on top, then status, stock and price), not a table that
+     scrolls sideways. The select-all checkbox stays in a single header row for bulk actions. */
+  .productTable, .productTable tbody { display: block; min-width: 0; background: none; }
+  .productTable thead { display: block; }
+  .productTable thead tr { display: block; }
+  .productTable thead th { display: none; padding: 0 0 10px 2px; border: 0; background: none; }
+  .productTable thead th:first-child { display: block; }
+  .productTable tbody { display: grid; gap: 10px; }
+  .productTable tr {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px 12px;
+    padding: 12px 12px 12px 42px;
+    border: 1px solid var(--admin-border);
+    border-radius: var(--admin-radius-md);
+    background: var(--admin-surface);
+    position: relative;
+  }
+  .productTable tr:not(:has(> td[data-cell="check"])) { padding-left: 12px; }
+  .productTable td { display: block; min-width: 0; height: auto; padding: 0; border: 0; font-size: 12.5px; }
+  .productTable td[data-cell="primary"] { grid-column: 1 / -1; }
+  .productTable td[data-cell="check"] { position: absolute; top: 14px; left: 12px; padding: 0; }
+  .productTable td[data-cell="hide"], .productTable td[data-label="Updated"] { display: none; }
+  .productTable td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 3px; font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--admin-muted); }
   .productCell { min-width: 0; gap: 10px; }
   .thumb { width: 40px; height: 40px; font-size: 16px; }
 }

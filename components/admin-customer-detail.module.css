@@ -32,7 +32,7 @@
    bare "btn" classname (the same :global() pitfall as #90/#91/#104/#105).
    ui.btn's own min-height is already 40px, so that half of the old rule
    is simply dropped as redundant rather than ported. */
-.title { margin: 2px 0 0; font-size: 26px; line-height: 1.15; letter-spacing: -.04em; color: var(--admin-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: min(52vw, 640px); }
+.title { margin: 2px 0 0; font-size: var(--admin-page-title); line-height: 1.15; letter-spacing: -.04em; color: var(--admin-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: min(52vw, 640px); }
 
 .alert { margin: 0 0 14px; }
 

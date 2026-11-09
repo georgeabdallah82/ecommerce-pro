@@ -972,4 +972,8 @@ export const AR: Record<string, string> = {
   "Your data": "بياناتك",
   "Download a copy of your account, addresses, orders, reviews and wishlist as a file.": "حمّل نسخة من حسابك وعناوينك وطلباتك وتقييماتك ومفضلتك في ملف.",
   "Download my data": "تحميل بياناتي",
+  "Cancel this return request?": "هل تريد إلغاء طلب الإرجاع هذا؟",
+  "Keep it": "احتفظ به",
+  "Yes, delete": "نعم، احذف",
+  "Delete this address?": "هل تريد حذف هذا العنوان؟",
 }

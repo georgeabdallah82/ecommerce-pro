@@ -274,7 +274,7 @@ export default function AdminProductsList({ initial }: { initial: any }) {
                     <td data-label="Price"><strong>{money(product.basePrice)}</strong>{product.compareAtPrice ? <div className={`${ui.muted} strike`}>{money(product.compareAtPrice)}</div> : null}</td>
                     <td data-cell="hide"><span className={styles.channel}>Online Store</span></td>
                     <td data-label="Updated">{new Date(product.updatedAt).toLocaleDateString()}</td>
-                    <td data-cell="hide"><Link className={ui.iconBtn} href={`/admin/products/${product.id}`} title="Open product"><MoreHorizontal size={17} /></Link></td>
+                    <td data-cell="hide"><Link className={ui.iconBtn} href={`/admin/products/${product.id}`} title="Open product" aria-label="Open product"><MoreHorizontal size={17} /></Link></td>
                   </tr>
                 )
               })}
@@ -285,8 +285,8 @@ export default function AdminProductsList({ initial }: { initial: any }) {
         <div className={styles.pagination}>
           <span className={ui.muted}>Page {page} of {pages}</span>
           <div className="inline">
-            <button className={ui.iconBtn} disabled={page <= 1 || loading} onClick={() => load(page - 1)}><ChevronLeft size={16} /></button>
-            <button className={ui.iconBtn} disabled={page >= pages || loading} onClick={() => load(page + 1)}><ChevronRight size={16} /></button>
+            <button className={ui.iconBtn} aria-label="Previous page" disabled={page <= 1 || loading} onClick={() => load(page - 1)}><ChevronLeft size={16} /></button>
+            <button className={ui.iconBtn} aria-label="Next page" disabled={page >= pages || loading} onClick={() => load(page + 1)}><ChevronRight size={16} /></button>
           </div>
         </div>
       </div>

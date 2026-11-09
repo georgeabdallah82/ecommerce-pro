@@ -980,8 +980,8 @@ export default function ThemeStudio({ initial }: Props) {
           <button className={styles.iconBtn} onClick={undo} disabled={!history.length} aria-label="Undo" title="Undo (Ctrl/Cmd+Z)"><Undo2 size={15} /></button>
           <button className={styles.iconBtn} onClick={redo} disabled={!future.length} aria-label="Redo" title="Redo (Ctrl/Cmd+Shift+Z)"><Redo2 size={15} /></button>
           <div className={styles.deviceGroup} role="group" aria-label="Language being edited">
-            <button className={`${styles.iconBtn} ${editLang === 'en' ? styles.active : ''}`} onClick={() => setEditLang('en')} aria-pressed={editLang === 'en'} title="Edit the English texts">EN</button>
-            <button className={`${styles.iconBtn} ${editLang === 'ar' ? styles.active : ''}`} onClick={() => setEditLang('ar')} aria-pressed={editLang === 'ar'} title="Edit the Arabic texts (the preview shows the Arabic store)" lang="ar">ع</button>
+            <button className={`${styles.iconBtn} ${editLang === 'en' ? styles.active : ''}`} onClick={() => setEditLang('en')} aria-pressed={editLang === 'en'} title="Edit the English texts" aria-label="Edit the English texts">EN</button>
+            <button className={`${styles.iconBtn} ${editLang === 'ar' ? styles.active : ''}`} onClick={() => setEditLang('ar')} aria-pressed={editLang === 'ar'} title="Edit the Arabic texts (the preview shows the Arabic store)" aria-label="Edit the Arabic texts (the preview shows the Arabic store)" lang="ar">ع</button>
           </div>
           <div className={styles.deviceGroup}>
             {(['desktop', 'tablet', 'mobile'] as const).map(item => (
