@@ -153,7 +153,7 @@ export default function CollectionEditorShopify({ id }: { id: string }) {
             <div className={s.assignedThumb}>{p.images?.[0]?.url ? <img src={p.images[0].url} alt="" /> : <span>◎</span>}</div>
             <div className={s.assignedInfo}><Link href={`/admin/products/${p.id}`}><strong>{p.name}</strong></Link><span>{p.sku || 'No SKU'}</span></div>
             <div className={s.assignedPrice}>{(Number(p.basePrice || 0) / 100).toFixed(2)}</div>
-            <button className={ui.iconBtn} title="Remove" onClick={() => removeAssigned(p.id)}><Trash2 size={16} /></button>
+            <button className={ui.iconBtn} title="Remove" aria-label="Remove" onClick={() => removeAssigned(p.id)}><Trash2 size={16} /></button>
           </div>)}</div> : <div className="emptyInline">No products yet. Add products to build this collection.</div>}
         </section>
       </main>

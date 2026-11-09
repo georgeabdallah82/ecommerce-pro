@@ -11,7 +11,7 @@
 
 .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 20px; }
 .eyebrow { font-size: 11px; letter-spacing: .09em; font-weight: 800; color: var(--admin-muted); margin-bottom: 4px; text-transform: uppercase; }
-.title { margin: 0; font-size: 36px; letter-spacing: -.04em; color: var(--admin-ink); }
+.title { margin: 0; font-size: var(--admin-page-title); letter-spacing: -.04em; color: var(--admin-ink); }
 .subtitle { margin: 6px 0 0; font-size: 13px; color: var(--admin-muted); max-width: 520px; }
 
 .statGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }

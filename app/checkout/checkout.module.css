@@ -4,7 +4,7 @@
 .page {
   --co-primary: var(--store-primary, #d7261e);
   --co-ink: var(--store-text, #121212);
-  --co-muted: var(--store-muted, #6b7280);
+  --co-muted: var(--store-muted, #5b616b);
   --co-line: var(--store-border, #e7e7e4);
   --co-card: var(--store-surface, #fff);
   --co-bg: var(--store-bg, #f6f6f4);

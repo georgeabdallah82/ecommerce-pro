@@ -3,7 +3,7 @@
 .page {
   --ok-primary: var(--store-primary, #d7261e);
   --ok-ink: var(--store-text, #121212);
-  --ok-muted: var(--store-muted, #6b7280);
+  --ok-muted: var(--store-muted, #5b616b);
   --ok-line: var(--store-border, #e7e7e4);
   --ok-card: var(--store-surface, #fff);
   --ok-bg: var(--store-bg, #f6f6f4);

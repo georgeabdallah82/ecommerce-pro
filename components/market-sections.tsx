@@ -100,7 +100,7 @@ export function HeroSlider({ section, preview, selected, click }: Pick<Common, '
               </picture>
             ) : <div className="mkSlidePic mkSlidePicEmpty" />
             return (
-              <div className="mkSlide" key={b.id || i} role="group" aria-roledescription="slide" aria-label={tr('{n} of {total}', { n: i + 1, total: count })} aria-hidden={i !== index}>
+              <div className="mkSlide" key={b.id || i} role="group" aria-roledescription="slide" aria-label={tr('{n} of {total}', { n: i + 1, total: count })} aria-hidden={i !== index} inert={i !== index}>
                 {layout === 'full'
                   ? <>{picture}<span className="mkSlideShade" /><div className="mkWrap mkSlideInner">{copy}</div>{t.badge ? <span className="mkSlideBadge">{t.badge}</span> : null}</>
                   : <><div className="mkSplitCopy">{copy}</div><div className="mkSplitPic">{picture}{t.badge ? <span className="mkSlideBadge">{t.badge}</span> : null}</div></>}

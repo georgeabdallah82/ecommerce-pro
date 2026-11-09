@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useCallback, useContext, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { CheckCircle2, X, XCircle } from 'lucide-react'
 import styles from './admin-toast.module.css'
 
@@ -28,6 +28,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setToasts(current => [...current, { id, message, type }])
     setTimeout(() => dismiss(id), type === 'error' ? 6000 : 4000)
   }, [dismiss])
+
+  // A message left just before a redirect (for example, from the sign-in page) shows once here.
+  useEffect(() => {
+    try {
+      const message = sessionStorage.getItem('admin.flash')
+      if (message) { sessionStorage.removeItem('admin.flash'); toast(message, 'success') }
+    } catch {}
+  }, [toast])
 
   return <ToastContext.Provider value={toast}>
     {children}

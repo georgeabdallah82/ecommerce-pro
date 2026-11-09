@@ -63,7 +63,10 @@ export default function AdminLoginForm({ brand }: { brand?: AdminLoginBrand }) {
       const data = await response.json().catch(() => ({}))
       if (data.restart) { setCodeStep(false); setCode(''); setUseBackup(false) }
       if (!response.ok) throw new Error(data.error || 'That code is not right')
-      if (typeof data.backupLeft === 'number') window.alert(`Signed in with a backup code. ${data.backupLeft} backup code${data.backupLeft === 1 ? '' : 's'} left. Make new ones in Settings > Security & access.`)
+      if (typeof data.backupLeft === 'number') {
+        // Shown as a notice once the admin opens (components/admin-toast.tsx), not as a blocking alert.
+        try { sessionStorage.setItem('admin.flash', `Signed in with a backup code. ${data.backupLeft} backup code${data.backupLeft === 1 ? '' : 's'} left. Make new ones in Settings > Security & access.`) } catch {}
+      }
       window.location.assign('/admin')
     } catch (err) { setError(err instanceof Error ? err.message : 'Unable to sign in'); setBusy(false) }
   }

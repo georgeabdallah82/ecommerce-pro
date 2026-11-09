@@ -3792,7 +3792,7 @@ body > .footer {
 .aliQtyRow > span{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--store-muted,#746b64)}
 
 .aliBuyRow{display:flex;gap:10px;margin-bottom:20px}
-.aliBuyNow{flex:1;min-height:50px;background:var(--store-secondary,#fff0e8);color:var(--store-primary,#d42a2a);border-color:var(--store-primary,#d42a2a)}
+.aliBuyNow{flex:1;min-height:50px;background:#fff;color:var(--store-primary,#d42a2a);border-color:var(--store-primary,#d42a2a)}
 .aliAddToCart{flex:1;min-height:50px}
 .aliBuyRow .focalButton:disabled,.aliBuyRow .focalButton:disabled:hover{opacity:.5;cursor:not-allowed;transform:none}
 

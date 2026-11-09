@@ -23,7 +23,7 @@
 }
 .topLeft, .topActions { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .topLeft > div:last-child { min-width: 0; }
-.title { margin: 2px 0 0; font-size: 28px; line-height: 1.15; letter-spacing: -.04em; color: var(--admin-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: min(52vw, 720px); }
+.title { margin: 2px 0 0; font-size: var(--admin-page-title); line-height: 1.15; letter-spacing: -.04em; color: var(--admin-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: min(52vw, 720px); }
 .topActions { justify-content: flex-end; flex-wrap: wrap; }
 /* topActionBtn is applied alongside admin-ui.module.css's ui.btn on each button in
    .topActions -- a :global(.btn) selector here would silently stop matching once
@@ -180,8 +180,8 @@
 .collectionOption:hover { background: var(--admin-border-soft, #f3f4f6); }
 .collectionOption input { width: 16px; height: 16px; accent-color: var(--admin-accent, #d7261e); }
 .collectionOption span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.collectionOption small { font-size: 11px; color: var(--admin-muted, #6b7280); }
-.collectionEmpty { padding: 10px; font-size: 13px; color: var(--admin-muted, #6b7280); }
+.collectionOption small { font-size: 11px; color: var(--admin-muted, #5b616b); }
+.collectionEmpty { padding: 10px; font-size: 13px; color: var(--admin-muted, #5b616b); }
 
 /* Product video (components/product-editor-v2.tsx): a short clip shown on the product page. */
 .videoBox { display: grid; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--admin-border, #e4e7eb); }

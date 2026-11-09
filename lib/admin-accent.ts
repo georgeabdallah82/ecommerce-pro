@@ -154,7 +154,8 @@ export function adminBrandVars(colors: BrandColors | null | undefined): AdminAcc
   if (muted && luminance(muted) < 0.45) {
     const mutedInk = untilContrast(muted, BLACK, page, 4.5)
     light['--admin-muted'] = toHex(mutedInk)
-    light['--admin-muted-soft'] = toHex(mix(mutedInk, surface, 0.62))
+    // Faint text stays readable: moved toward the muted ink until it is 4.5:1 on the card.
+    light['--admin-muted-soft'] = toHex(untilContrast(mix(mutedInk, surface, 0.62), mutedInk, surface, 4.5))
   }
 
   for (const name of ['success', 'warning'] as const) {

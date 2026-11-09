@@ -44,6 +44,8 @@ export default function AddressBook({ addresses }: { addresses: Address[] }) {
   const [form, setForm] = useState<FormState>(emptyForm)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  // The address to delete, while the customer is asked to confirm (no browser dialog).
+  const [askDeleteId, setAskDeleteId] = useState<string | null>(null)
 
   function startAdd() {
     setForm(emptyForm)
@@ -85,7 +87,7 @@ export default function AddressBook({ addresses }: { addresses: Address[] }) {
   }
 
   async function remove(id: string) {
-    if (!confirm('Delete this address?')) return
+    setAskDeleteId(null)
     setBusy(true)
     setError('')
     try {
@@ -162,7 +164,13 @@ export default function AddressBook({ addresses }: { addresses: Address[] }) {
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button className="btn secondary" type="button" disabled={busy} onClick={() => startEdit(a)}>{t('Edit')}</button>
                 {!a.isDefault && <button className="btn secondary" type="button" disabled={busy} onClick={() => setDefault(a)}>{t('Set as default')}</button>}
-                <button className="btn secondary" type="button" disabled={busy} onClick={() => remove(a.id)}>{t('Delete')}</button>
+                {askDeleteId === a.id
+                  ? <span style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
+                    <span>{t('Delete this address?')}</span>
+                    <button className="btn secondary" type="button" disabled={busy} onClick={() => remove(a.id)}>{t('Yes, delete')}</button>
+                    <button className="btn secondary" type="button" disabled={busy} onClick={() => setAskDeleteId(null)}>{t('Keep it')}</button>
+                  </span>
+                  : <button className="btn secondary" type="button" disabled={busy} onClick={() => setAskDeleteId(a.id)}>{t('Delete')}</button>}
               </div>
             </div>
           ))}

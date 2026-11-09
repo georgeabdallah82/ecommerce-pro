@@ -192,7 +192,7 @@ export default function GiftCardsAdmin({ initial, canManage, defaultCurrency }: 
               <td><span className={`${ui.statusPill} ${STATUS_TONE[card.status] || ''}`}>{card.status}</span></td>
               <td className={ui.muted}>{new Date(card.createdAt).toLocaleDateString()}</td>
               <td className={ui.muted}>{card.expiresAt ? new Date(card.expiresAt).toLocaleDateString() : 'No expiry'}</td>
-              <td>{canManage && <button className={ui.iconBtn} title="Manage gift card" onClick={() => openManage(card)}><Settings2 size={15} /></button>}</td>
+              <td>{canManage && <button className={ui.iconBtn} title="Manage gift card" aria-label="Manage gift card" onClick={() => openManage(card)}><Settings2 size={15} /></button>}</td>
             </tr>)}
           </tbody>
         </table>

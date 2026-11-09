@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import {ArrowRight,Award,Check,ChevronDown,ChevronRight,Heart,Headphones,Lock,Minus,Play,Plus,RotateCcw,Search,ShieldCheck,ShoppingBag,Star,Truck,X} from 'lucide-react'
+import {ArrowRight,Award,Check,ChevronDown,ChevronRight,Heart,Headphones,Lock,Minus,Play,Plus,RotateCcw,Search,ShieldCheck,ShoppingBag,Star,Truck,X,Zap} from 'lucide-react'
 import {useContext,useEffect,useMemo,useState} from 'react'
 import {useCart} from '@/components/cart-provider'
 import NewsletterForm from '@/components/newsletter-form'
@@ -509,7 +509,7 @@ function FlashDealsSection({section,theme,discounted:autoDiscounted,products=[],
   return (
     <section key={section.id} className={`aliFlash${alignClass(s)}`} style={boxStyle(s)} onClick={e=>click(section.id,e)}>
       <div className="aliContainer aliFlashHead">
-        <div className="aliFlashTitle"><span className="aliFlashBolt">⚡</span><h2>{s.heading||t('Flash Deals')}</h2></div>
+        <div className="aliFlashTitle"><span className="aliFlashBolt"><Zap size={16} aria-hidden="true" fill="currentColor" /></span><h2>{s.heading||t('Flash Deals')}</h2></div>
         {timerVisible&&<div className="aliFlashTimer">
           <span>{s.countdownLabel||t('Ends in')}</span>
           {dd>0&&<><strong>{dd}d</strong>:</>}

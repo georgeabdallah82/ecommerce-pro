@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Zap } from 'lucide-react'
 import { ProductCard, CollectionCard, QuickView, StoreImage, HeroSection, CategoryIcon } from '@/components/storefront-sections'
 import { useWishlist } from '@/components/use-wishlist'
 
@@ -63,7 +63,7 @@ export default function AliExpressHome({ theme, hero, products, collections, ico
         <section className="aliFlash">
           <div className="aliContainer aliFlashHead">
             <div className="aliFlashTitle">
-              <span className="aliFlashBolt">⚡</span>
+              <span className="aliFlashBolt"><Zap size={16} aria-hidden="true" fill="currentColor" /></span>
               <h2>{flashDeals?.settings?.heading || 'Flash Deals'}</h2>
             </div>
             <div className="aliFlashTimer">
