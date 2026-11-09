@@ -226,7 +226,7 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
   return <div className={s.page}>
     <div className={s.topbar}>
       <div className={s.topLeft}>
-        <Link href="/admin/products" className={ui.iconBtn} onClick={async e => { if (!dirty) return; e.preventDefault(); if (await confirm({ title: 'Discard unsaved changes?', message: 'Your edits to this product will be lost.', confirmLabel: 'Discard' })) router.push('/admin/products') }}><ArrowLeft size={18} /></Link>
+        <Link href="/admin/products" aria-label="Back to products" className={ui.iconBtn} onClick={async e => { if (!dirty) return; e.preventDefault(); if (await confirm({ title: 'Discard unsaved changes?', message: 'Your edits to this product will be lost.', confirmLabel: 'Discard' })) router.push('/admin/products') }}><ArrowLeft size={18} /></Link>
         <div><div className={`${ui.muted} ${ui.tiny}`}>PRODUCT</div><h1 className={s.title}>{creating ? 'Add product' : product.name || 'Untitled product'}</h1></div>
       </div>
       <div className={s.topActions}>
@@ -363,11 +363,11 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
           </Card>
         </>}
 
-        {tab === 'Shipping' && <Card title="Shipping & tax" sub="Fulfillment behavior">
+        {tab === 'Shipping' && <Card title="Shipping & tax" aria-label="Shipping & tax" sub="Fulfillment behavior">
           <div className={s.checkGrid}>
-            <Check checked={product.requiresShipping} onChange={v => update({ requiresShipping: v })} title="Physical product" text="Collect shipping details." />
-            <Check checked={product.taxable} onChange={v => update({ taxable: v })} title="Charge tax" text="Use store tax rules." />
-            <Check checked={product.giftCard} onChange={v => update({ giftCard: v })} title="Gift card" text="Reserved for gift-card product types." />
+            <Check checked={product.requiresShipping} onChange={v => update({ requiresShipping: v })} title="Physical product" aria-label="Physical product" text="Collect shipping details." />
+            <Check checked={product.taxable} onChange={v => update({ taxable: v })} title="Charge tax" aria-label="Charge tax" text="Use store tax rules." />
+            <Check checked={product.giftCard} onChange={v => update({ giftCard: v })} title="Gift card" aria-label="Gift card" text="Reserved for gift-card product types." />
           </div>
           <div className={s.threeCol}>
             <Field label="Weight"><NumInput className={ui.input} decimals value={product.weight} onValue={w => update({ weight: w })} /></Field>
@@ -376,7 +376,7 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
           </div>
         </Card>}
 
-        {tab === 'Channels' && <Card title="Sales channels" sub="Where this product can be seen and bought">
+        {tab === 'Channels' && <Card title="Sales channels" aria-label="Sales channels" sub="Where this product can be seen and bought">
           {creating ? <p className={ui.fieldHelp}>Save this product first to manage channel availability.</p> : (channels || []).length ? (channels || []).map((c: any) => {
             const pub = productPublications.find((p: any) => p.channelId === c.id)
             const isAvailable = pub ? pub.available : true
@@ -390,7 +390,7 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
           }) : <p className={ui.fieldHelp}>No active sales channels yet.</p>}
         </Card>}
 
-        {tab === 'Metafields' && <Card title="Metafields" sub="Structured custom data">
+        {tab === 'Metafields' && <Card title="Metafields" aria-label="Metafields" sub="Structured custom data">
           {definitions.length ? definitions.map((d: any) => {
             const cur = product.metafields?.find((m: any) => m.definitionId === d.id)?.value || ''
             return <Field key={d.id} label={d.name}>
@@ -400,7 +400,7 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
           }) : <div className={s.emptyInline}>No metafield definitions yet.</div>}
         </Card>}
 
-        {tab === 'Search & SEO' && <Card title="Search engine listing" sub="SEO title, description and URL handle">
+        {tab === 'Search & SEO' && <Card title="Search engine listing" aria-label="Search engine listing" sub="SEO title, description and URL handle">
           <Field label="URL handle"><input className={ui.input} value={product.slug} onChange={e => update({ slug: e.target.value })} /></Field>
           <Field label="SEO title"><input className={ui.input} value={product.seoTitle || ''} onChange={e => update({ seoTitle: e.target.value })} /></Field>
           <Field label="SEO description"><textarea className={ui.textarea} rows={5} value={product.seoDescription || ''} onChange={e => update({ seoDescription: e.target.value })} /></Field>

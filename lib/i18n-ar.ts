@@ -963,4 +963,8 @@ export const AR: Record<string, string> = {
   "Search: {query}": "بحث: {query}",
   "Remove filter: {name}": "إزالة الفلتر: {name}",
   "Clear all": "مسح الكل",
+  "Cancel this return request?": "هل تريد إلغاء طلب الإرجاع هذا؟",
+  "Keep it": "احتفظ به",
+  "Yes, delete": "نعم، احذف",
+  "Delete this address?": "هل تريد حذف هذا العنوان؟",
 }

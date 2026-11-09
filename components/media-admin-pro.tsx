@@ -102,7 +102,7 @@ export default function MediaAdminPro({ initial }: { initial: any[] }) {
       ? <div className={s.mediaGrid}>{shown.map(x => <article className={s.mediaCard} key={x.id}>
           <div className={s.mediaThumb}>{x.url ? <img src={x.url} alt={x.alt || x.name || ''} onError={e => { e.currentTarget.style.display = 'none' }} /> : <ImageIcon size={28} />}</div>
           <div className={s.mediaMeta}><strong title={x.name}>{x.name}</strong><span className={ui.muted}>{x.mimeType || 'Image'}</span>
-            <div className={`inline ${s.inline}`}><button className={ui.iconBtn} title="Copy URL" onClick={() => copy(x.url)}><Copy size={14} /></button><a className={ui.iconBtn} href={x.url} target="_blank" rel="noreferrer">↗</a><button className={`${ui.iconBtn} ${ui.iconBtnDanger}`} title="Delete file" aria-label={`Delete ${x.name}`} disabled={deleting === x.id} onClick={() => remove(x)}><Trash2 size={14} /></button></div>
+            <div className={`inline ${s.inline}`}><button className={ui.iconBtn} title="Copy URL" aria-label="Copy URL" onClick={() => copy(x.url)}><Copy size={14} /></button><a className={ui.iconBtn} href={x.url} target="_blank" rel="noreferrer">↗</a><button className={`${ui.iconBtn} ${ui.iconBtnDanger}`} title="Delete file" aria-label={`Delete ${x.name}`} disabled={deleting === x.id} onClick={() => remove(x)}><Trash2 size={14} /></button></div>
           </div>
         </article>)}</div>
       : <div className={ui.card}><table className={ui.table}><thead><tr><th>Preview</th><th>Name</th><th>Alt text</th><th>Type</th><th>URL</th><th></th></tr></thead><tbody>

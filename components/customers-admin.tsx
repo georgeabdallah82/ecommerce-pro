@@ -135,7 +135,7 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
 
     <div className={`${ui.card} catalogToolbar customersToolbar`}>
       <div className="productSearch"><Search size={16}/><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search by name, email or phone…"/><button className="searchClear" hidden={!q} onClick={() => setQ('')} aria-label="Clear search"><X size={14}/></button></div>
-      <div className="catalogFilters open"><select className={ui.input} value={status} onChange={e => setStatus(e.target.value)}><option value="ALL">All customers</option><option value="ACTIVE">Active</option><option value="DISABLED">Disabled</option></select><select className={ui.input} value={tag} onChange={e => setTag(e.target.value)}><option value="">All tags</option>{availableTags.map((t: any) => <option key={t.id} value={t.value}>{t.value}</option>)}</select></div>
+      <div className="catalogFilters open"><select className={ui.input} aria-label="Filter by status" value={status} onChange={e => setStatus(e.target.value)}><option value="ALL">All customers</option><option value="ACTIVE">Active</option><option value="DISABLED">Disabled</option></select><select aria-label="Filter by tag" className={ui.input} value={tag} onChange={e => setTag(e.target.value)}><option value="">All tags</option>{availableTags.map((t: any) => <option key={t.id} value={t.value}>{t.value}</option>)}</select></div>
     </div>
 
     {selected.length > 0 && (
@@ -151,7 +151,7 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
     )}
 
     <div className={`${ui.card} productTableCard`}>
-      <div className="tableTopline"><span className={ui.muted}>{total.toLocaleString()} customers</span><label className={ui.muted}>Rows <select className={`${ui.input} ${ui.inputCompact}`} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}><option>25</option><option>50</option><option>100</option></select></label></div>
+      <div className="tableTopline"><span className={ui.muted}>{total.toLocaleString()} customers</span><label className={ui.muted}>Rows <select className={`${ui.input} ${ui.inputCompact}`} aria-label="Rows per page" value={pageSize} onChange={e => setPageSize(Number(e.target.value))}><option>25</option><option>50</option><option>100</option></select></label></div>
       <div className={ui.tableWrap}><table className={`${ui.table} ${ui.cardTable}`}><thead><tr><th><input type="checkbox" checked={rows.length > 0 && selected.length === rows.length} onChange={toggleAll} aria-label="Select all customers" /></th><th>Customer</th><th>Contact</th><th>Tags</th><th>Orders</th><th>Reviews</th><th>Spend</th><th>Status</th><th>Joined</th><th></th></tr></thead><tbody>{rows.map(c => <tr key={c.id}>
         <td data-cell="check"><input type="checkbox" checked={selected.includes(c.id)} onChange={() => toggleRow(c.id)} aria-label={`Select ${c.name}`} /></td>
         <td data-cell="primary"><Link className="productListName" href={`/admin/customers/${c.id}`}><div className="customerAvatar">{initials(c.name)}</div><div><strong>{c.name}</strong><div className={ui.muted}>{c.email}</div></div></Link></td>
@@ -163,16 +163,16 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
         <td data-label="Status"><span className={c.isActive ? `${ui.statusPill} ${ui.statusPillSuccess}` : ui.statusPill}>{c.isActive ? <UserCheck size={13}/> : <UserX size={13}/>} {c.isActive ? 'Active' : 'Disabled'}</span></td>
         <td data-label="Joined">{new Date(c.createdAt).toLocaleDateString()}</td>
         <td data-cell="actions"><div className="inline">
-          <Link className={ui.iconBtn} href={`/admin/customers/${c.id}`} title="View customer"><Eye size={16}/></Link>
-          <button className={`${ui.iconBtn} ${ui.iconBtnDanger}`} title="Delete customer" onClick={() => deleteCustomer(c)}><Trash2 size={16}/></button>
+          <Link className={ui.iconBtn} href={`/admin/customers/${c.id}`} title="View customer" aria-label="View customer"><Eye size={16}/></Link>
+          <button className={`${ui.iconBtn} ${ui.iconBtnDanger}`} title="Delete customer" aria-label="Delete customer" onClick={() => deleteCustomer(c)}><Trash2 size={16}/></button>
         </div></td>
       </tr>)}</tbody></table></div>
       {!rows.length && <div className={ui.empty}>No customers match your search.</div>}
-      <div className="catalogPagination"><span className={ui.muted}>Page {page} of {pages}</span><div className="inline"><button className={ui.iconBtn} disabled={page <= 1 || loading} onClick={() => load(page - 1)}><ChevronLeft size={16}/></button><button className={ui.iconBtn} disabled={page >= pages || loading} onClick={() => load(page + 1)}><ChevronRight size={16}/></button></div></div>
+      <div className="catalogPagination"><span className={ui.muted}>Page {page} of {pages}</span><div className="inline"><button className={ui.iconBtn} aria-label="Previous page" disabled={page <= 1 || loading} onClick={() => load(page - 1)}><ChevronLeft size={16}/></button><button className={ui.iconBtn} aria-label="Next page" disabled={page >= pages || loading} onClick={() => load(page + 1)}><ChevronRight size={16}/></button></div></div>
     </div>
 
     {showCreate && <div className={ui.modalOverlay} onClick={() => setShowCreate(false)}><div className={ui.card} style={{ width: 'min(520px, 92vw)', padding: 24 }} onClick={e => e.stopPropagation()}>
-      <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><div><h2 className="h3">Add customer</h2><p className={ui.muted}>Create a customer profile without leaving the catalog.</p></div><button className={ui.iconBtn} onClick={() => setShowCreate(false)}><X size={16}/></button></div>
+      <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><div><h2 className="h3">Add customer</h2><p className={ui.muted}>Create a customer profile without leaving the catalog.</p></div><button className={ui.iconBtn} aria-label="Close" onClick={() => setShowCreate(false)}><X size={16}/></button></div>
       <div className={ui.twoCol}><label className={ui.fieldLabel}>Name<input className={ui.input} required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}/></label><label className={ui.fieldLabel}>Email<input className={ui.input} type="email" required value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}/></label><label className={ui.fieldLabel}>Phone<input className={ui.input} value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })}/></label><label className={ui.fieldLabel}>Password <span className={ui.fieldHelp}>Optional; can be added later.</span><input className={ui.input} type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })}/></label></div>
       <div className="inline" style={{ justifyContent: 'flex-end', marginTop: 18 }}><button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setShowCreate(false)}>Cancel</button><button className={ui.btn} onClick={createCustomer} disabled={loading || !form.name.trim() || !form.email.trim()}>{loading ? 'Creating…' : 'Create customer'}</button></div>
     </div></div>}

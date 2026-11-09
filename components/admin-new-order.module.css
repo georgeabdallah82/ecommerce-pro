@@ -2,7 +2,7 @@
    cards, big tap targets, the total and the save button stay at the bottom of the screen. */
 .page { display: grid; gap: 14px; max-width: 720px; margin: 0 auto; }
 .header { display: grid; gap: 6px; }
-.title { margin: 6px 0 0; font-size: 28px; font-weight: 850; letter-spacing: -.02em; color: var(--admin-ink); }
+.title { margin: 6px 0 0; font-size: var(--admin-page-title); font-weight: 850; letter-spacing: -.02em; color: var(--admin-ink); }
 .subtitle { margin: 0; font-size: 14px; color: var(--admin-muted); }
 
 .card { display: grid; gap: 12px; padding: 18px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-lg); background: var(--admin-surface); box-shadow: var(--admin-shadow-sm); min-width: 0; }

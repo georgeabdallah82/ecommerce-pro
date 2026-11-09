@@ -40,8 +40,8 @@ body:has(.adminShell){
   --admin-border-soft:#edeae0;
   --admin-ink:#1b1a16;
   --admin-ink-soft:#48463c;
-  --admin-muted:#83806e;
-  --admin-muted-soft:#a8a493;
+  --admin-muted:#6e6b5e;
+  --admin-muted-soft:#6b6f78;
   --admin-accent:#008060;
   --admin-accent-ink:#ffffff;
   --admin-accent-soft:#e3f1ec;
@@ -68,6 +68,8 @@ body:has(.adminShell){
   --admin-radius-md:13px;
   --admin-radius-lg:20px;
   --admin-radius-pill:999px;
+  /* One size for every admin page title (phones: the phone rule at the end of this file). */
+  --admin-page-title:34px;
   --admin-shadow-sm:0 1px 2px rgba(27,26,22,.045);
   --admin-shadow-md:0 8px 24px rgba(27,26,22,.07);
   --admin-shadow-lg:0 26px 80px rgba(27,26,22,.18);
@@ -76,7 +78,7 @@ body:has(.adminShell){
   /* Dark sidebar + phone tab bar (follows the brand's text colour when the theme sets one). */
   --admin-sidebar-bg:#FFFFFF;
   --admin-sidebar-ink:#121212;
-  --admin-sidebar-muted:#6B7280;
+  --admin-sidebar-muted:#5b616b;
   --admin-sidebar-hover:#F5F4F1;
   /* Cards: borderless, rounded, softly lifted. */
   --admin-card-radius:20px;
@@ -299,3 +301,4 @@ body:has([data-dashboard-hero]) .adminTopbar button[aria-label="Account menu"]>s
 
 /* Headings/text pick up ink tokens automatically via inheritance */
 body:has(.adminShell) h1,body:has(.adminShell) h2,body:has(.adminShell) h3,body:has(.adminShell) h4{color:var(--admin-ink)!important}
+@media(max-width:600px){:root{--admin-page-title:28px}}

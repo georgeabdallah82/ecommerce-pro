@@ -3,7 +3,7 @@
 .page {
   --rv-primary: var(--store-primary, #d7261e);
   --rv-ink: var(--store-text, #121212);
-  --rv-muted: var(--store-muted, #6b7280);
+  --rv-muted: var(--store-muted, #5b616b);
   --rv-line: var(--store-border, #e7e7e4);
   --rv-card: var(--store-surface, #fff);
   --rv-bg: var(--store-bg, #f6f6f4);

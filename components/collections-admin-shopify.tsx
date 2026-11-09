@@ -221,7 +221,7 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
                       <Link
                         className={ui.iconBtn}
                         href={`/admin/collections/${collection.id}`}
-                        title="Edit"
+                        title="Edit" aria-label="Edit"
                       >
                         <MoreHorizontal size={16} />
                       </Link>
@@ -229,13 +229,13 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
                         className={ui.iconBtn}
                         href={`/collections/${collection.slug}`}
                         target="_blank"
-                        title="Preview"
+                        title="Preview" aria-label="Preview"
                       >
                         <Eye size={16} />
                       </Link>
                       <button
                         className={`${ui.iconBtn} ${ui.iconBtnDanger}`}
-                        title="Delete collection"
+                        title="Delete collection" aria-label="Delete collection"
                         onClick={() => deleteCollection(collection)}
                       >
                         <Trash2 size={16} />

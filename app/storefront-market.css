@@ -9,7 +9,7 @@ body.mk {
   --mk-red-soft: color-mix(in srgb, var(--mk-red) 9%, #fff);
   --mk-yellow: var(--store-accent, #facc15);
   --mk-ink: var(--store-text, #121212);
-  --mk-muted: var(--store-muted, #6b7280);
+  --mk-muted: var(--store-muted, #5b616b);
   --mk-page: var(--store-bg, #f6f6f4);
   --mk-card: var(--store-surface, #fff);
   --mk-line: var(--store-border, #ececec);
@@ -473,14 +473,14 @@ html body.mk .aliCartRow.unselected { opacity: .7; }
 }
 
 /* Sold out: on cards, and for options in quick view */
-.mkCardAdd.soldOut, .mkCardAdd:disabled { background: #e5e7eb !important; color: #6b7280 !important; cursor: not-allowed; }
+.mkCardAdd.soldOut, .mkCardAdd:disabled { background: #e5e7eb !important; color: #5b616b !important; cursor: not-allowed; }
 .focalVariantList button:disabled { opacity: .45; cursor: not-allowed; text-decoration: line-through; }
 .focalQuickInfo .focalButton:disabled { opacity: .55; cursor: not-allowed; transform: none; }
 .aliVariantList button.soldOut { color: #9ca3af; text-decoration: line-through; border-style: dashed; }
 
 /* Real catalogue content: very long words in names, rich product descriptions */
 html body.mk h1, html body.mk h2, html body.mk h3 { overflow-wrap: anywhere; }
-.pdpRichText { color: var(--focal-muted, #6b7280); font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; }
+.pdpRichText { color: var(--focal-muted, #5b616b); font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; }
 .pdpRichText > :first-child { margin-top: 0; }
 .pdpRichText p, .pdpRichText ul, .pdpRichText ol { margin: 0 0 10px; }
 .pdpRichText ul, .pdpRichText ol { padding-left: 20px; }

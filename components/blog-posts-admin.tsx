@@ -96,7 +96,7 @@ export default function BlogPostsAdmin({ initial }: { initial: PostRow[] }) {
         <td><code>/blog/{row.handle}</code></td>
         <td>{row.tags?.length ? row.tags.join(', ') : <span className={ui.muted}>—</span>}</td>
         <td><span className={`${ui.statusPill} ${row.status === 'PUBLISHED' ? ui.statusPillSuccess : ui.statusPillWarning}`}>{row.status === 'PUBLISHED' ? <><Check size={13}/> Published</> : 'Draft'}</span></td>
-        <td><div className="inline">{row.status === 'PUBLISHED' && <a className={ui.iconBtn} title="View post" href={`/blog/${row.handle}`} target="_blank" rel="noreferrer"><ExternalLink size={15}/></a>}<button className={ui.iconBtn} title="Edit post" onClick={() => openEdit(row)}><Pencil size={15}/></button><button className={`${ui.iconBtn} ${ui.iconBtnDanger}`} title="Delete post" disabled={busy === row.id} onClick={() => remove(row)}><Trash2 size={15}/></button></div></td>
+        <td><div className="inline">{row.status === 'PUBLISHED' && <a className={ui.iconBtn} title="View post" aria-label="View post" href={`/blog/${row.handle}`} target="_blank" rel="noreferrer"><ExternalLink size={15}/></a>}<button className={ui.iconBtn} title="Edit post" aria-label="Edit post" onClick={() => openEdit(row)}><Pencil size={15}/></button><button className={`${ui.iconBtn} ${ui.iconBtnDanger}`} title="Delete post" aria-label="Delete post" disabled={busy === row.id} onClick={() => remove(row)}><Trash2 size={15}/></button></div></td>
       </tr>)}
     </tbody></table></div>
     {!filtered.length && <div className={ui.empty}><Newspaper size={28}/><h3>No posts</h3><p className={ui.muted}>Add your first blog post.</p></div>}

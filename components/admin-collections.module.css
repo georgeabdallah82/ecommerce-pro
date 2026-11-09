@@ -17,7 +17,7 @@
 .page { max-width: 1480px; margin: 0 auto; padding-bottom: 32px; }
 
 .header { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
-.title { margin: 0; font-size: 38px; letter-spacing: -.045em; color: var(--admin-ink); }
+.title { margin: 0; font-size: var(--admin-page-title); letter-spacing: -.045em; color: var(--admin-ink); }
 
 .views {
   display: flex;

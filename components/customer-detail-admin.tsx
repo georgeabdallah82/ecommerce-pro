@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from '@/components/admin-link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Mail, MapPin, Phone, ShieldOff, UserCheck, Plus, Trash2, X, CreditCard, UsersRound, Coins } from 'lucide-react'
+import { ArrowLeft, Mail, MapPin, Phone, ShieldOff, UserCheck, Plus, Trash2, X, CreditCard, UsersRound, Coins, Star } from 'lucide-react'
 import { money } from '@/lib/config'
 import s from './admin-customer-detail.module.css'
 import ui from './admin-ui.module.css'
@@ -228,7 +228,7 @@ export default function CustomerDetailAdmin({ initial }: { initial: any }) {
             {availableTags.slice(0, 6).map((tag: any) => <button className={s.chipButton} type="button" key={tag.id} onClick={() => addTag(tag.value)}>+ {tag.value}</button>)}
           </div>
           <div className={s.segmentRows}>
-            {(customer.segments || []).map((seg: any) => <div className={s.segmentRow} key={seg.id}><div><strong>{seg.name}</strong><div>{seg.description || 'Customer segment'}</div></div><button className={ui.iconBtn} onClick={() => removeSegment(seg.id)} title="Remove segment"><X size={14}/></button></div>)}
+            {(customer.segments || []).map((seg: any) => <div className={s.segmentRow} key={seg.id}><div><strong>{seg.name}</strong><div>{seg.description || 'Customer segment'}</div></div><button className={ui.iconBtn} onClick={() => removeSegment(seg.id)} title="Remove segment" aria-label="Remove segment"><X size={14}/></button></div>)}
             {!(customer.segments || []).length && <span className={ui.muted}>No segments assigned.</span>}
           </div>
           <div className={s.addRow}>
@@ -246,7 +246,7 @@ export default function CustomerDetailAdmin({ initial }: { initial: any }) {
           {!customer.reviews?.length ? <div className={s.emptyInline}>No reviews yet.</div> : customer.reviews.map((r: any) => <div key={r.id} className={s.reviewRow}>
             <div className={s.reviewRowHead}>
               <strong>{r.product?.name}</strong>
-              <span className={s.stars}>{'★'.repeat(Math.max(0, Math.min(5, r.rating)))}{'☆'.repeat(Math.max(0, 5 - r.rating))}</span>
+              <span className={s.stars}>{Array.from({ length: 5 }, (_, i) => <Star key={i} size={13} fill={i < r.rating ? 'currentColor' : 'none'} aria-hidden="true" />)}</span>
             </div>
             {r.title && <strong className={s.reviewTitle}>{r.title}</strong>}
             <div className={s.reviewBody}>{r.body || 'No review text'}</div>

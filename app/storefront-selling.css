@@ -1,6 +1,6 @@
 /* Selling tools on the store (components/selling-client.tsx, product page, cart, welcome popup).
    Theme colours, logical sides for Arabic. */
-.lbpNote { display: block; margin-top: 2px; font-size: 13px; font-weight: 600; color: var(--store-muted, #6b7280); }
+.lbpNote { display: block; margin-top: 2px; font-size: 13px; font-weight: 600; color: var(--store-muted, #5b616b); }
 
 .flashCountdown { display: inline-flex; align-items: center; gap: 6px; margin: 6px 0 2px; padding: 7px 12px; border-radius: 999px; background: color-mix(in srgb, var(--store-sale, #d7261e) 10%, var(--store-surface, #fff)); color: var(--store-sale, #d7261e); font-size: 14px; font-weight: 700; }
 .flashCountdown strong { font-variant-numeric: tabular-nums; }
@@ -26,10 +26,10 @@
 .welcomePop { position: fixed; inset: 0; z-index: 2600; display: grid; place-items: center; padding: 16px; background: rgba(15, 15, 15, .45); }
 .welcomeCard { position: relative; width: min(420px, 100%); display: grid; gap: 12px; padding: 26px 22px 22px; border-radius: 18px; background: var(--store-surface, #fff); color: var(--store-text, #121212); box-shadow: 0 30px 80px rgba(0, 0, 0, .25); text-align: center; }
 .welcomeCard h2 { margin: 0; font-size: 24px; font-weight: 850; letter-spacing: -.02em; }
-.welcomeCard p { margin: 0; font-size: 14.5px; line-height: 1.5; color: var(--store-muted, #6b7280); }
+.welcomeCard p { margin: 0; font-size: 14.5px; line-height: 1.5; color: var(--store-muted, #5b616b); }
 .welcomeCard input { width: 100%; box-sizing: border-box; min-height: 48px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--store-border, #e7e7e4); background: var(--store-surface, #fff); color: var(--store-text, #121212); font: inherit; font-size: 16px; }
 .welcomeCard button[type=submit] { min-height: 50px; border: 0; border-radius: 12px; background: var(--store-primary, #d7261e); color: #fff; font: inherit; font-size: 16px; font-weight: 800; cursor: pointer; }
-.welcomeClose { position: absolute; top: 10px; inset-inline-end: 10px; width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--store-muted, #6b7280); cursor: pointer; }
+.welcomeClose { position: absolute; top: 10px; inset-inline-end: 10px; width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--store-muted, #5b616b); cursor: pointer; }
 .welcomeCode { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px; border: 2px dashed var(--store-primary, #d7261e); border-radius: 12px; font-size: 22px; font-weight: 900; letter-spacing: .08em; }
 .welcomeCode button { min-height: 36px; padding: 0 12px; border: 1px solid var(--store-border, #e7e7e4); border-radius: 10px; background: var(--store-surface, #fff); color: var(--store-text, #121212); font-size: 13px; font-weight: 700; cursor: pointer; letter-spacing: 0; }
 .welcomeFine { font-size: 12px !important; }
@@ -56,7 +56,7 @@
 .inviteHead { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; align-items: start; }
 .inviteIcon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--store-primary, #d7261e); color: #fff; }
 .inviteHead h2 { margin: 0 0 4px; font-size: 17px; font-weight: 850; }
-.inviteHead p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--store-muted, #6b7280); }
+.inviteHead p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--store-muted, #5b616b); }
 .inviteCode { padding: 12px; border: 2px dashed var(--store-primary, #d7261e); border-radius: 12px; background: var(--store-surface, #fff); text-align: center; font-size: 22px; font-weight: 900; letter-spacing: .1em; }
 .inviteActions { display: grid; gap: 10px; }
 @media (min-width: 520px) { .inviteActions { grid-template-columns: 1fr 1fr; } }
@@ -94,11 +94,11 @@
 .aliQaItem p { margin: 0; font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-line; }
 .aliQaQ { font-weight: 800; }
 .aliQaQ > span:first-child, .aliQaA > span:first-child { color: var(--store-primary, #d7261e); font-weight: 900; }
-.aliQaItem small { font-size: 12.5px; color: var(--store-muted, #6b7280); }
+.aliQaItem small { font-size: 12.5px; color: var(--store-muted, #5b616b); }
 .aliQaAsk { justify-self: start; display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 18px; border: 1px solid var(--store-text, #121212); border-radius: 12px; background: var(--store-surface, #fff); color: var(--store-text, #121212); font: inherit; font-size: 15px; font-weight: 800; cursor: pointer; }
 .aliQaForm { display: grid; gap: 12px; max-width: 520px; padding: 16px; border: 1px solid var(--store-border, #eaded4); border-radius: 12px; background: var(--store-secondary, #fff0e8); }
 .aliQaForm label { display: grid; gap: 6px; font-size: 14px; font-weight: 700; }
-.aliQaForm small { font-weight: 500; color: var(--store-muted, #6b7280); }
+.aliQaForm small { font-weight: 500; color: var(--store-muted, #5b616b); }
 .aliQaForm input, .aliQaForm textarea { width: 100%; box-sizing: border-box; min-height: 46px; padding: 10px 12px; border: 1px solid var(--store-border, #e7e7e4); border-radius: 10px; background: var(--store-surface, #fff); color: var(--store-text, #121212); font: inherit; font-size: 16px; }
 .aliQaForm .aliQaAsk { justify-self: stretch; justify-content: center; border-color: var(--store-primary, #d7261e); background: var(--store-primary, #d7261e); color: #fff; }
 .aliQaTrap { position: absolute !important; width: 1px !important; height: 1px !important; opacity: 0 !important; pointer-events: none !important; inset-inline-start: -9999px; }
