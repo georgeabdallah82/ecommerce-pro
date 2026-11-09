@@ -27,8 +27,10 @@ function RouteChangePageViews({ config }: { config: TrackingConfig }) {
 }
 
 export function TrackingScripts({ config, nonce }: { config: TrackingConfig; nonce?: string }) {
-  const { metaPixelId, gaMeasurementId, tiktokPixelId } = config
-  const anyConfigured = !!(metaPixelId || gaMeasurementId || tiktokPixelId)
+  const { metaPixelId, gaMeasurementId, tiktokPixelId, googleAdsId, googleAdsPurchaseLabel } = config
+  const anyConfigured = !!(metaPixelId || gaMeasurementId || tiktokPixelId || googleAdsId)
+  // The purchase conversion target (AW-id/label), read by trackPurchase in lib/tracking-events.ts.
+  const adsSendTo = googleAdsId && googleAdsPurchaseLabel ? `${googleAdsId}/${googleAdsPurchaseLabel}` : ''
   return <>
     {anyConfigured && <Suspense fallback={null}><RouteChangePageViews config={config} /></Suspense>}
     {metaPixelId && <Script id="meta-pixel" strategy="afterInteractive" nonce={nonce} dangerouslySetInnerHTML={{ __html: `
@@ -38,12 +40,14 @@ fbq('init','${metaPixelId}');
 fbq('track','PageView');
 ` }} />}
 
-    {gaMeasurementId && <>
-      <Script src={`https://www.googletagmanager.com/gtag/js?id=${gaMeasurementId}`} strategy="afterInteractive" nonce={nonce} />
+    {(gaMeasurementId || googleAdsId) && <>
+      <Script src={`https://www.googletagmanager.com/gtag/js?id=${gaMeasurementId || googleAdsId}`} strategy="afterInteractive" nonce={nonce} />
       <Script id="ga4" strategy="afterInteractive" nonce={nonce} dangerouslySetInnerHTML={{ __html: `
 window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}
 gtag('js',new Date());
-gtag('config','${gaMeasurementId}');
+${gaMeasurementId ? `gtag('config','${gaMeasurementId}');` : ''}
+${googleAdsId ? `gtag('config','${googleAdsId}');` : ''}
+${adsSendTo ? `window.__googleAdsSendTo='${adsSendTo}';` : ''}
 ` }} />
     </>}
 

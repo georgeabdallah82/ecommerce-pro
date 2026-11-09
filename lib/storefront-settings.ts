@@ -9,7 +9,7 @@ import { storefrontCached } from '@/lib/storefront-cache'
 // for up to 30 seconds (lib/storefront-cache.ts).
 export const STOREFRONT_SETTING_KEYS = [
   'theme.config', 'theme.sections', 'navigation.main',
-  'tracking.metaPixelId', 'tracking.gaMeasurementId', 'tracking.tiktokPixelId',
+  'tracking.metaPixelId', 'tracking.gaMeasurementId', 'tracking.tiktokPixelId', 'tracking.googleAdsId', 'tracking.googleAdsPurchaseLabel',
   'seo.title', 'seo.description', 'seo.image', 'store.name',
   // For the default search description (lib/seo.ts) when the merchant hasn't written one.
   'store.country', 'store.currency', 'checkout.freeShippingThreshold', 'payment.cod', 'returns.enabled',

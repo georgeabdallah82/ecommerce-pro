@@ -4,7 +4,7 @@ import { hasPushSubscription } from '@/lib/push'
 import { HEAVY_PHOTO_KB, LAUNCH_MANUAL_KEY, MANUAL_IDS, type LaunchFacts } from '@/lib/launch-checklist'
 import { loadDatabaseHoursAdvice } from '@/lib/database-hours-server'
 
-const KEYS = ['contact.phone', 'payment.cod', 'payment.card', 'checkout.freeShippingThreshold', 'maintenance.enabled', LAUNCH_MANUAL_KEY, 'tracking.metaPixelId', 'tracking.gaMeasurementId', 'tracking.tiktokPixelId']
+const KEYS = ['contact.phone', 'payment.cod', 'payment.card', 'checkout.freeShippingThreshold', 'maintenance.enabled', LAUNCH_MANUAL_KEY, 'tracking.metaPixelId', 'tracking.gaMeasurementId', 'tracking.googleAdsId', 'tracking.tiktokPixelId']
 
 // Active products' photos that are heavier than HEAVY_PHOTO_KB, from the sizes Files recorded
 // at upload. Photos linked from elsewhere have no recorded size and are not counted.
@@ -65,7 +65,7 @@ export async function launchFacts(user: { id: string; totpEnabledAt: Date | null
     orderCount,
     arabicOn: theme.languages?.arabic === true,
     socialLinks: ['instagram', 'facebook', 'tiktok', 'twitter', 'youtube'].filter(k => String(theme.social?.[k] || '').trim()).length,
-    adTracking: ['tracking.metaPixelId', 'tracking.gaMeasurementId', 'tracking.tiktokPixelId'].some(k => String(map.get(k) || '').trim()),
+    adTracking: ['tracking.metaPixelId', 'tracking.gaMeasurementId', 'tracking.tiktokPixelId', 'tracking.googleAdsId'].some(k => String(map.get(k) || '').trim()),
     footerText: String(theme.footer?.text || ''),
     manual: parseManual(map.get(LAUNCH_MANUAL_KEY)),
     databaseHours: hoursAdvice?.short,

@@ -100,6 +100,8 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
     'seo.image': map.get('seo.image') || '',
     'tracking.metaPixelId': map.get('tracking.metaPixelId') || '',
     'tracking.gaMeasurementId': map.get('tracking.gaMeasurementId') || '',
+    'tracking.googleAdsId': map.get('tracking.googleAdsId') || '',
+    'tracking.googleAdsPurchaseLabel': map.get('tracking.googleAdsPurchaseLabel') || '',
     'tracking.tiktokPixelId': map.get('tracking.tiktokPixelId') || '',
     'tracking.metaCapiTestCode': map.get('tracking.metaCapiTestCode') || '',
     'maintenance.headline': maintenanceText(map.get('maintenance.headline'), MAINTENANCE_DEFAULTS.headline),
@@ -478,6 +480,8 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
               <div className={ui.twoCol}>
                 <Field label="Meta (Facebook) Pixel ID" value={values['tracking.metaPixelId']} onChange={v => set('tracking.metaPixelId', v)} />
                 <Field label="Google Analytics measurement ID" value={values['tracking.gaMeasurementId']} onChange={v => set('tracking.gaMeasurementId', v)} />
+                <Field label="Google Ads conversion ID" value={values['tracking.googleAdsId']} onChange={v => set('tracking.googleAdsId', v)} />
+                <Field label="Google Ads purchase conversion label" value={values['tracking.googleAdsPurchaseLabel']} onChange={v => set('tracking.googleAdsPurchaseLabel', v)} />
                 <Field label="TikTok Pixel ID" value={values['tracking.tiktokPixelId']} onChange={v => set('tracking.tiktokPixelId', v)} />
               </div>
             </Card>
