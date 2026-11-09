@@ -52,9 +52,22 @@ const defaultPaymentConfig: PaymentConfig = {
   apiPassword: '',
 }
 
-export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, emailFromDefault = '', appIcon, products = [], whatsappListCount = 0 }: { initial: any[]; metaCapiTokenSet?: boolean; emailFromDefault?: string; appIcon?: { brandName: string; source: string; brandColor: string; saved: { large: string; small: string } }; products?: Array<{ id: string; name: string }>; whatsappListCount?: number }) {
+export default function SettingsCenterPro({ initial, addSearchWord, metaCapiTokenSet = false, emailFromDefault = '', appIcon, products = [], whatsappListCount = 0 }: { initial: any[]; addSearchWord?: string; metaCapiTokenSet?: boolean; emailFromDefault?: string; appIcon?: { brandName: string; source: string; brandColor: string; saved: { large: string; small: string } }; products?: Array<{ id: string; name: string }>; whatsappListCount?: number }) {
   const map = useMemo(() => new Map(initial.map(x => [x.key, x.value])), [initial])
   const [tab, setTab] = useState('General')
+  // A term the shoppers searched for and found nothing: add it as a new word group, left for the owner to finish.
+  useEffect(() => {
+    const word = (addSearchWord || '').trim()
+    if (!word) return
+    setTab('Selling')
+    setValues(current => {
+      const groups = current['search.synonyms'] || ''
+      if (groups.toLowerCase().split('\n').some(line => line.split('=')[0].trim().toLowerCase() === word.toLowerCase())) return current
+      return { ...current, 'search.synonyms': groups.trim() ? `${groups.replace(/\s+$/, '')}\n${word} = ` : `${word} = ` }
+    })
+    setDirty(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addSearchWord])
   const [search, setSearch] = useState('')
   const [saving, setSaving] = useState(false)
   // Any edit on this page marks it unsaved (the bar and the leave warning below); a save clears it.
