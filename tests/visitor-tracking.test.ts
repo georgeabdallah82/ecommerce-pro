@@ -80,5 +80,7 @@ test('admin pages use the admin link (no background prefetch of every admin link
 test('ad pixels are only added on store pages', () => {
   const layout = read('app/layout.tsx')
   assert.match(layout, /pixelsAllowed = isTrackedPath\(/)
-  assert.match(layout, /\{pixelsAllowed \? <TrackingScripts/)
+  // Store pages only, and only after the shopper accepts (components/cookie-consent.tsx).
+  assert.match(layout, /\{pixelsAllowed \? <ConsentTracking/)
+  assert.match(read('components/cookie-consent.tsx'), /choice !== 'granted'\) return null/)
 })

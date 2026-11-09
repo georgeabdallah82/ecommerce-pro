@@ -57,6 +57,8 @@ const CLIENT_SETTING_KEYS = new Set([
   'tracking.metaPixelId',
   'tracking.gaMeasurementId',
   'tracking.tiktokPixelId',
+  'tracking.googleAdsId',
+  'tracking.googleAdsPurchaseLabel',
   'tracking.metaCapiTestCode',
   'maintenance.enabled',
   'maintenance.backBy',

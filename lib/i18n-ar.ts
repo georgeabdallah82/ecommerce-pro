@@ -963,4 +963,13 @@ export const AR: Record<string, string> = {
   "Search: {query}": "بحث: {query}",
   "Remove filter: {name}": "إزالة الفلتر: {name}",
   "Clear all": "مسح الكل",
+  "Cookies": "ملفات تعريف الارتباط",
+  "We use cookies to measure visits and to show you relevant ads on Facebook, Instagram, Google and TikTok.": "نستخدم ملفات تعريف الارتباط لقياس الزيارات ولعرض إعلانات تناسبك على فيسبوك وإنستغرام وغوغل وتيك توك.",
+  "Privacy policy": "سياسة الخصوصية",
+  "Decline": "رفض",
+  "Accept": "قبول",
+  "Cookie settings": "إعدادات ملفات تعريف الارتباط",
+  "Your data": "بياناتك",
+  "Download a copy of your account, addresses, orders, reviews and wishlist as a file.": "حمّل نسخة من حسابك وعناوينك وطلباتك وتقييماتك ومفضلتك في ملف.",
+  "Download my data": "تحميل بياناتي",
 }

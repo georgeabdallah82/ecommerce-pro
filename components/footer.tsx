@@ -7,6 +7,7 @@ import { config } from '@/lib/config'
 import { whatsappUrl } from '@/lib/links'
 import { markT } from '@/lib/i18n'
 import { useI18n } from '@/components/lang-provider'
+import { CookieSettingsButton } from '@/components/cookie-consent'
 import { loadStoreSettings } from '@/lib/store-settings-client'
 
 // lucide-react 1.x dropped brand/logo icons entirely (kept to generic UI
@@ -154,6 +155,7 @@ export function Footer({ theme }: { theme?: any }) {
       </div>
       <div className="focalContainer focalFooterBottom">
         <span className="muted">{new Date().getFullYear()} &middot; {brand} &middot; {t('All rights reserved')}</span>
+        <CookieSettingsButton />
         {payments.length > 0 && (
           <div className="focalFooterPayments">
             {payments.map(label => <span key={label}>{t(label)}</span>)}

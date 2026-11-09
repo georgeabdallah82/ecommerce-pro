@@ -13,7 +13,7 @@ import StoreNavRuntime from '@/components/store-nav-runtime'
 import StoreNavScroll from '@/components/store-nav-scroll'
 import VisitorTracker from '@/components/visitor-tracker'
 import { CartProvider } from '@/components/cart-provider'
-import { TrackingScripts } from '@/components/tracking-scripts'
+import { ConsentTracking, CookieBanner } from '@/components/cookie-consent'
 import { isTrackedPath } from '@/lib/visitor-tracking'
 import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
@@ -82,7 +82,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     }),
     getTrackingConfig().catch(error => {
       console.error('[layout] getTrackingConfig failed, tracking disabled', error)
-      return { metaPixelId: '', gaMeasurementId: '', tiktokPixelId: '' }
+      return { metaPixelId: '', gaMeasurementId: '', tiktokPixelId: '', googleAdsId: '', googleAdsPurchaseLabel: '' }
     }),
     // Same cached read the theme already made; only for the notification popup's switch.
     getStorefrontSettings().catch(() => new Map<string, string>()),
@@ -122,5 +122,5 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // editor's live-preview iframe: the fresh re-render recreates the iframe mid-handshake,
   // permanently losing the postMessage exchange that populates the preview pane.
   // Arabic pages read right to left (lib/i18n.ts); admin pages are always English.
-  return <html lang={lang} dir={lang === 'ar' ? 'rtl' : 'ltr'} className={FONT_VARIABLE_CLASSES} suppressHydrationWarning><head><Script id="admin-theme" strategy="beforeInteractive" nonce={nonce} dangerouslySetInnerHTML={{__html:adminThemeScript}}/><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/><link rel="icon" href={theme.faviconUrl || 'data:,'}/>{theme.customCss ? <style dangerouslySetInnerHTML={{ __html: safeStyleText(theme.customCss) }}/> : null}</head><body className={[theme.animations?.enabled ? 'animations-enabled' : '', theme.design === 'market' ? 'mk' : ''].filter(Boolean).join(' ') || undefined}>{pixelsAllowed ? <TrackingScripts config={tracking} nonce={nonce} /> : null}<LangProvider lang={lang} switchable={switchable} preview={languagePreview}><CartProvider><SkipLink/><NavProgress/><VisitorTracker/><StoreNavRuntime theme={theme} navigation={navigation}/><StoreNavScroll/>{children}<WhatsAppFloat theme={theme}/><WelcomePopup/><InviteLanding/><PushOptIn vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} enabled={storefrontSettings.get('push.askVisitors') !== 'false'} storeName={String(theme.brandName || 'our store').trim()}/></CartProvider></LangProvider></body></html>
+  return <html lang={lang} dir={lang === 'ar' ? 'rtl' : 'ltr'} className={FONT_VARIABLE_CLASSES} suppressHydrationWarning><head><Script id="admin-theme" strategy="beforeInteractive" nonce={nonce} dangerouslySetInnerHTML={{__html:adminThemeScript}}/><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/><link rel="icon" href={theme.faviconUrl || 'data:,'}/>{theme.customCss ? <style dangerouslySetInnerHTML={{ __html: safeStyleText(theme.customCss) }}/> : null}</head><body className={[theme.animations?.enabled ? 'animations-enabled' : '', theme.design === 'market' ? 'mk' : ''].filter(Boolean).join(' ') || undefined}><CookieBanner />{pixelsAllowed ? <ConsentTracking config={tracking} nonce={nonce} /> : null}<LangProvider lang={lang} switchable={switchable} preview={languagePreview}><CartProvider><SkipLink/><NavProgress/><VisitorTracker/><StoreNavRuntime theme={theme} navigation={navigation}/><StoreNavScroll/>{children}<WhatsAppFloat theme={theme}/><WelcomePopup/><InviteLanding/><PushOptIn vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} enabled={storefrontSettings.get('push.askVisitors') !== 'false'} storeName={String(theme.brandName || 'our store').trim()}/></CartProvider></LangProvider></body></html>
 }

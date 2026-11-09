@@ -4,6 +4,8 @@ declare global {
     gtag?: (...args: unknown[]) => void
     ttq?: { track: (event: string, data?: Record<string, unknown>, options?: Record<string, unknown>) => void; page?: () => void; identify?: (data: Record<string, unknown>) => void }
     __metaPixelId?: string
+    // Google Ads purchase conversion ('AW-id/label'), set when the store has one (components/tracking-scripts.tsx).
+    __googleAdsSendTo?: string
   }
 }
 
@@ -99,6 +101,7 @@ export function trackPurchase(order: { orderNumber: string; value: number; curre
     content_type: 'product',
     num_items: order.items.reduce((s, i) => s + i.quantity, 0),
   }, { eventID: `purchase-${order.orderNumber}` }))
+  if (window.__googleAdsSendTo) safely(() => window.gtag?.('event', 'conversion', { send_to: window.__googleAdsSendTo, value: order.value, currency: order.currency, transaction_id: order.orderNumber }))
   safely(() => window.gtag?.('event', 'purchase', {
     transaction_id: order.orderNumber,
     value: order.value,
