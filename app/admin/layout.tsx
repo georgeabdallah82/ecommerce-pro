@@ -150,7 +150,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="adminShell">
       <ToastProvider>
         <ConfirmProvider>
-          <AdminNav groups={visibleGroups} brand={brand} ordersToFulfill={ordersToFulfill} banner={user.role !== 'CUSTOMER' ? <TeamNotices notices={notices} /> : null} name={user.name} email={user.email} role={roleLabel} vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}>
+          <AdminNav groups={visibleGroups} brand={brand} ordersToFulfill={ordersToFulfill} banner={user.role !== 'CUSTOMER' ? <TeamNotices notices={notices} /> : null} name={user.name} email={user.email} role={roleLabel} avatarUrl={user.avatarUrl ?? null} vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}>
             {children}
           </AdminNav>
         </ConfirmProvider>
