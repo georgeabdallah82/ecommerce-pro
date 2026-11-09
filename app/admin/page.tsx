@@ -65,14 +65,25 @@ export default async function Admin() {
   for (let i = 23; i >= 0; i--) { const d = new Date(now); d.setUTCDate(15); d.setUTCMonth(d.getUTCMonth() - i); monthKeys.push(monthKey(d)) }
   const monthStart = new Date(`${monthKeys[0]}-01T00:00:00Z`)
   const monthStartDay = new Date(monthStart.getTime() - DAY_MS)
-  const monthly = await db.order.findMany({ where: { createdAt: { gte: monthStartDay }, status: { notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED] } }, select: { grandTotal: true, createdAt: true, paymentTransactions: { select: { status: true, amount: true } } } })
-  const montho = monthly as unknown as SalesOrder[]
-  const monthlySales = new Map<string, number>(); const monthlyOrders = new Map<string, number>()
-  for (const order of montho) {
-    const key = monthKey(order.createdAt)
-    monthlySales.set(key, (monthlySales.get(key) || 0) + netSales(order))
-    monthlyOrders.set(key, (monthlyOrders.get(key) || 0) + 1)
-  }
+  // Monthly totals are added up in the database: one row per month comes back, not every order.
+  // Net sales take off refunds for each order (never below zero), as the weekly figures do.
+  const monthlyRows = await db.$queryRaw<{ month: string; orders: number; net: number }[]>`
+    SELECT to_char(date_trunc('month', (o."createdAt" AT TIME ZONE 'UTC') AT TIME ZONE ${timezone}), 'YYYY-MM') AS month,
+           COUNT(*)::float8 AS orders,
+           COALESCE(SUM(GREATEST(0, o."grandTotal" - COALESCE(r.refunded, 0))), 0)::float8 AS net
+    FROM "Order" o
+    LEFT JOIN (
+      SELECT "orderId", SUM(amount) AS refunded
+      FROM "PaymentTransaction"
+      WHERE status IN ('refunded', 'partially_refunded')
+      GROUP BY "orderId"
+    ) r ON r."orderId" = o.id
+    WHERE o."createdAt" >= ${monthStartDay}
+      AND o.status NOT IN ('CANCELLED', 'REFUNDED')
+    GROUP BY 1
+  `
+  const monthlySales = new Map<string, number>(monthlyRows.map(row => [row.month, Number(row.net)]))
+  const monthlyOrders = new Map<string, number>(monthlyRows.map(row => [row.month, Number(row.orders)]))
 
   const [recentSales, toFulfill, inventoryRows, pendingReviews, orders, top, visits] = await Promise.all([
     db.order.findMany({ where: { createdAt: { gte: since }, status: { notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED] } }, select: { grandTotal: true, createdAt: true, paymentTransactions: { select: { status: true, amount: true } } } }),
