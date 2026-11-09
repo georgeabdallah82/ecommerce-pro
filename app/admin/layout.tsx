@@ -42,6 +42,7 @@ const groups: AdminSidebarGroup[] = [
   ]},
   { id: 'customers', label: 'Customers', items: [
     { href: '/admin/customers', label: 'Customers', permission: 'customers.view', icon: 'customers' },
+    { href: '/admin/wholesale', label: 'Wholesale inquiries', permission: 'customers.view', icon: 'customers' },
     { href: '/admin/customer-segments', label: 'Segments', permission: 'customerSegments.view', icon: 'segments' },
     { href: '/admin/gift-cards', label: 'Gift cards', permission: 'giftCards.view', icon: 'giftCards' },
   ]},
@@ -71,6 +72,7 @@ const groups: AdminSidebarGroup[] = [
   { id: 'analytics', label: 'Analytics', items: [
     { href: '/admin/reports', label: 'Analytics & reports', permission: 'reports.view', icon: 'analytics' },
     { href: '/admin/live-visitors', label: 'Live visitors', permission: 'reports.view', icon: 'liveVisitors' },
+    { href: '/admin/searches', label: 'Searches', permission: 'reports.view', icon: 'analytics' },
   ]},
   { id: 'settings', label: 'Settings', items: [
     { href: '/admin/shipping', label: 'Shipping', permission: 'shipping.view', icon: 'shipping' },

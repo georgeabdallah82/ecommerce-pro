@@ -222,6 +222,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     // From the settings this request already loaded (getThemeState reads them) -- no extra query.
     returnsEnabled: (await getStorefrontSettings()).get('returns.enabled') !== 'false',
     shortDescription: product.shortDescription,
+    sizeGuide: product.sizeGuide,
     brand: product.brand,
     vendor: product.vendor,
     productType: product.productType,

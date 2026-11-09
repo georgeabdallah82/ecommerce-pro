@@ -14,7 +14,7 @@ type ImageItem = { id?: string; url: string; alt?: string | null }
 type Variant = { id?: string; name: string; sku: string; barcode?: string | null; optionJson: string; price?: number | null; compareAtPrice?: number | null; quantity?: number; lowStockThreshold?: number; locationId?: string | null; weight?: number | null; weightUnit?: string | null; inventory?: any[] }
 type StoreLocationOption = { id: string; name: string; isDefault?: boolean }
 type Product = {
-  id?: string; name: string; slug: string; description?: string | null; shortDescription?: string | null
+  id?: string; name: string; slug: string; description?: string | null; shortDescription?: string | null; sizeGuide?: string | null
   brand?: string | null; vendor?: string | null; productType?: string | null
   basePrice: number; compareAtPrice?: number | null; costPrice?: number | null
   sku: string; barcode?: string | null; status: string; featured: boolean
@@ -248,6 +248,7 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
           <Card title="Title & description" sub="Storefront-facing product content">
             <Field label="Title"><input className={ui.input} value={product.name} onChange={e => update({ name: e.target.value })} /></Field>
             <Field label="Short description"><textarea className={ui.textarea} rows={4} value={product.shortDescription || ''} onChange={e => update({ shortDescription: e.target.value })} /></Field>
+            <Field label="Size guide (optional)"><textarea className={ui.textarea} rows={5} placeholder={'Size | Chest (cm) | Length (cm)\nS | 88-92 | 68\nM | 96-100 | 70'} value={product.sizeGuide || ''} onChange={e => update({ sizeGuide: e.target.value })} /><span className={ui.muted} style={{ fontSize: 12 }}>First line: the column names. Then one size per line, cells separated by |. Shown under the description.</span></Field>
             <Field label="Description"><textarea className={ui.textarea} rows={12} value={product.description || ''} onChange={e => update({ description: e.target.value })} /></Field>
           </Card>
 

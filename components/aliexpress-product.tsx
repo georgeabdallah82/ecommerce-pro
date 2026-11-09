@@ -25,6 +25,7 @@ import { FlashCountdown, LbpNote, OccasionNote, QuantityDealsBox } from '@/compo
 import { salePrice } from '@/lib/flash-sale-shared'
 import RecentlyViewedRow from '@/components/recently-viewed-row'
 import ProductQuestions from '@/components/product-questions'
+import ProductSizeGuide from './product-size-guide'
 
 type AnyMap = Record<string, any>
 
@@ -345,6 +346,7 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
 
           <div className="focalAccordions">
             {showDescription && product.descriptionHtml && <details open><summary>{t('Description')}<ChevronDown size={16} /></summary><div className="pdpRichText" dangerouslySetInnerHTML={{ __html: product.descriptionHtml }} /></details>}
+            <ProductSizeGuide text={product.sizeGuide} label={t('Size guide')} />
             <details><summary>{t('Product information')}<ChevronDown size={16} /></summary><p>{t('SKU')} {selectedVariant?.sku || product.sku || '—'}</p></details>
             {showShippingAccordion && (
               <details><summary>{t('Shipping & returns')}<ChevronDown size={16} /></summary><p>{merchantShippingText(pp.shippingText) || <ShippingNote />}</p></details>
