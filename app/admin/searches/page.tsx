@@ -33,8 +33,8 @@ export default async function Searches() {
         <h2 style={{ margin: '0 0 4px', fontSize: 16 }}>Found nothing</h2>
         <p className={ui.muted} style={{ margin: '0 0 10px', fontSize: 13 }}>Products you could add, or spellings to add to the store&apos;s word list.</p>
         {report.empty.length ? <table className={ui.table}>
-          <thead><tr><th>Search</th><th>Times</th></tr></thead>
-          <tbody>{report.empty.map(row => <tr key={row.query}><td>{row.query}</td><td>{row.searches}</td></tr>)}</tbody>
+          <thead><tr><th>Search</th><th>Times</th><th /></tr></thead>
+          <tbody>{report.empty.map(row => <tr key={row.query}><td>{row.query}</td><td>{row.searches}</td><td><a href={`/admin/settings?addWord=${encodeURIComponent(row.query)}`}>Add a search word</a></td></tr>)}</tbody>
         </table> : <p className={ui.muted}>Every search found something.</p>}
       </section>
     </div>

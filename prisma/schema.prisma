@@ -987,6 +987,9 @@ model WholesaleInquiry {
   city         String?
   interest     String?
   message      String?
+  // NEW until someone handles it: CONTACTED, WON or NOT_A_FIT (Admin > Customers > Wholesale inquiries).
+  status       String   @default("NEW")
+  handledAt    DateTime?
   createdAt    DateTime @default(now())
 
   @@index([createdAt])
