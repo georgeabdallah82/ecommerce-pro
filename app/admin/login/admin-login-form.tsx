@@ -94,7 +94,7 @@ export default function AdminLoginForm({ brand }: { brand?: AdminLoginBrand }) {
     <section className="adminLoginShell">
       <aside className="adminLoginBrand">
         <div style={{ position: 'relative' }}>
-          {brand?.logoDarkUrl ? <img className="adminLoginLogo" src={brand.logoDarkUrl} alt={name} /> : <span className="adminLoginName">{name}</span>}
+          {brand?.logoUrl ? <img className="adminLoginLogo" src={brand.logoUrl} alt={name} /> : <span className="adminLoginName">{name}</span>}
           <h2>Your store,<br /><em>in control.</em></h2>
           <p>Orders, products, customers and your storefront, all in one place.</p>
         </div>
