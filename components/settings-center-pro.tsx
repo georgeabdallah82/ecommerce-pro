@@ -90,6 +90,7 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
     'invite.reward': map.get('invite.reward') || '5',
     'invite.rewardDays': map.get('invite.rewardDays') || '60',
     'store.address': map.get('store.address') || '',
+    'stores.list': map.get('stores.list') || '',
     'policy.returnDays': map.get('policy.returnDays') || POLICY_DEFAULTS.returnDays,
     'policy.refundTime': map.get('policy.refundTime') || POLICY_DEFAULTS.refundTime,
     'policy.damageReportHours': map.get('policy.damageReportHours') || POLICY_DEFAULTS.damageReportHours,
@@ -245,6 +246,7 @@ export default function SettingsCenterPro({ initial, metaCapiTokenSet = false, e
                   <Field label="Phone / WhatsApp" value={values['contact.phone']} onChange={v => set('contact.phone', v)} />
                 </div>
                 <Field label="Business address" value={values['store.address']} onChange={v => set('store.address', v)} />
+                <label className={ui.fieldLabel}>Pickup locations (optional)<textarea className={ui.textarea} rows={4} placeholder={'Hamra shop | Hamra St 12 | Mon-Sat 9:00-20:00 | +961 1 234 567'} value={values['stores.list'] || ''} onChange={e => set('stores.list', e.target.value)} /><span className={ui.muted} style={{ fontSize: 12 }}>One place per line: name | address | opening hours | phone. Shown on the Our stores page.</span></label>
                 <span className={ui.fieldHelp}>Shown under "Contact us" on your Privacy, Terms and Refund pages. Leave empty to show only email and WhatsApp.</span>
               </Card>
 

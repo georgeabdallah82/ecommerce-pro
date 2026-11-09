@@ -32,7 +32,7 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
     // address never moves on its own -- unless it is the "-" that non-Latin names used to get.
     const keepSlug=b.slug!==undefined&&String(b.slug)===existing.slug&&slugify(existing.slug)!==''
     const slug=b.slug===undefined?undefined:keepSlug?existing.slug:(slugify(String(b.slug||''))||slugify(String(b.name||existing.name))||`product-${Date.now().toString(36)}`)
-    const data:any={};const textFields=['name','brand','vendor','productType','description','shortDescription','seoTitle','seoDescription','seoImageUrl','weightUnit','productTemplate','salesChannelsJson']
+    const data:any={};const textFields=['name','brand','vendor','productType','description','shortDescription','sizeGuide','seoTitle','seoDescription','seoImageUrl','weightUnit','productTemplate','salesChannelsJson']
     for(const k of textFields)if(b[k]!==undefined)data[k]=b[k]===null?'':String(b[k])
     if(b.slug!==undefined)data.slug=slug
     for(const k of ['basePrice','compareAtPrice','costPrice'])if(b[k]!==undefined)data[k]=b[k]===null||b[k]===''?null:Math.max(0,Math.trunc(Number(b[k])))

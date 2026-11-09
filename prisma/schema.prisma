@@ -166,6 +166,8 @@ model Product {
   name               String
   slug               String               @unique
   description        String?
+  // Size guide (components/product-size-guide.tsx): one size per line, cells separated by "|".
+  sizeGuide          String?
   shortDescription   String?
   brand              String?
   vendor             String?
@@ -963,4 +965,29 @@ model Expense {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   @@index([startsOn])
+}
+
+// What shoppers search for on the shop, and how many products matched (Admin > Analytics > Searches).
+model SearchQuery {
+  id        String   @id @default(cuid())
+  query     String
+  results   Int
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// A wholesale or bulk-order inquiry from the /wholesale form (Admin > Customers > Wholesale inquiries).
+model WholesaleInquiry {
+  id           String   @id @default(cuid())
+  businessName String
+  contactName  String
+  email        String
+  phone        String
+  city         String?
+  interest     String?
+  message      String?
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
 }

@@ -29,7 +29,7 @@ const SOCIAL_LINKS: Array<{ key: string; label: string; Icon: () => React.JSX.El
 ]
 
 const FOOTER_LINK_GROUPS = [
-  { title: markT('Shop'), links: [{ href: '/shop', label: markT('All products') }, { href: '/collections', label: markT('Collections') }, { href: '/wishlist', label: markT('Wishlist') }] },
+  { title: markT('Shop'), links: [{ href: '/shop', label: markT('All products') }, { href: '/collections', label: markT('Collections') }, { href: '/wishlist', label: markT('Wishlist') }, { href: '/wholesale', label: markT('Wholesale & bulk orders') }, { href: '/stores', label: markT('Our stores') }] },
   { title: markT('Account'), links: [{ href: '/account', label: markT('My account') }, { href: '/orders/lookup', label: markT('Track your order') }, { href: '/cart', label: markT('Cart') }] },
   { title: markT('Legal'), links: [{ href: '/privacy-policy', label: markT('Privacy Policy') }, { href: '/terms-of-service', label: markT('Terms of Service') }, { href: '/refund-policy', label: markT('Refund Policy') }] },
 ]

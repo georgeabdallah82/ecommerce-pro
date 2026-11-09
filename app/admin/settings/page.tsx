@@ -12,6 +12,7 @@ const CLIENT_SETTING_KEYS = new Set([
   'contact.email',
   'contact.phone',
   'store.address',
+  'stores.list',
   'policy.returnDays',
   'policy.refundTime',
   'policy.damageReportHours',

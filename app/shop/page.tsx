@@ -12,6 +12,7 @@ import { getSiteSeo, metaText, shareMeta } from '@/lib/seo'
 import type { Metadata } from 'next'
 import { themeTemplates } from '@/lib/theme-templates'
 import {storefrontCached} from '@/lib/storefront-cache'
+import { recordSearch } from '@/lib/search-analytics'
 
 export const dynamic='force-dynamic'
 export const revalidate=0
@@ -53,6 +54,8 @@ export default async function Shop({searchParams}:{searchParams:Promise<{q?:stri
   // Search forgives typos, Arabic spellings and the store's word list (lib/smart-search.ts); the
   // results keep their best-match order unless the shopper picks another sort.
   const searchIds=q?await searchProductIds(q):[]
+  // What shoppers search for (Admin > Analytics > Searches); later pages of the same search are not counted again.
+  if(q&&(!sp.page||sp.page==='1'))recordSearch(q,searchIds.length)
   // No match at all: the closest spelling the catalogue knows ("Did you mean").
   const suggestion=q&&!searchIds.length?await spellingSuggestionFor(q).catch(()=>null):null
   // ?sale=flash: the products in a running flash sale (Admin > Discounts > Flash sale).
