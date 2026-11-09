@@ -4,6 +4,7 @@ import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { isAllowedSenderAddress, senderDomain } from '@/lib/email'
+import { sealSecret } from '@/lib/two-step'
 
 // push.subscription.*: staff phone notification devices. security.devices.*: the browsers each
 // account signed in from (lib/sign-in-alerts.ts); nobody can add one here to dodge the alert.
@@ -12,6 +13,8 @@ const PRIVATE_PREFIXES = ['push.subscription.', 'security.devices.', 'payment.ar
 function isPrivateKey(key: string) { return PRIVATE_PREFIXES.some(prefix => key.startsWith(prefix)) }
 // Write-only secrets: saved through this route but never sent back to the browser.
 const SECRET_KEYS = new Set(['tracking.metaCapiToken'])
+// Secrets are kept sealed (encrypted with a key derived from AUTH_SECRET, lib/two-step.ts); read back by openSecret.
+async function storedValue(key:string, value:string){ return SECRET_KEYS.has(key) && value ? sealSecret(value) : value }
 const masked = <T extends { key: string; value: string }>(row: T) => SECRET_KEYS.has(row.key) ? { ...row, value: row.value ? '********' : '' } : row
 
 export async function GET(){

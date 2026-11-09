@@ -15,6 +15,7 @@ import { sendDailySummaryPush } from '@/lib/push'
 import { armOrderWatch } from '@/lib/order-watch-storage'
 import { pruneVisitorData } from '@/lib/visitors'
 import { pruneSearchData } from '@/lib/search-analytics'
+import { sealPlainSecrets } from '@/lib/secret-settings'
 import { REVIEW_REQUESTS_PER_DAY, REVIEW_REQUEST_MARK, dailySummaryMessage, dayLabel, reviewRequestWindow, storeDayKey, yesterdayKey } from '@/lib/daily-summary'
 import { loadDatabaseHoursAdvice } from '@/lib/database-hours-server'
 
@@ -147,8 +148,9 @@ export async function POST(req: Request) {
   const summary = await sendSummary(now, reviewEmails.sent).catch(error => { console.error('[daily] summary failed', error); return { sent: false, pushed: 0, note: 'Error' } })
   const weekly = await sendWeeklyReport(now).catch(error => { console.error('[daily] weekly report failed', error); return { sent: false, note: 'Error' } })
   const visitors = await pruneVisitorData(now).catch(error => { console.error('[daily] visitor cleanup failed', error); return { sessions: -1, views: -1 } })
+  const sealedSecrets = await sealPlainSecrets().catch(error => { console.error('[daily] sealing secrets failed', error); return -1 })
   const searches = await pruneSearchData(now).catch(error => { console.error('[daily] search cleanup failed', error); return -1 })
   const waiting = await rearmOrderWatch().catch(error => { console.error('[daily] order watch failed', error); return -1 })
-  console.log('[daily] done', { reviewEmails, summary, weekly, waiting, visitors, searches })
+  console.log('[daily] done', { reviewEmails, summary, weekly, waiting, visitors, searches, sealedSecrets })
   return json({ reviewEmails, summary, weekly, waiting }, { headers: NO_STORE })
 }

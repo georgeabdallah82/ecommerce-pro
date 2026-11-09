@@ -996,4 +996,13 @@ export const AR: Record<string, string> = {
   "For example: soap, towels, 50 boxes a month": "مثلًا: صابون، فوط، 50 علبة في الشهر",
   "Anything else we should know?": "هل هناك شيء آخر يجب أن نعرفه؟",
   "Send request": "أرسل الطلب",
+  "That link has expired or was already used. Send a new one below.": "انتهت صلاحية الرابط أو سبق استخدامه. أرسل رابطًا جديدًا أدناه.",
+  "Confirm your email first. Open the link we sent you, or send it again below.": "أكّد بريدك الإلكتروني أولًا. افتح الرابط الذي أرسلناه إليك، أو أرسله مرة أخرى أدناه.",
+  "Too many attempts. Please wait a little and try again.": "محاولات كثيرة. يرجى الانتظار قليلًا ثم المحاولة مرة أخرى.",
+  "Check your email": "تحقق من بريدك الإلكتروني",
+  "We sent a link to confirm your address. Open it to finish creating your account. It works for 48 hours.": "أرسلنا إليك رابطًا لتأكيد عنوانك. افتحه لإتمام إنشاء حسابك. الرابط صالح لمدة 48 ساعة.",
+  "Already confirmed?": "تم التأكيد من قبل؟",
+  "Unable to send the link. Please try again.": "تعذّر إرسال الرابط. يرجى المحاولة مرة أخرى.",
+  "If that account is waiting for confirmation, we have sent the link again.": "إذا كان الحساب بانتظار التأكيد، فقد أرسلنا الرابط مرة أخرى.",
+  "Send the link again": "أرسل الرابط مرة أخرى",
 }

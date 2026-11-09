@@ -116,6 +116,7 @@ model User {
   orderNotes       OrderNote[]
   notifications    Notification[]
   passwordResetTokens PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
   walletTransactions WalletTransaction[]
   coinTransactions CoinTransaction[]
 }
@@ -712,6 +713,18 @@ model Redirect {
   updatedAt  DateTime @updatedAt
 }
 
+// Confirms a new customer's email address (lib/email-verification.ts). One live link per account.
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@index([expiresAt])
+}
+
 model PasswordResetToken {
   id        String   @id @default(cuid())
   userId    String
@@ -945,6 +958,8 @@ model Driver {
   name      String
   phone     String?
   token     String   @unique
+  // The link stops working after this (lib/drivers.ts): a new link resets it, and the admin can make one any time.
+  tokenExpiresAt DateTime?
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
