@@ -10,7 +10,8 @@ export async function getLoginBrand(): Promise<AdminLoginBrand | undefined> {
   const vars: Record<string, string> = {}
   if (light['--admin-accent']) vars['--login-accent'] = light['--admin-accent']
   if (light['--admin-accent-ink']) vars['--login-accent-ink'] = light['--admin-accent-ink']
-  if (light['--admin-sidebar-bg']) vars['--login-panel'] = light['--admin-sidebar-bg']
+  // The brand panel is always dark, so it takes the store's dark ink (the sidebar is light now).
+  if (light['--admin-ink']) vars['--login-panel'] = light['--admin-ink']
   if (light['--admin-bg']) vars['--login-bg'] = light['--admin-bg']
   return { name: theme.brandName || 'Control Center', logoUrl: theme.logoUrl || undefined, logoDarkUrl: theme.logoUrlDark || undefined, vars }
 }

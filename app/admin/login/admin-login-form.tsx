@@ -1,7 +1,7 @@
 'use client'
 
 import { FormEvent, useState } from 'react'
-import { ArrowRight, Eye, EyeOff } from 'lucide-react'
+import { ArrowRight, Eye, EyeOff, Palette, ShieldCheck, ShoppingBag } from 'lucide-react'
 import { QrCode } from '@/components/two-step-card'
 
 export type AdminLoginBrand = { name: string; logoUrl?: string; logoDarkUrl?: string; vars?: Record<string, string> }
@@ -78,7 +78,7 @@ export default function AdminLoginForm({ brand }: { brand?: AdminLoginBrand }) {
       .adminLoginLogo{height:34px;width:auto;max-width:220px;object-fit:contain;display:block}.adminLoginName{font-size:20px;font-weight:900;letter-spacing:-.03em}
       .adminLoginBrand h2{position:relative;margin:56px 0 12px;font-size:42px;line-height:1.04;letter-spacing:-.05em;color:#fff}.adminLoginBrand h2 em{font-style:normal;color:var(--accent)}
       .adminLoginBrand p{position:relative;max-width:330px;margin:0;color:rgba(255,255,255,.68);font-size:14px;line-height:1.7}
-      .adminLoginFacts{position:relative;display:grid;gap:11px}.adminLoginFact{display:flex;align-items:center;gap:10px;color:rgba(255,255,255,.8);font-size:12px}.adminLoginFact span{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 25%,transparent)}
+      .adminLoginFacts{position:relative;display:grid;gap:11px}.adminLoginFact{display:flex;align-items:center;gap:10px;color:rgba(255,255,255,.88);font-size:13px;font-weight:600}.adminLoginFact svg{color:var(--accent);flex:none}.adminLoginFact span{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 25%,transparent)}
       .adminLoginForm{padding:52px 42px;display:flex;flex-direction:column;justify-content:center}.adminLoginMobileLogo{display:none;margin-bottom:26px}
       .adminLoginEyebrow{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:900;color:#746b64}.adminLoginForm h1{margin:8px 0 6px;font-size:30px;letter-spacing:-.04em;color:#191512}.adminLoginForm>p{margin:0;color:#746b64;font-size:13px;line-height:1.55}
       .adminLoginFields{display:grid;gap:16px;margin-top:28px}.adminLoginLabel{display:grid;gap:7px;font-size:11.5px;font-weight:800;color:#3d3833}.adminLoginInputWrap{position:relative}
@@ -94,11 +94,15 @@ export default function AdminLoginForm({ brand }: { brand?: AdminLoginBrand }) {
     <section className="adminLoginShell">
       <aside className="adminLoginBrand">
         <div style={{ position: 'relative' }}>
-          {brand?.logoUrl ? <img className="adminLoginLogo" src={brand.logoUrl} alt={name} /> : <span className="adminLoginName">{name}</span>}
+          {brand?.logoDarkUrl ? <img className="adminLoginLogo" src={brand.logoDarkUrl} alt={name} /> : <span className="adminLoginName">{name}</span>}
           <h2>Your store,<br /><em>in control.</em></h2>
           <p>Orders, products, customers and your storefront, all in one place.</p>
         </div>
-        <div className="adminLoginFacts"><div className="adminLoginFact"><span />Live orders and sales</div><div className="adminLoginFact"><span />Theme studio for your storefront</div><div className="adminLoginFact"><span />Staff roles and activity log</div></div>
+        <div className="adminLoginFacts">
+          <div className="adminLoginFact"><ShoppingBag size={16} aria-hidden="true" />Live orders and sales</div>
+          <div className="adminLoginFact"><Palette size={16} aria-hidden="true" />Theme studio for your storefront</div>
+          <div className="adminLoginFact"><ShieldCheck size={16} aria-hidden="true" />Staff roles and activity log</div>
+        </div>
       </aside>
       {enrollStep ? <form onSubmit={submitEnroll} className="adminLoginForm">
         <div className="adminLoginMobileLogo">{brand?.logoUrl ? <img className="adminLoginLogo" src={brand.logoUrl} alt={name} /> : <span className="adminLoginName" style={{ color: '#191512' }}>{name}</span>}</div>
