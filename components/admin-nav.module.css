@@ -85,6 +85,7 @@
 .sidebarItemActive .navBadge { background: var(--admin-accent-ink); color: var(--admin-accent); }
 
 .userCard { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 10px; border-radius: 12px; background: var(--admin-sidebar-hover); flex: 0 0 auto; }
+.avatarImg { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
 .userAvatar { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--admin-accent); color: var(--admin-accent-ink); font-size: 12px; font-weight: 900; flex: none; }
 .userText { display: grid; min-width: 0; flex: 1 1 auto; }
 .userText strong { color: var(--admin-sidebar-ink); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

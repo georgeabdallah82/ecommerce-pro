@@ -87,6 +87,8 @@ model User {
   email            String          @unique
   passwordHash     String
   phone            String?
+  // Profile photo for staff (Admin > My profile): a media address, shown in the admin top bar.
+  avatarUrl        String?
   role             Role            @default(CUSTOMER)
   isActive         Boolean         @default(true)
   emailVerifiedAt  DateTime?

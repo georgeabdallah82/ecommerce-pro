@@ -94,6 +94,22 @@ export async function saveReviewPhoto(bytes: Uint8Array, contentType: 'image/jpe
   return `/uploads/${key}`
 }
 
+// A staff member's profile photo (Admin > My profile). Stored under a random name, like review photos.
+export async function saveAvatarPhoto(bytes: Uint8Array, contentType: 'image/jpeg' | 'image/png' | 'image/webp') {
+  const ext = contentType === 'image/png' ? 'png' : contentType === 'image/webp' ? 'webp' : 'jpg'
+  const key = `avatar-${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`
+  const bucket = await getMediaBucket()
+  if (bucket) {
+    await bucket.put(key, bytes, { httpMetadata: { contentType } })
+    return `/api/media/${key}`
+  }
+  if (process.env.NODE_ENV === 'production') throw new Error('File uploads are not configured for this deployment.')
+  const dir = path.join(process.cwd(), 'public', 'uploads')
+  await mkdir(dir, { recursive: true })
+  await writeFile(path.join(dir, key), bytes)
+  return `/uploads/${key}`
+}
+
 // Removes a review photo the owner took off a review (Admin > Reviews).
 export async function deleteReviewPhoto(url: string) {
   const key = reviewPhotoKey(url)

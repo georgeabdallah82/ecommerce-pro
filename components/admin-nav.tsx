@@ -13,7 +13,7 @@ import Link from '@/components/admin-link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Activity, ArrowLeftRight, ChevronDown, Rocket, Star, BarChart3, Boxes, ClipboardList, CreditCard, FileEdit, FileText, Gauge, Image as ImageIcon, Layers3, LayoutDashboard, LogOut, Mail, Megaphone, Menu, MessageSquare, PackageCheck, Palette, Percent, Radio, RotateCcw, Search, Settings2, ShoppingBag, MoreHorizontal, Store, Tag, Truck, UserCog, Users, UsersRound, Workflow, X, PackagePlus, MessageCircleQuestion, HeartHandshake, UserPlus, PackageSearch, ScanBarcode, Barcode, BadgeDollarSign, Contact, CalendarHeart, type LucideIcon, Gift, ChevronLeft } from 'lucide-react'
+import { Activity, ArrowLeftRight, ChevronDown, Rocket, Star, BarChart3, Boxes, ClipboardList, CreditCard, FileEdit, FileText, Gauge, Image as ImageIcon, Layers3, LayoutDashboard, LogOut, Mail, Megaphone, Menu, MessageSquare, PackageCheck, Palette, Percent, Radio, RotateCcw, Search, Settings2, ShoppingBag, MoreHorizontal, Store, Tag, Truck, UserCog, Users, UsersRound, Workflow, X, PackagePlus, MessageCircleQuestion, HeartHandshake, UserPlus, PackageSearch, ScanBarcode, Barcode, BadgeDollarSign, Contact, CalendarHeart, type LucideIcon, Gift, ChevronLeft, UserRound } from 'lucide-react'
 import AdminThemeToggle from '@/components/admin-theme-toggle'
 import OrderAlerts from '@/components/order-alerts'
 import type { Permission } from '@/lib/permissions'
@@ -118,8 +118,8 @@ const TAB_HREFS = [
 ]
 
 export default function AdminNav({
-  groups, name, email, role, vapidPublicKey, brand: storeBrand, ordersToFulfill = 0, banner, children,
-}: { groups: AdminSidebarGroup[]; name: string | null; email: string; role?: string; vapidPublicKey?: string; brand?: AdminBrand; ordersToFulfill?: number; banner?: React.ReactNode; children: React.ReactNode }) {
+  groups, name, email, role, avatarUrl, vapidPublicKey, brand: storeBrand, ordersToFulfill = 0, banner, children,
+}: { groups: AdminSidebarGroup[]; name: string | null; email: string; role?: string; avatarUrl?: string | null; vapidPublicKey?: string; brand?: AdminBrand; ordersToFulfill?: number; banner?: React.ReactNode; children: React.ReactNode }) {
   const pathname = usePathname()
   const [mounted, setMounted] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
@@ -219,7 +219,7 @@ export default function AdminNav({
   const accountMenu = (
     <div className={styles.account} ref={accountRef}>
       <button type="button" className={styles.accountBtn} onClick={() => setAccountOpen(value => !value)} aria-expanded={accountOpen} aria-haspopup="menu" aria-label="Account menu">
-        <span className={styles.avatar}>{initials}</span>
+        <span className={styles.avatar}>{avatarUrl ? <img className={styles.avatarImg} src={avatarUrl} alt="" /> : initials}</span>
       </button>
       {accountOpen && (
         <div className={styles.accountPanel} role="menu">
@@ -229,6 +229,7 @@ export default function AdminNav({
             {role && <span className={styles.rolePill}>{role}</span>}
           </div>
           <div className={styles.accountThemeRow}><AdminThemeToggle /></div>
+          <Link href="/admin/profile" className={styles.accountItem} role="menuitem"><UserRound size={15} aria-hidden="true" /> My profile</Link>
           <Link href="/" className={styles.accountItem} role="menuitem"><Store size={15} aria-hidden="true" /> View storefront</Link>
           <form action="/api/auth/logout" method="post">
             <button className={styles.accountItem} type="submit" role="menuitem"><LogOut size={15} aria-hidden="true" /> Sign out</button>
@@ -248,7 +249,7 @@ export default function AdminNav({
             <NavGroups groups={groups} pathname={pathname} badges={{ '/admin/orders': badge }} />
           </nav>
           <div className={styles.userCard}>
-            <span className={styles.userAvatar}>{initials}</span>
+            <span className={styles.userAvatar}>{avatarUrl ? <img className={styles.avatarImg} src={avatarUrl} alt="" /> : initials}</span>
             <span className={styles.userText}><strong>{name || 'Administrator'}</strong><small>{role || email}</small></span>
             <form action="/api/auth/logout" method="post">
               <button className={styles.userSignOut} type="submit" aria-label="Sign out" title="Sign out"><LogOut size={15} aria-hidden="true" /></button>
