@@ -412,6 +412,8 @@ html body.mk .aliTrustItem span { font-size: 12.5px !important; color: var(--mk-
    "Need help" band above it in brand red. */
 html body.mk .focalFooterHelp { background: var(--mk-red) !important; }
 html body.mk .focalFooterWhatsapp { color: var(--mk-red) !important; }
+/* The footer is dark: its muted text is light (the shop's muted colour is for light backgrounds). */
+html body.mk .focalFooter a, html body.mk .focalFooter p, html body.mk .focalFooter .muted, html body.mk .focalFooter span { color: #cfc8bf !important; }
 html body.mk .focalFooter { background: #151515 !important; color: rgba(255,255,255,.88) !important; margin-top: 32px !important; }
 html body.mk .focalFooterHelp + .focalFooter { margin-top: 0 !important; }
 html body.mk .focalFooter strong { color: #fff !important; }
@@ -461,7 +463,7 @@ html body.mk .aliCartRow.unselected { opacity: .7; }
   .aliShopSidebar { gap: 10px !important; }
   .aliShopSidebar > .aliShopCollections { flex: 1 1 100% !important; min-width: 0 !important; }
   .aliShopCollections h3 { display: none; }
-  .aliShopCollections .aliCategoryList { flex-wrap: nowrap !important; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  .aliShopCollections .aliCategoryList { flex-wrap: nowrap !important; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); }
   .aliShopCollections .aliCategoryList::-webkit-scrollbar { display: none; }
   .aliShopCollections .aliCategoryList li { flex: none; }
   .aliShopCollections .aliCategoryList a { white-space: nowrap; border-radius: 999px !important; padding: 7px 14px !important; border: 1px solid var(--store-border, #e5e5e5); }

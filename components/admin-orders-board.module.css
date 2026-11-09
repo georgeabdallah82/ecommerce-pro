@@ -14,8 +14,10 @@
 .view { flex: none; display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: var(--admin-radius-pill); border: 1px solid var(--admin-border); background: var(--admin-surface); color: var(--admin-ink-soft); font: inherit; font-size: 13px; font-weight: 750; cursor: pointer; }
 .view span { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: var(--admin-border-soft); color: var(--admin-muted); font-size: 12px; text-align: center; }
 .viewActive { border-color: var(--admin-accent); background: var(--admin-accent); color: var(--admin-accent-ink); }
-.viewActive span { background: rgba(255, 255, 255, .22); color: inherit; }
-.viewAlert:not(.viewActive) span { background: var(--admin-accent); color: var(--admin-accent-ink); }
+/* A dark tint on the active tab's accent: white count text keeps its contrast (a light tint washed it out). */
+.viewActive span { background: rgba(0, 0, 0, .2); color: inherit; }
+/* The count sits on a slightly darker tint of the accent, so the text reads on any store colour. */
+.viewAlert:not(.viewActive) span { background: color-mix(in srgb, var(--admin-accent) 80%, #000); color: var(--admin-accent-ink); }
 
 .search { display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 0 14px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); background: var(--admin-surface); color: var(--admin-muted); }
 .search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--admin-ink); font: inherit; font-size: 15px; }

@@ -4000,3 +4000,6 @@ a.aliSpecListItem:hover{opacity:.8}
 
 /* Present for screen readers and search engines, not drawn on screen. */
 .srOnly{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* The footer is dark in every theme: its links and muted text need light colours (the muted colour is for light backgrounds). */
+.focalFooter a,.focalFooter p,.focalFooter .muted,.focalFooter span{color:#cfc8bf!important}
