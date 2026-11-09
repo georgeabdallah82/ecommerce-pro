@@ -144,7 +144,6 @@ export type TodayReport = {
   topPages: Array<{ path: string; title: string; views: number }>
   sources: Array<CountRow & { label: string; percent: number }>
   devices: Array<CountRow & { percent: number }>
-  places: Array<CountRow & { percent: number }>
   truncated: boolean
 }
 
@@ -157,7 +156,7 @@ export async function todayReport(now = new Date()): Promise<TodayReport> {
     db.visitorPageView.count({ where: { at: { gte: dayStart } } }),
     db.visitorSession.findMany({
       where: { startedAt: { gte: dayStart } },
-      select: { startedAt: true, reached: true, cameBefore: true, source: true, referrerHost: true, device: true, country: true, city: true },
+      select: { startedAt: true, reached: true, cameBefore: true, source: true, referrerHost: true, device: true },
       orderBy: { startedAt: 'desc' },
       take: MAX_TODAY_ROWS,
     }),
@@ -186,7 +185,6 @@ export async function todayReport(now = new Date()): Promise<TodayReport> {
     topPages: topPaths.map(p => ({ path: p.path, title: nameOf(p.path), views: p._count.path })),
     sources: sourceRows.map(r => ({ ...r, label: r.key.startsWith('other:') ? r.key.slice(6) : sourceLabel(r.key), percent: percent(r.count, total) })),
     devices: topCounts(sessions.map(s => s.device), 3, 'unknown').map(r => ({ ...r, percent: percent(r.count, total) })),
-    places: topCounts(sessions.map(s => placeOf(s)), 6, 'Location unknown').map(r => ({ ...r, percent: percent(r.count, total) })),
     truncated: visitorCount > MAX_TODAY_ROWS,
   }
 }

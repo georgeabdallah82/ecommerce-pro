@@ -2,20 +2,22 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
-import { Pause, Play, RefreshCw, ShoppingCart, Users, CreditCard, Receipt, Smartphone, Monitor, Tablet, UserRound, Repeat } from 'lucide-react'
+import Link from 'next/link'
+import { RefreshCw, ShoppingCart, Users, CreditCard, Smartphone, Monitor, Tablet, UserRound } from 'lucide-react'
 import type { LiveReport, OnlineRow, TodayReport } from '@/lib/visitor-report'
-import { STAGES, STAGE_LABELS, type Stage } from '@/lib/visitor-tracking'
+import { STAGE_LABELS, type Stage } from '@/lib/visitor-tracking'
 import s from './visitors-live.module.css'
 
 // Leaflet reads `window` as soon as it is imported: load the map only in the browser.
 const VisitorsMap = dynamic(() => import('./visitors-map'), { ssr: false, loading: () => <div className={s.mapLoading}>Loading the map…</div> })
 
 // Admin > Live visitors. Numbers come from lib/visitor-report.ts through /api/admin/visitors. The
-// "online now" part refreshes often and the day's summary less often, only while this page is on
-// screen (a page left open in a background tab must not keep the database awake).
+// "online now" part refreshes every 10 seconds and the day's summary every minute, only while this
+// page is visible (a page left open in a background tab must not keep the database awake).
 
 const LIVE_EVERY_MS = 10_000
 const TODAY_EVERY_MS = 60_000
+const SHOW_FIRST = 20
 const FILTERS: Array<'all' | Stage> = ['all', 'browsing', 'product', 'cart', 'checkout', 'ordered']
 
 function money(cents: number, currency: string) {
@@ -61,7 +63,6 @@ function VisitorCard({ v, currency }: { v: OnlineRow; currency: string }) {
       <span>{v.onSite} on the store · {plural(v.pageViews, 'page')}</span>
       {v.cartItems > 0 ? <span className={s.cartBadge}><ShoppingCart size={13} aria-hidden="true" />{plural(v.cartItems, 'item')} · {money(v.cartValue, currency)}</span> : null}
       {v.name ? <span className={s.badge}><UserRound size={13} aria-hidden="true" />{v.name}</span> : null}
-      <span className={s.badge}>{v.cameBefore ? <><Repeat size={13} aria-hidden="true" />Came before</> : 'New visitor'}</span>
     </div>
   </li>
 }
@@ -70,7 +71,6 @@ export default function VisitorsLive({ initialLive, initialToday }: { initialLiv
   const [live, setLive] = useState(initialLive)
   const [today, setToday] = useState(initialToday)
   const [filter, setFilter] = useState<'all' | Stage>('all')
-  const [paused, setPaused] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [now, setNow] = useState(() => Date.now())
@@ -98,16 +98,15 @@ export default function VisitorsLive({ initialLive, initialToday }: { initialLiv
     }
   }, [load])
 
-  // Refresh only while this page is on screen and not paused.
+  // Refresh while the page is visible; the day's summary only once a minute.
   useEffect(() => {
-    if (paused) return
     const tick = () => { if (document.visibilityState === 'visible') refresh(false) }
     const timer = window.setInterval(tick, LIVE_EVERY_MS)
-    const onVisibility = () => { if (document.visibilityState === 'visible') refresh(false) }
-    document.addEventListener('visibilitychange', onVisibility)
-    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisibility) }
-  }, [paused, refresh])
-  // "Updated 5 s ago" keeps counting.
+    document.addEventListener('visibilitychange', tick)
+    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', tick) }
+  }, [refresh])
+
+  // "Updated 5 s ago" keeps counting between refreshes.
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(timer)
@@ -115,54 +114,27 @@ export default function VisitorsLive({ initialLive, initialToday }: { initialLiv
 
   const ageSeconds = Math.max(0, Math.round((now - new Date(live.generatedAt).getTime()) / 1000))
   const shown = useMemo(() => (filter === 'all' ? live.visitors : live.visitors.filter(v => v.stage === filter)), [live.visitors, filter])
-  const visible = showAll ? shown : shown.slice(0, 20)
+  const visible = showAll ? shown : shown.slice(0, SHOW_FIRST)
   const peak = Math.max(1, ...today.hourly)
   const peakHour = today.hourly.indexOf(Math.max(...today.hourly))
-  const stages = STAGES.filter(stage => stage !== 'ordered')
   const nowHour = new Date(now).toLocaleString('en-GB', { timeZone: today.timezone, hour: '2-digit', hourCycle: 'h23' })
 
   return <div className={s.page}>
     <div className={s.head}>
       <div>
-        <div className={s.kicker}><span className={`${s.dot} ${paused ? s.dotOff : ''}`} aria-hidden="true" />{paused ? 'Paused' : 'Live'}</div>
+        <div className={s.kicker}><span className={s.dot} aria-hidden="true" />Live</div>
         <p className={s.updated} role="status">{error ? <span className={s.err}>{error}. Showing the last numbers.</span> : `Updated ${ageSeconds < 5 ? 'just now' : `${ageSeconds} s ago`}`}</p>
       </div>
-      <div className={s.actions}>
-        <button type="button" className={s.btn} onClick={() => setPaused(p => !p)} aria-pressed={paused}>{paused ? <Play size={15} aria-hidden="true" /> : <Pause size={15} aria-hidden="true" />}{paused ? 'Resume' : 'Pause'}</button>
-        <button type="button" className={s.btn} onClick={() => refresh(true)} disabled={busy}><RefreshCw size={15} aria-hidden="true" />Refresh</button>
-      </div>
+      <button type="button" className={s.btn} onClick={() => refresh(true)} disabled={busy}><RefreshCw size={15} aria-hidden="true" />Refresh</button>
     </div>
-
-    <div className={s.kpis}>
-      <Kpi icon={<Users size={18} />} label="Online now" value={live.online} hint={live.online === 0 ? 'Nobody on the store right now' : `${plural(live.byStage.browsing + live.byStage.product, 'person', 'people')} looking around`} />
-      <Kpi icon={<ShoppingCart size={18} />} label="With items in the cart" value={live.withCart} hint={live.withCart ? `${money(live.cartValue, live.currency)} waiting` : 'No open carts'} />
-      <Kpi icon={<CreditCard size={18} />} label="Checking out" value={live.byStage.checkout} hint={live.byStage.checkout ? 'About to order' : 'Nobody at checkout'} />
-      <Kpi icon={<Receipt size={18} />} label="Orders today" value={today.ordersToday} hint={`${money(today.salesToday, today.currency)} · ${today.conversionPercent}% of visitors ordered`} />
-    </div>
-
-    <section className={s.panel} aria-labelledby="vl-now">
-      <h2 id="vl-now" className={s.h2}>Right now</h2>
-      <ul className={s.funnelNow}>
-        {stages.map(stage => <li key={stage}>
-          <button type="button" className={`${s.stageBtn} ${filter === stage ? s.stageOn : ''}`} aria-pressed={filter === stage} onClick={() => setFilter(f => (f === stage ? 'all' : stage))}>
-            <span>{STAGE_LABELS[stage]}</span><b>{live.byStage[stage]}</b>
-            <i aria-hidden="true"><u style={{ width: `${live.online ? Math.round((live.byStage[stage] / live.online) * 100) : 0}%` }} /></i>
-          </button>
-        </li>)}
-      </ul>
-    </section>
-
-    <section className={s.panel} aria-labelledby="vl-map">
-      <h2 id="vl-map" className={s.h2}>Where they are</h2>
-      <VisitorsMap visitors={live.visitors} pins={live.pins} currency={live.currency} />
-      <ul className={s.legend}>
-        <li><i className={s.legendDot} aria-hidden="true" /><span>Visitors online now: <b>approximate</b> place (about 10 km, from their internet connection), not a street.</span></li>
-        <li><i className={s.legendPin} aria-hidden="true" /><span>Exact spot shared at checkout by someone who has not ordered yet.</span></li>
-      </ul>
-      {live.pins.length ? <ul className={s.pinList}>{live.pins.map(p => <li key={p.id}><span><b>{p.name}</b> · {p.place}</span><span>left {p.minutesAgo < 60 ? `${p.minutesAgo} min` : `${Math.round(p.minutesAgo / 60)} h`} ago</span></li>)}<li><a href="/admin/orders/unfinished">Open unfinished checkouts</a></li></ul> : null}
-    </section>
 
     <section className={s.panel} aria-labelledby="vl-who">
+      <div className={s.kpis}>
+        <Kpi icon={<Users size={18} />} label="Online now" value={live.online} hint={live.online === 0 ? 'Nobody right now' : `${plural(live.byStage.browsing + live.byStage.product, 'person', 'people')} browsing`} />
+        <Kpi icon={<ShoppingCart size={18} />} label="Carts" value={live.withCart} hint={live.withCart ? money(live.cartValue, live.currency) : 'None open'} />
+        <Kpi icon={<CreditCard size={18} />} label="At checkout" value={live.byStage.checkout} hint={live.byStage.checkout ? 'About to order' : 'Nobody'} />
+      </div>
+
       <h2 id="vl-who" className={s.h2}>Who is on the store</h2>
       <div className={s.chips} role="group" aria-label="Show visitors by step">
         {FILTERS.map(f => {
@@ -177,13 +149,20 @@ export default function VisitorsLive({ initialLive, initialToday }: { initialLiv
       {shown.length > visible.length ? <button type="button" className={`${s.btn} ${s.more}`} onClick={() => setShowAll(true)}>Show all {shown.length}</button> : null}
     </section>
 
+    <section className={s.panel} aria-labelledby="vl-map">
+      <h2 id="vl-map" className={s.h2}>Where they are</h2>
+      <VisitorsMap visitors={live.visitors} pins={live.pins} currency={live.currency} />
+      <p className={s.note}>Circles show roughly where visitors are (about 10 km, from their internet connection). Red pins are exact spots shared at checkout by people who have not ordered yet.</p>
+      {live.pins.length ? <p className={s.note}><Link className={s.link} href="/admin/orders/unfinished">Open unfinished checkouts ({live.pins.length} with a shared spot)</Link></p> : null}
+    </section>
+
     <section className={s.panel} aria-labelledby="vl-today">
       <h2 id="vl-today" className={s.h2}>Today <small>(store time, since midnight)</small></h2>
       <div className={s.todayKpis}>
         <div><strong>{today.visitors}</strong><span>Visitors</span></div>
-        <div><strong>{today.pageViews}</strong><span>Pages viewed</span></div>
+        <div><strong>{today.ordersToday}</strong><span>Orders · {money(today.salesToday, today.currency)}</span></div>
         <div><strong>{today.pagesPerVisit}</strong><span>Pages per visit</span></div>
-        <div><strong>{today.returningPercent}%</strong><span>Came before</span></div>
+        <div><strong>{today.conversionPercent}%</strong><span>Of visitors ordered</span></div>
       </div>
 
       <h3 className={s.h3}>Visitors by hour</h3>
@@ -194,7 +173,7 @@ export default function VisitorsLive({ initialLive, initialToday }: { initialLiv
         </div>)}
       </div>
 
-      <h3 className={s.h3}>Visits that reached each step</h3>
+      <h3 className={s.h3}>How far visits got</h3>
       <ul className={s.bars}>{today.funnel.map(row => <Bar key={row.stage} label={row.stage === 'browsing' ? 'Visited the store' : row.stage === 'product' ? 'Looked at a product' : row.stage === 'cart' ? 'Opened the cart' : row.stage === 'checkout' ? 'Reached checkout' : 'Placed an order'} value={row.count} percent={row.ofAll} hint={row.stage !== 'browsing' && row.count ? `${row.ofPrevious}% of the step before` : undefined} />)}</ul>
 
       <div className={s.cols}>
@@ -209,10 +188,6 @@ export default function VisitorsLive({ initialLive, initialToday }: { initialLiv
         <div>
           <h3 className={s.h3}>Devices</h3>
           {today.devices.length ? <ul className={s.bars}>{today.devices.map(r => <Bar key={r.key} label={r.key === 'mobile' ? 'Phones' : r.key === 'tablet' ? 'Tablets' : r.key === 'desktop' ? 'Computers' : 'Unknown'} value={r.count} percent={r.percent} />)}</ul> : <p className={s.none}>No visits yet today.</p>}
-        </div>
-        <div>
-          <h3 className={s.h3}>Where they are</h3>
-          {today.places.length ? <ul className={s.bars}>{today.places.map(r => <Bar key={r.key} label={r.key} value={r.count} percent={r.percent} />)}</ul> : <p className={s.none}>No visits yet today.</p>}
         </div>
       </div>
       {today.truncated ? <p className={s.note}>Busy day: the lists above use the latest 5,000 visits. The totals are exact.</p> : null}
