@@ -15,11 +15,14 @@ import { problemLabel, type ProblemReason } from '@/lib/drivers-shared'
 // any time (Admin > Orders > Drivers) and a driver who is turned off can't open theirs.
 
 export const newDriverToken = () => randomBytes(24).toString('base64url')
+// A driver's link works for this long after it is made; the admin can make a new one any time.
+export const DRIVER_LINK_DAYS = 90
+export const driverLinkExpiry = (now = new Date()) => new Date(now.getTime() + DRIVER_LINK_DAYS * 24 * 60 * 60 * 1000)
 
 export async function driverForToken(token: string | null | undefined) {
   const code = String(token || '')
   if (!/^[A-Za-z0-9_-]{24,64}$/.test(code)) return null
-  return db.driver.findFirst({ where: { token: code, active: true }, select: { id: true, name: true, phone: true } })
+  return db.driver.findFirst({ where: { token: code, active: true, tokenExpiresAt: { gt: new Date() } }, select: { id: true, name: true, phone: true } })
 }
 
 type Driver = { id: string; name: string }

@@ -3,6 +3,7 @@ import { db } from '@/lib/prisma'
 import { cleanTrackingIds } from '@/lib/tracking'
 import { internationalPhone, isLebanon } from '@/lib/phone'
 import { SESSION_COOKIE } from '@/lib/visitor-tracking'
+import { openSecret } from '@/lib/two-step'
 
 // Meta Conversions API: the store's server reports each sale to Meta directly, alongside the
 // browser pixel. Sales still count when the shopper's browser blocks the pixel (ad blockers,
@@ -101,7 +102,9 @@ async function loadMetaCapiConfig() {
   const rows = await db.setting.findMany({ where: { key: { in: ['tracking.metaPixelId', 'tracking.metaCapiToken', 'tracking.metaCapiTestCode', 'store.country'] } } })
   const map = new Map(rows.map(r => [r.key, r.value]))
   const pixelId = cleanTrackingIds({ metaPixelId: map.get('tracking.metaPixelId') || '' }).metaPixelId
-  const token = (map.get('tracking.metaCapiToken') || '').trim()
+  // A sealed token is opened here; a plain one saved before sealing still works (the daily job seals it).
+  const storedToken = (map.get('tracking.metaCapiToken') || '').trim()
+  const token = storedToken.startsWith('v1.') ? ((await openSecret(storedToken)) || '') : storedToken
   return { pixelId, token, testCode: (map.get('tracking.metaCapiTestCode') || '').trim(), storeCountry: map.get('store.country') || 'Lebanon', enabled: !!(pixelId && token) }
 }
 

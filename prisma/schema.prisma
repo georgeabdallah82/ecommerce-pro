@@ -945,6 +945,8 @@ model Driver {
   name      String
   phone     String?
   token     String   @unique
+  // The link stops working after this (lib/drivers.ts): a new link resets it, and the admin can make one any time.
+  tokenExpiresAt DateTime?
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
