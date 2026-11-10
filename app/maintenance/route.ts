@@ -1,4 +1,5 @@
 import { getMaintenanceConfig } from '@/lib/maintenance'
+import { MAINTENANCE_MODE_INFO } from '@/lib/maintenance-defaults'
 import { renderMaintenancePage } from '@/lib/maintenance-page'
 import { getThemeState } from '@/lib/theme'
 import { getContactInfo } from '@/lib/store-contact'
@@ -23,10 +24,11 @@ export async function GET(request: Request) {
   const theme: any = themeState?.theme || {}
   const html = renderMaintenancePage({
     brand: String(theme.brandName || config.brand),
+    mode: maintenance?.mode,
     logoUrl: theme.logoUrl,
     color: theme.colors?.primary,
-    headline: maintenance?.headline || "We'll be right back",
-    message: maintenance?.message || 'Please check back soon.',
+    headline: maintenance?.headline || MAINTENANCE_MODE_INFO.maintenance.headline,
+    message: maintenance?.message || MAINTENANCE_MODE_INFO.maintenance.message,
     backBy: maintenance?.backBy,
     whatsappUrl: contact?.phone ? whatsappUrl(contact.phone, contact.country) : '',
     email: contact?.email,

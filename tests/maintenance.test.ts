@@ -62,3 +62,26 @@ test('maintenance mode closes the store but not staff pages, the driver list or 
   assert.equal(isBlockedDuringMaintenance('/api/driver/abcdefghijklmnopqrstuvwx', 'POST'), false, 'drivers can still mark deliveries')
   assert.equal(isBlockedDuringMaintenance('/api/questions', 'POST'), true)
 })
+
+test('each page type shows its own badge, icon and wording', async () => {
+  const { MAINTENANCE_MODE_INFO, maintenanceMode } = await import('../lib/maintenance-defaults')
+  assert.equal(maintenanceMode('coming_soon'), 'coming_soon')
+  assert.equal(maintenanceMode('nonsense'), 'maintenance')
+  assert.equal(maintenanceMode(undefined), 'maintenance')
+  for (const mode of ['maintenance', 'under_construction', 'coming_soon', 'updating'] as const) {
+    const html = renderMaintenancePage({ ...base, mode, headline: MAINTENANCE_MODE_INFO[mode].headline, message: MAINTENANCE_MODE_INFO[mode].message })
+    assert.ok(html.includes(`>${MAINTENANCE_MODE_INFO[mode].badge}<`), mode)
+    assert.ok(html.includes('<svg'), mode)
+  }
+  assert.ok(renderMaintenancePage({ ...base, mode: 'under_construction' }).includes('Under construction'))
+})
+
+test('a saved default text from another page type is replaced by the selected type’s wording', async () => {
+  const { maintenanceFromSettings } = await import('../lib/maintenance')
+  const cfg = maintenanceFromSettings({ 'maintenance.enabled': 'true', 'maintenance.mode': 'coming_soon', 'maintenance.headline': "We'll be right back", 'maintenance.message': '' })
+  assert.equal(cfg.mode, 'coming_soon')
+  assert.equal(cfg.headline, 'Something new is coming soon')
+  const custom = maintenanceFromSettings({ 'maintenance.mode': 'updating', 'maintenance.headline': 'Our new site is almost ready' })
+  assert.equal(custom.headline, 'Our new site is almost ready')
+  assert.equal(custom.message, 'We are improving the store to make shopping faster and easier for you. Thank you for your patience.')
+})

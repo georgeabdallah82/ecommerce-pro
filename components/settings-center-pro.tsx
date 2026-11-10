@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Save, Store, CreditCard, Truck, Globe2, Mail, ShieldCheck, Search, Bell, Code2, ChevronRight, BarChart3, Wrench, Gift } from 'lucide-react'
-import { MAINTENANCE_DEFAULTS, maintenanceText } from '@/lib/maintenance-defaults'
+import { MAINTENANCE_MODES, MAINTENANCE_MODE_INFO, maintenanceMode } from '@/lib/maintenance-defaults'
 import styles from './admin-settings-center.module.css'
 import ui from './admin-ui.module.css'
 import MediaPicker from './media-picker'
@@ -118,8 +118,10 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
     'tracking.googleAdsPurchaseLabel': map.get('tracking.googleAdsPurchaseLabel') || '',
     'tracking.tiktokPixelId': map.get('tracking.tiktokPixelId') || '',
     'tracking.metaCapiTestCode': map.get('tracking.metaCapiTestCode') || '',
-    'maintenance.headline': maintenanceText(map.get('maintenance.headline'), MAINTENANCE_DEFAULTS.headline),
-    'maintenance.message': maintenanceText(map.get('maintenance.message'), MAINTENANCE_DEFAULTS.message),
+    'maintenance.mode': maintenanceMode(map.get('maintenance.mode')),
+    // Empty means "use the selected mode's wording"; the placeholder in the form shows it.
+    'maintenance.headline': map.get('maintenance.headline') || '',
+    'maintenance.message': map.get('maintenance.message') || '',
     'maintenance.backBy': map.get('maintenance.backBy') || '',
   })
   const savedPolicy = useRef<Record<string, string>>(values)
@@ -519,12 +521,18 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
           )}
 
           {tab === 'Maintenance' && (
-            <Card title="Maintenance mode" desc="While it's on, customers see a maintenance page instead of the store, and search engines are told the store is closed only for now. You (signed-in staff) keep seeing the real store.">
+            <Card title="Maintenance mode" desc="While it's on, customers see a page instead of the store, and search engines are told the store is closed only for now. You (signed-in staff) keep seeing the real store.">
               <Toggle label="Maintenance mode (store closed for customers)" keyName="maintenance.enabled" value={flags['maintenance.enabled']} onChange={() => toggle('maintenance.enabled')} />
-              <Field label="Headline" value={values['maintenance.headline']} onChange={v => set('maintenance.headline', v)} />
-              <Field label="Message" value={values['maintenance.message']} onChange={v => set('maintenance.message', v)} />
-              <Field label="Expected back (optional, e.g. Back by 6 pm)" value={values['maintenance.backBy']} onChange={v => set('maintenance.backBy', v)} />
-              <p className={ui.muted}>The page also shows your WhatsApp and contact email (Settings &gt; General). <a className={ui.textLink} href="/maintenance?preview=1" target="_blank" rel="noreferrer">Preview the page</a> (save first to see your changes).</p>
+              <label className={ui.fieldLabel}>
+                Page type
+                <select className={ui.select} value={values['maintenance.mode'] || 'maintenance'} onChange={e => set('maintenance.mode', e.target.value)}>
+                  {MAINTENANCE_MODES.map(mode => <option key={mode} value={mode}>{MAINTENANCE_MODE_INFO[mode].label}</option>)}
+                </select>
+              </label>
+              <Field label="Headline" placeholder={MAINTENANCE_MODE_INFO[maintenanceMode(values['maintenance.mode'])].headline} value={values['maintenance.headline']} onChange={v => set('maintenance.headline', v)} />
+              <Field label="Message" placeholder={MAINTENANCE_MODE_INFO[maintenanceMode(values['maintenance.mode'])].message} value={values['maintenance.message']} onChange={v => set('maintenance.message', v)} />
+              <Field label="Note (optional, e.g. Back by 6 pm, or Opening 1 December)" value={values['maintenance.backBy']} onChange={v => set('maintenance.backBy', v)} />
+              <p className={ui.muted}>Leave the headline and message empty to use the wording for the page type you picked. The page also shows your WhatsApp and contact email (Settings &gt; General). <a className={ui.textLink} href="/maintenance?preview=1" target="_blank" rel="noreferrer">Preview the page</a> (save first to see your changes).</p>
             </Card>
           )}
 
