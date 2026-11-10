@@ -1,7 +1,7 @@
 'use client'
 
-import { useMemo, useRef, useState, type ReactNode } from 'react'
-import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, ExternalLink, ImagePlus, Pencil, Plus, Save, Trash2, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { AlertTriangle, ArrowDown, ArrowUp, ChevronDown, ChevronRight, ChevronsUpDown, Copy, ExternalLink, ImagePlus, Pencil, Plus, Save, Trash2, X } from 'lucide-react'
 import {
   MAX_MENU_DEPTH, childrenOf, collectionFor, describeMenuItem, descendantIds, headingGroups, headingsUnder, isPicture, moveHeading, moveMenuItem, normalizeMenu,
   removeMenuItem, renameHeading, siblingsOf, type MenuItem,
@@ -41,9 +41,70 @@ export default function NavigationEditorPro({ initial, collections, initialDraft
 
   const dirty = useMemo(() => JSON.stringify(items) !== savedJson.current, [items])
   const roots = childrenOf(items, null)
+  const links = items.filter(x => x.parentId).length
+  const pictures = items.filter(isPicture).length
+  const collectionIds = useMemo(() => new Set(collections.map(c => c.id)), [collections])
+  // Things that will look wrong on the store. Checked live, so they clear as soon as they are fixed.
+  const problems = useMemo(() => {
+    const out: { id: string; text: string }[] = []
+    for (const item of items) {
+      if (!item.label.trim()) out.push({ id: item.id, text: 'Has no name, so customers see “Untitled”' })
+      if (isPicture(item) && !item.imageUrl) out.push({ id: item.id, text: 'Picture has no image and will not be saved' })
+      if (item.parentId && item.type === 'custom' && (!String(item.url || '').trim() || String(item.url).trim() === '#')) out.push({ id: item.id, text: 'Link has no address' })
+      if (item.type === 'collection' && item.resourceId && !collectionIds.has(item.resourceId)) out.push({ id: item.id, text: 'Points to a collection that was deleted' })
+    }
+    return out
+  }, [items, collectionIds])
+
+  // Warn before leaving with unsaved changes, and save with Ctrl+S / Cmd+S.
+  useEffect(() => {
+    if (!dirty) return
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [dirty])
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); if (dirty && !saving) void save() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dirty, saving, items])
 
   const patch = (id: string, data: Partial<MenuItem>) => setItems(cur => cur.map(x => (x.id === id ? { ...x, ...data } : x)))
   const toggle = (id: string) => setOpen(cur => { const next = new Set(cur); if (next.has(id)) next.delete(id); else next.add(id); return next })
+  const withChildren = items.filter(x => items.some(y => y.parentId === x.id)).map(x => x.id)
+  const expandAll = () => setOpen(new Set(withChildren))
+  const collapseAll = () => setOpen(new Set())
+
+  // Open every parent of an item, then start editing it (used by "Go to" in the attention list).
+  function reveal(id: string) {
+    const target = items.find(x => x.id === id)
+    if (!target) return
+    const parents = new Set<string>()
+    let cursor = target.parentId
+    while (cursor && !parents.has(cursor)) { parents.add(cursor); cursor = items.find(x => x.id === cursor)?.parentId ?? null }
+    setOpen(cur => new Set([...cur, ...parents]))
+    startEdit(target)
+    window.setTimeout(() => document.getElementById(`nav-item-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60)
+  }
+
+  // A copy of an item and everything under it, added at the end of the menu.
+  function duplicate(id: string) {
+    const source = items.find(x => x.id === id)
+    if (!source) return
+    if (editing) finishEdit()
+    const ids = new Set([id, ...descendantIds(items, id)])
+    const map = new Map([...ids].map(x => [x, newId()] as const))
+    const copies = items.filter(x => ids.has(x.id)).map(x => ({
+      ...x,
+      id: map.get(x.id) as string,
+      parentId: x.id === id ? x.parentId : (map.get(x.parentId ?? '') ?? null),
+      label: x.id === id ? `${x.label.trim() || 'New item'} (copy)` : x.label,
+    }))
+    setItems(cur => [...cur, ...copies])
+  }
 
   function startEdit(item: MenuItem) {
     if (editing && editing.id !== item.id) finishEdit()
@@ -135,7 +196,7 @@ export default function NavigationEditorPro({ initial, collections, initialDraft
   }
 
   const rowProps = {
-    items, collections, grouped, open, editing, toggle, startEdit, finishEdit, cancelEdit, add, remove, patch,
+    items, collections, grouped, open, editing, toggle, startEdit, finishEdit, cancelEdit, add, remove, patch, duplicate,
     move: (id: string, d: -1 | 1) => setItems(cur => moveMenuItem(cur, id, d, grouped)),
     moveHeading: (parentId: string, name: string, d: -1 | 1) => setItems(cur => moveHeading(cur, parentId, name, d)),
     renameHeading: (parentId: string, from: string, to: string) => setItems(cur => renameHeading(cur, parentId, from, to)),
@@ -156,6 +217,37 @@ export default function NavigationEditorPro({ initial, collections, initialDraft
       </div>
 
       {(notice || error) && <div className={`${ui.alert} ${styles.alertSpacing} ${error ? ui.alertDanger : ''}`}>{error || notice}</div>}
+
+      <div className={styles.summary} aria-label="Menu at a glance">
+        <div><strong>{roots.length}</strong><span>Top-level items</span></div>
+        <div><strong>{links}</strong><span>Links inside them</span></div>
+        <div><strong>{pictures}</strong><span>Pictures</span></div>
+        <div className={styles.summaryStatus}>
+          <span className={`${styles.statusChip} ${hasDraft || dirty ? styles.statusDraft : styles.statusLive}`}>{dirty ? 'Unsaved changes' : hasDraft ? 'Saved, not live' : 'Live on your store'}</span>
+          <div className={styles.summaryTools}>
+            <button type="button" className={styles.toolBtn} onClick={expandAll} disabled={withChildren.length === 0}><ChevronsUpDown size={14} /> Expand all</button>
+            <button type="button" className={styles.toolBtn} onClick={collapseAll}>Collapse all</button>
+          </div>
+        </div>
+      </div>
+
+      {problems.length > 0 && (
+        <section className={`${ui.card} ${styles.attention}`} aria-labelledby="menu-attention">
+          <h2 id="menu-attention"><AlertTriangle size={16} aria-hidden="true" /> Needs attention <span>{problems.length}</span></h2>
+          <ul>
+            {problems.map((problem, i) => {
+              const target = items.find(x => x.id === problem.id)
+              return <li key={`${problem.id}-${i}`}>
+                <span>
+                  <strong>{target?.label.trim() || 'Untitled item'}</strong>
+                  {problem.text}
+                </span>
+                <button type="button" className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} onClick={() => reveal(problem.id)}>Go to</button>
+              </li>
+            })}
+          </ul>
+        </section>
+      )}
 
       <section className={`${ui.card} ${styles.menuCard}`}>
         {roots.length === 0 && (
@@ -195,6 +287,7 @@ type RowProps = {
   move: (id: string, direction: -1 | 1) => void
   moveHeading: (parentId: string, name: string, direction: -1 | 1) => void
   renameHeading: (parentId: string, from: string, to: string) => void
+  duplicate: (id: string) => void
 }
 
 function MenuRow(props: RowProps) {
@@ -217,7 +310,7 @@ function MenuRow(props: RowProps) {
   const label = item.label.trim() || (tile ? 'New picture' : 'New item')
 
   return (
-    <li className={`${styles.item} ${depth ? styles.child : ''}`}>
+    <li id={`nav-item-${item.id}`} className={`${styles.item} ${depth ? styles.child : ''}`}>
       <div className={`${styles.row} ${isEditing ? styles.rowEditing : ''}`}>
         <div className={styles.arrows}>
           <button type="button" aria-label={`Move “${label}” up`} disabled={index <= 0} onClick={() => move(item.id, -1)}><ArrowUp size={16} /></button>
@@ -237,6 +330,7 @@ function MenuRow(props: RowProps) {
         </button>
         <div className={styles.rowActions}>
           <button type="button" className={styles.iconBtn} onClick={() => (isEditing ? finishEdit() : startEdit(item))} aria-label={`Edit “${label}”`}><Pencil size={15} /><span>Edit</span></button>
+          <button type="button" className={styles.iconBtn} onClick={() => props.duplicate(item.id)} aria-label={`Duplicate “${label}”`} title="Duplicate with everything under it"><Copy size={15} /></button>
           <button type="button" className={`${styles.iconBtn} ${styles.danger}`} onClick={() => remove(item)} aria-label={`Delete “${label}”`}><Trash2 size={15} /></button>
         </div>
       </div>

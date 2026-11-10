@@ -42,3 +42,10 @@
   cursor: default;
 }
 .publishBtn.draft { background: var(--admin-accent); color: var(--admin-accent-ink); cursor: pointer; }
+
+/* Phones: span the bottom edge so the bar does not cover row buttons on the right. */
+@media (max-width: 560px) {
+  .bar { left: 12px; right: 12px; bottom: 12px; justify-content: space-between; gap: 8px; padding: 10px; }
+  .status { min-width: 0; }
+  .error, .message { max-width: none; }
+}
