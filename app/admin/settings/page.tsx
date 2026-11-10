@@ -63,6 +63,7 @@ const CLIENT_SETTING_KEYS = new Set([
   'tracking.googleAdsPurchaseLabel',
   'tracking.metaCapiTestCode',
   'maintenance.enabled',
+  'maintenance.mode',
   'maintenance.backBy',
   'maintenance.headline',
   'maintenance.message',
