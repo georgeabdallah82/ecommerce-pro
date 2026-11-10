@@ -122,7 +122,21 @@ const confirmToken = await (async () => {
 if (confirmToken) await cp.goto(`${B}/api/auth/verify-email?token=${confirmToken}`, { waitUntil: 'networkidle' })
 const session = await cp.evaluate(async () => { const r = await fetch('/api/auth/session'); return r.json().catch(() => ({ status: r.status })) })
 const confirmCookies = (await cust.cookies()).map(c => c.name).join(',')
-step('confirmed customer is signed in', !!session?.user?.email, `user=${session?.user?.email || JSON.stringify(session).slice(0, 80)} page=${cp.url()} cookies=${confirmCookies || 'none'} link=${confirmToken ? 'made' : 'not made'}`)
+// Diagnostics for a failed sign-in: the session token's claims (not verified here), the account row,
+// and what the account page answers to the same browser.
+const confirmDiag = await (async () => {
+  const cookie = (await cust.cookies()).find(c => c.name === 'session')?.value || ''
+  let claims = null
+  try { claims = JSON.parse(Buffer.from(cookie.split('.')[1] || '', 'base64url').toString()) } catch {}
+  const client = new pg.Client({ connectionString: process.env.DATABASE_URL })
+  await client.connect()
+  try {
+    const row = (await client.query('SELECT id, "isActive", role, "sessionsRevokedAt", "emailVerifiedAt" FROM "User" WHERE email = $1', [`pg-cust-${stamp}@example.com`])).rows[0]
+    return { now: Math.floor(Date.now() / 1000), claims: claims && { sub: claims.sub, type: claims.type, iat: claims.iat, exp: claims.exp }, row: row && { ...row, idMatches: row.id === claims?.sub } }
+  } finally { await client.end() }
+})().catch(e => ({ error: String(e).slice(0, 120) }))
+const accountPage = await cp.evaluate(async () => { const r = await fetch('/account'); return `${r.status} ${new URL(r.url).pathname}` })
+step('confirmed customer is signed in', !!session?.user?.email, `user=${session?.user?.email || JSON.stringify(session).slice(0, 80)} page=${cp.url()} cookies=${confirmCookies || 'none'} link=${confirmToken ? 'made' : 'not made'} account=${accountPage} diag=${JSON.stringify(confirmDiag).slice(0, 500)}`)
 const productId = await cp.evaluate(async path => { const r = await fetch('/api/products?limit=50'); const j = await r.json().catch(() => null); const list = j?.products || j?.rows || j || []; const slug = path.split('/').pop(); return (list.find?.(p => p.slug === slug) || list[0])?.id || '' }, productPath)
 const wish = await cp.evaluate(async id => { const r = await fetch('/api/wishlist', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ productId: id }) }); return r.status + ' ' + (await r.text()).slice(0, 80) }, productId)
 step('wishlist add', wish.startsWith('200') || wish.startsWith('201'), wish)
