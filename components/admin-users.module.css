@@ -69,3 +69,34 @@
   .permChecks { justify-content: flex-start; }
   .modalBody { padding: 14px 16px 18px; }
 }
+
+/* Overview strip */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.stats > div { display: grid; gap: 2px; padding: 12px 14px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); background: var(--admin-surface); }
+.stats strong { font-size: 22px; letter-spacing: -.02em; color: var(--admin-ink); font-variant-numeric: tabular-nums; }
+.stats span { font-size: 12px; color: var(--admin-muted); }
+.statWarn { border-color: var(--admin-warning) !important; background: var(--admin-warning-soft) !important; }
+.statWarn strong { color: var(--admin-warning); }
+
+/* Staff toolbar */
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 18px; border-bottom: 1px solid var(--admin-border-soft); }
+.search { flex: 1 1 240px; max-width: 360px; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); background: var(--admin-bg); color: var(--admin-muted); cursor: text; }
+.search:focus-within { border-color: var(--admin-accent); box-shadow: 0 0 0 3px var(--admin-accent-soft); }
+.search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 13px; color: var(--admin-ink); }
+.clearBtn { display: grid; place-items: center; border: 0; background: transparent; color: var(--admin-muted); cursor: pointer; }
+.roleSelect { width: auto; min-width: 180px; }
+.segment { display: inline-flex; padding: 3px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-pill); background: var(--admin-bg); }
+.segment button { min-height: 30px; padding: 0 12px; border: 0; border-radius: var(--admin-radius-pill); background: transparent; color: var(--admin-muted); font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.segment button:hover { color: var(--admin-ink); }
+.segment button:focus-visible { outline: 3px solid var(--admin-focus); outline-offset: 1px; }
+.segmentOn { background: var(--admin-surface) !important; color: var(--admin-ink) !important; box-shadow: var(--admin-shadow-sm); }
+
+.empty { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 12px; padding: 28px 18px; font-size: 14px; color: var(--admin-muted); }
+.empty strong { color: var(--admin-ink); }
+
+@media (max-width: 700px) {
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .roleSelect { flex: 1 1 100%; width: 100%; }
+  .segment { width: 100%; justify-content: space-between; }
+  .segment button { flex: 1; padding: 0 6px; }
+}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Eye, EyeOff, KeyRound, Pencil, Plus, RefreshCw, ShieldCheck, Trash2, UserPlus, X } from 'lucide-react'
+import { Eye, EyeOff, KeyRound, Pencil, Plus, RefreshCw, Search, ShieldCheck, Trash2, UserPlus, X } from 'lucide-react'
 import ui from './admin-ui.module.css'
 import s from './admin-users.module.css'
 import { useConfirm } from './admin-confirm'
@@ -67,6 +67,9 @@ export default function UsersRolesAdmin({ initialUsers, initialRoles, currentUse
   const [passwordFor, setPasswordFor] = useState<null | { user: UserRow; password: string }>(null)
   const [roleForm, setRoleForm] = useState<null | { id?: string; name: string; description: string; permissions: Permission[] }>(null)
   const isSuper = currentUser?.role === 'SUPER_ADMIN'
+  const [query, setQuery] = useState('')
+  const [roleFilter, setRoleFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'disabled' | 'no2fa'>('all')
 
   const roleName = (u: UserRow) => u.staffRoleId ? (roles.find(r => r.id === u.staffRoleId)?.name || 'Deleted role') : builtInRoleName(u.role)
   const done = (message: string) => { setNotice(message); setError('') }
@@ -154,6 +157,22 @@ export default function UsersRolesAdmin({ initialUsers, initialRoles, currentUse
   }
 
   const active = users.filter(u => u.isActive).length
+  const withTwoStep = users.filter(hasTwoStep).length
+  const needTwoStep = users.filter(u => u.isActive && !hasTwoStep(u)).length
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return users.filter(u => {
+      if (q && !`${u.name} ${u.email} ${u.phone || ''}`.toLowerCase().includes(q)) return false
+      if (roleFilter && roleValue(u) !== roleFilter) return false
+      if (statusFilter === 'active' && !u.isActive) return false
+      if (statusFilter === 'disabled' && u.isActive) return false
+      if (statusFilter === 'no2fa' && (!u.isActive || hasTwoStep(u))) return false
+      return true
+    })
+  }, [users, query, roleFilter, statusFilter])
+  const filtering = Boolean(query.trim() || roleFilter || statusFilter !== 'all')
+  function clearFilters() { setQuery(''); setRoleFilter(''); setStatusFilter('all') }
+  function viewStaff(roleKey: string) { clearFilters(); setRoleFilter(roleKey); setTab('staff') }
 
   return <div className={s.page}>
     <div className={s.head}>
@@ -165,6 +184,13 @@ export default function UsersRolesAdmin({ initialUsers, initialRoles, currentUse
       </div>}
     </div>
 
+    {tab === 'staff' && <div className={s.stats}>
+      <div><strong>{users.length}</strong><span>Staff</span></div>
+      <div><strong>{active}</strong><span>Active</span></div>
+      <div><strong>{withTwoStep}</strong><span>With 2-step login</span></div>
+      <div className={needTwoStep ? s.statWarn : undefined}><strong>{needTwoStep}</strong><span>{needTwoStep ? 'Active without 2-step' : 'All active staff use 2-step'}</span></div>
+    </div>}
+
     <div className={s.tabs} role="tablist">
       <button role="tab" aria-selected={tab === 'staff'} className={tab === 'staff' ? s.tabOn : ''} onClick={() => setTab('staff')}>Staff <span>{users.length}</span></button>
       <button role="tab" aria-selected={tab === 'roles'} className={tab === 'roles' ? s.tabOn : ''} onClick={() => setTab('roles')}>Roles <span>{BUILT_IN_ROLES.length + roles.length}</span></button>
@@ -173,8 +199,21 @@ export default function UsersRolesAdmin({ initialUsers, initialRoles, currentUse
     {(error || notice) && <div className={`${ui.alert} ${error ? ui.alertDanger : ''}`} role="status">{error || notice}</div>}
 
     {tab === 'staff' && <div className={`${ui.card} ${s.listCard}`}>
-      <div className={s.listMeta}>{users.length} staff · {active} active</div>
-      {users.map(u => {
+      <div className={s.toolbar}>
+        <label className={s.search}><Search size={15} aria-hidden="true" /><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search name, email or phone" aria-label="Search staff" />{query && <button type="button" className={s.clearBtn} onClick={() => setQuery('')} aria-label="Clear search"><X size={14} /></button>}</label>
+        <select className={`${ui.select} ${s.roleSelect}`} value={roleFilter} onChange={e => setRoleFilter(e.target.value)} aria-label="Filter by role">
+          <option value="">All roles</option>
+          <optgroup label="Built-in roles">{BUILT_IN_ROLES.map(r => <option key={r.key} value={r.key}>{r.name}</option>)}</optgroup>
+          {roles.length > 0 && <optgroup label="Your roles">{roles.map(r => <option key={r.id} value={`custom:${r.id}`}>{r.name}</option>)}</optgroup>}
+        </select>
+        <div className={s.segment} role="group" aria-label="Filter by status">
+          {([['all', 'All'], ['active', 'Active'], ['disabled', 'Disabled'], ['no2fa', 'Needs 2-step']] as const).map(([id, label]) => (
+            <button key={id} type="button" aria-pressed={statusFilter === id} className={statusFilter === id ? s.segmentOn : ''} onClick={() => setStatusFilter(id)}>{label}</button>
+          ))}
+        </div>
+      </div>
+      <div className={s.listMeta}>{filtering ? `Showing ${filtered.length} of ${users.length} staff` : `${users.length} staff · ${active} active`}</div>
+      {filtered.map(u => {
         const self = u.id === currentUser?.id
         const lockedSuper = u.role === 'SUPER_ADMIN' && !isSuper
         const can = canManage && !lockedSuper
@@ -199,6 +238,10 @@ export default function UsersRolesAdmin({ initialUsers, initialRoles, currentUse
           </div>}
         </div>
       })}
+      {filtered.length === 0 && <div className={s.empty}>
+        <strong>No staff match these filters.</strong>
+        <button type="button" className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} onClick={clearFilters}>Clear filters</button>
+      </div>}
     </div>}
 
     {tab === 'roles' && <div className={s.roleGrid}>
@@ -206,6 +249,7 @@ export default function UsersRolesAdmin({ initialUsers, initialRoles, currentUse
         <div className={s.roleTop}><strong>{r.name}</strong><span className={ui.statusPill}>Custom</span></div>
         <p className={ui.muted}>{r.description || 'No description'}</p>
         <div className={s.roleFacts}><span>{r.permissions.length} permissions</span><span>{r.users || 0} staff</span></div>
+        <div className={s.roleActions}><button type="button" className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} onClick={() => viewStaff(`custom:${r.id}`)}>View staff</button></div>
         {canManage && <div className={s.roleActions}>
           <button className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} onClick={() => setRoleForm({ id: r.id, name: r.name, description: r.description, permissions: r.permissions })}><Pencil size={13} /> Edit</button>
           <button className={`${ui.iconBtn} ${ui.iconBtnDanger}`} onClick={() => removeRole(r)} aria-label={`Delete ${r.name}`}><Trash2 size={15} /></button>
@@ -216,6 +260,7 @@ export default function UsersRolesAdmin({ initialUsers, initialRoles, currentUse
         <div className={s.roleTop}><strong>{r.name}</strong><span className={ui.statusPill}>Built-in</span></div>
         <p className={ui.muted}>{r.description}</p>
         <div className={s.roleFacts}><span>{ROLE_PERMISSIONS[r.key].length} permissions</span><span>{users.filter(u => !u.staffRoleId && u.role === r.key).length} staff</span></div>
+        <div className={s.roleActions}><button type="button" className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} onClick={() => viewStaff(r.key)}>View staff</button></div>
         {canManage && r.key !== 'SUPER_ADMIN' && <div className={s.roleActions}><button className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} onClick={() => setRoleForm({ name: `${r.name} (custom)`, description: r.description, permissions: ROLE_PERMISSIONS[r.key].filter(p => p !== 'users.manage') })}>Copy as new role</button></div>}
       </div>)}
     </div>}
