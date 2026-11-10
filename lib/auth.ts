@@ -16,11 +16,18 @@ function getSecret() {
 export async function hashPassword(password: string) { return bcrypt.hash(password, 12) }
 export async function verifyPassword(password: string, hash: string) { return bcrypt.compare(password, hash) }
 
-export async function setSession(userId: string) {
-  const token = await new SignJWT({ sub: userId, type: 'session' })
+// The signed session token for an account, and the cookie it is kept in. A route that answers with
+// its own redirect (app/api/auth/verify-email) sets the cookie on that response directly.
+export async function sessionToken(userId: string) {
+  return new SignJWT({ sub: userId, type: 'session' })
     .setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('30d').sign(getSecret())
+}
+export const SESSION_COOKIE_OPTIONS = { httpOnly: true, sameSite: 'lax' as const, secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 60 * 60 * 24 * 30 }
+
+export async function setSession(userId: string) {
+  const token = await sessionToken(userId)
   const store = await cookies()
-  store.set('session', token, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 60 * 60 * 24 * 30 })
+  store.set('session', token, SESSION_COOKIE_OPTIONS)
 }
 
 export async function clearSession() {
