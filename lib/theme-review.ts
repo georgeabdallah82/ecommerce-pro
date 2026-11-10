@@ -112,7 +112,7 @@ export function contrastRatio(a: string, b: string): number | null {
   return (hi + 0.05) / (lo + 0.05)
 }
 
-const CONTRAST_PAIRS: { key: string; text: string; background: string; name: string }[] = [
+export const CONTRAST_PAIRS: { key: string; text: string; background: string; name: string }[] = [
   { key: 'text', text: 'text', background: 'background', name: 'Text on the page background' },
   { key: 'muted', text: 'muted', background: 'background', name: 'Secondary text on the page background' },
   { key: 'buttonText', text: 'buttonText', background: 'primary', name: 'Button text on the button colour' },

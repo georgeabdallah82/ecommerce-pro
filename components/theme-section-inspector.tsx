@@ -1,5 +1,6 @@
 'use client'
 
+import { CONTRAST_PAIRS, MIN_CONTRAST, contrastRatio as wcagRatio } from '@/lib/theme-review'
 import { useEffect, useState } from 'react'
 import { parseDeliveryAreas } from '@/lib/storefront-market'
 import { GripVertical, ImagePlus, Plus, Trash2, X } from 'lucide-react'
@@ -148,6 +149,22 @@ export function ColorField({ label, value, onChange, swatches, allowDefault }: {
     </div>
   )
 }
+// Colour pairs that customers read: each shows its ratio, and whether it meets 4.5:1.
+export function ContrastReadout({ colors }: { colors: SettingsMap }) {
+  return (
+    <div className="themeContrast">
+      <small>Text needs at least {MIN_CONTRAST}:1 against its background to be easy to read.</small>
+      <ul>
+        {CONTRAST_PAIRS.map(pair => {
+          const ratio = wcagRatio(colors[pair.text], colors[pair.background])
+          if (ratio === null) return null
+          const ok = ratio >= MIN_CONTRAST
+          return <li key={pair.key} className={ok ? 'ok' : 'low'}><span>{pair.name}</span><b>{ratio.toFixed(1)}:1 · {ok ? 'Readable' : 'Too low'}</b></li>
+        })}
+      </ul>
+    </div>
+  )
+}
 export function SectionPanel({ title, children }: { title: string; children: React.ReactNode }) {
   return <details className="themeInspectorPanel" open><summary>{title}</summary><div>{children}</div></details>
 }
@@ -187,35 +204,38 @@ export type OptionsSource = OptionList | ((ctx: FieldCtx) => OptionList)
 
 export type FieldSchema =
   | { kind: 'text'; label: string; placeholder?: string; name?: string; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
-  | { kind: 'image'; label: string; recommended?: ImageRecommendation; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
+  | { kind: 'image'; label: string; name?: string; recommended?: ImageRecommendation; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
   | { kind: 'textarea'; label: string; placeholder?: string; name?: string; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
-  | { kind: 'select'; label: string; options: OptionsSource; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
-  | { kind: 'toggle'; label: string; get: (s: SettingsMap) => boolean; set: (value: boolean) => Record<string, any> }
-  | { kind: 'range'; label: string; min: number; max: number; step?: number; unit?: string; get: (s: SettingsMap) => number; set: (value: number) => Record<string, any> }
-  | { kind: 'color'; label: string; allowDefault?: boolean; get: (s: SettingsMap) => string; set: (value: string) => Record<string, any> }
+  | { kind: 'select'; label: string; name?: string; options: OptionsSource; get: (s: SettingsMap) => any; set: (value: string) => Record<string, any> }
+  | { kind: 'toggle'; label: string; name?: string; get: (s: SettingsMap) => boolean; set: (value: boolean) => Record<string, any> }
+  | { kind: 'range'; label: string; name?: string; min: number; max: number; step?: number; unit?: string; get: (s: SettingsMap) => number; set: (value: number) => Record<string, any> }
+  | { kind: 'color'; label: string; name?: string; allowDefault?: boolean; get: (s: SettingsMap) => string; set: (value: string) => Record<string, any> }
   | { kind: 'picker'; label: string; source: 'products' | 'collections'; hint?: string; get: (s: SettingsMap) => string[]; set: (ids: string[]) => Record<string, any> }
   | { kind: 'blocks'; label: string; blockType: string }
-  | { kind: 'deliveryAreas'; label: string; get: (s: SettingsMap) => string; set: (value: string) => Record<string, any> }
+  | { kind: 'contrast'; label: string }
+  | { kind: 'deliveryAreas'; label: string; name?: string; get: (s: SettingsMap) => string; set: (value: string) => Record<string, any> }
 
 export type PanelSchema = { title: string; fields: Array<FieldSchema | FieldSchema[]> }
 
 export const text = (label: string, name: string, placeholder?: string): FieldSchema =>
   ({ kind: 'text', label, placeholder, name, get: s => s[name], set: value => ({ [name]: value }) })
 export const image = (label: string, name: string, recommended?: ImageRecommendation): FieldSchema =>
-  ({ kind: 'image', label, recommended, get: s => s[name], set: value => ({ [name]: value }) })
+  ({ kind: 'image', label, name, recommended, get: s => s[name], set: value => ({ [name]: value }) })
 export const textarea = (label: string, name: string, placeholder?: string): FieldSchema =>
   ({ kind: 'textarea', label, placeholder, name, get: s => s[name], set: value => ({ [name]: value }) })
 export const select = (label: string, name: string, options: OptionsSource, fallback = ''): FieldSchema =>
-  ({ kind: 'select', label, options, get: s => s[name] || fallback, set: value => ({ [name]: value }) })
+  ({ kind: 'select', label, name, options, get: s => s[name] || fallback, set: value => ({ [name]: value }) })
 export const toggle = (label: string, name: string, defaultTrue: boolean): FieldSchema =>
-  ({ kind: 'toggle', label, get: s => defaultTrue ? s[name] !== false : Boolean(s[name]), set: value => ({ [name]: value }) })
+  ({ kind: 'toggle', label, name, get: s => defaultTrue ? s[name] !== false : Boolean(s[name]), set: value => ({ [name]: value }) })
 export const range = (label: string, name: string, min: number, max: number, fallback: number, step?: number, unit?: string): FieldSchema =>
-  ({ kind: 'range', label, min, max, step, unit, get: s => Number(s[name] ?? fallback), set: value => ({ [name]: value }) })
+  ({ kind: 'range', label, name, min, max, step, unit, get: s => Number(s[name] ?? fallback), set: value => ({ [name]: value }) })
 export const color = (label: string, name: string, fallback: string): FieldSchema =>
-  ({ kind: 'color', label, get: s => s[name] || fallback, set: value => ({ [name]: value }) })
+  ({ kind: 'color', label, name, get: s => s[name] || fallback, set: value => ({ [name]: value }) })
 export const blocks = (label: string, blockType: string): FieldSchema => ({ kind: 'blocks', label, blockType })
+// Read-only: how readable the text colours are on their backgrounds (lib/theme-review.ts).
+export const contrastReadout = (label: string): FieldSchema => ({ kind: 'contrast', label })
 export const deliveryAreas = (label: string, name: string): FieldSchema =>
-  ({ kind: 'deliveryAreas', label, get: s => String(s[name] ?? ''), set: value => ({ [name]: value }) })
+  ({ kind: 'deliveryAreas', label, name, get: s => String(s[name] ?? ''), set: value => ({ [name]: value }) })
 
 // Where a section's cards sit when the row isn't full, and an optional narrower section box
 // placed left / center / right on the page. All default to the old look (cards left, full width).
@@ -692,6 +712,8 @@ export function renderField(schema: FieldSchema, ctx: FieldCtx, set: (patch: Rec
       return <ItemPicker key={schema.label} label={schema.label} hint={schema.hint} source={schema.source} items={pickerItems(schema.source, ctx)} value={schema.get(s)} onChange={ids => set(schema.set(ids))} loadError={ctx.loadError} />
     case 'blocks':
       return null
+    case 'contrast':
+      return <ContrastReadout key="contrast" colors={ctx.s} />
     case 'deliveryAreas':
       return <DeliveryAreasField key={schema.label} label={schema.label} value={schema.get(s)} onChange={value => set(schema.set(value))} />
   }

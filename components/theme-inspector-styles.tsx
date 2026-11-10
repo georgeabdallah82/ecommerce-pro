@@ -86,5 +86,12 @@ export default function ThemeInspectorStyles() {
 .deliveryAreasAdd{justify-self:start;border:1px dashed var(--admin-border);border-radius:var(--admin-radius-sm);background:transparent;padding:7px 12px;font:inherit;font-size:12.5px;font-weight:700;color:var(--admin-ink);cursor:pointer}
 .deliveryAreasAdd:hover{border-color:var(--admin-accent);color:var(--admin-accent)}
 .themePickerClear{justify-self:start;border:0;background:transparent;padding:0;font-size:11px;font-weight:700;color:var(--admin-muted);text-decoration:underline;cursor:pointer}
+.themeContrast{display:grid;gap:8px;padding:12px;border:1px solid var(--admin-border);border-radius:var(--admin-radius-sm);background:var(--admin-bg)}
+.themeContrast>small{font-size:12px;line-height:1.45;color:var(--admin-muted)}
+.themeContrast ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.themeContrast li{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;color:var(--admin-ink-soft)}
+.themeContrast li b{font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
+.themeContrast li.ok b{color:var(--admin-success-strong)}
+.themeContrast li.low b{color:var(--admin-danger)}
 `}}/>
 }
