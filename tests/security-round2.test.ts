@@ -14,6 +14,8 @@ describe('image proxy host list', () => {
     assert.ok(imageHostAllowed('dl.dropboxusercontent.com', own))
     assert.ok(imageHostAllowed('images.unsplash.com', own))
     assert.ok(imageHostAllowed('IMAGES.UNSPLASH.COM', own))
+    assert.ok(imageHostAllowed('media.yallahaul.com', own))
+    assert.equal(imageHostAllowed('evil-media.yallahaul.com.example', own), false)
   })
   it('refuses every other host, including look-alikes', () => {
     assert.equal(imageHostAllowed('evil.example.com', own), false)
