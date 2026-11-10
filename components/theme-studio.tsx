@@ -61,14 +61,15 @@ import {
   Rows3,
   MessageCircle,
   Truck,
-  BadgePercent, Languages, AlertTriangle } from 'lucide-react'
+  BadgePercent, Languages, AlertTriangle, RotateCcw, Search } from 'lucide-react'
 import SectionInspector, {
   renderPanel, SectionDesign,
-  text, image, textarea, select, toggle, range, color, deliveryAreas,
+  text, image, textarea, select, toggle, range, color, deliveryAreas, contrastReadout,
   type PanelSchema, type FieldCtx,
 } from '@/components/theme-section-inspector'
 import ThemeInspectorStyles from '@/components/theme-inspector-styles'
 import { NO_SECTION_COLORS } from '@/lib/section-colors'
+import { defaultTheme } from '@/lib/theme-defaults'
 import { FONT_OPTIONS } from '@/lib/font-options'
 import { mergeLegacyStrips, type LegacyBlock } from '@/lib/home-strips'
 import PageSeoPanel from '@/components/page-seo-panel'
@@ -388,6 +389,7 @@ const THEME_CATEGORIES: ThemeCategory[] = [
       color('Muted text', 'muted', '#6b6b6b'), color('Border', 'border', '#e5e5e5'), color('Button text', 'buttonText', '#ffffff'),
       color('Announcement bg', 'announcementBg', '#0a0a0a'), color('Announcement text', 'announcementText', '#ffffff'), color('Sale', 'sale', '#ff3b30'),
     ] },
+    { title: 'Readability', fields: [contrastReadout('Readability')] },
   ] },
   { key: 'typography', label: 'Typography', icon: TypeIcon, group: 'typography', panels: [
     { title: 'Typography', fields: [
@@ -411,6 +413,29 @@ const THEME_GROUPS: { label: string; hint: string; keys: string[] }[] = [
   { label: 'Pages & layout', hint: 'Header, footer, page options', keys: ['header', 'delivery', 'whatsapp', 'productCardMarket', 'footer', 'productPage', 'collectionPage', 'cart'] },
   { label: 'Look & feel', hint: 'Applies everywhere', keys: ['colors', 'typography', 'buttons', 'cards', 'layout'] },
 ]
+
+// Every setting a settings panel owns, for the changed count, Reset and search.
+function panelFields(panels: PanelSchema[]) {
+  return panels.flatMap(panel => panel.fields.flatMap(entry => (Array.isArray(entry) ? entry : [entry])))
+}
+const defaultsFor = (group: string): AnyMap => (group === ROOT_GROUP ? (defaultTheme as AnyMap) : ((defaultTheme as AnyMap)[group] || {}))
+// Settings in this category that differ from the standard look (lib/theme-defaults.ts).
+function changedSettings(category: ThemeCategory, theme: AnyMap): string[] {
+  const source = category.group === ROOT_GROUP ? theme : (theme[category.group] || {})
+  const defaults = defaultsFor(category.group)
+  return panelFields(category.panels)
+    .map(field => ('name' in field ? field.name : undefined))
+    .filter((name): name is string => !!name && source[name] !== undefined && JSON.stringify(source[name]) !== JSON.stringify(defaults[name]))
+}
+// A category matches when its name or any of its setting labels matches the search.
+function categoryMatches(category: ThemeCategory, query: string) {
+  if (!query) return true
+  // "colour" and "color" should find the same settings.
+  const spelled = (value: string) => value.toLowerCase().replace(/colour/g, 'color')
+  const q = spelled(query)
+  const hit = (value: string) => spelled(value).includes(q)
+  return hit(category.label) || category.panels.some(panel => hit(panel.title) || panelFields([panel]).some(field => hit(field.label)))
+}
 
 // Theme settings > Languages: what switching Arabic on does, and a way to see the Arabic store
 // before customers do (a cookie on this browser only; see lib/i18n.ts resolveLang).
@@ -537,6 +562,7 @@ export default function ThemeStudio({ initial }: Props) {
   const [reviewLoading, setReviewLoading] = useState(false)
   const [reviewError, setReviewError] = useState('')
   const [discarding, setDiscarding] = useState(false)
+  const [themeQuery, setThemeQuery] = useState('')
   // Set just before a deliberate reload after discarding, so the unsaved-changes prompt is skipped.
   const leavingRef = useRef(false)
 
@@ -668,6 +694,14 @@ export default function ThemeStudio({ initial }: Props) {
   const patchTheme = (group: string, patches: AnyMap) => {
     if (group === ROOT_GROUP) { commit(templates, { ...theme, ...patches }); return }
     commit(templates, { ...theme, [group]: { ...(theme[group] || {}), ...patches } })
+  }
+  // Back to the standard look: each setting this panel owns takes its default, or is cleared
+  // when the default has no stored value. Goes through commit, so Undo restores it.
+  const resetCategory = (category: ThemeCategory) => {
+    const defaults = defaultsFor(category.group)
+    const patches: AnyMap = {}
+    for (const name of changedSettings(category, theme)) patches[name] = defaults[name]
+    patchTheme(category.group, patches)
   }
   const patchBlocks = (blocks: any[]) => {
     if (!selected) return
@@ -1181,23 +1215,34 @@ export default function ThemeStudio({ initial }: Props) {
                   <div className={styles.sideSectionsCount}>Global — applies across your whole store</div>
                 </div>
               </div>
+              <label className={styles.themeSearch}>
+                <Search size={14} aria-hidden="true" />
+                <input type="search" value={themeQuery} onChange={event => setThemeQuery(event.target.value)} placeholder="Search theme settings" aria-label="Search theme settings" />
+              </label>
               <div className={styles.rows}>
-                {THEME_GROUPS.map(group => (
-                  <Fragment key={group.label}>
-                    <div className={styles.groupLabel}><span>{group.label}</span><small>{group.hint}</small></div>
-                    {group.keys.map(key => THEME_CATEGORIES.find(c => c.key === key)).filter((c): c is ThemeCategory => !!c).map(category => {
-                      const Icon = category.icon
-                      return (
-                        <div key={category.key} className={`${styles.row} ${activeCategoryKey === category.key && drawerMode === 'theme' ? styles.active : ''}`}>
-                          <button className={styles.rowMain} onClick={() => openCategory(category.key)}>
-                            <Icon size={15} className={styles.rowIcon} />
-                            <span>{category.label}</span>
-                          </button>
-                        </div>
-                      )
-                    })}
-                  </Fragment>
-                ))}
+                {THEME_GROUPS.map(group => {
+                  const shown = group.keys.map(key => THEME_CATEGORIES.find(c => c.key === key)).filter((c): c is ThemeCategory => !!c && categoryMatches(c, themeQuery.trim().toLowerCase()))
+                  if (!shown.length) return null
+                  return (
+                    <Fragment key={group.label}>
+                      <div className={styles.groupLabel}><span>{group.label}</span><small>{group.hint}</small></div>
+                      {shown.map(category => {
+                        const Icon = category.icon
+                        const changed = changedSettings(category, theme).length
+                        return (
+                          <div key={category.key} className={`${styles.row} ${activeCategoryKey === category.key && drawerMode === 'theme' ? styles.active : ''}`}>
+                            <button className={styles.rowMain} onClick={() => openCategory(category.key)}>
+                              <Icon size={15} className={styles.rowIcon} />
+                              <span>{category.label}</span>
+                              {changed > 0 && <small className={styles.changedBadge}>{changed} changed</small>}
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </Fragment>
+                  )
+                })}
+                {!THEME_CATEGORIES.some(c => categoryMatches(c, themeQuery.trim().toLowerCase())) && <div className={styles.emptyZone}>No theme settings match “{themeQuery}”.</div>}
               </div>
             </>
           ) : (
@@ -1308,6 +1353,9 @@ export default function ThemeStudio({ initial }: Props) {
                 <strong>{activeCategory.label}</strong>
               </div>
               <div className={styles.drawerHeadActions}>
+                {changedSettings(activeCategory, theme).length > 0 && (
+                  <button className={styles.resetBtn} onClick={() => confirmAction(`Reset ${activeCategory.label} to the standard look? You can undo this with Undo.`, () => resetCategory(activeCategory))}><RotateCcw size={13} /> Reset</button>
+                )}
                 <button className={styles.iconBtn} onClick={() => setDrawer(false)} aria-label="Close"><X size={15} /></button>
               </div>
             </div>
