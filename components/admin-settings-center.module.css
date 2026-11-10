@@ -3,115 +3,215 @@
  * components/admin-products-list.module.css: every class gets a build-time-
  * unique name, so nothing here can collide with or be out-ranked by another
  * page's rules. Colors/radii/shadows come from the --admin-* tokens in
- * ../app/admin/admin-overhaul.css via var(), so dark mode is free - no
- * separate dark-mode override block needed for this page.
+ * ../app/admin/admin-overhaul.css via var(), so dark mode is free.
  */
 
-.page { max-width: 1180px; margin: 0 auto; }
+.page { max-width: 1240px; margin: 0 auto; }
 
-.head { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; margin-bottom: 22px; }
+/* Page header ------------------------------------------------------------ */
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--admin-border);
+}
+.headTitle { display: grid; gap: 6px; }
+.headTitle h1 { margin: 0; font-size: 30px; letter-spacing: -.03em; color: var(--admin-ink); }
+.headTitle p { margin: 0; font-size: 14px; color: var(--admin-muted); }
+.headActions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: var(--admin-radius-pill);
+  font-size: 12px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.statusSaved { background: var(--admin-accent-soft); color: var(--admin-accent-strong); }
+.statusDirty { background: var(--admin-warning-soft, #fdf3e1); color: var(--admin-warning, #9a5b00); }
 
 .search {
   display: flex;
   align-items: center;
   gap: 8px;
   width: 260px;
-  height: 42px;
+  height: 40px;
   padding: 0 12px;
   border: 1px solid var(--admin-border);
   border-radius: var(--admin-radius-md);
   background: var(--admin-surface);
   color: var(--admin-muted);
+  transition: border-color .15s ease, box-shadow .15s ease;
 }
-.search input { flex: 1 1 auto; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; color: var(--admin-ink); }
+.search:focus-within { border-color: var(--admin-accent); box-shadow: 0 0 0 3px var(--admin-accent-soft); }
+.search input { flex: 1 1 auto; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 13px; color: var(--admin-ink); }
 
-.layout { display: grid; grid-template-columns: 270px minmax(0, 1fr); align-items: start; gap: 20px; }
+/* Layout ----------------------------------------------------------------- */
+.layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); align-items: start; gap: 28px; }
 
-.nav { display: grid; gap: 4px; position: sticky; top: 24px; }
+/* Section navigation ----------------------------------------------------- */
+.nav { display: grid; gap: 2px; position: sticky; top: 24px; padding: 8px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-lg, 18px); background: var(--admin-surface); box-shadow: var(--admin-shadow-sm); }
 .navSelect { display: none; }
-.navSelect span { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--admin-muted); }
+.navSelect span { font-size: 11px; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; color: var(--admin-muted); }
 .navButton {
   display: grid;
-  grid-template-columns: 22px 1fr 16px;
+  grid-template-columns: 34px 1fr 14px;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   width: 100%;
-  padding: 11px 12px;
+  padding: 9px 10px;
   border: 1px solid transparent;
-  border-radius: var(--admin-radius-sm);
+  border-radius: var(--admin-radius-md);
   background: transparent;
   color: var(--admin-muted);
   font: inherit;
   text-align: left;
   cursor: pointer;
+  transition: background .15s ease, color .15s ease;
 }
-.navButton:hover { background: var(--admin-surface); border-color: var(--admin-border); }
-.navButtonActive {
-  background: var(--admin-surface);
-  border-color: var(--admin-border-soft);
-  color: var(--admin-ink);
-  box-shadow: inset 3px 0 0 var(--admin-accent), var(--admin-shadow-sm);
+.navButton:hover { background: var(--admin-border-soft); color: var(--admin-ink); }
+.navButton:focus-visible { outline: 3px solid var(--admin-focus); outline-offset: 1px; }
+.navIcon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--admin-border-soft);
+  color: var(--admin-muted);
+  transition: background .15s ease, color .15s ease;
 }
-.navText { display: grid; gap: 2px; }
-.navText strong { font-size: 13px; }
-.navText small { font-size: 11px; color: var(--admin-muted); line-height: 1.25; }
+.navButtonActive { background: var(--admin-accent-soft); color: var(--admin-ink); }
+.navButtonActive .navIcon { background: var(--admin-accent); color: var(--admin-accent-ink); }
+.navButtonActive .navText strong { color: var(--admin-accent-strong); }
+.navText { display: grid; gap: 2px; min-width: 0; }
+.navText strong { font-size: 13px; font-weight: 750; }
+.navText small { font-size: 11px; color: var(--admin-muted); line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.navButton > svg:last-child { opacity: .45; }
 
-.main { display: grid; gap: 18px; }
+.main { display: grid; gap: 20px; min-width: 0; }
 
-.card { overflow: hidden; }
-.cardHead { padding: 20px; border-bottom: 1px solid var(--admin-border); }
-.cardHead h2 { margin: 0; font-size: 18px; color: var(--admin-ink); }
-.cardHead p { margin: 5px 0 0; font-size: 13px; }
-.cardBody { display: grid; gap: 18px; padding: 20px; }
-
-.toggle { display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 14px 0; border-bottom: 1px solid var(--admin-border); }
-.toggle:last-child { border-bottom: 0; }
-.toggleInfo { display: grid; gap: 3px; }
-.toggleInfo strong { font-size: 14px; color: var(--admin-ink); }
-.toggleInfo small { font-size: 11px; color: var(--admin-muted); }
-.toggleSwitch {
+/* Section heading (the group you're in) ---------------------------------- */
+.sectionHead { display: flex; align-items: center; gap: 14px; }
+.sectionIcon {
+  display: grid;
+  place-items: center;
   width: 44px;
-  height: 24px;
-  padding: 3px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--admin-accent-soft);
+  color: var(--admin-accent-strong);
+}
+.sectionHead h2 { margin: 0; font-size: 20px; letter-spacing: -.02em; color: var(--admin-ink); }
+.sectionHead p { margin: 3px 0 0; font-size: 13px; color: var(--admin-muted); }
+
+/* Cards ------------------------------------------------------------------ */
+.card { overflow: hidden; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-lg, 18px); background: var(--admin-surface); box-shadow: var(--admin-shadow-sm); }
+.cardHead { display: flex; align-items: flex-start; gap: 12px; padding: 18px 22px; border-bottom: 1px solid var(--admin-border); background: linear-gradient(180deg, var(--admin-border-soft), transparent); }
+.cardHead::before { content: ''; flex: 0 0 3px; align-self: stretch; border-radius: 3px; background: var(--admin-accent); }
+.cardHead h2 { margin: 0; font-size: 15px; font-weight: 800; letter-spacing: -.01em; color: var(--admin-ink); }
+.cardHead p { margin: 4px 0 0; font-size: 13px; line-height: 1.5; color: var(--admin-muted); }
+.cardBody { display: grid; gap: 18px; padding: 22px; }
+
+/* Fields inside cards: a steady label rhythm */
+.main label { font-size: 12px; font-weight: 750; color: var(--admin-ink-soft); }
+.main label select, .main label input { margin-top: 6px; }
+.main p { line-height: 1.6; }
+/* Placeholder hints read as hints, not as typed values. */
+.main input::placeholder, .main textarea::placeholder { font-weight: 400; color: var(--admin-muted-soft); opacity: 1; }
+.note {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-border-soft);
+  color: var(--admin-muted);
+  font-size: 13px;
+}
+.note a { color: var(--admin-accent-strong); font-weight: 700; }
+
+/* Toggles ---------------------------------------------------------------- */
+.toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 18px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-bg);
+}
+.toggleInfo { display: grid; gap: 3px; min-width: 0; }
+.toggleInfo strong { font-size: 14px; font-weight: 750; color: var(--admin-ink); }
+.toggleInfo small { font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--admin-muted); }
+.toggleControl { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; }
+.toggleState { min-width: 22px; font-size: 12px; font-weight: 800; color: var(--admin-muted); }
+.toggleStateOn { color: var(--admin-accent-strong); }
+.toggleSwitch {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  padding: 0;
   border: 0;
   border-radius: var(--admin-radius-pill);
   background: var(--admin-muted-soft);
   cursor: pointer;
-  transition: background .18s ease;
+  transition: background .2s ease;
 }
-.toggleSwitch i { display: block; width: 18px; height: 18px; border-radius: 50%; background: var(--admin-surface); transition: transform .18s ease; }
+.toggleSwitch:focus-visible { outline: 3px solid var(--admin-focus); outline-offset: 2px; }
+.toggleSwitch i {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+  transition: transform .2s ease;
+}
 .toggleSwitchOn { background: var(--admin-accent); }
 .toggleSwitchOn i { transform: translateX(20px); }
 
+/* Market and security panels -------------------------------------------- */
 .marketSummary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-.marketItem { display: grid; gap: 4px; padding: 16px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); }
+.marketItem { display: grid; gap: 4px; padding: 16px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); background: var(--admin-bg); }
 .marketItem span { font-size: 12px; color: var(--admin-muted); }
 
 .securityCallout {
   display: flex;
   gap: 12px;
-  padding: 16px;
+  padding: 16px 18px;
   border: 1px solid var(--admin-border);
+  border-left: 3px solid var(--admin-accent);
   border-radius: var(--admin-radius-md);
   background: var(--admin-accent-soft);
 }
 .securityCallout p { margin: 4px 0 0; }
 
-@media (max-width: 800px) {
-  .head { align-items: stretch; flex-direction: column; }
-  .layout { grid-template-columns: 1fr; }
+/* Save button ------------------------------------------------------------ */
+.saveBtn { min-height: 40px; padding: 0 20px; }
+
+/* Responsive ------------------------------------------------------------- */
+@media (max-width: 960px) {
+  .layout { grid-template-columns: 1fr; gap: 20px; }
   .nav { display: none; }
   .navSelect { display: grid; gap: 6px; }
-  .search { width: 100%; }
   .marketSummary { grid-template-columns: 1fr; }
-  .head :global(.inline) { align-items: stretch; }
-  /* Was `.head :global(.btn)` -- reached the Save button only while it
-     carried the bare global "btn" classname. Now that the button composes
-     the shared admin-ui.module.css .btn (build-time-hashed), a
-     :global(.btn) selector here would silently stop matching anything.
-     saveBtn is a page-local class applied alongside ui.btn purely so this
-     mobile rule still has something real to target. */
-  .head .saveBtn { width: 100%; }
+}
+@media (max-width: 800px) {
+  .head { align-items: stretch; flex-direction: column; }
+  .headActions { width: 100%; }
+  .headActions .search { width: 100%; }
+  .headActions .saveBtn { width: 100%; }
+  .status { align-self: flex-start; }
 }
 
 /* Search engine listing: how the store link looks when shared (WhatsApp-style card). */
