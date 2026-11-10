@@ -1,5 +1,4 @@
 import { Suspense } from 'react'
-import { RefreshCw } from 'lucide-react'
 import { requirePermission } from '@/lib/auth'
 import { DEFAULT_STORE_TIMEZONE } from '@/lib/admin-datetime'
 import { getStoreTimezone } from '@/lib/store-timezone'
@@ -7,6 +6,7 @@ import { BackupCard, CARDS, CardSkeleton, CloudflareCard, DatabaseCard, EmailCar
 import styles from '@/components/admin-website-status.module.css'
 import ui from '@/components/admin-ui.module.css'
 import HealthTabs from '@/components/health-tabs'
+import WebsiteStatusLive from '@/components/website-status-live'
 
 // The owner's view of everything the website runs on: database, backups, hosting, emails,
 // uptime and the automatic jobs (lib/website-status.ts). Owner only (settings.manage): it shows
@@ -18,7 +18,7 @@ export default async function WebsiteStatusPage() {
     <HealthTabs current="status" canManage />
     <div className={ui.sectionHead}>
       <div><span className={ui.muted}>OWNER</span><h1 className={ui.title}>Website status</h1><p className={ui.muted}>Your database, hosting, emails, uptime and automatic jobs in one place.</p></div>
-      <a className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/website-status"><RefreshCw size={15} aria-hidden="true" /> Refresh</a>
+      <WebsiteStatusLive timezone={timezone} />
     </div>
     <Suspense fallback={<div className={`${ui.card} ${styles.summary}`}><div className={styles.skeleton} aria-label="Loading"><span /><span /></div></div>}>
       <StatusSummary timezone={timezone} />

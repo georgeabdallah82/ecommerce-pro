@@ -110,3 +110,12 @@
 .numbers table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 12px; font-variant-numeric: tabular-nums; }
 .numbers th, .numbers td { text-align: right; padding: 4px 6px; border-top: 1px solid var(--admin-border-soft); color: var(--admin-ink); }
 .numbers th:first-child, .numbers td:first-child { text-align: left; }
+
+/* Live refresh bar */
+.live { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.liveSwitch { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--admin-ink-soft); cursor: pointer; }
+.liveSwitch input { accent-color: var(--admin-accent); width: 16px; height: 16px; }
+.live .stamp { font-size: 12px; color: var(--admin-muted); white-space: nowrap; }
+.spin { animation: liveSpin .9s linear infinite; }
+@keyframes liveSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
