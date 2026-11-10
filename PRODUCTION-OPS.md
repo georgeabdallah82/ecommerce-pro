@@ -26,7 +26,7 @@ Admin > Tax manages per-country tax rates (`TaxRate`), the same shape as Shippin
 
 ## Expired reservations
 
-Cloudflare Workers don't support scheduled tasks inside the main app worker, so cleanup runs as its own small Worker with a Cron Trigger: `workers/release-expired-reservations/`. It runs every 10 minutes (UTC) and calls:
+Cloudflare Workers don't support scheduled tasks inside the main app worker, so cleanup runs as its own small Worker with a Cron Trigger: `workers/release-expired-reservations/`. It runs every 30 minutes (UTC) and calls:
 
 `GET /api/internal/release-expired-reservations`
 
