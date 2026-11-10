@@ -52,7 +52,7 @@ const defaultPaymentConfig: PaymentConfig = {
   apiPassword: '',
 }
 
-export default function SettingsCenterPro({ initial, addSearchWord, metaCapiTokenSet = false, emailFromDefault = '', appIcon, products = [], whatsappListCount = 0 }: { initial: any[]; addSearchWord?: string; metaCapiTokenSet?: boolean; emailFromDefault?: string; appIcon?: { brandName: string; source: string; brandColor: string; saved: { large: string; small: string } }; products?: Array<{ id: string; name: string }>; whatsappListCount?: number }) {
+export default function SettingsCenterPro({ initial, addSearchWord, metaCapiTokenSet = false, metaCapiTokenUnreadable = false, emailFromDefault = '', appIcon, products = [], whatsappListCount = 0 }: { initial: any[]; addSearchWord?: string; metaCapiTokenSet?: boolean; metaCapiTokenUnreadable?: boolean; emailFromDefault?: string; appIcon?: { brandName: string; source: string; brandColor: string; saved: { large: string; small: string } }; products?: Array<{ id: string; name: string }>; whatsappListCount?: number }) {
   const map = useMemo(() => new Map(initial.map(x => [x.key, x.value])), [initial])
   const [tab, setTab] = useState('General')
   // A term the shoppers searched for and found nothing: add it as a new word group, left for the owner to finish.
@@ -505,6 +505,7 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
                 <input className={ui.input} type="password" autoComplete="off" value={capiToken} onChange={e => setCapiToken(e.target.value)} placeholder={capiTokenSaved ? 'Saved — paste a new one to replace it' : 'Paste the token from Events Manager'} />
               </label>
               <p className={ui.muted}>Get it in Meta Events Manager › your dataset › Settings › Conversions API › Generate access token.{capiTokenSaved ? ' A token is saved.' : ''}</p>
+              {metaCapiTokenUnreadable && <p role="alert" style={{ margin: 0, color: '#b42318', fontWeight: 700 }}>The saved token can no longer be read (the store&apos;s secret key changed). Purchases are not reported to Meta until you paste the token again.</p>}
               {capiTokenSaved && <button type="button" className={`${ui.btn} ${ui.btnDanger} ${ui.btnSmall}`} onClick={async () => { try { await api('/api/admin/settings', { method: 'PATCH', body: JSON.stringify({ key: 'tracking.metaCapiToken', value: '' }) }); setCapiTokenSaved(false); setCapiCheck('Token removed. The server no longer reports sales to Meta.') } catch (e) { setCapiCheck(e instanceof Error ? e.message : 'Could not remove the token') } }}>Remove token</button>}
               <Field label="Test event code (optional, for checking)" value={values['tracking.metaCapiTestCode']} onChange={v => set('tracking.metaCapiTestCode', v)} />
               <p className={ui.muted}>To check the connection: in Events Manager open Test events, copy the test code shown there, paste it here, Save, then press Check connection. Clear the code afterwards so real sales aren't marked as tests.</p>

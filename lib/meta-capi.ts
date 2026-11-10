@@ -105,6 +105,7 @@ async function loadMetaCapiConfig() {
   // A sealed token is opened here; a plain one saved before sealing still works (the daily job seals it).
   const storedToken = (map.get('tracking.metaCapiToken') || '').trim()
   const token = storedToken.startsWith('v1.') ? ((await openSecret(storedToken)) || '') : storedToken
+  if (storedToken.startsWith('v1.') && !token) console.error('[meta-capi] the saved token cannot be read (the secret key changed); enter it again in Settings')
   return { pixelId, token, testCode: (map.get('tracking.metaCapiTestCode') || '').trim(), storeCountry: map.get('store.country') || 'Lebanon', enabled: !!(pixelId && token) }
 }
 

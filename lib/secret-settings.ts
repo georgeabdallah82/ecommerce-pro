@@ -1,5 +1,12 @@
 import { db } from '@/lib/prisma'
-import { sealSecret } from '@/lib/two-step'
+import { openSecret, sealSecret } from '@/lib/two-step'
+
+// False when a sealed value can no longer be opened, e.g. after AUTH_SECRET was changed.
+export async function isReadableSecret(stored: string | null | undefined) {
+  const value = String(stored || '')
+  if (!value || !value.startsWith('v1.')) return true
+  return (await openSecret(value)) !== null
+}
 
 // Settings that hold secrets are kept sealed (see app/api/admin/settings/route.ts). Any value saved
 // before sealing existed is sealed here, once; the daily job runs this.
