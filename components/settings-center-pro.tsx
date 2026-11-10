@@ -545,7 +545,7 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
               <Field label="Headline" placeholder={MAINTENANCE_MODE_INFO[maintenanceMode(values['maintenance.mode'])].headline} value={values['maintenance.headline']} onChange={v => set('maintenance.headline', v)} />
               <Field label="Message" placeholder={MAINTENANCE_MODE_INFO[maintenanceMode(values['maintenance.mode'])].message} value={values['maintenance.message']} onChange={v => set('maintenance.message', v)} />
               <Field label="Note (optional, e.g. Back by 6 pm, or Opening 1 December)" value={values['maintenance.backBy']} onChange={v => set('maintenance.backBy', v)} />
-              <p className={ui.muted}>Leave the headline and message empty to use the wording for the page type you picked. The page also shows your WhatsApp and contact email (Settings &gt; General). <a className={ui.textLink} href="/maintenance?preview=1" target="_blank" rel="noreferrer">Preview the page</a> (save first to see your changes).</p>
+              <p className={styles.note}>Leave the headline and message empty to use the wording for the page type you picked. The page also shows your WhatsApp and contact email (Settings &gt; General). <a className={ui.textLink} href="/maintenance?preview=1" target="_blank" rel="noreferrer">Preview the page</a> (save first to see your changes).</p>
             </Card>
           )}
 

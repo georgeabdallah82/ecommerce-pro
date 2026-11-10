@@ -125,6 +125,8 @@
 .main label { font-size: 12px; font-weight: 750; color: var(--admin-ink-soft); }
 .main label select, .main label input { margin-top: 6px; }
 .main p { line-height: 1.6; }
+/* Placeholder hints read as hints, not as typed values. */
+.main input::placeholder, .main textarea::placeholder { font-weight: 400; color: var(--admin-muted-soft); opacity: 1; }
 .note {
   margin: 0;
   padding: 12px 14px;
