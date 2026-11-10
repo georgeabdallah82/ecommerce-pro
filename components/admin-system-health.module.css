@@ -1,78 +1,112 @@
 /*
- * System health - CSS Modules, same pattern as the rest of the admin
- * componentization (#74): build-time-unique classnames plus the --admin-*
- * tokens from ../app/admin/admin-overhaul.css via var(), so dark mode is
- * automatic.
- *
- * Before this module, this page's layout classnames (systemHealthPage,
- * healthTimestamp, healthTotals, healthGrid, healthCheckHead, and the
- * .ok/.warning/.critical severity modifiers on healthCheck) were never
- * defined anywhere in globals.css or admin-overhaul.css - only the shared
- * .card look (background/border/radius/shadow) ever reached healthHero and
- * healthCheck, via a `body:has(.adminShell) ... .healthCheck,
- * .healthHero{...}` rule. Every other layout on this page - the hero row,
- * the totals row, the check-card grid, the per-check header row, and any
- * visual distinction between an ok/warning/critical check - was rendering
- * as unstyled default block flow.
+ * System health - CSS Modules, same pattern as the rest of the admin:
+ * build-time unique classnames plus the --admin-* tokens from
+ * ../app/admin/admin-overhaul.css via var(), so dark mode is automatic.
  */
 
-.page { max-width: 1100px; margin: 0 auto; padding-bottom: 24px; }
+.page { max-width: 1180px; margin: 0 auto; padding-bottom: 32px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.spin { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
 
-.repairNote { margin: -8px 0 16px; }
-
+/* Hero: status, summary and the filter tiles */
 .hero {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 20px;
-  flex-wrap: wrap;
   padding: 20px;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
-.timestamp { margin-top: 8px; font-size: 12px; color: var(--admin-muted); }
+.heroMain { display: grid; gap: 8px; min-width: 0; }
+.heroSummary { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: -.01em; color: var(--admin-ink); }
+.timestamp { font-size: 12px; color: var(--admin-muted); }
 
-.totals { display: flex; gap: 28px; }
-.totals > div { display: grid; gap: 3px; text-align: right; }
-.totals strong { font-size: 25px; letter-spacing: -.03em; color: var(--admin-ink); }
-.totals span { font-size: 11px; color: var(--admin-muted); }
+.filters { display: grid; grid-template-columns: repeat(4, minmax(104px, 1fr)); gap: 8px; }
+.filterTile {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-bg);
+  color: var(--admin-muted);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+.filterTile strong { font-size: 22px; letter-spacing: -.02em; color: var(--admin-ink); font-variant-numeric: tabular-nums; }
+.filterTile span { font-size: 11px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.filterTile:hover { border-color: var(--admin-muted-soft); }
+.filterTile:focus-visible { outline: 3px solid var(--admin-focus); outline-offset: 2px; }
+.filterOn { background: var(--admin-surface); border-color: var(--admin-accent); box-shadow: inset 0 0 0 1px var(--admin-accent); }
+.tile_all strong { color: var(--admin-ink); }
+.tile_critical strong { color: var(--admin-danger); }
+.tile_attention strong { color: var(--admin-warning); }
+.tile_healthy strong { color: var(--admin-success-strong); }
 
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+/* Search */
+.searchRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 0 18px; flex-wrap: wrap; }
+.search { display: flex; align-items: center; gap: 8px; width: min(360px, 100%); height: 40px; padding: 0 12px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); background: var(--admin-surface); color: var(--admin-muted); transition: border-color .15s ease, box-shadow .15s ease; }
+.search:focus-within { border-color: var(--admin-accent); box-shadow: 0 0 0 3px var(--admin-accent-soft); }
+.search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 13px; color: var(--admin-ink); }
+.clearBtn { display: grid; place-items: center; border: 0; background: transparent; color: var(--admin-muted); cursor: pointer; }
 
+/* Sections, one per area of the business */
+.section { margin-bottom: 26px; }
+.sectionHead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid var(--admin-border); }
+.sectionHead h2 { margin: 0; font-size: 15px; font-weight: 800; letter-spacing: -.01em; color: var(--admin-ink); }
+.sectionIssues { font-size: 12px; font-weight: 800; color: var(--admin-warning); white-space: nowrap; }
+.sectionOk { font-size: 12px; font-weight: 700; color: var(--admin-success-strong); white-space: nowrap; }
+
+/* Problem cards */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-bottom: 12px; }
 .check {
   padding: 16px 18px;
   border-left: 3px solid var(--admin-border);
   display: grid;
   gap: 6px;
   text-decoration: none;
+  color: inherit;
   cursor: default;
 }
 a.check { cursor: pointer; }
+a.check:hover { box-shadow: var(--admin-shadow-md); }
 .check.warning { border-left-color: var(--admin-warning); }
 .check.critical { border-left-color: var(--admin-danger); }
-
 .checkHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.checkHead strong { font-size: 15px; color: var(--admin-ink); }
-
+.checkCount { font-size: 15px; color: var(--admin-ink); font-variant-numeric: tabular-nums; }
 .check h3 { margin: 0; font-size: 14px; color: var(--admin-ink); }
-.check p { margin: 0; font-size: 12px; color: var(--admin-muted); }
+.check p { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--admin-muted); }
+.checkAction { display: flex; align-items: center; gap: 2px; margin-top: 4px; font-size: 12px; font-weight: 800; color: var(--admin-accent-strong); }
 
-.checkAction {
-  display: flex;
+/* Healthy checks: one compact row each */
+.okList { display: grid; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); background: var(--admin-surface); overflow: hidden; }
+.okRow {
+  display: grid;
+  grid-template-columns: 18px minmax(120px, 200px) minmax(0, 1fr) 14px;
   align-items: center;
-  gap: 2px;
-  margin-top: 4px;
-  font-size: 11px;
-  font-weight: 800;
-  color: var(--admin-success-strong);
+  gap: 10px;
+  min-height: 42px;
+  padding: 0 14px;
+  border-top: 1px solid var(--admin-border-soft);
+  color: inherit;
+  text-decoration: none;
+  font-size: 13px;
 }
+.okRow:first-child { border-top: 0; }
+a.okRow:hover { background: var(--admin-border-soft); }
+.okIcon { color: var(--admin-success-strong); }
+.okLabel { font-weight: 700; color: var(--admin-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.okMessage { color: var(--admin-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.okChevron { color: var(--admin-muted-soft); }
 
-@media (max-width: 640px) {
-  .hero { flex-direction: column; align-items: stretch; }
-  .totals { justify-content: space-between; }
-  .totals > div { text-align: left; }
+@media (max-width: 860px) {
+  .hero { grid-template-columns: 1fr; }
+  .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .okRow { grid-template-columns: 18px minmax(0, 1fr) 14px; }
+  .okMessage { display: none; }
 }
-
-.healthyBox { margin-top: 16px; }
-.healthyBox > summary { cursor: pointer; display: flex; align-items: center; min-height: 44px; font-size: 14px; font-weight: 700; color: var(--admin-muted); }
-.healthyBox > summary:hover { color: var(--admin-ink); }
-.healthyBox[open] > summary { margin-bottom: 8px; }
