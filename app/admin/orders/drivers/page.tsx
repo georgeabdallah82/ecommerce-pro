@@ -31,7 +31,7 @@ export default async function DriversPage() {
     const out = mine.filter(o => o.status === 'SHIPPED')
     const cash = mine.filter(o => o.status === 'DELIVERED')
     return {
-      id: d.id, name: d.name, phone: d.phone || '', active: d.active, link: `${site}/driver/${d.token}`,
+      id: d.id, name: d.name, phone: d.phone || '', active: d.active, link: `${site}/driver/${d.token}`, expiresAt: d.tokenExpiresAt ? d.tokenExpiresAt.toISOString() : null,
       outCount: out.length, outCollect: out.reduce((sum, o) => sum + toCollect(o), 0),
       cash: cash.map(o => ({ id: o.id, orderNumber: o.orderNumber, amount: o.cashCollected || 0, deliveredAt: o.updatedAt.toISOString() })),
       delivered30: delivered30.find(g => g.driverId === d.id)?._count._all || 0,

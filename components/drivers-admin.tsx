@@ -12,7 +12,7 @@ import s from './bring-back.module.css'
 import ui from './admin-ui.module.css'
 
 export type DriverRow = {
-  id: string; name: string; phone: string; active: boolean; link: string
+  id: string; name: string; phone: string; active: boolean; link: string; expiresAt: string | null
   outCount: number; outCollect: number
   cash: Array<{ id: string; orderNumber: string; amount: number; deliveredAt: string }>
   delivered30: number; currency: string
@@ -40,7 +40,7 @@ export default function DriversAdmin({ initial, storeName, timezone, canManage }
     setBusy('add'); setError(''); setNotice('')
     try {
       const { driver } = await api('/api/admin/drivers', 'POST', { name, phone })
-      setRows(current => [...current, { id: driver.id, name: driver.name, phone: driver.phone || '', active: true, link: `${window.location.origin}/driver/${driver.token}`, outCount: 0, outCollect: 0, cash: [], delivered30: 0, currency: 'USD' }])
+      setRows(current => [...current, { id: driver.id, name: driver.name, phone: driver.phone || '', active: true, link: `${window.location.origin}/driver/${driver.token}`, expiresAt: driver.tokenExpiresAt ?? null, outCount: 0, outCollect: 0, cash: [], delivered30: 0, currency: 'USD' }])
       setName(''); setPhone('')
       setNotice(`${driver.name} added. Send them their link with the WhatsApp button.`)
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to add the driver') }
@@ -51,7 +51,7 @@ export default function DriversAdmin({ initial, storeName, timezone, canManage }
     setBusy(row.id); setError(''); setNotice('')
     try {
       const { driver } = await api('/api/admin/drivers', 'PATCH', { id: row.id, ...data })
-      setRows(current => current.map(r => r.id === row.id ? { ...r, name: driver.name, phone: driver.phone || '', active: driver.active, link: `${window.location.origin}/driver/${driver.token}` } : r))
+      setRows(current => current.map(r => r.id === row.id ? { ...r, name: driver.name, phone: driver.phone || '', active: driver.active, link: `${window.location.origin}/driver/${driver.token}`, expiresAt: driver.tokenExpiresAt ?? r.expiresAt } : r))
       setNotice(message)
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to save the driver') }
     finally { setBusy('') }
@@ -118,6 +118,9 @@ export default function DriversAdmin({ initial, storeName, timezone, canManage }
               <strong className={s.name}>{row.name}{!row.active && <span className={ui.muted}> · turned off</span>}</strong>
               <div className={s.meta}>{row.phone ? <a href={`https://wa.me/${row.phone}`} target="_blank" rel="noreferrer" dir="ltr">{displayPhone(row.phone)}</a> : <span>No phone</span>}<span>{row.delivered30} delivered in 30 days</span></div>
             </div>
+            {row.active && row.expiresAt && (new Date(row.expiresAt) <= new Date()
+              ? <p className={s.note}>{row.name}&apos;s link has expired. Make a new one so they can open their list.</p>
+              : <p className={s.meta}>Link works until {new Date(row.expiresAt).toLocaleDateString('en-GB')}</p>)}
             <div className={s.amount}><strong>{row.outCount} out now</strong><span>{row.outCollect ? `${money(row.outCollect, row.currency)} to collect` : 'nothing to collect'}</span></div>
           </div>
           {cash > 0 ? <div className={s.note}><Wallet size={15} style={{ verticalAlign: '-2px' }} /> <strong>{money(cash, row.currency)}</strong> collected, not handed over yet ({row.cash.map(c => `#${c.orderNumber} ${formatAdminDateTime(c.deliveredAt, timezone, { day: 'numeric', month: 'short' })}`).join(', ')})</div>
