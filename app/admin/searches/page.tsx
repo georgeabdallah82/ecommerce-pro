@@ -1,42 +1,46 @@
+import Link from '@/components/admin-link'
 import { requirePermission } from '@/lib/auth'
-import { searchReport } from '@/lib/search-analytics'
+import { SEARCH_REPORT_PERIODS, searchReport } from '@/lib/search-analytics'
+import SearchReportTables from '@/components/search-report-tables'
 import ui from '@/components/admin-ui.module.css'
+import styles from '@/components/admin-searches.module.css'
 
-// Admin > Analytics > Searches: what shoppers searched for in the last 30 days, and the searches
-// that found nothing (a product to add, a spelling to add to the store's word list, or a link to fix).
-export default async function Searches() {
+// Admin > Analytics > Searches: what shoppers searched for, and the searches that found nothing
+// (a product to add, a spelling to add to the store's word list, or a link to fix).
+export default async function Searches({ searchParams }: { searchParams: Promise<{ days?: string }> }) {
   await requirePermission('reports.view')
-  const report = await searchReport()
-  return <div>
+  const requested = Number((await searchParams).days)
+  const report = await searchReport(new Date(), requested)
+  const missRate = report.total ? Math.round((report.noResults / report.total) * 100) : 0
+  const hitRate = report.total ? 100 - missRate : 0
+
+  return <div className={styles.page}>
     <div className={ui.sectionHead}>
       <div>
-        <span className={ui.muted}>OPERATIONS & INSIGHTS</span>
+        <span className={ui.muted}>OPERATIONS &amp; INSIGHTS</span>
         <h1 className={ui.title}>Searches</h1>
-        <p className={ui.muted}>What shoppers typed into the shop search over the last {report.days} days.</p>
+        <p className={ui.muted}>What shoppers typed into the shop search in the last {report.days} days.</p>
       </div>
+      <nav className={styles.periods} aria-label="Period">
+        {SEARCH_REPORT_PERIODS.map(days => (
+          <Link key={days} href={`/admin/searches?days=${days}`} aria-current={report.days === days ? 'page' : undefined} className={report.days === days ? styles.periodOn : undefined}>
+            {days === 7 ? 'Last 7 days' : days === 30 ? 'Last 30 days' : 'Last 90 days'}
+          </Link>
+        ))}
+      </nav>
     </div>
 
-    <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', marginBottom: 18 }}>
-      <div className={ui.card} style={{ padding: 16 }}><span className={ui.muted}>Searches</span><strong style={{ display: 'block', fontSize: 28 }}>{report.total}</strong></div>
-      <div className={ui.card} style={{ padding: 16 }}><span className={ui.muted}>Found nothing</span><strong style={{ display: 'block', fontSize: 28 }}>{report.noResults}</strong><span className={ui.muted}>{report.total ? `${Math.round((report.noResults / report.total) * 100)}% of searches` : 'No searches yet'}</span></div>
+    <div className={styles.stats}>
+      <div className={styles.stat}><span>Searches</span><strong>{report.total.toLocaleString()}</strong></div>
+      <div className={styles.stat}><span>Found something</span><strong>{report.found.toLocaleString()}</strong><small>{report.total ? `${hitRate}% of searches` : 'No searches yet'}</small></div>
+      <div className={`${styles.stat} ${report.noResults ? styles.statWarn : ''}`}><span>Found nothing</span><strong>{report.noResults.toLocaleString()}</strong><small>{report.total ? `${missRate}% of searches` : 'No searches yet'}</small></div>
     </div>
 
-    <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}>
-      <section className={ui.card} style={{ padding: 16 }}>
-        <h2 style={{ margin: '0 0 10px', fontSize: 16 }}>Most searched</h2>
-        {report.top.length ? <table className={ui.table}>
-          <thead><tr><th>Search</th><th>Times</th><th>Avg. results</th></tr></thead>
-          <tbody>{report.top.map(row => <tr key={row.query}><td>{row.query}</td><td>{row.searches}</td><td>{row.avgResults}</td></tr>)}</tbody>
-        </table> : <p className={ui.muted}>Nobody has searched yet.</p>}
-      </section>
-      <section className={ui.card} style={{ padding: 16 }}>
-        <h2 style={{ margin: '0 0 4px', fontSize: 16 }}>Found nothing</h2>
-        <p className={ui.muted} style={{ margin: '0 0 10px', fontSize: 13 }}>Products you could add, or spellings to add to the store&apos;s word list.</p>
-        {report.empty.length ? <table className={ui.table}>
-          <thead><tr><th>Search</th><th>Times</th><th /></tr></thead>
-          <tbody>{report.empty.map(row => <tr key={row.query}><td>{row.query}</td><td>{row.searches}</td><td><a href={`/admin/settings?addWord=${encodeURIComponent(row.query)}`}>Add a search word</a></td></tr>)}</tbody>
-        </table> : <p className={ui.muted}>Every search found something.</p>}
-      </section>
-    </div>
+    {report.total === 0
+      ? <div className={`${ui.card} ${styles.empty}`}>
+          <h2>No searches in this period</h2>
+          <p className={ui.muted}>When shoppers search the shop, their searches show up here, with the ones that found nothing.</p>
+        </div>
+      : <SearchReportTables top={report.top} empty={report.empty} />}
   </div>
 }

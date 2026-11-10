@@ -7,6 +7,8 @@ import { runInBackground } from '@/lib/background'
 const MAX_QUERY = 80
 const DAY_MS = 24 * 60 * 60 * 1000
 export const SEARCH_REPORT_DAYS = 30
+// The periods the Searches report offers. The longest one matches how long searches are kept.
+export const SEARCH_REPORT_PERIODS = [7, 30, 90] as const
 
 // The text as it is grouped in the report: lower case, single spaces, short.
 export function cleanSearchText(raw: string) {
@@ -23,8 +25,9 @@ export function recordSearch(raw: string, results: number) {
   )
 }
 
-export async function searchReport(now = new Date()) {
-  const since = new Date(now.getTime() - SEARCH_REPORT_DAYS * DAY_MS)
+export async function searchReport(now = new Date(), days: number = SEARCH_REPORT_DAYS) {
+  const period = (SEARCH_REPORT_PERIODS as readonly number[]).includes(days) ? days : SEARCH_REPORT_DAYS
+  const since = new Date(now.getTime() - period * DAY_MS)
   const [total, top, empty] = await Promise.all([
     db.searchQuery.count({ where: { createdAt: { gte: since } } }),
     db.searchQuery.groupBy({ by: ['query'], where: { createdAt: { gte: since } }, _count: { query: true }, _avg: { results: true }, orderBy: { _count: { query: 'desc' } }, take: 25 }),
@@ -32,9 +35,10 @@ export async function searchReport(now = new Date()) {
   ])
   const noResults = await db.searchQuery.count({ where: { createdAt: { gte: since }, results: 0 } })
   return {
-    days: SEARCH_REPORT_DAYS,
+    days: period,
     total,
     noResults,
+    found: total - noResults,
     top: top.map(row => ({ query: row.query, searches: row._count.query, avgResults: Math.round((row._avg.results || 0) * 10) / 10 })),
     empty: empty.map(row => ({ query: row.query, searches: row._count.query })),
   }
