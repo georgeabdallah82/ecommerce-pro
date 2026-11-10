@@ -8,7 +8,8 @@
 // Needs playwright-core (installed by the workflow, not a project dependency); CHROMIUM_PATH
 // points it at a browser binary when the default download isn't used.
 import { chromium } from 'playwright-core'
-import { createHmac } from 'node:crypto'
+import pg from 'pg'
+import { createHash, createHmac, randomBytes } from 'node:crypto'
 const B = process.env.BASE || 'http://127.0.0.1:8787'
 const ADMIN = { email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD }
 if (!ADMIN.email || !ADMIN.password) throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD are required')
@@ -99,8 +100,28 @@ await regForm.locator('button', { hasText: 'Create account' }).first().click()
 // The form posts in the background and then redirects to the account page; the session cookie
 // is set by that response, so wait for the redirect rather than a fixed delay.
 await cp.waitForURL(u => !u.pathname.startsWith('/account/register'), { timeout: 60000 }).catch(() => {})
+// New accounts must confirm their email before a session starts, so registration alone signs nobody in.
+const beforeConfirm = await cp.evaluate(async () => { const r = await fetch('/api/auth/session'); return r.json().catch(() => ({ status: r.status })) })
+step('registration waits for email confirmation (no session yet)', !beforeConfirm?.user, `fields=${regInputs.join(',')} user=${beforeConfirm?.user?.email || 'none'}`)
+// The test cannot read the inbox, so it makes the confirmation link the way the app does (a random
+// token, stored only as its SHA-256 hash, valid for 48 hours) and opens it through the real route.
+const confirmToken = await (async () => {
+  const token = randomBytes(32).toString('hex')
+  const client = new pg.Client({ connectionString: process.env.DATABASE_URL })
+  await client.connect()
+  try {
+    const user = await client.query('SELECT id FROM "User" WHERE email = $1', [`pg-cust-${stamp}@example.com`])
+    if (!user.rows[0]) throw new Error('registered customer not found in the database')
+    await client.query(
+      `INSERT INTO "EmailVerificationToken" (id, "userId", "tokenHash", "expiresAt") VALUES (gen_random_uuid()::text, $1, $2, now() + interval '48 hours')`,
+      [user.rows[0].id, createHash('sha256').update(token).digest('hex')],
+    )
+  } finally { await client.end() }
+  return token
+})().catch(e => { console.log('confirmation link could not be made', String(e).slice(0, 160)); return null })
+if (confirmToken) await cp.goto(`${B}/api/auth/verify-email?token=${confirmToken}`, { waitUntil: 'networkidle' })
 const session = await cp.evaluate(async () => { const r = await fetch('/api/auth/session'); return r.json().catch(() => ({ status: r.status })) })
-step('customer registration + session', !!session?.user?.email, `fields=${regInputs.join(',')} user=${session?.user?.email || JSON.stringify(session).slice(0, 80)}`)
+step('confirmed customer is signed in', !!session?.user?.email, `user=${session?.user?.email || JSON.stringify(session).slice(0, 80)}`)
 const productId = await cp.evaluate(async path => { const r = await fetch('/api/products?limit=50'); const j = await r.json().catch(() => null); const list = j?.products || j?.rows || j || []; const slug = path.split('/').pop(); return (list.find?.(p => p.slug === slug) || list[0])?.id || '' }, productPath)
 const wish = await cp.evaluate(async id => { const r = await fetch('/api/wishlist', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ productId: id }) }); return r.status + ' ' + (await r.text()).slice(0, 80) }, productId)
 step('wishlist add', wish.startsWith('200') || wish.startsWith('201'), wish)
