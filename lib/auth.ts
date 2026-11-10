@@ -56,7 +56,12 @@ export async function getCurrentUser() {
     // Staff on a custom role: load what that role allows (one settings read, staff only).
     const permissions = user.role !== 'CUSTOMER' && user.staffRoleId ? resolvePermissions(user, await getStaffRoles()) : null
     return { ...user, permissions }
-  } catch { return null }
+  } catch (error) {
+    // A session that cannot be read signs the visitor out. The reason is logged so a valid-looking
+    // session that is still refused can be traced (the message names the failed check).
+    console.error('[auth] Error reading the session:', error instanceof Error ? `${error.name}: ${error.message}` : String(error))
+    return null
+  }
 }
 
 export { isSessionRevoked }
