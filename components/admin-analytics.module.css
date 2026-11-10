@@ -14,7 +14,7 @@
 
 .metricCard { padding: 18px; display: grid; gap: 6px; position: relative; }
 .metricHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-.metricCard .sparkline { position: absolute; right: 16px; bottom: 16px; }
+.metricCard .sparkline { position: static; width: 100%; height: 34px; margin-top: 6px; }
 .metricIcon {
   width: 34px;
   height: 34px;
@@ -252,3 +252,15 @@
   .chartWrap { padding: 14px; }
   .datePanel { width: min(280px, calc(100vw - 32px)); right: auto; left: 0; }
 }
+
+/* Chart measure and ranking switches */
+.metricTabs { display: inline-flex; gap: 4px; padding: 4px; margin: 0 0 14px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-pill); background: var(--admin-bg); flex-wrap: wrap; }
+.metricTabs button { min-height: 30px; padding: 0 12px; border: 0; border-radius: var(--admin-radius-pill); background: transparent; color: var(--admin-muted); font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.metricTabs button:hover { color: var(--admin-ink); }
+.metricTabs button:focus-visible { outline: 3px solid var(--admin-focus); outline-offset: 1px; }
+.metricOn { background: var(--admin-surface) !important; color: var(--admin-ink) !important; box-shadow: var(--admin-shadow-sm); }
+.cardActions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* Inventory and ranking rows: the name keeps its room, the status pill sits on the right. */
+.rankRow > span:last-child, .rankRow > strong:last-child { flex: none; }
+.rankRowWide { grid-template-columns: minmax(0, 1fr) auto; }
