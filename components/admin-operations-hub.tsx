@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from '@/components/admin-link'
-import { Boxes, ClipboardList, CreditCard, FileEdit, MapPin, Plus, RefreshCw, RotateCcw, ShoppingCart, Truck, UsersRound } from 'lucide-react'
+import { AlertTriangle, Plus, RefreshCw } from 'lucide-react'
 import styles from './admin-operations-hub.module.css'
 import ui from './admin-ui.module.css'
 import { useConfirm } from './admin-confirm'
@@ -12,12 +12,6 @@ async function api(path: string, init?: RequestInit) {
   const data = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(data.error || `Request failed (${r.status})`)
   return data
-}
-
-function Card({ icon: Icon, title, count, attention = false, href }: { icon: any; title: string; count: number | string; attention?: boolean; href?: string }) {
-  const body = <><div className={styles.tileIcon}><Icon size={17}/></div><div><div className={`${ui.muted} ${styles.tileLabel}`}>{title}</div><strong className={styles.tileCount}>{count}</strong></div></>
-  const className = `${ui.card} ${styles.tile} ${attention ? styles.tileAttention : ''}`
-  return href ? <Link href={href} className={className}>{body}</Link> : <div className={className}>{body}</div>
 }
 
 function AddToggle({ label, children }: { label: string; children: (close: () => void) => React.ReactNode }) {
@@ -373,65 +367,58 @@ function AbandonedCheckoutsPanel({ checkouts, onChange }: { checkouts: any[]; on
   </div>
 }
 
+// What this page loads. Orders, returns, transfers, gift cards and the rest have their own pages
+// in the sidebar, so this page links to them instead of repeating them.
+const ENDPOINTS: Record<string, { path: string; label: string }> = {
+  locations: { path: '/api/admin/locations', label: 'locations' },
+  abandoned: { path: '/api/admin/abandoned-checkouts', label: 'unfinished checkouts' },
+  channels: { path: '/api/admin/sales-channels', label: 'sales channels' },
+  webhooks: { path: '/api/admin/webhooks', label: 'webhooks' },
+  credentials: { path: '/api/admin/api-credentials', label: 'API keys' },
+}
+const OTHER_WORKFLOWS = [
+  { href: '/admin/inventory/transfers', label: 'Transfers' },
+  { href: '/admin/purchase-orders', label: 'Purchase orders' },
+  { href: '/admin/draft-orders', label: 'Draft orders' },
+  { href: '/admin/returns', label: 'Returns' },
+  { href: '/admin/order-edits', label: 'Order edits' },
+  { href: '/admin/gift-cards', label: 'Gift cards' },
+  { href: '/admin/customer-segments', label: 'Customer segments' },
+]
+
+function listOf(value: any): any[] {
+  if (Array.isArray(value)) return value
+  if (Array.isArray(value?.items)) return value.items
+  if (Array.isArray(value?.rows)) return value.rows
+  return []
+}
+
 export default function AdminOperationsHub() {
   const [data, setData] = useState<Record<string, any[]>>({})
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [tab, setTab] = useState('overview')
-  const [busy, setBusy] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
   const hasLoadedOnce = useRef(false)
 
   async function load() {
-    // Only the very first load shows the full-page spinner. A later refresh
-    // (after creating/toggling something in one of the entity panels below)
-    // must NOT flip `loading` back to true -- that swaps out the whole
-    // `{loading ? <Spinner/> : <tab content>}` branch, unmounting every panel
-    // and losing their local state, including a just-created webhook/API
-    // credential's one-time-reveal secret before anyone can read it.
+    // Only the first load shows the placeholder. A refresh keeps the panels mounted, so a key or
+    // webhook secret that was just created stays on screen for the owner to copy.
     if (!hasLoadedOnce.current) setLoading(true)
     else setRefreshing(true)
-    setError('')
-    const endpoints: Record<string, string> = {
-      locations: '/api/admin/locations',
-      transfers: '/api/admin/inventory/transfers',
-      drafts: '/api/admin/draft-orders',
-      returns: '/api/admin/returns',
-      purchaseOrders: '/api/admin/purchase-orders',
-      orderEdits: '/api/admin/order-edits',
-      giftCards: '/api/admin/gift-cards',
-      abandoned: '/api/admin/abandoned-checkouts',
-      channels: '/api/admin/sales-channels',
-      webhooks: '/api/admin/webhooks',
-      credentials: '/api/admin/api-credentials',
-    }
-    const entries = await Promise.all(Object.entries(endpoints).map(async ([key, path]) => {
-      try {
-        const value = await api(path)
-        return [key, Array.isArray(value) ? value : (Array.isArray(value?.items) ? value.items : Array.isArray(value?.rows) ? value.rows : [])] as const
-      } catch { return [key, []] as const }
+    const failed: string[] = []
+    const entries = await Promise.all(Object.entries(ENDPOINTS).map(async ([key, { path, label }]) => {
+      try { return [key, listOf(await api(path))] as const }
+      catch { failed.push(label); return [key, []] as const }
     }))
     setData(Object.fromEntries(entries))
+    setError(failed.length ? `Could not load ${failed.join(', ')}. Refresh to try again.` : '')
     setLoading(false)
     setRefreshing(false)
     hasLoadedOnce.current = true
   }
 
   useEffect(() => { load() }, [])
-
-  const counts = useMemo(() => ({
-    locations: data.locations?.length || 0,
-    transfers: data.transfers?.length || 0,
-    drafts: data.drafts?.length || 0,
-    returns: data.returns?.length || 0,
-    purchaseOrders: data.purchaseOrders?.length || 0,
-    orderEdits: data.orderEdits?.length || 0,
-    giftCards: data.giftCards?.length || 0,
-    abandoned: data.abandoned?.length || 0,
-    channels: data.channels?.length || 0,
-    webhooks: data.webhooks?.length || 0,
-    credentials: data.credentials?.length || 0,
-  }), [data])
 
   async function seedLocation() {
     setBusy(true); setError('')
@@ -440,31 +427,70 @@ export default function AdminOperationsHub() {
     finally { setBusy(false) }
   }
 
-  const tabs = [
-    ['overview', 'Overview'], ['inventory', 'Inventory ops'], ['orders', 'Order ops'], ['customers', 'Customers & payments'], ['integrations', 'Channels & integrations']
-  ]
+  const locations = data.locations || []
+  const webhooks = data.webhooks || []
+  const abandoned = data.abandoned || []
+
+  // Only things someone has to act on. Each one links to where the action happens.
+  const attention: { id: string; title: string; detail: string; action: React.ReactNode }[] = []
+  if (!loading && !locations.length) attention.push({
+    id: 'no-location', title: 'No stock location yet', detail: 'Orders and transfers need a location to take stock from.',
+    action: <button type="button" className={ui.btn} disabled={busy} onClick={seedLocation}>{busy ? 'Creating…' : 'Create main location'}</button>,
+  })
+  const offLocations = locations.filter((x: any) => x.status !== 'ACTIVE').length
+  if (offLocations) attention.push({ id: 'off-locations', title: `${offLocations} ${offLocations === 1 ? 'location is' : 'locations are'} turned off`, detail: 'Stock there is not used for new orders.', action: <a className={ui.textLink} href="#setup">Review</a> })
+  const failedHooks = webhooks.filter((x: any) => x.hasFailedDelivery).length
+  if (failedHooks) attention.push({ id: 'failed-hooks', title: `${failedHooks} ${failedHooks === 1 ? 'webhook failed' : 'webhooks failed'} to deliver`, detail: 'The receiving service did not accept the last event.', action: <a className={ui.textLink} href="#developers">Retry</a> })
+  const recoverable = abandoned.filter((x: any) => x.status === 'OPEN' && x.email && x.reminderState !== 'sent').length
+  if (recoverable) attention.push({ id: 'recoverable', title: `${recoverable} unfinished ${recoverable === 1 ? 'checkout' : 'checkouts'} can get a recovery email`, detail: 'Shoppers who left after typing their email.', action: <a className={ui.textLink} href="#automation">Send</a> })
 
   return <div className={styles.page}>
-    <div className={ui.sectionHead}><div><span className={ui.muted}>OPERATIONS</span><h1 className={ui.title}>Operations hub</h1><p className={ui.muted}>One control surface for the advanced commerce workflows behind your store.</p></div><button className={`${ui.btn} ${ui.btnSecondary}`} disabled={loading || refreshing} onClick={load}><RefreshCw size={15}/> Refresh</button></div>
-    {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
-    <div className="opsTabs">{tabs.map(([id, label]) => <button key={id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>{label}</button>)}</div>
+    <div className={ui.sectionHead}>
+      <div>
+        <h1 className={ui.title}>Operations</h1>
+        <p className={ui.muted}>Locations, sales channels, automatic emails and developer access.</p>
+      </div>
+      <button className={`${ui.btn} ${ui.btnSecondary}`} disabled={loading || refreshing} onClick={load}><RefreshCw size={15}/> {refreshing ? 'Refreshing…' : 'Refresh'}</button>
+    </div>
+    {error && <div className={`${ui.alert} ${ui.alertDanger}`} role="alert">{error}</div>}
 
     {loading ? <div className={`${ui.card} ${styles.loading}`}>Loading operations…</div> : <>
-      {tab === 'overview' && <>
-        <div className={styles.grid}>
-          <Card icon={MapPin} title="Locations" count={counts.locations}/><Card icon={Truck} title="Transfers" count={counts.transfers} href="/admin/inventory/transfers"/><Card icon={ClipboardList} title="Draft orders" count={counts.drafts} href="/admin/draft-orders"/><Card icon={Boxes} title="Purchase orders" count={counts.purchaseOrders} href="/admin/purchase-orders"/>
-          <Card icon={RotateCcw} title="Returns" count={counts.returns} href="/admin/returns"/><Card icon={FileEdit} title="Order edits" count={counts.orderEdits} href="/admin/order-edits"/><Card icon={CreditCard} title="Gift cards" count={counts.giftCards} href="/admin/gift-cards"/><Card icon={ShoppingCart} title="Unfinished checkouts" count={counts.abandoned} attention={counts.abandoned > 0} href="/admin/orders/unfinished"/><Card icon={UsersRound} title="Sales channels" count={counts.channels}/><Card icon={Truck} title="Webhooks" count={counts.webhooks}/>
+      <section className={`${ui.card} ${styles.attention}`} aria-labelledby="ops-attention">
+        <h2 id="ops-attention"><AlertTriangle size={16} aria-hidden="true"/> Needs attention{attention.length > 0 && <span>{attention.length}</span>}</h2>
+        {attention.length
+          ? <ul>{attention.map(item => <li key={item.id}><div><strong>{item.title}</strong><span className={ui.muted}>{item.detail}</span></div>{item.action}</li>)}</ul>
+          : <p className={ui.muted}>Nothing needs your attention right now.</p>}
+      </section>
+
+      <section id="setup" className={styles.section} aria-labelledby="ops-setup">
+        <h2 id="ops-setup">Setup</h2>
+        <p className={ui.muted}>Where stock is kept and where products are sold.</p>
+        <div className={styles.twoCol}>
+          <LocationsPanel locations={locations} onChange={load}/>
+          <SalesChannelsPanel channels={data.channels || []} onChange={load}/>
         </div>
-        <div className={`${ui.card} ${styles.panel}`}><div><h3>Quick actions</h3><p className={ui.muted}>Use the dedicated admin sections for full editing workflows.</p></div><div className={styles.actions}><button className={ui.btn} disabled={busy || counts.locations > 0} onClick={seedLocation}>{busy ? 'Creating…' : counts.locations ? 'Locations configured' : 'Create main location'}</button><a className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/orders">Open orders</a><a className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/inventory">Open inventory</a><a className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/customers">Open customers</a><a className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/purchase-orders">Purchase orders</a><a className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/inventory/transfers">Transfers</a><a className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/order-edits">Order edits</a></div></div>
-      </>}
+      </section>
 
-      {tab === 'inventory' && <div className={`${styles.grid} ${styles.wide}`}><LocationsPanel locations={data.locations || []} onChange={load}/><div className={`${ui.card} ${styles.panel}`}><h3>Transfers</h3><p className={ui.muted}>Movement queue between locations.</p><div className={styles.list}>{data.transfers.slice(0, 12).map((x:any)=><div className={styles.row} key={x.id}><strong>{x.reference || x.id.slice(0,8)}</strong><span>{x.status}</span></div>)}{!data.transfers.length && <div className="empty">No transfers found.</div>}</div></div></div>}
+      <section id="automation" className={styles.section} aria-labelledby="ops-automation">
+        <h2 id="ops-automation">Automation</h2>
+        <p className={ui.muted}>Emails sent automatically or on request for unfinished checkouts.</p>
+        <AbandonedCheckoutsPanel checkouts={abandoned} onChange={load}/>
+      </section>
 
-      {tab === 'orders' && <div className={`${styles.grid} ${styles.wide}`}><div className={`${ui.card} ${styles.panel}`}><div className="inline" style={{justifyContent:'space-between'}}><h3>Draft orders</h3><Link className={ui.textLink} href="/admin/draft-orders">Open drafts</Link></div><p className={ui.muted}>Orders created in the admin before becoming completed orders.</p><div className={styles.list}>{data.drafts.slice(0, 12).map((x:any)=><Link className={styles.row} href={`/admin/draft-orders/${x.id}`} key={x.id}><strong>{x.orderNumber || x.id.slice(0,8)}</strong><span>{x.status}</span><span>{x.currency} {((x.grandTotal || 0)/100).toFixed(2)}</span></Link>)}{!data.drafts.length && <div className="empty">No draft orders found.</div>}</div></div><div className={`${ui.card} ${styles.panel}`}><div className="inline" style={{justifyContent:'space-between'}}><h3>Returns</h3><Link className={ui.textLink} href="/admin/returns">Open returns</Link></div><p className={ui.muted}>Return requests initiated against shipped or delivered orders.</p><div className={styles.list}>{data.returns.slice(0, 12).map((x:any)=><div className={styles.row} key={x.id}><strong>{x.order?.orderNumber || x.orderId.slice(0,8)}</strong><span>{x.status}</span><span>{x.order?.currency || ''} {((x.refundAmount || 0)/100).toFixed(2)}</span></div>)}{!data.returns.length && <div className="empty">No return requests found.</div>}</div></div><AbandonedCheckoutsPanel checkouts={data.abandoned || []} onChange={load}/></div>}
+      <section id="developers" className={styles.section} aria-labelledby="ops-developers">
+        <h2 id="ops-developers">Developers</h2>
+        <p className={ui.muted}>Connect other systems to your store.</p>
+        <div className={styles.twoCol}>
+          <WebhooksPanel webhooks={webhooks} onChange={load}/>
+          <ApiCredentialsPanel credentials={data.credentials || []} onChange={load}/>
+        </div>
+      </section>
 
-      {tab === 'customers' && <div className={`${styles.grid} ${styles.wide}`}><div className={`${ui.card} ${styles.panel}`}><div className="inline" style={{justifyContent:'space-between'}}><h3>Gift cards</h3><Link className={ui.textLink} href="/admin/gift-cards">Open gift cards</Link></div><p className={ui.muted}>Balance and status overview.</p><div className={styles.list}>{data.giftCards.slice(0, 12).map((x:any)=><div className={styles.row} key={x.id}><strong>•••• {x.last4 || ''}</strong><span>{x.status}</span><span>{x.currency} {((x.balance || 0)/100).toFixed(2)}</span></div>)}{!data.giftCards.length && <div className="empty">No gift cards found.</div>}</div></div><div className={`${ui.card} ${styles.panel}`}><h3>Customer operations</h3><p className={ui.muted}>Tags, segments and store credit are available through the customer area.</p><div className={styles.actions}><a className={ui.btn} href="/admin/customers">Customers</a><a className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/customer-segments">Segments</a><a className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/gift-cards">Gift cards</a></div></div></div>}
-
-      {tab === 'integrations' && <div className={`${styles.grid} ${styles.wide}`}><SalesChannelsPanel channels={data.channels || []} onChange={load}/><WebhooksPanel webhooks={data.webhooks || []} onChange={load}/><ApiCredentialsPanel credentials={data.credentials || []} onChange={load}/></div>}
+      <section className={styles.section} aria-labelledby="ops-other">
+        <h2 id="ops-other">Other workflows</h2>
+        <p className={ui.muted}>These have their own pages in the sidebar.</p>
+        <div className={styles.links}>{OTHER_WORKFLOWS.map(link => <Link key={link.href} href={link.href} className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`}>{link.label}</Link>)}</div>
+      </section>
     </>}
   </div>
 }
