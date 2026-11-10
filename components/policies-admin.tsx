@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from '@/components/admin-link'
-import { ExternalLink, RotateCcw } from 'lucide-react'
+import { AlertCircle, CheckCircle2, ExternalLink, RotateCcw } from 'lucide-react'
 import ui from './admin-ui.module.css'
 import s from './admin-policies.module.css'
 import RichTextEditor from './rich-text-editor'
@@ -11,13 +11,21 @@ import { defaultPolicyHtml, POLICY_PATHS, POLICY_TITLES, type PolicyKind, type P
 
 const KINDS: PolicyKind[] = ['refund', 'privacy', 'terms']
 
+type Setup = { email: boolean; phone: boolean; address: boolean; returnDays: boolean; refundTime: boolean; damageReportHours: boolean }
+
+// Words in a policy's text (tags removed), for the "how long is it" hint.
+function wordCount(html: string) {
+  const text = html.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').trim()
+  return text ? text.split(/\s+/).length : 0
+}
+
 async function save(body: Record<string, unknown>) {
   const r = await fetch('/api/admin/policies', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
   const data = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(data.error || 'Unable to save')
 }
 
-export default function PoliciesAdmin({ vars, custom: initialCustom, canManage }: { vars: PolicyVars; custom: Record<PolicyKind, string>; canManage: boolean }) {
+export default function PoliciesAdmin({ vars, custom: initialCustom, setup, canManage }: { vars: PolicyVars; custom: Record<PolicyKind, string>; setup: Setup; canManage: boolean }) {
   const confirm = useConfirm()
   const [kind, setKind] = useState<PolicyKind>('refund')
   const [returnsEnabled, setReturnsEnabled] = useState(vars.returnsEnabled)
@@ -32,6 +40,40 @@ export default function PoliciesAdmin({ vars, custom: initialCustom, canManage }
   const [error, setError] = useState('')
 
   const load = (k: PolicyKind, html: string, isDirty = false) => { setKind(k); setDraft(html); setEditorKey(x => x + 1); setDirty(isDirty) }
+
+  // Warn before leaving the page with unsaved edits.
+  useEffect(() => {
+    if (!dirty) return
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [dirty])
+
+  // Ctrl+S / Cmd+S saves the policy being edited.
+  useEffect(() => {
+    if (!canManage) return
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault()
+        if (dirty && !busy) void saveText()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dirty, busy, canManage, kind, draft])
+
+  const words = useMemo(() => wordCount(draft), [draft])
+  const missing: { label: string; ok: boolean; href: string; need: string }[] = [
+    { label: 'Contact email', ok: setup.email, href: '/admin/settings', need: 'Customers reach you here. Add it in Settings › General.' },
+    { label: 'Phone / WhatsApp', ok: setup.phone, href: '/admin/settings', need: 'Shown on the policy pages. Add it in Settings › General.' },
+    { label: 'Business address', ok: setup.address, href: '/admin/settings', need: 'Privacy and terms pages need a business address. Add it in Settings › General.' },
+    ...(returnsEnabled ? [{ label: 'Return window', ok: setup.returnDays, href: '/admin/settings', need: 'Your refund policy quotes this number of days. Set it in Settings › General › Policies.' }] : []),
+    { label: 'Refund processing time', ok: setup.refundTime, href: '/admin/settings', need: 'Tells customers when their refund arrives. Set it in Settings › General › Policies.' },
+    { label: 'Damage report window', ok: setup.damageReportHours, href: '/admin/settings', need: 'How long customers have to report damaged items. Set it in Settings › General › Policies.' },
+  ]
+  const missingCount = missing.filter(m => !m.ok).length
+
 
   async function switchTab(k: PolicyKind) {
     if (k === kind) return
@@ -94,6 +136,32 @@ export default function PoliciesAdmin({ vars, custom: initialCustom, canManage }
       <button type="button" role="switch" aria-checked={returnsEnabled} aria-label="We accept returns" disabled={!canManage || busy} className={`${s.switch} ${returnsEnabled ? s.on : ''}`} onClick={() => toggleReturns(!returnsEnabled)}><i /></button>
     </div>
 
+    <div className={s.overview}>
+      {KINDS.map(k => {
+        const text = custom[k] || defaultPolicyHtml(k, v)
+        return <button key={k} type="button" className={`${ui.card} ${s.overviewCard} ${kind === k ? s.overviewOn : ''}`} onClick={() => switchTab(k)}>
+          <span className={custom[k] ? s.badgeCustom : s.badgeDefault}>{custom[k] ? 'Your text' : 'Default text'}</span>
+          <strong>{POLICY_TITLES[k]}</strong>
+          <span className={ui.muted}>{wordCount(text).toLocaleString()} words · {custom[k] ? 'edited by you' : 'filled in from your settings'}</span>
+          <span className={s.overviewLink}>Edit <ExternalLink size={12} aria-hidden="true" /></span>
+        </button>
+      })}
+    </div>
+
+    <section className={`${ui.card} ${s.checklist}`} aria-labelledby="policy-checklist">
+      <div className={s.checklistHead}>
+        <div><h2 id="policy-checklist">Before you publish</h2><p className={ui.muted}>The policies quote these details. Fill in what’s missing so customers see complete pages.</p></div>
+        <span className={missingCount ? s.countWarn : s.countOk}>{missingCount ? `${missingCount} missing` : 'All set'}</span>
+      </div>
+      <ul className={s.checkItems}>
+        {missing.map(m => <li key={m.label} className={m.ok ? s.checkOk : s.checkTodo}>
+          {m.ok ? <CheckCircle2 size={16} aria-hidden="true" /> : <AlertCircle size={16} aria-hidden="true" />}
+          <div><strong>{m.label}</strong>{!m.ok && <span className={ui.muted}>{m.need}</span>}</div>
+          {!m.ok && <Link className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} href={m.href}>Fill in</Link>}
+        </li>)}
+      </ul>
+    </section>
+
     <div className={s.tabs} role="tablist">
       {KINDS.map(k => <button key={k} role="tab" aria-selected={kind === k} className={kind === k ? s.tabOn : ''} onClick={() => switchTab(k)}>
         {POLICY_TITLES[k]}<span className={custom[k] ? s.badgeCustom : s.badgeDefault}>{custom[k] ? 'Your text' : 'Default'}</span>
@@ -102,18 +170,18 @@ export default function PoliciesAdmin({ vars, custom: initialCustom, canManage }
 
     <div className={`${ui.card} ${s.editorCard}`}>
       <div className={s.editorBar}>
-        <div className={ui.muted}>{custom[kind] ? 'Your own text is shown on the store.' : 'Showing our default text, filled in from Settings. Edit it to make it yours.'}</div>
+        <div className={ui.muted}>{custom[kind] ? 'Your own text is shown on the store.' : 'Showing our default text, filled in from Settings. Edit it to make it yours.'} <span className={s.words}>{words.toLocaleString()} words{dirty ? ' · unsaved changes' : ''}</span></div>
         <div className={s.editorActions}>
           <Link className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} href={POLICY_PATHS[kind]} target="_blank"><ExternalLink size={13} /> View on store</Link>
           {canManage && custom[kind] && <button className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} onClick={useDefault} disabled={busy}><RotateCcw size={13} /> Use default text</button>}
-          {canManage && <button className={`${ui.btn} ${ui.btnSmall}`} onClick={saveText} disabled={busy || !dirty}>{busy ? 'Saving…' : 'Save'}</button>}
+          {canManage && <button className={`${ui.btn} ${ui.btnSmall}`} onClick={saveText} disabled={busy || !dirty} title="Save (Ctrl+S)">{busy ? 'Saving…' : 'Save'}</button>}
         </div>
       </div>
       {refundMismatch && <div className={`${ui.alert} ${s.inlineAlert}`}>Returns are off, but this is your own refund policy text. Check it doesn’t still offer returns, or <button type="button" className={ui.textButton} onClick={() => load('refund', defaultPolicyHtml('refund', { ...vars, returnsEnabled: false }), true)}>load the “all sales are final” text</button> and save.</div>}
       {canManage
         ? <RichTextEditor value={draft} resetKey={`${kind}-${editorKey}`} onChange={html => { setDraft(html); setDirty(true); setNotice('') }} />
         : <div className={s.readOnly} dangerouslySetInnerHTML={{ __html: draft }} />}
-      <p className={`${ui.muted} ${s.footNote}`}>Your contact details (Settings › Store contact) are added under the text automatically, with a “Last updated” date at the top.</p>
+      <p className={`${ui.muted} ${s.footNote}`}>Your contact details (Settings › General) are added under the text automatically, with a “Last updated” date at the top.</p>
     </div>
   </div>
 }
