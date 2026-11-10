@@ -13,6 +13,7 @@ import TwoStepCard from './two-step-card'
 import SignInAlertsCard from './sign-in-alerts-card'
 import { REGION_CODES, countryName, deliveryCountries } from '@/lib/delivery-countries'
 import { POLICY_DEFAULTS } from '@/lib/policy-defaults'
+import { CountrySelect, CountryMultiSelect, CurrencySelect, TimezoneSelect } from './field-selects'
 
 const groups = [
   { key: 'General', label: 'General', icon: Store, desc: 'Store identity and regional defaults' },
@@ -267,9 +268,9 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
               <Card title="Store details" desc="Basic information used throughout your storefront.">
                 <div className={ui.twoCol}>
                   <Field label="Store name" value={values['store.name']} onChange={v => set('store.name', v)} />
-                  <Field label="Currency" value={values['store.currency']} onChange={v => set('store.currency', v.toUpperCase())} />
-                  <Field label="Country" value={values['store.country']} onChange={v => set('store.country', v)} />
-                  <Field label="Timezone" value={values['store.timezone']} onChange={v => set('store.timezone', v)} />
+                  <label className={ui.fieldLabel}>Currency<CurrencySelect className={ui.select} value={values['store.currency']} onChange={v => set('store.currency', v)} /></label>
+                  <label className={ui.fieldLabel}>Country<CountrySelect className={ui.select} value={values['store.country']} onChange={v => set('store.country', v)} /></label>
+                  <label className={ui.fieldLabel}>Timezone<TimezoneSelect className={ui.select} value={values['store.timezone']} onChange={v => set('store.timezone', v)} /></label>
                   <Field label="Store email" value={values['contact.email']} onChange={v => set('contact.email', v)} />
                   <Field label="Phone / WhatsApp" value={values['contact.phone']} onChange={v => set('contact.phone', v)} />
                 </div>

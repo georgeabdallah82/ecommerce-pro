@@ -9,6 +9,7 @@ import { internationalPhone } from '@/lib/phone'
 import { MANUAL_ORDER_SOURCES, deliveryFee } from '@/lib/manual-order'
 import s from './admin-new-order.module.css'
 import ui from './admin-ui.module.css'
+import { CountrySelect } from './field-selects'
 
 // Admin > Orders > New order: for customers who order on WhatsApp, Instagram, by phone or in the
 // shop. Phone first, top to bottom: where it came from, who, what, where to, how they pay.
@@ -175,7 +176,7 @@ export default function ManualOrderForm({ products, customers, rates, storeCount
         <label className={s.field}><span>City / area *</span><input className={ui.input} value={city} onChange={e => setCity(e.target.value)} placeholder="Beirut, Hamra"/></label>
         <label className={s.field}><span>Address *</span><input className={ui.input} value={line1} onChange={e => setLine1(e.target.value)} placeholder="Street, building"/></label>
         <label className={s.field}><span>Floor, landmark <i>(optional)</i></span><input className={ui.input} value={line2} onChange={e => setLine2(e.target.value)} placeholder="3rd floor, near the pharmacy"/></label>
-        <label className={s.field}><span>Country</span><input className={ui.input} value={country} onChange={e => setCountry(e.target.value)}/></label>
+        <label className={s.field}><span>Country</span><CountrySelect className={ui.select} value={country} onChange={setCountry}/></label>
         <div className={s.field}><span>Delivery fee</span>
           <div className={s.chips} role="radiogroup" aria-label="Delivery fee">
             {rates.map((r, i) => <button key={r.id || i} type="button" role="radio" aria-checked={rateIndex === i} className={`${s.chip} ${rateIndex === i ? s.chipOn : ''}`} onClick={() => setRateIndex(i)}>{r.name} · {money(deliveryFee(r, subtotal))}</button>)}

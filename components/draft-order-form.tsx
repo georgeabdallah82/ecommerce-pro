@@ -7,6 +7,7 @@ import { money } from '@/lib/config'
 import styles from './admin-draft-orders.module.css'
 import s from './admin-order-detail.module.css'
 import ui from './admin-ui.module.css'
+import { CountrySelect } from './field-selects'
 import { NumInput } from './num-input'
 
 type Product = { id: string; name: string; sku: string; basePrice: number; variants?: { id: string; name: string; sku: string; price: number | null }[] }
@@ -143,7 +144,7 @@ export default function DraftOrderForm({ products, customers }: { products: Prod
 
         <section className={ui.card}>
           <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Shipping address</h3><span className={ui.muted}>Optional — can be added later</span></div>
-          <div className={ui.twoCol}><label className={ui.fieldLabel}>Country<input className={ui.input} value={country} onChange={e => setCountry(e.target.value)} /></label><label className={ui.fieldLabel}>City<input className={ui.input} value={city} onChange={e => setCity(e.target.value)} /></label></div>
+          <div className={ui.twoCol}><label className={ui.fieldLabel}>Country<CountrySelect className={ui.select} value={country} onChange={setCountry} /></label><label className={ui.fieldLabel}>City<input className={ui.input} value={city} onChange={e => setCity(e.target.value)} /></label></div>
           <label className={ui.fieldLabel}>Address<input className={ui.input} value={line1} onChange={e => setLine1(e.target.value)} placeholder="Street, building, apartment…" /></label>
           <div className={ui.twoCol}><label className={ui.fieldLabel}>Region<input className={ui.input} value={region} onChange={e => setRegion(e.target.value)} /></label><label className={ui.fieldLabel}>Postal code<input className={ui.input} value={postalCode} onChange={e => setPostalCode(e.target.value)} /></label></div>
         </section>

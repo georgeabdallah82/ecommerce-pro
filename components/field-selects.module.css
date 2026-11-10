@@ -1,0 +1,27 @@
+.multi { display: grid; gap: 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 10px;
+  border-radius: 999px;
+  background: var(--admin-accent-soft, #e3f1ec);
+  color: var(--admin-ink, #171717);
+  font-size: 12px;
+  font-weight: 700;
+}
+.chip button {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+.chip button:hover { background: rgba(0, 0, 0, .08); }

@@ -1005,4 +1005,5 @@ export const AR: Record<string, string> = {
   "Unable to send the link. Please try again.": "تعذّر إرسال الرابط. يرجى المحاولة مرة أخرى.",
   "If that account is waiting for confirmation, we have sent the link again.": "إذا كان الحساب بانتظار التأكيد، فقد أرسلنا الرابط مرة أخرى.",
   "Send the link again": "أرسل الرابط مرة أخرى",
+  "Choose a country": "اختر البلد",
 }

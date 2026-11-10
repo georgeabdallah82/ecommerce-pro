@@ -5,6 +5,7 @@ import { CreditCard, Plus, RefreshCw, Search, Settings2, X } from 'lucide-react'
 import { money } from '@/lib/config'
 import styles from './admin-gift-cards.module.css'
 import ui from './admin-ui.module.css'
+import { CurrencySelect } from './field-selects'
 import { useConfirm } from './admin-confirm'
 
 type GiftCard = {
@@ -210,7 +211,7 @@ export default function GiftCardsAdmin({ initial, canManage, defaultCurrency }: 
           {createError && <div className={`${ui.alert} ${ui.alertDanger}`}>{createError}</div>}
           <div className={ui.twoCol}>
             <label className={ui.fieldLabel}>Initial balance<input className={ui.input} type="number" min="0" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="50.00" autoFocus /></label>
-            <label className={ui.fieldLabel}>Currency<input className={ui.input} value={currency} onChange={e => setCurrency(e.target.value.toUpperCase())} placeholder={defaultCurrency} /></label>
+            <label className={ui.fieldLabel}>Currency<CurrencySelect className={ui.select} value={currency} onChange={setCurrency} placeholder={`Store currency (${defaultCurrency})`} /></label>
           </div>
           <div className={ui.twoCol}>
             <label className={ui.fieldLabel}>Code (optional)<input className={ui.input} value={code} onChange={e => setCode(e.target.value.toUpperCase())} placeholder="Auto-generated" /></label>
