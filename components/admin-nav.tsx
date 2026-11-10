@@ -36,6 +36,21 @@ const iconMap: Record<string, LucideIcon> = {
   questions: MessageCircleQuestion, winback: HeartHandshake, rewards: Gift, invites: UserPlus, influencers: Star, quantityDeals: Layers3, drivers: Truck, reorder: PackageSearch, stockCount: ScanBarcode, labels: Barcode, prices: BadgeDollarSign, suppliers: Contact, occasions: CalendarHeart,
 }
 
+// Pinned pages, recent pages and open "More" sections are remembered in this browser only.
+// Every read and write is guarded: private windows and blocked storage must never break the menu.
+const PINNED_KEY = 'admin.nav.pinned'
+const RECENT_KEY = 'admin.nav.recent'
+const RECENT_LIMIT = 6
+function readList(key: string): string[] {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(key) || '[]')
+    return Array.isArray(value) ? value.filter((x): x is string => typeof x === 'string').slice(0, 30) : []
+  } catch { return [] }
+}
+function writeList(key: string, list: string[]) { try { window.localStorage.setItem(key, JSON.stringify(list)) } catch { /* storage unavailable */ } }
+function readFlag(key: string) { try { return window.localStorage.getItem(key) === '1' } catch { return false } }
+function writeFlag(key: string, open: boolean) { try { window.localStorage.setItem(key, open ? '1' : '0') } catch { /* storage unavailable */ } }
+
 function normalizePath(pathname: string) { return pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname }
 function isActivePath(pathname: string, href: string) {
   const current = normalizePath(pathname); const target = normalizePath(href)
@@ -66,45 +81,64 @@ function itemActive(pathname: string, item: AdminSidebarItem) {
   return isActivePath(pathname, item.href) || !!item.alsoActive?.some(href => isActivePath(pathname, href))
 }
 
-function NavLink({ item, pathname, onNavigate, badge }: { item: AdminSidebarItem; pathname: string; onNavigate?: () => void; badge?: string }) {
+function NavLink({ item, pathname, onNavigate, badge, pinned, onTogglePin }: { item: AdminSidebarItem; pathname: string; onNavigate?: () => void; badge?: string; pinned?: boolean; onTogglePin?: (href: string) => void }) {
   const active = itemActive(pathname, item)
   const Icon = iconMap[item.icon] ?? Boxes
   return (
-    <Link
-      href={item.href}
-      className={`${styles.sidebarItem}${active ? ` ${styles.sidebarItemActive}` : ''}`}
-      onClick={onNavigate}
-      aria-current={active ? 'page' : undefined}
-    >
-      <Icon size={16} aria-hidden="true" /><span>{item.label}</span>{badge && <span className={styles.navBadge}>{badge}</span>}
-    </Link>
+    <div className={styles.linkRow}>
+      <Link
+        href={item.href}
+        className={`${styles.sidebarItem}${active ? ` ${styles.sidebarItemActive}` : ''}`}
+        onClick={onNavigate}
+        aria-current={active ? 'page' : undefined}
+      >
+        <Icon size={16} aria-hidden="true" /><span>{item.label}</span>{badge && <span className={styles.navBadge}>{badge}</span>}
+      </Link>
+      {onTogglePin && <button
+        type="button"
+        className={`${styles.pinBtn}${pinned ? ` ${styles.pinBtnOn}` : ''}`}
+        onClick={() => onTogglePin(item.href)}
+        aria-pressed={!!pinned}
+        aria-label={`${pinned ? 'Unpin' : 'Pin'} ${item.label}`}
+        title={pinned ? 'Unpin from the top of the menu' : 'Pin to the top of the menu'}
+      ><Star size={13} aria-hidden="true" fill={pinned ? 'currentColor' : 'none'} /></button>}
+    </div>
   )
 }
 
-function NavGroup({ group, pathname, onNavigate, badges }: { group: AdminSidebarGroup; pathname: string; onNavigate?: () => void; badges: Record<string, string> }) {
+function NavGroup({ group, pathname, onNavigate, badges, pinned, onTogglePin }: { group: AdminSidebarGroup; pathname: string; onNavigate?: () => void; badges: Record<string, string>; pinned?: string[]; onTogglePin?: (href: string) => void }) {
   const main = group.items.filter(item => !item.more)
   const more = group.items.filter(item => item.more)
   // Opens by itself when you are on one of the tucked-away pages, so the menu never hides where you are.
+  // Otherwise it keeps whatever you last chose for this group.
   const onMorePage = more.some(item => itemActive(pathname, item))
-  const [open, setOpen] = useState(onMorePage)
-  useEffect(() => { if (onMorePage) setOpen(true) }, [onMorePage])
+  const moreKey = `admin.nav.more.${group.id}`
+  const [open, setOpen] = useState(false)
+  useEffect(() => { setOpen(onMorePage || readFlag(moreKey)) }, [onMorePage, moreKey])
+  function toggleMore() { setOpen(value => { writeFlag(moreKey, !value); return !value }) }
   return (
     <div className={styles.sidebarGroup}>
       <div className={styles.sidebarGroupLabel}>{group.label}</div>
-      {main.map(item => <NavLink key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} badge={badges[item.href]} />)}
+      {main.map(item => <NavLink key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} badge={badges[item.href]} pinned={pinned?.includes(item.href)} onTogglePin={onTogglePin} />)}
       {more.length > 0 && <>
-        <button type="button" className={styles.sidebarMore} onClick={() => setOpen(value => !value)} aria-expanded={open}>
+        <button type="button" className={styles.sidebarMore} onClick={toggleMore} aria-expanded={open}>
           <ChevronDown size={14} aria-hidden="true" className={open ? styles.sidebarMoreOpen : undefined} />
           <span>{group.moreLabel || 'More'}</span>
         </button>
-        {open && more.map(item => <NavLink key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} badge={badges[item.href]} />)}
+        {open && more.map(item => <NavLink key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} badge={badges[item.href]} pinned={pinned?.includes(item.href)} onTogglePin={onTogglePin} />)}
       </>}
     </div>
   )
 }
 
-function NavGroups({ groups, pathname, onNavigate, badges = {} }: { groups: AdminSidebarGroup[]; pathname: string; onNavigate?: () => void; badges?: Record<string, string> }) {
-  return <>{groups.map(group => <NavGroup key={group.id} group={group} pathname={pathname} onNavigate={onNavigate} badges={badges} />)}</>
+function NavGroups({ groups, pathname, onNavigate, badges = {}, pinnedItems = [], pinned = [], onTogglePin }: { groups: AdminSidebarGroup[]; pathname: string; onNavigate?: () => void; badges?: Record<string, string>; pinnedItems?: AdminSidebarItem[]; pinned?: string[]; onTogglePin?: (href: string) => void }) {
+  return <>
+    {pinnedItems.length > 0 && <div className={`${styles.sidebarGroup} ${styles.pinnedGroup}`} aria-label="Pinned pages">
+      <div className={styles.sidebarGroupLabel}>Pinned</div>
+      {pinnedItems.map(item => <NavLink key={`pin-${item.href}`} item={item} pathname={pathname} onNavigate={onNavigate} badge={badges[item.href]} pinned onTogglePin={onTogglePin} />)}
+    </div>}
+    {groups.map(group => <NavGroup key={group.id} group={group} pathname={pathname} onNavigate={onNavigate} badges={badges} pinned={pinned} onTogglePin={onTogglePin} />)}
+  </>
 }
 
 export type AdminBrand = { name: string; logoUrl?: string; logoDarkUrl?: string; iconUrl?: string }
@@ -126,6 +160,9 @@ export default function AdminNav({
   const [mobileOpen, setMobileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const [pinned, setPinned] = useState<string[]>([])
+  const [recent, setRecent] = useState<string[]>([])
+  const [shortcut, setShortcut] = useState('Ctrl K')
   const accountRef = useRef<HTMLDivElement>(null)
   const searchPanelRef = useRef<HTMLDivElement>(null)
   const mobilePanelRef = useRef<HTMLDivElement>(null)
@@ -133,6 +170,12 @@ export default function AdminNav({
 
   // A portal needs a document to render into, which only exists after mount.
   useEffect(() => { setMounted(true) }, [])
+  // Load what this browser remembers, and show the shortcut key that fits this keyboard.
+  useEffect(() => {
+    setPinned(readList(PINNED_KEY))
+    setRecent(readList(RECENT_KEY))
+    setShortcut(/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K')
+  }, [])
 
   // App Router keeps this layout mounted across client navigations - close
   // every open panel when the route actually changes underneath it.
@@ -173,6 +216,30 @@ export default function AdminNav({
   useFocusTrap(mobileOpen, mobilePanelRef, () => setMobileOpen(false))
 
   const allItems = useMemo(() => groups.flatMap(group => group.items.map(item => ({ ...item, group: group.label }))), [groups])
+  const pinnedItems = useMemo(() => pinned.map(href => allItems.find(item => item.href === href)).filter((item): item is (typeof allItems)[number] => Boolean(item)), [pinned, allItems])
+  const recentItems = useMemo(() => recent.map(href => allItems.find(item => item.href === href)).filter((item): item is (typeof allItems)[number] => Boolean(item)).slice(0, RECENT_LIMIT), [recent, allItems])
+
+  // Every page you open goes to the top of "Recent" (the most specific menu item for the address).
+  useEffect(() => {
+    const here = normalizePath(pathname)
+    const match = allItems.find(item => normalizePath(item.href) === here)
+      ?? allItems.filter(item => isActivePath(pathname, item.href)).sort((a, b) => b.href.length - a.href.length)[0]
+    if (!match) return
+    setRecent(list => {
+      const next = [match.href, ...list.filter(href => href !== match.href)].slice(0, RECENT_LIMIT)
+      writeList(RECENT_KEY, next)
+      return next
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname])
+
+  function togglePin(href: string) {
+    setPinned(list => {
+      const next = list.includes(href) ? list.filter(x => x !== href) : [...list, href]
+      writeList(PINNED_KEY, next)
+      return next
+    })
+  }
   // The browser tab names the page ("Orders \u00b7 Admin") instead of the store name on every page.
   // After a click between pages Next adds a fresh <title> with the store name in front of the old one
   // and the browser reads the first, so every <title> is kept in step, and again whenever the head changes.
@@ -248,7 +315,7 @@ export default function AdminNav({
           <button type="button" className={styles.collapseBtn} onClick={toggleCollapsed} aria-expanded={!collapsed} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}><ChevronLeft size={14} aria-hidden="true" /></button>
           <Link href="/admin" className={styles.sidebarBrand} aria-label={`${storeName} admin home`}>{lightLogo}</Link>
           <nav className={styles.sidebarNav}>
-            <NavGroups groups={groups} pathname={pathname} badges={{ '/admin/orders': badge }} />
+            <NavGroups groups={groups} pathname={pathname} badges={{ '/admin/orders': badge }} pinnedItems={pinnedItems} pinned={pinned} onTogglePin={togglePin} />
           </nav>
           <div className={styles.userCard}>
             <span className={styles.userAvatar}>{avatarUrl ? <img className={styles.avatarImg} src={avatarUrl} alt="" /> : initials}</span>
@@ -265,7 +332,7 @@ export default function AdminNav({
             <button type="button" className={styles.topbarSearch} onClick={() => setSearchOpen(true)}>
               <Search size={15} aria-hidden="true" />
               <span>Search admin…</span>
-              <kbd>⌘K</kbd>
+              <kbd>{shortcut}</kbd>
             </button>
             <div className={styles.topbarRight}>
               <OrderAlerts vapidPublicKey={vapidPublicKey} />
@@ -309,6 +376,24 @@ export default function AdminNav({
               />
               <kbd>Esc</kbd>
             </div>
+            {!normalizedQuery && (pinnedItems.length > 0 || recentItems.length > 0) && (
+              <div className={styles.searchResults}>
+                {pinnedItems.length > 0 && <>
+                  <div className={styles.searchHeading}>Pinned</div>
+                  {pinnedItems.map(item => {
+                    const Icon = iconMap[item.icon] ?? Boxes
+                    return <Link key={`p-${item.href}`} href={item.href} className={styles.searchResult} onClick={() => setSearchOpen(false)}><Icon size={15} aria-hidden="true" /><span>{item.label}</span><small>{item.group}</small></Link>
+                  })}
+                </>}
+                {recentItems.length > 0 && <>
+                  <div className={styles.searchHeading}>Recent</div>
+                  {recentItems.map(item => {
+                    const Icon = iconMap[item.icon] ?? Boxes
+                    return <Link key={`r-${item.href}`} href={item.href} className={styles.searchResult} onClick={() => setSearchOpen(false)}><Icon size={15} aria-hidden="true" /><span>{item.label}</span><small>{item.group}</small></Link>
+                  })}
+                </>}
+              </div>
+            )}
             {normalizedQuery && (
               results.length ? (
                 <div className={styles.searchResults}>
@@ -344,7 +429,7 @@ export default function AdminNav({
               <Search size={15} aria-hidden="true" /> Search admin…
             </button>
             <nav className={styles.mobileNav} aria-label="Admin sections">
-              <NavGroups groups={groups} pathname={pathname} onNavigate={() => setMobileOpen(false)} badges={{ '/admin/orders': badge }} />
+              <NavGroups groups={groups} pathname={pathname} onNavigate={() => setMobileOpen(false)} badges={{ '/admin/orders': badge }} pinnedItems={pinnedItems} pinned={pinned} onTogglePin={togglePin} />
             </nav>
             <div className={styles.mobileFoot}>
               {role && <span className={styles.rolePill}>{role}</span>}

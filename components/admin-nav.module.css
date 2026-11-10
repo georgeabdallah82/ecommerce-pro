@@ -349,3 +349,16 @@
 .drawerLogoDark { display: none; }
 :root[data-admin-theme='dark'] .drawerLogoLight { display: none; }
 :root[data-admin-theme='dark'] .drawerLogoDark { display: inline-flex; }
+
+/* Pinned pages, star buttons, recent pages */
+.linkRow { position: relative; display: flex; align-items: center; }
+.linkRow > a { flex: 1; min-width: 0; }
+.pinBtn { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 26px; height: 26px; border: 0; border-radius: 8px; background: transparent; color: var(--admin-sidebar-muted); opacity: 0; cursor: pointer; transition: opacity .15s ease, background .15s ease, color .15s ease; }
+.linkRow:hover .pinBtn, .pinBtn:focus-visible, .pinBtnOn { opacity: 1; }
+.pinBtn:hover { background: var(--admin-sidebar-hover); color: var(--admin-ink); }
+.pinBtn:focus-visible { outline: 3px solid var(--admin-focus); outline-offset: 1px; }
+.pinBtnOn { color: var(--admin-accent); }
+.pinnedGroup { border-bottom: 1px dashed var(--admin-border-soft); margin-bottom: 6px; padding-bottom: 6px; }
+.searchHeading { padding: 10px 10px 4px; font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--admin-muted); }
+.sidebarCollapsed .pinBtn { display: none; }
+@media (hover: none) { .pinBtn { opacity: 1; } }
