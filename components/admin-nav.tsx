@@ -214,7 +214,9 @@ export default function AdminNav({
   const lightLogo = storeBrand?.logoUrl
     ? <img className={styles.logoImg} src={storeBrand.logoUrl} alt={storeName} />
     : <span className={styles.brandText}>{storeName}</span>
-  const brand = <span className={styles.brand}>{darkLogo}</span>
+  // The menu drawer follows the admin theme like the top bar does: the light logo on light surfaces,
+  // the dark-background logo only in dark mode.
+  const brand = <span className={styles.brand}><span className={styles.drawerLogoLight}>{lightLogo}</span><span className={styles.drawerLogoDark}>{darkLogo}</span></span>
 
   const accountMenu = (
     <div className={styles.account} ref={accountRef}>

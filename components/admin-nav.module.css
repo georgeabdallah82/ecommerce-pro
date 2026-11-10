@@ -344,3 +344,8 @@
 .sidebarCollapsed .collapseBtn svg { transform: rotate(180deg); }
 /* Logo on a light sidebar; in dark mode the same logo is shown light. */
 :root[data-admin-theme='dark'] .sidebar .logoImg { filter: brightness(0) invert(1); }
+
+/* Drawer logo follows the admin theme: light logo on light, dark-background logo in dark mode. */
+.drawerLogoDark { display: none; }
+:root[data-admin-theme='dark'] .drawerLogoLight { display: none; }
+:root[data-admin-theme='dark'] .drawerLogoDark { display: inline-flex; }
