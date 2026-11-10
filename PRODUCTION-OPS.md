@@ -179,6 +179,22 @@ Cloudflare Workers don't share environment variables with any other platform —
 
 Non-secret `NEXT_PUBLIC_*` build-time values can instead go in `wrangler.jsonc`'s `vars` if preferred, since they aren't sensitive.
 
+## Rotating AUTH_SECRET
+
+Do not change `AUTH_SECRET` casually. Many things are derived from it, and changing it breaks them:
+
+- **Every signed-in customer and staff member is signed out** (session tokens are signed with it).
+- **Saved secrets become unreadable**, because they are encrypted with a key derived from it:
+  - the Meta conversion token (Settings shows a warning and conversion reporting stops until it is pasted again);
+  - the payment provider settings (re-enter them in Settings, Payments);
+  - each staff member's 2-step login secret (staff must enroll again; the store will not accept their old codes).
+- **Signed links stop working**: order view links from checkout and the card-payment return, and the unsubscribe links in marketing email.
+- **The admin 2-step sign-in ticket** (10 minutes) is invalidated; staff just start the sign-in again.
+
+Before rotating, record the payment provider settings and the Meta token, and tell staff they will need to sign in again and re-enroll 2-step. After rotating, check the Settings warnings, re-enter the Meta token and payment settings, and confirm one staff member can sign in.
+
+There is no key-rotation support yet. A separate encryption key, with the old key kept readable during the change, would let the store rotate `AUTH_SECRET` without these breaks; that needs a code change and a data migration, and is not in place.
+
 ## Automatic deploy on merge to main
 
 `.github/workflows/ci.yml`'s `deploy` job runs `npm run deploy` (which builds and runs `wrangler deploy`) after the `quality` job passes, on every push to `main`. There is no other deploy trigger — merging a PR does not deploy anything on its own; it only reaches the live site once this job runs on `main`.
