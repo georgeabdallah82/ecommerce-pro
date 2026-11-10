@@ -30,7 +30,7 @@
     "jose": "^6.0.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.45.0",
-    "next": "16.4.2",
+    "next": "^16.4.6",
     "pg": "^8.23.1",
     "qrcode-generator": "^2.0.4",
     "react": "19.2.8",
@@ -40,7 +40,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@opennextjs/cloudflare": "^1.20.13",
+    "@opennextjs/cloudflare": "^1.20.16",
     "@types/leaflet": "^1.9.22",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
@@ -54,7 +54,9 @@
   "overrides": {
     "postcss": "8.5.26",
     "deepmerge-ts": "^8.0.2",
-    "sharp": "^0.35.5"
+    "sharp": "^0.35.5",
+    "glob": "^14.0.4",
+    "minimatch": "^11.0.5"
   },
   "engines": {
     "node": ">=22.0.0"
