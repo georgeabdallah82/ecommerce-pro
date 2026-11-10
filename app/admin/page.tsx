@@ -14,6 +14,7 @@ import ui from '@/components/admin-ui.module.css'
 import s from '@/components/admin-dashboard.module.css'
 import v from '@/components/admin-dashboard-v2.module.css'
 import { visitorCounts } from '@/lib/visitor-report' // same numbers as the Live visitors page
+import { loadReminderSettings } from '@/lib/cart-reminders'
 
 const OPEN_STATUSES = [OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PROCESSING]
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -157,6 +158,8 @@ export default async function Admin() {
   const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: timezone, hour: '2-digit', hourCycle: 'h23' }).format(now))
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
 
+  // Automatic cart reminders are off until the owner turns them on (Operations); say so here.
+  const reminders = await loadReminderSettings().catch(() => null)
   return <div className={v.page}>
     <header className={v.head}>
       <div>
@@ -175,6 +178,7 @@ export default async function Admin() {
       <Link className={v.needsItem} href="/admin/orders"><b>{toFulfill}</b> orders to fulfill <span>Review</span></Link>
       {access.stock && <Link className={v.needsItem} href="/admin/inventory"><b>{lowStock}</b> low on stock <span>Restock</span></Link>}
       <Link className={v.needsItem} href="/admin/reviews"><b>{pendingReviews}</b> reviews to approve <span>Open</span></Link>
+      {reminders && !reminders.enabled && access.money && <Link className={v.needsItem} href="/admin/operations"><b>Off</b> automatic cart reminders <span>Turn on</span></Link>}
     </section>
 
     <div className={v.kpis}>

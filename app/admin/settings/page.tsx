@@ -3,6 +3,7 @@ import { db } from '@/lib/prisma'
 import SettingsCenterPro from '@/components/settings-center-pro'
 import { getThemeState, defaultTheme } from '@/lib/theme'
 import { APP_ICON_LARGE, APP_ICON_SMALL, appIconSource } from '@/lib/app-icon'
+import { isReadableSecret } from '@/lib/secret-settings'
 
 const CLIENT_SETTING_KEYS = new Set([
   'store.name',
@@ -77,6 +78,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
   })
   // The Conversions API token is a secret: the page only learns whether one is saved.
   const capiToken = await db.setting.findUnique({ where: { key: 'tracking.metaCapiToken' } }).catch(() => null)
+  const metaCapiTokenUnreadable = !!capiToken?.value && !(await isReadableSecret(capiToken.value))
   // Phone app icon (components/app-icon-card.tsx): the saved one, or the logo it's made from.
   const [{ theme }, appIcons] = await Promise.all([
     getThemeState().catch(() => ({ theme: defaultTheme })),
@@ -95,5 +97,5 @@ export default async function Settings({ searchParams }: { searchParams: Promise
     db.product.findMany({ where: { status: 'ACTIVE' }, select: { id: true, name: true }, orderBy: { name: 'asc' }, take: 1000 }),
     db.phoneSubscriber.count().catch(() => 0),
   ])
-  return <SettingsCenterPro addSearchWord={addWord || undefined} initial={settings} metaCapiTokenSet={!!capiToken?.value} emailFromDefault={process.env.EMAIL_FROM || ''} appIcon={appIcon} products={products} whatsappListCount={whatsappListCount} />
+  return <SettingsCenterPro addSearchWord={addWord || undefined} initial={settings} metaCapiTokenSet={!!capiToken?.value} metaCapiTokenUnreadable={metaCapiTokenUnreadable} emailFromDefault={process.env.EMAIL_FROM || ''} appIcon={appIcon} products={products} whatsappListCount={whatsappListCount} />
 }
