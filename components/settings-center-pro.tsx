@@ -201,21 +201,27 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
     }
   }
 
+  const activeGroup = groups.find(g => g.key === tab) || groups[0]
+  const ActiveIcon = activeGroup.icon
+
   return (
     <div className={styles.page} onChangeCapture={() => setDirty(true)}>
       <div className={styles.head}>
-        <div>
-          <span className={`${ui.muted} ${ui.tiny}`}>SETTINGS</span>
-          <h1 className={ui.heading}>Settings</h1>
-          <p className={ui.muted}>Manage your store from one place.</p>
+        <div className={styles.headTitle}>
+          <span className={`${ui.muted} ${ui.tiny}`}>Store configuration</span>
+          <h1>Settings</h1>
+          <p>Control how your store looks, sells, and communicates with customers.</p>
         </div>
-        <div className="inline">
+        <div className={styles.headActions}>
+          <span className={`${styles.status} ${dirty ? styles.statusDirty : styles.statusSaved}`} role="status">
+            {dirty ? 'Unsaved changes' : 'All changes saved'}
+          </span>
           <div className={styles.search}>
             <Search size={15} />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search settings" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search settings" aria-label="Search settings" />
           </div>
           <button className={`${ui.btn} ${styles.saveBtn}`} onClick={save} disabled={saving || paymentLoading}>
-            <Save size={15} />{saving ? 'Saving…' : 'Save'}
+            <Save size={15} />{saving ? 'Saving…' : 'Save changes'}
           </button>
         </div>
       </div>
@@ -240,7 +246,7 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
                 className={tab === g.key ? `${styles.navButton} ${styles.navButtonActive}` : styles.navButton}
                 onClick={() => setTab(g.key)}
               >
-                <Icon size={17} />
+                <span className={styles.navIcon}><Icon size={17} /></span>
                 <span className={styles.navText}><strong>{g.label}</strong><small>{g.desc}</small></span>
                 <ChevronRight size={15} />
               </button>
@@ -249,6 +255,13 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
         </aside>
 
         <main className={styles.main}>
+          <div className={styles.sectionHead}>
+            <span className={styles.sectionIcon} aria-hidden="true"><ActiveIcon size={22} /></span>
+            <div>
+              <h2>{activeGroup.label}</h2>
+              <p>{activeGroup.desc}</p>
+            </div>
+          </div>
           {tab === 'General' && (
             <>
               <Card title="Store details" desc="Basic information used throughout your storefront.">
@@ -655,14 +668,19 @@ function Toggle({ label, keyName, value, onChange }: { label: string; keyName: s
         <strong>{label}</strong>
         <small>{keyName}</small>
       </div>
-      <button
-        type="button"
-        aria-label={label}
-        className={value ? `${styles.toggleSwitch} ${styles.toggleSwitchOn}` : styles.toggleSwitch}
-        onClick={onChange}
-      >
-        <i />
-      </button>
+      <div className={styles.toggleControl}>
+        <span className={value ? `${styles.toggleState} ${styles.toggleStateOn}` : styles.toggleState}>{value ? 'On' : 'Off'}</span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={value}
+          aria-label={label}
+          className={value ? `${styles.toggleSwitch} ${styles.toggleSwitchOn}` : styles.toggleSwitch}
+          onClick={onChange}
+        >
+          <i />
+        </button>
+      </div>
     </div>
   )
 }
