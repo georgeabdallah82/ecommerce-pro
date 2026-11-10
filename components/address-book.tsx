@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useI18n } from '@/components/lang-provider'
+import { CountrySelect } from './field-selects'
 
 type Address = {
   id: string
@@ -141,7 +142,7 @@ export default function AddressBook({ addresses }: { addresses: Address[] }) {
           </div>
           <div className="grid two">
             <label className="fieldLabel">{t('Postal code')}<input className="input" value={form.postalCode} onChange={e => setForm({ ...form, postalCode: e.target.value })} placeholder={t('Postal code')} /></label>
-            <label className="fieldLabel">{t('Country')}<input className="input" required value={form.country} onChange={e => setForm({ ...form, country: e.target.value })} placeholder={t('Country')} /></label>
+            <label className="fieldLabel">{t('Country')}<CountrySelect className="input" required value={form.country} onChange={v => setForm({ ...form, country: v })} placeholder={t('Choose a country')} /></label>
           </div>
           <label className="fieldLabel">{t('Phone')} <span className="muted">{t('(optional)')}</span><input className="input" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder={t('Phone')} /></label>
           <label className="fieldLabel" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><input type="checkbox" checked={form.isDefault} onChange={e => setForm({ ...form, isDefault: e.target.checked })} /> {t('Set as default address')}</label>

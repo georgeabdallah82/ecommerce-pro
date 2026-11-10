@@ -7,6 +7,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { money, config } from '@/lib/config'
 import s from './admin-order-detail.module.css'
 import ui from './admin-ui.module.css'
+import { CurrencySelect } from './field-selects'
 import { MoneyInput, NumInput } from './num-input'
 
 type Variant = { id: string; name: string; sku: string }
@@ -90,7 +91,7 @@ export default function PurchaseOrderForm({ products, locations }: { products: P
               <label className={ui.fieldLabel}>Supplier name<input className={ui.input} value={supplierName} onChange={e => setSupplierName(e.target.value)} placeholder="Supplier or vendor name" /></label>
               <label className={ui.fieldLabel}>Receiving location<select className={ui.select} value={locationId} onChange={e => setLocationId(e.target.value)}><option value="">Unassigned</option>{locations.map(l => <option key={l.id} value={l.id}>{l.name}{l.isDefault ? ' (default)' : ''}</option>)}</select></label>
             </div>
-            <label className={ui.fieldLabel}>Currency<input className={ui.input} style={{ maxWidth: 140 }} value={currency} onChange={e => setCurrency(e.target.value.toUpperCase())} maxLength={3} /></label>
+            <label className={ui.fieldLabel}>Currency<CurrencySelect className={ui.select} style={{ maxWidth: 140 }} value={currency} onChange={setCurrency} /></label>
           </section>
 
           <section className={ui.card} style={{ padding: 20 }}>

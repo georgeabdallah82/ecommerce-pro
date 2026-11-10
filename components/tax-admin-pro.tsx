@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { Check, Globe2, Pencil, Percent, Plus, RefreshCw, Trash2, X } from 'lucide-react'
 import ui from './admin-ui.module.css'
+import { CountryMultiSelect } from './field-selects'
 import { useConfirm } from './admin-confirm'
 
 type TaxRateRow = { id: string; name: string; countries: string; rate: number; isActive: boolean }
@@ -114,7 +115,7 @@ export default function TaxAdminPro({ initial }: { initial: TaxRateRow[] }) {
     {formOpen && <div className={ui.modalOverlay} onClick={() => !saving && setFormOpen(false)}><div className={`${ui.card} discountsModal`} onClick={e => e.stopPropagation()}><div className="inventoryModalHead"><div><span className={`${ui.muted} ${ui.tiny}`}>CREATE TAX RATE</span><h2>New tax rate</h2><p className={ui.muted}>Define which countries this rate applies to.</p></div><button className={ui.iconBtn} onClick={() => setFormOpen(false)} disabled={saving}><X size={17}/></button></div>
       <form className="discountForm" onSubmit={createRate}>
         <label className={ui.fieldLabel}>Name<input className={ui.input} required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="EU VAT"/></label>
-        <label className={ui.fieldLabel}>Countries<input className={ui.input} value={form.countries} onChange={e => setForm({ ...form, countries: e.target.value })} placeholder="DE, FR, IT"/><small className={ui.muted}>Country name or ISO code (e.g. Germany or DE), comma-separated, or leave blank / use * to act as the fallback rate for every country without a specific match.</small></label>
+        <label className={ui.fieldLabel}>Countries<CountryMultiSelect className={ui.select} value={form.countries} onChange={v => setForm({ ...form, countries: v })} aria-label="Countries" /><small className={ui.muted}>Choose one or more countries. Leave it empty or choose All countries (fallback) to apply this rate to every country without a more specific match.</small></label>
         <label className={ui.fieldLabel}>Rate (%)<input className={ui.input} type="number" min="0" max="100" step="0.01" value={form.rate} onChange={e => setForm({ ...form, rate: e.target.value })}/></label>
         <label className="toggleRow"><input type="checkbox" checked={form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })}/><span><strong>Rate is active</strong><small>Applies to checkout immediately.</small></span></label>
         <div className="inline" style={{ justifyContent: 'flex-end', marginTop: 8 }}><button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setFormOpen(false)} disabled={saving}>Cancel</button><button className={ui.btn} disabled={saving}>{saving ? 'Creating…' : 'Create tax rate'}</button></div>
@@ -124,7 +125,7 @@ export default function TaxAdminPro({ initial }: { initial: TaxRateRow[] }) {
     {editRow && <div className={ui.modalOverlay} onClick={() => !saving && setEditRow(null)}><div className={`${ui.card} discountsModal`} onClick={e => e.stopPropagation()}><div className="inventoryModalHead"><div><span className={`${ui.muted} ${ui.tiny}`}>EDIT TAX RATE</span><h2>{editRow.name}</h2><p className={ui.muted}>Update coverage and rate.</p></div><button className={ui.iconBtn} onClick={() => setEditRow(null)} disabled={saving}><X size={17}/></button></div>
       <form className="discountForm" onSubmit={saveEdit}>
         <label className={ui.fieldLabel}>Name<input className={ui.input} required value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })}/></label>
-        <label className={ui.fieldLabel}>Countries<input className={ui.input} value={editForm.countries} onChange={e => setEditForm({ ...editForm, countries: e.target.value })}/><small className={ui.muted}>Country name or ISO code, comma-separated, or * for the fallback rate.</small></label>
+        <label className={ui.fieldLabel}>Countries<CountryMultiSelect className={ui.select} value={editForm.countries} onChange={v => setEditForm({ ...editForm, countries: v })} aria-label="Countries" /><small className={ui.muted}>Choose one or more countries, or All countries (fallback) for every country without a more specific rate.</small></label>
         <label className={ui.fieldLabel}>Rate (%)<input className={ui.input} type="number" min="0" max="100" step="0.01" value={editForm.rate} onChange={e => setEditForm({ ...editForm, rate: e.target.value })}/></label>
         <div className="inline" style={{ justifyContent: 'flex-end', marginTop: 8 }}><button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setEditRow(null)} disabled={saving}>Cancel</button><button className={ui.btn} disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button></div>
       </form>

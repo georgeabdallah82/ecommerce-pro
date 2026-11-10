@@ -8,6 +8,7 @@ import { money } from '@/lib/config'
 import styles from './admin-draft-orders.module.css'
 import s from './admin-order-detail.module.css'
 import ui from './admin-ui.module.css'
+import { CountrySelect } from './field-selects'
 import { useConfirm } from './admin-confirm'
 
 type DraftOrderItem = { id: string; name: string; sku: string; quantity: number; unitPrice: number; totalPrice: number }
@@ -163,7 +164,7 @@ export default function DraftOrderDetailAdmin({ initial, canManage }: { initial:
             <label className={ui.fieldLabel}>City<input className={ui.input} value={shipping.city} onChange={e => setShipping({ ...shipping, city: e.target.value })} /></label>
             <label className={ui.fieldLabel}>Region<input className={ui.input} value={shipping.region} onChange={e => setShipping({ ...shipping, region: e.target.value })} /></label>
             <label className={ui.fieldLabel}>Postal code<input className={ui.input} value={shipping.postalCode} onChange={e => setShipping({ ...shipping, postalCode: e.target.value })} /></label>
-            <label className={ui.fieldLabel}>Country<input className={ui.input} value={shipping.country} onChange={e => setShipping({ ...shipping, country: e.target.value })} /></label>
+            <label className={ui.fieldLabel}>Country<CountrySelect className={ui.select} value={shipping.country} onChange={v => setShipping({ ...shipping, country: v })} /></label>
           </div> : <div className={ui.muted} style={{ whiteSpace: 'pre-wrap' }}><MapPin size={13} /> {addressText(d.shippingAddressJson)}</div>}
         </section>
 
