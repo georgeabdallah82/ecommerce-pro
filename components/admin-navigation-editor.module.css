@@ -210,3 +210,4 @@
   .summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .summaryStatus { grid-column: 1 / -1; }
 }
+.attention li > button { white-space: nowrap; flex-shrink: 0; }
