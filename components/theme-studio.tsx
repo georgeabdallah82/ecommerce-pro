@@ -61,7 +61,7 @@ import {
   Rows3,
   MessageCircle,
   Truck,
-  BadgePercent, Languages } from 'lucide-react'
+  BadgePercent, Languages, AlertTriangle } from 'lucide-react'
 import SectionInspector, {
   renderPanel, SectionDesign,
   text, image, textarea, select, toggle, range, color, deliveryAreas,
@@ -78,6 +78,7 @@ import styles from './theme-studio.module.css'
 import { marketHomeSections, marketSectionDefaults } from '@/lib/storefront-market'
 import { NumInput } from './num-input'
 import { siteHeaderSections } from '@/lib/site-header'
+import { humanize, readinessChecks, reviewThemeChanges, type ReadinessCheck, type ReviewGroup, type ReviewSnapshot } from '@/lib/theme-review'
 
 // Deliberately not under /admin -- see app/theme-editor-preview/page.tsx's top comment.
 const PREVIEW_PATH = '/theme-editor-preview'
@@ -531,6 +532,13 @@ export default function ThemeStudio({ initial }: Props) {
   const [publishing, setPublishing] = useState(false)
   const [publishMessage, setPublishMessage] = useState('')
   const [publishError, setPublishError] = useState('')
+  const [reviewOpen, setReviewOpen] = useState(false)
+  const [review, setReview] = useState<{ hasDraft: boolean; firstPublish: boolean; groups: ReviewGroup[] } | null>(null)
+  const [reviewLoading, setReviewLoading] = useState(false)
+  const [reviewError, setReviewError] = useState('')
+  const [discarding, setDiscarding] = useState(false)
+  // Set just before a deliberate reload after discarding, so the unsaved-changes prompt is skipped.
+  const leavingRef = useRef(false)
 
   const isHome = page === 'Home page'
   const isCustomPage = isPageTemplateKey(page)
@@ -867,6 +875,57 @@ export default function ThemeStudio({ initial }: Props) {
     }
   }
 
+  // The review compares what is live with what publish would write. Unsaved edits are saved
+  // first, so the review and the publish describe exactly the same thing.
+  const openReview = async () => {
+    setReviewOpen(true)
+    setReview(null)
+    setReviewError('')
+    setReviewLoading(true)
+    try {
+      if (dirty && !(await save())) throw new Error('Your latest edits could not be saved, so there is nothing to review yet.')
+      const response = await fetch('/api/admin/theme/review', { cache: 'no-store' })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || 'Unable to check your changes')
+      const labelFor = (type: string) => META[type] || humanize(type)
+      const pageLabel = (key: string) => {
+        const tab = PAGE_TABS.find(item => item.key === key)
+        if (tab) return tab.label
+        if (isPageTemplateKey(key)) return pages.find(row => row.id === pageIdFromKey(key))?.title || 'Page'
+        return key
+      }
+      const groups = data.firstPublish ? [] : reviewThemeChanges(data.published as ReviewSnapshot, data.draft as ReviewSnapshot, labelFor, pageLabel)
+      setReview({ hasDraft: !!data.hasDraft, firstPublish: !!data.firstPublish, groups })
+    } catch (error) {
+      setReviewError(error instanceof Error ? error.message : 'Unable to check your changes')
+    } finally {
+      setReviewLoading(false)
+    }
+  }
+
+  const confirmPublish = async () => {
+    setReviewOpen(false)
+    await publishAll()
+  }
+
+  // Throws away unpublished edits. The live store is untouched; the editor reloads to the
+  // published theme.
+  const discardDraft = () => confirmAction('Discard all unpublished changes? Your live store stays as it is. This cannot be undone.', async () => {
+    setDiscarding(true)
+    try {
+      const response = await fetch('/api/admin/theme/draft', { method: 'DELETE' })
+      const data = await response.json().catch(() => ({}))
+      // 409 means there was no saved draft, so only unsaved edits to discard: same result.
+      if (!response.ok && response.status !== 409) throw new Error(data.error || 'Unable to discard changes')
+      leavingRef.current = true
+      setDirty(false)
+      window.location.reload()
+    } catch (error) {
+      flash(error instanceof Error ? error.message : 'Unable to discard changes', true)
+      setDiscarding(false)
+    }
+  })
+
   // Publish always publishes what's on screen: if there are unsaved edits it saves them
   // first. Publishing alone would push the previously saved draft and silently leave the
   // latest edits behind.
@@ -879,7 +938,7 @@ export default function ThemeStudio({ initial }: Props) {
   // Leaving with unsaved edits asks first (closing the tab, reloading, the back arrow).
   useEffect(() => {
     if (!dirty) return
-    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }
+    const warn = (event: BeforeUnloadEvent) => { if (leavingRef.current) return; event.preventDefault(); event.returnValue = '' }
     window.addEventListener('beforeunload', warn)
     return () => window.removeEventListener('beforeunload', warn)
   }, [dirty])
@@ -962,6 +1021,11 @@ export default function ThemeStudio({ initial }: Props) {
     ? { s: activeCategory.group === ROOT_GROUP ? theme : (theme[activeCategory.group] || {}), products, collections, lang: editLang }
     : null
 
+  // Things that would look wrong to visitors, checked live against what is on screen.
+  const checks: ReadinessCheck[] = readinessChecks({ theme, templates, navigation: initial.navigation })
+  const warnings = checks.filter(check => check.level === 'warn').length
+  const WHERE_LABEL: Record<ReadinessCheck['where'], string> = { theme: 'Theme', sections: 'Sections', menu: 'Menu' }
+
   return (
     <div className={styles.editor}>
       <ThemeInspectorStyles />
@@ -993,11 +1057,13 @@ export default function ThemeStudio({ initial }: Props) {
           <span className={`${styles.saveStatus} ${publishError || (saveError && dirty) ? styles.saveStatusError : ''}`} role="status" aria-live="polite">
             {publishError || (saveError && dirty && !saving && !publishing ? saveError : null) || (publishing ? 'Publishing…' : saving ? 'Saving…' : dirty ? 'Unsaved changes' : publishMessage || (hasDraft ? 'Saved — not published yet' : 'Published'))}
           </span>
+          {warnings > 0 && <button className={styles.checkChip} onClick={() => void openReview()} title="Things to check before you publish">{warnings} to check</button>}
+          {(hasDraft || dirty) && <button className={styles.btn} disabled={saving || publishing || discarding} onClick={discardDraft} title="Throw away unpublished changes">Discard</button>}
           <button className={styles.btn} disabled={!dirty || saving || publishing} onClick={save} title="Save draft (Ctrl/Cmd+S)">
             <Save size={14} />
             {saving ? 'Saving…' : 'Save'}
           </button>
-          <button className={`${styles.btn} ${styles.btnPrimary}`} disabled={(!hasDraft && !dirty) || saving || publishing} onClick={publishAll} title="Publish to your live store">
+          <button className={`${styles.btn} ${styles.btnPrimary}`} disabled={(!hasDraft && !dirty) || saving || publishing} onClick={() => void openReview()} title="Review the changes, then publish to your live store">
             <UploadCloud size={14} />
             {publishing ? 'Publishing…' : 'Publish'}
           </button>
@@ -1302,6 +1368,58 @@ export default function ThemeStudio({ initial }: Props) {
               )
             })()}
             </>)}
+          </div>
+        </div>
+      )}
+
+      {reviewOpen && (
+        <div className={styles.pickerOverlay} onMouseDown={() => setReviewOpen(false)}>
+          <div className={styles.reviewDialog} role="dialog" aria-modal="true" aria-labelledby="theme-review-title" onMouseDown={event => event.stopPropagation()}>
+            <div className={styles.reviewHead}>
+              <strong id="theme-review-title">Review before you publish</strong>
+              <button className={styles.iconBtn} onClick={() => setReviewOpen(false)} aria-label="Close"><X size={15} /></button>
+            </div>
+            <div className={styles.reviewBody}>
+              {reviewLoading && <p className={styles.reviewMuted}>{dirty ? 'Saving your edits and checking them…' : 'Checking your changes…'}</p>}
+              {reviewError && <p className={styles.reviewError} role="alert">{reviewError}</p>}
+              {!reviewLoading && !reviewError && review && (<>
+                <section>
+                  <h3 className={styles.reviewHeading}>Check first {warnings > 0 && <span className={styles.reviewCount}>{warnings} to fix</span>}</h3>
+                  {checks.length === 0
+                    ? <p className={styles.reviewMuted}>Nothing to fix. Logo, menu, colour contrast and homepage all look ready.</p>
+                    : <ul className={styles.checkList}>
+                      {checks.map(check => (
+                        <li key={check.id} className={check.level === 'warn' ? styles.checkWarn : styles.checkInfo}>
+                          {check.level === 'warn' ? <AlertTriangle size={14} aria-hidden="true" /> : <HelpCircle size={14} aria-hidden="true" />}
+                          <span><small>{WHERE_LABEL[check.where]}</small>{check.text}</span>
+                        </li>
+                      ))}
+                    </ul>}
+                </section>
+                <section>
+                  <h3 className={styles.reviewHeading}>What changes for visitors</h3>
+                  {review.firstPublish
+                    ? <p className={styles.reviewMuted}>This is your first publish, so everything you have built goes live.</p>
+                    : review.groups.length === 0
+                      ? <p className={styles.reviewMuted}>{review.hasDraft ? 'Nothing visible to visitors has changed since your last publish.' : 'There are no unpublished changes.'}</p>
+                      : review.groups.map(group => (
+                        <div key={group.id} className={styles.reviewGroup}>
+                          <strong>{group.title}</strong>
+                          <ul>{group.items.map((item, index) => <li key={index}>{item}</li>)}</ul>
+                        </div>
+                      ))}
+                </section>
+              </>)}
+            </div>
+            <div className={styles.reviewFoot}>
+              <span className={styles.reviewMuted}>Warnings do not stop you from publishing.</span>
+              <div className={styles.confirmActions}>
+                <button className={styles.btn} onClick={() => setReviewOpen(false)}>Cancel</button>
+                <button className={`${styles.btn} ${styles.btnPrimary}`} disabled={reviewLoading || !review || !review.hasDraft || publishing} onClick={() => void confirmPublish()}>
+                  <UploadCloud size={14} /> Publish
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
