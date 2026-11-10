@@ -1,0 +1,57 @@
+/*
+ * Searches report (admin analytics) - CSS Modules with the --admin-* tokens from
+ * ../app/admin/admin-overhaul.css, so dark mode is automatic.
+ */
+
+.page { display: grid; gap: 18px; max-width: 1180px; margin: 0 auto; padding-bottom: 32px; }
+
+.periods { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-pill); background: var(--admin-surface); align-self: flex-start; }
+.periods a { min-height: 32px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: var(--admin-radius-pill); color: var(--admin-muted); font-size: 13px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.periods a:hover { color: var(--admin-ink); }
+.periods a:focus-visible { outline: 3px solid var(--admin-focus); outline-offset: 1px; }
+.periodOn { background: var(--admin-ink) !important; color: var(--admin-surface) !important; }
+
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.stat { display: grid; gap: 4px; padding: 16px 18px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-lg); background: var(--admin-surface); box-shadow: var(--admin-shadow-sm); }
+.stat span { font-size: 12px; font-weight: 700; color: var(--admin-muted); }
+.stat strong { font-size: 28px; letter-spacing: -.02em; color: var(--admin-ink); font-variant-numeric: tabular-nums; }
+.stat small { font-size: 12px; color: var(--admin-muted); }
+.statWarn { border-color: var(--admin-warning); background: var(--admin-warning-soft); }
+.statWarn strong { color: var(--admin-warning); }
+
+.empty { display: grid; gap: 6px; justify-items: center; padding: 36px 20px; text-align: center; }
+.empty h2 { margin: 0; font-size: 17px; color: var(--admin-ink); }
+.empty p { margin: 0; font-size: 13.5px; max-width: 460px; line-height: 1.55; }
+
+.tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; align-items: start; }
+.panel { display: grid; gap: 12px; padding: 18px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-lg); background: var(--admin-surface); box-shadow: var(--admin-shadow-sm); min-width: 0; }
+.panelHead { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.panelHead h2 { margin: 0; font-size: 16px; color: var(--admin-ink); }
+.panelHead p { margin: 3px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--admin-muted); }
+.none { margin: 0; padding: 14px 0; font-size: 13.5px; color: var(--admin-muted); }
+
+.filter { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 8px 0 10px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-pill); background: var(--admin-bg); color: var(--admin-muted); }
+.filter:focus-within { border-color: var(--admin-accent); box-shadow: 0 0 0 3px var(--admin-accent-soft); }
+.filter input { width: 150px; border: 0; outline: 0; background: transparent; font: inherit; font-size: 13px; color: var(--admin-ink); }
+.filter button { display: grid; place-items: center; width: 22px; height: 22px; border: 0; border-radius: 50%; background: transparent; color: var(--admin-muted); cursor: pointer; }
+.filter button:hover { background: var(--admin-border-soft); color: var(--admin-ink); }
+
+.tableWrap { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.table th { padding: 8px 10px; text-align: left; font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--admin-muted); border-bottom: 1px solid var(--admin-border); white-space: nowrap; }
+.table td { padding: 10px; border-bottom: 1px solid var(--admin-border-soft); vertical-align: middle; }
+.table tr:last-child td { border-bottom: 0; }
+.num { text-align: right !important; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.query { display: block; font-weight: 700; color: var(--admin-ink); overflow-wrap: anywhere; }
+.bar { display: block; height: 4px; margin-top: 6px; border-radius: 999px; background: var(--admin-accent); opacity: .55; max-width: 100%; }
+.barWarn { background: var(--admin-warning); }
+.actions { white-space: nowrap; text-align: right; }
+.actionLink { display: inline-block; margin-left: 12px; font-size: 12.5px; font-weight: 800; color: var(--admin-accent-strong); text-decoration: none; }
+.actionLink:hover { text-decoration: underline; }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+@media (max-width: 760px) {
+  .stats { grid-template-columns: 1fr; }
+  .tables { grid-template-columns: 1fr; }
+  .periods { width: 100%; overflow-x: auto; }
+}
