@@ -79,6 +79,14 @@ async function api(path: string) {
   return data
 }
 
+type ChartMetric = 'revenue' | 'orders' | 'items' | 'newCustomers'
+const METRICS: { id: ChartMetric; label: string; title: string }[] = [
+  { id: 'revenue', label: 'Net sales', title: 'Net sales over time' },
+  { id: 'orders', label: 'Orders', title: 'Orders over time' },
+  { id: 'items', label: 'Items sold', title: 'Items sold over time' },
+  { id: 'newCustomers', label: 'New customers', title: 'New customers over time' },
+]
+
 export default function AnalyticsAdmin() {
   const [tab, setTab] = useState<'overview' | 'discounts' | 'profit'>('overview')
   const [profitReloadKey, setProfitReloadKey] = useState(0)
@@ -96,6 +104,9 @@ export default function AnalyticsAdmin() {
   const [discountsError, setDiscountsError] = useState('')
 
   const [discountsReloadKey, setDiscountsReloadKey] = useState(0)
+  // Which measure the sales chart plots, and how the top products are ranked.
+  const [metric, setMetric] = useState<ChartMetric>('revenue')
+  const [productSort, setProductSort] = useState<'sales' | 'units'>('sales')
   const preset = PRESETS.find(p => p.id === presetId) || PRESETS[2]
 
   function rangeParams() {
@@ -138,6 +149,12 @@ export default function AnalyticsAdmin() {
 
   const compareLabel = compareMode === 'previous_year' ? 'previous year' : compareMode === 'none' ? '' : 'previous period'
   const money0 = (v: number) => money(v)
+  const bestDay = useMemo(() => {
+    if (!data?.series.length) return null
+    const top = data.series.reduce((best, x) => (x.revenue > best.revenue ? x : best), data.series[0])
+    return top.revenue > 0 ? top : null
+  }, [data])
+  const quietDays = useMemo(() => (data ? data.series.filter(x => x.revenue === 0).length : 0), [data])
   const chartFormatDate = (d: string) => data?.granularity === 'month' ? new Date(`${d}-02`).toLocaleDateString(undefined, { month: 'short', year: '2-digit' }) : new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 
   function exportSalesCsv() {
@@ -233,17 +250,20 @@ export default function AnalyticsAdmin() {
             <section className={`${ui.card} ${styles.analyticsCard}`}>
               <div className={styles.cardHead}>
                 <div>
-                  <h3>Sales over time</h3>
-                  <p className={ui.muted}>{data.granularity === 'month' ? 'Net revenue by month' : 'Net revenue by day'}</p>
+                  <h3>{METRICS.find(m => m.id === metric)?.title}</h3>
+                  <p className={ui.muted}>{data.granularity === 'month' ? 'Totals per month' : 'Totals per day'}{compareLabel ? ` · dotted line is the ${compareLabel}` : ''}</p>
                 </div>
-                <button className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} onClick={exportSalesCsv}><Download size={14} /> Export</button>
+                <button className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} onClick={exportSalesCsv}><Download size={14} /> Export CSV</button>
+              </div>
+              <div className={styles.metricTabs} role="group" aria-label="Chart measure">
+                {METRICS.map(m => <button key={m.id} type="button" aria-pressed={metric === m.id} className={metric === m.id ? styles.metricOn : ''} onClick={() => setMetric(m.id)}>{m.label}</button>)}
               </div>
               <LineChart
-                current={data.series.map(x => ({ date: x.date, value: x.revenue }))}
-                previous={data.previousSeries ? data.previousSeries.map(x => ({ date: x.date, value: x.revenue })) : null}
+                current={data.series.map(x => ({ date: x.date, value: x[metric] }))}
+                previous={data.previousSeries && compareMode !== 'none' ? data.previousSeries.map(x => ({ date: x.date, value: x[metric] })) : null}
                 currentLabel="This period"
                 previousLabel={compareMode === 'previous_year' ? 'Previous year' : 'Previous period'}
-                formatValue={money0}
+                formatValue={metric === 'revenue' ? money0 : (v: number) => Number(v).toLocaleString()}
                 formatDate={chartFormatDate}
               />
             </section>
@@ -252,14 +272,20 @@ export default function AnalyticsAdmin() {
               <div className={styles.cardHead}>
                 <div>
                   <h3>Top products</h3>
-                  <p className={ui.muted}>Best performers by sales</p>
+                  <p className={ui.muted}>Ranked by {productSort === 'sales' ? 'sales' : 'units sold'}</p>
                 </div>
-                <button className={ui.iconBtn} title="Export CSV" aria-label="Export CSV" onClick={exportTopProductsCsv}><Download size={15} /></button>
+                <div className={styles.cardActions}>
+                  <div className={styles.metricTabs} role="group" aria-label="Rank products by">
+                    <button type="button" aria-pressed={productSort === 'sales'} className={productSort === 'sales' ? styles.metricOn : ''} onClick={() => setProductSort('sales')}>Sales</button>
+                    <button type="button" aria-pressed={productSort === 'units'} className={productSort === 'units' ? styles.metricOn : ''} onClick={() => setProductSort('units')}>Units</button>
+                  </div>
+                  <button className={ui.iconBtn} title="Export CSV" aria-label="Export CSV" onClick={exportTopProductsCsv}><Download size={15} /></button>
+                </div>
               </div>
               <div className={styles.rankList}>
                 {!data.topProducts.length ? (
                   <div className="emptyInline">No sales in this period.</div>
-                ) : data.topProducts.map((p, i) => (
+                ) : [...data.topProducts].sort((a, b) => productSort === 'sales' ? b.sales - a.sales : b.quantity - a.quantity).map((p, i) => (
                   <div className={styles.rankRow} key={p.productId}>
                     <span className={styles.rank}>{i + 1}</span>
                     <div className={styles.rankInfo}>
@@ -287,7 +313,7 @@ export default function AnalyticsAdmin() {
               ) : (
                 <div className={styles.rankList}>
                   {data.lowStock.map(x => (
-                    <div className={styles.rankRow} key={x.id}>
+                    <div className={`${styles.rankRow} ${styles.rankRowWide}`} key={x.id}>
                       <div className={styles.rankInfo}>
                         <strong>{x.product}</strong>
                         <span className={ui.muted}>{x.sku}{x.variant ? ` · ${x.variant}` : ''}</span>
@@ -311,6 +337,24 @@ export default function AnalyticsAdmin() {
                   <div>
                     <strong>{data.kpis.revenueChange >= 0 ? 'Sales are trending up' : 'Sales are trending down'}</strong>
                     <span className={ui.muted}>{Math.abs(data.kpis.revenueChange)}% vs {compareLabel}</span>
+                  </div>
+                )}
+                {bestDay && (
+                  <div>
+                    <strong>{chartFormatDate(bestDay.date)}</strong>
+                    <span className={ui.muted}>Best day: {money0(bestDay.revenue)} in sales</span>
+                  </div>
+                )}
+                {data.granularity === 'day' && (
+                  <div>
+                    <strong>{money0(Math.round(data.kpis.revenue / Math.max(1, data.series.length)))}</strong>
+                    <span className={ui.muted}>Average sales per day</span>
+                  </div>
+                )}
+                {data.granularity === 'day' && (
+                  <div>
+                    <strong>{quietDays}</strong>
+                    <span className={ui.muted}>{quietDays === 1 ? 'Day' : 'Days'} with no sales in this period</span>
                   </div>
                 )}
                 <div>
