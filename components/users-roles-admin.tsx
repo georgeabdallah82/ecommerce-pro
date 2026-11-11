@@ -134,6 +134,12 @@ export default function UsersRolesAdmin({ initialUsers, initialRoles, currentUse
     try { await api('/api/admin/users', { method: 'PATCH', body: JSON.stringify({ id: user.id, twoStepOff: true }) }); setUsers(list => list.map(u => u.id === user.id ? { ...u, twoStep: false, totpEnabledAt: null } : u)); done(`2-step login is off for ${user.name}.`) } catch (err) { fail(err) }
   }
 
+  // Every device the person is signed in on is signed out. Their sessions started before now stop working.
+  async function signOutEverywhere(user: UserRow) {
+    if (!(await confirm({ title: `Sign ${user.name} out everywhere?`, message: 'Every device they are signed in on is signed out. They can sign in again straight away. Nothing else changes.', confirmLabel: 'Sign out everywhere' }))) return
+    try { await api('/api/admin/users/sign-out', { method: 'POST', body: JSON.stringify({ id: user.id }) }); done(`${user.name} was signed out everywhere.`) } catch (err) { fail(err) }
+  }
+
   async function removeUser(user: UserRow) {
     if (!(await confirm({ title: `Delete ${user.name}?`, message: 'Their account is removed for good. Orders and notes they handled are kept. To only block access for a while, use Disable instead.', confirmLabel: 'Delete for good' }))) return
     try { await runReauthed(askForConfirmation, () => api(`/api/admin/users?id=${encodeURIComponent(user.id)}`, { method: 'DELETE' })); setUsers(list => list.filter(u => u.id !== user.id)); done(`${user.name} was deleted.`); refresh().catch(() => {}) } catch (err) { fail(err); refresh().catch(() => {}) }
@@ -241,6 +247,7 @@ export default function UsersRolesAdmin({ initialUsers, initialRoles, currentUse
             <button className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} onClick={() => setPasswordFor({ user: u, password: generatePassword() })}><KeyRound size={13} /> Password</button>
             {!self && <button className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} onClick={() => setActive(u, !u.isActive)}>{u.isActive ? 'Disable' : 'Enable'}</button>}
             {!self && hasTwoStep(u) && <button className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} onClick={() => twoStepOff(u)}>Turn off 2-step</button>}
+            {!self && u.role !== 'CUSTOMER' && <button className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} onClick={() => signOutEverywhere(u)}>Sign out everywhere</button>}
             {!self && <button className={`${ui.iconBtn} ${ui.iconBtnDanger}`} onClick={() => removeUser(u)} aria-label={`Delete ${u.name}`}><Trash2 size={15} /></button>}
           </div>}
         </div>
