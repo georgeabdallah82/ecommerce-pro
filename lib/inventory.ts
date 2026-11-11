@@ -1,4 +1,5 @@
 import { InventoryMovementType } from '@prisma/client'
+import { userError } from '@/lib/user-error'
 
 type ReservationMovement = {
   inventoryId: string
@@ -32,7 +33,7 @@ export function pickMajorityLocation(rows: Array<{ locationId: string | null }>)
 }
 
 export async function reserveStock(tx: any, product: any, variantId: string | null | undefined, quantity: number, referenceId: string) {
-  if (quantity <= 0) throw new Error('Quantity must be greater than zero')
+  if (quantity <= 0) throw userError('Quantity must be greater than zero')
   if (!product.trackInventory || product.continueSellingWhenOutOfStock) return []
 
   const variantRows = variantId ? product.inventory.filter((x: any) => x.variantId === variantId) : []
@@ -73,7 +74,7 @@ export async function reserveStock(tx: any, product: any, variantId: string | nu
     // Hand back what this call already took from other rows before failing: the database
     // client doesn't roll these writes back on its own (see undoReservations).
     await undoReservations(tx, reservations, referenceId, 'Checkout reservation undone (not enough stock)')
-    throw new Error(`Not enough stock for ${product.name}`)
+    throw userError(`Not enough stock for ${product.name}`)
   }
   return reservations
 }
