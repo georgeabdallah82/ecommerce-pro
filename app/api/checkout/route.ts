@@ -17,10 +17,10 @@ import { sendAbandonedCheckoutEmail, sendOrderConfirmationEmail } from '@/lib/em
 import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { consumeDurableRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
-import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
+import { giftCardProblem, redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { getUnpublishedProductIds } from '@/lib/sales-channels'
 import { getStoreCurrency } from '@/lib/store-currency'
-import { taxableAmountAfterRewards } from '@/lib/discounts'
+import { orderMoney } from '@/lib/checkout-totals'
 import { applyCoupon, findAutomaticDiscount } from '@/lib/checkout-discounts'
 import { PaymentMethod } from '@prisma/client'
 import { ZodError } from 'zod'
@@ -58,6 +58,15 @@ function checkoutFingerprint(userId: string | null, input: any, merged: Map<stri
     shippingRateId: input.shippingRateId || null,
     shippingAddress: input.shippingAddress,
   })).digest('hex')
+}
+
+// Requests that share an idempotency key queue on this lock inside their transaction. The first
+// creates the order and commits; the rest then find it (the lookup further down). Without it, the
+// same key sent several times at once, such as a retry while the first request is still running,
+// created several orders. The offline mock store has no database to lock, so there it does nothing.
+async function lockIdempotencyKey(tx: any, key: string) {
+  if (typeof tx.$queryRaw !== 'function') return
+  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`checkout:${key}`}))::text`
 }
 
 function providerCheckout(rawJson: string | null) {
@@ -279,41 +288,36 @@ export async function POST(req: Request) {
       normalized.push(freeGift.line)
     }
     const requestedCoins = Math.max(0, Number(input.coinsToUse || 0))
-    const coinDiscount = Math.min(discountedSubtotal, requestedCoins)
     if (requestedCoins > discountedSubtotal && requestedCoins > 0) throw userError('Coin redemption exceeds the merchandise total.')
-    const taxableAmount = taxableAmountAfterRewards(taxableSubtotal, discount.taxable, discountedSubtotal, coinDiscount)
-    const rewardAdjustedSubtotal = Math.max(0, discountedSubtotal - coinDiscount)
-    const shipping = requiresPhysicalShipping
-      ? await calculateShipping(input.shippingAddress.country, rewardAdjustedSubtotal, input.shippingRateId || null, input.shippingAddress.region || null)
-      : { total: 0, method: 'No shipping required', estimatedDays: null }
-    const taxRate = await getTaxRatePercent(input.shippingAddress.country)
-    const taxTotal = Math.round(taxableAmount * taxRate / 100)
-    const freeShippingDiscount = coupon?.type === 'FREE_SHIPPING' ? shipping.total : 0
-    const shippingTotal = coupon?.type === 'FREE_SHIPPING' ? 0 : shipping.total
-    const preGiftCardTotal = Math.max(0, rewardAdjustedSubtotal + shippingTotal + taxTotal)
-
     const orderCurrency = await getStoreCurrency()
     let giftCard: { id: string; balance: number } | null = null
-    let giftCardDiscount = 0
     if (input.giftCardCode) {
       const found = await db.giftCard.findUnique({ where: { code: input.giftCardCode.toUpperCase() } })
       if (!found) throw userError('Invalid gift card code')
-      if (found.status !== 'ACTIVE') throw userError('This gift card is no longer active')
-      if (found.expiresAt && found.expiresAt < new Date()) throw userError('This gift card has expired')
-      if (found.balance <= 0) throw userError('This gift card has no remaining balance')
-      if (found.currency !== orderCurrency) throw userError('This gift card cannot be used for this order currency')
+      const problem = giftCardProblem(found, orderCurrency)
+      if (problem) throw userError(problem)
       giftCard = found
-      giftCardDiscount = Math.min(found.balance, preGiftCardTotal)
     }
-    // Gift cards pay off the final total (post shipping/tax), unlike coin
-    // redemption above which only ever discounts the merchandise subtotal --
-    // matching how a real gift card is applied at the register.
-    const grandTotal = Math.max(0, preGiftCardTotal - giftCardDiscount)
+    // The figures the price summary showed (app/api/checkout/quote/route.ts): coins, delivery on what
+    // is left after them, tax, then the gift card against the final total.
+    const { coinDiscount, shipping, shippingTotal, freeShippingDiscount, taxTotal, giftCardDiscount, grandTotal } = await orderMoney({
+      discountedSubtotal, taxableSubtotal, discountTaxable: discount.taxable, coinsApplied: requestedCoins,
+      requiresShipping: requiresPhysicalShipping, freeShipping: coupon?.type === 'FREE_SHIPPING',
+      shippingFor: basis => calculateShipping(input.shippingAddress.country, basis, input.shippingRateId || null, input.shippingAddress.region || null),
+      taxRatePercent: await getTaxRatePercent(input.shippingAddress.country),
+      giftCardBalance: giftCard ? giftCard.balance : null,
+    })
+    // The total the shopper reviewed. A retry of an order already placed under this key is answered
+    // with that order below, so it is not refused here even if prices have moved since.
+    if (input.expectedTotal !== undefined && input.expectedTotal !== grandTotal && !(idempotencyKey && await db.paymentTransaction.findFirst({ where: { provider: 'checkout', externalId: idempotencyKey }, select: { id: true } }))) {
+      return json({ error: 'Your total has changed since you reviewed it. Check the new total and place the order again.', code: 'TOTAL_CHANGED', total: grandTotal }, { status: 409, headers: { 'Cache-Control': 'no-store' } })
+    }
     const orderNumber = await nextOrderNumber()
     const fingerprint = checkoutFingerprint(user?.id ?? null, input, merged)
 
     const result = await db.$transaction(async tx => {
       if (idempotencyKey) {
+        await lockIdempotencyKey(tx, idempotencyKey)
         const existing = await tx.paymentTransaction.findFirst({ where: { provider: 'checkout', externalId: idempotencyKey }, include: { order: true } })
         if (existing?.order) {
           let existingFingerprint: string | null = null

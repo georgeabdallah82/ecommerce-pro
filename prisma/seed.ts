@@ -11,7 +11,7 @@ async function main(){
  const admin=await db.user.upsert({where:{email:'admin@example.com'},update:{role:Role.SUPER_ADMIN,isActive:true,passwordHash,name:'Store Admin'},create:{name:'Store Admin',email:'admin@example.com',passwordHash,role:Role.SUPER_ADMIN}})
  if(!isProduction){
    const customerHash=await bcrypt.hash('Customer123!',12)
-   await db.user.upsert({where:{email:'customer@example.com'},update:{passwordHash:customerHash},create:{name:'Demo Customer',email:'customer@example.com',passwordHash:customerHash,role:Role.CUSTOMER}})
+   await db.user.upsert({where:{email:'customer@example.com'},update:{passwordHash:customerHash},create:{name:'Demo Customer',email:'customer@example.com',passwordHash:customerHash,role:Role.CUSTOMER,emailVerifiedAt:new Date()}})
  }
  const featured=await db.collection.upsert({where:{slug:'featured'},update:{},create:{name:'Featured',slug:'featured',description:'Curated products',sortOrder:1}})
  const home=await db.collection.upsert({where:{slug:'home-essentials'},update:{},create:{name:'Home Essentials',slug:'home-essentials',description:'Practical everyday products',sortOrder:2}})
