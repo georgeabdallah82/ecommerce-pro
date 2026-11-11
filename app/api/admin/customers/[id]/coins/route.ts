@@ -48,16 +48,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (referenceId === '') return json({ error: 'Reference id must not be empty.' }, { status: 400 })
 
     const result = await db.$transaction(async tx => {
-      // Coin balance is a running sum over an append-only ledger, not a single mutable row, so
-      // there's no field a WHERE-bounded guard could bind to the way coupon.usedCount/
-      // giftCard.balance elsewhere in this codebase do. Without this, two concurrent adjustments
-      // (two admins, or one double-submitting) could both read the same starting balance here,
-      // both pass the "cannot become negative" check below, and both commit -- driving the
-      // balance negative despite the guard, the exact race checkout's own coin/wallet debit had
-      // (see app/api/checkout/route.ts). Writing to the customer's own User document first turns
-      // that into a real MongoDB write conflict: two transactions touching the same document
-      // can't both commit, so the loser aborts with the P2034 this route already catches below,
-      // instead of silently letting both debits through.
+      // The coin balance is a running sum over an append-only ledger, so it is read and checked here, after the
+      // customer's row is locked. The UPDATE below takes that row lock: a second adjustment for the same customer
+      // waits until this one commits, then reads its result. Without a real transaction (the fallback in
+      // lib/prisma.ts) the lock is not held, so the adjustment is refused instead (requireTransaction below).
       await tx.user.update({ where: { id }, data: { updatedAt: new Date() } })
 
       const aggregate = await tx.coinTransaction.aggregate({ where: { userId: id }, _sum: { amount: true } })
@@ -83,7 +77,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         },
       })
       return { transaction, balance: balance + amount, idempotent: false }
-    })
+    }, { requireTransaction: true } as any)
 
     if (!result.idempotent) {
       try {
@@ -95,6 +89,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return json(result, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error) {
     const message = error instanceof Error ? error.message : ''
+    // Nothing was kept: the adjustment could not run as one transaction (lib/prisma.ts). Ask for a retry.
+    if (error instanceof Error && error.name === 'TransactionUnavailableError') return json({ error: error.message }, { status: 503 })
     if (message === 'UNAUTHORIZED') return json({ error: 'Unauthorized' }, { status: 401 })
     if (message === 'FORBIDDEN') return json({ error: 'Forbidden' }, { status: 403 })
     if (message === 'Coin balance cannot become negative') return json({ error: message }, { status: 409 })

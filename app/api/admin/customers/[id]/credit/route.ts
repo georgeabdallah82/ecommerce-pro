@@ -70,16 +70,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (referenceId === '') return json({ error: 'Reference id must not be empty.' }, { status: 400, headers: JSON_HEADERS })
 
     const result = await db.$transaction(async tx => {
-      // Wallet balance is a running sum over an append-only ledger, not a single mutable row, so
-      // there's no field a WHERE-bounded guard could bind to the way coupon.usedCount/
-      // giftCard.balance elsewhere in this codebase do. Without this, two concurrent adjustments
-      // (two admins, or one double-submitting) could both read the same starting balance here,
-      // both pass the balance checks below, and both commit -- driving the balance negative (or
-      // past the supported limit) despite the guards, the exact race checkout's own wallet debit
-      // had (see app/api/checkout/route.ts). Writing to the customer's own User document first
-      // turns that into a real MongoDB write conflict: two transactions touching the same
-      // document can't both commit, so the loser aborts with the P2034 this route already catches
-      // below, instead of silently letting both debits through.
+      // The wallet balance is a running sum over an append-only ledger, so it is read and checked here, after the
+      // customer's row is locked. The UPDATE below takes that row lock: a second adjustment for the same customer
+      // waits until this one commits, then reads its result. Without a real transaction (the fallback in
+      // lib/prisma.ts) the lock is not held, so the adjustment is refused instead (requireTransaction below).
       await tx.user.update({ where: { id }, data: { updatedAt: new Date() } })
 
       const aggregate = await tx.walletTransaction.aggregate({ where: { userId: id, currency }, _sum: { amount: true } })
@@ -107,7 +101,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         },
       })
       return { transaction, balance: balance + amount, idempotent: false }
-    })
+    }, { requireTransaction: true } as any)
 
     if (!result.idempotent) {
       try {
@@ -120,6 +114,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return json(result, { headers: JSON_HEADERS })
   } catch (error) {
     const message = error instanceof Error ? error.message : ''
+    // Nothing was kept: the adjustment could not run as one transaction (lib/prisma.ts). Ask for a retry.
+    if (error instanceof Error && error.name === 'TransactionUnavailableError') return json({ error: error.message }, { status: 503, headers: JSON_HEADERS })
     if (message === 'Wallet balance cannot become negative' || message === 'Wallet balance exceeds the supported limit') return json({ error: message }, { status: 409, headers: JSON_HEADERS })
     if (message.includes('Unique constraint')) return json({ error: 'A wallet adjustment with this reference already exists.' }, { status: 409, headers: JSON_HEADERS })
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') {

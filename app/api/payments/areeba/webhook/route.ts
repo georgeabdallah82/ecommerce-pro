@@ -1,66 +1,14 @@
 import { db } from '@/lib/prisma'
-import { audit } from '@/lib/audit'
 import { consumeDurableRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
-import { areebaMpgsPaymentProvider, areebaOrderRefunds, areebaWebhookToken, safeTokenEqual } from '@/lib/payments'
-import { dispatchWebhookEvent } from '@/lib/webhooks'
-import { runInBackground } from '@/lib/background'
-import { markOnlinePaymentFailed, markOnlinePaymentPaid, parseCoinsUsed } from '@/lib/payment-outcome'
-
-async function restoreCoinsForOrder(tx: any, order: { id: string; orderNumber: string; grandTotal: number; userId: string | null }, successfulRefundedMinor: number, referenceSuffix: string) {
-  if (!order.userId || order.grandTotal <= 0) return 0
-  const checkoutTx = await tx.paymentTransaction.findFirst({ where: { orderId: order.id, provider: 'checkout' }, orderBy: { createdAt: 'asc' }, select: { rawJson: true } })
-  const coinsUsed = parseCoinsUsed(checkoutTx?.rawJson || null)
-  if (!coinsUsed) return 0
-  const prefix = `coin-refund:${order.id}:`
-  const alreadyRestoredAggregate = await tx.coinTransaction.aggregate({ where: { userId: order.userId, type: 'REFUND', referenceId: { startsWith: prefix } }, _sum: { amount: true } })
-  const alreadyRestored = Math.max(0, Number(alreadyRestoredAggregate._sum.amount || 0))
-  const targetRestored = Math.min(coinsUsed, Math.floor(coinsUsed * Math.max(0, Math.min(successfulRefundedMinor, order.grandTotal)) / order.grandTotal))
-  const delta = targetRestored - alreadyRestored
-  if (delta <= 0) return 0
-  await tx.coinTransaction.create({ data: { id: `coin_refund_${order.id}_${referenceSuffix}`, userId: order.userId, amount: delta, type: 'REFUND', reason: 'Order refund coin restoration', referenceId: `${prefix}${referenceSuffix}` } })
-  return delta
-}
-
-async function reconcileRefunds(orderId: string, orderNumber: string) {
-  // Only an order with a refund in flight needs the gateway, and its amounts come from the gateway itself:
-  // the webhook body says that something happened, but it is not trusted for money.
-  const inFlight = await db.paymentTransaction.findFirst({ where: { orderId, status: 'refund_pending' }, select: { id: true } })
-  if (!inFlight) return false
-  const gateway = await areebaOrderRefunds(orderNumber)
-  const gatewayStatus = gateway.status
-  const gatewayRefunded = gateway.totalRefunded
-  if (!Number.isFinite(gatewayRefunded) || !['REFUNDED', 'PARTIALLY_REFUNDED', 'EXCESSIVELY_REFUNDED'].includes(gatewayStatus)) return false
-  const gatewayRefundedMinor = Math.round(gatewayRefunded * 100)
-  let reconciled = false
-  let webhookPayload: { id: string; orderNumber: string; paymentStatus: string } | null = null
-  await db.$transaction(async tx => {
-    const order = await tx.order.findUnique({ where: { id: orderId }, include: { paymentTransactions: true } })
-    if (!order) return
-    const pending = order.paymentTransactions.filter(t => t.status === 'refund_pending')
-    if (!pending.length) return
-    const alreadyRefunded = order.paymentTransactions.filter(t => ['refunded', 'partially_refunded'].includes(t.status)).reduce((sum, t) => sum + t.amount, 0)
-    const pendingAmount = pending.reduce((sum, t) => sum + t.amount, 0)
-    if (gatewayRefundedMinor < alreadyRefunded + pendingAmount) return
-    for (const transaction of pending) await tx.paymentTransaction.update({ where: { id: transaction.id }, data: { status: 'refunded' } })
-    const paymentStatus = gatewayRefundedMinor >= order.grandTotal ? 'REFUNDED' : 'PARTIALLY_REFUNDED'
-    const status = paymentStatus === 'REFUNDED' ? 'REFUNDED' : order.status
-    await restoreCoinsForOrder(tx, order, gatewayRefundedMinor, `gateway-${gatewayRefundedMinor}`)
-    await tx.order.update({ where: { id: order.id }, data: { paymentStatus, status, events: { create: { status, message: `Gateway refund confirmed (${gatewayRefundedMinor} ${order.currency}).` } } } })
-    reconciled = true
-    webhookPayload = { id: order.id, orderNumber: order.orderNumber, paymentStatus }
-  }, { requireTransaction: true } as any)
-  if (reconciled) {
-    await audit(null, 'order.refund_reconciled', 'Order', orderId, { provider: 'areeba_mpgs', gatewayStatus, gatewayRefunded })
-    runInBackground(dispatchWebhookEvent('order.updated', webhookPayload!).catch(error => console.error('[webhook] order.updated dispatch failed', error)))
-  }
-  return reconciled
-}
+import { areebaMpgsPaymentProvider, areebaWebhookToken, safeTokenEqual } from '@/lib/payments'
+import { reconcileGatewayRefunds } from '@/lib/refund-reconciliation'
+import { markOnlinePaymentFailed, markOnlinePaymentPaid } from '@/lib/payment-outcome'
 
 async function processPaymentNotification(orderNumber: string) {
   const order = await db.order.findUnique({ where: { orderNumber }, select: { id: true, orderNumber: true, grandTotal: true, currency: true, paymentStatus: true } })
   if (!order) return false
-  if (await reconcileRefunds(order.id, order.orderNumber)) return true
+  if (await reconcileGatewayRefunds(order.id, order.orderNumber)) return true
   if (['REFUNDED', 'PARTIALLY_REFUNDED'].includes(order.paymentStatus)) return true
 
   const transaction = await db.paymentTransaction.findFirst({ where: { orderId: order.id, provider: 'areeba_mpgs', status: { in: ['pending', 'paid', 'failed'] } }, orderBy: { createdAt: 'desc' } })

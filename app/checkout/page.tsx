@@ -429,7 +429,9 @@ export default function Checkout() {
   const showBankDetails = paymentMethod === 'BANK_TRANSFER' && bankDetails
   const fieldClass = (name: string) => `${s.field} ${errors[name] ? s.invalid : ''}`
   const clearError = (name: string) => { if (errors[name]) setErrors(current => { const next = { ...current }; delete next[name]; return next }) }
-  const fieldError = (name: string) => errors[name] ? <span className={s.error} role="alert">{errors[name]}</span> : null
+  // A field's label is its name alone. Its error, or else its hint, is its description (aria-describedby), so neither is read as part of the name.
+  const fieldError = (name: string) => errors[name] ? <span id={`co-${name}-error`} className={s.error} role="alert">{errors[name]}</span> : null
+  const describedBy = (name: string, hasHint = false) => errors[name] ? `co-${name}-error` : hasHint ? `co-${name}-help` : undefined
 
   if (clientCheckout) return <main className={s.page}><div className={s.center}><Lock size={28} /><h1>{t('Continue to secure card payment')}</h1><p className={s.muted}>{t("Your payment details are entered directly on the payment provider's secure page.")}</p><div className={s.info}>{t('Loading secure payment…')}</div><Link className={s.back} href="/cart">{t('Return to cart')}</Link></div></main>
 
@@ -459,7 +461,7 @@ export default function Checkout() {
       {appliedCode && quote?.discountCode
         ? <span className={s.applied}><Check size={14} /> {quote.discountCode}<button type="button" onClick={removeCode} aria-label={t('Remove discount code')}><X size={14} /></button></span>
         : codeOpen
-          ? <div className={s.code}><input className={s.input} value={codeInput} onChange={e => { setCodeInput(e.target.value); setCodeMessage('') }} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); applyCode() } }} autoCapitalize="characters" placeholder={t('Discount code')} aria-label={t('Discount code')} /><button type="button" className={s.codeBtn} onClick={applyCode} disabled={!codeInput.trim() || quoting}>{t('Apply')}</button></div>
+          ? <div className={s.code}><input className={s.input} value={codeInput} onChange={e => { setCodeInput(e.target.value); setCodeMessage('') }} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); applyCode() } }} autoCapitalize="characters" autoFocus placeholder={t('Discount code')} aria-label={t('Discount code')} /><button type="button" className={s.codeBtn} onClick={applyCode} disabled={!codeInput.trim() || quoting}>{t('Apply')}</button></div>
           : <button type="button" className={s.linkBtn} onClick={() => setCodeOpen(true)}>{t('Have a discount code?')}</button>}
       {codeMessage && !appliedCode && <p className={s.codeError} role="alert">{t(codeMessage)}</p>}
       <div className={s.totals}>
@@ -487,38 +489,38 @@ export default function Checkout() {
 
       <section className={s.step} aria-labelledby="co-contact">
         <h2 id="co-contact" className={s.stepHead}><span className={s.stepNum}>1</span>{t('Contact')}</h2>
-        <label className={fieldClass('phone')}><span className={s.label}>{t('Phone (WhatsApp)')}</span>
-          <span className={s.phone}>{inLebanon && <span className={s.phonePrefix}>+961</span>}<input className={s.input} name="phone" type="tel" autoComplete="tel" inputMode="tel" placeholder={t('e.g. 70 123 456')} dir="ltr" aria-invalid={!!errors.phone} onBlur={e => captureCheckoutProgress(e.currentTarget.form)} /></span>
-          {fieldError('phone') || <span className={s.help}>{t('We confirm your order and the courier calls you on this number.')}</span>}
+        <label className={fieldClass('phone')}><span id="co-phone-label" className={s.label}>{t('Phone (WhatsApp)')}</span>
+          <span className={s.phone}>{inLebanon && <span className={s.phonePrefix}>+961</span>}<input id="co-phone" className={s.input} name="phone" type="tel" autoComplete="tel" inputMode="tel" placeholder={t('e.g. 70 123 456')} dir="ltr" aria-required="true" aria-labelledby="co-phone-label" aria-describedby={describedBy('phone', true)} aria-invalid={!!errors.phone} onBlur={e => captureCheckoutProgress(e.currentTarget.form)} /></span>
+          {fieldError('phone') || <span id="co-phone-help" className={s.help}>{t('We confirm your order and the courier calls you on this number.')}</span>}
         </label>
-        <label className={fieldClass('email')}><span className={s.label}>{t('Email')} <i>{t('(optional)')}</i></span>
-          <input ref={emailRef} className={s.input} name="email" type="email" autoComplete="email" inputMode="email" placeholder="you@example.com" defaultValue={recoveredEmail} key={recoveredEmail} dir="ltr" aria-invalid={!!errors.email} onBlur={e => captureCheckoutProgress(e.currentTarget.form)} />
-          {fieldError('email') || <span className={s.help}>{t('For your receipt and order updates.')}</span>}
+        <label className={fieldClass('email')}><span id="co-email-label" className={s.label}>{t('Email')} <i>{t('(optional)')}</i></span>
+          <input id="co-email" ref={emailRef} className={s.input} name="email" type="email" autoComplete="email" inputMode="email" placeholder="you@example.com" defaultValue={recoveredEmail} key={recoveredEmail} dir="ltr" aria-labelledby="co-email-label" aria-describedby={describedBy('email', true)} aria-invalid={!!errors.email} onBlur={e => captureCheckoutProgress(e.currentTarget.form)} />
+          {fieldError('email') || <span id="co-email-help" className={s.help}>{t('For your receipt and order updates.')}</span>}
         </label>
       </section>
 
       <section className={s.step} aria-labelledby="co-delivery">
         <h2 id="co-delivery" className={s.stepHead}><span className={s.stepNum}>2</span>{t('Delivery')}</h2>
-        {useAreaList && <label className={fieldClass('area')}><span className={s.label}>{t('Area')}</span>
-          <select className={s.select} name="area" value={area} onChange={e => { setArea(e.target.value); clearError('area'); captureCheckoutProgress(e.currentTarget.form) }} aria-invalid={!!errors.area}>
+        {useAreaList && <label className={fieldClass('area')}><span id="co-area-label" className={s.label}>{t('Area')}</span>
+          <select id="co-area" className={s.select} name="area" value={area} onChange={e => { setArea(e.target.value); clearError('area'); captureCheckoutProgress(e.currentTarget.form) }} aria-required="true" aria-labelledby="co-area-label" aria-describedby={describedBy('area', !!areaEta)} aria-invalid={!!errors.area}>
             <option value="">{t('Choose your area')}</option>
             {areas.map(a => <option key={a.name} value={a.name}>{a.name}</option>)}
           </select>
-          {fieldError('area') || (areaEta ? <span className={s.help}><Truck size={13} style={{ verticalAlign: '-2px' }} /> {t('Delivery: {when}', { when: areaEta })}</span> : null)}
+          {fieldError('area') || (areaEta ? <span id="co-area-help" className={s.help}><Truck size={13} style={{ verticalAlign: '-2px' }} /> {t('Delivery: {when}', { when: areaEta })}</span> : null)}
         </label>}
         <div className={`${s.row} ${s.row2}`}>
-          <label className={fieldClass('firstName')}><span className={s.label}>{t('First name')}</span><input ref={firstNameRef} className={s.input} name="firstName" autoComplete="given-name" aria-invalid={!!errors.firstName} onBlur={e => captureCheckoutProgress(e.currentTarget.form)} />{fieldError('firstName')}</label>
-          <label className={fieldClass('lastName')}><span className={s.label}>{t('Last name')}</span><input ref={lastNameRef} className={s.input} name="lastName" autoComplete="family-name" aria-invalid={!!errors.lastName} />{fieldError('lastName')}</label>
+          <label className={fieldClass('firstName')}><span id="co-firstName-label" className={s.label}>{t('First name')}</span><input id="co-firstName" ref={firstNameRef} className={s.input} name="firstName" autoComplete="given-name" aria-required="true" aria-labelledby="co-firstName-label" aria-describedby={describedBy('firstName')} aria-invalid={!!errors.firstName} onBlur={e => captureCheckoutProgress(e.currentTarget.form)} />{fieldError('firstName')}</label>
+          <label className={fieldClass('lastName')}><span id="co-lastName-label" className={s.label}>{t('Last name')}</span><input id="co-lastName" ref={lastNameRef} className={s.input} name="lastName" autoComplete="family-name" aria-required="true" aria-labelledby="co-lastName-label" aria-describedby={describedBy('lastName')} aria-invalid={!!errors.lastName} />{fieldError('lastName')}</label>
         </div>
-        <label className={fieldClass('city')}><span className={s.label}>{t('Town / city')}</span><input className={s.input} name="city" autoComplete="address-level2" placeholder={t('e.g. Jounieh')} aria-invalid={!!errors.city} onBlur={e => captureCheckoutProgress(e.currentTarget.form)} />{fieldError('city')}</label>
-        <label className={fieldClass('line1')}><span className={s.label}>{t('Street and building')}</span><input className={s.input} name="line1" autoComplete="address-line1" placeholder={t('e.g. Main street, Abi Nader building')} aria-invalid={!!errors.line1} />{fieldError('line1')}</label>
+        <label className={fieldClass('city')}><span id="co-city-label" className={s.label}>{t('Town / city')}</span><input id="co-city" className={s.input} name="city" autoComplete="address-level2" placeholder={t('e.g. Jounieh')} aria-required="true" aria-labelledby="co-city-label" aria-describedby={describedBy('city')} aria-invalid={!!errors.city} onBlur={e => captureCheckoutProgress(e.currentTarget.form)} />{fieldError('city')}</label>
+        <label className={fieldClass('line1')}><span id="co-line1-label" className={s.label}>{t('Street and building')}</span><input id="co-line1" className={s.input} name="line1" autoComplete="address-line1" placeholder={t('e.g. Main street, Abi Nader building')} aria-required="true" aria-labelledby="co-line1-label" aria-describedby={describedBy('line1')} aria-invalid={!!errors.line1} />{fieldError('line1')}</label>
         <label className={s.field}><span className={s.label}>{t('Floor, apartment, landmark')} <i>{t('(optional)')}</i></span><input className={s.input} name="line2" autoComplete="address-line2" placeholder={t('e.g. 3rd floor, near the pharmacy')} /></label>
         <LocationPinButton pin={pin} onChange={setPin} countryCode={isoCountryCode(country)} />
         {!useAreaList && <label className={s.field}><span className={s.label}>{t('Area / region')} <i>{t('(optional)')}</i></span><input className={s.input} name="region" autoComplete="address-level1" /></label>}
         {!inLebanon && <label className={s.field}><span className={s.label}>{t('Postal code')} <i>{t('(optional)')}</i></span><input className={s.input} name="postalCode" autoComplete="postal-code" /></label>}
         {countries.length > 1
-          ? <label className={fieldClass('country')}><span className={s.label}>{t('Country')}</span>
-            <select className={s.select} name="country" autoComplete="country-name" value={country} onChange={e => { setCountry(e.target.value); clearError('country') }} aria-invalid={!!errors.country}>
+          ? <label className={fieldClass('country')}><span id="co-country-label" className={s.label}>{t('Country')}</span>
+            <select id="co-country" className={s.select} name="country" autoComplete="country-name" value={country} onChange={e => { setCountry(e.target.value); clearError('country') }} aria-required="true" aria-labelledby="co-country-label" aria-describedby={describedBy('country')} aria-invalid={!!errors.country}>
               {countries.map(c => <option key={c.code} value={c.name}>{countryName(c.code, lang)}</option>)}
             </select>{fieldError('country')}</label>
           : <div className={s.countryLine}><span>{t('Country:')} <strong>{countries[0] ? countryName(countries[0].code, lang) : country}</strong></span></div>}
@@ -566,7 +568,7 @@ export default function Checkout() {
         {appliedGiftCard
           ? <span className={s.applied}><Check size={14} /> {t('Gift card ending {last} applied', { last: appliedGiftCard.slice(-4) })}<button type="button" onClick={removeGiftCard} aria-label={t('Remove gift card')}><X size={14} /></button></span>
           : giftOpen
-            ? <div className={s.field}><span className={s.label}>{t('Gift card')}</span><div className={s.code}><input className={s.input} value={giftCardInput} onChange={e => { setGiftCardInput(e.target.value); setGiftCardMessage('') }} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); applyGiftCard() } }} autoCapitalize="characters" placeholder={t('Gift card code')} aria-label={t('Gift card code')} /><button type="button" className={s.codeBtn} onClick={applyGiftCard} disabled={!giftCardInput.trim() || quoting}>{t('Apply')}</button></div>{giftCardMessage && <span className={s.error} role="alert">{t(giftCardMessage)}</span>}</div>
+            ? <div className={s.field}><span className={s.label}>{t('Gift card')}</span><div className={s.code}><input className={s.input} value={giftCardInput} onChange={e => { setGiftCardInput(e.target.value); setGiftCardMessage('') }} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); applyGiftCard() } }} autoCapitalize="characters" autoFocus placeholder={t('Gift card code')} aria-label={t('Gift card code')} /><button type="button" className={s.codeBtn} onClick={applyGiftCard} disabled={!giftCardInput.trim() || quoting}>{t('Apply')}</button></div>{giftCardMessage && <span className={s.error} role="alert">{t(giftCardMessage)}</span>}</div>
             : <button type="button" className={s.linkBtn} onClick={() => setGiftOpen(true)}>{t('Have a gift card?')}</button>}
         {settings?.selling?.giftOption !== false && <div className={s.giftBox}>
           <label className={s.check}><input type="checkbox" checked={isGift} onChange={e => setIsGift(e.target.checked)} /> <span><Gift size={16} aria-hidden="true" /> {t('This is a gift')}</span></label>
