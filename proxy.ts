@@ -3,6 +3,7 @@ import type { NextFetchEvent, NextRequest } from 'next/server'
 import { jwtVerify } from 'jose'
 import { countRedirectHit, findRedirect, getSettingValue, getStaffAccess } from '@/lib/edge-db'
 import { isSessionRevoked } from '@/lib/session-revocation'
+import { staffSessionEnded } from '@/lib/session-limits'
 import { contentSecurityPolicy } from '@/lib/csp'
 import { httpsRedirectTarget, wwwRedirectTarget } from '@/lib/www-redirect'
 import { CAMERA_PATHS, applySecurityHeaders } from '@/lib/security-headers'
@@ -26,6 +27,8 @@ async function isStaffSession(sessionToken: string | undefined) {
     // Same rule as getCurrentUser: a staff session revoked (password/role change, disabled)
     // must not keep seeing the store behind the maintenance page.
     if (typeof payload.iat !== 'number' || isSessionRevoked(payload.iat, user?.sessionsRevokedAt)) return false
+    // Staff sign in again after a shift (lib/session-limits.ts), the same rule as getCurrentUser.
+    if (staffSessionEnded(user?.role ?? 'CUSTOMER', payload.iat, Math.floor(Date.now() / 1000))) return false
     // Staff need 2-step login on, the same rule as getCurrentUser.
     return !!user?.isActive && user.role !== 'CUSTOMER' && !!user.totpEnabled
   } catch {

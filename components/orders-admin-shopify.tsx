@@ -9,6 +9,7 @@ import { canTransitionOrder } from '@/lib/orders'
 import { whatsappConfirmLink } from '@/lib/whatsapp-confirm'
 import { ORDER_VIEWS, customerCity, customerName, customerPhone, driverShareLink, itemsSummary, nextStep, paymentInfo, statusInfo, telLink, viewCount, type OrderViewId } from '@/lib/order-flow'
 import { useConfirm } from './admin-confirm'
+import { runReauthed, useReauth } from './admin-reauth'
 import styles from './admin-orders-board.module.css'
 import ui from './admin-ui.module.css'
 
@@ -23,7 +24,12 @@ type Initial = { rows: Order[]; total: number; page: number; pageSize: number; p
 async function api(path: string, init?: RequestInit) {
   const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const data = await r.json().catch(() => ({}))
-  if (!r.ok) throw new Error(data.error || 'Request failed')
+  if (!r.ok) {
+    // `code` tells the screen when the server wants the person to confirm it is them (REAUTH_REQUIRED).
+    const error = new Error(data.error || 'Request failed') as Error & { code?: string }
+    error.code = data.code
+    throw error
+  }
   return data
 }
 
@@ -170,6 +176,7 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone, 
     }
   }
 
+  const askForConfirmation = useReauth()
   async function refundOrder() {
     if (!modal || modal.type !== 'refund') return
     const amount = Math.round(Number(refundAmount) * 100)
@@ -178,7 +185,7 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone, 
     if (!Number.isInteger(amount) || amount <= 0 || amount > max) { setError(`Refund must be between 0.01 and ${money(max, modal.order.currency)}`); return }
     setBusy(modal.order.id); setError(''); setNotice('')
     try {
-      await api('/api/admin/refunds', { method: 'POST', body: JSON.stringify({ orderId: modal.order.id, amount, reason: 'Admin refund' }) })
+      await runReauthed(askForConfirmation, () => api('/api/admin/refunds', { method: 'POST', body: JSON.stringify({ orderId: modal.order.id, amount, reason: 'Admin refund' }) }))
       await load(page, true)
       setModal(null); setRefundAmount(''); setNotice('Refund issued.')
     } catch (e) {

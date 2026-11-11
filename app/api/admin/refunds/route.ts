@@ -1,5 +1,5 @@
 import { db } from '@/lib/prisma'
-import { requirePermission } from '@/lib/auth'
+import { requirePermission, assertRecentSignIn } from '@/lib/auth'
 import { getPaymentProvider } from '@/lib/payments'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
@@ -8,6 +8,7 @@ import { restoreCoinsForRefund } from '@/lib/returns'
 import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { Prisma } from '@prisma/client'
 import { runInBackground } from '@/lib/background'
+import { UserError } from '@/lib/user-error'
 
 const REFUND_MESSAGES = new Set([
   'Order not found',
@@ -20,7 +21,9 @@ const REFUND_MESSAGES = new Set([
 
 const REFUND_CONFLICT_MESSAGE = 'This order was just modified — please retry.'
 
-function refundFailure(error: unknown) {
+function refundFailure(error: unknown): { message: string; status: number; code?: string } {
+  // Written for the person (lib/user-error.ts), including REAUTH_REQUIRED for a refund.
+  if (error instanceof UserError) return { message: error.message, status: error.status, code: error.code }
   if (error instanceof Error && (REFUND_MESSAGES.has(error.message) || error.message.startsWith('Refund cannot exceed the remaining refundable amount of '))) return { message: error.message, status: error.message === 'Order not found' ? 404 : 400 }
   if (error instanceof Error && error.message === 'UNAUTHORIZED') return { message: 'Unauthorized', status: 401 }
   if (error instanceof Error && error.message === 'FORBIDDEN') return { message: 'Forbidden', status: 403 }
@@ -33,6 +36,8 @@ function refundFailure(error: unknown) {
 export async function POST(req: Request) {
   try {
     const actor = await requirePermission('orders.refund')
+    // A refund needs a recent confirmation of the password or a 2-step code (lib/reauth.ts).
+    await assertRecentSignIn(actor)
     const body = await req.json()
     const orderId = String(body.orderId || '').trim()
     const requestedAmount = Number(body.amount)
@@ -134,6 +139,6 @@ export async function POST(req: Request) {
     return json({ order: result.order, refund: result.transaction, refundedTotal: result.refundedTotal }, { status: 201 })
   } catch (e) {
     const failure = refundFailure(e)
-    return json({ error: failure.message }, { status: failure.status })
+    return json({ error: failure.message, ...(failure.code ? { code: failure.code } : {}) }, { status: failure.status })
   }
 }
