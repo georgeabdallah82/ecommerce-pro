@@ -14,6 +14,8 @@ import { checkLowStockAlerts } from '@/lib/push'
 import { OrderStatus, PaymentStatus, Prisma } from '@prisma/client'
 import { runInBackground } from '@/lib/background'
 import { whatsappOutcomeNote } from '@/lib/whatsapp-confirm'
+import { publicUserSelect } from '@/lib/user-public'
+import { safeHttpUrl } from '@/lib/safe-url'
 import { orderCounts } from '@/lib/order-counts'
 import { withRisk } from '@/lib/order-risk'
 import { getStoreIdentity } from '@/lib/store-identity'
@@ -56,7 +58,7 @@ export async function GET(req: Request) {
     const search = words.length === 1 ? wordMatch(words[0]) : words.length ? { AND: words.map(wordMatch) } : {}
     const where = { ...search, ...(statuses.length === 1 ? { status: statuses[0] as OrderStatus } : statuses.length ? { status: { in: statuses as OrderStatus[] } } : {}) }
     const [rows, total, byStatus] = await Promise.all([
-      db.order.findMany({ where, include: { user: true, items: true }, orderBy: { createdAt: 'desc' }, skip: (page-1)*limit, take: limit }),
+      db.order.findMany({ where, include: { user: { select: publicUserSelect }, items: true }, orderBy: { createdAt: 'desc' }, skip: (page-1)*limit, take: limit }),
       db.order.count({ where }),
       // How many orders each view holds (with the same search), for the list's view buttons.
       sp.get('counts') === '1' ? orderCounts(search) : Promise.resolve(null),
@@ -78,7 +80,7 @@ export async function PATCH(req: Request) {
     if (noteBody) {
       const order = await db.order.findUnique({ where: { id: orderId }, select: { id: true } })
       if (!order) return json({ error: 'Order not found' }, { status: 404 })
-      const note = await db.orderNote.create({ data: { orderId: order.id, userId: actor.id, body: noteBody }, include: { user: true } })
+      const note = await db.orderNote.create({ data: { orderId: order.id, userId: actor.id, body: noteBody }, include: { user: { select: publicUserSelect } } })
       await audit(actor.id, 'order.note_added', 'Order', order.id, { noteId: note.id })
       return json({ note }, { status: 201 })
     }
@@ -90,7 +92,7 @@ export async function PATCH(req: Request) {
       if (!text) return json({ error: 'Unknown WhatsApp answer' }, { status: 400 })
       const order = await db.order.findUnique({ where: { id: orderId }, select: { id: true, status: true } })
       if (!order) return json({ error: 'Order not found' }, { status: 404 })
-      const note = await db.orderNote.create({ data: { orderId: order.id, userId: actor.id, body: text }, include: { user: true } })
+      const note = await db.orderNote.create({ data: { orderId: order.id, userId: actor.id, body: text }, include: { user: { select: publicUserSelect } } })
       const event = await db.orderEvent.create({ data: { orderId: order.id, status: order.status, message: `WhatsApp: ${text} (recorded by ${actor.name || 'staff'})` } })
       await audit(actor.id, 'order.whatsapp_outcome', 'Order', order.id, { outcome: body.whatsappOutcome })
       return json({ note, event }, { status: 201 })
@@ -129,6 +131,7 @@ export async function PATCH(req: Request) {
     // here but applied there, not folded into detailsPatch.
     const trackingCompany = body.trackingCompany !== undefined ? String(body.trackingCompany || '').trim().slice(0, 120) || null : null
     const trackingUrl = body.trackingUrl !== undefined ? String(body.trackingUrl || '').trim().slice(0, 500) || null : null
+    if (trackingUrl && !safeHttpUrl(trackingUrl)) return json({ error: 'The tracking link must start with https:// or http://' }, { status: 400 })
 
     const hasOnlyDetails = Object.keys(detailsPatch).length > 0 && !requestedStatus && !requestedPayment
     const result = await db.$transaction(async tx => {

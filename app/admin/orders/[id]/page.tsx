@@ -8,6 +8,7 @@ import { orderReviewPath, orderViewToken } from '@/lib/order-access'
 import { phoneHistory } from '@/lib/customer-history'
 import { BEFORE_SENDING, riskForOrders } from '@/lib/order-risk'
 import { requestOrigin } from '@/lib/site-url'
+import { publicUserSelect } from '@/lib/user-public'
 import OrderDetailAdmin from '@/components/order-detail-admin'
 import ui from '@/components/admin-ui.module.css'
 
@@ -18,11 +19,11 @@ export default async function OrderDetail({params}:{params:Promise<{id:string}>}
   const order=await db.order.findUnique({
     where:{id},
     include:{
-      user:true,
+      user:{select:publicUserSelect},
       driver:{select:{id:true,name:true}},
       items:{include:{product:{include:{images:true}},variant:true}},
       events:{orderBy:{createdAt:'desc'}},
-      notesHistory:{include:{user:true},orderBy:{createdAt:'desc'}},
+      notesHistory:{include:{user:{select:publicUserSelect}},orderBy:{createdAt:'desc'}},
       paymentTransactions:{orderBy:{createdAt:'desc'}},
       // Screenshots of a bank or wallet transfer the customer sent (lib/payment-proof.ts); the pictures load through a staff-only route.
       paymentProofs:{select:{id:true,createdAt:true,sizeBytes:true},orderBy:{createdAt:'desc'}}

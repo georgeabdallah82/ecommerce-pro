@@ -33,10 +33,9 @@ describe('storefront: keyboard and touch', () => {
   })
 
   it('every storefront page has one main landmark, home and product included, so the skip link has somewhere to go', () => {
-    assert.match(read('components/aliexpress-home.tsx'), /<main className="focalStorefront aliHome">/)
     assert.match(read('app/page.tsx'), /<main>\n\s+\{announcements\.map[\s\S]*<\/main>\n\s+<Footer theme=\{theme\}\/>/) // the page itself: content in main, footer after it
     assert.match(read('components/aliexpress-product.tsx'), /<main className="focalStorefront aliProductPage">/)
-    assert.doesNotMatch(read('components/aliexpress-home.tsx') + read('components/aliexpress-product.tsx'), /<div className="focalStorefront ali(Home|ProductPage)">/)
+    assert.doesNotMatch(read('components/aliexpress-product.tsx'), /<div className="focalStorefront ali(Home|ProductPage)">/)
   })
 
   it('the footer email box can shrink, so the page no longer scrolls sideways on a tablet', () => {

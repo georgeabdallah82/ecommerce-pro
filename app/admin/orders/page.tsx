@@ -6,13 +6,14 @@ import { getStoreIdentity } from '@/lib/store-identity'
 import { OrdersAdminShopify } from '@/components/orders-admin-shopify'
 import { orderCounts } from '@/lib/order-counts'
 import { withRisk } from '@/lib/order-risk'
+import { publicUserSelect } from '@/lib/user-public'
 
 export default async function Orders() {
   const user = await requirePermission('orders.view')
   const pageSize = 50
   const [total, rows, storeTimezone, store, counts, unfinishedCount] = await Promise.all([
     db.order.count(),
-    db.order.findMany({ include: { user: true, items: true }, orderBy: { createdAt: 'desc' }, take: pageSize }),
+    db.order.findMany({ include: { user: { select: publicUserSelect }, items: true }, orderBy: { createdAt: 'desc' }, take: pageSize }),
     getStoreTimezone(),
     getStoreIdentity(),
     orderCounts().catch(() => ({})),

@@ -469,7 +469,7 @@ function CountdownSection({section,theme,preview,click,products,onQuickView,onSe
   )
 }
 // The countdown here always targets "midnight tonight" (unlike CountdownSection
-// above, which targets an admin-set date) -- that's what components/aliexpress-home.tsx
+// above, which targets an admin-set date) -- that's what the retired AliExpress homepage
 // has always done for this section, and this renderer exists specifically so a
 // flash_deals section looks and behaves identically whether it's reached via the
 // real homepage or (once wired up) this shared, addable-anywhere section system.

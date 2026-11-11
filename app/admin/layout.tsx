@@ -130,7 +130,8 @@ body:has(.adminShell) .input:focus, body:has(.adminShell) .textarea:focus { outl
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser()
-  if (!user) redirect('/admin/login')
+  // Customer accounts sign in on the storefront; the admin is for staff only.
+  if (!user || user.role === 'CUSTOMER') redirect('/admin/login')
   const visibleGroups = groups.map(group => ({ ...group, items: group.items.filter(item => hasPermission(user, item.permission as Permission)) })).filter(group => group.items.length)
   // The admin's accent follows the store's published Primary colour (see lib/admin-accent.ts).
   // If the theme can't be read, the admin keeps its default accent.
@@ -143,7 +144,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     : 0
   // The team notice board: staff only, and never allowed to break a page.
   const now = new Date()
-  const notices = user.role !== 'CUSTOMER' ? activeNotices(await getNotices().catch(() => []), now).map(n => ({ id: n.id, text: n.text, authorName: n.authorName, age: noticeAge(n.createdAt, now) })) : []
+  const notices = activeNotices(await getNotices().catch(() => []), now).map(n => ({ id: n.id, text: n.text, authorName: n.authorName, age: noticeAge(n.createdAt, now) }))
   const roleLabel = user.staffRoleId ? (await getStaffRoles().catch(() => [])).find(r => r.id === user.staffRoleId)?.name || 'Staff' : builtInRoleName(user.role)
 
   return <>
@@ -152,7 +153,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="adminShell">
       <ToastProvider>
         <ConfirmProvider>
-          <AdminNav groups={visibleGroups} brand={brand} ordersToFulfill={ordersToFulfill} banner={user.role !== 'CUSTOMER' ? <TeamNotices notices={notices} /> : null} name={user.name} email={user.email} role={roleLabel} avatarUrl={user.avatarUrl ?? null} vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}>
+          <AdminNav groups={visibleGroups} brand={brand} ordersToFulfill={ordersToFulfill} banner={<TeamNotices notices={notices} />} name={user.name} email={user.email} role={roleLabel} avatarUrl={user.avatarUrl ?? null} vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}>
             {children}
           </AdminNav>
         </ConfirmProvider>

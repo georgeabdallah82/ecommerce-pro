@@ -8,6 +8,7 @@ import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { ShipmentStatus, OrderStatus } from '@prisma/client'
 import { runInBackground } from '@/lib/background'
 import { issueAndNotifyGiftCardsForOrder } from '@/lib/email'
+import { safeHttpUrl } from '@/lib/safe-url'
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -18,11 +19,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!existing) return json({ error: 'Fulfillment not found' }, { status: 404 })
     const status = b.status ? String(b.status) as ShipmentStatus : undefined
     if (status && !Object.values(ShipmentStatus).includes(status)) return json({ error: 'Invalid fulfillment status' }, { status: 400 })
+    if (b.trackingUrl && !safeHttpUrl(b.trackingUrl)) return json({ error: 'The tracking link must start with https:// or http://' }, { status: 400 })
     const updated = await db.fulfillment.update({ where: { id }, data: {
       ...(status ? { status } : {}),
       ...(b.trackingNumber !== undefined ? { trackingNumber: b.trackingNumber ? String(b.trackingNumber) : null } : {}),
       ...(b.trackingCompany !== undefined ? { trackingCompany: b.trackingCompany ? String(b.trackingCompany) : null } : {}),
-      ...(b.trackingUrl !== undefined ? { trackingUrl: b.trackingUrl ? String(b.trackingUrl) : null } : {}),
+      ...(b.trackingUrl !== undefined ? { trackingUrl: b.trackingUrl ? safeHttpUrl(b.trackingUrl) : null } : {}),
       ...(status === ShipmentStatus.SHIPPED && !existing.shippedAt ? { shippedAt: new Date() } : {}),
       ...(status === ShipmentStatus.DELIVERED && !existing.deliveredAt ? { deliveredAt: new Date() } : {}),
     }, include: { lines: true } })
