@@ -12,6 +12,8 @@ import { PaymentMethod, PaymentStatus, OrderStatus, FulfillmentStatus } from '@p
 import { nextOrderNumber } from '@/lib/order-number'
 import { MANUAL_ORDER_SOURCES, manualOrderMessage } from '@/lib/manual-order'
 import { runInBackground } from '@/lib/background'
+import { UserError } from '@/lib/user-error'
+import { isUniqueConflict } from '@/lib/error-classify'
 
 export async function POST(req: Request) {
   try {
@@ -80,5 +82,18 @@ export async function POST(req: Request) {
     runInBackground(dispatchWebhookEvent('order.created', { id: order.id, orderNumber: order.orderNumber, email: order.email, grandTotal: order.grandTotal, currency: order.currency, status: order.status, paymentStatus: order.paymentStatus }).catch(error => console.error('[webhook] order.created dispatch failed', error)))
     await audit(actor.id, 'order.created_manual', 'Order', order.id, { orderNumber, total: grandTotal, paymentMethod, paymentStatus, source })
     return json({ order: { id: order.id, orderNumber: order.orderNumber, grandTotal: order.grandTotal } }, { status: 201 })
-  } catch (e) { const message = e instanceof Error ? e.message : 'Unable to create manual order'; return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 400 }) }
+  } catch (e) {
+    return manualOrderError(e)
+  }
+}
+
+// Only messages written for the user are sent back: stock, quantities and other UserError messages.
+// Anything else is logged and answered with a generic message, so no database or code text reaches the browser.
+function manualOrderError(e: unknown) {
+  if (e instanceof Error && (e.message === 'UNAUTHORIZED' || e.message === 'FORBIDDEN')) return json({ error: e.message }, { status: e.message === 'FORBIDDEN' ? 403 : 401 })
+  if (e instanceof UserError) return json({ error: e.message }, { status: e.status })
+  if (e instanceof SyntaxError) return json({ error: 'The request was not valid. Please try again.' }, { status: 400 })
+  if (isUniqueConflict(e)) return json({ error: 'That order number is already in use. Please try again.' }, { status: 409 })
+  console.error('[orders/manual] could not create the order:', e)
+  return json({ error: 'The order could not be created. Please try again.' }, { status: 500 })
 }
