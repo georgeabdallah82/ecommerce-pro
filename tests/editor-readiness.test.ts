@@ -52,7 +52,7 @@ describe('productReadiness', () => {
 })
 
 describe('collectionReadiness', () => {
-  const ready = { name: 'Summer', slug: 'summer', description: 'Light things', imageUrl: '/s.jpg', isActive: true, products: [{ status: 'ACTIVE' }] }
+  const ready = { name: 'Summer', slug: 'summer', description: 'Light things', imageUrl: '/s.jpg', isActive: true, products: [{ status: 'ACTIVE' }], seoDescription: 'Light summer picks' }
   it('is ready for an active collection with active products', () => {
     assert.ok(collectionReadiness(ready).every(c => c.status === 'ok'))
   })
@@ -71,5 +71,12 @@ describe('collectionReadiness', () => {
     const checks = byId(collectionReadiness({ ...ready, name: '', slug: '' }))
     assert.equal(checks.name, 'block')
     assert.equal(checks.handle, 'block')
+  })
+})
+
+describe('collectionReadiness search listing', () => {
+  it('asks for a search description', () => {
+    const checks = byId(collectionReadiness({ name: 'Summer', slug: 'summer', description: 'x', imageUrl: '/s.jpg', isActive: true, products: [{ status: 'ACTIVE' }], seoDescription: '  ' }))
+    assert.equal(checks.seo, 'warn')
   })
 })

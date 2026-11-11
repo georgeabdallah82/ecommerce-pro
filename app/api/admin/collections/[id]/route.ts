@@ -43,6 +43,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (b.slug !== undefined && !(String(b.slug) === existing.slug && slugify(existing.slug))) data.slug = slugify(String(b.slug || '')) || slugify(String(b.name || existing.name)) || existing.slug
     if (b.description !== undefined) data.description = b.description ? String(b.description) : null
     if (b.imageUrl !== undefined) data.imageUrl = b.imageUrl ? String(b.imageUrl) : null
+    // Search listing: what Google and social previews show for the collection.
+    if (b.seoTitle !== undefined) data.seoTitle = String(b.seoTitle || '').trim().slice(0, 120) || null
+    if (b.seoDescription !== undefined) data.seoDescription = String(b.seoDescription || '').trim().slice(0, 320) || null
     if (b.isActive !== undefined) data.isActive = Boolean(b.isActive)
     if (b.sortOrder !== undefined) data.sortOrder = Math.trunc(Number(b.sortOrder) || 0)
 

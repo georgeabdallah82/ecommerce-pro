@@ -14,7 +14,7 @@ import { useConfirm } from './admin-confirm'
 import { ReadinessPanel } from './admin-readiness'
 
 type Product = { id: string; name: string; slug: string; sku?: string | null; status: string; basePrice: number; images?: { url: string }[] }
-type Collection = { id: string; name: string; slug: string; description?: string | null; imageUrl?: string | null; isActive: boolean; products: { product: Product }[] }
+type Collection = { id: string; name: string; slug: string; description?: string | null; imageUrl?: string | null; isActive: boolean; products: { product: Product }[]; seoTitle?: string | null; seoDescription?: string | null }
 
 const PAGE_SIZE = 24
 const STATUS_WORD: Record<string, string> = { ACTIVE: 'Active', DRAFT: 'Draft', ARCHIVED: 'Archived' }
@@ -98,7 +98,7 @@ export default function CollectionEditorShopify({ id, currency = 'USD' }: { id: 
   const hiddenCount = assigned.filter(p => p.status !== 'ACTIVE').length
   const readiness = useMemo(() => collectionReadiness({
     name: collection?.name || '', slug: collection?.slug || '', description: collection?.description, imageUrl: collection?.imageUrl,
-    isActive: collection?.isActive ?? true, products: assigned.map(p => ({ status: p.status })),
+    isActive: collection?.isActive ?? true, products: assigned.map(p => ({ status: p.status })), seoDescription: collection?.seoDescription,
   }), [collection, assigned])
   const readySummary = summarizeReadiness(readiness)
 
@@ -127,7 +127,7 @@ export default function CollectionEditorShopify({ id, currency = 'USD' }: { id: 
     if (!collection || saving) return
     setSaving(true); setError(''); setNotice('')
     try {
-      await api(`/api/admin/collections/${id}`, { method: 'PATCH', body: JSON.stringify({ name: collection.name, slug: collection.slug, description: collection.description || null, imageUrl: collection.imageUrl || null, isActive: collection.isActive, productIds: selected }) })
+      await api(`/api/admin/collections/${id}`, { method: 'PATCH', body: JSON.stringify({ name: collection.name, slug: collection.slug, description: collection.description || null, imageUrl: collection.imageUrl || null, isActive: collection.isActive, seoTitle: collection.seoTitle || null, seoDescription: collection.seoDescription || null, productIds: selected }) })
       const fresh = await api(`/api/admin/collections/${id}`)
       const products: Product[] = fresh.collection.products.map((x: { product: Product }) => x.product)
       const freshSelected = products.map(p => p.id)
@@ -219,6 +219,21 @@ export default function CollectionEditorShopify({ id, currency = 'USD' }: { id: 
                 </div>
               </div>
             </label>
+          </div>
+        </section>
+
+        <section className={`${ui.card} ${s.card}`}>
+          <div className={s.cardHead}><div><h2>Search listing</h2><p>How the collection appears in Google, and when it is shared.</p></div></div>
+          <div className={s.fields}>
+            <label>Search title<input className={ui.input} maxLength={120} value={collection.seoTitle || ''} placeholder={collection.name} onChange={e => setField({ seoTitle: e.target.value })} /></label>
+            <span className={ui.fieldHelp}>{(collection.seoTitle || '').length}/70 characters. Leave empty to use the name.</span>
+            <label>Search description<textarea className={ui.textarea} rows={3} maxLength={320} value={collection.seoDescription || ''} onChange={e => setField({ seoDescription: e.target.value })} /></label>
+            <span className={ui.fieldHelp}>{(collection.seoDescription || '').length}/160 characters.</span>
+          </div>
+          <div className={s.snippet} aria-label="Search preview">
+            <span className={s.snippetUrl}>/collections/{collection.slug || 'address'}</span>
+            <strong className={s.snippetTitle}>{collection.seoTitle || collection.name || 'Collection name'}</strong>
+            <p className={s.snippetText}>{collection.seoDescription || collection.description || 'Add a search description so search results explain this collection.'}</p>
           </div>
         </section>
 
