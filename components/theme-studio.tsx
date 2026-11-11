@@ -617,7 +617,7 @@ export default function ThemeStudio({ initial }: Props) {
         reasons.push(error instanceof Error ? error.message : String(error))
         return Promise.all([
           fetch('/api/products', { cache: 'no-store' }).then(reason('products')),
-          fetch('/api/admin/collections', { cache: 'no-store' }).then(reason('collections')),
+          fetch('/api/admin/collections?take=200', { cache: 'no-store' }).then(reason('collections')),
         ]).then(([productData, collectionData]) => ({ products: rows(productData), collections: rows(collectionData).filter((collection: any) => collection.isActive !== false) }))
       })
       .then(({ products, collections }) => { setProducts(products); setCollections(collections); setDataError('') })

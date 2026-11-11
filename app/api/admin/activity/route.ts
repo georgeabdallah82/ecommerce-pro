@@ -1,6 +1,7 @@
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
-import { json, clampInt } from '@/lib/utils'
+import { json } from '@/lib/utils'
+import { readPaging } from '@/lib/admin-paging'
 import { getStoreTimezone } from '@/lib/store-timezone'
 import { addCalendarDays, zonedMidnight } from '@/lib/admin-datetime'
 
@@ -18,8 +19,7 @@ export async function GET(req: Request) {
     const actor = (searchParams.get('actor') || '').trim().slice(0, 60)
     const from = (searchParams.get('from') || '').trim()
     const to = (searchParams.get('to') || '').trim()
-    const skip = clampInt(searchParams.get('skip'), 0, 100000, 0)
-    const take = clampInt(searchParams.get('take'), 1, PAGE_SIZE, PAGE_SIZE)
+    const { skip, take } = readPaging(searchParams, PAGE_SIZE, PAGE_SIZE)
 
     const timezone = await getStoreTimezone()
     // Dates are calendar days in the store's timezone, so "Today" means the store's today.
