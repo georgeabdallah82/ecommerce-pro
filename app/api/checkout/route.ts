@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { db } from '@/lib/prisma'
+import { TransactionUnavailableError, db } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { checkoutSchema } from '@/lib/validation'
@@ -113,6 +113,8 @@ const SAFE_CHECKOUT_MESSAGES = new Set([
 
 function checkoutFailure(error: unknown) {
   if (error instanceof ZodError) return { message: 'Please check your checkout details and try again.', status: 400 }
+  // A wallet or coin payment that could not run as one transaction changed nothing: ask to try again.
+  if (error instanceof TransactionUnavailableError) return { message: error.message, status: 503 }
   if (error instanceof SyntaxError) return { message: 'Invalid checkout request.', status: 400 }
   const message = error instanceof Error ? error.message : ''
   if (message === 'This idempotency key was already used for a different checkout') return { message, status: 409 }
@@ -315,6 +317,8 @@ export async function POST(req: Request) {
     const orderNumber = await nextOrderNumber()
     const fingerprint = checkoutFingerprint(user?.id ?? null, input, merged)
 
+    // Wallet and coin balances move in this transaction, so it must run for real: see lib/prisma.ts.
+    const spendsWalletOrCoins = Boolean((user?.id && requestedCoins > 0) || (paymentMethod === PaymentMethod.WALLET && grandTotal > 0))
     const result = await db.$transaction(async tx => {
       if (idempotencyKey) {
         await lockIdempotencyKey(tx, idempotencyKey)
@@ -344,7 +348,6 @@ export async function POST(req: Request) {
       // with no order to ever release it.
       const undo: Array<() => Promise<unknown>> = []
       try {
-        const spendsWalletOrCoins = (user?.id && requestedCoins > 0) || (paymentMethod === PaymentMethod.WALLET && grandTotal > 0)
         if (user?.id && spendsWalletOrCoins) {
           // Wallet/coin balances are a running sum over an append-only ledger, not a single
           // mutable row like coupon.usedCount or giftCard.balance below -- there's no field to
@@ -432,7 +435,7 @@ export async function POST(req: Request) {
         for (const step of undo.reverse()) await step().catch(undoError => console.error('[checkout] undo step failed', undoError))
         throw error
       }
-    })
+    }, { requireTransaction: spendsWalletOrCoins } as any)
 
     if (result.existing) {
       const providerTx = paymentMethod === PaymentMethod.CARD

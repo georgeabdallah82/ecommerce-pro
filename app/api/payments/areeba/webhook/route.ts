@@ -2,7 +2,7 @@ import { db } from '@/lib/prisma'
 import { audit } from '@/lib/audit'
 import { consumeDurableRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
-import { areebaMpgsPaymentProvider, areebaWebhookToken, safeTokenEqual } from '@/lib/payments'
+import { areebaMpgsPaymentProvider, areebaOrderRefunds, areebaWebhookToken, safeTokenEqual } from '@/lib/payments'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { runInBackground } from '@/lib/background'
 import { markOnlinePaymentFailed, markOnlinePaymentPaid, parseCoinsUsed } from '@/lib/payment-outcome'
@@ -22,9 +22,14 @@ async function restoreCoinsForOrder(tx: any, order: { id: string; orderNumber: s
   return delta
 }
 
-async function reconcileRefunds(orderId: string, body: Record<string, any>) {
-  const gatewayStatus = String(body.order?.status || '').toUpperCase()
-  const gatewayRefunded = Number(body.order?.totalRefundedAmount)
+async function reconcileRefunds(orderId: string, orderNumber: string) {
+  // Only an order with a refund in flight needs the gateway, and its amounts come from the gateway itself:
+  // the webhook body says that something happened, but it is not trusted for money.
+  const inFlight = await db.paymentTransaction.findFirst({ where: { orderId, status: 'refund_pending' }, select: { id: true } })
+  if (!inFlight) return false
+  const gateway = await areebaOrderRefunds(orderNumber)
+  const gatewayStatus = gateway.status
+  const gatewayRefunded = gateway.totalRefunded
   if (!Number.isFinite(gatewayRefunded) || !['REFUNDED', 'PARTIALLY_REFUNDED', 'EXCESSIVELY_REFUNDED'].includes(gatewayStatus)) return false
   const gatewayRefundedMinor = Math.round(gatewayRefunded * 100)
   let reconciled = false
@@ -44,7 +49,7 @@ async function reconcileRefunds(orderId: string, body: Record<string, any>) {
     await tx.order.update({ where: { id: order.id }, data: { paymentStatus, status, events: { create: { status, message: `Gateway refund confirmed (${gatewayRefundedMinor} ${order.currency}).` } } } })
     reconciled = true
     webhookPayload = { id: order.id, orderNumber: order.orderNumber, paymentStatus }
-  })
+  }, { requireTransaction: true } as any)
   if (reconciled) {
     await audit(null, 'order.refund_reconciled', 'Order', orderId, { provider: 'areeba_mpgs', gatewayStatus, gatewayRefunded })
     runInBackground(dispatchWebhookEvent('order.updated', webhookPayload!).catch(error => console.error('[webhook] order.updated dispatch failed', error)))
@@ -52,10 +57,10 @@ async function reconcileRefunds(orderId: string, body: Record<string, any>) {
   return reconciled
 }
 
-async function processPaymentNotification(orderNumber: string, body: Record<string, any>) {
+async function processPaymentNotification(orderNumber: string) {
   const order = await db.order.findUnique({ where: { orderNumber }, select: { id: true, orderNumber: true, grandTotal: true, currency: true, paymentStatus: true } })
   if (!order) return false
-  if (await reconcileRefunds(order.id, body)) return true
+  if (await reconcileRefunds(order.id, order.orderNumber)) return true
   if (['REFUNDED', 'PARTIALLY_REFUNDED'].includes(order.paymentStatus)) return true
 
   const transaction = await db.paymentTransaction.findFirst({ where: { orderId: order.id, provider: 'areeba_mpgs', status: { in: ['pending', 'paid', 'failed'] } }, orderBy: { createdAt: 'desc' } })
@@ -79,7 +84,7 @@ export async function POST(req: Request) {
     const body = (() => { try { return JSON.parse(rawBody) } catch { return {} } })() as Record<string, any>
     const orderNumber = typeof body.order?.id === 'string' ? body.order.id.trim() : typeof body.orderId === 'string' ? body.orderId.trim() : ''
     if (!orderNumber || orderNumber.length > 100) return Response.json({ error: 'Invalid payment notification' }, { status: 400 })
-    const processed = await processPaymentNotification(orderNumber, body)
+    const processed = await processPaymentNotification(orderNumber)
     if (!processed) return Response.json({ error: 'Payment notification could not be reconciled' }, { status: 409 })
     return Response.json({ ok: true }, { headers: { 'Cache-Control': 'no-store' } })
   } catch {
