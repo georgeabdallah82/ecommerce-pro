@@ -11,7 +11,7 @@ import { UserError } from '@/lib/user-error'
 export function routeError(e: unknown, fallback: string, status = 400) {
   if (e instanceof Error && (e.message === 'UNAUTHORIZED' || e.message === 'FORBIDDEN')) return json({ error: e.message }, { status })
   // Written for the user (lib/user-error.ts): sent as it is, with the status the error carries.
-  if (e instanceof UserError) return json({ error: e.message }, { status: e.status })
+  if (e instanceof UserError) return json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, { status: e.status })
   if (e instanceof SyntaxError) return json({ error: 'The request was not valid. Please try again.' }, { status: 400 })
   if (e instanceof Error && e.name === 'ZodError') return json({ error: 'Please check the details and try again.' }, { status: 400 })
   if (isUniqueConflict(e)) return json({ error: 'That value is already used by another record.' }, { status: 409 })

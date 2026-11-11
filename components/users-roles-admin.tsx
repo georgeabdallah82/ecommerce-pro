@@ -5,6 +5,7 @@ import { Eye, EyeOff, KeyRound, Pencil, Plus, RefreshCw, Search, ShieldCheck, Tr
 import ui from './admin-ui.module.css'
 import s from './admin-users.module.css'
 import { useConfirm } from './admin-confirm'
+import { runReauthed, useReauth } from './admin-reauth'
 import { BUILT_IN_ROLES, PERMISSION_SECTIONS, builtInRoleName } from '@/lib/permission-groups'
 import { ROLE_PERMISSIONS, type Permission } from '@/lib/permissions'
 
@@ -16,7 +17,12 @@ type CurrentUser = { id: string; role: string } | null
 async function api(path: string, init?: RequestInit) {
   const response = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const data = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(data.error || 'Request failed')
+  if (!response.ok) {
+    // `code` tells the screen when the server wants the person to confirm it is them (REAUTH_REQUIRED).
+    const error = new Error(data.error || 'Request failed') as Error & { code?: string }
+    error.code = data.code
+    throw error
+  }
   return data
 }
 
@@ -91,12 +97,13 @@ export default function UsersRolesAdmin({ initialUsers, initialRoles, currentUse
     return () => { window.removeEventListener('pageshow', sync); document.removeEventListener('visibilitychange', sync) }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const askForConfirmation = useReauth()
   async function saveStaff(e: React.FormEvent) {
     e.preventDefault(); if (!staffForm) return
     setBusy(true)
     try {
       const data = staffForm.id
-        ? await api('/api/admin/users', { method: 'PATCH', body: JSON.stringify({ id: staffForm.id, name: staffForm.name, email: staffForm.email, phone: staffForm.phone, role: staffForm.role }) })
+        ? await runReauthed(askForConfirmation, () => api('/api/admin/users', { method: 'PATCH', body: JSON.stringify({ id: staffForm.id, name: staffForm.name, email: staffForm.email, phone: staffForm.phone, role: staffForm.role }) }))
         : await api('/api/admin/users', { method: 'POST', body: JSON.stringify(staffForm) })
       if (data.user) setUsers(list => [data.user, ...list.filter(u => u.id !== data.user.id)])
       setStaffForm(null)
@@ -129,7 +136,7 @@ export default function UsersRolesAdmin({ initialUsers, initialRoles, currentUse
 
   async function removeUser(user: UserRow) {
     if (!(await confirm({ title: `Delete ${user.name}?`, message: 'Their account is removed for good. Orders and notes they handled are kept. To only block access for a while, use Disable instead.', confirmLabel: 'Delete for good' }))) return
-    try { await api(`/api/admin/users?id=${encodeURIComponent(user.id)}`, { method: 'DELETE' }); setUsers(list => list.filter(u => u.id !== user.id)); done(`${user.name} was deleted.`); refresh().catch(() => {}) } catch (err) { fail(err); refresh().catch(() => {}) }
+    try { await runReauthed(askForConfirmation, () => api(`/api/admin/users?id=${encodeURIComponent(user.id)}`, { method: 'DELETE' })); setUsers(list => list.filter(u => u.id !== user.id)); done(`${user.name} was deleted.`); refresh().catch(() => {}) } catch (err) { fail(err); refresh().catch(() => {}) }
   }
 
   async function saveRole(e: React.FormEvent) {

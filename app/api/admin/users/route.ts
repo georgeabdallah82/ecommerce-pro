@@ -1,5 +1,6 @@
 import { db } from '@/lib/prisma'
-import { requirePermission, hashPassword } from '@/lib/auth'
+import { requirePermission, hashPassword, assertRecentSignIn } from '@/lib/auth'
+import { UserError } from '@/lib/user-error'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { Role } from '@prisma/client'
@@ -23,7 +24,8 @@ async function parseRoleChoice(value: unknown): Promise<{ role: Role; staffRoleI
   return { role: v as Role, staffRoleId: null }
 }
 
-function sanitizeFailure(error: unknown) {
+function sanitizeFailure(error: unknown): { status: number; error: string; code?: string } {
+  if (error instanceof UserError) return { status: error.status, error: error.message, code: error.code }
   const message = error instanceof Error ? error.message : ''
   if (message === 'UNAUTHORIZED') return { status: 401, error: 'Unauthorized' }
   if (message === 'FORBIDDEN') return { status: 403, error: 'Forbidden' }
@@ -85,13 +87,15 @@ export async function PATCH(req: Request) {
       data.email = email
     }
     const roleChanged = choice && (choice.role !== target.role || choice.staffRoleId !== (target.staffRoleId ?? null))
+    // Changing someone's role needs a recent confirmation of the actor (lib/reauth.ts). Saving other details does not.
+    if (roleChanged) await assertRecentSignIn(actor)
     if (data.passwordHash || roleChanged || data.isActive === false || data.email) data.sessionsRevokedAt = new Date()
     const u = await db.user.update({ where: { id: targetId }, data, select: safeUserSelect })
     await audit(actor.id, data.passwordHash ? 'user.password_set' : b.twoStepOff === true ? 'user.two_step_off' : 'user.updated', 'User', u.id, { role: u.role, staffRoleId: u.staffRoleId, isActive: u.isActive })
     return json({ user: u }, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (e) {
     const failure = sanitizeFailure(e)
-    return json({ error: failure.error }, { status: failure.status, headers: { 'Cache-Control': 'private, no-store' } })
+    return json({ error: failure.error, ...(failure.code ? { code: failure.code } : {}) }, { status: failure.status, headers: { 'Cache-Control': 'private, no-store' } })
   }
 }
 
@@ -128,6 +132,8 @@ export async function DELETE(req: Request) {
     if (target.role === Role.CUSTOMER) return json({ error: 'Customer accounts are managed from Customers' }, { status: 409 })
     if (target.id === actor.id) return json({ error: 'You cannot delete your own account' }, { status: 400 })
     if (target.role === 'SUPER_ADMIN' && actor.role !== 'SUPER_ADMIN') return json({ error: 'Only the super admin can delete a super admin' }, { status: 403 })
+    // Removing a staff member needs a recent confirmation of the actor (lib/reauth.ts).
+    await assertRecentSignIn(actor)
     const full = await db.user.findUnique({ where: { id: targetId }, select: { name: true, email: true } })
     await deleteStaffCascade(db, targetId, actor.id, full?.name || 'a removed staff member')
     await audit(actor.id, 'user.deleted', 'User', target.id, { previousRole: target.role, email: full?.email })
@@ -135,6 +141,6 @@ export async function DELETE(req: Request) {
   } catch (e) {
     const failure = sanitizeFailure(e)
     const error = failure.status === 500 ? 'Could not delete this user right now. Please try again, or use Disable to block their access.' : failure.error
-    return json({ error }, { status: failure.status, headers: { 'Cache-Control': 'private, no-store' } })
+    return json({ error, ...(failure.code ? { code: failure.code } : {}) }, { status: failure.status, headers: { 'Cache-Control': 'private, no-store' } })
   }
 }

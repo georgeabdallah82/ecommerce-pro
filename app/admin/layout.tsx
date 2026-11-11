@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import AdminNav, { type AdminSidebarGroup } from '@/components/admin-nav'
 import { ToastProvider } from '@/components/admin-toast'
 import { ConfirmProvider } from '@/components/admin-confirm'
+import { ReauthProvider } from '@/components/admin-reauth'
 import { getThemeState } from '@/lib/theme'
 import { adminBrandCss } from '@/lib/admin-accent'
 import { db } from '@/lib/prisma'
@@ -154,7 +155,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <ToastProvider>
         <ConfirmProvider>
           <AdminNav groups={visibleGroups} brand={brand} ordersToFulfill={ordersToFulfill} banner={<TeamNotices notices={notices} />} name={user.name} email={user.email} role={roleLabel} avatarUrl={user.avatarUrl ?? null} vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}>
-            {children}
+            <ReauthProvider>{children}</ReauthProvider>
           </AdminNav>
         </ConfirmProvider>
       </ToastProvider>

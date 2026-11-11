@@ -6,6 +6,9 @@ import { hasPermission, type Permission } from '@/lib/permissions'
 import { getStaffRoles, resolvePermissions } from '@/lib/staff-roles'
 import { Role } from '@prisma/client'
 import { isSessionRevoked } from '@/lib/session-revocation'
+import { staffSessionEnded } from '@/lib/session-limits'
+import { hasRecentReauth } from '@/lib/reauth'
+import { userError } from '@/lib/user-error'
 
 function getSecret() {
   const rawSecret = process.env.AUTH_SECRET
@@ -52,6 +55,8 @@ export async function getCurrentUser() {
     // admin adjusting coins logged the user out everywhere. JWT `iat` is whole seconds while
     // the timestamp has milliseconds, so compare at second precision.
     if (isSessionRevoked(payload.iat, user.sessionsRevokedAt)) return null
+    // Staff sign in again after a shift (STAFF_SESSION_SECONDS), so an older staff cookie stops working.
+    if (staffSessionEnded(user.role, payload.iat, Math.floor(Date.now() / 1000))) return null
 
     // Staff on a custom role: load what that role allows (one settings read, staff only).
     const permissions = user.role !== 'CUSTOMER' && user.staffRoleId ? resolvePermissions(user, await getStaffRoles()) : null
@@ -65,4 +70,9 @@ export async function requireUser() { const user = await getCurrentUser(); if (!
 export async function requireRole(roles: Role[]) { const user = await requireUser(); if (!roles.includes(user.role)) throw new Error('FORBIDDEN'); return user }
 // Any signed-in staff member, for settings of their own account (2-step login).
 export async function requireStaff() { const user = await requireUser(); if (user.role === 'CUSTOMER') throw new Error('FORBIDDEN'); return user }
+// Refunds, role changes and removing a staff member also need the password or a 2-step code from the
+// last few minutes (lib/reauth.ts). The REAUTH_REQUIRED code tells the screen to ask the person.
+export async function assertRecentSignIn(user: { id: string }) {
+  if (!(await hasRecentReauth(user.id))) throw userError('Confirm it is you to continue.', 403, 'REAUTH_REQUIRED')
+}
 export async function requirePermission(permission: Permission) { const user = await requireUser(); if (!hasPermission(user, permission)) throw new Error('FORBIDDEN'); return user }
