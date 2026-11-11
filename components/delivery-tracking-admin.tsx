@@ -11,7 +11,7 @@ async function api(path: string, init?: RequestInit) {
   return data
 }
 
-export default function DeliveryTrackingAdmin({ orderId, orderStatus }: { orderId: string; orderStatus: string }) {
+export default function DeliveryTrackingAdmin({ orderId, orderStatus, className }: { orderId: string; orderStatus: string; className?: string }) {
   const [active, setActive] = useState(false)
   const [eta, setEta] = useState('')
   const [publicUrl, setPublicUrl] = useState('')
@@ -63,7 +63,7 @@ export default function DeliveryTrackingAdmin({ orderId, orderStatus }: { orderI
     try { await navigator.clipboard.writeText(publicUrl); setCopied(true); window.setTimeout(() => setCopied(false), 1200) } catch {}
   }
 
-  return <section className={ui.card}>
+  return <section className={className || ui.card}>
     <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><div><h3>Live delivery tracking</h3><span className={ui.muted}>Share an approximate courier position with the customer.</span></div><Navigation size={18} /></div>
     {!canTrack && <p className={ui.muted}>Tracking becomes available when the order is PROCESSING or SHIPPED.</p>}
     {canTrack && <>
