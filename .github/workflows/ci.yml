@@ -91,6 +91,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: quality
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    # Production deploys run one at a time: while one runs, at most one more waits, and a newer
+    # waiting deploy replaces an older one. So the last commit on main is the one that goes live last.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
 
     steps:
       - name: Checkout
