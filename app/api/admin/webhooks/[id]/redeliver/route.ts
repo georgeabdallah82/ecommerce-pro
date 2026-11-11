@@ -3,6 +3,7 @@ import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { redeliverWebhook } from '@/lib/webhooks'
 import { json } from '@/lib/utils'
+import { routeError } from '@/lib/api-error'
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -15,8 +16,6 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     const { secret: _secret, lastPayload: _lastPayload, ...rest } = webhook
     return json({ webhook: { ...rest, secretConfigured: true } })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to redeliver webhook'
-    const status = message === 'FORBIDDEN' ? 403 : message.includes('not found') ? 404 : 400
-    return json({ error: message }, { status })
+    return routeError(e, 'Unable to redeliver webhook', 400)
   }
 }

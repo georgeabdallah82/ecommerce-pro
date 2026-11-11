@@ -44,9 +44,8 @@ export async function POST(req: Request) {
     await audit(actor.id, 'redirect.created', 'Redirect', redirect.id, { fromPath, toPath })
     return json({ redirect }, { status: 201 })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to create redirect'
-    if (message.includes('Unique constraint')) return json({ error: 'A redirect from this path already exists.' }, { status: 409 })
-    return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 400 })
+    if (e instanceof Error && e.message.includes('Unique constraint')) return json({ error: 'A redirect from this path already exists.' }, { status: 409 })
+    return routeError(e, 'Unable to create redirect', 400)
   }
 }
 
@@ -70,9 +69,8 @@ export async function PATCH(req: Request) {
     await audit(actor.id, 'redirect.updated', 'Redirect', id, { fromPath, toPath })
     return json({ redirect })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to update redirect'
-    if (message.includes('Unique constraint')) return json({ error: 'A redirect from this path already exists.' }, { status: 409 })
-    return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 400 })
+    if (e instanceof Error && e.message.includes('Unique constraint')) return json({ error: 'A redirect from this path already exists.' }, { status: 409 })
+    return routeError(e, 'Unable to update redirect', 400)
   }
 }
 
@@ -86,7 +84,6 @@ export async function DELETE(req: Request) {
     await audit(actor.id, 'redirect.deleted', 'Redirect', id, {})
     return json({ ok: true })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to delete redirect'
-    return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 400 })
+    return routeError(e, 'Unable to delete redirect', 400)
   }
 }

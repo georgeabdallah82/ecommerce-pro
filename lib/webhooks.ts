@@ -55,7 +55,7 @@ async function deliver(endpoint: { id: string; endpointUrl: string; secret: stri
 // retry -- the endpoint doesn't exist, or its last delivery already succeeded.
 export async function redeliverWebhook(endpointId: string) {
   const endpoint = await db.webhookEndpoint.findUnique({ where: { id: endpointId } })
-  if (!endpoint) throw userError('Webhook endpoint not found')
+  if (!endpoint) throw userError('Webhook endpoint not found', 404)
   if (!endpoint.lastPayload) throw userError('This endpoint has no failed delivery to retry')
   await deliver(endpoint, endpoint.lastPayload)
 }

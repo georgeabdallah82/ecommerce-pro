@@ -4,6 +4,7 @@ import { json } from '@/lib/utils'
 import { reportRows, REPORT_INVENTORY_CAP, REPORT_ORDER_CAP } from '@/lib/admin-list'
 import { UserError } from '@/lib/user-error'
 import { OrderStatus } from '@prisma/client'
+import { routeError } from '@/lib/api-error'
 
 export async function GET(req: Request) {
   try {
@@ -65,7 +66,6 @@ export async function GET(req: Request) {
     })
   } catch (error) {
     if (error instanceof UserError) return json({ error: error.message, code: error.code }, { status: error.status ?? 400 })
-    const message = error instanceof Error ? error.message : 'Unable to load report'
-    return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 401 })
+    return routeError(error, 'Unable to load report', 400)
   }
 }

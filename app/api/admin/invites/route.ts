@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     try {
       reward = await createInviteReward(orderId)
     } catch (error) {
-      return json({ error: error instanceof Error ? error.message : 'Unable to make the code' }, { status: 409 })
+      return routeError(error, 'Unable to make the code', 409)
     }
     const [store, currency, timezone] = await Promise.all([getStoreIdentity(), getStoreCurrency(), getStoreTimezone()])
     const message = inviteRewardMessage({

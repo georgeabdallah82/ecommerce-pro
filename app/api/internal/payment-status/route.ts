@@ -3,6 +3,7 @@ import { canTransitionPayment } from '@/lib/orders'
 import { PaymentStatus } from '@prisma/client'
 import { timingSafeEqual } from 'node:crypto'
 import { userError } from '@/lib/user-error'
+import { routeError } from '@/lib/api-error'
 
 // Compares in constant time, so the secret cannot be guessed one character at a time from response timing.
 function safeBearerEqual(header: string, secret: string) {
@@ -24,13 +25,13 @@ export async function POST(req: Request) {
 
     const result = await db.$transaction(async tx => {
       const order = await tx.order.findUnique({ where: { id: orderId } })
-      if (!order) throw userError('Order not found')
+      if (!order) throw userError('Order not found', 404)
       const existing = await tx.paymentTransaction.findFirst({ where: { externalId, orderId: order.id } })
       if (existing) return { orderId, paymentStatus: order.paymentStatus, duplicate: true }
       const reused = await tx.paymentTransaction.findFirst({ where: { externalId } })
-      if (reused) throw userError('Payment externalId is already associated with another order')
+      if (reused) throw userError('Payment externalId is already associated with another order', 409)
       if (order.paymentStatus === status) return { orderId, paymentStatus: order.paymentStatus, ignored: true }
-      if (!canTransitionPayment(order.paymentStatus, status)) throw userError(`Invalid payment transition: ${order.paymentStatus} → ${status}`)
+      if (!canTransitionPayment(order.paymentStatus, status)) throw userError(`Invalid payment transition: ${order.paymentStatus} → ${status}`, 409)
 
       // Extended (Accelerate) client payload inference doesn't always widen aggregate results
       // correctly, so the result is asserted to the shape actually queried.
@@ -50,8 +51,6 @@ export async function POST(req: Request) {
     })
     return Response.json(result)
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unable to update payment status'
-    const status = message === 'Order not found' ? 404 : message.startsWith('Payment externalId') ? 409 : message.startsWith('Invalid payment transition') ? 409 : 400
-    return Response.json({ error: message }, { status })
+    return routeError(error, 'Unable to update payment status', 400)
   }
 }

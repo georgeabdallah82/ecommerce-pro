@@ -1,6 +1,7 @@
 import { requireUser } from '@/lib/auth'
 import { json } from '@/lib/utils'
 import { hasCustomerPushSubscription, removeCustomerPushSubscription, saveCustomerPushSubscription } from '@/lib/push'
+import { routeError } from '@/lib/api-error'
 
 export async function GET() {
   try {
@@ -21,8 +22,7 @@ export async function POST(req: Request) {
     await saveCustomerPushSubscription(user.role === 'CUSTOMER' ? user.id : null, body)
     return json({ ok: true, subscribed: true })
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unable to save push subscription'
-    return json({ error: message === 'UNAUTHORIZED' ? 'Unauthorized' : message }, { status: message === 'UNAUTHORIZED' ? 401 : 400 })
+    return routeError(error, 'Unable to save push subscription', 400)
   }
 }
 
@@ -35,7 +35,6 @@ export async function DELETE(req: Request) {
     await removeCustomerPushSubscription(user.id, endpoint)
     return json({ ok: true })
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unable to remove push subscription'
-    return json({ error: message === 'UNAUTHORIZED' ? 'Unauthorized' : message }, { status: message === 'UNAUTHORIZED' ? 401 : 400 })
+    return routeError(error, 'Unable to remove push subscription', 400)
   }
 }

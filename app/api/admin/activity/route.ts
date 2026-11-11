@@ -4,6 +4,7 @@ import { json } from '@/lib/utils'
 import { readPaging } from '@/lib/admin-paging'
 import { getStoreTimezone } from '@/lib/store-timezone'
 import { activityWhere } from '@/lib/activity-query'
+import { routeError } from '@/lib/api-error'
 
 const PAGE_SIZE = 50
 
@@ -37,7 +38,6 @@ export async function GET(req: Request) {
       take,
     }, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to load activity log'
-    return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : message === 'UNAUTHORIZED' ? 401 : 500 })
+    return routeError(e, 'Unable to load activity log', 500)
   }
 }

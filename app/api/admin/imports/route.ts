@@ -9,6 +9,7 @@ import {
   COLLECTION_COLUMNS, PRODUCT_COLUMNS, parseCsv, parseVariantOptions, planCollectionImport, planProductImport, readImportOptions, readRows, slugify, summarize,
   type CatalogLookup, type CollectionKey, type ExistingCollection, type ImportOptions, type ParsedFile, type PlanEntry, type ProductKey, type StockState,
 } from '@/lib/catalog-csv'
+import { UserError } from '@/lib/user-error'
 
 const MAX_FILE_BYTES = 2 * 1024 * 1024
 const MAX_ROWS = 500
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
     if (!(file instanceof File)) return NextResponse.json({ error: 'Choose a CSV file first.' }, { status: 400 })
     if (file.size > MAX_FILE_BYTES) return NextResponse.json({ error: 'The file is bigger than 2 MB. Split it into smaller files.' }, { status: 413 })
     let rows
-    try { rows = parseCsv(await file.text()) } catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : 'This file could not be read as CSV.' }, { status: 400 }) }
+    try { rows = parseCsv(await file.text()) } catch (e) { return NextResponse.json({ error: e instanceof UserError ? e.message : 'This file could not be read as CSV.' }, { status: 400 }) }
     if (!rows.length) return NextResponse.json({ error: 'The file has no rows under the column names.' }, { status: 400 })
     if (rows.length > MAX_ROWS) return NextResponse.json({ error: `The file has ${rows.length} rows; the most is ${MAX_ROWS} per import. Split it into smaller files.` }, { status: 413 })
     const options = readImportOptions(form)

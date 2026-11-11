@@ -93,7 +93,7 @@ async function computeAllCustomerStats(): Promise<Map<string, CustomerStats>> {
 // managed today. Returns how many new members this run added.
 export async function recomputeSegmentMembership(segmentId: string): Promise<number> {
   const segment = await db.customerSegment.findUnique({ where: { id: segmentId } })
-  if (!segment) throw userError('Segment not found')
+  if (!segment) throw userError('Segment not found', 404)
   const rules = parseSegmentRules(segment.ruleJson)
   if (!rules.conditions.length) return 0
 

@@ -57,8 +57,7 @@ export async function POST(req: Request) {
     await audit(actor.id, 'shipping.created', 'ShippingZone', zone.id, { name })
     return json({ zone }, { status: 201 })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to create shipping zone'
-    return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 400 })
+    return routeError(e, 'Unable to create shipping zone', 400)
   }
 }
 
@@ -108,8 +107,7 @@ export async function PATCH(req: Request) {
     await audit(actor.id, 'shipping.updated', 'ShippingZone', id, { fields: Object.keys(data), rateUpdated: Boolean(b.rate), ratesAdded: Array.isArray(b.addRates) ? b.addRates.length : 0 })
     return json({ zone: updated })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to update shipping zone'
-    return json({ error: message }, { status: 400 })
+    return routeError(e, 'Unable to update shipping zone', 400)
   }
 }
 
@@ -123,7 +121,6 @@ export async function DELETE(req: Request) {
     await audit(actor.id, 'shipping.deleted', 'ShippingZone', id, {})
     return json({ ok: true })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to delete shipping zone'
-    return json({ error: message }, { status: 400 })
+    return routeError(e, 'Unable to delete shipping zone', 400)
   }
 }

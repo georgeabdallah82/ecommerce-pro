@@ -6,7 +6,7 @@ import { createInfluencer, deleteInfluencer, updateInfluencer } from '@/lib/infl
 import { validateInfluencer } from '@/lib/influencers-shared'
 
 const NO_STORE = { 'Cache-Control': 'private, no-store' }
-const conflict = (error: unknown) => json({ error: error instanceof Error ? error.message : 'Unable to save' }, { status: 409, headers: NO_STORE })
+const conflict = (error: unknown) => routeError(error, 'Unable to save', 409, NO_STORE)
 
 // Admin > Marketing > Influencers: add one (this also makes their discount code), change one,
 // pause or resume one, or remove one that was never used.

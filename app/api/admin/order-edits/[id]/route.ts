@@ -11,6 +11,7 @@ import { sendOrderEditEmail } from '@/lib/email'
 import { OrderStatus, PaymentStatus, Prisma } from '@prisma/client'
 import { runInBackground } from '@/lib/background'
 import { userError } from '@/lib/user-error'
+import { routeError } from '@/lib/api-error'
 
 const ORDER_EDIT_ORDER_CONFLICT_MESSAGE = 'This order was just modified — please retry.'
 
@@ -21,8 +22,8 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
     const order = await db.$transaction(async tx => {
       const edit = await tx.orderEdit.findUnique({ where: { id }, include: { items: true } })
-      if (!edit) throw userError('Order edit not found')
-      if (edit.status !== 'OPEN') throw userError('Order edit is no longer open')
+      if (!edit) throw userError('Order edit not found', 404)
+      if (edit.status !== 'OPEN') throw userError('Order edit is no longer open', 409)
 
       // Atomic conditional write, same pattern as completeDraftOrder (lib/draft-orders.ts) and
       // every other money-moving mutation in this codebase: only one concurrent commit of this
@@ -32,10 +33,10 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       // any inventory or payment side effect below, so a losing request aborts here instead of
       // partway through them.
       const guardedEdit = await tx.orderEdit.updateMany({ where: { id, status: 'OPEN' }, data: { status: 'COMMITTED', committedAt: new Date() } })
-      if (guardedEdit.count !== 1) throw userError('Order edit is no longer open')
+      if (guardedEdit.count !== 1) throw userError('Order edit is no longer open', 409)
 
       const current = await tx.order.findUnique({ where: { id: edit.orderId }, include: { items: true, paymentTransactions: true } })
-      if (!current) throw userError('Order not found')
+      if (!current) throw userError('Order not found', 404)
       if (['CANCELLED', 'REFUNDED'].includes(current.status)) throw userError('Cancelled or refunded orders cannot be edited')
 
       // Two separate OPEN OrderEdit drafts can exist for the same order (nothing prevents it at
@@ -47,7 +48,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       // app/api/admin/returns/route.ts, app/api/admin/returns/[id]/route.ts, and the order
       // cancel path in app/api/admin/orders/route.ts.
       const guardedOrder = await tx.order.updateMany({ where: { id: current.id, updatedAt: current.updatedAt }, data: { updatedAt: new Date() } })
-      if (guardedOrder.count !== 1) throw userError(ORDER_EDIT_ORDER_CONFLICT_MESSAGE)
+      if (guardedOrder.count !== 1) throw userError(ORDER_EDIT_ORDER_CONFLICT_MESSAGE, 409)
 
       const oldMap = new Map(current.items.map(i => [i.id, i]))
 
@@ -183,9 +184,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     if (message === ORDER_EDIT_ORDER_CONFLICT_MESSAGE || (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2034')) {
       return json({ error: ORDER_EDIT_ORDER_CONFLICT_MESSAGE }, { status: 409 })
     }
-    const status = message === 'Order edit not found' || message === 'Order not found' ? 404 : message === 'Order edit is no longer open' ? 409 : message === 'UNAUTHORIZED' ? 401 : message === 'FORBIDDEN' ? 403 : message.includes('cannot be edited') ? 409 : message.includes('already been refunded') ? 409 : 400
-    if (status >= 500) console.error('order edit commit failed', e)
-    return json({ error: message }, { status })
+    return routeError(e, 'Unable to commit order edit', 400)
   }
 }
 
@@ -195,15 +194,13 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     const { id } = await params
     const discarded = await db.$transaction(async tx => {
       const edit = await tx.orderEdit.findUnique({ where: { id } })
-      if (!edit) throw userError('Order edit not found')
-      if (edit.status !== 'OPEN') throw userError('Order edit is no longer open')
+      if (!edit) throw userError('Order edit not found', 404)
+      if (edit.status !== 'OPEN') throw userError('Order edit is no longer open', 409)
       return tx.orderEdit.update({ where: { id }, data: { status: 'DISCARDED' } })
     })
     await audit(actor.id, 'order_edit.discarded', 'OrderEdit', id, { orderId: discarded.orderId })
     return json({ ok: true })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to discard order edit'
-    const status = message === 'Order edit not found' ? 404 : message === 'Order edit is no longer open' ? 409 : message === 'UNAUTHORIZED' ? 401 : message === 'FORBIDDEN' ? 403 : 400
-    return json({ error: message }, { status })
+    return routeError(e, 'Unable to discard order edit', 400)
   }
 }

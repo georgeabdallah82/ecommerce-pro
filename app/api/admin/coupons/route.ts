@@ -28,10 +28,8 @@ function couponFields(b: any): { error: string } | { data: any } {
   } }
 }
 function saveError(e: unknown, fallback: string) {
-  const message = e instanceof Error ? e.message : ''
-  if (message.includes('Unique constraint')) return json({ error: 'A discount with this code already exists.' }, { status: 409 })
-  if (message === 'UNAUTHORIZED' || message === 'FORBIDDEN') return json({ error: message === 'UNAUTHORIZED' ? 'Unauthorized' : 'Forbidden' }, { status: message === 'UNAUTHORIZED' ? 401 : 403 })
-  return json({ error: message || fallback }, { status: 400 })
+  if (e instanceof Error && e.message.includes('Unique constraint')) return json({ error: 'A discount with this code already exists.' }, { status: 409 })
+  return routeError(e, fallback, 400)
 }
 
 export async function GET(){try{await requirePermission('coupons.view');return json(await db.coupon.findMany({orderBy:{createdAt:'desc'},take:500}))}catch(e){return routeError(e, 'Forbidden', 403)}}

@@ -26,10 +26,10 @@ export async function POST(req: Request) {
         const res = await fetch(url, { headers: { 'user-agent': 'Mozilla/5.0 (compatible; StoreProductImporter/1.0)', accept: 'text/html,application/xhtml+xml', 'accept-language': 'en-US,en;q=0.9' }, signal: AbortSignal.timeout(15000), redirect: 'follow' })
         html = (await res.text()).slice(0, 3_000_000)
         if (!res.ok && !html) throw userError(`The site answered ${res.status}`)
-      } catch (e) {
+      } catch {
         // The big marketplaces refuse servers; point to the browser button rather than a network error.
         if (source !== 'other') return json({ error: BLOCKED_HELP, blocked: true }, { status: 422 })
-        return json({ error: `Couldn't open that link (${e instanceof Error ? e.message : 'network error'}).` }, { status: 422 })
+        return json({ error: "Couldn't open that link." }, { status: 422 })
       }
       if (isBlockedPage(html)) return json({ error: BLOCKED_HELP, blocked: true }, { status: 422 })
       const product = parseProductHtml(html, url)
