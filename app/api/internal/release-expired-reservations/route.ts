@@ -25,24 +25,31 @@ export async function GET(req: Request) {
   const candidates = await db.order.findMany({ where: { status: OrderStatus.PENDING, paymentMethod: PaymentMethod.CARD, paymentStatus: { notIn: RESOLVED_PAYMENT_STATUSES }, createdAt: { lt: cutoff } }, select: { id: true, orderNumber: true }, take: 100, orderBy: { createdAt: 'asc' } })
 
   let released = 0
+  let failed = 0
   for (const candidate of candidates) {
-    const didRelease = await db.$transaction(async tx => {
-      const order = await tx.order.findUnique({ where: { id: candidate.id }, include: { paymentTransactions: true } })
-      if (!order || order.status !== OrderStatus.PENDING || order.paymentMethod !== PaymentMethod.CARD || order.createdAt >= cutoff) return false
-      if (RESOLVED_PAYMENT_STATUSES.includes(order.paymentStatus)) return false
-      const isStorefrontCheckout = order.paymentTransactions.some(t => t.provider === 'checkout')
-      if (!isStorefrontCheckout) return false
-      const reservation = await tx.inventoryMovement.findFirst({ where: { referenceId: order.orderNumber, type: 'SALE_RESERVATION' } })
-      if (!reservation) return false
-      await releaseOrderReservations(tx, order.id, 'Expired checkout reservation')
-      // Like a failed payment: the customer gets back the coupon use, coins and gift-card
-      // balance this unpaid checkout had taken (they used to be lost when it expired).
-      await restoreUnpaidCheckoutBenefits(tx, order, 'Expired checkout coin restoration')
-      await tx.order.update({ where: { id: order.id }, data: { status: OrderStatus.CANCELLED, fulfillmentStatus: 'UNFULFILLED', events: { create: { status: OrderStatus.CANCELLED, message: 'Checkout reservation expired.' } } } })
-      return true
-    })
-    if (didRelease) released += 1
+    try {
+      const didRelease = await db.$transaction(async tx => {
+        const order = await tx.order.findUnique({ where: { id: candidate.id }, include: { paymentTransactions: true } })
+        if (!order || order.status !== OrderStatus.PENDING || order.paymentMethod !== PaymentMethod.CARD || order.createdAt >= cutoff) return false
+        if (RESOLVED_PAYMENT_STATUSES.includes(order.paymentStatus)) return false
+        const isStorefrontCheckout = order.paymentTransactions.some(t => t.provider === 'checkout')
+        if (!isStorefrontCheckout) return false
+        const reservation = await tx.inventoryMovement.findFirst({ where: { referenceId: order.orderNumber, type: 'SALE_RESERVATION' } })
+        if (!reservation) return false
+        await releaseOrderReservations(tx, order.id, 'Expired checkout reservation')
+        // Like a failed payment: the customer gets back the coupon use, coins and gift-card
+        // balance this unpaid checkout had taken (they used to be lost when it expired).
+        await restoreUnpaidCheckoutBenefits(tx, order, 'Expired checkout coin restoration')
+        await tx.order.update({ where: { id: order.id }, data: { status: OrderStatus.CANCELLED, fulfillmentStatus: 'UNFULFILLED', events: { create: { status: OrderStatus.CANCELLED, message: 'Checkout reservation expired.' } } } })
+        return true
+      }, { requireTransaction: true } as any)
+      if (didRelease) released += 1
+    } catch (error) {
+      // Nothing was kept for this order (its release could not run as one transaction), so the next run tries it again.
+      failed += 1
+      console.error('[expired-reservations] could not release an order', candidate.orderNumber, error)
+    }
   }
 
-  return Response.json({ released, checked: candidates.length })
+  return Response.json({ released, failed, checked: candidates.length })
 }

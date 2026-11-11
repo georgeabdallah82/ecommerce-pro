@@ -64,7 +64,7 @@ export async function completeDraftOrder(draftId: string, paymentMethod: Payment
     })
     await tx.draftOrder.update({ where: { id: draftId }, data: { completedOrderId: order.id } })
     return order
-  })
+  }, { requireTransaction: true } as any)
 
   if (paymentMethod !== 'CARD' || order.grandTotal === 0) {
     runInBackground(sendOrderConfirmationEmail(order.id).catch(error => console.error('[email] order confirmation failed', error)))

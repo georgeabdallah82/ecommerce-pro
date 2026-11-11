@@ -48,6 +48,8 @@ export async function GET(req: Request) {
 }
 
 function returnFailure(error: unknown) {
+  // Nothing was kept: the store could not run this return as one transaction (lib/prisma.ts).
+  if (error instanceof Error && error.name === 'TransactionUnavailableError') return { message: error.message, status: 503 }
   if (error instanceof Error) {
     if (RETURN_MESSAGES.has(error.message)) return { message: error.message, status: error.message === 'Order not found' ? 404 : 400 }
     if (error.message === 'UNAUTHORIZED') return { message: 'Unauthorized', status: 401 }
@@ -129,7 +131,7 @@ export async function POST(req: Request) {
 
       await audit(actor.id, 'order.returned', 'Order', order.id, { returnId: returnRequest.id, items: normalized.map(x => ({ orderItemId: x.orderItemId, quantity: x.quantity })), restocked: restock, refundId: refund?.id || null, refundAmount: requestedRefund, refundProvider })
       return { order: updated, returnRequest, returnId: returnRequest.id, refund, refundProvider, refundExternalId, items: normalized.map(x => ({ orderItemId: x.orderItemId, quantity: x.quantity })), restocked: restock, restockedInventoryIds: [...restockedInventoryIds] }
-    })
+    }, { requireTransaction: true } as any)
 
     runInBackground(dispatchWebhookEvent('order.updated', { id: result.order.id, orderNumber: result.order.orderNumber, status: result.order.status, paymentStatus: result.order.paymentStatus }).catch(error => console.error('[webhook] order.updated dispatch failed', error)))
     dispatchInventoryUpdated(result.restockedInventoryIds)

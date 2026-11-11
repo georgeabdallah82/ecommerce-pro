@@ -270,7 +270,7 @@ export async function PATCH(req: Request) {
         }
       }
       return { order, updated, statusChanged, paymentChanged: paymentChanged || codCollected, codCollected, hasOnlyDetails, fulfilledInventoryIds, restockedInventoryIds, fulfilling, fulfillmentId: fulfillment?.id, refundToSettle, cancelRefundAmount, trackingCorrection }
-    })
+    }, { requireTransaction: true } as any)
     if (result.order.userId && result.statusChanged) {
       const body = result.cancelRefundAmount > 0
         ? `Your order is now cancelled. A ${(result.cancelRefundAmount / 100).toFixed(2)} ${result.updated.currency} refund has been issued.`
@@ -307,6 +307,7 @@ export async function PATCH(req: Request) {
     if (result.refundToSettle && result.refundToSettle.refundProvider !== 'manual' && result.refundToSettle.refundProvider !== 'wallet') {
       const settled = await settleReturnRefund(actor.id, { orderId: result.updated.id, refundId: result.refundToSettle.refundId, refundProvider: result.refundToSettle.refundProvider, refundExternalId: result.refundToSettle.refundExternalId, amount: result.refundToSettle.amount, currency: result.updated.currency, auditAction: 'order.cancel_refund', keepOrderStatus: true })
       if (!settled.ok) return json({ order: result.updated, error: 'Order cancelled, but the gateway refund failed. The refund remains marked failed for admin retry.' }, { status: 502 })
+      if (!settled.recorded) return json({ order: result.updated, cancelRefund: { amount: result.refundToSettle.amount, pending: true }, refundPending: true, message: 'The order is cancelled. Its refund is pending until the gateway confirms it.' }, { status: 202 })
     }
     const cancelRefund = result.cancelRefundAmount > 0
       ? { amount: result.cancelRefundAmount, pending: false }
