@@ -135,7 +135,11 @@ await ap.goto(B + '/admin-login', { waitUntil: 'networkidle' })
 await ap.locator('input[name=email]').fill(ADMIN.email); await ap.locator('input[name=password]').fill(ADMIN.password); await ap.locator('button.adminLoginSubmit').click()
 const signedIn = await ap.waitForURL(/\/admin(?!-login)/, { timeout: 15000 }).then(() => true).catch(() => false)
 if (!signedIn) {
-  const setup = await ap.evaluate(async () => (await fetch('/api/admin/login/enroll', { cache: 'no-store' })).json())
+  const setup = await ap.evaluate(async () => {
+    const read = await (await fetch('/api/admin/login/enroll', { cache: 'no-store' })).json()
+    if (read.started) return read
+    return (await fetch('/api/admin/login/enroll', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'start' }) })).json()
+  })
   const code = totpNow(setup.secret)
   const done = await ap.evaluate(async code => (await fetch('/api/admin/login/enroll', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code }) })).json(), code)
   step('admin 2-step set-up on first sign-in', done.ok === true, done.error || `backup codes=${(done.backupCodes || []).length}`)

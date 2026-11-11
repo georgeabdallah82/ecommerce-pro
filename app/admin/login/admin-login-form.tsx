@@ -24,8 +24,14 @@ export default function AdminLoginForm({ brand }: { brand?: AdminLoginBrand }) {
     setBusy(true); setError('')
     try {
       const response = await fetch('/api/admin/login/enroll', { cache: 'no-store' })
-      const data = await response.json().catch(() => ({}))
+      let data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data.error || 'Unable to start 2-step login set-up')
+      // The key is made by a POST, not by loading the page; a refresh gets the same key back.
+      if (!data.started) {
+        const started = await fetch('/api/admin/login/enroll', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'start' }) })
+        data = await started.json().catch(() => ({}))
+        if (!started.ok) throw new Error(data.error || 'Unable to start 2-step login set-up')
+      }
       setEnrollSetup({ secret: data.secret, uri: data.uri })
       setEnrollStep(true)
     } catch (err) { setError(err instanceof Error ? err.message : 'Unable to start 2-step login set-up') }
