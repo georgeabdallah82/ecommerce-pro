@@ -6,7 +6,8 @@ import { getUnpublishedProductIds } from '@/lib/sales-channels'
 import { notFound } from 'next/navigation'
 import { Footer } from '@/components/footer'
 import AliExpressCollectionDetail from '@/components/aliexpress-collection-detail'
-import { absoluteUrl, getSiteSeo, isShareableImage, metaText, shareMeta, siteUrl } from '@/lib/seo'
+import { absoluteUrl, getSiteSeo, isShareableImage, shareMeta, siteUrl } from '@/lib/seo'
+import { collectionListJsonLd, collectionSeo } from '@/lib/collection-seo'
 import type { Metadata } from 'next'
 import { themeTemplates } from '@/lib/theme-templates'
 import { storefrontCached } from '@/lib/storefront-cache'
@@ -16,13 +17,15 @@ export const revalidate = 0
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
-  const collection = await db.collection.findUnique({ where: { slug }, select: { name: true, description: true, imageUrl: true } }).catch(() => null)
-  if (!collection) return {}
+  const collection = await db.collection.findUnique({ where: { slug }, select: { name: true, description: true, imageUrl: true, seoTitle: true, seoDescription: true, isActive: true } }).catch(() => null)
+  // An inactive collection is a 404 on the page, so it gets no search or share text either.
+  if (!collection || !collection.isActive) return {}
   const seo = await getSiteSeo().catch(() => null)
-  const description = metaText(collection.description) || metaText(`Shop ${collection.name} at ${seo?.brand || 'our store'}.`)
+  // The search title and description the merchant wrote in the collection editor, when there are any.
+  const { title, description } = collectionSeo(collection, seo?.brand)
   const image = isShareableImage(collection.imageUrl) ? absoluteUrl(collection.imageUrl) : seo?.image
   const url = `/collections/${slug}`
-  return { title: collection.name, description, alternates: { canonical: url }, ...shareMeta({ title: collection.name, description, url, image }) }
+  return { title, description, alternates: { canonical: url }, ...shareMeta({ title, description, url, image }) }
 }
 
 // Shared with /shop (app/shop/page.tsx) -- see that file's own comment on
@@ -68,8 +71,17 @@ export default async function CollectionPage({ params }: { params: Promise<{ slu
       { '@type': 'ListItem', position: 2, name: collectionInfo.name, item: `${siteUrl()}/collections/${collectionInfo.slug}` },
     ],
   }
+  // The products listed here, for Google as an item list (the search title and description are set in generateMetadata).
+  const listing = collectionListJsonLd({
+    name: collectionInfo.name,
+    slug: collectionInfo.slug,
+    base: siteUrl(),
+    description: collectionSeo(collectionInfo).description,
+    products: products.map(p => ({ name: p.name, slug: p.slug })),
+  })
   return (
     <>
+      {listing && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(listing).replace(/</g, '\\u003c') }} />}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb).replace(/</g, '\\u003c') }} />
       <AliExpressCollectionDetail theme={theme} collection={collectionInfo} products={products} sections={sections} zoneCollections={zoneCollections} />
       <Footer theme={theme} />
