@@ -4,6 +4,7 @@ import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { getStoreCurrency } from '@/lib/store-currency'
+import { userError } from '@/lib/user-error'
 
 export async function GET(req: Request) {
   try {
@@ -28,9 +29,9 @@ export async function POST(req: Request) {
     const byId = new Map(products.map(p => [p.id, p]))
     const items = rawItems.map((raw: any) => {
       const product = byId.get(String(raw.productId))
-      if (!product) throw new Error('A selected product no longer exists')
+      if (!product) throw userError('A selected product no longer exists')
       const variant = raw.variantId ? product.variants.find(v => v.id === String(raw.variantId)) : undefined
-      if (raw.variantId && !variant) throw new Error(`Invalid variant for ${product.name}`)
+      if (raw.variantId && !variant) throw userError(`Invalid variant for ${product.name}`)
       const quantity = Math.max(1, Math.min(999, Math.trunc(Number(raw.quantity) || 1)))
       const unitPrice = Number.isFinite(Number(raw.unitPrice)) ? Math.max(0, Math.trunc(Number(raw.unitPrice))) : (variant?.price ?? product.basePrice)
       return { productId: product.id, variantId: variant?.id ?? null, name: product.name + (variant ? ` — ${variant.name}` : ''), sku: variant?.sku ?? product.sku, quantity, unitPrice, totalPrice: quantity * unitPrice }

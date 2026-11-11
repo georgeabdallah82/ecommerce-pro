@@ -1,6 +1,7 @@
 import webpush from 'web-push'
 import { db } from '@/lib/prisma'
 import { parsePushSubscription } from '@/lib/push-opt-in'
+import { userError } from '@/lib/user-error'
 
 // Staff devices (order, review and low-stock alerts) are Setting rows keyed by endpoint.
 // Customer devices (push campaigns) are PushSubscription rows: from the storefront popup or
@@ -85,8 +86,8 @@ async function saveSubscription(userId: string, subscription: { endpoint: string
   const endpoint = String(subscription.endpoint || '').trim()
   const p256dh = String(subscription.keys?.p256dh || '').trim()
   const auth = String(subscription.keys?.auth || '').trim()
-  if (!endpoint || !p256dh || !auth) throw new Error('Invalid push subscription')
-  if (!/^https:\/\//i.test(endpoint)) throw new Error('Invalid push endpoint')
+  if (!endpoint || !p256dh || !auth) throw userError('Invalid push subscription')
+  if (!/^https:\/\//i.test(endpoint)) throw userError('Invalid push endpoint')
   const value = JSON.stringify({ userId, endpoint, keys: { p256dh, auth } })
   await db.setting.upsert({ where: { key: subscriptionKey(endpoint, prefix) }, update: { value }, create: { key: subscriptionKey(endpoint, prefix), value } })
 }

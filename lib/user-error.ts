@@ -3,11 +3,13 @@
 // Any other error is logged on the server and answered with a generic message, so a database or
 // code error never reaches the page. `code` lets a screen react to one kind of refusal, such as
 // REAUTH_REQUIRED, which asks the person to confirm it is them.
+// `status` is optional: when the thrower leaves it out, the route's own status applies, so turning a
+// message into a UserError does not change the status the route answers with.
 export class UserError extends Error {
-  readonly status: number
+  readonly status?: number
   readonly code?: string
 
-  constructor(message: string, status = 400, code?: string) {
+  constructor(message: string, status?: number, code?: string) {
     super(message)
     this.name = 'UserError'
     this.status = status
@@ -15,6 +17,6 @@ export class UserError extends Error {
   }
 }
 
-export function userError(message: string, status = 400, code?: string) {
+export function userError(message: string, status?: number, code?: string) {
   return new UserError(message, status, code)
 }

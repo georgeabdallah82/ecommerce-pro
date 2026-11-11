@@ -8,6 +8,7 @@ import { sendGiftCardIssuedEmail } from '@/lib/email'
 import { expireGiftCards } from '@/lib/gift-cards'
 import { getStoreCurrency } from '@/lib/store-currency'
 import { runInBackground } from '@/lib/background'
+import { userError } from '@/lib/user-error'
 
 function generateCode() { return randomBytes(10).toString('hex').toUpperCase().match(/.{1,5}/g)!.join('-') }
 
@@ -59,7 +60,7 @@ export async function PATCH(req: Request) {
       // second concurrent adjustment fail instead of overwriting the first.
       const updated = await db.$transaction(async tx => {
         const guarded = await tx.giftCard.updateMany({ where: { id, balance: card.balance }, data: { balance: next } })
-        if (guarded.count !== 1) throw new Error('This gift card was just modified — please retry.')
+        if (guarded.count !== 1) throw userError('This gift card was just modified — please retry.')
         return tx.giftCard.findUnique({ where: { id } })
       })
       await audit(actor.id, 'gift_card.adjusted', 'GiftCard', id, { delta, balance: next })

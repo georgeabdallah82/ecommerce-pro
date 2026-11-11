@@ -79,7 +79,7 @@ test('the report routes refuse an oversized period instead of cutting it', () =>
     const source = read(file)
     for (const pattern of patterns) assert.match(source, pattern, `${file} must match ${pattern}`)
     // The catch block turns the refusal into its status and code rather than a 401.
-    assert.match(source, /if \(error instanceof UserError\) return json\(\{ error: error\.message, code: error\.code \}, \{ status: error\.status \}\)/, `${file} must answer the refusal with its status`)
+    assert.match(source, /if \(error instanceof UserError\) return json\(\{ error: error\.message, code: error\.code \}, \{ status: error\.status \?\? 400 \}\)/, `${file} must answer the refusal with its status`)
   }
 })
 

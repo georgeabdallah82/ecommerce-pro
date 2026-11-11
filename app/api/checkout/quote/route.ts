@@ -12,6 +12,7 @@ import { bundleDiscount } from '@/lib/bundles'
 import { freeGiftFor } from '@/lib/free-gift'
 import { orderedBefore } from '@/lib/customer-history'
 import { checkInvite } from '@/lib/invites'
+import { userError } from '@/lib/user-error'
 
 // The checkout summary's price before the order is placed: the cart priced from the database,
 // with the discount code (or the best automatic discount), bundles, delivery for the chosen area
@@ -76,7 +77,7 @@ export async function POST(req: Request) {
     let applied: { discount: ReturnType<typeof zeroSplit>; coupon: any } = { discount: zeroSplit(), coupon: null }
     try {
       applied = input.couponCode ? await applyCoupon(input.couponCode, subtotal, normalized) : await findAutomaticDiscount(subtotal, user?.id ?? null, normalized)
-      if (applied.coupon?.firstOrderOnly && !user?.id && await orderedBefore(input.phone, input.email, await storeCountry())) throw new Error('This coupon is for first orders only')
+      if (applied.coupon?.firstOrderOnly && !user?.id && await orderedBefore(input.phone, input.email, await storeCountry())) throw userError('This coupon is for first orders only')
       if (applied.coupon?.invite) await checkInvite(applied.coupon.invite, { phone: input.phone, email: input.email, userId: user?.id }, await storeCountry())
     } catch (error) {
       const message = error instanceof Error ? error.message : ''

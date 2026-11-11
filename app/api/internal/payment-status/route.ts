@@ -2,6 +2,7 @@ import { db } from '@/lib/prisma'
 import { canTransitionPayment } from '@/lib/orders'
 import { PaymentStatus } from '@prisma/client'
 import { timingSafeEqual } from 'node:crypto'
+import { userError } from '@/lib/user-error'
 
 // Compares in constant time, so the secret cannot be guessed one character at a time from response timing.
 function safeBearerEqual(header: string, secret: string) {
@@ -23,13 +24,13 @@ export async function POST(req: Request) {
 
     const result = await db.$transaction(async tx => {
       const order = await tx.order.findUnique({ where: { id: orderId } })
-      if (!order) throw new Error('Order not found')
+      if (!order) throw userError('Order not found')
       const existing = await tx.paymentTransaction.findFirst({ where: { externalId, orderId: order.id } })
       if (existing) return { orderId, paymentStatus: order.paymentStatus, duplicate: true }
       const reused = await tx.paymentTransaction.findFirst({ where: { externalId } })
-      if (reused) throw new Error('Payment externalId is already associated with another order')
+      if (reused) throw userError('Payment externalId is already associated with another order')
       if (order.paymentStatus === status) return { orderId, paymentStatus: order.paymentStatus, ignored: true }
-      if (!canTransitionPayment(order.paymentStatus, status)) throw new Error(`Invalid payment transition: ${order.paymentStatus} → ${status}`)
+      if (!canTransitionPayment(order.paymentStatus, status)) throw userError(`Invalid payment transition: ${order.paymentStatus} → ${status}`)
 
       // Extended (Accelerate) client payload inference doesn't always widen aggregate results
       // correctly, so the result is asserted to the shape actually queried.
@@ -37,10 +38,10 @@ export async function POST(req: Request) {
       const refundedSoFar = Math.max(0, priorRefunded._sum.amount || 0)
       const remainingRefundable = Math.max(0, order.grandTotal - refundedSoFar)
       const amount = Number.isInteger(body.amount) ? Number(body.amount) : order.grandTotal
-      if (amount <= 0) throw new Error('Payment amount must be positive')
-      if (status === PaymentStatus.PAID && amount !== order.grandTotal) throw new Error('Payment amount does not match order total')
-      if (status === PaymentStatus.PARTIALLY_REFUNDED && (order.paymentStatus !== PaymentStatus.PAID || amount >= remainingRefundable)) throw new Error('Invalid partial refund amount')
-      if (status === PaymentStatus.REFUNDED && amount !== remainingRefundable) throw new Error('Final refund amount must equal the remaining refundable balance')
+      if (amount <= 0) throw userError('Payment amount must be positive')
+      if (status === PaymentStatus.PAID && amount !== order.grandTotal) throw userError('Payment amount does not match order total')
+      if (status === PaymentStatus.PARTIALLY_REFUNDED && (order.paymentStatus !== PaymentStatus.PAID || amount >= remainingRefundable)) throw userError('Invalid partial refund amount')
+      if (status === PaymentStatus.REFUNDED && amount !== remainingRefundable) throw userError('Final refund amount must equal the remaining refundable balance')
 
       const transactionStatus = status === PaymentStatus.PARTIALLY_REFUNDED ? 'partially_refunded' : status.toLowerCase()
       const updated = await tx.order.update({ where: { id: order.id }, data: { paymentStatus: status } })

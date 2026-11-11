@@ -4,6 +4,7 @@ import { audit } from '@/lib/audit'
 import { sendReturnStatusEmail } from '@/lib/email'
 import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { runInBackground } from '@/lib/background'
+import { userError } from '@/lib/user-error'
 
 // Extended (Accelerate) client payload inference doesn't always widen nested `include`
 // relations correctly, so query results are asserted to the shape actually queried.
@@ -39,15 +40,15 @@ export function normalizeReturnItems(order: ReturnableOrder, inputItems: unknown
     const orderItemId = String(raw?.orderItemId || '').trim()
     const quantity = Number(raw?.quantity)
     const item = orderItemById.get(orderItemId)
-    if (!item) throw new Error(`Order item ${orderItemId} was not found`)
-    if (!Number.isInteger(quantity) || quantity <= 0) throw new Error(`Invalid return quantity for ${item.name}`)
+    if (!item) throw userError(`Order item ${orderItemId} was not found`)
+    if (!Number.isInteger(quantity) || quantity <= 0) throw userError(`Invalid return quantity for ${item.name}`)
     const totalRequested = (requestedQuantities.get(orderItemId) || 0) + quantity
-    if (totalRequested + (alreadyReturned.get(orderItemId) || 0) > item.quantity) throw new Error(`Return quantity for ${item.name} exceeds the quantity purchased`)
+    if (totalRequested + (alreadyReturned.get(orderItemId) || 0) > item.quantity) throw userError(`Return quantity for ${item.name} exceeds the quantity purchased`)
     requestedQuantities.set(orderItemId, totalRequested)
   }
   const normalized: Array<{ orderItemId: string; quantity: number; item: ReturnOrderItem }> = []
   for (const [orderItemId, quantity] of requestedQuantities) normalized.push({ orderItemId, quantity, item: orderItemById.get(orderItemId)! })
-  if (!normalized.length) throw new Error('At least one return item is required')
+  if (!normalized.length) throw userError('At least one return item is required')
   return normalized
 }
 
@@ -197,7 +198,7 @@ export async function settleReturnRefund(actorId: string, params: { returnId?: s
   // skipped here exactly like manual.
   if (refundProvider === 'manual' || refundProvider === 'wallet') return { ok: true as const, completed: false as const }
   try {
-    if (!refundExternalId) throw new Error('Paid gateway transaction is missing its external reference')
+    if (!refundExternalId) throw userError('Paid gateway transaction is missing its external reference')
     const provider = await getPaymentProvider(refundProvider)
     if (provider.name !== refundProvider || !provider.refundPayment) throw new Error(`Payment provider ${refundProvider} is not available for refunds`)
     const gatewayResult = await provider.refundPayment(refundExternalId, amount, currency)
@@ -206,7 +207,7 @@ export async function settleReturnRefund(actorId: string, params: { returnId?: s
         await tx.paymentTransaction.update({ where: { id: refundId }, data: { status: 'refunded' } })
         if (returnId) await tx.returnRequest.update({ where: { id: returnId }, data: { status: 'REFUNDED', refundedAt: new Date() } })
         const orderRow = await tx.order.findUnique({ where: { id: orderId }, include: { paymentTransactions: true } })
-        if (!orderRow) throw new Error('Order not found')
+        if (!orderRow) throw userError('Order not found')
         const successfulRefunds = orderRow.paymentTransactions.filter(t => ['refunded', 'partially_refunded'].includes(t.status)).reduce((sum, t) => sum + t.amount, 0)
         const paymentStatus = successfulRefunds >= orderRow.grandTotal ? 'REFUNDED' : 'PARTIALLY_REFUNDED'
         await tx.order.update({ where: { id: orderRow.id }, data: { paymentStatus, status: keepOrderStatus ? orderRow.status : (paymentStatus === 'REFUNDED' ? 'REFUNDED' : orderRow.status) } })

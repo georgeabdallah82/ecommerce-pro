@@ -4,6 +4,7 @@ import { parsePushSubscription } from '@/lib/push-opt-in'
 import { sendPushToDevice } from '@/lib/push'
 import { sendBackInStockEmail } from '@/lib/email'
 import { getUnpublishedProductIds } from '@/lib/sales-channels'
+import { userError } from '@/lib/user-error'
 
 // "Notify me when it's back" on a sold-out product page (components/back-in-stock-button.tsx).
 // The customer leaves this browser (a push notification) or an email address; when the product or
@@ -43,13 +44,13 @@ export type BackInStockInput = { productId: unknown; variantId?: unknown; subscr
 export async function requestBackInStock(input: BackInStockInput, userId: string | null) {
   const productId = String(input.productId ?? '').trim()
   const variantId = String(input.variantId ?? '').trim() || null
-  if (!productId) throw new Error('Choose a product first.')
+  if (!productId) throw userError('Choose a product first.')
   const product = await db.product.findUnique({
     where: { id: productId },
     select: { id: true, status: true, trackInventory: true, continueSellingWhenOutOfStock: true, ...CARD_STOCK_INCLUDE },
   })
-  if (!product || product.status !== 'ACTIVE') throw new Error('This product is not available.')
-  if (variantId && !product.variants.some(v => v.id === variantId)) throw new Error('This option is not available.')
+  if (!product || product.status !== 'ACTIVE') throw userError('This product is not available.')
+  if (variantId && !product.variants.some(v => v.id === variantId)) throw userError('This option is not available.')
   if (canBuyAgain(product, variantId)) return { inStock: true as const }
 
   let target: { endpoint: string; p256dh: string; auth: string } | { email: string }
@@ -57,7 +58,7 @@ export async function requestBackInStock(input: BackInStockInput, userId: string
     target = parsePushSubscription(input.subscription)
   } else {
     const email = normalizeEmail(input.email)
-    if (!email) throw new Error('Please enter a valid email address.')
+    if (!email) throw userError('Please enter a valid email address.')
     target = { email }
   }
   const dedupeKey = backInStockKey(product.id, variantId, 'email' in target ? { email: target.email } : { endpoint: target.endpoint })

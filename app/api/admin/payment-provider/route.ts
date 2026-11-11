@@ -4,6 +4,7 @@ import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { decryptPaymentSecret, encryptPaymentSecret } from '@/lib/payment-config'
 import { json } from '@/lib/utils'
+import { userError } from '@/lib/user-error'
 
 const SECRET_KEY = 'payment.areeba.apiPassword'
 const DEFAULT_API_BASE_URL = 'https://epayment.areeba.com/api/rest'
@@ -21,7 +22,7 @@ const keys = {
 function validateAreebaUrl(value: string, field: string) {
   const parsed = new URL(value)
   if (parsed.protocol !== 'https:' || parsed.hostname !== 'epayment.areeba.com') {
-    throw new Error(`${field} must use the trusted Areeba HTTPS host`)
+    throw userError(`${field} must use the trusted Areeba HTTPS host`)
   }
   return parsed.toString().replace(/\/$/, '')
 }

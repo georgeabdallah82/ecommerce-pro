@@ -3,6 +3,7 @@ import { discountAmount, misconfigured, zeroSplit, type DiscountSplit, type Line
 import { inviteCoupon } from '@/lib/invites'
 import { getQuantityDeals } from '@/lib/quantity-deals'
 import { bestDeal } from '@/lib/quantity-deals-shared'
+import { userError } from '@/lib/user-error'
 
 // The discount a cart gets at checkout: a code the customer typed, or else the best automatic
 // discount. Shared by checkout (app/api/checkout/route.ts) and the order summary's live price
@@ -17,19 +18,19 @@ export async function applyCoupon(code: string, subtotal: number, items: LineIte
     const invite = await inviteCoupon(code)
     if (invite) {
       const discount = await discountAmount(invite, items)
-      if (discount.total === 0) throw new Error('This discount does not apply to the items in your cart')
+      if (discount.total === 0) throw userError('This discount does not apply to the items in your cart')
       return { discount, coupon: invite as any }
     }
   }
   const now = new Date()
-  if (!coupon || !coupon.isActive) throw new Error('Invalid coupon code')
-  if (misconfigured(coupon)) throw new Error('This discount is not configured correctly')
-  if (coupon.startsAt && coupon.startsAt > now) throw new Error('This coupon is not active yet')
-  if (coupon.expiresAt && coupon.expiresAt < now) throw new Error('This coupon has expired')
-  if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) throw new Error('This coupon has reached its usage limit')
-  if (coupon.minSubtotal !== null && subtotal < coupon.minSubtotal) throw new Error('Minimum order is required for this coupon')
+  if (!coupon || !coupon.isActive) throw userError('Invalid coupon code')
+  if (misconfigured(coupon)) throw userError('This discount is not configured correctly')
+  if (coupon.startsAt && coupon.startsAt > now) throw userError('This coupon is not active yet')
+  if (coupon.expiresAt && coupon.expiresAt < now) throw userError('This coupon has expired')
+  if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) throw userError('This coupon has reached its usage limit')
+  if (coupon.minSubtotal !== null && subtotal < coupon.minSubtotal) throw userError('Minimum order is required for this coupon')
   const discount = await discountAmount(coupon, items)
-  if (discount.total === 0 && coupon.type !== 'FREE_SHIPPING') throw new Error('This discount does not apply to the items in your cart')
+  if (discount.total === 0 && coupon.type !== 'FREE_SHIPPING') throw userError('This discount does not apply to the items in your cart')
   return { discount, coupon }
 }
 

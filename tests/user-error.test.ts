@@ -14,7 +14,7 @@ test('a typed user error carries its message and status', () => {
   assert.ok(e instanceof Error)
   assert.equal(e.message, 'Not enough stock for Linen shirt')
   assert.equal(e.status, 409)
-  assert.equal(userError('Quantity must be greater than zero').status, 400, 'the default is a client error')
+  assert.equal(userError('Quantity must be greater than zero').status, undefined, 'without a status, the route decides')
 })
 
 test('a route sends a typed error as it is, with the status the error carries', async () => {
@@ -28,7 +28,7 @@ test('stock and quantity errors are typed, so the checkout and manual-order rout
 
 test('the manual-order route sends only typed messages, and logs everything else behind a generic line', () => {
   const route = read('app/api/admin/orders/manual/route.ts')
-  assert.match(route, /if \(e instanceof UserError\) return json\(\{ error: e\.message \}, \{ status: e\.status \}\)/)
+  assert.match(route, /if \(e instanceof UserError\) return json\(\{ error: e\.message \}, \{ status: e\.status \?\? 400 \}\)/)
   assert.doesNotMatch(route, /e instanceof Error \? e\.message/, 'no raw error text reaches the browser')
   assert.match(route, /console\.error\('\[orders\/manual\] could not create the order:', e\)/)
   assert.match(route, /return json\(\{ error: 'The order could not be created\. Please try again\.' \}, \{ status: 500 \}\)/)

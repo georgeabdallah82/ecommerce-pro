@@ -10,6 +10,7 @@ import { getTaxRatePercent } from '@/lib/pricing'
 import { sendOrderEditEmail } from '@/lib/email'
 import { OrderStatus, PaymentStatus, Prisma } from '@prisma/client'
 import { runInBackground } from '@/lib/background'
+import { userError } from '@/lib/user-error'
 
 const ORDER_EDIT_ORDER_CONFLICT_MESSAGE = 'This order was just modified — please retry.'
 
@@ -20,8 +21,8 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
     const order = await db.$transaction(async tx => {
       const edit = await tx.orderEdit.findUnique({ where: { id }, include: { items: true } })
-      if (!edit) throw new Error('Order edit not found')
-      if (edit.status !== 'OPEN') throw new Error('Order edit is no longer open')
+      if (!edit) throw userError('Order edit not found')
+      if (edit.status !== 'OPEN') throw userError('Order edit is no longer open')
 
       // Atomic conditional write, same pattern as completeDraftOrder (lib/draft-orders.ts) and
       // every other money-moving mutation in this codebase: only one concurrent commit of this
@@ -31,11 +32,11 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       // any inventory or payment side effect below, so a losing request aborts here instead of
       // partway through them.
       const guardedEdit = await tx.orderEdit.updateMany({ where: { id, status: 'OPEN' }, data: { status: 'COMMITTED', committedAt: new Date() } })
-      if (guardedEdit.count !== 1) throw new Error('Order edit is no longer open')
+      if (guardedEdit.count !== 1) throw userError('Order edit is no longer open')
 
       const current = await tx.order.findUnique({ where: { id: edit.orderId }, include: { items: true, paymentTransactions: true } })
-      if (!current) throw new Error('Order not found')
-      if (['CANCELLED', 'REFUNDED'].includes(current.status)) throw new Error('Cancelled or refunded orders cannot be edited')
+      if (!current) throw userError('Order not found')
+      if (['CANCELLED', 'REFUNDED'].includes(current.status)) throw userError('Cancelled or refunded orders cannot be edited')
 
       // Two separate OPEN OrderEdit drafts can exist for the same order (nothing prevents it at
       // creation time), so committing them concurrently both pass the checks above off the same
@@ -46,7 +47,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       // app/api/admin/returns/route.ts, app/api/admin/returns/[id]/route.ts, and the order
       // cancel path in app/api/admin/orders/route.ts.
       const guardedOrder = await tx.order.updateMany({ where: { id: current.id, updatedAt: current.updatedAt }, data: { updatedAt: new Date() } })
-      if (guardedOrder.count !== 1) throw new Error(ORDER_EDIT_ORDER_CONFLICT_MESSAGE)
+      if (guardedOrder.count !== 1) throw userError(ORDER_EDIT_ORDER_CONFLICT_MESSAGE)
 
       const oldMap = new Map(current.items.map(i => [i.id, i]))
 
@@ -113,9 +114,9 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       let refundToSettle: { refundId: string; refundProvider: string; refundExternalId: string | null; amount: number } | null = null
       if (paymentAdjustment?.type === 'refund') {
         const refundableOrder = current as unknown as ReturnableOrder
-        if (hasPendingRefund(refundableOrder)) throw new Error('A refund is already in progress for this order')
+        if (hasPendingRefund(refundableOrder)) throw userError('A refund is already in progress for this order')
         const refundable = remainingRefundable(refundableOrder)
-        if (paymentAdjustment.amount > refundable) throw new Error('Order total after this edit would be less than the amount already refunded')
+        if (paymentAdjustment.amount > refundable) throw userError('Order total after this edit would be less than the amount already refunded')
         const { refundProvider, refundExternalId } = pickRefundSource(refundableOrder)
         const refundStatus = refundProvider === 'manual' || refundProvider === 'wallet' ? 'refunded' : 'refund_pending'
         const refund = await tx.paymentTransaction.create({ data: { orderId: current.id, provider: refundProvider, externalId: refundExternalId, status: refundStatus, amount: paymentAdjustment.amount, currency: current.currency, rawJson: JSON.stringify({ orderEditId: id, reason: 'Order edit reduced total', actorId: actor.id }) } })
@@ -194,8 +195,8 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     const { id } = await params
     const discarded = await db.$transaction(async tx => {
       const edit = await tx.orderEdit.findUnique({ where: { id } })
-      if (!edit) throw new Error('Order edit not found')
-      if (edit.status !== 'OPEN') throw new Error('Order edit is no longer open')
+      if (!edit) throw userError('Order edit not found')
+      if (edit.status !== 'OPEN') throw userError('Order edit is no longer open')
       return tx.orderEdit.update({ where: { id }, data: { status: 'DISCARDED' } })
     })
     await audit(actor.id, 'order_edit.discarded', 'OrderEdit', id, { orderId: discarded.orderId })

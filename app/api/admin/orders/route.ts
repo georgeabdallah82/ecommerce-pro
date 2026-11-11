@@ -19,6 +19,7 @@ import { safeHttpUrl } from '@/lib/safe-url'
 import { orderCounts } from '@/lib/order-counts'
 import { withRisk } from '@/lib/order-risk'
 import { getStoreIdentity } from '@/lib/store-identity'
+import { userError } from '@/lib/user-error'
 
 const ORDER_UPDATE_CONFLICT_MESSAGE = 'This order was just modified — please retry.'
 
@@ -136,9 +137,9 @@ export async function PATCH(req: Request) {
     const hasOnlyDetails = Object.keys(detailsPatch).length > 0 && !requestedStatus && !requestedPayment
     const result = await db.$transaction(async tx => {
       const order = await tx.order.findUnique({ where: { id: orderId }, include: { items: true, paymentTransactions: true } })
-      if (!order) throw new Error('Order not found')
-      if (requestedStatus && !canTransitionOrder(order.status, requestedStatus)) throw new Error(`Cannot change ${order.status} to ${requestedStatus}`)
-      if (requestedPayment && !canTransitionPayment(order.paymentStatus, requestedPayment)) throw new Error(`Cannot change payment status ${order.paymentStatus} to ${requestedPayment}`)
+      if (!order) throw userError('Order not found')
+      if (requestedStatus && !canTransitionOrder(order.status, requestedStatus)) throw userError(`Cannot change ${order.status} to ${requestedStatus}`)
+      if (requestedPayment && !canTransitionPayment(order.paymentStatus, requestedPayment)) throw userError(`Cannot change payment status ${order.paymentStatus} to ${requestedPayment}`)
       const statusChanged = !!requestedStatus && requestedStatus !== order.status
       const paymentChanged = !!requestedPayment && requestedPayment !== order.paymentStatus
       const cancelling = requestedStatus === OrderStatus.CANCELLED && order.status !== OrderStatus.CANCELLED
@@ -158,7 +159,7 @@ export async function PATCH(req: Request) {
         // read) so a concurrent cancel/refund/return that read the same snapshot loses the race
         // here instead of both succeeding and together double-refunding.
         const guardedOrder = await tx.order.updateMany({ where: { id: order.id, updatedAt: order.updatedAt }, data: { updatedAt: new Date() } })
-        if (guardedOrder.count !== 1) throw new Error(ORDER_UPDATE_CONFLICT_MESSAGE)
+        if (guardedOrder.count !== 1) throw userError(ORDER_UPDATE_CONFLICT_MESSAGE)
       }
       const returnedToSender = cancelling && order.status === OrderStatus.SHIPPED
       let restockedInventoryIds: string[] = []

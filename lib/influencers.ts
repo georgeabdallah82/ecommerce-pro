@@ -1,5 +1,6 @@
 import { db } from '@/lib/prisma'
 import { orderValue, commissionFor, summarizeInfluencer, type InfluencerInput, type InfluencerStats } from '@/lib/influencers-shared'
+import { userError } from '@/lib/user-error'
 
 // Influencer codes (Admin > Marketing > Influencers). The code itself is an ordinary discount (a
 // Coupon row), so the price at checkout, usage counts and expiry all work as they do for any other
@@ -57,7 +58,7 @@ export async function createInfluencer(input: InfluencerInput) {
       tx.inviteCode.findUnique({ where: { code: input.code }, select: { code: true } }),
       tx.influencer.findUnique({ where: { code: input.code }, select: { id: true } }),
     ])
-    if (coupon || invite || influencer) throw new Error(TAKEN)
+    if (coupon || invite || influencer) throw userError(TAKEN)
     await tx.coupon.create({ data: { code: input.code, type: 'PERCENTAGE', value: input.customerPercent, isActive: true } })
     return tx.influencer.create({
       data: { name: input.name, handle: input.handle || null, phone: input.phone || null, code: input.code, customerPercent: input.customerPercent, commissionPercent: input.commissionPercent, notes: input.notes || null },
@@ -70,7 +71,7 @@ export async function createInfluencer(input: InfluencerInput) {
 export async function updateInfluencer(id: string, input: Omit<InfluencerInput, 'code'>, isActive: boolean) {
   return db.$transaction(async tx => {
     const current = await tx.influencer.findUnique({ where: { id } })
-    if (!current) throw new Error('Influencer not found')
+    if (!current) throw userError('Influencer not found')
     await tx.coupon.updateMany({ where: { code: current.code }, data: { value: input.customerPercent, isActive } })
     return tx.influencer.update({
       where: { id },
@@ -83,9 +84,9 @@ export async function updateInfluencer(id: string, input: Omit<InfluencerInput, 
 export async function deleteInfluencer(id: string) {
   return db.$transaction(async tx => {
     const current = await tx.influencer.findUnique({ where: { id }, select: { id: true, code: true, name: true } })
-    if (!current) throw new Error('Influencer not found')
+    if (!current) throw userError('Influencer not found')
     const [orders, payouts] = await Promise.all([tx.order.count({ where: { couponCode: current.code } }), tx.influencerPayout.count({ where: { influencerId: id } })])
-    if (orders || payouts) throw new Error('This influencer already has orders or payments, so it cannot be removed. Pause it instead.')
+    if (orders || payouts) throw userError('This influencer already has orders or payments, so it cannot be removed. Pause it instead.')
     await tx.influencer.delete({ where: { id } })
     await tx.coupon.deleteMany({ where: { code: current.code } })
     return current

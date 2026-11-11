@@ -6,6 +6,7 @@ import {
   PLAN_LIMITS, errorRateTooHigh, lastDays, monitorTone, parseBackupLog, parseNeonUsageLog, runTone, toneForShare, worstTone,
   type BackupResult, type NeonUsage, type Tone,
 } from '@/lib/website-status-shared'
+import { userError } from '@/lib/user-error'
 
 // Admin > Website status: the store's database, hosting, emails, uptime and code in one place.
 // Each section is gathered on its own, so one service being down or not connected never hides
@@ -56,9 +57,9 @@ async function github(path: string, token: string, init: RequestInit = {}) {
 
 async function githubJson(path: string, token: string): Promise<any> {
   const response = await github(path, token)
-  if (response.status === 401) throw new Error('GitHub refused the key (STATUS_GITHUB_TOKEN): it may have expired. Create a new one.')
-  if (response.status === 403 || response.status === 404) throw new Error(`GitHub answered ${response.status}: the key (STATUS_GITHUB_TOKEN) needs access to this repository with "Actions: Read".`)
-  if (!response.ok) throw new Error(`GitHub answered ${response.status}`)
+  if (response.status === 401) throw userError('GitHub refused the key (STATUS_GITHUB_TOKEN): it may have expired. Create a new one.')
+  if (response.status === 403 || response.status === 404) throw userError(`GitHub answered ${response.status}: the key (STATUS_GITHUB_TOKEN) needs access to this repository with "Actions: Read".`)
+  if (!response.ok) throw userError(`GitHub answered ${response.status}`)
   return response.json()
 }
 
@@ -206,12 +207,12 @@ async function workerTraffic(token: string, accountId: string, now: Date): Promi
     body: JSON.stringify({ query, variables: { account: accountId } }),
     signal: AbortSignal.timeout(TIMEOUT_MS),
   })
-  if (response.status === 401 || response.status === 403) throw new Error('Cloudflare refused the key (CLOUDFLARE_STATUS_TOKEN): it needs "Account Analytics: Read".')
+  if (response.status === 401 || response.status === 403) throw userError('Cloudflare refused the key (CLOUDFLARE_STATUS_TOKEN): it needs "Account Analytics: Read".')
   const body: any = await response.json().catch(() => null)
-  if (!response.ok || !body) throw new Error(`Cloudflare answered ${response.status}`)
+  if (!response.ok || !body) throw userError(`Cloudflare answered ${response.status}`)
   if (body.errors?.length) throw new Error(`Cloudflare said: ${String(body.errors[0]?.message || 'error').slice(0, 160)}`)
   const account = body.data?.viewer?.accounts?.[0]
-  if (!account) throw new Error('Cloudflare has no account with this CLOUDFLARE_ACCOUNT_ID for this key.')
+  if (!account) throw userError('Cloudflare has no account with this CLOUDFLARE_ACCOUNT_ID for this key.')
   const total = (alias: string) => {
     const rows: any[] = account[alias] || []
     return rows.reduce((acc, row) => ({ requests: acc.requests + Number(row?.sum?.requests || 0), errors: acc.errors + Number(row?.sum?.errors || 0) }), { requests: 0, errors: 0 })
@@ -315,8 +316,8 @@ export type UptimeStatus = {
 
 async function betterStack(path: string, token: string): Promise<any> {
   const response = await fetch(`https://incidents.betterstack.com/api/v2${path}`, { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(TIMEOUT_MS) })
-  if (response.status === 401 || response.status === 403) throw new Error('Better Stack refused the key (BETTERSTACK_API_TOKEN). Use an "Uptime API token" from Better Stack > API tokens.')
-  if (!response.ok) throw new Error(`Better Stack answered ${response.status}`)
+  if (response.status === 401 || response.status === 403) throw userError('Better Stack refused the key (BETTERSTACK_API_TOKEN). Use an "Uptime API token" from Better Stack > API tokens.')
+  if (!response.ok) throw userError(`Better Stack answered ${response.status}`)
   return response.json()
 }
 

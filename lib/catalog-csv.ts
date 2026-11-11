@@ -11,6 +11,8 @@
 // - Prices are written as money ("45.00"). Files exported before this used cents under the
 //   technical column names (basePrice …); those names still import, as cents.
 
+import { userError } from '@/lib/user-error'
+
 export type CsvRow = Record<string, string>
 
 export function parseCsv(text: string): CsvRow[] {
@@ -31,14 +33,14 @@ export function parseCsv(text: string): CsvRow[] {
     else if (ch === '\n') { row.push(cell.replace(/\r$/, '')); rows.push(row); row = []; cell = '' }
     else cell += ch
   }
-  if (quoted) throw new Error('The file has a cell with an opening quote (") that is never closed.')
+  if (quoted) throw userError('The file has a cell with an opening quote (") that is never closed.')
   if (cell !== '' || row.length) { row.push(cell.replace(/\r$/, '')); rows.push(row) }
   if (!rows.length) return []
   const headers = rows.shift()!.map(h => h.trim())
-  if (!headers.length || headers.every(h => !h)) throw new Error('The first row of the file must have the column names.')
+  if (!headers.length || headers.every(h => !h)) throw userError('The first row of the file must have the column names.')
   const named = headers.filter(Boolean)
   const duplicate = named.find((h, i) => named.findIndex(x => x.toLowerCase() === h.toLowerCase()) !== i)
-  if (duplicate) throw new Error(`The column "${duplicate}" appears twice.`)
+  if (duplicate) throw userError(`The column "${duplicate}" appears twice.`)
   return rows
     .filter(r => r.some(v => v.trim()))
     .map(r => Object.fromEntries(headers.map((h, i) => [h, r[i] ?? '']).filter(([h]) => h)))

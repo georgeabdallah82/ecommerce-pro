@@ -9,6 +9,7 @@ import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { sendReturnStatusEmail } from '@/lib/email'
 import { Prisma } from '@prisma/client'
 import { runInBackground } from '@/lib/background'
+import { userError } from '@/lib/user-error'
 
 const RETURN_CONFLICT_MESSAGE = 'This order was just modified — please retry.'
 
@@ -51,8 +52,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (action === 'approve') {
       const updated = await db.$transaction(async tx => {
         const existing = await tx.returnRequest.findUnique({ where: { id } })
-        if (!existing) throw new Error('Return request not found')
-        if (existing.status !== 'REQUESTED') throw new Error('Only a requested return can be approved')
+        if (!existing) throw userError('Return request not found')
+        if (existing.status !== 'REQUESTED') throw userError('Only a requested return can be approved')
         return tx.returnRequest.update({ where: { id }, data: { status: 'APPROVED' } })
       })
       await notifyCustomer(updated.orderId, `Your return request was approved`, `Your return request ${updated.id} was approved. Please ship the items back and we'll process it once received.`)
@@ -65,8 +66,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       const note = body.note ? String(body.note).trim().slice(0, 1000) : null
       const updated = await db.$transaction(async tx => {
         const existing = await tx.returnRequest.findUnique({ where: { id } })
-        if (!existing) throw new Error('Return request not found')
-        if (!['REQUESTED', 'APPROVED'].includes(existing.status)) throw new Error('Only a requested or approved return can be rejected')
+        if (!existing) throw userError('Return request not found')
+        if (!['REQUESTED', 'APPROVED'].includes(existing.status)) throw userError('Only a requested or approved return can be rejected')
         return tx.returnRequest.update({ where: { id }, data: { status: 'REJECTED', notes: note } })
       })
       await notifyCustomer(updated.orderId, `Your return request was declined`, `Your return request ${updated.id} was declined.${note ? ` ${note}` : ''}`)
@@ -83,8 +84,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
       const result = await db.$transaction(async tx => {
         const existing = await tx.returnRequest.findUnique({ where: { id }, include: { items: true } })
-        if (!existing) throw new Error('Return request not found')
-        if (!['REQUESTED', 'APPROVED'].includes(existing.status)) throw new Error('Only a requested or approved return can be received')
+        if (!existing) throw userError('Return request not found')
+        if (!['REQUESTED', 'APPROVED'].includes(existing.status)) throw userError('Only a requested or approved return can be received')
         const restock = body.restock !== undefined ? body.restock !== false : existing.restock
 
         // Applied before returnRequest.update's `include: { items: true }` below re-reads
@@ -97,25 +98,25 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         }
 
         const orderRow = await tx.order.findUnique({ where: { id: existing.orderId }, include: { items: true, paymentTransactions: true } })
-        if (!orderRow) throw new Error('Order not found')
-        if (requestedRefund > 0 && !['PAID', 'PARTIALLY_REFUNDED'].includes(orderRow.paymentStatus)) throw new Error('A return refund can only be issued for a paid order')
+        if (!orderRow) throw userError('Order not found')
+        if (requestedRefund > 0 && !['PAID', 'PARTIALLY_REFUNDED'].includes(orderRow.paymentStatus)) throw userError('A return refund can only be issued for a paid order')
 
         const order = orderRow as unknown as ReturnableOrder
         const orderItemById = new Map(order.items.map(item => [item.id, item]))
         const entries = existing.items.map(x => {
           const item = orderItemById.get(x.orderItemId) as ReturnOrderItem | undefined
-          if (!item) throw new Error(`Order item ${x.orderItemId} was not found`)
+          if (!item) throw userError(`Order item ${x.orderItemId} was not found`)
           return { orderItemId: x.orderItemId, quantity: x.quantity, item }
         })
 
-        if (requestedRefund > 0 && hasPendingRefund(order)) throw new Error('A refund is already in progress for this order')
+        if (requestedRefund > 0 && hasPendingRefund(order)) throw userError('A refund is already in progress for this order')
         const refundable = remainingRefundable(order)
-        if (requestedRefund > refundable) throw new Error(`Refund cannot exceed the remaining refundable amount of ${refundable}`)
+        if (requestedRefund > refundable) throw userError(`Refund cannot exceed the remaining refundable amount of ${refundable}`)
         const refunded = order.grandTotal - refundable
 
         // Same optimistic-concurrency guard as the direct-create admin return flow.
         const guarded = await tx.order.updateMany({ where: { id: order.id, updatedAt: order.updatedAt }, data: { updatedAt: new Date() } })
-        if (guarded.count !== 1) throw new Error(RETURN_CONFLICT_MESSAGE)
+        if (guarded.count !== 1) throw userError(RETURN_CONFLICT_MESSAGE)
 
         const restockedInventoryIds = restock ? await restockReturnEntries(tx, entries, order.orderNumber, existing.reason) : new Set<string>()
 

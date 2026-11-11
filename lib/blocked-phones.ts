@@ -1,5 +1,6 @@
 import { db } from '@/lib/prisma'
 import { internationalPhone } from '@/lib/phone'
+import { userError } from '@/lib/user-error'
 
 // Phone numbers that may not place orders -- for customers who keep ordering cash on delivery
 // and refusing the package. Kept in one setting as a small list; numbers are stored in
@@ -38,7 +39,7 @@ async function save(list: BlockedPhone[]) {
 
 export async function blockPhone(phone: string, note?: string) {
   const normalized = internationalPhone(phone, await storeCountry())
-  if (!normalized) throw new Error('Enter a valid phone number')
+  if (!normalized) throw userError('Enter a valid phone number')
   const list = await getBlockedPhones()
   if (!list.some(x => x.phone === normalized)) list.unshift({ phone: normalized, note: note?.trim().slice(0, 200) || undefined, blockedAt: new Date().toISOString() })
   await save(list)

@@ -2,6 +2,8 @@
 // (Stock count), shop scanners and Google Lens all read them. Letters and digits use code set B;
 // a run of 4 or more digits switches to set C, two digits per symbol, so long numbers stay short.
 
+import { userError } from '@/lib/user-error'
+
 // Bar and space widths for each symbol value 0-106 (106 is the stop, with its final bar).
 const PATTERNS = [
   '212222', '222122', '222221', '121223', '121322', '131222', '122213', '122312', '132212', '221213',
@@ -23,7 +25,7 @@ export const canEncode = (text: string) => text.length > 0 && text.length <= 40 
 
 // The symbol values for `text`, start and check symbol included, stop excluded.
 export function code128Values(text: string): number[] {
-  if (!canEncode(text)) throw new Error('This code has characters a barcode cannot hold')
+  if (!canEncode(text)) throw userError('This code has characters a barcode cannot hold')
   const values: number[] = []
   let set: 'B' | 'C' | '' = ''
   let i = 0

@@ -108,7 +108,7 @@ export async function GET(req: Request) {
       },
     })
   } catch (error) {
-    if (error instanceof UserError) return json({ error: error.message, code: error.code }, { status: error.status })
+    if (error instanceof UserError) return json({ error: error.message, code: error.code }, { status: error.status ?? 400 })
     if (error instanceof Error && error.message === 'FORBIDDEN') return json({ error: 'Forbidden' }, { status: 403 })
     if (error instanceof Error && error.message === 'UNAUTHORIZED') return json({ error: 'Unauthorized' }, { status: 401 })
     console.error('[admin/analytics/discounts] unexpected failure', error)

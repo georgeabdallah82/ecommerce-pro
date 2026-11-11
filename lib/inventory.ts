@@ -135,7 +135,7 @@ export async function releaseReservedQuantity(tx: any, product: any, variantId: 
 
 export async function releaseOrderReservations(tx: any, orderId: string, reason = 'Order reservation released') {
   const order = await tx.order.findUnique({ where: { id: orderId } })
-  if (!order) throw new Error('Order not found')
+  if (!order) throw userError('Order not found')
 
   const reservations = (await tx.inventoryMovement.findMany({
     where: { type: InventoryMovementType.SALE_RESERVATION, referenceId: order.orderNumber },
@@ -180,7 +180,7 @@ export async function releaseOrderReservations(tx: any, orderId: string, reason 
 export async function fulfillOrderStock(tx: any, orderId: string): Promise<string[]> {
   const affectedInventoryIds = new Set<string>()
   const order = await tx.order.findUnique({ where: { id: orderId }, include: { items: { include: { product: true } } } })
-  if (!order) throw new Error('Order not found')
+  if (!order) throw userError('Order not found')
 
   const reservations = (await tx.inventoryMovement.findMany({
     where: { referenceId: order.orderNumber, type: InventoryMovementType.SALE_RESERVATION },

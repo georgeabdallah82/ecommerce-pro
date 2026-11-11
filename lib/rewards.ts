@@ -5,6 +5,7 @@ import { getBlockedPhones } from '@/lib/blocked-phones'
 import { internationalPhone } from '@/lib/phone'
 import { randomPart } from '@/lib/invites-shared'
 import { REWARDS_SETTING, REWARD_CODE_PREFIX, normalizeRewardsConfig, rewardCustomers, type RewardsConfig } from '@/lib/rewards-shared'
+import { userError } from '@/lib/user-error'
 
 // "Rewards by phone number", the database side (the rules are in lib/rewards-shared.ts).
 
@@ -39,12 +40,12 @@ export type MadeReward = { code: string; phone: string; name: string; delivered:
 // page), and the same reward can never be made twice, even if staff tap twice.
 export async function createPhoneReward(rawPhone: string): Promise<MadeReward> {
   const config = await getRewardsConfig()
-  if (!config.enabled) throw new Error('Rewards are switched off. Switch them on first.')
+  if (!config.enabled) throw userError('Rewards are switched off. Switch them on first.')
   const store = await getStoreIdentity()
   const phone = internationalPhone(rawPhone, store.country)
-  if (!phone) throw new Error('That phone number is not valid.')
+  if (!phone) throw userError('That phone number is not valid.')
   const customer = (await loadRewardCustomers(config)).find(c => c.phone === phone)
-  if (!customer) throw new Error('This customer has no reward waiting.')
+  if (!customer) throw userError('This customer has no reward waiting.')
 
   const expiresAt = new Date(Date.now() + config.days * 24 * 60 * 60 * 1000)
   for (let attempt = 0; attempt < 6; attempt++) {
@@ -55,7 +56,7 @@ export async function createPhoneReward(rawPhone: string): Promise<MadeReward> {
       await db.phoneReward.create({ data: { phone, milestone: customer.nextMilestone, code, name: customer.name.slice(0, 80) || null } })
     } catch (error) {
       const unique = error instanceof Error && /unique/i.test(error.message)
-      if (unique && await db.phoneReward.findUnique({ where: { phone_milestone: { phone, milestone: customer.nextMilestone } } })) throw new Error('This reward was already made.')
+      if (unique && await db.phoneReward.findUnique({ where: { phone_milestone: { phone, milestone: customer.nextMilestone } } })) throw userError('This reward was already made.')
       if (unique) continue
       throw error
     }
@@ -67,5 +68,5 @@ export async function createPhoneReward(rawPhone: string): Promise<MadeReward> {
     }
     return { code, phone, name: customer.name, delivered: customer.delivered, percent: config.percent, days: config.days, expiresAt }
   }
-  throw new Error('Could not make a code, please try again.')
+  throw userError('Could not make a code, please try again.')
 }

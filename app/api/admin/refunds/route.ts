@@ -8,26 +8,15 @@ import { restoreCoinsForRefund } from '@/lib/returns'
 import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { Prisma } from '@prisma/client'
 import { runInBackground } from '@/lib/background'
-import { UserError } from '@/lib/user-error'
-
-const REFUND_MESSAGES = new Set([
-  'Order not found',
-  'Cancelled orders cannot be refunded',
-  'Only paid orders can be refunded',
-  'A refund is already in progress for this order',
-  'Order is already fully refunded',
-  'Paid gateway transaction is missing its external reference',
-])
+import { UserError, userError } from '@/lib/user-error'
 
 const REFUND_CONFLICT_MESSAGE = 'This order was just modified — please retry.'
 
 function refundFailure(error: unknown): { message: string; status: number; code?: string } {
   // Written for the person (lib/user-error.ts), including REAUTH_REQUIRED for a refund.
-  if (error instanceof UserError) return { message: error.message, status: error.status, code: error.code }
-  if (error instanceof Error && (REFUND_MESSAGES.has(error.message) || error.message.startsWith('Refund cannot exceed the remaining refundable amount of '))) return { message: error.message, status: error.message === 'Order not found' ? 404 : 400 }
+  if (error instanceof UserError) return { message: error.message, status: error.status ?? 400, code: error.code }
   if (error instanceof Error && error.message === 'UNAUTHORIZED') return { message: 'Unauthorized', status: 401 }
   if (error instanceof Error && error.message === 'FORBIDDEN') return { message: 'Forbidden', status: 403 }
-  if (error instanceof Error && error.message === REFUND_CONFLICT_MESSAGE) return { message: REFUND_CONFLICT_MESSAGE, status: 409 }
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') return { message: REFUND_CONFLICT_MESSAGE, status: 409 }
   console.error('[admin/refunds] unexpected failure', error)
   return { message: 'Unable to process the refund right now.', status: 500 }
@@ -45,28 +34,28 @@ export async function POST(req: Request) {
 
     const prepared = await db.$transaction(async tx => {
       const order = await tx.order.findUnique({ where: { id: orderId }, include: { paymentTransactions: true } })
-      if (!order) throw new Error('Order not found')
-      if (order.status === 'CANCELLED') throw new Error('Cancelled orders cannot be refunded')
-      if (!['PAID', 'PARTIALLY_REFUNDED'].includes(order.paymentStatus)) throw new Error('Only paid orders can be refunded')
+      if (!order) throw userError('Order not found', 404)
+      if (order.status === 'CANCELLED') throw userError('Cancelled orders cannot be refunded')
+      if (!['PAID', 'PARTIALLY_REFUNDED'].includes(order.paymentStatus)) throw userError('Only paid orders can be refunded')
 
       const pendingRefunds = order.paymentTransactions.filter(t => t.status === 'refund_pending')
-      if (pendingRefunds.length) throw new Error('A refund is already in progress for this order')
+      if (pendingRefunds.length) throw userError('A refund is already in progress for this order')
 
       const refunded = order.paymentTransactions.filter(t => ['refunded', 'partially_refunded'].includes(t.status)).reduce((sum, t) => sum + t.amount, 0)
       const remaining = Math.max(0, order.grandTotal - refunded)
-      if (remaining <= 0) throw new Error('Order is already fully refunded')
-      if (requestedAmount > remaining) throw new Error(`Refund cannot exceed the remaining refundable amount of ${remaining}`)
+      if (remaining <= 0) throw userError('Order is already fully refunded')
+      if (requestedAmount > remaining) throw userError(`Refund cannot exceed the remaining refundable amount of ${remaining}`)
 
       // The remaining-refundable check above is only a snapshot of paymentTransaction rows.
       // Tie it to an atomic conditional write on the order itself (bounded on the updatedAt we
       // just read) so a concurrent refund/return request that read the same snapshot loses the
       // race here instead of both requests succeeding and together exceeding grandTotal.
       const guarded = await tx.order.updateMany({ where: { id: order.id, updatedAt: order.updatedAt }, data: { updatedAt: new Date() } })
-      if (guarded.count !== 1) throw new Error(REFUND_CONFLICT_MESSAGE)
+      if (guarded.count !== 1) throw userError(REFUND_CONFLICT_MESSAGE, 409)
 
       const original = order.paymentTransactions.filter(t => t.provider !== 'manual' && ['paid', 'captured', 'authorized'].includes(t.status) && t.externalId).sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
       const provider = order.paymentMethod === 'WALLET' ? 'wallet' : (original?.provider || 'manual')
-      if (provider !== 'manual' && provider !== 'wallet' && !original?.externalId) throw new Error('Paid gateway transaction is missing its external reference')
+      if (provider !== 'manual' && provider !== 'wallet' && !original?.externalId) throw userError('Paid gateway transaction is missing its external reference')
 
       const transaction = await tx.paymentTransaction.create({
         data: {
@@ -101,7 +90,7 @@ export async function POST(req: Request) {
 
     const result = await db.$transaction(async tx => {
       const order = await tx.order.findUnique({ where: { id: prepared.order.id }, include: { paymentTransactions: true } })
-      if (!order) throw new Error('Order not found')
+      if (!order) throw userError('Order not found', 404)
 
       await tx.paymentTransaction.update({ where: { id: prepared.transaction.id }, data: { status: 'refunded' } })
       const successfulRefunds = order.paymentTransactions.filter(t => ['refunded', 'partially_refunded'].includes(t.status) && t.id !== prepared.transaction.id).reduce((sum, t) => sum + t.amount, 0) + requestedAmount

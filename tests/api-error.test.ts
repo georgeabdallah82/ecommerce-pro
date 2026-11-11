@@ -1,15 +1,20 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { routeError } from '@/lib/api-error'
+import { userError } from '@/lib/user-error'
 import { json } from '@/lib/utils'
 
 const body = async (r: Response) => [r.status, (await r.json()).error] as const
 const prismaError = () => Object.assign(new Error('\nInvalid `prisma.order.update()` invocation:\n\nTransaction already closed'), { name: 'PrismaClientKnownRequestError', code: 'P2028' })
 
 describe('API error replies (HI-02 / HI-04)', () => {
-  it('keeps messages the route meant for the user, with the route status', async () => {
-    assert.deepEqual(await body(routeError(new Error('SKU is required'), 'Unable to save', 400)), [400, 'SKU is required'])
-    assert.deepEqual(await body(routeError(new Error('Duplicate variant SKU: P1001'), 'Unable to save', 400)), [400, 'Duplicate variant SKU: P1001'])
+  it('keeps messages written for the user, with the status the error carries or else the route status', async () => {
+    assert.deepEqual(await body(routeError(userError('SKU is required'), 'Unable to save', 400)), [400, 'SKU is required'])
+    assert.deepEqual(await body(routeError(userError('Duplicate variant SKU: P1001', 409), 'Unable to save', 400)), [409, 'Duplicate variant SKU: P1001'])
+  })
+  it('answers a plain error with a generic line, never with its own text', async () => {
+    assert.deepEqual(await body(routeError(new Error('SKU is required'), 'Unable to save', 400)), [500, 'Something went wrong on our side. Please try again.'])
+    assert.deepEqual(await body(routeError(new Error('Duplicate variant SKU: P1001'), 'Unable to save', 500)), [500, 'Unable to save'])
   })
   it('maps sign-in and permission errors', async () => {
     assert.equal((await body(routeError(new Error('UNAUTHORIZED'), 'x', 400)))[0], 401)
