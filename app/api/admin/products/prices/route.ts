@@ -5,6 +5,7 @@ import { db } from '@/lib/prisma'
 import { getStoreCurrency } from '@/lib/store-currency'
 import { money } from '@/lib/config'
 import { json } from '@/lib/utils'
+import { capRows, LIST_CAP } from '@/lib/admin-list'
 import { LAST_PRICE_CHANGE_KEY, PRICE_MODES, changeError, describeChange, previewPrices, type PriceChange, type PriceUndo, type PricedItem } from '@/lib/bulk-prices'
 
 const MAX_ITEMS = 1000
@@ -46,18 +47,20 @@ async function itemsFor(scope: Scope): Promise<PricedItem[] | string> {
 export async function GET() {
   try {
     await requirePermission('products.manage')
-    const [last, collections, vendors] = await Promise.all([
+    const [last, collectionRows, vendorRows] = await Promise.all([
       db.setting.findUnique({ where: { key: LAST_PRICE_CHANGE_KEY }, select: { value: true } }),
-      db.collection.findMany({ select: { id: true, name: true, _count: { select: { products: true } } }, orderBy: { name: 'asc' } }),
-      db.product.groupBy({ by: ['vendor'], where: { status: { not: 'ARCHIVED' }, vendor: { not: null } }, _count: { _all: true } }),
+      db.collection.findMany({ select: { id: true, name: true, _count: { select: { products: true } } }, orderBy: { name: 'asc' }, take: LIST_CAP + 1 }),
+      db.product.groupBy({ by: ['vendor'], where: { status: { not: 'ARCHIVED' }, vendor: { not: null } }, _count: { _all: true }, orderBy: { vendor: 'asc' }, take: LIST_CAP + 1 }),
     ])
+    const collections = capRows(collectionRows, LIST_CAP)
+    const vendors = capRows(vendorRows, LIST_CAP)
     let undo: PriceUndo | null = null
     try { undo = last?.value ? JSON.parse(last.value) : null } catch { undo = null }
     return json({
       last: undo ? { at: undo.at, by: undo.by, summary: undo.summary, count: undo.items.length } : null,
-      collections: collections.map(c => ({ id: c.id, name: c.name, products: c._count.products })),
-      suppliers: vendors.map(v => ({ name: String(v.vendor || '').trim(), products: v._count._all })).filter(v => v.name).sort((a, b) => a.name.localeCompare(b.name)),
-    }, { headers: noStore })
+      collections: collections.rows.map(c => ({ id: c.id, name: c.name, products: c._count.products })),
+      suppliers: vendors.rows.map(v => ({ name: String(v.vendor || '').trim(), products: v._count._all })).filter(v => v.name).sort((a, b) => a.name.localeCompare(b.name)),
+    }, { headers: { ...noStore, 'X-Truncated': String(collections.truncated || vendors.truncated) } })
   } catch (error) { return routeError(error, 'Unable to load') }
 }
 

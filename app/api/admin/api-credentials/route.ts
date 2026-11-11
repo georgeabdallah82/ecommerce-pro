@@ -4,14 +4,15 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
+import { cappedJson, LIST_CAP } from '@/lib/admin-list'
 
 function hash(value: string) { return createHash('sha256').update(value).digest('hex') }
 
 export async function GET() {
   try {
     await requirePermission('apiCredentials.view')
-    const rows = await db.apiCredential.findMany({ orderBy: { createdAt: 'desc' } })
-    return json(rows.map(r => ({ ...r, keyHash: undefined })))
+    const rows = await db.apiCredential.findMany({ orderBy: { createdAt: 'desc' }, take: LIST_CAP + 1 })
+    return cappedJson(rows.map(r => ({ ...r, keyHash: undefined })), LIST_CAP)
   } catch (e) { return routeError(e, 'Forbidden', 403) }
 }
 

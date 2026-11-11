@@ -1,6 +1,7 @@
 import { routeError } from '@/lib/api-error'
 import {db} from '@/lib/prisma'; import {requirePermission} from '@/lib/auth'; import {audit} from '@/lib/audit'; import {json} from '@/lib/utils'
-export async function GET(){try{await requirePermission('metafields.view');return json(await db.metafieldDefinition.findMany({orderBy:[{ownerType:'asc'},{namespace:'asc'},{key:'asc'}]}))}catch(e){return routeError(e, 'Forbidden', 403)}}
+import { cappedJson, LIST_CAP } from '@/lib/admin-list'
+export async function GET(){try{await requirePermission('metafields.view');return cappedJson(await db.metafieldDefinition.findMany({orderBy:[{ownerType:'asc'},{namespace:'asc'},{key:'asc'}],take:LIST_CAP+1}),LIST_CAP)}catch(e){return routeError(e, 'Forbidden', 403)}}
 // MetafieldValue.ownerId is a hard FK to Product (see schema.prisma) -- there is no
 // write path anywhere for COLLECTION/ORDER/CUSTOMER values, so a definition with
 // any other ownerType could never actually be filled in. Reject it here rather

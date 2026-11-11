@@ -3,19 +3,20 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
+import { cappedJson, LIST_CAP } from '@/lib/admin-list'
 import { parseSegmentRules, recomputeSegmentMembership } from '@/lib/customer-segments'
 
 export async function GET() {
   try {
     await requirePermission('customerSegments.view')
-    const segments = await db.customerSegment.findMany({ orderBy: { updatedAt: 'desc' } })
+    const segments = await db.customerSegment.findMany({ orderBy: { updatedAt: 'desc' }, take: LIST_CAP + 1 })
     const grouped = segments.length
       ? await db.customerSegmentMember.groupBy({ by: ['segmentId'], _count: { _all: true }, where: { segmentId: { in: segments.map(s => s.id) } } })
       : []
     const counts: { segmentId: string; _count: { _all: number } }[] = grouped
     const countBySegment = Object.fromEntries(counts.map(c => [c.segmentId, c._count._all]))
     const rows = segments.map(segment => ({ ...segment, _count: { members: countBySegment[segment.id] || 0 } }))
-    return json(rows)
+    return cappedJson(rows, LIST_CAP)
   } catch (e) { return routeError(e, 'Forbidden', 403) }
 }
 

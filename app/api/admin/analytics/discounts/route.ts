@@ -1,6 +1,8 @@
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { json } from '@/lib/utils'
+import { reportRows, REPORT_ORDER_CAP } from '@/lib/admin-list'
+import { UserError } from '@/lib/user-error'
 import { OrderStatus } from '@prisma/client'
 
 function clampDays(value: string | null, fallback: number) {
@@ -61,7 +63,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
     const { since, until } = resolveRange(searchParams, new Date())
 
-    const orders = await db.order.findMany({
+    const orders = reportRows(await db.order.findMany({
       where: { createdAt: { gte: since, lt: until }, status: { not: OrderStatus.CANCELLED }, couponCode: { not: null } },
       select: {
         couponCode: true,
@@ -69,7 +71,8 @@ export async function GET(req: Request) {
         grandTotal: true,
         paymentTransactions: { select: { provider: true, status: true, amount: true, rawJson: true } },
       },
-    })
+      take: REPORT_ORDER_CAP + 1,
+    }), REPORT_ORDER_CAP, 'This period has more coupon orders than the report can read. Choose a shorter period.')
 
     const byCode = new Map<string, { code: string; timesUsed: number; discountGiven: number; revenue: number }>()
     for (const o of orders) {
@@ -105,6 +108,7 @@ export async function GET(req: Request) {
       },
     })
   } catch (error) {
+    if (error instanceof UserError) return json({ error: error.message, code: error.code }, { status: error.status })
     if (error instanceof Error && error.message === 'FORBIDDEN') return json({ error: 'Forbidden' }, { status: 403 })
     if (error instanceof Error && error.message === 'UNAUTHORIZED') return json({ error: 'Unauthorized' }, { status: 401 })
     console.error('[admin/analytics/discounts] unexpected failure', error)

@@ -3,11 +3,12 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json, slugify } from '@/lib/utils'
+import { cappedJson, LIST_CAP } from '@/lib/admin-list'
 
 export async function GET() {
   try {
     await requirePermission('salesChannels.view')
-    return json(await db.salesChannel.findMany({ include: { _count: { select: { publications: true } } }, orderBy: { createdAt: 'asc' } }))
+    return cappedJson(await db.salesChannel.findMany({ include: { _count: { select: { publications: true } } }, orderBy: { createdAt: 'asc' }, take: LIST_CAP + 1 }), LIST_CAP)
   } catch (e) { return routeError(e, 'Forbidden', 403) }
 }
 

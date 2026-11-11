@@ -4,6 +4,7 @@ import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json, parseJson, slugify } from '@/lib/utils'
 import { sanitizeRichHtml } from '@/lib/sanitize-html'
+import { cappedJson, LIST_CAP } from '@/lib/admin-list'
 
 // This storefront only ever exposes one blog (sitemap.ts and /blog/[handle]
 // address a post purely by its own globally-unique handle, with no blog
@@ -44,8 +45,8 @@ function readTags(tagsJson: string | null): string[] {
 export async function GET() {
   try {
     await requirePermission('content.view')
-    const posts = await db.blogPost.findMany({ orderBy: { updatedAt: 'desc' } })
-    return json(posts.map((p) => ({ ...p, tags: readTags(p.tagsJson) })))
+    const posts = await db.blogPost.findMany({ orderBy: { updatedAt: 'desc' }, take: LIST_CAP + 1 })
+    return cappedJson(posts.map((p) => ({ ...p, tags: readTags(p.tagsJson) })), LIST_CAP)
   } catch (e) {
     return routeError(e, 'Forbidden', 403)
   }

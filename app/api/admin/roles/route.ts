@@ -23,8 +23,10 @@ function readRole(b: any): { name: string; description: string; permissions: Sta
 }
 
 async function withCounts(roles: StaffRole[]) {
-  const staff = await db.user.findMany({ where: { role: { not: 'CUSTOMER' } }, select: { staffRoleId: true } })
-  return roles.map(r => ({ ...r, users: staff.filter(u => u.staffRoleId === r.id).length }))
+  // Counted in the database: the staff list is not loaded just to count it.
+  const groups = await db.user.groupBy({ by: ['staffRoleId'], where: { role: { not: 'CUSTOMER' } }, _count: { _all: true } })
+  const counts = new Map(groups.map(g => [g.staffRoleId, g._count._all]))
+  return roles.map(r => ({ ...r, users: counts.get(r.id) ?? 0 }))
 }
 
 export async function GET() {
