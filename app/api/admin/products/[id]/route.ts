@@ -1,4 +1,5 @@
 import { routeError } from '@/lib/api-error'
+import { priceProblem } from '@/lib/editor-readiness'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
@@ -36,6 +37,7 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
     for(const k of textFields)if(b[k]!==undefined)data[k]=b[k]===null?'':String(b[k])
     if(b.slug!==undefined)data.slug=slug
     for(const k of ['basePrice','compareAtPrice','costPrice'])if(b[k]!==undefined)data[k]=b[k]===null||b[k]===''?null:Math.max(0,Math.trunc(Number(b[k])))
+    {const nextBase=data.basePrice!==undefined?data.basePrice:existing.basePrice;const nextCompare=data.compareAtPrice!==undefined?data.compareAtPrice:existing.compareAtPrice;const pricingError=priceProblem(nextBase,nextCompare);if(pricingError)return json({error:pricingError},{status:400})}
     if(b.weight!==undefined)data.weight=b.weight===null||b.weight===''?null:Number(b.weight)
     for(const k of ['featured','requiresShipping','taxable','trackInventory','continueSellingWhenOutOfStock','giftCard','preorder'])if(b[k]!==undefined)data[k]=Boolean(b[k])
     // Pre-order keeps selling at zero stock (checkout's stock rule), so it turns that on too.

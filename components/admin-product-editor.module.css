@@ -190,3 +190,6 @@
 .videoFile { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; clip-path: inset(50%); }
 .videoFile:focus-visible + label { outline: 3px solid var(--admin-ink, #121212); outline-offset: 2px; }
 .videoError { font-size: 14px; font-weight: 700; color: #b42318; }
+
+/* Status chip beside the product title. */
+.statusChip { margin-left: 10px; vertical-align: middle; }

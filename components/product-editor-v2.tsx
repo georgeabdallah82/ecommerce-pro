@@ -9,6 +9,11 @@ import MediaPicker from './media-picker'
 import UnsavedBar from './admin-unsaved-bar'
 import { useConfirm } from './admin-confirm'
 import { MoneyInput, NumInput } from './num-input'
+import { ReadinessStrip } from './admin-readiness'
+import { priceProblem, productReadiness } from '@/lib/editor-readiness'
+
+const STATUS_LABEL: Record<string, string> = { ACTIVE: 'Active', DRAFT: 'Draft', ARCHIVED: 'Archived' }
+const STATUS_CLASS: Record<string, string> = { ACTIVE: 'statusPillSuccess', DRAFT: 'statusPillWarning', ARCHIVED: 'statusPillDanger' }
 
 type ImageItem = { id?: string; url: string; alt?: string | null }
 type Variant = { id?: string; name: string; sku: string; barcode?: string | null; optionJson: string; price?: number | null; compareAtPrice?: number | null; quantity?: number; lowStockThreshold?: number; locationId?: string | null; weight?: number | null; weightUnit?: string | null; inventory?: any[] }
@@ -128,11 +133,28 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
   const productLocationSplit = (initial.inventory || []).filter((x: any) => !x.variantId).length > 1
   function variantLocationSplit(v: Variant) { return (v.inventory || []).length > 1 }
 
+  const readiness = useMemo(() => productReadiness({
+    name: product.name || '', sku: product.sku || '', basePrice: Number(product.basePrice) || 0, compareAtPrice: product.compareAtPrice,
+    description: product.description, shortDescription: product.shortDescription, status: product.status, images: product.images || [],
+    seoTitle: product.seoTitle, seoDescription: product.seoDescription, collectionCount: collectionIds.length,
+    publishedChannels: productPublications.filter((p: any) => p.available).length,
+  }), [product, collectionIds, productPublications])
+
   useEffect(() => {
     const h = (e: BeforeUnloadEvent) => { if (dirty) { e.preventDefault(); e.returnValue = '' } }
     window.addEventListener('beforeunload', h)
     return () => window.removeEventListener('beforeunload', h)
   }, [dirty])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); if (!busy && (dirty || creating)) void save() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // save() reads the current product, so the listener follows it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dirty, busy, creating, product, collectionIds, optionNames, optionValues])
 
   function update(p: Partial<Product>) { setProduct(x => ({ ...x, ...p })); setDirty(true); setMessage('') }
   function updateVariant(i: number, p: Partial<Variant>) { update({ variants: product.variants.map((v, n) => n === i ? { ...v, ...p } : v) }) }
@@ -155,6 +177,8 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
   async function save() {
     if (!product.name.trim()) { setError('Title is required'); setTab('General'); return }
     if (!product.sku.trim()) { setError('SKU is required'); setTab('Inventory'); return }
+    const pricing = priceProblem(product.basePrice, product.compareAtPrice)
+    if (pricing) { setError(pricing); setTab('General'); return }
     setBusy(true); setError(''); setMessage('')
     try {
       const payload = {
@@ -227,10 +251,12 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
     <div className={s.topbar}>
       <div className={s.topLeft}>
         <Link href="/admin/products" aria-label="Back to products" className={ui.iconBtn} onClick={async e => { if (!dirty) return; e.preventDefault(); if (await confirm({ title: 'Discard unsaved changes?', message: 'Your edits to this product will be lost.', confirmLabel: 'Discard' })) router.push('/admin/products') }}><ArrowLeft size={18} /></Link>
-        <div><div className={`${ui.muted} ${ui.tiny}`}>PRODUCT</div><h1 className={s.title}>{creating ? 'Add product' : product.name || 'Untitled product'}</h1></div>
+        <div><div className={`${ui.muted} ${ui.tiny}`}>PRODUCT</div><h1 className={s.title}>{creating ? 'Add product' : product.name || 'Untitled product'}</h1>{!creating && <span className={ui.statusPill + ' ' + ui[STATUS_CLASS[product.status] || 'statusPillWarning'] + ' ' + s.statusChip}>{STATUS_LABEL[product.status] || product.status}</span>}</div>
       </div>
       <div className={s.topActions}>
-        <Link className={`${ui.btn} ${ui.btnSecondary} ${s.topActionBtn}`} href={creating ? '/admin/products' : `/product/${product.slug}`} target="_blank"><Eye size={16} /> Preview</Link>
+        {creating
+          ? <span className={`${ui.btn} ${ui.btnSecondary} ${s.topActionBtn}`} aria-disabled="true" title="Save the product first to preview it" style={{ opacity: .5, cursor: 'not-allowed' }}><Eye size={16} /> Preview</span>
+          : <Link className={`${ui.btn} ${ui.btnSecondary} ${s.topActionBtn}`} href={`/product/${product.slug}`} target="_blank"><Eye size={16} /> Preview</Link>}
         {!creating && <button className={`${ui.btn} ${ui.btnSecondary} ${s.topActionBtn}`} onClick={duplicate} disabled={busy}><Copy size={16} /> Duplicate</button>}
         {creating && <button className={`${ui.btn} ${s.topActionBtn}`} onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>}
       </div>
@@ -238,7 +264,9 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
 
     {!creating && <UnsavedBar dirty={dirty} saving={busy} onDiscard={discard} onSave={save} />}
 
-    {(error || message) && <div className={`${ui.alert} ${error ? ui.alertDanger : ''}`} style={{ margin: '0 0 14px' }}>{error || message}</div>}
+    {(error || message) && <div className={`${ui.alert} ${error ? ui.alertDanger : ''}`} role={error ? 'alert' : 'status'} style={{ margin: '0 0 14px' }}>{error || message}</div>}
+
+    <ReadinessStrip title={creating ? 'Before you save' : 'Ready to sell'} checks={readiness} onGo={t => setTab(t as typeof tabs[number])} />
 
     <div className={s.tabs}>{tabs.map(t => <button key={t} className={tab === t ? s.active : ''} onClick={() => setTab(t)}>{t}</button>)}</div>
 

@@ -32,7 +32,7 @@
 .imagePreview img { width: 100%; height: 100%; object-fit: cover; }
 
 .assignedList { display: grid; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); overflow: hidden; }
-.assignedRow { display: grid; grid-template-columns: 18px 44px minmax(0, 1fr) auto 34px; align-items: center; gap: 10px; min-height: 66px; padding: 9px 12px; background: var(--admin-surface); border-bottom: 1px solid var(--admin-border-soft); }
+.assignedRow { display: grid; grid-template-columns: 64px 44px minmax(0, 1fr) auto 34px; align-items: center; gap: 10px; min-height: 66px; padding: 9px 12px; background: var(--admin-surface); border-bottom: 1px solid var(--admin-border-soft); }
 .assignedRow:last-child { border-bottom: 0; }
 .assignedRow > svg { color: var(--admin-muted); }
 .assignedThumb { width: 44px; height: 44px; border-radius: var(--admin-radius-sm); background: var(--admin-border-soft); display: grid; place-items: center; overflow: hidden; color: var(--admin-muted); }
@@ -86,8 +86,16 @@
   .topbarBtn { flex: 1; justify-content: center; }
   .side { grid-template-columns: 1fr; }
   .card { padding: 14px; }
-  .assignedRow { grid-template-columns: 16px 40px minmax(0, 1fr) 34px; }
+  .assignedRow { grid-template-columns: 56px 40px minmax(0, 1fr) 34px; }
   .assignedPrice { display: none; }
   .imageField { grid-template-columns: 60px 1fr; }
   .imagePreview { width: 60px; height: 60px; }
 }
+
+/* Reordering, hidden products, and the picker's "Show more" (the collection editor's own additions). */
+.rowMove { display: flex; flex-direction: column; gap: 2px; }
+.rowMove button { width: 28px; height: 26px; }
+.rowMove button:disabled { opacity: .35; }
+.assignedInfo span em { font-style: normal; }
+.hiddenChip { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: var(--admin-warning-soft); color: var(--admin-warning); font-size: 11px; font-weight: 700; }
+.loadMore { margin: 10px auto; display: block; }
