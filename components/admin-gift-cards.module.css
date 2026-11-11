@@ -36,8 +36,7 @@
    all, since .modalHead is this page's own hashed class and no shared sheet
    defines "modalHead h2" for it to inherit from. They've always rendered with
    plain browser-default h2 sizing. Sized to match the same modal-heading
-   convention already established for the Orders modal
-   (admin-orders-list.module.css's `.modalHead h2`). */
+   convention already established for the Orders modal. */
 .modalHead h2 { margin: 6px 0 4px; font-size: 19px; letter-spacing: -.02em; color: var(--admin-ink); }
 .modalBody { display: grid; gap: 14px; padding: 16px 22px 22px; }
 .modalFooter { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
