@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Check, Search, UploadCloud, X } from 'lucide-react'
 import s from './admin-media.module.css'
 import ui from './admin-ui.module.css'
@@ -8,12 +8,30 @@ import { optimizeImage } from '@/lib/optimize-image'
 type MediaAsset = { id: string; url: string; name: string; alt?: string | null }
 type PickedImage = { url: string; alt?: string | null }
 
+const PAGE = 48
+
+// One page of the library, optionally filtered by a search term (app/api/admin/media).
+async function fetchLibrary(skip: number, term: string): Promise<{ rows: MediaAsset[]; total: number }> {
+  const params = new URLSearchParams({ skip: String(skip), take: String(PAGE) })
+  if (term) params.set('q', term)
+  const r = await fetch(`/api/admin/media?${params}`, { cache: 'no-store' })
+  const d = await r.json().catch(() => ({}))
+  if (!r.ok) throw new Error(d.error || 'Unable to load your library')
+  return { rows: Array.isArray(d.rows) ? d.rows : [], total: Number(d.total) || 0 }
+}
+
 export default function MediaPicker({ open, onClose, onAdd }: { open: boolean; onClose: () => void; onAdd: (images: PickedImage[]) => void }) {
   const [tab, setTab] = useState<'upload' | 'library'>('upload')
   const [library, setLibrary] = useState<MediaAsset[]>([])
+  const [libraryTotal, setLibraryTotal] = useState(0)
   const [loadingLibrary, setLoadingLibrary] = useState(false)
   const [q, setQ] = useState('')
-  const [selected, setSelected] = useState<Set<string>>(new Set())
+  // The search the library on screen was loaded for.
+  const [applied, setApplied] = useState('')
+  const requestId = useRef(0)
+  const searchTimer = useRef<number | undefined>(undefined)
+  // Picks are kept by id, so a file chosen on one page stays chosen when another page is shown.
+  const [selected, setSelected] = useState<Map<string, MediaAsset>>(new Map())
   const [file, setFile] = useState<File | null>(null)
   const [alt, setAlt] = useState('')
   const [dragging, setDragging] = useState(false)
@@ -21,14 +39,44 @@ export default function MediaPicker({ open, onClose, onAdd }: { open: boolean; o
   const [error, setError] = useState('')
   const fileInput = useRef<HTMLInputElement>(null)
 
+  // Loads the first page for a search term. A response that arrives after a newer request is ignored.
+  async function loadFirst(term: string) {
+    const id = ++requestId.current
+    setLoadingLibrary(true)
+    try {
+      const d = await fetchLibrary(0, term)
+      if (id === requestId.current) { setLibrary(d.rows); setLibraryTotal(d.total); setApplied(term) }
+    } catch (e) {
+      if (id === requestId.current) setError(e instanceof Error ? e.message : 'Unable to load your library')
+    } finally {
+      if (id === requestId.current) setLoadingLibrary(false)
+    }
+  }
+
+  // Opening the picker starts again from the upload tab and the first page of the library.
   useEffect(() => {
     if (!open) return
-    setTab('upload'); setSelected(new Set()); setFile(null); setAlt(''); setError('')
-    setLoadingLibrary(true)
-    fetch('/api/admin/media').then(r => r.json()).then(rows => setLibrary(Array.isArray(rows) ? rows : [])).catch(() => setLibrary([])).finally(() => setLoadingLibrary(false))
+    setTab('upload'); setSelected(new Map()); setFile(null); setAlt(''); setError(''); setQ('')
+    loadFirst('')
   }, [open])
 
-  const shownLibrary = useMemo(() => library.filter(x => !q || `${x.name} ${x.alt || ''}`.toLowerCase().includes(q.toLowerCase())), [library, q])
+  useEffect(() => () => window.clearTimeout(searchTimer.current), [])
+
+  function changeSearch(value: string) {
+    setQ(value)
+    window.clearTimeout(searchTimer.current)
+    const term = value.trim()
+    searchTimer.current = window.setTimeout(() => loadFirst(term), 250)
+  }
+
+  function loadMoreLibrary() {
+    const id = requestId.current
+    setLoadingLibrary(true)
+    fetchLibrary(library.length, applied)
+      .then(d => { if (id === requestId.current) { setLibrary(p => [...p, ...d.rows]); setLibraryTotal(d.total) } })
+      .catch(e => { if (id === requestId.current) setError(e instanceof Error ? e.message : 'Unable to load your library') })
+      .finally(() => { if (id === requestId.current) setLoadingLibrary(false) })
+  }
 
   function pickFile(f: File | null | undefined) {
     if (!f) return
@@ -55,12 +103,17 @@ export default function MediaPicker({ open, onClose, onAdd }: { open: boolean; o
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to upload image') } finally { setBusy(false) }
   }
 
-  function toggle(id: string) {
-    setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  function toggle(asset: MediaAsset) {
+    setSelected(prev => {
+      const next = new Map(prev)
+      if (next.has(asset.id)) next.delete(asset.id)
+      else next.set(asset.id, asset)
+      return next
+    })
   }
 
   function addSelected() {
-    const chosen = library.filter(x => selected.has(x.id)).map(x => ({ url: x.url, alt: x.alt }))
+    const chosen = [...selected.values()].map(x => ({ url: x.url, alt: x.alt }))
     if (chosen.length) onAdd(chosen)
     onClose()
   }
@@ -71,7 +124,7 @@ export default function MediaPicker({ open, onClose, onAdd }: { open: boolean; o
       <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><div><h2 className={s.modalTitle}>Add media</h2><p className={ui.muted}>Upload a new image or choose one already in your library.</p></div><button className={ui.iconBtn} onClick={onClose}><X size={16} /></button></div>
       <div className={s.mediaTabs}>
         <button className={tab === 'upload' ? s.active : ''} onClick={() => { setTab('upload'); setError('') }}>Upload</button>
-        <button className={tab === 'library' ? s.active : ''} onClick={() => { setTab('library'); setError('') }}>Library{library.length ? ` (${library.length})` : ''}</button>
+        <button className={tab === 'library' ? s.active : ''} onClick={() => { setTab('library'); setError('') }}>Library{libraryTotal ? ` (${libraryTotal})` : ''}</button>
       </div>
       {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
 
@@ -93,13 +146,18 @@ export default function MediaPicker({ open, onClose, onAdd }: { open: boolean; o
               </div>}
           {file && <label className={ui.fieldLabel}>Alt text<input className={ui.input} value={alt} onChange={e => setAlt(e.target.value)} placeholder="Describe the image" /></label>}
         </> : <>
-          <div className={s.mediaSearch} style={{ marginBottom: 12 }}><Search size={16} /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search library…" /></div>
-          {loadingLibrary ? <div className={ui.muted}>Loading…</div> : shownLibrary.length ? <div className={s.libraryGrid}>
-            {shownLibrary.map(x => <button key={x.id} type="button" className={selected.has(x.id) ? `${s.libraryItem} ${s.selected}` : s.libraryItem} onClick={() => toggle(x.id)} title={x.name}>
-              <img src={x.url} alt={x.alt || x.name} />
-              <span className={s.libraryCheck}><Check size={12} /></span>
-            </button>)}
-          </div> : <div className={ui.muted}>No files in your library yet — switch to Upload to add one.</div>}
+          <div className={s.mediaSearch} style={{ marginBottom: 12 }}><Search size={16} /><input value={q} onChange={e => changeSearch(e.target.value)} placeholder="Search library…" /></div>
+          {!library.length && loadingLibrary ? <div className={ui.muted}>Loading…</div> : library.length ? <>
+            <div className={s.libraryGrid}>
+              {library.map(x => <button key={x.id} type="button" className={selected.has(x.id) ? `${s.libraryItem} ${s.selected}` : s.libraryItem} onClick={() => toggle(x)} title={x.name}>
+                <img src={x.url} alt={x.alt || x.name} />
+                <span className={s.libraryCheck}><Check size={12} /></span>
+              </button>)}
+            </div>
+            {library.length < libraryTotal && <div style={{ textAlign: 'center', marginTop: 12 }}>
+              <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={loadMoreLibrary} disabled={loadingLibrary}>{loadingLibrary ? 'Loading…' : `Load more (${libraryTotal - library.length} left)`}</button>
+            </div>}
+          </> : <div className={ui.muted}>{q.trim() ? 'No files match your search.' : 'No files in your library yet — switch to Upload to add one.'}</div>}
         </>}
       </div>
 

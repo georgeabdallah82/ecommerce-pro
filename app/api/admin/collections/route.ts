@@ -3,11 +3,31 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json, slugify } from '@/lib/utils'
+import { pagedReply, readPaging } from '@/lib/admin-paging'
+import type { Prisma } from '@prisma/client'
 
-export async function GET() {
+// Collections in storefront order, a page at a time (50 by default, 200 at most). `status` (ALL,
+// ACTIVE or INACTIVE) and `q` filter the page. `counts` always covers the whole catalogue, so the
+// tabs stay correct while a search is on.
+export async function GET(req: Request) {
   try {
     await requirePermission('collections.view')
-    return json(await db.collection.findMany({ include: { _count: { select: { products: true } } }, orderBy: { sortOrder: 'asc' } }))
+    const { searchParams } = new URL(req.url)
+    const { skip, take } = readPaging(searchParams, 50, 200)
+    const q = (searchParams.get('q') || '').trim().slice(0, 120)
+    const status = searchParams.get('status')
+    const where: Prisma.CollectionWhereInput = {}
+    if (q) where.OR = [{ name: { contains: q, mode: 'insensitive' } }, { slug: { contains: q, mode: 'insensitive' } }]
+    if (status === 'ACTIVE') where.isActive = true
+    if (status === 'INACTIVE') where.isActive = false
+    const [rows, total, all, active, inactive] = await Promise.all([
+      db.collection.findMany({ where, include: { _count: { select: { products: true } } }, orderBy: [{ sortOrder: 'asc' }, { updatedAt: 'desc' }, { id: 'asc' }], skip, take }),
+      db.collection.count({ where }),
+      db.collection.count(),
+      db.collection.count({ where: { isActive: true } }),
+      db.collection.count({ where: { isActive: false } }),
+    ])
+    return json({ ...pagedReply(rows, total, skip, take), counts: { all, active, inactive } })
   } catch (e) {
     return routeError(e, 'Forbidden', 403)
   }
