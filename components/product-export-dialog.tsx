@@ -16,7 +16,7 @@ export default function ProductExportDialog({ onClose, total, selectedIds, statu
   const [collectionId, setCollectionId] = useState('')
 
   useEffect(() => {
-    fetch('/api/admin/collections', { cache: 'no-store' }).then(r => (r.ok ? r.json() : [])).then(list => { if (Array.isArray(list)) { setCollections(list); setCollectionId(list[0]?.id || '') } }).catch(() => undefined)
+    fetch('/api/admin/collections?take=200', { cache: 'no-store' }).then(r => (r.ok ? r.json() : { rows: [] })).then(data => { const list = Array.isArray(data?.rows) ? data.rows : []; setCollections(list); setCollectionId(list[0]?.id || '') }).catch(() => undefined)
   }, [])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
