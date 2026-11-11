@@ -9,6 +9,7 @@ import { issueAndNotifyGiftCardsForOrder } from '@/lib/email'
 import { sendDriverUpdatePush } from '@/lib/push'
 import { money } from '@/lib/config'
 import { problemLabel, type ProblemReason } from '@/lib/drivers-shared'
+import { userError } from '@/lib/user-error'
 
 // Drivers, the database side (rules in lib/drivers-shared.ts). A driver's link is a long random
 // code: whoever has it sees that driver's current deliveries, so a new link can replace it at
@@ -32,9 +33,9 @@ type Driver = { id: string; name: string }
 export async function markDeliveredByDriver(driver: Driver, orderId: string) {
   const result = await db.$transaction(async tx => {
     const order = await tx.order.findFirst({ where: { id: orderId, driverId: driver.id }, select: { id: true, orderNumber: true, userId: true, status: true, paymentMethod: true, paymentStatus: true, grandTotal: true, currency: true } })
-    if (!order) throw new Error('This order is not on your list.')
+    if (!order) throw userError('This order is not on your list.')
     if (order.status === OrderStatus.DELIVERED) return { order, already: true as const, cash: 0 }
-    if (order.status !== OrderStatus.SHIPPED) throw new Error('This order is not out for delivery yet.')
+    if (order.status !== OrderStatus.SHIPPED) throw userError('This order is not out for delivery yet.')
     const cod = collectsCashOnDelivery({ paymentMethod: String(order.paymentMethod), paymentStatus: order.paymentStatus })
     const cash = cod ? order.grandTotal : 0
     // Only from "out for delivery", so two taps (or staff at the same moment) count it once.
@@ -62,8 +63,8 @@ export async function markDeliveredByDriver(driver: Driver, orderId: string) {
 // stays out for delivery.
 export async function reportDeliveryProblem(driver: Driver, orderId: string, reason: ProblemReason, note: string) {
   const order = await db.order.findFirst({ where: { id: orderId, driverId: driver.id }, select: { id: true, orderNumber: true, status: true } })
-  if (!order) throw new Error('This order is not on your list.')
-  if (order.status !== OrderStatus.SHIPPED) throw new Error('This order is not out for delivery.')
+  if (!order) throw userError('This order is not on your list.')
+  if (order.status !== OrderStatus.SHIPPED) throw userError('This order is not out for delivery.')
   const text = `${problemLabel(reason)}${note ? `: ${note}` : ''}`
   await db.orderEvent.create({ data: { orderId: order.id, status: OrderStatus.SHIPPED, message: `${driver.name} could not deliver. ${text}` } })
   runInBackground(sendDriverUpdatePush({ title: `#${order.orderNumber}: not delivered`, body: `${driver.name}: ${text}`, orderId: order.id }).catch(error => console.error('[push] driver update failed', error)))

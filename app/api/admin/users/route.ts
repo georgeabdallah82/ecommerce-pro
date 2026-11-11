@@ -26,7 +26,7 @@ async function parseRoleChoice(value: unknown): Promise<{ role: Role; staffRoleI
 }
 
 function sanitizeFailure(error: unknown): { status: number; error: string; code?: string } {
-  if (error instanceof UserError) return { status: error.status, error: error.message, code: error.code }
+  if (error instanceof UserError) return { status: error.status ?? 400, error: error.message, code: error.code }
   const message = error instanceof Error ? error.message : ''
   if (message === 'UNAUTHORIZED') return { status: 401, error: 'Unauthorized' }
   if (message === 'FORBIDDEN') return { status: 403, error: 'Forbidden' }

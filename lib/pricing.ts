@@ -1,5 +1,6 @@
 import { db } from '@/lib/prisma'
 import { normalizeCountry } from '@/lib/countries'
+import { userError } from '@/lib/user-error'
 
 // The store-wide "Free shipping threshold" setting (Settings > Checkout, stored in
 // whole currency units) is the fallback free-shipping cutoff used when no
@@ -67,7 +68,7 @@ export async function listShippingRates(country: string, region?: string | null)
 export async function calculateShipping(country: string, subtotalAfterDiscount: number, rateId?: string | null, region?: string | null) {
   const zone = await matchingZone(country, region)
   const rate = rateId ? zone?.rates.find(r => r.id === rateId) : zone?.rates[0]
-  if (rateId && !rate) throw new Error('Selected shipping method is no longer available')
+  if (rateId && !rate) throw userError('Selected shipping method is no longer available')
   if (!rate) {
     const setting = await db.setting.findUnique({ where: { key: 'checkout.freeShippingThreshold' } })
     const thresholdCents = resolveFreeShippingThresholdCents(setting?.value)

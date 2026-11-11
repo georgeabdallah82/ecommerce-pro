@@ -91,7 +91,7 @@ export async function POST(req: Request) {
 // Anything else is logged and answered with a generic message, so no database or code text reaches the browser.
 function manualOrderError(e: unknown) {
   if (e instanceof Error && (e.message === 'UNAUTHORIZED' || e.message === 'FORBIDDEN')) return json({ error: e.message }, { status: e.message === 'FORBIDDEN' ? 403 : 401 })
-  if (e instanceof UserError) return json({ error: e.message }, { status: e.status })
+  if (e instanceof UserError) return json({ error: e.message }, { status: e.status ?? 400 })
   if (e instanceof SyntaxError) return json({ error: 'The request was not valid. Please try again.' }, { status: 400 })
   if (isUniqueConflict(e)) return json({ error: 'That order number is already in use. Please try again.' }, { status: 409 })
   console.error('[orders/manual] could not create the order:', e)

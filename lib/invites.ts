@@ -7,6 +7,7 @@ import { getStoreIdentity } from '@/lib/store-identity'
 import { siteUrl } from '@/lib/seo'
 import { money } from '@/lib/config'
 import { cleanInviteCode, inviteLink, inviteShareMessage, makeInviteCode, randomPart } from '@/lib/invites-shared'
+import { userError } from '@/lib/user-error'
 
 // "Invite a friend", the database side (the rules are in lib/invites-shared.ts).
 
@@ -66,9 +67,9 @@ export async function inviteCoupon(raw: string): Promise<InviteCoupon | null> {
 // For new customers only, and not for the inviter themselves. Throws the message checkout shows.
 export async function checkInvite(invite: { phone: string }, buyer: { phone?: string | null; email?: string | null; userId?: string | null }, storeCountry: string) {
   const phone = internationalPhone(buyer.phone, storeCountry)
-  if (phone && phone === invite.phone) throw new Error('This is your own invite code. Share it with your friends.')
-  if (buyer.userId && await db.order.findFirst({ where: { userId: buyer.userId, status: { not: 'CANCELLED' } }, select: { id: true } })) throw new Error('This coupon is for first orders only')
-  if (await orderedBefore(buyer.phone, buyer.email, storeCountry)) throw new Error('This coupon is for first orders only')
+  if (phone && phone === invite.phone) throw userError('This is your own invite code. Share it with your friends.')
+  if (buyer.userId && await db.order.findFirst({ where: { userId: buyer.userId, status: { not: 'CANCELLED' } }, select: { id: true } })) throw userError('This coupon is for first orders only')
+  if (await orderedBefore(buyer.phone, buyer.email, storeCountry)) throw userError('This coupon is for first orders only')
 }
 
 export type RewardResult = { rewardCode: string; inviterPhone: string; inviterName: string; friendName: string; amount: number; expiresAt: Date }
@@ -77,13 +78,13 @@ export type RewardResult = { rewardCode: string; inviterPhone: string; inviterNa
 // (so it is used, limited and restored on cancellation like any other code). Once per order.
 export async function createInviteReward(orderId: string): Promise<RewardResult> {
   const order = await db.order.findUnique({ where: { id: orderId }, select: { id: true, status: true, couponCode: true, shippingAddressJson: true, inviteReward: true } })
-  if (!order) throw new Error('Order not found')
-  if (order.inviteReward) throw new Error('A thank-you code was already made for this order')
-  if (order.status !== 'DELIVERED') throw new Error('The friend\'s order must be delivered first')
+  if (!order) throw userError('Order not found')
+  if (order.inviteReward) throw userError('A thank-you code was already made for this order')
+  if (order.status !== 'DELIVERED') throw userError('The friend\'s order must be delivered first')
   const invite = order.couponCode ? await db.inviteCode.findUnique({ where: { code: order.couponCode.toUpperCase() } }) : null
-  if (!invite) throw new Error('This order did not use an invite code')
+  if (!invite) throw userError('This order did not use an invite code')
   const config = (await getSellingConfig()).invite
-  if (!config.reward) throw new Error('Set the thank-you amount first (Settings > Selling tools)')
+  if (!config.reward) throw userError('Set the thank-you amount first (Settings > Selling tools)')
 
   const expiresAt = new Date(Date.now() + config.rewardDays * 24 * 60 * 60 * 1000)
   for (let attempt = 0; attempt < 6; attempt++) {
@@ -93,7 +94,7 @@ export async function createInviteReward(orderId: string): Promise<RewardResult>
     try {
       await db.inviteReward.create({ data: { orderId: order.id, inviteCode: invite.code, rewardCode } })
     } catch (error) {
-      if (error instanceof Error && /unique/i.test(error.message) && await db.inviteReward.findUnique({ where: { orderId: order.id } })) throw new Error('A thank-you code was already made for this order')
+      if (error instanceof Error && /unique/i.test(error.message) && await db.inviteReward.findUnique({ where: { orderId: order.id } })) throw userError('A thank-you code was already made for this order')
       if (error instanceof Error && /unique/i.test(error.message)) continue
       throw error
     }
@@ -107,7 +108,7 @@ export async function createInviteReward(orderId: string): Promise<RewardResult>
     try { friendName = String(JSON.parse(order.shippingAddressJson || '{}')?.firstName || '').trim() } catch {}
     return { rewardCode, inviterPhone: invite.phone, inviterName: String(invite.name || '').trim().split(/\s+/)[0] || '', friendName, amount: config.reward, expiresAt }
   }
-  throw new Error('Could not make a thank-you code, please try again')
+  throw userError('Could not make a thank-you code, please try again')
 }
 
 type Translate = (text: string, vars?: Record<string, string | number>) => string

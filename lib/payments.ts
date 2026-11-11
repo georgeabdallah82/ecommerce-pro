@@ -1,6 +1,7 @@
 import { createHash, randomUUID, timingSafeEqual } from 'node:crypto'
 import { db } from '@/lib/prisma'
 import { decryptPaymentSecret } from '@/lib/payment-config'
+import { userError } from '@/lib/user-error'
 
 export type PaymentStatus = 'created' | 'pending' | 'paid' | 'failed'
 export type PaymentCreateInput = { orderId: string; amount: number; currency: string; email?: string; returnUrl?: string }
@@ -38,35 +39,35 @@ export const areebaMpgsPaymentProvider: PaymentProvider = {
     const endpoint=`${config.apiBaseUrl}/version/${encodeURIComponent(config.apiVersion)}/merchant/${encodeURIComponent(config.merchantId)}/session`
     const response=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json',authorization:`Basic ${Buffer.from(`merchant.${config.merchantId}:${config.apiPassword}`).toString('base64')}`},body:JSON.stringify({apiOperation:'INITIATE_CHECKOUT',checkoutMode:'WEBSITE',interaction:{operation:'PURCHASE',merchant:{name:config.merchantName,url:siteUrl},returnUrl:input.returnUrl||`${siteUrl}/api/payments/areeba/return?order=${encodeURIComponent(input.orderId)}&token=${encodeURIComponent(paymentReturnToken(input.orderId))}`},order:{id:input.orderId,amount:(input.amount/100).toFixed(2),currency:input.currency,description:`Order ${input.orderId}`,notificationUrl:webhookUrl}})})
     const body=await response.json().catch(()=>({})) as Record<string,any>; const sessionId=typeof body.session?.id==='string'?body.session.id:''; const successIndicator=typeof body.successIndicator==='string'?body.successIndicator:''
-    if(!response.ok||body.result==='ERROR'||!sessionId)throw new Error(safeError(body))
+    if(!response.ok||body.result==='ERROR'||!sessionId)throw userError(safeError(body))
     return {provider:this.name,externalId:sessionId,clientCheckout:{type:'mpgs',merchantId:config.merchantId,sessionId,scriptUrl:config.checkoutScriptUrl,successIndicator:successIndicator||undefined},status:'pending'}
   },
   async getPaymentStatus(_externalId,orderId) {
     const config=await getAreebaConfig(); const endpoint=`${config.apiBaseUrl}/version/${encodeURIComponent(config.apiVersion)}/merchant/${encodeURIComponent(config.merchantId)}/order/${encodeURIComponent(orderId)}`
     const response=await fetch(endpoint,{headers:{authorization:`Basic ${Buffer.from(`merchant.${config.merchantId}:${config.apiPassword}`).toString('base64')}`},cache:'no-store'})
-    const body=await response.json().catch(()=>({})) as Record<string,any>; if(!response.ok)throw new Error(safeError(body))
+    const body=await response.json().catch(()=>({})) as Record<string,any>; if(!response.ok)throw userError(safeError(body))
     const status=String(body.order?.status||'').toUpperCase(); if(['CAPTURED','AUTHORIZED','PARTIALLY_CAPTURED'].includes(status))return 'paid'; if(['FAILED','CANCELLED','REFUNDED','EXCESSIVELY_REFUNDED'].includes(status))return 'failed'; return 'pending'
   },
   async refundPayment(externalId, amount, currency) {
     // Extended (Accelerate) client payload inference doesn't always widen nested `include`
     // relations correctly, so the result is asserted to the shape actually queried.
     const localTransaction = await db.paymentTransaction.findFirst({ where: { externalId, provider: 'areeba_mpgs', status: { in: ['paid', 'captured', 'authorized'] } }, include: { order: { select: { orderNumber: true, grandTotal: true, currency: true } } } }) as { currency: string; amount: number; order: { orderNumber: string; grandTotal: number; currency: string } } | null
-    if (!localTransaction) throw new Error('Areeba payment transaction not found')
-    if (localTransaction.currency !== currency || amount <= 0 || amount > localTransaction.amount) throw new Error('Invalid refund amount or currency')
+    if (!localTransaction) throw userError('Areeba payment transaction not found')
+    if (localTransaction.currency !== currency || amount <= 0 || amount > localTransaction.amount) throw userError('Invalid refund amount or currency')
     const config=await getAreebaConfig()
     const orderEndpoint=`${config.apiBaseUrl}/version/${encodeURIComponent(config.apiVersion)}/merchant/${encodeURIComponent(config.merchantId)}/order/${encodeURIComponent(localTransaction.order.orderNumber)}`
     const auth={authorization:`Basic ${Buffer.from(`merchant.${config.merchantId}:${config.apiPassword}`).toString('base64')}`}
     const orderResponse=await fetch(orderEndpoint,{headers:auth,cache:'no-store'}); const orderBody=await orderResponse.json().catch(()=>({})) as Record<string,any>
-    if(!orderResponse.ok)throw new Error(safeError(orderBody))
+    if(!orderResponse.ok)throw userError(safeError(orderBody))
     const transactions=Array.isArray(orderBody.transaction)?orderBody.transaction as Array<Record<string,any>>:[]
     const refundable=transactions.filter(tx=>['PAYMENT','CAPTURE'].includes(String(tx.transaction?.type||'').toUpperCase())&&['APPROVED','APPROVED_PENDING_SETTLEMENT'].includes(String(tx.response?.gatewayCode||'').toUpperCase())).sort((a,b)=>String(b.transaction?.time||'').localeCompare(String(a.transaction?.time||'')))[0]
     const targetId=typeof refundable?.transaction?.id==='string'?refundable.transaction.id:''
-    if(!targetId)throw new Error('No captured Areeba transaction is available for refund')
+    if(!targetId)throw userError('No captured Areeba transaction is available for refund')
     const refundTransactionId=`refund-${randomUUID().replace(/-/g,'').slice(0,24)}`
     const refundEndpoint=`${config.apiBaseUrl}/version/${encodeURIComponent(config.apiVersion)}/merchant/${encodeURIComponent(config.merchantId)}/order/${encodeURIComponent(localTransaction.order.orderNumber)}/transaction/${encodeURIComponent(refundTransactionId)}`
     const response=await fetch(refundEndpoint,{method:'PUT',headers:{...auth,'content-type':'application/json'},body:JSON.stringify({apiOperation:'REFUND',transaction:{amount:(amount/100).toFixed(2),currency,targetTransactionId:targetId}})})
     const body=await response.json().catch(()=>({})) as Record<string,any>; const result=String(body.result||'').toUpperCase()
-    if(!response.ok||body.result==='ERROR'||!['SUCCESS','PENDING'].includes(result))throw new Error(safeError(body))
+    if(!response.ok||body.result==='ERROR'||!['SUCCESS','PENDING'].includes(result))throw userError(safeError(body))
     return result==='PENDING'?'pending':'refunded'
   },
 }

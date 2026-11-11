@@ -64,7 +64,7 @@ export async function GET(req: Request) {
       lowStock: lowStockItems,
     })
   } catch (error) {
-    if (error instanceof UserError) return json({ error: error.message, code: error.code }, { status: error.status })
+    if (error instanceof UserError) return json({ error: error.message, code: error.code }, { status: error.status ?? 400 })
     const message = error instanceof Error ? error.message : 'Unable to load report'
     return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 401 })
   }

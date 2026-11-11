@@ -1,6 +1,7 @@
 import { createHmac } from 'node:crypto'
 import { db } from '@/lib/prisma'
 import { runInBackground } from '@/lib/background'
+import { userError } from '@/lib/user-error'
 
 const MAX_DELIVERY_ATTEMPTS = 3
 const RETRY_DELAY_MS = 200
@@ -54,8 +55,8 @@ async function deliver(endpoint: { id: string; endpointUrl: string; secret: stri
 // retry -- the endpoint doesn't exist, or its last delivery already succeeded.
 export async function redeliverWebhook(endpointId: string) {
   const endpoint = await db.webhookEndpoint.findUnique({ where: { id: endpointId } })
-  if (!endpoint) throw new Error('Webhook endpoint not found')
-  if (!endpoint.lastPayload) throw new Error('This endpoint has no failed delivery to retry')
+  if (!endpoint) throw userError('Webhook endpoint not found')
+  if (!endpoint.lastPayload) throw userError('This endpoint has no failed delivery to retry')
   await deliver(endpoint, endpoint.lastPayload)
 }
 

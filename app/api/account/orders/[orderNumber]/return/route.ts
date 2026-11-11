@@ -4,6 +4,7 @@ import { alreadyReturnedQuantities, normalizeReturnItems, type ReturnableOrder }
 import { json } from '@/lib/utils'
 import { getReturnsEnabled } from '@/lib/policies'
 import { Prisma } from '@prisma/client'
+import { userError } from '@/lib/user-error'
 
 const RETURN_MESSAGES = new Set([
   'Order not found',
@@ -40,8 +41,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderNu
 
     const returnRequest = await db.$transaction(async tx => {
       const orderRow = await tx.order.findFirst({ where: { orderNumber, userId: user.id }, include: { items: true, paymentTransactions: true } })
-      if (!orderRow) throw new Error('Order not found')
-      if (!['SHIPPED', 'DELIVERED'].includes(orderRow.status)) throw new Error('Only shipped or delivered orders can be returned')
+      if (!orderRow) throw userError('Order not found')
+      if (!['SHIPPED', 'DELIVERED'].includes(orderRow.status)) throw userError('Only shipped or delivered orders can be returned')
 
       const order = orderRow as unknown as ReturnableOrder
       const alreadyReturned = await alreadyReturnedQuantities(tx, order.id, order.orderNumber)
@@ -53,7 +54,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderNu
       // snapshot and both pass validation, over-claiming a purchased quantity that's supposed to
       // be a shared limit.
       const guarded = await tx.order.updateMany({ where: { id: order.id, updatedAt: order.updatedAt }, data: { updatedAt: new Date() } })
-      if (guarded.count !== 1) throw new Error(RETURN_CONFLICT_MESSAGE)
+      if (guarded.count !== 1) throw userError(RETURN_CONFLICT_MESSAGE)
 
       return tx.returnRequest.create({
         data: {

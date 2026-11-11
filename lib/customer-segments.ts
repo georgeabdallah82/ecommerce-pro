@@ -1,6 +1,7 @@
 import { db } from '@/lib/prisma'
 import { sumCustomerSpend } from '@/lib/orders'
 import { OrderStatus, Role } from '@prisma/client'
+import { userError } from '@/lib/user-error'
 
 const FIELDS = ['totalSpent', 'orderCount', 'lastOrderDaysAgo', 'accountAgeDays', 'tag'] as const
 const OPERATORS = ['gte', 'lte', 'gt', 'lt', 'eq'] as const
@@ -92,7 +93,7 @@ async function computeAllCustomerStats(): Promise<Map<string, CustomerStats>> {
 // managed today. Returns how many new members this run added.
 export async function recomputeSegmentMembership(segmentId: string): Promise<number> {
   const segment = await db.customerSegment.findUnique({ where: { id: segmentId } })
-  if (!segment) throw new Error('Segment not found')
+  if (!segment) throw userError('Segment not found')
   const rules = parseSegmentRules(segment.ruleJson)
   if (!rules.conditions.length) return 0
 

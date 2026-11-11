@@ -35,6 +35,7 @@ import { adContextFromRequest, sendMetaPurchase } from '@/lib/meta-capi'
 import { orderSuccessPath } from '@/lib/order-access'
 import { BLOCKED_MESSAGE, BLOCKED_PHONES_KEY, isBlocked, parseBlockedPhones } from '@/lib/blocked-phones'
 import { bundleDiscount } from '@/lib/bundles'
+import { userError } from '@/lib/user-error'
 
 function stableSerialize(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value)
@@ -200,7 +201,7 @@ export async function POST(req: Request) {
       const key = `${item.productId}:${item.variantId ?? ''}`
       const current = merged.get(key)
       const quantity = (current?.quantity ?? 0) + item.quantity
-      if (quantity > 99) throw new Error('Maximum quantity per product is 99')
+      if (quantity > 99) throw userError('Maximum quantity per product is 99')
       merged.set(key, { productId: item.productId, variantId: item.variantId ?? null, quantity })
     }
     if (merged.size === 0) return json({ error: 'Your cart is empty.' }, { status: 400 })
@@ -243,14 +244,14 @@ export async function POST(req: Request) {
     if (requiresPhysicalShipping) {
       const addr = input.shippingAddress
       if (!addr.firstName?.trim() || !addr.lastName?.trim() || !addr.line1?.trim() || !addr.city?.trim()) {
-        throw new Error('A shipping address is required for this order.')
+        throw userError('A shipping address is required for this order.')
       }
       // The checkout form already asks for this; the server must too, or a direct request
       // (or a broken form) creates a delivery the courier has no way to arrange.
-      if (String(input.phone || input.shippingAddress?.phone || '').replace(/\D/g, '').length < 6) throw new Error('A phone number is required so the courier can reach you.')
+      if (String(input.phone || input.shippingAddress?.phone || '').replace(/\D/g, '').length < 6) throw userError('A phone number is required so the courier can reach you.')
     } else if (!orderEmail && String(input.phone || '').replace(/\D/g, '').length < 6) {
       // Nothing to deliver: the store still needs one way to reach the customer.
-      throw new Error('Add a phone number or an email so we can reach you.')
+      throw userError('Add a phone number or an email so we can reach you.')
     }
 
     const { discount: couponDiscount, coupon } = input.couponCode
@@ -266,7 +267,7 @@ export async function POST(req: Request) {
     } : couponDiscount
     // "First order only" without an account (the welcome-popup code): this phone number or email
     // must not have ordered before.
-    if (coupon?.firstOrderOnly && !user?.id && await orderedBefore(input.phone || input.shippingAddress.phone, orderEmail, settings['store.country'] || 'Lebanon')) throw new Error('This coupon is for first orders only')
+    if (coupon?.firstOrderOnly && !user?.id && await orderedBefore(input.phone || input.shippingAddress.phone, orderEmail, settings['store.country'] || 'Lebanon')) throw userError('This coupon is for first orders only')
     // A friend's invite code (lib/invites.ts): new customers only, and not the inviter's own.
     if (coupon?.invite) await checkInvite(coupon.invite, { phone: input.phone || input.shippingAddress.phone, email: orderEmail, userId: user?.id }, settings['store.country'] || 'Lebanon')
     const discountedSubtotal = Math.max(0, subtotal - discount.total)
@@ -279,7 +280,7 @@ export async function POST(req: Request) {
     }
     const requestedCoins = Math.max(0, Number(input.coinsToUse || 0))
     const coinDiscount = Math.min(discountedSubtotal, requestedCoins)
-    if (requestedCoins > discountedSubtotal && requestedCoins > 0) throw new Error('Coin redemption exceeds the merchandise total.')
+    if (requestedCoins > discountedSubtotal && requestedCoins > 0) throw userError('Coin redemption exceeds the merchandise total.')
     const taxableAmount = taxableAmountAfterRewards(taxableSubtotal, discount.taxable, discountedSubtotal, coinDiscount)
     const rewardAdjustedSubtotal = Math.max(0, discountedSubtotal - coinDiscount)
     const shipping = requiresPhysicalShipping
@@ -296,11 +297,11 @@ export async function POST(req: Request) {
     let giftCardDiscount = 0
     if (input.giftCardCode) {
       const found = await db.giftCard.findUnique({ where: { code: input.giftCardCode.toUpperCase() } })
-      if (!found) throw new Error('Invalid gift card code')
-      if (found.status !== 'ACTIVE') throw new Error('This gift card is no longer active')
-      if (found.expiresAt && found.expiresAt < new Date()) throw new Error('This gift card has expired')
-      if (found.balance <= 0) throw new Error('This gift card has no remaining balance')
-      if (found.currency !== orderCurrency) throw new Error('This gift card cannot be used for this order currency')
+      if (!found) throw userError('Invalid gift card code')
+      if (found.status !== 'ACTIVE') throw userError('This gift card is no longer active')
+      if (found.expiresAt && found.expiresAt < new Date()) throw userError('This gift card has expired')
+      if (found.balance <= 0) throw userError('This gift card has no remaining balance')
+      if (found.currency !== orderCurrency) throw userError('This gift card cannot be used for this order currency')
       giftCard = found
       giftCardDiscount = Math.min(found.balance, preGiftCardTotal)
     }
@@ -322,14 +323,14 @@ export async function POST(req: Request) {
               existingFingerprint = typeof parsed.fingerprint === 'string' ? parsed.fingerprint : null
             } catch { existingFingerprint = null }
           }
-          if (existingFingerprint && existingFingerprint !== fingerprint) throw new Error('This idempotency key was already used for a different checkout')
+          if (existingFingerprint && existingFingerprint !== fingerprint) throw userError('This idempotency key was already used for a different checkout')
           return { existing: true as const, order: existing.order }
         }
       }
 
       if (coupon?.firstOrderOnly && user?.id) {
         const existingOrder = await tx.order.findFirst({ where: { userId: user.id, status: { not: 'CANCELLED' } }, select: { id: true } })
-        if (existingOrder) throw new Error('This coupon is for first orders only')
+        if (existingOrder) throw userError('This coupon is for first orders only')
       }
 
       // Each write below is matched by an undo, run if a later step fails (stock taken by another
@@ -357,7 +358,7 @@ export async function POST(req: Request) {
         if (user?.id && requestedCoins > 0) {
           const coinAggregate = await tx.coinTransaction.aggregate({ where: { userId: user.id }, _sum: { amount: true } })
           const coinBalance = Math.max(0, Number(coinAggregate._sum.amount || 0))
-          if (requestedCoins > coinBalance) throw new Error('Insufficient coin balance.')
+          if (requestedCoins > coinBalance) throw userError('Insufficient coin balance.')
           await tx.coinTransaction.create({ data: { id: `coin_${user.id}_${orderNumber}_redemption`, userId: user.id, amount: -requestedCoins, type: 'REDEMPTION', reason: 'Checkout coin redemption', referenceId: orderNumber } })
           undo.push(() => tx.coinTransaction.deleteMany({ where: { id: `coin_${user.id}_${orderNumber}_redemption` } }))
         }
@@ -365,7 +366,7 @@ export async function POST(req: Request) {
         if (paymentMethod === PaymentMethod.WALLET && grandTotal > 0) {
           const walletAggregate = await tx.walletTransaction.aggregate({ where: { userId: user!.id, currency: orderCurrency }, _sum: { amount: true } })
           const walletBalance = Number(walletAggregate._sum.amount || 0)
-          if (walletBalance < grandTotal) throw new Error('Insufficient wallet balance.')
+          if (walletBalance < grandTotal) throw userError('Insufficient wallet balance.')
           await tx.walletTransaction.create({ data: { id: `wal_${user!.id}_${orderNumber}_payment`, userId: user!.id, amount: -grandTotal, currency: orderCurrency, type: 'PAYMENT', reason: 'Wallet checkout payment', referenceId: orderNumber } })
           undo.push(() => tx.walletTransaction.deleteMany({ where: { id: `wal_${user!.id}_${orderNumber}_payment` } }))
         }
@@ -377,12 +378,12 @@ export async function POST(req: Request) {
         // Invite codes are not discounts in Discounts: nothing to count (lib/invites.ts).
         if (coupon?.id && !coupon.invite) {
           const couponUpdate = await tx.coupon.updateMany({ where: { id: coupon.id, isActive: true, ...(coupon.maxUses !== null ? { usedCount: { lt: coupon.maxUses } } : {}) }, data: { usedCount: { increment: 1 } } })
-          if (couponUpdate.count !== 1) throw new Error('This coupon is no longer available')
+          if (couponUpdate.count !== 1) throw userError('This coupon is no longer available')
           undo.push(() => tx.coupon.updateMany({ where: { id: coupon.id, usedCount: { gt: 0 } }, data: { usedCount: { decrement: 1 } } }))
         }
         if (giftCard && giftCardDiscount > 0) {
           const giftCardUpdate = await tx.giftCard.updateMany({ where: { id: giftCard.id, status: 'ACTIVE', balance: { gte: giftCardDiscount } }, data: { balance: { decrement: giftCardDiscount } } })
-          if (giftCardUpdate.count !== 1) throw new Error('This gift card is no longer available')
+          if (giftCardUpdate.count !== 1) throw userError('This gift card is no longer available')
           undo.push(() => tx.giftCard.updateMany({ where: { id: giftCard!.id }, data: { balance: { increment: giftCardDiscount } } }))
         }
 

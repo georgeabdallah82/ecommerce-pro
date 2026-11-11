@@ -5,6 +5,7 @@ import { dispatchWebhookEvent } from '@/lib/webhooks'
 import type { PaymentMethod } from '@prisma/client'
 import { nextOrderNumber } from '@/lib/order-number'
 import { runInBackground } from '@/lib/background'
+import { userError } from '@/lib/user-error'
 
 // Shared by the admin "Complete order" action (force-completes as COD, staff
 // collects payment separately) and the customer-facing invoice payment flow
@@ -13,9 +14,9 @@ import { runInBackground } from '@/lib/background'
 // they only differ in which payment method the resulting order is tagged with.
 export async function completeDraftOrder(draftId: string, paymentMethod: PaymentMethod = 'COD') {
   const draft = await db.draftOrder.findUnique({ where: { id: draftId }, include: { items: true } })
-  if (!draft) throw new Error('Draft order not found')
-  if (draft.status === 'COMPLETED') throw new Error('Draft order is already completed')
-  if (draft.status === 'CANCELLED') throw new Error('Cancelled draft order cannot be completed')
+  if (!draft) throw userError('Draft order not found')
+  if (draft.status === 'COMPLETED') throw userError('Draft order is already completed')
+  if (draft.status === 'CANCELLED') throw userError('Cancelled draft order cannot be completed')
 
   const orderNumber = await nextOrderNumber()
   const productIds = [...new Set(draft.items.map(i => i.productId))]
@@ -30,11 +31,11 @@ export async function completeDraftOrder(draftId: string, paymentMethod: Payment
     // key) both pass the pre-transaction status check above and each reserve stock and create a
     // full real Order for the same draft.
     const guarded = await tx.draftOrder.updateMany({ where: { id: draftId, status: { in: ['DRAFT', 'OPEN'] } }, data: { status: 'COMPLETED' } })
-    if (guarded.count !== 1) throw new Error('Draft order is already completed or cancelled')
+    if (guarded.count !== 1) throw userError('Draft order is already completed or cancelled')
 
     for (const item of draft.items) {
       const product = byId.get(item.productId)
-      if (!product) throw new Error(`Product ${item.productId} is not available`)
+      if (!product) throw userError(`Product ${item.productId} is not available`)
       await reserveStock(tx, product, item.variantId, item.quantity, orderNumber)
     }
     const order = await tx.order.create({

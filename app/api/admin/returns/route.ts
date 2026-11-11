@@ -10,6 +10,7 @@ import { redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { sendReturnStatusEmail } from '@/lib/email'
 import { Prisma } from '@prisma/client'
 import { runInBackground } from '@/lib/background'
+import { userError } from '@/lib/user-error'
 
 const RETURN_MESSAGES = new Set([
   'Order not found',
@@ -78,24 +79,24 @@ export async function POST(req: Request) {
 
     const result = await db.$transaction(async tx => {
       const orderRow = await tx.order.findUnique({ where: { id: orderId }, include: { items: true, paymentTransactions: true } })
-      if (!orderRow) throw new Error('Order not found')
-      if (!['SHIPPED', 'DELIVERED'].includes(orderRow.status)) throw new Error('Only shipped or delivered orders can be returned')
-      if (requestedRefund > 0 && !['PAID', 'PARTIALLY_REFUNDED'].includes(orderRow.paymentStatus)) throw new Error('A return refund can only be issued for a paid order')
+      if (!orderRow) throw userError('Order not found')
+      if (!['SHIPPED', 'DELIVERED'].includes(orderRow.status)) throw userError('Only shipped or delivered orders can be returned')
+      if (requestedRefund > 0 && !['PAID', 'PARTIALLY_REFUNDED'].includes(orderRow.paymentStatus)) throw userError('A return refund can only be issued for a paid order')
 
       const order = orderRow as unknown as ReturnableOrder
       const alreadyReturned = await alreadyReturnedQuantities(tx, order.id, order.orderNumber)
       const normalized = normalizeReturnItems(order, inputItems, alreadyReturned)
 
-      if (requestedRefund > 0 && hasPendingRefund(order)) throw new Error('A refund is already in progress for this order')
+      if (requestedRefund > 0 && hasPendingRefund(order)) throw userError('A refund is already in progress for this order')
       const refundable = remainingRefundable(order)
-      if (requestedRefund > refundable) throw new Error(`Refund cannot exceed the remaining refundable amount of ${refundable}`)
+      if (requestedRefund > refundable) throw userError(`Refund cannot exceed the remaining refundable amount of ${refundable}`)
       const refunded = order.grandTotal - refundable
 
       // Tie the remaining-refundable snapshot above to an atomic conditional write on the
       // order (bounded on the updatedAt we just read) so a concurrent refund/return request
       // reading the same snapshot loses the race here instead of both succeeding together.
       const guarded = await tx.order.updateMany({ where: { id: order.id, updatedAt: order.updatedAt }, data: { updatedAt: new Date() } })
-      if (guarded.count !== 1) throw new Error(RETURN_CONFLICT_MESSAGE)
+      if (guarded.count !== 1) throw userError(RETURN_CONFLICT_MESSAGE)
 
       const restockedInventoryIds = restock ? await restockReturnEntries(tx, normalized, order.orderNumber, String(body.reason || 'Returned item')) : new Set<string>()
 

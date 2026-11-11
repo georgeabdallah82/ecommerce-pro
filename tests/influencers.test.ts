@@ -100,7 +100,7 @@ describe('influencer codes: how it is wired', () => {
 
   it('an influencer with orders or payments cannot be removed', () => {
     const lib = read('lib/influencers.ts')
-    assert.match(lib, /if \(orders \|\| payouts\) throw new Error\(/)
+    assert.match(lib, /if \(orders \|\| payouts\) throw userError\(/)
   })
 
   it('every change needs the discounts permission and is written to the history', () => {

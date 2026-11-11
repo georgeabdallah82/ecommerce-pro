@@ -5,6 +5,7 @@ import { json } from '@/lib/utils'
 import { saveMediaFromUrl } from '@/lib/media-storage'
 import { importSku, importSource, importVariants, isBlockedPage, isPublicHttpUrl, normalizeImport, parseProductHtml } from '@/lib/product-import'
 import { POST as createProduct } from '@/app/api/admin/products/route'
+import { userError } from '@/lib/user-error'
 
 const BLOCKED_HELP = "This site doesn't let other servers read its pages (it shows them a captcha). Open the product in your browser and tap your Import bookmark instead — it reads the page you're looking at. Setup steps are on this page."
 
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
       try {
         const res = await fetch(url, { headers: { 'user-agent': 'Mozilla/5.0 (compatible; StoreProductImporter/1.0)', accept: 'text/html,application/xhtml+xml', 'accept-language': 'en-US,en;q=0.9' }, signal: AbortSignal.timeout(15000), redirect: 'follow' })
         html = (await res.text()).slice(0, 3_000_000)
-        if (!res.ok && !html) throw new Error(`The site answered ${res.status}`)
+        if (!res.ok && !html) throw userError(`The site answered ${res.status}`)
       } catch (e) {
         // The big marketplaces refuse servers; point to the browser button rather than a network error.
         if (source !== 'other') return json({ error: BLOCKED_HELP, blocked: true }, { status: 422 })

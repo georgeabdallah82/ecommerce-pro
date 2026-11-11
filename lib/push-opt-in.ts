@@ -1,6 +1,8 @@
 // Rules for the storefront's notification popup (components/push-opt-in.tsx) and the
 // subscriptions it saves. No server imports: the popup, the API routes and the tests share it.
 
+import { userError } from '@/lib/user-error'
+
 // Our own small "Want offers and order updates?" box comes first; the browser's permission
 // prompt only after the visitor taps Yes. Browsers hide or block permission prompts that a
 // page fires on its own the moment it opens, and a visitor who says no there can't be asked
@@ -60,10 +62,10 @@ export function parsePushSubscription(input: unknown): CleanPushSubscription {
   const endpoint = String(value.endpoint ?? '').trim()
   const p256dh = String(value.keys?.p256dh ?? '').trim()
   const auth = String(value.keys?.auth ?? '').trim()
-  if (!endpoint || !p256dh || !auth) throw new Error('Invalid push subscription')
-  if (endpoint.length > 1000 || p256dh.length > 200 || auth.length > 100) throw new Error('Invalid push subscription')
-  if (!/^[A-Za-z0-9_-]+=*$/.test(p256dh) || !/^[A-Za-z0-9_-]+=*$/.test(auth)) throw new Error('Invalid push subscription')
-  if (!isPushServiceEndpoint(endpoint)) throw new Error('Invalid push endpoint')
+  if (!endpoint || !p256dh || !auth) throw userError('Invalid push subscription')
+  if (endpoint.length > 1000 || p256dh.length > 200 || auth.length > 100) throw userError('Invalid push subscription')
+  if (!/^[A-Za-z0-9_-]+=*$/.test(p256dh) || !/^[A-Za-z0-9_-]+=*$/.test(auth)) throw userError('Invalid push subscription')
+  if (!isPushServiceEndpoint(endpoint)) throw userError('Invalid push endpoint')
   return { endpoint, p256dh, auth }
 }
 

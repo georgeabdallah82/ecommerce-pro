@@ -3,6 +3,7 @@ import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { dispatchInventoryUpdated } from '@/lib/webhooks'
+import { userError } from '@/lib/user-error'
 
 const TRANSFER_CONFLICT_MESSAGE = 'This transfer was just updated — please retry.'
 
@@ -31,18 +32,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         // completeDraftOrder's own status-guarded updateMany) makes the second concurrent
         // request fail the whole transaction instead of re-applying the shipment.
         const guardedTransfer = await tx.inventoryTransfer.updateMany({ where: { id, status: transfer.status }, data: { status: 'IN_TRANSIT', shippedAt: new Date() } })
-        if (guardedTransfer.count !== 1) throw new Error(TRANSFER_CONFLICT_MESSAGE)
+        if (guardedTransfer.count !== 1) throw userError(TRANSFER_CONFLICT_MESSAGE)
         for (const item of transfer.items) {
           const source = await tx.inventoryItem.findFirst({ where: { productId: item.productId, variantId: item.variantId, locationId: transfer.fromLocationId } })
-          if (!source) throw new Error(`No source inventory exists for product ${item.productId} at ${transfer.fromLocation!.name}`)
+          if (!source) throw userError(`No source inventory exists for product ${item.productId} at ${transfer.fromLocation!.name}`)
           const available = source.quantity - source.reserved
-          if (available < item.quantity) throw new Error(`Not enough available stock to ship ${item.quantity} units from ${transfer.fromLocation!.name}`)
+          if (available < item.quantity) throw userError(`Not enough available stock to ship ${item.quantity} units from ${transfer.fromLocation!.name}`)
           // Guards the decrement itself against a concurrent write to this same inventory row
           // (a sale reservation, another transfer, a manual adjustment) landing between the read
           // above and this write, the same way reserveStock/fulfillOrderStock (lib/inventory.ts)
           // already guard their own decrements against exactly this.
           const decremented = await tx.inventoryItem.updateMany({ where: { id: source.id, quantity: { gte: item.quantity + source.reserved } }, data: { quantity: { decrement: item.quantity } } })
-          if (decremented.count !== 1) throw new Error(`Not enough available stock to ship ${item.quantity} units from ${transfer.fromLocation!.name}`)
+          if (decremented.count !== 1) throw userError(`Not enough available stock to ship ${item.quantity} units from ${transfer.fromLocation!.name}`)
           await tx.inventoryMovement.create({ data: { inventoryId: source.id, type: 'TRANSFER', quantity: -item.quantity, reason: `Shipped transfer ${transfer.reference} to ${transfer.toLocation!.name}`, referenceId: transfer.id } })
           shippedInventoryIds.add(source.id)
         }
@@ -58,7 +59,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         // receive on the same transfer fails the whole transaction instead of both crediting
         // the destination location.
         const guardedTransfer = await tx.inventoryTransfer.updateMany({ where: { id, status: 'IN_TRANSIT' }, data: { status: 'RECEIVED', receivedAt: new Date() } })
-        if (guardedTransfer.count !== 1) throw new Error(TRANSFER_CONFLICT_MESSAGE)
+        if (guardedTransfer.count !== 1) throw userError(TRANSFER_CONFLICT_MESSAGE)
         for (const item of transfer.items) {
           const qty = Math.max(0, item.quantity - item.received)
           if (!qty) continue

@@ -5,6 +5,7 @@ import { clientIp } from '@/lib/request-ip'
 import { json } from '@/lib/utils'
 import { sendNewReviewAlert } from '@/lib/push'
 import { runInBackground } from '@/lib/background'
+import { userError } from '@/lib/user-error'
 
 const NO_STORE = { 'Cache-Control': 'private, no-store' }
 
@@ -39,11 +40,11 @@ export async function POST(req: Request) {
 
     const review = await db.$transaction(async tx => {
       const existing = await tx.review.findFirst({ where: { productId, userId: user.id }, select: { id: true } })
-      if (existing) throw new Error('You have already reviewed this product')
+      if (existing) throw userError('You have already reviewed this product')
       try {
         return await tx.review.create({ data: { productId, userId: user.id, rating, title, body }, select: { id: true, productId: true, rating: true, title: true, body: true, createdAt: true } })
       } catch (error) {
-        if (error instanceof Error && error.message.toLowerCase().includes('unique')) throw new Error('You have already reviewed this product')
+        if (error instanceof Error && error.message.toLowerCase().includes('unique')) throw userError('You have already reviewed this product')
         throw error
       }
     })

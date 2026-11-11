@@ -4,6 +4,7 @@ import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { getStoreCurrency } from '@/lib/store-currency'
 import { Prisma } from '@prisma/client'
+import { userError } from '@/lib/user-error'
 
 const JSON_HEADERS = { 'Cache-Control': 'private, no-store' }
 const INT32_MIN = -2147483648
@@ -83,8 +84,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
       const aggregate = await tx.walletTransaction.aggregate({ where: { userId: id, currency }, _sum: { amount: true } })
       const balance = Number(aggregate._sum.amount || 0)
-      if (balance + amount < 0) throw new Error('Wallet balance cannot become negative')
-      if (balance + amount > INT32_MAX) throw new Error('Wallet balance exceeds the supported limit')
+      if (balance + amount < 0) throw userError('Wallet balance cannot become negative')
+      if (balance + amount > INT32_MAX) throw userError('Wallet balance exceeds the supported limit')
 
       if (referenceId) {
         const existing = await tx.walletTransaction.findFirst({

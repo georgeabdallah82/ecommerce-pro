@@ -6,6 +6,7 @@ import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { checkLowStockAlerts } from '@/lib/push'
 import { runInBackground } from '@/lib/background'
 import { sendBackInStockForInventory } from '@/lib/back-in-stock'
+import { userError } from '@/lib/user-error'
 
 const HISTORY_LIMIT = 50
 
@@ -40,27 +41,27 @@ export async function PATCH(req: Request) {
 
     const updated = await db.$transaction(async tx => {
       const item = await tx.inventoryItem.findUnique({ where: { id } })
-      if (!item) throw new Error('Inventory item not found')
+      if (!item) throw userError('Inventory item not found')
       const next = item.quantity + delta
-      if (next < item.reserved) throw new Error('Cannot reduce stock below reserved quantity')
+      if (next < item.reserved) throw userError('Cannot reduce stock below reserved quantity')
 
       if (requestedLocationId !== undefined && requestedLocationId !== item.locationId) {
         if (requestedLocationId) {
           const location = await tx.storeLocation.findUnique({ where: { id: requestedLocationId }, select: { id: true } })
-          if (!location) throw new Error('Selected location does not exist')
+          if (!location) throw userError('Selected location does not exist')
         }
         const collision = await tx.inventoryItem.findFirst({
           where: { id: { not: id }, productId: item.productId, variantId: item.variantId, locationId: requestedLocationId },
           select: { id: true },
         })
-        if (collision) throw new Error('That product/variant already has inventory at the selected location. Adjust the existing location record instead.')
+        if (collision) throw userError('That product/variant already has inventory at the selected location. Adjust the existing location record instead.')
       }
 
       const write = await tx.inventoryItem.updateMany({
         where: { id, quantity: item.quantity, reserved: { lte: next } },
         data: { quantity: next, ...(threshold !== undefined ? { lowStockThreshold: threshold } : {}), ...(requestedLocationId !== undefined ? { locationId: requestedLocationId } : {}) },
       })
-      if (write.count !== 1) throw new Error('Inventory changed concurrently; please retry the adjustment.')
+      if (write.count !== 1) throw userError('Inventory changed concurrently; please retry the adjustment.')
 
       if (delta !== 0) await tx.inventoryMovement.create({ data: { inventoryId: id, type: movementType, quantity: delta, reason } })
 

@@ -3,6 +3,7 @@ import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { Prisma } from '@prisma/client'
+import { userError } from '@/lib/user-error'
 
 function makeId() {
   return `coin_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`
@@ -61,7 +62,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
       const aggregate = await tx.coinTransaction.aggregate({ where: { userId: id }, _sum: { amount: true } })
       const balance = Math.max(0, Number(aggregate._sum.amount || 0))
-      if (balance + amount < 0) throw new Error('Coin balance cannot become negative')
+      if (balance + amount < 0) throw userError('Coin balance cannot become negative')
 
       if (referenceId) {
         const existing = await tx.coinTransaction.findFirst({
