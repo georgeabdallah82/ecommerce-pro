@@ -88,7 +88,16 @@ jobs:
       - name: End-to-end test (browser)
         run: |
           npm install --no-save --no-audit --no-fund playwright-core@1
-          npx playwright-core install --with-deps chromium
+          # The browser comes from Playwright's download host, not from apt.
+          npx playwright-core install chromium
+          # Its system libraries come from apt, whose mirrors the runner sometimes cannot reach; an
+          # earlier run hung on them for about ten minutes. Try twice, at most three minutes each, and
+          # carry on either way: the browser test below fails by itself if Chromium cannot start.
+          for attempt in 1 2; do
+            timeout 180 npx playwright-core install-deps chromium && break
+            echo "::warning::Attempt $attempt to install Chromium's system libraries did not finish."
+            sleep 15
+          done
           BASE=http://127.0.0.1:8787 ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD='ChangeMe123!' node scripts/e2e/write-path.mjs
 
       # The launch clean-up (Actions > Launch clean-up) on this throwaway database: fake test
