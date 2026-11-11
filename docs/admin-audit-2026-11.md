@@ -10,7 +10,7 @@ Method: a script over every admin route (guard, permission per HTTP method, audi
 - Parcel tracking links accepted `javascript:` addresses that the admin renders as links. Fixed.
 - Customer accounts could load the admin shell. Fixed.
 - Two dead components removed. A storefront test was still reading one of them; it now checks the live homepage.
-- All seven backlog items are done. Two notes remain, both explained below: `roles` is not paged, and two-step login is required for every staff account rather than set in the store settings.
+- All seven backlog items are done. Two decisions were recorded: `roles` is capped at 30 custom roles, and two-step login stays required for every staff account rather than becoming a store setting.
 
 ## Fixed in this branch
 
@@ -42,7 +42,7 @@ Latent, now closed by F1: the orders API, the orders page and the dashboard incl
 ## Backlog, by priority
 
 1. **Unbounded lists.** Twenty-six GET handlers have no limit: `activity` (the audit log, which grows forever), `media`, `collections`, `fulfillments`, `locations`, `metafields`, `pages`, `redirects`, `reports`, `analytics`, `analytics/discounts`, `customers/segments`, `customers/tags`, `roles`, `sales-channels`, `sales-channels/publications`, `settings`, `shipping`, `tax-rates`, `theme/review`, `users`, `webhooks`, `api-credentials`, `blog-posts`, `products/prices`, `products/[id]`. Start with `activity`, `media` and `collections`: add paging and a "load more" control.
-   **Done.** `activity`, `media` and `collections` page with `readPaging` and a Load more control (checked in a browser on `activity`). The other list handlers cap their rows (`LIST_CAP`, `cappedJson`), the report routes refuse a period that is too large rather than cutting it, `theme/review` reads a fixed set of keys, and `products/[id]` returns one product. The exception is `roles`: it returns the custom-role list uncapped. It is short by design (owners create a few roles), so it is left as it is.
+   **Done.** `activity`, `media` and `collections` page with `readPaging` and a Load more control (checked in a browser on `activity`). The other list handlers cap their rows (`LIST_CAP`, `cappedJson`), the report routes refuse a period that is too large rather than cutting it, `theme/review` reads a fixed set of keys, and `products/[id]` returns one product. The exception was `roles`, which returned the custom-role list uncapped. Creating a role was already refused past 30, and the list read now uses the same cap (`MAX_CUSTOM_ROLES`) and reports when it has been cut.
 2. **Dashboard load.** `app/admin/page.tsx` reads every inventory row on each visit to count low stock. Count in SQL and cache the dashboard data for about a minute.
    **Done.** The low-stock count and the other figures come from SQL aggregates in `lib/admin-dashboard-data.ts`, cached with `unstable_cache` for 60 seconds.
 3. **Raw error messages.** `app/api/admin/orders/manual` returns any error's message, and the last branch of `routeError` passes plain `Error` messages through. Add a typed user-facing error and return a generic message for everything else.
@@ -59,7 +59,7 @@ Latent, now closed by F1: the orders API, the orders page and the dashboard incl
 ## Add (recommended)
 
 - Sign a staff member out everywhere, from Users & roles. **Done:** `POST /api/admin/users/sign-out`. Not clicked in the browser run.
-- Require two-step sign-in for all staff, as a store setting. **Already required, and not a setting:** a staff account without two-step is sent to set it up before the admin opens. Checked in a browser. Making it a store setting would be a product decision, so it is not changed here.
+- Require two-step sign-in for all staff, as a store setting. **Already required, and not a setting:** a staff account without two-step is sent to set it up before the admin opens. Checked in a browser. **Decided:** it stays always required; a store setting is not being added.
 - An audit-log retention rule and export, alongside backlog item 1. **Done:** `lib/audit-retention.ts` prunes the log in the daily job, and the activity log exports CSV (checked in a browser).
 
 ## Checked on this branch
@@ -72,7 +72,7 @@ Latent, now closed by F1: the orders API, the orders page and the dashboard incl
 ## Found while checking
 
 - `prisma/seed.ts` created the demo customer with the admin's password hash. Fixed on this branch: the `create` branch now stores the customer's own hash. A fresh database seeded this way opens both demo accounts with their documented passwords.
-- `roles` is not paged (see item 1).
+- `roles` had no read cap (see item 1). Resolved on this branch.
 
 ## Checked after the merge
 
@@ -81,7 +81,7 @@ Latent, now closed by F1: the orders API, the orders page and the dashboard incl
 
 ## Verification
 
-- `tsc` is clean. The suite passes: 1033 tests, including 14 from earlier passes in `tests/user-public`, `tests/safe-url` and `tests/admin-access`, and 3 new ones in `tests/route-error-replies.test.ts`.
+- `tsc` is clean. The suite passes: 1037 tests, including 14 from earlier passes in `tests/user-public`, `tests/safe-url` and `tests/admin-access`, and 3 new ones in `tests/route-error-replies.test.ts` and 4 in `tests/staff-roles-cap.test.ts`.
 - `npm run backend:audit` passes. `npm run build:cloudflare` passes with the CI build settings, including the charset check.
 - Browser checks: 11 of 11 pass against the production build, on a scratch Postgres 16 database seeded by `prisma/seed.ts`, with a temporary staff member, 60 extra audit rows and two WhatsApp numbers added for the checks. The checks were run in headless Chromium.
 - Refund and sign-out checks: 9 of 9 pass against the production build, on a fresh scratch database seeded by the fixed `prisma/seed.ts`.

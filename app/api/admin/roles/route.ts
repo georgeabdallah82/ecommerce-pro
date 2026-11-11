@@ -2,7 +2,8 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
-import { cleanPermissions, getStaffRoles, saveStaffRoles, type StaffRole } from '@/lib/staff-roles'
+import { MAX_CUSTOM_ROLES, cleanPermissions, getStaffRoles, saveStaffRoles, type StaffRole } from '@/lib/staff-roles'
+import { capRows } from '@/lib/admin-list'
 
 const noStore = { 'Cache-Control': 'private, no-store' }
 
@@ -32,7 +33,8 @@ async function withCounts(roles: StaffRole[]) {
 export async function GET() {
   try {
     await requirePermission('users.view')
-    return json({ roles: await withCounts(await getStaffRoles()) }, { headers: noStore })
+    const { rows, truncated } = capRows(await getStaffRoles(), MAX_CUSTOM_ROLES)
+    return json({ roles: await withCounts(rows) }, { headers: { ...noStore, 'X-Truncated': String(truncated) } })
   } catch (e) { return failure(e) }
 }
 
@@ -42,7 +44,7 @@ export async function POST(req: Request) {
     const input = readRole(await req.json().catch(() => ({})))
     if ('error' in input) return json({ error: input.error }, { status: 400, headers: noStore })
     const roles = await getStaffRoles()
-    if (roles.length >= 30) return json({ error: 'You can have up to 30 custom roles' }, { status: 400, headers: noStore })
+    if (roles.length >= MAX_CUSTOM_ROLES) return json({ error: `You can have up to ${MAX_CUSTOM_ROLES} custom roles` }, { status: 400, headers: noStore })
     if (roles.some(r => r.name.toLowerCase() === input.name.toLowerCase())) return json({ error: 'A role with this name already exists' }, { status: 409, headers: noStore })
     const role: StaffRole = { id: `role_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`, ...input }
     await saveStaffRoles([...roles, role])
