@@ -193,3 +193,16 @@
 
 /* Status chip beside the product title. */
 .statusChip { margin-left: 10px; vertical-align: middle; }
+
+/* Stock by location, and media (draggable order, make main). */
+.stockRows { display: grid; gap: 6px; }
+.stockHead, .stockRow { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 120px 90px 90px 80px; align-items: center; gap: 10px; }
+.stockHead { padding: 0 2px; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--admin-muted); }
+.stockRow { padding: 8px 10px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm); background: var(--admin-surface); font-size: 13px; color: var(--admin-ink); }
+.stockItem { font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 640px) {
+  .stockHead { display: none; }
+  .stockRow { grid-template-columns: 1fr 1fr; }
+  .stockRow > span:nth-child(2), .stockRow > span:nth-child(4), .stockRow > span:nth-child(5) { font-size: 12px; }
+}
+.mediaItem[draggable="true"] { cursor: grab; }

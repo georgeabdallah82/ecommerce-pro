@@ -10,6 +10,10 @@ import UnsavedBar from './admin-unsaved-bar'
 import { useConfirm } from './admin-confirm'
 import { MoneyInput, NumInput } from './num-input'
 import { ReadinessStrip } from './admin-readiness'
+import RichTextEditor from './rich-text-editor'
+import StockByLocation, { type StockRow } from './stock-by-location'
+import { descriptionHtml } from '@/lib/sanitize-html'
+import { describeVariantPlan, planVariants, stockOf } from '@/lib/variant-plan'
 import { priceProblem, productReadiness } from '@/lib/editor-readiness'
 
 const STATUS_LABEL: Record<string, string> = { ACTIVE: 'Active', DRAFT: 'Draft', ARCHIVED: 'Archived' }
@@ -44,15 +48,6 @@ async function api(path: string, init?: RequestInit) {
   return data
 }
 function parseOptions(v: Variant) { try { const x = JSON.parse(v.optionJson || '{}'); return x && typeof x === 'object' ? x : {} } catch { return {} } }
-function combos(names: string[], values: string[][]) {
-  const active = names.map((name, i) => ({ name: name.trim(), values: (values[i] || []).map(v => v.trim()).filter(Boolean) })).filter(x => x.name && x.values.length)
-  if (!active.length) return []
-  return active.reduce<{ name: string; options: Record<string, string> }[]>(
-    (acc, opt) => acc.flatMap(row => opt.values.map(value => ({ name: row.name ? `${row.name} / ${value}` : value, options: { ...row.options, [opt.name]: value } }))),
-    [{ name: '', options: {} }],
-  )
-}
-
 // Defined at module scope, not inside ProductEditorV2: a component declared inside another
 // component's body is a new function on every render, so React treats each render's <Card>/
 // <Field>/etc as a different component type and remounts its whole subtree -- every field in
@@ -106,6 +101,9 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
   const [seoMediaPickerOpen, setSeoMediaPickerOpen] = useState(false)
   const [videoBusy, setVideoBusy] = useState(false)
   const [videoError, setVideoError] = useState('')
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  // Bumped on discard so the description editor shows the saved text again.
+  const [editorKey, setEditorKey] = useState(0)
   const initialCollectionIds = (initial.collections || []).map(c => c.collectionId)
   const [collectionIds, setCollectionIds] = useState<string[]>(initialCollectionIds)
 
@@ -122,7 +120,7 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
     () => product.quantity !== undefined ? Number(product.quantity) : (product.inventory || []).filter((x: any) => !x.variantId).reduce((s: number, x: any) => s + Number(x.quantity || 0) - Number(x.reserved || 0), 0),
     [product.quantity, product.inventory],
   )
-  function variantStock(v: Variant) { return v.quantity !== undefined ? Number(v.quantity) : (v.inventory || []).reduce((s: number, x: any) => s + Number(x.quantity || 0) - Number(x.reserved || 0), 0) }
+  function variantStock(v: Variant) { return stockOf(v) }
   const inventoryTotal = product.sharedInventory ? available : (product.variants || []).reduce((s, v) => s + variantStock(v), 0)
   // This editor can only ever show/write one blended quantity per product or variant -- safe
   // when stock lives at zero or one location, but a real split across 2+ locations (from a
@@ -132,6 +130,20 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
   // page, which already edits stock per location correctly.
   const productLocationSplit = (initial.inventory || []).filter((x: any) => !x.variantId).length > 1
   function variantLocationSplit(v: Variant) { return (v.inventory || []).length > 1 }
+
+  const stockRows: StockRow[] = [
+    ...(product.inventory || []).filter((x: any) => !x.variantId).map((x: any) => ({ id: x.id, item: 'Product', location: x.location?.name || 'No location', quantity: Number(x.quantity || 0), reserved: Number(x.reserved || 0) })),
+    ...product.variants.flatMap(v => (v.inventory || []).map((x: any) => ({ id: x.id, item: v.name || 'Variant', location: x.location?.name || 'No location', quantity: Number(x.quantity || 0), reserved: Number(x.reserved || 0) }))),
+  ]
+  async function saveStock(row: StockRow, target: number) {
+    const r = await fetch('/api/admin/inventory', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: row.id, delta: target - row.quantity, reason: 'Adjusted from the product page' }) })
+    const d = await r.json().catch(() => ({}))
+    if (!r.ok) throw new Error(d.error || 'Unable to save stock')
+    const quantity = Number(d.item?.quantity ?? target)
+    const patch = (x: any) => (x.id === row.id ? { ...x, quantity, reserved: Number(d.item?.reserved ?? x.reserved ?? 0) } : x)
+    setProduct(p => ({ ...p, inventory: (p.inventory || []).map(patch), variants: p.variants.map(v => ({ ...v, inventory: (v.inventory || []).map(patch) })) }))
+    setMessage(`${row.item} at ${row.location} now has ${quantity} in stock.`)
+  }
 
   const readiness = useMemo(() => productReadiness({
     name: product.name || '', sku: product.sku || '', basePrice: Number(product.basePrice) || 0, compareAtPrice: product.compareAtPrice,
@@ -200,6 +212,7 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
     setCollectionIds(initialCollectionIds)
     setOptionNames(initialNames)
     setOptionValues(initialNames.map(n => Array.from(new Set((initial.variants || []).map(v => String(parseOptions(v)[n] || '')).filter(Boolean)))))
+    setEditorKey(k => k + 1)
     setDirty(false); setError(''); setMessage('')
   }
 
@@ -222,13 +235,20 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to delete product'); setBusy(false) }
   }
 
-  function generateVariants() {
-    const c = combos(optionNames, optionValues)
-    if (!c.length) { setError('Add an option name and values first'); return }
-    const old = new Map(product.variants.map(v => [JSON.stringify(parseOptions(v)), v]))
-    const next = c.map((x, i) => old.get(JSON.stringify(x.options)) || ({ name: x.name, sku: `${product.sku}-${i + 1}`, barcode: null, optionJson: JSON.stringify(x.options), price: product.basePrice, compareAtPrice: product.compareAtPrice, quantity: 0, lowStockThreshold: 5, locationId: product.locationId ?? null } as Variant))
-    update({ variants: next })
-    setMessage(`${next.length} variants ready to save`)
+  // The plan (what is kept, added and removed) is worked out first, so the removals can be
+  // confirmed before any stock records go.
+  async function generateVariants() {
+    const plan = planVariants(product.variants, optionNames, optionValues, product.sku || '', (combo, sku) => ({ name: combo.name, sku, barcode: null, optionJson: JSON.stringify(combo.options), price: product.basePrice, compareAtPrice: product.compareAtPrice, quantity: 0, lowStockThreshold: 5, locationId: product.locationId ?? null }) as Variant)
+    if (!plan.next.length) { setError('Add an option name and values first'); return }
+    if (plan.removed.length) {
+      const stock = plan.removed.reduce((sum, v) => sum + variantStock(v), 0)
+      const names = plan.removed.map(v => v.name || v.sku).join(', ')
+      const ok = await confirm({ title: `Remove ${plan.removed.length} ${plan.removed.length === 1 ? 'variant' : 'variants'}?`, message: `${names} will be removed when you save${stock ? `, with ${stock} units in stock` : ''}. Removed variants lose their stock records.`, confirmLabel: 'Remove variants' })
+      if (!ok) return
+    }
+    setError('')
+    update({ variants: plan.next })
+    setMessage(`Ready to save: ${describeVariantPlan(plan)}.`)
   }
 
   async function togglePublication(channelId: string, available: boolean) {
@@ -238,6 +258,14 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
       const data = await api('/api/admin/sales-channels/publications', { method: 'POST', body: JSON.stringify({ productId: product.id, channelId, available }) })
       setProductPublications(prev => [...prev.filter((p: any) => p.channelId !== channelId), data.publication])
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to update channel availability') }
+  }
+
+  function moveImageTo(from: number, to: number) {
+    if (from === to || from < 0 || to < 0 || from >= product.images.length || to >= product.images.length) return
+    const a = [...product.images]
+    const [item] = a.splice(from, 1)
+    a.splice(to, 0, item)
+    update({ images: a })
   }
 
   function moveImage(i: number, d: -1 | 1) {
@@ -277,15 +305,16 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
             <Field label="Title"><input className={ui.input} value={product.name} onChange={e => update({ name: e.target.value })} /></Field>
             <Field label="Short description"><textarea className={ui.textarea} rows={4} value={product.shortDescription || ''} onChange={e => update({ shortDescription: e.target.value })} /></Field>
             <Field label="Size guide (optional)"><textarea className={ui.textarea} rows={5} placeholder={'Size | Chest (cm) | Length (cm)\nS | 88-92 | 68\nM | 96-100 | 70'} value={product.sizeGuide || ''} onChange={e => update({ sizeGuide: e.target.value })} /><span className={ui.muted} style={{ fontSize: 12 }}>First line: the column names. Then one size per line, cells separated by |. Shown under the description.</span></Field>
-            <Field label="Description"><textarea className={ui.textarea} rows={12} value={product.description || ''} onChange={e => update({ description: e.target.value })} /></Field>
+            <div className={s.field}><span>Description</span><RichTextEditor value={descriptionHtml(product.description)} resetKey={editorKey} minHeight={280} onChange={html => update({ description: html })} /></div>
           </Card>
 
           <Card title="Media" sub="Reorder, upload, or choose from your media library">
             <div className={s.mediaGrid}>
-              {(product.images || []).map((im, i) => <div className={s.mediaItem} key={im.id || i}>
+              {(product.images || []).map((im, i) => <div className={s.mediaItem} key={im.id || i} draggable onDragStart={() => setDragIndex(i)} onDragOver={e => e.preventDefault()} onDrop={() => { if (dragIndex !== null) moveImageTo(dragIndex, i); setDragIndex(null) }} onDragEnd={() => setDragIndex(null)}>
                 {im.url ? <img src={im.url} alt={im.alt || ''} /> : <div className={s.mediaPlaceholder}>No image</div>}
                 <div className={s.mediaControls}>
                   {i === 0 && <span className={s.pill}>Main image</span>}
+                  {i > 0 && <button className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} onClick={() => moveImageTo(i, 0)}>Make main</button>}
                   <input className={ui.input} placeholder="Alt text" value={im.alt || ''} onChange={e => update({ images: product.images.map((x, n) => n === i ? { ...x, alt: e.target.value } : x) })} />
                   <div className="inline">
                     <button className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} onClick={() => moveImage(i, -1)} disabled={i === 0}>↑</button>
@@ -354,12 +383,15 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
             <div className={s.notice}><strong>{product.sharedInventory ? 'Shared inventory pool' : product.variants.length ? 'Variant inventory' : 'Product inventory'}</strong><span>{inventoryTotal} units represented by the current inventory mode.</span></div>
           </Card>
           {(!product.variants.length || product.sharedInventory) && <Card title="Product inventory" sub="Used for non-variant stock or a shared variant pool">
-            {productLocationSplit ? <div className={s.notice}><strong>Stock is split across multiple locations</strong><span>{available} units total. Manage quantities per location from the <Link href="/admin/inventory" className={ui.textLink}>Inventory page</Link> instead of here.</span></div> : <div className={s.threeCol}>
+            {productLocationSplit ? <div className={s.notice}><strong>Stock is split across multiple locations</strong><span>{available} units total. Manage quantities per location in <b>Stock by location</b> below.</span></div> : <div className={s.threeCol}>
               <Field label="Available"><NumInput className={ui.input} value={available} empty={0} onValue={v => update({ quantity: v ?? 0 })} /></Field>
               <Field label="Location"><select className={ui.select} value={product.locationId ?? product.inventory?.[0]?.locationId ?? ''} onChange={e => update({ locationId: e.target.value || null })}><option value="">Unassigned</option>{(locations || []).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select></Field>
               <Field label="Low stock"><NumInput className={ui.input} value={product.lowStockThreshold ?? product.inventory?.[0]?.lowStockThreshold ?? 5} empty={0} onValue={v => update({ lowStockThreshold: v ?? 0 })} /></Field>
             </div>}
           </Card>}
+          <Card title="Stock by location" sub="On-hand stock at each location. Each row saves on its own, so it does not wait for the product to be saved.">
+            <StockByLocation rows={stockRows} onSave={saveStock} />
+          </Card>
         </>}
 
         {tab === 'Variants' && <>
@@ -380,6 +412,7 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
             <Check checked={Boolean(product.sharedInventory)} onChange={v => update({ sharedInventory: v })} title="Shared inventory pool" text="All variants use the same product-level available quantity." />
           </Card>
           <Card title="Variants" sub={`${product.variants.length} variants`}>
+            {product.variants.length > 0 && <div className="inline"><button type="button" className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} onClick={() => { update({ variants: product.variants.map(v => ({ ...v, price: product.basePrice })) }); setMessage('Every variant now uses the product price. Save to apply.') }}>Use the product price for every variant</button></div>}
             <div className={s.variantHead}><span>Variant</span><span>SKU</span><span>Price</span><span>Stock</span><span></span></div>
             {product.variants.map((v, i) => <div className={s.variantRow} key={v.id || i}>
               <input className={`${ui.input} ${s.variantField}`} value={v.name} onChange={e => updateVariant(i, { name: e.target.value })} />
