@@ -1,0 +1,124 @@
+/*
+ * Products > Change prices. Its own module (not the shared bring-back.module.css), so changes
+ * here cannot move the other admin pages. Colours are the --admin-* tokens: dark mode is automatic.
+ */
+
+.page { display: grid; gap: 16px; max-width: 980px; margin: 0 auto; padding-bottom: 32px; }
+
+.header { display: grid; gap: 4px; }
+.title { margin: 6px 0 0; font-size: var(--admin-page-title); font-weight: 850; letter-spacing: -.02em; color: var(--admin-ink); }
+.subtitle { margin: 0; font-size: 14px; line-height: 1.5; color: var(--admin-muted); }
+
+.lastChange {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-surface);
+}
+.lastText { display: grid; gap: 2px; min-width: 0; font-size: 13px; }
+.lastText strong { color: var(--admin-ink); }
+
+.step { display: grid; gap: 14px; padding: 18px 20px; }
+.stepHead { display: flex; align-items: center; gap: 10px; }
+.stepNum {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--admin-ink);
+  color: var(--admin-surface);
+  font-size: 12px;
+  font-weight: 800;
+  flex: none;
+}
+.stepTitle { margin: 0; font-size: 15px; font-weight: 800; color: var(--admin-ink); }
+
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; align-items: end; }
+.field { display: grid; gap: 0; min-width: 0; }
+
+.picker { display: grid; gap: 8px; }
+.search { display: flex; align-items: center; gap: 8px; color: var(--admin-muted); }
+.search input { flex: 1; min-width: 0; }
+.found { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.foundBtn {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-surface);
+  color: var(--admin-ink);
+  font: inherit;
+  font-size: 13px;
+  text-align: start;
+  cursor: pointer;
+}
+.foundBtn:hover { background: var(--admin-border-soft); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px 4px 10px;
+  border-radius: 999px;
+  background: var(--admin-border-soft);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--admin-ink);
+}
+.chipRemove { display: grid; place-items: center; width: 20px; height: 20px; border: 0; border-radius: 50%; background: transparent; color: var(--admin-muted); cursor: pointer; }
+.chipRemove:hover { background: var(--admin-surface); color: var(--admin-ink); }
+
+.example { margin: 0; font-size: 13px; color: var(--admin-muted); }
+.example strong { color: var(--admin-ink); font-variant-numeric: tabular-nums; }
+.problem { margin: 0; font-size: 13px; font-weight: 700; color: var(--admin-danger); }
+
+.details { font-size: 13px; }
+.details > summary { cursor: pointer; font-weight: 700; color: var(--admin-ink-soft); }
+.details[open] > summary { margin-bottom: 12px; }
+
+.summary { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 1px solid var(--admin-border);
+  border-radius: 999px;
+  background: var(--admin-bg);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--admin-ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.pillOn { border-color: var(--admin-accent); color: var(--admin-accent-strong); }
+.pillDanger { border-color: var(--admin-danger-border); background: var(--admin-danger-soft); color: var(--admin-danger); }
+.note { margin: 0; font-size: 13px; color: var(--admin-danger); }
+
+.below { color: var(--admin-danger); }
+.costNote { font-size: 11px; font-weight: 600; color: var(--admin-muted); }
+.delta { font-variant-numeric: tabular-nums; color: var(--admin-ink-soft); }
+.delta del, .delta strong { font-variant-numeric: tabular-nums; }
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 14px;
+  border-top: 1px solid var(--admin-border-soft);
+}
+.hint { font-size: 13px; color: var(--admin-muted); }
+.blocked { font-size: 13px; font-weight: 700; color: var(--admin-danger); }
+
+@media (max-width: 560px) {
+  .step { padding: 14px; }
+  .lastChange { flex-direction: column; align-items: stretch; }
+  .footer { flex-direction: column; align-items: stretch; }
+  .footer .btn, .footer button { justify-content: center; }
+}
