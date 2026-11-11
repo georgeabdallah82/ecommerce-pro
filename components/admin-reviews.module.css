@@ -1,6 +1,6 @@
 /*
  * Reviews (app/admin/reviews) - CSS Module on the --admin-* tokens, the same look as the
- * Orders list (admin-orders-list.module.css). The page used to borrow the old global
+ * Orders list. The page used to borrow the old global
  * orderViews / catalogToolbar / productSearch classes, which no longer style their buttons:
  * the tabs rendered as the browser's default buttons (thick black outlines, tiny text).
  */

@@ -4,6 +4,7 @@ import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { dispatchInventoryUpdated } from '@/lib/webhooks'
 import { userError } from '@/lib/user-error'
+import { routeError } from '@/lib/api-error'
 
 const PO_RECEIVE_CONFLICT_MESSAGE = 'This purchase order was just updated — please retry.'
 
@@ -49,7 +50,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           // the exact quantityReceived just read (mirroring the admin inventory PATCH's own
           // updateMany guard) makes the second concurrent request fail instead of re-applying it.
           const guarded = await tx.purchaseOrderItem.updateMany({ where: { id: item.id, quantityReceived: item.quantityReceived }, data: { quantityReceived: nextReceived } })
-          if (guarded.count !== 1) throw userError(PO_RECEIVE_CONFLICT_MESSAGE)
+          if (guarded.count !== 1) throw userError(PO_RECEIVE_CONFLICT_MESSAGE, 409)
           if (po.location) {
             const inventory = await tx.inventoryItem.findFirst({ where: { productId: item.productId, variantId: item.variantId, locationId: po.locationId } })
             if (inventory) {
@@ -74,7 +75,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     dispatchInventoryUpdated(receivedInventoryIds)
     return json({ purchaseOrder: updated })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to update purchase order'
-    return json({ error: message }, { status: message === PO_RECEIVE_CONFLICT_MESSAGE ? 409 : 400 })
+    return routeError(e, 'Unable to update purchase order', 400)
   }
 }

@@ -2,6 +2,7 @@ import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { recomputeSegmentMembership } from '@/lib/customer-segments'
+import { routeError } from '@/lib/api-error'
 
 // Re-runs a rule-based segment's matching against current customer data and adds any newly
 // qualifying customers as members. Admin-triggered rather than automatic (on a schedule or on
@@ -17,7 +18,6 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     await audit(actor.id, 'customer_segment.recomputed', 'CustomerSegment', id, { added })
     return json({ added })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to recompute segment membership'
-    return json({ error: message }, { status: message === 'Segment not found' ? 404 : 400 })
+    return routeError(e, 'Unable to recompute segment membership', 400)
   }
 }

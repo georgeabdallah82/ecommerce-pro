@@ -3,6 +3,7 @@ import { requirePermission } from '@/lib/auth'
 import { json } from '@/lib/utils'
 import { sendCustomerPushCampaign } from '@/lib/push'
 import { getThemeState } from '@/lib/theme'
+import { routeError } from '@/lib/api-error'
 
 // The store's icon on the notification: the theme's favicon, else its logo. Phones don't draw
 // SVG notification icons, so an SVG one is left out (the browser's own icon shows instead).
@@ -26,7 +27,6 @@ export async function POST(req: Request) {
     await audit(actor.id, 'ADMIN_PUSH_CAMPAIGN', 'customer', undefined, { title, sent: result.sent, failed: result.failed })
     return json(result)
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unable to send push campaign'
-    return json({ error: message === 'FORBIDDEN' ? 'Forbidden' : message === 'UNAUTHORIZED' ? 'Unauthorized' : message }, { status: message === 'FORBIDDEN' ? 403 : message === 'UNAUTHORIZED' ? 401 : 400 })
+    return routeError(error, 'Unable to send push campaign', 400)
   }
 }

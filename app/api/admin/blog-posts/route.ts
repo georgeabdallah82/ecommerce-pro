@@ -82,9 +82,8 @@ export async function POST(req: Request) {
     await audit(actor.id, 'blogPost.created', 'BlogPost', post.id, { title, handle, status })
     return json({ post: { ...post, tags } }, { status: 201 })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to create post'
-    if (message.includes('Unique constraint')) return json({ error: 'A post with this handle already exists.' }, { status: 409 })
-    return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 400 })
+    if (e instanceof Error && e.message.includes('Unique constraint')) return json({ error: 'A post with this handle already exists.' }, { status: 409 })
+    return routeError(e, 'Unable to create post', 400)
   }
 }
 
@@ -124,9 +123,8 @@ export async function PATCH(req: Request) {
     await audit(actor.id, 'blogPost.updated', 'BlogPost', id, { fields: Object.keys(data) })
     return json({ post: { ...post, tags: readTags(post.tagsJson) } })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to update post'
-    if (message.includes('Unique constraint')) return json({ error: 'A post with this handle already exists.' }, { status: 409 })
-    return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 400 })
+    if (e instanceof Error && e.message.includes('Unique constraint')) return json({ error: 'A post with this handle already exists.' }, { status: 409 })
+    return routeError(e, 'Unable to update post', 400)
   }
 }
 
@@ -140,7 +138,6 @@ export async function DELETE(req: Request) {
     await audit(actor.id, 'blogPost.deleted', 'BlogPost', id, {})
     return json({ ok: true })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to delete post'
-    return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 400 })
+    return routeError(e, 'Unable to delete post', 400)
   }
 }

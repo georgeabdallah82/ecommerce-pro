@@ -49,9 +49,8 @@ export async function POST(req: Request) {
     await audit(actor.id, 'page.created', 'Page', page.id, { title, handle, status })
     return json({ page }, { status: 201 })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to create page'
-    if (message.includes('Unique constraint')) return json({ error: 'A page with this handle already exists.' }, { status: 409 })
-    return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 400 })
+    if (e instanceof Error && e.message.includes('Unique constraint')) return json({ error: 'A page with this handle already exists.' }, { status: 409 })
+    return routeError(e, 'Unable to create page', 400)
   }
 }
 
@@ -89,9 +88,8 @@ export async function PATCH(req: Request) {
     await audit(actor.id, 'page.updated', 'Page', id, { fields: Object.keys(data) })
     return json({ page })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to update page'
-    if (message.includes('Unique constraint')) return json({ error: 'A page with this handle already exists.' }, { status: 409 })
-    return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 400 })
+    if (e instanceof Error && e.message.includes('Unique constraint')) return json({ error: 'A page with this handle already exists.' }, { status: 409 })
+    return routeError(e, 'Unable to update page', 400)
   }
 }
 
@@ -105,7 +103,6 @@ export async function DELETE(req: Request) {
     await audit(actor.id, 'page.deleted', 'Page', id, {})
     return json({ ok: true })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to delete page'
-    return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 400 })
+    return routeError(e, 'Unable to delete page', 400)
   }
 }

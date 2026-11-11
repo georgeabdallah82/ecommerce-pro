@@ -40,8 +40,7 @@ export async function POST(req: Request) {
     await audit(actor.id, 'tax.created', 'TaxRate', rate.id, { name, countries: rate.countries, rate: rate.rate })
     return json({ rate }, { status: 201 })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to create tax rate'
-    return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 400 })
+    return routeError(e, 'Unable to create tax rate', 400)
   }
 }
 
@@ -66,8 +65,7 @@ export async function PATCH(req: Request) {
     await audit(actor.id, 'tax.updated', 'TaxRate', id, { fields: Object.keys(data) })
     return json({ rate })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to update tax rate'
-    return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 400 })
+    return routeError(e, 'Unable to update tax rate', 400)
   }
 }
 
@@ -81,7 +79,6 @@ export async function DELETE(req: Request) {
     await audit(actor.id, 'tax.deleted', 'TaxRate', id, {})
     return json({ ok: true })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to delete tax rate'
-    return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 400 })
+    return routeError(e, 'Unable to delete tax rate', 400)
   }
 }

@@ -64,9 +64,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     await audit(actor.id, 'collection.updated', 'Collection', id, { fields: Object.keys(data), productCount: Array.isArray(b.productIds) ? b.productIds.length : undefined })
     return json({ collection })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to update collection'
-    if (message.includes('Unique constraint')) return json({ error: 'A collection with this handle already exists.' }, { status: 409 })
-    return json({ error: message }, { status: 400 })
+    if (e instanceof Error && e.message.includes('Unique constraint')) return json({ error: 'A collection with this handle already exists.' }, { status: 409 })
+    return routeError(e, 'Unable to update collection', 400)
   }
 }
 

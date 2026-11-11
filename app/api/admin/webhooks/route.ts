@@ -4,6 +4,7 @@ import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { cappedJson, LIST_CAP } from '@/lib/admin-list'
+import { routeError } from '@/lib/api-error'
 
 const webhookStatuses = new Set(['ACTIVE', 'DISABLED'])
 
@@ -22,8 +23,7 @@ export async function GET() {
     const rows = await db.webhookEndpoint.findMany({ orderBy: { createdAt: 'desc' }, take: LIST_CAP + 1 })
     return cappedJson(rows.map(({ secret: _secret, lastPayload, ...r }) => ({ ...r, secretConfigured: true, hasFailedDelivery: !!lastPayload })), LIST_CAP)
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Forbidden'
-    return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 401 })
+    return routeError(e, 'Unable to load webhooks', 400)
   }
 }
 
@@ -47,8 +47,7 @@ export async function POST(req: Request) {
     // it's otherwise unrecoverable, since GET and PATCH always strip it.
     return json({ webhook: { ...webhook, secretConfigured: true } }, { status: 201 })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to create webhook endpoint'
-    return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 400 })
+    return routeError(e, 'Unable to create webhook endpoint', 400)
   }
 }
 
@@ -81,8 +80,7 @@ export async function PATCH(req: Request) {
     await audit(actor.id, 'webhook.updated', 'WebhookEndpoint', id, { fields: Object.keys(data) })
     return json({ webhook: { ...webhook, secret: undefined, lastPayload: undefined, secretConfigured: true } })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to update webhook endpoint'
-    const status = message === 'FORBIDDEN' ? 403 : message.includes('Record to update not found') ? 404 : 400
-    return json({ error: message }, { status })
+    if (e instanceof Error && e.message.includes('Record to update not found')) return json({ error: 'That webhook endpoint no longer exists.' }, { status: 404 })
+    return routeError(e, 'Unable to update webhook endpoint', 400)
   }
 }

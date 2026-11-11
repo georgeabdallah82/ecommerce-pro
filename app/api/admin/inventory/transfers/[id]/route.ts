@@ -4,6 +4,7 @@ import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { dispatchInventoryUpdated } from '@/lib/webhooks'
 import { userError } from '@/lib/user-error'
+import { routeError } from '@/lib/api-error'
 
 const TRANSFER_CONFLICT_MESSAGE = 'This transfer was just updated — please retry.'
 
@@ -32,7 +33,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         // completeDraftOrder's own status-guarded updateMany) makes the second concurrent
         // request fail the whole transaction instead of re-applying the shipment.
         const guardedTransfer = await tx.inventoryTransfer.updateMany({ where: { id, status: transfer.status }, data: { status: 'IN_TRANSIT', shippedAt: new Date() } })
-        if (guardedTransfer.count !== 1) throw userError(TRANSFER_CONFLICT_MESSAGE)
+        if (guardedTransfer.count !== 1) throw userError(TRANSFER_CONFLICT_MESSAGE, 409)
         for (const item of transfer.items) {
           const source = await tx.inventoryItem.findFirst({ where: { productId: item.productId, variantId: item.variantId, locationId: transfer.fromLocationId } })
           if (!source) throw userError(`No source inventory exists for product ${item.productId} at ${transfer.fromLocation!.name}`)
@@ -59,7 +60,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         // receive on the same transfer fails the whole transaction instead of both crediting
         // the destination location.
         const guardedTransfer = await tx.inventoryTransfer.updateMany({ where: { id, status: 'IN_TRANSIT' }, data: { status: 'RECEIVED', receivedAt: new Date() } })
-        if (guardedTransfer.count !== 1) throw userError(TRANSFER_CONFLICT_MESSAGE)
+        if (guardedTransfer.count !== 1) throw userError(TRANSFER_CONFLICT_MESSAGE, 409)
         for (const item of transfer.items) {
           const qty = Math.max(0, item.quantity - item.received)
           if (!qty) continue
@@ -88,7 +89,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     await audit(actor.id, 'inventory.transfer.updated', 'InventoryTransfer', id, { from: transfer.status, to: nextStatus })
     return json({ transfer: await db.inventoryTransfer.findUnique({ where: { id }, include: { items: true, fromLocation: true, toLocation: true } }) })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to update transfer'
-    return json({ error: message }, { status: message === TRANSFER_CONFLICT_MESSAGE ? 409 : 400 })
+    return routeError(e, 'Unable to update transfer', 400)
   }
 }

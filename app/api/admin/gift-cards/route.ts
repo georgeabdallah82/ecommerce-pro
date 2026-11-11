@@ -60,7 +60,7 @@ export async function PATCH(req: Request) {
       // second concurrent adjustment fail instead of overwriting the first.
       const updated = await db.$transaction(async tx => {
         const guarded = await tx.giftCard.updateMany({ where: { id, balance: card.balance }, data: { balance: next } })
-        if (guarded.count !== 1) throw userError('This gift card was just modified — please retry.')
+        if (guarded.count !== 1) throw userError('This gift card was just modified — please retry.', 409)
         return tx.giftCard.findUnique({ where: { id } })
       })
       await audit(actor.id, 'gift_card.adjusted', 'GiftCard', id, { delta, balance: next })
@@ -70,7 +70,6 @@ export async function PATCH(req: Request) {
     await audit(actor.id, 'gift_card.updated', 'GiftCard', id, { fields: Object.keys(b) })
     return json({ giftCard: updated })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to update gift card'
-    return json({ error: message }, { status: message === 'This gift card was just modified — please retry.' ? 409 : 400 })
+    return routeError(e, 'Unable to update gift card', 400)
   }
 }

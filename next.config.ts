@@ -10,6 +10,13 @@ const nextConfig: NextConfig = {
   // Cloudflare build couldn't resolve it. Ship the whole package.
   outputFileTracingIncludes: { '/*': ['./node_modules/pg-cloudflare/**/*'] },
   poweredByHeader: false,
+  // Old admin pages that only redirected. Their links and bookmarks keep working through these.
+  async redirects() {
+    return [
+      { source: '/admin/content', destination: '/admin/online-store/theme-editor', permanent: false },
+      { source: '/admin/data-transfer', destination: '/admin/products/import', permanent: false },
+    ]
+  },
 }
 
 initOpenNextCloudflareForDev()

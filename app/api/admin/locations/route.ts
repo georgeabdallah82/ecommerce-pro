@@ -26,8 +26,7 @@ export async function POST(req: Request) {
     await audit(actor.id, 'location.created', 'StoreLocation', location.id, { name, handle })
     return json({ location }, { status: 201 })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unable to create location'
-    if (message.includes('Unique constraint')) return json({ error: 'A location with this handle already exists.' }, { status: 409 })
-    return json({ error: message }, { status: 400 })
+    if (e instanceof Error && e.message.includes('Unique constraint')) return json({ error: 'A location with this handle already exists.' }, { status: 409 })
+    return routeError(e, 'Unable to create location', 400)
   }
 }

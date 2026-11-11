@@ -159,7 +159,7 @@ export async function PATCH(req: Request) {
         // read) so a concurrent cancel/refund/return that read the same snapshot loses the race
         // here instead of both succeeding and together double-refunding.
         const guardedOrder = await tx.order.updateMany({ where: { id: order.id, updatedAt: order.updatedAt }, data: { updatedAt: new Date() } })
-        if (guardedOrder.count !== 1) throw userError(ORDER_UPDATE_CONFLICT_MESSAGE)
+        if (guardedOrder.count !== 1) throw userError(ORDER_UPDATE_CONFLICT_MESSAGE, 409)
       }
       const returnedToSender = cancelling && order.status === OrderStatus.SHIPPED
       let restockedInventoryIds: string[] = []
@@ -317,6 +317,6 @@ export async function PATCH(req: Request) {
     if (message === ORDER_UPDATE_CONFLICT_MESSAGE || (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2034')) {
       return json({ error: ORDER_UPDATE_CONFLICT_MESSAGE }, { status: 409 })
     }
-    return json({ error: message === 'FORBIDDEN' ? 'Forbidden' : message }, { status: message === 'FORBIDDEN' ? 403 : 400 })
+    return routeError(e, 'Unable to update order', 400)
   }
 }
