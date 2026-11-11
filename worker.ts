@@ -67,21 +67,29 @@ const worker = {
   // never leaves this Worker.
   async scheduled(controller: { cron: string; scheduledTime: number }, env: any, ctx: ExecutionContext): Promise<void> {
     const site = String(env?.NEXT_PUBLIC_SITE_URL || env?.APP_URL || 'https://internal.invalid').replace(/\/$/, '')
-    let path = '/api/internal/daily'
+    const paths: string[] = []
     if (controller.cron === ORDER_WATCH_CRON) {
-      // The marker file is the only thing read first: no order being watched, or night time, means
-      // the database is never touched (the point of this check).
+      // Every 15 minutes, refunds the store has not recorded are confirmed with the gateway (lib/refund-reconciliation.ts).
+      paths.push('/api/internal/reconcile-refunds')
+      // The marker file is the only thing read first: no order being watched, or night time, means the
+      // database is never touched by the order watch.
       try {
         const object = await env?.MEDIA_BUCKET?.get(ORDER_WATCH_KEY)
         const watch = object ? parseWatch(await object.text()) : null
-        if (!watch?.armed || inQuietHours(new Date(controller.scheduledTime), watch.tz)) return
-      } catch { return }
-      path = '/api/internal/order-watch'
+        if (watch?.armed && !inQuietHours(new Date(controller.scheduledTime), watch.tz)) paths.push('/api/internal/order-watch')
+      } catch { /* the order watch waits for the next run */ }
+    } else {
+      paths.push('/api/internal/daily')
     }
-    const request = new Request(`${site}${path}`, { method: 'POST', headers: { 'x-internal-job': internalJobKey(), 'x-cron': controller.cron } })
-    const response = await worker.fetch(request, env, ctx)
-    const body = await response.text().catch(() => '')
-    if (!response.ok) throw new Error(`${path} answered ${response.status}: ${body.slice(0, 300)}`)
+    // Each job runs even when an earlier one failed. The first failure is reported to the cron run.
+    let failure: Error | null = null
+    for (const path of paths) {
+      const request = new Request(`${site}${path}`, { method: 'POST', headers: { 'x-internal-job': internalJobKey(), 'x-cron': controller.cron } })
+      const response = await worker.fetch(request, env, ctx)
+      const body = await response.text().catch(() => '')
+      if (!response.ok && !failure) failure = new Error(`${path} answered ${response.status}: ${body.slice(0, 300)}`)
+    }
+    if (failure) throw failure
   },
 }
 

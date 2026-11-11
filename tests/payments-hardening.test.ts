@@ -57,8 +57,11 @@ test('the payment webhook takes refund amounts from the gateway, never from its 
   const webhook = read('app/api/payments/areeba/webhook/route.ts')
   assert.doesNotMatch(webhook, /body\.order\?\.totalRefundedAmount/)
   assert.doesNotMatch(webhook, /body\.order\?\.status/)
-  assert.match(webhook, /areebaOrderRefunds\(orderNumber\)/)
-  assert.match(webhook, /\}, \{ requireTransaction: true \} as any\)/)
+  assert.match(webhook, /reconcileGatewayRefunds\(order\.id, order\.orderNumber\)/)
+  // The reconciliation itself (lib/refund-reconciliation.ts) asks the gateway, in a transaction that cannot run partly.
+  const reconciliation = read('lib/refund-reconciliation.ts')
+  assert.match(reconciliation, /areebaOrderRefunds\(orderNumber\)/)
+  assert.match(reconciliation, /\}, \{ requireTransaction: true \} as any\)/)
 })
 
 test('one gateway read serves both the payment status and the refund totals', () => {

@@ -140,7 +140,8 @@ describe('order watch: wiring', () => {
     const marker = w.indexOf('MEDIA_BUCKET?.get(ORDER_WATCH_KEY)')
     const call = w.indexOf('worker.fetch(request, env, ctx)', marker)
     assert.ok(marker > 0 && call > marker)
-    assert.match(w, /!watch\?\.armed \|\| inQuietHours/)
+    assert.match(w, /watch\?\.armed && !inQuietHours/)
+    assert.match(w, /paths\.push\('\/api\/internal\/reconcile-refunds'\)/)
   })
   it('only the cron can run the check, and it stays out of the public media route', () => {
     assert.match(read('app/api/internal/order-watch/route.ts'), /isInternalJobRequest\(req\)/)
