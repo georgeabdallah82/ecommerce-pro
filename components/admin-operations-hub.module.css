@@ -1,37 +1,13 @@
 /*
- * Operations hub - CSS Modules, same componentization pattern as the rest
- * of #74. Before this module, every visual detail on this page (the tile
- * grid, tile icon chips, the "attention" tone, panel list rows) came from a
- * single hardcoded, light-only CSS string injected in app/admin/layout.tsx
- * (see the `adminCss` block there) - values like #fff, #e4e4df, #6a6a64,
- * #f2f2ed, #3d3d38, #fafaf8, #ecece7 and #ead9a4 have no dark-mode
- * counterpart, so this entire page (including every list row, and the
- * "attention" tone used to flag abandoned checkouts) rendered with the
- * light theme's colors even with dark mode on. This module uses the real
- * --admin-* tokens instead, so dark mode is automatic.
+ * Operations page. CSS Modules using the --admin-* tokens from
+ * app/admin/admin-overhaul.css, so dark mode is automatic.
  */
 
 .page { max-width: 1480px; margin: 0 auto; padding-bottom: 32px; }
 
 .loading { padding: 24px; text-align: center; }
 
-.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
-.grid.wide { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-.tile { display: flex; align-items: center; gap: 12px; padding: 18px; }
-.tileAttention { border-color: var(--admin-warning); }
-.tileIcon {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  flex: none;
-  border-radius: var(--admin-radius-sm);
-  background: var(--admin-border-soft);
-  color: var(--admin-ink-soft);
-}
-.tileLabel { font-size: 12px; }
-.tileCount { display: block; margin-top: 5px; font-size: 26px; letter-spacing: -.03em; color: var(--admin-ink); }
 
 .panel { padding: 20px; }
 .panel h3 { margin: 0 0 5px; font-size: 17px; color: var(--admin-ink); }
@@ -54,10 +30,6 @@
 }
 a.row { cursor: pointer; }
 
-@media (max-width: 1100px) { .grid { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 760px) { .grid.wide { grid-template-columns: 1fr; } }
-/* Stat tiles stay two per row on phones, with the icon above the number. */
-@media (max-width: 520px) { .tile { flex-direction: column; align-items: flex-start; gap: 8px; padding: 14px; } }
 
 /* Entity management rows (locations, sales channels, webhooks, API
    credentials) -- like .row above but with a trailing actions column,
@@ -113,3 +85,26 @@ a.row { cursor: pointer; }
 .reminderBox p { margin: 0; font-size: 12px; }
 .reminderToggle { display: flex; gap: 8px; align-items: center; font-size: 13px; }
 .reminderFields { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; align-items: end; }
+
+/* Layout: one column of sections, two panels side by side on desktop. */
+.section { margin-bottom: 24px; }
+.section > h2 { margin: 0 0 4px; font-size: 17px; letter-spacing: -.01em; color: var(--admin-ink); }
+.section > p { margin: 0 0 12px; font-size: 13px; }
+.twoCol { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+@media (max-width: 900px) { .twoCol { grid-template-columns: 1fr; } }
+.links { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.attention { padding: 18px 20px; margin-bottom: 24px; border-left: 3px solid var(--admin-warning); }
+.attention h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 15px; color: var(--admin-ink); }
+.attention h2 span { padding: 1px 8px; border-radius: 999px; background: var(--admin-warning-soft); color: var(--admin-warning); font-size: 12px; }
+.attention ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.attention li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: var(--admin-radius-sm); background: var(--admin-bg); font-size: 13px; }
+.attention li > div { display: grid; gap: 2px; min-width: 0; color: var(--admin-ink-soft); }
+.attention li strong { color: var(--admin-ink); }
+.attention li > div span { font-size: 12px; }
+@media (max-width: 560px) { .attention li { flex-direction: column; align-items: flex-start; } }
+
+/* Panel descriptions sit at body size; long metadata (webhook URLs) truncates instead of
+   running into the status pill when the panel is half the page width. */
+.panel > p { margin: 0; font-size: 13px; line-height: 1.5; }
+.entityRow .rowMeta { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
