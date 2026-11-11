@@ -3,7 +3,7 @@ import { db } from '@/lib/prisma'
 import { getThemeState } from '@/lib/theme'
 import { getCurrentUser } from '@/lib/auth'
 import { getProductStats, withProductStats } from '@/lib/product-stats'
-import { CARD_STOCK_INCLUDE, withCardStock } from '@/lib/card-stock'
+import { CARD_STOCK_INCLUDE, SCHEMA_AVAILABILITY, SHARE_AVAILABILITY, stockLeft, stockState, withCardStock, type StockState } from '@/lib/card-stock'
 import { getUnpublishedProductIds } from '@/lib/sales-channels'
 import { getStorefrontSettings } from '@/lib/storefront-settings'
 import { notFound } from 'next/navigation'
@@ -42,6 +42,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       compareAtPrice: true,
       trackInventory: true,
       continueSellingWhenOutOfStock: true,
+      preorder: true,
       ...CARD_STOCK_INCLUDE,
       images: { orderBy: { sortOrder: 'asc' }, take: 1 },
     },
@@ -57,14 +58,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const url = `${siteUrl()}/product/${slug}`
   // A shared link (WhatsApp, Instagram, Facebook) shows the price and stock first; search results keep
   // the plain title and description above.
-  const { soldOut } = withCardStock([product])[0]
+  const state = stockState({ available: stockLeft(product).product, trackInventory: product.trackInventory, continueSellingWhenOutOfStock: product.continueSellingWhenOutOfStock, preorder: product.preorder })
   const share = productShareText({
     name: title,
     description: metaText(product.seoDescription) || metaText(product.shortDescription) || metaText(product.description),
     cents: fromPrice(product.basePrice, product.variants),
     compareAtCents: product.compareAtPrice,
     currency: settings.get('store.currency')?.trim() || process.env.NEXT_PUBLIC_CURRENCY || 'USD',
-    soldOut,
+    soldOut: state === 'out_of_stock',
+    preorder: state === 'preorder',
   })
   return {
     title,
@@ -78,12 +80,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 // The product tags Facebook and Instagram read for a shared link or a catalog ad. They need the
 // "property" attribute, which Next's own metadata cannot write for these names, so the page renders them
 // itself and React moves them into the page head.
-function ProductShareTags({ cents, currency, inStock }: { cents: number; currency: string; inStock: boolean }) {
+function ProductShareTags({ cents, currency, availability }: { cents: number; currency: string; availability: string }) {
   return <>
     <meta property="og:type" content="product" />
     <meta property="product:price:amount" content={(Math.max(0, cents) / 100).toFixed(2)} />
     <meta property="product:price:currency" content={currency} />
-    <meta property="product:availability" content={inStock ? 'in stock' : 'out of stock'} />
+    <meta property="product:availability" content={availability} />
   </>
 }
 
@@ -203,15 +205,11 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     ? 'can_review'
     : 'not_purchased'
 
-  const sharedRows = product.inventory.filter((inventory) => !inventory.variantId)
-  const sharedAvailable = sharedRows.reduce((sum, inventory) => sum + inventory.quantity - inventory.reserved, 0)
-  const variantAvailability = product.variants.map((variant) => {
-    const dedicated = variant.inventory
-    const available = dedicated.length ? dedicated.reduce((sum, inventory) => sum + inventory.quantity - inventory.reserved, 0) : sharedAvailable
-    return { name: variant.name, sku: variant.sku, available: Math.max(0, available) }
-  })
-  const productAvailable = product.variants.length ? Math.max(0, ...variantAvailability.map((variant) => variant.available)) : Math.max(0, sharedAvailable)
-  const isAvailable = !product.trackInventory || product.continueSellingWhenOutOfStock || productAvailable > 0
+  // What each option and the product can still sell (lib/card-stock.ts, the same rule checkout uses).
+  const stock = stockLeft(product)
+  const variantAvailability = product.variants.map((variant, index) => ({ name: variant.name, sku: variant.sku, available: stock.variants[index]?.available ?? 0 }))
+  const productAvailable = stock.product
+  const productState = stockState({ available: productAvailable, trackInventory: product.trackInventory, continueSellingWhenOutOfStock: product.continueSellingWhenOutOfStock, preorder: product.preorder })
 
   const publicProduct = {
     id: product.id,
@@ -294,15 +292,16 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   // stock, otherwise one offer (audit ME-01).
   const storeCurrency = (await getStorefrontSettings()).get('store.currency')?.trim() || process.env.NEXT_PUBLIC_CURRENCY || 'USD'
   const productUrl = `${siteUrl()}/product/${product.slug}`
-  const offerFor = (price: number, inStock: boolean, sku?: string) => ({
+  const offerFor = (price: number, state: StockState, sku?: string) => ({
     '@type': 'Offer', url: productUrl, priceCurrency: storeCurrency, price: (price / 100).toFixed(2), ...(sku ? { sku } : {}),
-    availability: inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock', itemCondition: 'https://schema.org/NewCondition',
+    availability: SCHEMA_AVAILABILITY[state], itemCondition: 'https://schema.org/NewCondition',
   })
-  const sellsWithoutStock = !product.trackInventory || product.continueSellingWhenOutOfStock
-  const variantOffers = product.variants.map((variant) => {
-    const stock = variantAvailability.find((v) => v.sku === variant.sku)?.available ?? 0
-    return offerFor(variant.price ?? product.basePrice, sellsWithoutStock || stock > 0, variant.sku)
-  })
+  // Each option is its own offer: its price, and whether it is in stock, sold out or a pre-order.
+  const variantOffers = product.variants.map((variant, index) => offerFor(
+    variant.price ?? product.basePrice,
+    stockState({ available: variantAvailability[index]?.available ?? 0, trackInventory: product.trackInventory, continueSellingWhenOutOfStock: product.continueSellingWhenOutOfStock, preorder: product.preorder }),
+    variant.sku,
+  ))
   const variesByOption = variantOffers.length > 1 && new Set(variantOffers.map((o) => `${o.price}|${o.availability}`)).size > 1
   // Breadcrumb trail for Google ("Home > Collection > Product"); the main collection is the first one the product belongs to.
   const mainCollection = product.collections[0]?.collection
@@ -338,7 +337,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     } : {}),
     offers: variesByOption
       ? variantOffers
-      : offerFor(product.variants[0]?.price ?? product.basePrice, isAvailable),
+      : offerFor(product.variants[0]?.price ?? product.basePrice, productState),
   }
 
   // Selling tools (lib/selling-config.ts): a flash sale on this product, prices in LBP, and the
@@ -351,7 +350,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, '\\u003c') }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb).replace(/</g, '\\u003c') }} />
-      <ProductShareTags cents={fromPrice(product.basePrice, product.variants)} currency={storeCurrency} inStock={isAvailable} />
+      <ProductShareTags cents={fromPrice(product.basePrice, product.variants)} currency={storeCurrency} availability={SHARE_AVAILABILITY[productState]} />
       <AliExpressProduct
         theme={theme}
         product={publicProduct}

@@ -19,6 +19,10 @@ describe('product feed', () => {
     assert.ok(out.includes('<g:price>6.00 USD</g:price>') && out.includes('<g:sale_price>4.50 USD</g:sale_price>'))
     assert.ok(out.includes('<g:availability>out of stock</g:availability>') && out.includes('<g:brand>Yalla Haul</g:brand>'))
   })
+  it('reports a sold-out pre-order as preorder, not as in stock or out of stock', () => {
+    const out = productFeedXml([{ ...base, soldOut: false, preorder: true }], store)
+    assert.ok(out.includes('<g:availability>preorder</g:availability>'))
+  })
   it('skips products without a usable photo and escapes text', () => {
     const out = productFeedXml([{ ...base, images: [{ url: '/logo.svg' }] }, { ...base, id: 'p2', name: 'Cups <6 pack> & "more"' }], store)
     assert.ok(!out.includes('<g:id>p1</g:id>') && out.includes('<g:title>Cups &lt;6 pack&gt; &amp; &quot;more&quot;</g:title>'))
