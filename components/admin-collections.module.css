@@ -104,3 +104,14 @@
   .views { width: 100%; }
 }
 .headerActions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+
+/* Add products to the selected collections (the list's bulk dialog). */
+.addDialog { width: min(560px, 94vw); max-height: min(720px, 88vh); display: flex; flex-direction: column; gap: 12px; padding: 18px; }
+.addDialog h2 { margin: 0; font-size: 17px; color: var(--admin-ink); }
+.addDialog p { margin: 0; font-size: 13px; }
+.productPick { min-height: 0; overflow: auto; display: grid; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); }
+.pickRow { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--admin-border-soft); font-size: 13px; color: var(--admin-ink); cursor: pointer; }
+.pickRow:last-child { border-bottom: 0; }
+.pickRow span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pickRow small { color: var(--admin-muted); }
+.dialogFoot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }

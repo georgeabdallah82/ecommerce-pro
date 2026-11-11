@@ -23,6 +23,52 @@ export async function POST(req: Request) {
       if (!ids.length) return json({ error: 'Select at least one collection' }, { status: 400 })
       if (ids.length > 500) return json({ error: 'Too many collections selected' }, { status: 400 })
       const bulkAction = String(b.bulkAction || '')
+      if (bulkAction === 'ADD_PRODUCTS') {
+        const requested: string[] = Array.from(new Set<string>(Array.isArray(b.productIds) ? b.productIds.map((x: unknown) => String(x).trim().slice(0, 100)).filter((x: string) => Boolean(x)) : []))
+        if (!requested.length) return json({ error: 'Choose at least one product' }, { status: 400 })
+        if (requested.length > 500) return json({ error: 'Too many products selected' }, { status: 400 })
+        const [targets, products] = await Promise.all([
+          db.collection.findMany({ where: { id: { in: ids } }, select: { id: true } }),
+          db.product.findMany({ where: { id: { in: requested } }, select: { id: true } }),
+        ])
+        const productIds = products.map(p => p.id)
+        const targetIds = targets.map(t => t.id)
+        if (!productIds.length || !targetIds.length) return json({ error: 'Nothing to add' }, { status: 400 })
+        // A product already in a collection keeps its place there; the others go to the end, in order.
+        const [links, last] = await Promise.all([
+          db.collectionProduct.findMany({ where: { collectionId: { in: targetIds }, productId: { in: productIds } }, select: { collectionId: true, productId: true } }),
+          db.collectionProduct.groupBy({ by: ['collectionId'], where: { collectionId: { in: targetIds } }, _max: { sortOrder: true } }),
+        ])
+        const have = new Set(links.map(l => `${l.collectionId}|${l.productId}`))
+        const lastOrder = new Map(last.map(l => [l.collectionId, l._max.sortOrder ?? -1]))
+        const data: Array<{ collectionId: string; productId: string; sortOrder: number }> = []
+        for (const collectionId of targetIds) {
+          let order = (lastOrder.get(collectionId) ?? -1) + 1
+          for (const productId of productIds) {
+            if (have.has(`${collectionId}|${productId}`)) continue
+            data.push({ collectionId, productId, sortOrder: order++ })
+          }
+        }
+        if (data.length) await db.collectionProduct.createMany({ data, skipDuplicates: true })
+        await audit(actor.id, 'collection.bulk_products_added', 'Collection', undefined, { ids: targetIds, productIds, added: data.length })
+        return json({ ok: true, added: data.length, collections: targetIds.length })
+      }
+      if (bulkAction === 'DUPLICATE') {
+        // Copies start hidden, so a duplicate cannot go live by accident.
+        const sources = await db.collection.findMany({ where: { id: { in: ids } }, include: { products: { orderBy: { sortOrder: 'asc' } } } })
+        for (const source of sources) {
+          const base = slugify(`${source.slug}-copy`) || 'collection-copy'
+          let slug = base
+          for (let n = 2; await db.collection.findUnique({ where: { slug }, select: { id: true } }); n++) slug = `${base}-${n}`
+          await db.collection.create({ data: {
+            name: `${source.name} (copy)`, slug, description: source.description, imageUrl: source.imageUrl,
+            seoTitle: source.seoTitle, seoDescription: source.seoDescription, isActive: false, sortOrder: source.sortOrder,
+            products: { create: source.products.map(p => ({ productId: p.productId, sortOrder: p.sortOrder })) },
+          } })
+        }
+        await audit(actor.id, 'collection.bulk_duplicated', 'Collection', undefined, { ids: sources.map(s => s.id), count: sources.length })
+        return json({ ok: true, count: sources.length })
+      }
       if (bulkAction === 'ACTIVATE' || bulkAction === 'DEACTIVATE') {
         const result = await db.collection.updateMany({ where: { id: { in: ids } }, data: { isActive: bulkAction === 'ACTIVATE' } })
         await audit(actor.id, 'collection.bulk_updated', 'Collection', undefined, { ids, action: bulkAction, count: result.count })

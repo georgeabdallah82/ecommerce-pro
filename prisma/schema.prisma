@@ -147,6 +147,8 @@ model Collection {
   imageUrl    String?
   isActive    Boolean              @default(true)
   sortOrder   Int                  @default(0)
+  seoTitle       String?
+  seoDescription String?
   products    CollectionProduct[]
   createdAt   DateTime             @default(now())
   updatedAt   DateTime             @updatedAt

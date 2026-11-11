@@ -1,8 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from '@/components/admin-link'
-import { CheckCircle2, Download, Eye, MoreHorizontal, Plus, Search, Tag, Trash2, Upload, XCircle, X } from 'lucide-react'
+import { CheckCircle2, Copy, Download, Eye, MoreHorizontal, Plus, Search, Tag, Trash2, Upload, XCircle, X } from 'lucide-react'
 import styles from './admin-collections.module.css'
 import ui from './admin-ui.module.css'
 import { useToast } from './admin-toast'
@@ -31,6 +31,12 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
   const [busy, setBusy] = useState(false)
   const [selected, setSelected] = useState<string[]>([])
   const [bulkBusy, setBulkBusy] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
+  const [productQ, setProductQ] = useState('')
+  const [productRows, setProductRows] = useState<any[]>([])
+  const [productPick, setProductPick] = useState<string[]>([])
+  const [productBusy, setProductBusy] = useState(false)
+  const [productError, setProductError] = useState('')
 
   const refresh = async () => { setRows(await api('/api/admin/collections')); setSelected([]) }
 
@@ -66,10 +72,34 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
     }
   }
 
+  // Adds the chosen products to every selected collection (see the bulk ADD_PRODUCTS action).
+  useEffect(() => {
+    if (!addOpen) return
+    const timer = window.setTimeout(() => {
+      const q = productQ.trim()
+      api(`/api/admin/products?pageSize=50&sort=name_asc${q ? `&q=${encodeURIComponent(q)}` : ''}`)
+        .then(d => setProductRows(d.rows || []))
+        .catch(e => setProductError(e instanceof Error ? e.message : 'Could not load products'))
+    }, productQ ? 250 : 0)
+    return () => window.clearTimeout(timer)
+  }, [addOpen, productQ])
+
+  const openAddProducts = () => { setProductPick([]); setProductQ(''); setProductError(''); setAddOpen(true) }
+  const addProducts = async () => {
+    if (!productPick.length || !selected.length) return
+    setProductBusy(true); setProductError('')
+    try {
+      const d = await api('/api/admin/collections', { method: 'POST', body: JSON.stringify({ action: 'bulk', ids: selected, bulkAction: 'ADD_PRODUCTS', productIds: productPick }) })
+      setAddOpen(false)
+      await refresh()
+      toast(d.added ? `Added ${d.added} product link${d.added === 1 ? '' : 's'} across ${d.collections} collection${d.collections === 1 ? '' : 's'}` : 'Those products are already in every selected collection')
+    } catch (error) { setProductError(error instanceof Error ? error.message : 'Unable to add products') } finally { setProductBusy(false) }
+  }
+
   const toggleRow = (id: string) => setSelected(current => current.includes(id) ? current.filter(x => x !== id) : [...current, id])
   const toggleAll = () => setSelected(current => current.length === filtered.length ? [] : filtered.map((c: any) => c.id))
 
-  const bulk = async (bulkAction: 'ACTIVATE' | 'DEACTIVATE' | 'DELETE') => {
+  const bulk = async (bulkAction: 'ACTIVATE' | 'DEACTIVATE' | 'DELETE' | 'DUPLICATE') => {
     if (!selected.length) return
     if (bulkAction === 'DELETE' && !(await confirm({ title: `Delete ${selected.length} collection${selected.length === 1 ? '' : 's'}?`, message: 'Products stay in your store; only the collections are removed. This cannot be undone.', confirmLabel: 'Delete' }))) return
     const count = selected.length
@@ -77,7 +107,7 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
     try {
       await api('/api/admin/collections', { method: 'POST', body: JSON.stringify({ action: 'bulk', ids: selected, bulkAction }) })
       await refresh()
-      const verb = bulkAction === 'ACTIVATE' ? 'activated' : bulkAction === 'DEACTIVATE' ? 'deactivated' : 'deleted'
+      const verb = bulkAction === 'ACTIVATE' ? 'activated' : bulkAction === 'DEACTIVATE' ? 'deactivated' : bulkAction === 'DUPLICATE' ? 'duplicated (as hidden copies)' : 'deleted'
       toast(`${count} collection${count === 1 ? '' : 's'} ${verb}`)
     } catch (error) {
       toast(error instanceof Error ? error.message : 'Unable to update collections', 'error')
@@ -166,10 +196,38 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
           <div className={ui.bulkActions}>
             <button className={`${ui.btn} ${ui.btnSecondary}`} disabled={bulkBusy} onClick={() => bulk('ACTIVATE')}><CheckCircle2 size={15} /> Activate</button>
             <button className={`${ui.btn} ${ui.btnSecondary}`} disabled={bulkBusy} onClick={() => bulk('DEACTIVATE')}><XCircle size={15} /> Deactivate</button>
+            <button className={`${ui.btn} ${ui.btnSecondary}`} disabled={bulkBusy} onClick={openAddProducts}><Plus size={15} /> Add products</button>
+            <button className={`${ui.btn} ${ui.btnSecondary}`} disabled={bulkBusy} onClick={() => bulk('DUPLICATE')}><Copy size={15} /> Duplicate</button>
             <button className={`${ui.btn} ${ui.btnDanger}`} disabled={bulkBusy} onClick={() => bulk('DELETE')}><Trash2 size={15} /> Delete</button>
           </div>
         </div>
       )}
+
+      {addOpen && <div className={ui.modalOverlay} onClick={() => setAddOpen(false)}>
+        <div className={`${ui.card} ${styles.addDialog}`} role="dialog" aria-modal="true" aria-labelledby="add-products-title" onClick={e => e.stopPropagation()}>
+          <h2 id="add-products-title">Add products to {selected.length} collection{selected.length === 1 ? '' : 's'}</h2>
+          <p className={ui.muted}>Products already in a collection keep their place. New ones go to the end.</p>
+          <input className={ui.input} value={productQ} onChange={e => setProductQ(e.target.value)} placeholder="Search products" aria-label="Search products" autoFocus />
+          {productError && <div className={`${ui.alert} ${ui.alertDanger}`} role="alert">{productError}</div>}
+          <div className={styles.productPick}>
+            {productRows.map(p => {
+              const on = productPick.includes(p.id)
+              return <label key={p.id} className={styles.pickRow}>
+                <input type="checkbox" checked={on} onChange={() => setProductPick(list => (on ? list.filter(x => x !== p.id) : [...list, p.id]))} />
+                <span>{p.name}</span><small>{p.sku || 'No SKU'}</small>
+              </label>
+            })}
+            {!productRows.length && <div className={ui.empty}>No products match.</div>}
+          </div>
+          <div className={styles.dialogFoot}>
+            <span className={ui.muted}>{productPick.length} selected</span>
+            <div className="inline">
+              <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setAddOpen(false)}>Cancel</button>
+              <button type="button" className={ui.btn} disabled={!productPick.length || productBusy} onClick={addProducts}>{productBusy ? 'Adding…' : 'Add products'}</button>
+            </div>
+          </div>
+        </div>
+      </div>}
 
       <div className={`${ui.card} ${styles.tableCard}`}>
         <div className={ui.tableWrap}>

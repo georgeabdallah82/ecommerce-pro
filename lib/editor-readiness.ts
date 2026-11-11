@@ -54,7 +54,7 @@ export function productReadiness(p: ProductForReadiness): ReadinessCheck[] {
 
 export type CollectionForReadiness = {
   name: string; slug: string; description?: string | null; imageUrl?: string | null; isActive: boolean
-  products: { status: string }[]
+  products: { status: string }[]; seoDescription?: string | null
 }
 
 export function collectionReadiness(c: CollectionForReadiness): ReadinessCheck[] {
@@ -80,6 +80,9 @@ export function collectionReadiness(c: CollectionForReadiness): ReadinessCheck[]
   checks.push((c.description || '').trim()
     ? { id: 'description', label: 'Description', status: 'ok', detail: 'Written' }
     : { id: 'description', label: 'Description', status: 'warn', detail: 'Add a description to introduce the collection' })
+  checks.push((c.seoDescription || '').trim()
+    ? { id: 'seo', label: 'Search listing', status: 'ok', detail: 'Search description set' }
+    : { id: 'seo', label: 'Search listing', status: 'warn', detail: 'Add a search description so Google shows a useful summary' })
   return checks
 }
 
