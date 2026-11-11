@@ -3,6 +3,7 @@ import { requirePermission, hashPassword, assertRecentSignIn } from '@/lib/auth'
 import { UserError } from '@/lib/user-error'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
+import { cappedJson, LIST_CAP } from '@/lib/admin-list'
 import { Role } from '@prisma/client'
 import { getStaffRoles } from '@/lib/staff-roles'
 import { deleteStaffCascade } from '@/lib/customers'
@@ -40,8 +41,9 @@ export async function GET() {
       where: { role: { not: Role.CUSTOMER } },
       orderBy: { createdAt: 'desc' },
       select: safeUserSelect,
+      take: LIST_CAP + 1,
     })
-    return json(users, { headers: { 'Cache-Control': 'private, no-store' } })
+    return cappedJson(users, LIST_CAP, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (e) {
     const failure = sanitizeFailure(e)
     return json({ error: failure.error }, { status: failure.status, headers: { 'Cache-Control': 'private, no-store' } })

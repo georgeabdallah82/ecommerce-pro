@@ -3,6 +3,7 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
+import { cappedJson, LIST_CAP } from '@/lib/admin-list'
 
 export async function GET(req: Request) {
   try {
@@ -10,7 +11,7 @@ export async function GET(req: Request) {
     const params = new URL(req.url).searchParams
     const productId = params.get('productId')
     const channelId = params.get('channelId')
-    return json(await db.productPublication.findMany({ where: { ...(productId ? { productId } : {}), ...(channelId ? { channelId } : {}) }, include: { channel: true }, orderBy: { channel: { name: 'asc' } } }))
+    return cappedJson(await db.productPublication.findMany({ where: { ...(productId ? { productId } : {}), ...(channelId ? { channelId } : {}) }, include: { channel: true }, orderBy: { channel: { name: 'asc' } }, take: LIST_CAP + 1 }), LIST_CAP)
   } catch (e) { return routeError(e, 'Forbidden', 403) }
 }
 

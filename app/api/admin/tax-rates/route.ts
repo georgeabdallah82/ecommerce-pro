@@ -3,6 +3,7 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
+import { cappedJson, LIST_CAP } from '@/lib/admin-list'
 
 function cleanName(value: unknown) {
   return String(value || '').trim().slice(0, 120)
@@ -20,7 +21,7 @@ function cleanRate(value: unknown) {
 export async function GET() {
   try {
     await requirePermission('tax.view')
-    return json(await db.taxRate.findMany({ orderBy: { name: 'asc' } }))
+    return cappedJson(await db.taxRate.findMany({ orderBy: { name: 'asc' }, take: LIST_CAP + 1 }), LIST_CAP)
   } catch (e) {
     return routeError(e, 'Forbidden', 403)
   }

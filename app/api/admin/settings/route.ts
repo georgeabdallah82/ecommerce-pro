@@ -3,6 +3,7 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
+import { cappedJson, LIST_CAP } from '@/lib/admin-list'
 import { isAllowedSenderAddress, senderDomain } from '@/lib/email'
 import { sealSecret } from '@/lib/two-step'
 
@@ -20,7 +21,8 @@ const masked = <T extends { key: string; value: string }>(row: T) => SECRET_KEYS
 export async function GET(){
   try {
     await requirePermission('settings.view')
-    return json((await db.setting.findMany({ where: { NOT: { OR: PRIVATE_PREFIXES.map(prefix => ({ key: { startsWith: prefix } })) } }, orderBy:{key:'asc'} })).map(masked))
+    const rows = await db.setting.findMany({ where: { NOT: { OR: PRIVATE_PREFIXES.map(prefix => ({ key: { startsWith: prefix } })) } }, orderBy:{key:'asc'}, take: LIST_CAP + 1 })
+    return cappedJson(rows.map(masked), LIST_CAP)
   }catch(e){return routeError(e, 'Forbidden', 403)}
 }
 

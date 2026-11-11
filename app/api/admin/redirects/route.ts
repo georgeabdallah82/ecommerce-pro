@@ -3,6 +3,7 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
+import { cappedJson, LIST_CAP } from '@/lib/admin-list'
 
 const RESERVED_PREFIXES = ['/admin', '/api', '/_next', '/maintenance']
 
@@ -24,7 +25,7 @@ function validate(fromPath: string, toPath: string) {
 export async function GET() {
   try {
     await requirePermission('content.view')
-    return json(await db.redirect.findMany({ orderBy: { createdAt: 'desc' } }))
+    return cappedJson(await db.redirect.findMany({ orderBy: { createdAt: 'desc' }, take: LIST_CAP + 1 }), LIST_CAP)
   } catch (e) {
     return routeError(e, 'Forbidden', 403)
   }

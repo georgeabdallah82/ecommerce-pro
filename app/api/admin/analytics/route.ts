@@ -1,6 +1,8 @@
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { json } from '@/lib/utils'
+import { reportRows, REPORT_CUSTOMER_CAP, REPORT_INVENTORY_CAP, REPORT_ORDER_CAP } from '@/lib/admin-list'
+import { UserError } from '@/lib/user-error'
 import { OrderStatus } from '@prisma/client'
 
 type Bucket = { revenue: number; orders: number; items: number; newCustomers: number }
@@ -85,14 +87,18 @@ function netRevenueForOrder(order: { grandTotal: number; paymentTransactions: { 
 const pct = (value: number, prev: number) => (prev === 0 ? (value === 0 ? 0 : 100) : Math.round(((value - prev) / prev) * 100))
 
 async function loadPeriod(range: Range) {
-  const [orders, newCustomerRows] = await Promise.all([
+  const [orderRows, customerRows] = await Promise.all([
     db.order.findMany({
       where: { createdAt: { gte: range.since, lt: range.until }, status: { not: OrderStatus.CANCELLED } },
       select: { createdAt: true, grandTotal: true, discountTotal: true, userId: true, items: { select: { productId: true, quantity: true, totalPrice: true, name: true } }, paymentTransactions: { select: { status: true, amount: true } } },
       orderBy: { createdAt: 'asc' },
+      take: REPORT_ORDER_CAP + 1,
     }),
-    db.user.findMany({ where: { role: 'CUSTOMER', createdAt: { gte: range.since, lt: range.until } }, select: { createdAt: true } }),
+    db.user.findMany({ where: { role: 'CUSTOMER', createdAt: { gte: range.since, lt: range.until } }, select: { createdAt: true }, take: REPORT_CUSTOMER_CAP + 1 }),
   ])
+  // A report that cannot read every row is refused, not cut: its totals would be wrong.
+  const orders = reportRows(orderRows, REPORT_ORDER_CAP, 'This period has more orders than the report can read. Choose a shorter period.')
+  const newCustomerRows = reportRows(customerRows, REPORT_CUSTOMER_CAP, 'This period has more new customers than the report can read. Choose a shorter period.')
 
   // Product.costPrice has no snapshot on OrderItem, so margin is computed against each
   // product's current cost rather than what it cost at the time of sale -- the same
@@ -171,14 +177,16 @@ export async function GET(req: Request) {
     const now = new Date()
     const { current, previous } = resolveRanges(searchParams, now)
 
-    const [currentPeriod, previousPeriod, inventory, products] = await Promise.all([
+    const [currentPeriod, previousPeriod, inventoryRows, products] = await Promise.all([
       loadPeriod(current),
       previous ? loadPeriod(previous) : null,
       db.inventoryItem.findMany({
         select: { id: true, quantity: true, reserved: true, lowStockThreshold: true, product: { select: { name: true, sku: true, costPrice: true } }, variant: { select: { name: true, sku: true } } },
+        take: REPORT_INVENTORY_CAP + 1,
       }),
       db.product.count({}),
     ])
+    const inventory = reportRows(inventoryRows, REPORT_INVENTORY_CAP, 'The store has more inventory rows than this report can read.')
 
     const averageOrderValue = currentPeriod.orderCount ? Math.round(currentPeriod.revenue / currentPeriod.orderCount) : 0
     const previousAverageOrderValue = previousPeriod?.orderCount ? Math.round(previousPeriod.revenue / previousPeriod.orderCount) : 0
@@ -235,6 +243,7 @@ export async function GET(req: Request) {
       lowStock,
     })
   } catch (error) {
+    if (error instanceof UserError) return json({ error: error.message, code: error.code }, { status: error.status })
     if (error instanceof Error && error.message === 'FORBIDDEN') return json({ error: 'Forbidden' }, { status: 403 })
     if (error instanceof Error && error.message === 'UNAUTHORIZED') return json({ error: 'Unauthorized' }, { status: 401 })
     console.error('[admin/analytics] unexpected failure', error)

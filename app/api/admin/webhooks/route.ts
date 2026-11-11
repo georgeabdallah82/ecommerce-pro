@@ -3,6 +3,7 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
+import { cappedJson, LIST_CAP } from '@/lib/admin-list'
 
 const webhookStatuses = new Set(['ACTIVE', 'DISABLED'])
 
@@ -18,8 +19,8 @@ function isHttpsUrl(value: string) {
 export async function GET() {
   try {
     await requirePermission('settings.view')
-    const rows = await db.webhookEndpoint.findMany({ orderBy: { createdAt: 'desc' } })
-    return json(rows.map(({ secret: _secret, lastPayload, ...r }) => ({ ...r, secretConfigured: true, hasFailedDelivery: !!lastPayload })))
+    const rows = await db.webhookEndpoint.findMany({ orderBy: { createdAt: 'desc' }, take: LIST_CAP + 1 })
+    return cappedJson(rows.map(({ secret: _secret, lastPayload, ...r }) => ({ ...r, secretConfigured: true, hasFailedDelivery: !!lastPayload })), LIST_CAP)
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Forbidden'
     return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 401 })

@@ -3,11 +3,12 @@ import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json, slugify } from '@/lib/utils'
+import { cappedJson, LIST_CAP } from '@/lib/admin-list'
 
 export async function GET() {
   try {
     await requirePermission('inventory.view')
-    return json(await db.storeLocation.findMany({ orderBy: [{ isDefault: 'desc' }, { name: 'asc' }] }))
+    return cappedJson(await db.storeLocation.findMany({ orderBy: [{ isDefault: 'desc' }, { name: 'asc' }], take: LIST_CAP + 1 }), LIST_CAP)
   } catch (e) { return routeError(e, 'Forbidden', 403) }
 }
 

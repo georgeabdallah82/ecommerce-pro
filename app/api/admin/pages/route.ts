@@ -5,6 +5,7 @@ import { audit } from '@/lib/audit'
 import { json, slugify } from '@/lib/utils'
 import { RESERVED_HANDLES } from '@/lib/reserved-handles'
 import { sanitizeRichHtml } from '@/lib/sanitize-html'
+import { cappedJson, LIST_CAP } from '@/lib/admin-list'
 
 function cleanHandle(value: unknown, fallback: string) {
   return slugify(String(value || fallback)).slice(0, 200)
@@ -17,7 +18,7 @@ function cleanStatus(value: unknown) {
 export async function GET() {
   try {
     await requirePermission('content.view')
-    return json(await db.page.findMany({ orderBy: { updatedAt: 'desc' } }))
+    return cappedJson(await db.page.findMany({ orderBy: { updatedAt: 'desc' }, take: LIST_CAP + 1 }), LIST_CAP)
   } catch (e) {
     return routeError(e, 'Forbidden', 403)
   }

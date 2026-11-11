@@ -1,6 +1,8 @@
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
 import { json } from '@/lib/utils'
+import { reportRows, REPORT_INVENTORY_CAP, REPORT_ORDER_CAP } from '@/lib/admin-list'
+import { UserError } from '@/lib/user-error'
 import { OrderStatus } from '@prisma/client'
 
 export async function GET(req: Request) {
@@ -11,7 +13,7 @@ export async function GET(req: Request) {
     const days = Number.isFinite(parsedDays) ? Math.min(365, Math.max(1, Math.floor(parsedDays))) : 30
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
 
-    const [orders, inventory, customers] = await Promise.all([
+    const [orderRows, inventoryRows, customers] = await Promise.all([
       db.order.findMany({
         where: { createdAt: { gte: since }, status: { not: OrderStatus.CANCELLED } },
         select: {
@@ -20,12 +22,17 @@ export async function GET(req: Request) {
           paymentTransactions: { select: { status: true, amount: true } },
         },
         orderBy: { createdAt: 'asc' },
+        take: REPORT_ORDER_CAP + 1,
       }),
       db.inventoryItem.findMany({
         include: { product: { select: { id: true, name: true, sku: true } }, variant: { select: { id: true, name: true, sku: true } } },
+        take: REPORT_INVENTORY_CAP + 1,
       }),
       db.user.count({ where: { role: 'CUSTOMER', createdAt: { gte: since } } }),
     ])
+    // A report that cannot read every row is refused, not cut: its totals would be wrong.
+    const orders = reportRows(orderRows, REPORT_ORDER_CAP, 'This period has more orders than the report can read. Choose fewer days.')
+    const inventory = reportRows(inventoryRows, REPORT_INVENTORY_CAP, 'The store has more inventory rows than this report can read.')
 
     const revenue = orders.reduce((sum, o) => {
       const refunded = o.paymentTransactions
@@ -57,6 +64,7 @@ export async function GET(req: Request) {
       lowStock: lowStockItems,
     })
   } catch (error) {
+    if (error instanceof UserError) return json({ error: error.message, code: error.code }, { status: error.status })
     const message = error instanceof Error ? error.message : 'Unable to load report'
     return json({ error: message }, { status: message === 'FORBIDDEN' ? 403 : 401 })
   }
