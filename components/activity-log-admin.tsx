@@ -205,11 +205,12 @@ export default function ActivityLogAdmin({ initial, total, entities, actions, ac
       <div>
         <span className={ui.muted}>SECURITY</span>
         <h1 className={ui.title}>Activity log</h1>
-        <p className={ui.muted}>Every sensitive change made in the admin, who made it, and when. Times are in your store&apos;s timezone.</p>
+        <p className={ui.muted}>Every sensitive change made in the admin, who made it, and when. Times are in your store&apos;s timezone. Entries older than a year are removed each day.</p>
       </div>
       <div className={styles.headStats}>
         <span className={ui.pill}>{count} event{count === 1 ? '' : 's'}</span>
         {!!todayCount && <span className={ui.pill}>{todayCount} today</span>}
+        <a className={`${ui.btn} ${ui.btnSecondary}`} href={`/api/admin/activity/export?${buildParams(0).toString()}`}>Export CSV</a>
       </div>
     </div>
     {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
