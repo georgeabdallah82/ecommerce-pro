@@ -20,6 +20,16 @@ describe('staff sign-in: the password alone never starts a session', () => {
     assert.match(route, /user\.role === 'CUSTOMER' \|\| user\.totpEnabledAt/)
     assert.match(route, /consumeDurableRateLimit\(`admin-enroll:/)
   })
+  it('reading the set-up key changes nothing: a POST with the start action makes it', () => {
+    const route = read('app/api/admin/login/enroll/route.ts')
+    const get = route.slice(route.indexOf('export async function GET'), route.indexOf('export async function POST'))
+    assert.doesNotMatch(get, /db\.user\.update|sealSecret|newSecret/, 'a GET never writes')
+    assert.match(get, /started: false/)
+    const post = route.slice(route.indexOf('export async function POST'))
+    assert.match(post, /body\.action === 'start'/)
+    assert.match(post, /db\.user\.update\(\{ where: \{ id: user\.id \}, data: \{ totpSecret: await sealSecret\(secret\)/)
+    assert.match(read('app/admin/login/admin-login-form.tsx'), /action: 'start'/)
+  })
   it('the first correct code turns 2-step login on, revokes old sessions, then starts the session', () => {
     const route = read('app/api/admin/login/enroll/route.ts')
     const turnOn = route.indexOf('totpEnabledAt: new Date()')

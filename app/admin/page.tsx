@@ -10,6 +10,7 @@ import { hasPermission } from '@/lib/permissions'
 import { dashboardAccess } from '@/lib/dashboard-access'
 import { formatAdminDateTime } from '@/lib/admin-datetime'
 import { publicUserSelect } from '@/lib/user-public'
+import { getDashboardAggregates } from '@/lib/admin-dashboard-data'
 import { MonthlyBars, YearAreas, Gauge } from '@/components/admin-dashboard-charts'
 import ui from '@/components/admin-ui.module.css'
 import s from '@/components/admin-dashboard.module.css'
@@ -19,13 +20,6 @@ import { loadReminderSettings } from '@/lib/cart-reminders'
 
 const OPEN_STATUSES = [OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PROCESSING]
 const DAY_MS = 24 * 60 * 60 * 1000
-
-type SalesOrder = { grandTotal: number; createdAt: Date; paymentTransactions: { status: string; amount: number }[] }
-
-function netSales(order: SalesOrder) {
-  const refunded = order.paymentTransactions.filter(t => ['refunded', 'partially_refunded'].includes(t.status)).reduce((sum, t) => sum + t.amount, 0)
-  return Math.max(0, order.grandTotal - refunded)
-}
 
 function change(current: number, previous: number) {
   if (!previous) return current ? { text: 'No sales this day last week', up: true } : { text: 'No sales yet', up: true }
@@ -61,55 +55,30 @@ export default async function Admin() {
   const monthKey = (date: Date) => dayKey(date).slice(0, 7)
   const keys = [...new Set(Array.from({ length: 15 }, (_, i) => dayKey(new Date(now.getTime() - (14 - i) * DAY_MS))))].slice(-14)
   const todayKey = keys[keys.length - 1]
-  const since = new Date(now.getTime() - 15 * DAY_MS)
   // The last 24 calendar months, oldest first, for the charts.
   const monthKeys: string[] = []
   for (let i = 23; i >= 0; i--) { const d = new Date(now); d.setUTCDate(15); d.setUTCMonth(d.getUTCMonth() - i); monthKeys.push(monthKey(d)) }
   const monthStart = new Date(`${monthKeys[0]}-01T00:00:00Z`)
   const monthStartDay = new Date(monthStart.getTime() - DAY_MS)
-  // Monthly totals are added up in the database: one row per month comes back, not every order.
-  // Net sales take off refunds for each order (never below zero), as the weekly figures do.
-  const monthlyRows = await db.$queryRaw<{ month: string; orders: number; net: number }[]>`
-    SELECT to_char(date_trunc('month', (o."createdAt" AT TIME ZONE 'UTC') AT TIME ZONE ${timezone}), 'YYYY-MM') AS month,
-           COUNT(*)::float8 AS orders,
-           COALESCE(SUM(GREATEST(0, o."grandTotal" - COALESCE(r.refunded, 0))), 0)::float8 AS net
-    FROM "Order" o
-    LEFT JOIN (
-      SELECT "orderId", SUM(amount) AS refunded
-      FROM "PaymentTransaction"
-      WHERE status IN ('refunded', 'partially_refunded')
-      GROUP BY "orderId"
-    ) r ON r."orderId" = o.id
-    WHERE o."createdAt" >= ${monthStartDay}
-      AND o.status NOT IN ('CANCELLED', 'REFUNDED')
-    GROUP BY 1
-  `
-  const monthlySales = new Map<string, number>(monthlyRows.map(row => [row.month, Number(row.net)]))
-  const monthlyOrders = new Map<string, number>(monthlyRows.map(row => [row.month, Number(row.orders)]))
 
-  const [recentSales, toFulfill, inventoryRows, pendingReviews, orders, top, visits] = await Promise.all([
-    db.order.findMany({ where: { createdAt: { gte: since }, status: { notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED] } }, select: { grandTotal: true, createdAt: true, paymentTransactions: { select: { status: true, amount: true } } } }),
-    db.order.count({ where: { status: { in: OPEN_STATUSES } } }),
-    db.inventoryItem.findMany({ select: { quantity: true, reserved: true, lowStockThreshold: true, product: { select: { name: true } } } }),
-    db.review.count({ where: { approved: false } }),
+  // The aggregate reads (sales, month totals, stock, best sellers) are cached for a minute
+  // (lib/admin-dashboard-data.ts). Live visitors, the newest orders and the activity log are read on every visit.
+  const [agg, orders, visits] = await Promise.all([
+    getDashboardAggregates(timezone, monthStartDay),
     db.order.findMany({ orderBy: { createdAt: 'desc' }, take: 6, include: { user: { select: publicUserSelect }, items: true } }),
-    db.orderItem.groupBy({ by: ['productId'], where: { order: { status: { notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED] }, createdAt: { gte: new Date(now.getTime() - 30 * DAY_MS) } } }, _sum: { quantity: true }, orderBy: { _sum: { quantity: 'desc' } }, take: 4 }),
     visitorCounts(now).catch(() => ({ online: 0, today: 0, ordered: 0 })),
   ])
   // The activity log is read only by people allowed to see it.
   const activity = access.activity ? await db.auditLog.findMany({ orderBy: { createdAt: 'desc' }, take: 8, select: { id: true, action: true, entity: true, createdAt: true, actor: { select: { name: true, email: true } } } }) : []
 
-  // Extended (Accelerate) client payload inference doesn't always widen nested `select`
-  // relations correctly, so these results are asserted to the shape actually queried.
-  const salesTyped = recentSales as unknown as SalesOrder[]
-  const topTyped = top as unknown as { productId: string; _sum: { quantity: number | null } }[]
+  const monthlySales = new Map<string, number>(agg.monthlyRows.map(row => [row.month, row.net]))
+  const monthlyOrders = new Map<string, number>(agg.monthlyRows.map(row => [row.month, row.orders]))
+  const salesByDay = new Map<string, number>(agg.daily.map(day => [day.day, day.net]))
+  const ordersByDay = new Map<string, number>(agg.daily.map(day => [day.day, day.orders]))
+  const { toFulfill, pendingReviews } = agg
+  const topTyped = agg.topProducts
+  const productById = new Map(agg.products.map(product => [product.id, product]))
 
-  const salesByDay = new Map<string, number>(); const ordersByDay = new Map<string, number>()
-  for (const order of salesTyped) {
-    const key = dayKey(order.createdAt)
-    salesByDay.set(key, (salesByDay.get(key) || 0) + netSales(order))
-    ordersByDay.set(key, (ordersByDay.get(key) || 0) + 1)
-  }
   const lastWeekKey = keys[keys.length - 8]
   const salesToday = salesByDay.get(todayKey) || 0
   const ordersToday = ordersByDay.get(todayKey) || 0
@@ -120,12 +89,9 @@ export default async function Admin() {
   // Share of today's visits that placed an order (orders taken by phone or WhatsApp are not visits).
   const conversion = visitorsToday ? `${((visits.ordered / visitorsToday) * 100).toFixed(1)}%` : '—'
 
-  const inventory = inventoryRows as unknown as { quantity: number; reserved: number; lowStockThreshold: number; product: { name: string } }[]
-  const lowItems = inventory
-    .filter(row => row.quantity - row.reserved <= row.lowStockThreshold)
-    .map(row => ({ name: row.product.name, left: row.quantity - row.reserved, threshold: row.lowStockThreshold }))
-    .sort((a, b) => a.left - b.left)
-  const lowStock = lowItems.length
+  // Counted in the database. The card lists the four lowest items.
+  const lowItems = agg.lowStockTop
+  const lowStock = agg.lowStock
 
   // Month so far against all of last month: a pace figure from real sales, no target needed.
   const thisMonth = monthKeys[monthKeys.length - 1]
@@ -146,9 +112,6 @@ export default async function Admin() {
   const formatCompact = (cents: number) => new Intl.NumberFormat('en', { style: 'currency', currency, notation: 'compact', maximumFractionDigits: 1 }).format(cents / 100)
   const bars = monthKeys.slice(12).map(key => ({ label: monthLabel(key), value: monthlyOrders.get(key) || 0, title: `${monthLabel(key)}: ${monthlyOrders.get(key) || 0} orders`, highlight: key === thisMonth }))
   const busiest = bars.reduce((best, bar) => (bar.value > best.value ? bar : best), bars[0] || { label: '', value: 0, title: '', highlight: false })
-
-  const products = await db.product.findMany({ where: { id: { in: topTyped.map(x => x.productId) } }, select: { id: true, name: true, basePrice: true, images: { select: { url: true }, orderBy: { sortOrder: 'asc' }, take: 1 } } })
-  const productById = new Map(products.map(p => [p.id, p]))
 
   const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
   const salesLine = access.money ? `${money(salesToday, currency)} in sales today. ` : ''
@@ -291,7 +254,7 @@ export default async function Admin() {
           const product = productById.get(x.productId)
           return <Link className={s.product} key={x.productId} href={`/admin/products/${x.productId}`}>
             <span className={s.thumb}>{product?.images?.[0]?.url ? <img src={product.images[0].url} alt="" /> : <Boxes size={16} />}</span>
-            <span className={s.productText}><strong>{product?.name || 'Deleted product'}</strong><small>{x._sum.quantity || 0} sold · last 30 days</small></span>
+            <span className={s.productText}><strong>{product?.name || 'Deleted product'}</strong><small>{x.sold} sold · last 30 days</small></span>
             {product && access.money && <em>{money(product.basePrice, currency)}</em>}
             <ArrowUpRight size={14} className={s.chev} />
           </Link>

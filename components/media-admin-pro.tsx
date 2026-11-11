@@ -1,14 +1,31 @@
 'use client'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Copy, Grid2X2, Image as ImageIcon, List, Plus, Search, Trash2, UploadCloud, X } from 'lucide-react'
 import s from './admin-media.module.css'
 import ui from './admin-ui.module.css'
 import { optimizeImage } from '@/lib/optimize-image'
 import { useConfirm } from './admin-confirm'
 
-export default function MediaAdminPro({ initial }: { initial: any[] }) {
-  const [rows, setRows] = useState(initial || [])
+// Files are read a page at a time (app/api/admin/media). The search runs on the server.
+const PAGE = 48
+
+async function fetchFiles(skip: number, term: string): Promise<{ rows: any[]; total: number }> {
+  const params = new URLSearchParams({ skip: String(skip), take: String(PAGE) })
+  if (term) params.set('q', term)
+  const r = await fetch(`/api/admin/media?${params}`, { cache: 'no-store' })
+  const d = await r.json().catch(() => ({}))
+  if (!r.ok) throw new Error(d.error || 'Unable to load files')
+  return { rows: Array.isArray(d.rows) ? d.rows : [], total: Number(d.total) || 0 }
+}
+
+export default function MediaAdminPro({ initial, total: initialTotal }: { initial: any[]; total: number }) {
+  const [rows, setRows] = useState<any[]>(initial || [])
+  const [total, setTotal] = useState(initialTotal)
   const [q, setQ] = useState('')
+  // The search the files on screen were loaded for.
+  const [applied, setApplied] = useState('')
+  const [loading, setLoading] = useState(false)
+  const requestId = useRef(0)
   const [view, setView] = useState<'grid' | 'list'>('grid')
   const [show, setShow] = useState(false)
   const [tab, setTab] = useState<'upload' | 'url'>('upload')
@@ -21,7 +38,43 @@ export default function MediaAdminPro({ initial }: { initial: any[] }) {
   const [deleting, setDeleting] = useState<string | null>(null)
   const confirm = useConfirm()
 
-  const shown = useMemo(() => rows.filter(x => !q || `${x.name} ${x.alt || ''}`.toLowerCase().includes(q.toLowerCase())), [rows, q])
+  // A new search loads its first page once typing pauses. Any request still in flight is then stale.
+  useEffect(() => {
+    const term = q.trim()
+    const id = ++requestId.current
+    if (term === applied) { setLoading(false); return }
+    const timer = window.setTimeout(() => {
+      setLoading(true)
+      fetchFiles(0, term)
+        .then(d => { if (id === requestId.current) { setRows(d.rows); setTotal(d.total); setApplied(term) } })
+        .catch(e => { if (id === requestId.current) setError(e instanceof Error ? e.message : 'Unable to load files') })
+        .finally(() => { if (id === requestId.current) setLoading(false) })
+    }, term ? 250 : 0)
+    return () => window.clearTimeout(timer)
+  }, [q, applied])
+
+  async function loadMore() {
+    const id = requestId.current
+    setLoading(true)
+    try {
+      const d = await fetchFiles(rows.length, applied)
+      if (id === requestId.current) { setRows(p => [...p, ...d.rows]); setTotal(d.total) }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unable to load files')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // With no search on, a new file goes on top. During a search it is shown only if it matches, so the first page is reloaded.
+  async function added(asset: any) {
+    if (!applied) { setRows(p => [asset, ...p]); setTotal(t => t + 1); return }
+    const id = ++requestId.current
+    try {
+      const d = await fetchFiles(0, applied)
+      if (id === requestId.current) { setRows(d.rows); setTotal(d.total) }
+    } catch {}
+  }
 
   function pickFile(f: File | null | undefined) {
     if (!f) return
@@ -45,7 +98,7 @@ export default function MediaAdminPro({ initial }: { initial: any[] }) {
       const r = await fetch('/api/admin/media/upload', { method: 'POST', body })
       const d = await r.json()
       if (!r.ok) throw new Error(d.error || 'Unable to upload image')
-      setRows(p => [d.asset, ...p])
+      await added(d.asset)
       resetForm()
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to upload image') } finally { setBusy(false) }
   }
@@ -56,7 +109,7 @@ export default function MediaAdminPro({ initial }: { initial: any[] }) {
       const r = await fetch('/api/admin/media', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(form) })
       const d = await r.json()
       if (!r.ok) throw new Error(d.error || 'Unable to add asset')
-      setRows(p => [d.asset, ...p])
+      await added(d.asset)
       resetForm()
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to add asset') } finally { setBusy(false) }
   }
@@ -76,6 +129,7 @@ export default function MediaAdminPro({ initial }: { initial: any[] }) {
       const d = await r.json().catch(() => ({}))
       if (!r.ok) throw new Error(d.error || 'Unable to delete file')
       setRows(p => p.filter(x => x.id !== asset.id))
+      setTotal(t => Math.max(0, t - 1))
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to delete file') } finally { setDeleting(null) }
   }
 
@@ -92,23 +146,26 @@ export default function MediaAdminPro({ initial }: { initial: any[] }) {
     <div className={`${ui.card} ${s.mediaToolbar}`}>
       <div className={s.mediaSearch}><Search size={16} /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search files…" /></div>
       <div className="inline">
-        <span className={ui.muted}>{shown.length} files</span>
+        <span className={ui.muted}>{rows.length} of {total} files</span>
         <button className={`${ui.iconBtn} ${view === 'grid' ? s.viewToggleActive : ''}`} onClick={() => setView('grid')}><Grid2X2 size={15} /></button>
         <button className={`${ui.iconBtn} ${view === 'list' ? s.viewToggleActive : ''}`} onClick={() => setView('list')}><List size={15} /></button>
       </div>
     </div>
 
     {view === 'grid'
-      ? <div className={s.mediaGrid}>{shown.map(x => <article className={s.mediaCard} key={x.id}>
+      ? <div className={s.mediaGrid}>{rows.map(x => <article className={s.mediaCard} key={x.id}>
           <div className={s.mediaThumb}>{x.url ? <img src={x.url} alt={x.alt || x.name || ''} onError={e => { e.currentTarget.style.display = 'none' }} /> : <ImageIcon size={28} />}</div>
           <div className={s.mediaMeta}><strong title={x.name}>{x.name}</strong><span className={ui.muted}>{x.mimeType || 'Image'}</span>
             <div className={`inline ${s.inline}`}><button className={ui.iconBtn} title="Copy URL" aria-label="Copy URL" onClick={() => copy(x.url)}><Copy size={14} /></button><a className={ui.iconBtn} href={x.url} target="_blank" rel="noreferrer">↗</a><button className={`${ui.iconBtn} ${ui.iconBtnDanger}`} title="Delete file" aria-label={`Delete ${x.name}`} disabled={deleting === x.id} onClick={() => remove(x)}><Trash2 size={14} /></button></div>
           </div>
         </article>)}</div>
       : <div className={ui.card}><table className={ui.table}><thead><tr><th>Preview</th><th>Name</th><th>Alt text</th><th>Type</th><th>URL</th><th></th></tr></thead><tbody>
-          {shown.map(x => <tr key={x.id}><td><div className={s.mediaListThumb}><img src={x.url} alt={x.alt || ''} /></div></td><td><strong>{x.name}</strong></td><td>{x.alt || '—'}</td><td>{x.mimeType || 'Image'}</td><td><button className={ui.textButton} onClick={() => copy(x.url)}>Copy URL</button></td><td><button className={`${ui.iconBtn} ${ui.iconBtnDanger}`} title="Delete file" aria-label={`Delete ${x.name}`} disabled={deleting === x.id} onClick={() => remove(x)}><Trash2 size={14} /></button></td></tr>)}
+          {rows.map(x => <tr key={x.id}><td><div className={s.mediaListThumb}><img src={x.url} alt={x.alt || ''} /></div></td><td><strong>{x.name}</strong></td><td>{x.alt || '—'}</td><td>{x.mimeType || 'Image'}</td><td><button className={ui.textButton} onClick={() => copy(x.url)}>Copy URL</button></td><td><button className={`${ui.iconBtn} ${ui.iconBtnDanger}`} title="Delete file" aria-label={`Delete ${x.name}`} disabled={deleting === x.id} onClick={() => remove(x)}><Trash2 size={14} /></button></td></tr>)}
         </tbody></table></div>}
-    {!shown.length && <div className={`${ui.card} ${s.mediaEmpty}`}><ImageIcon size={26} /><strong>No files found</strong><span className={ui.muted}>Add a file or try a different search.</span></div>}
+    {!rows.length && !loading && <div className={`${ui.card} ${s.mediaEmpty}`}><ImageIcon size={26} /><strong>No files found</strong><span className={ui.muted}>Add a file or try a different search.</span></div>}
+    {rows.length < total && <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0' }}>
+      <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={loadMore} disabled={loading}>{loading ? 'Loading…' : `Load more (${total - rows.length} left)`}</button>
+    </div>}
 
     {show && <div className={ui.modalOverlay} onClick={() => setShow(false)}>
       <div className={`${ui.card} ${s.mediaModal}`} onClick={e => e.stopPropagation()}>
