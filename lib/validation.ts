@@ -11,6 +11,9 @@ export const checkoutSchema = z.object({
   couponCode: z.string().trim().max(60).optional().or(z.literal('')),
   giftCardCode: z.string().trim().max(60).optional().or(z.literal('')),
   coinsToUse: z.number().int().min(0).max(1000000).default(0),
+  // The total the shopper reviewed (the price summary), in minor units. Checkout refuses to place the
+  // order at any other total, so a stale price never turns into a charge the shopper did not see.
+  expectedTotal: z.number().int().min(0).max(100000000).optional(),
   shippingRateId: z.string().trim().max(60).optional().or(z.literal('')),
   // "This is a gift" (Settings > Selling tools): the message goes in the parcel.
   isGift: z.boolean().optional().default(false),

@@ -1,5 +1,5 @@
 import { db } from '@/lib/prisma'
-import { consumeRateLimit } from '@/lib/rate-limit'
+import { consumeDurableRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { areebaMpgsPaymentProvider, paymentReturnToken, safeTokenEqual } from '@/lib/payments'
 import { markOnlinePaymentFailed, markOnlinePaymentPaid } from '@/lib/payment-outcome'
@@ -17,7 +17,7 @@ export async function GET(req: Request) {
     return Response.redirect(new URL('/checkout?payment=invalid_return', url.origin))
   }
 
-  const limit = consumeRateLimit(`areeba-return:${clientIp(req.headers)}:${orderNumber}`, 20, 60 * 1000)
+  const limit = await consumeDurableRateLimit(`areeba-return:${clientIp(req.headers)}:${orderNumber}`, 20, 60 * 1000)
   if (!limit.allowed) return Response.redirect(new URL('/checkout?payment=retry_later', url.origin))
 
   const order = await db.order.findUnique({ where: { orderNumber }, select: { id: true, orderNumber: true, paymentStatus: true, grandTotal: true, currency: true, couponCode: true } })

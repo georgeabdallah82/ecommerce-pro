@@ -1,6 +1,6 @@
 import { db } from '@/lib/prisma'
 import { audit } from '@/lib/audit'
-import { consumeRateLimit } from '@/lib/rate-limit'
+import { consumeDurableRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { areebaMpgsPaymentProvider, areebaWebhookToken, safeTokenEqual } from '@/lib/payments'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
@@ -68,7 +68,7 @@ async function processPaymentNotification(orderNumber: string, body: Record<stri
 
 export async function POST(req: Request) {
   try {
-    const limit = consumeRateLimit(`areeba-webhook:${clientIp(req.headers)}`, 60, 60 * 1000)
+    const limit = await consumeDurableRateLimit(`areeba-webhook:${clientIp(req.headers)}`, 60, 60 * 1000)
     if (!limit.allowed) return Response.json({ error: 'Too many webhook requests' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds), 'Cache-Control': 'no-store' } })
     const url = new URL(req.url)
     if (!safeTokenEqual(url.searchParams.get('token')?.trim() || '', areebaWebhookToken())) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: { 'Cache-Control': 'no-store' } })

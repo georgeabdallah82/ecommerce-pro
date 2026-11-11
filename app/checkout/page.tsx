@@ -35,7 +35,7 @@ type StoreSettings = { payment: { cod: boolean; card: boolean; bank: boolean; wa
 type ClientCheckout = { type: 'mpgs'; merchantId: string; sessionId: string; scriptUrl: string }
 type ShippingRate = { id: string | null; name: string; price: number; freeAbove: number | null; estimatedDays: number | null }
 type DeliveryArea = { name: string; eta: string }
-type Quote = { subtotal: number; discount: number; discountCode: string | null; automaticDiscount: boolean; bundleDiscount: number; shipping: number; freeShipping: boolean; tax: number; total: number; couponError: string; freeGift?: { name: string; image: string } | null }
+type Quote = { subtotal: number; discount: number; discountCode: string | null; automaticDiscount: boolean; bundleDiscount: number; shipping: number; freeShipping: boolean; tax: number; coins: number; maxCoins: number; coinsError: string; giftCard: number; giftCardError: string; total: number; couponError: string; freeGift?: { name: string; image: string } | null }
 const defaultSettings: StoreSettings = { payment: { cod: true, card: false, bank: false, wallet: false, details: { bank: null, wallet: null } }, checkout: { guestCheckout: true } }
 const PAYMENT_ICONS: Record<string, typeof Banknote> = { COD: Banknote, CARD: CreditCard, BANK_TRANSFER: Landmark, WALLET: Wallet }
 // The fields checked before the order is sent, in the order they appear (the first problem is scrolled to).
@@ -270,9 +270,15 @@ export default function Checkout() {
   const enabledMethodSignature = enabledMethods.map(([value]) => value).join('|')
   useEffect(() => { if (enabledMethods.length && !enabledMethods.some(([value]) => value === paymentMethod)) setPaymentMethod(enabledMethods[0][0]) }, [enabledMethodSignature, paymentMethod])
 
-  // The exact price from the server: asked again when the cart, area, rate or code changes.
+  // The gift card the shopper applied, and the reason under its box when the server turns it down.
+  const [giftCardInput, setGiftCardInput] = useState('')
+  const [appliedGiftCard, setAppliedGiftCard] = useState('')
+  const [giftCardMessage, setGiftCardMessage] = useState('')
+  // The exact price from the server: asked again when the cart, area, rate, code, coins or gift card change.
   const [quote, setQuote] = useState<Quote | null>(null)
   const [quoting, setQuoting] = useState(false)
+  const [quoteFailed, setQuoteFailed] = useState(false)
+  const [quoteRetry, setQuoteRetry] = useState(0)
   const quoteRequestId = useRef(0)
   const cartKey = useMemo(() => items.map(i => `${i.productId}:${i.variantId || ''}:${i.quantity}:${i.bundleId || ''}`).join('|'), [items])
   useEffect(() => {
@@ -282,20 +288,23 @@ export default function Checkout() {
     const timer = setTimeout(() => {
       fetch('/api/checkout/quote', {
         method: 'POST', headers: { 'content-type': 'application/json' }, cache: 'no-store',
-        body: JSON.stringify({ items: items.map(item => ({ productId: item.productId, variantId: item.variantId || null, quantity: item.quantity, bundleId: item.bundleId || null })), couponCode: appliedCode, country: country.trim(), region: area, shippingRateId: selectedRateId, phone: contact.phone, email: contact.email }),
+        body: JSON.stringify({ items: items.map(item => ({ productId: item.productId, variantId: item.variantId || null, quantity: item.quantity, bundleId: item.bundleId || null })), couponCode: appliedCode, country: country.trim(), region: area, shippingRateId: selectedRateId, phone: contact.phone, email: contact.email, coinsToUse, giftCardCode: appliedGiftCard }),
       })
-        .then(r => r.ok ? r.json() : null)
-        .then((data: Quote | null) => {
+        .then(r => r.ok ? r.json() : Promise.reject(new Error('quote')))
+        .then((data: Quote) => {
           if (requestId !== quoteRequestId.current) return
-          setQuote(data && typeof data.total === 'number' ? data : null)
+          setQuote(typeof data.total === 'number' ? data : null)
+          setQuoteFailed(false)
           // A code the server turned down is taken off, with the reason under the box.
-          if (data?.couponError && appliedCode) { setAppliedCode(''); try { localStorage.removeItem('ecom-coupon-code') } catch {} }
+          if (data.couponError && appliedCode) { setAppliedCode(''); try { localStorage.removeItem('ecom-coupon-code') } catch {} }
+          // A gift card the server turned down is taken off, with the reason under its box.
+          if (data.giftCardError && appliedGiftCard) { setAppliedGiftCard(''); setGiftCardMessage(data.giftCardError) }
         })
-        .catch(() => { if (requestId === quoteRequestId.current) setQuote(null) })
+        .catch(() => { if (requestId === quoteRequestId.current) { setQuote(null); setQuoteFailed(true) } })
         .finally(() => { if (requestId === quoteRequestId.current) setQuoting(false) })
     }, 300)
     return () => clearTimeout(timer)
-  }, [cartReady, recovering, cartKey, country, area, selectedRateId, appliedCode, appliedCode ? contact.phone : '', appliedCode ? contact.email : ''])
+  }, [cartReady, recovering, cartKey, country, area, selectedRateId, appliedCode, appliedCode ? contact.phone : '', appliedCode ? contact.email : '', coinsToUse, appliedGiftCard, quoteRetry])
   const [codeMessage, setCodeMessage] = useState('')
   // "This is a gift" (Settings > Selling tools > Gift option).
   const [isGift, setIsGift] = useState(false)
@@ -314,6 +323,14 @@ export default function Checkout() {
     setAppliedCode(''); setCodeInput(''); setCodeMessage('')
     try { localStorage.removeItem('ecom-coupon-code') } catch {}
   }
+  function applyGiftCard() {
+    const code = giftCardInput.trim().toUpperCase()
+    setGiftCardMessage('')
+    if (!code) return
+    setAppliedGiftCard(code)
+    setGiftCardInput('')
+  }
+  function removeGiftCard() { setAppliedGiftCard(''); setGiftCardInput(''); setGiftCardMessage('') }
 
   function check(fd: FormData) {
     const value = (name: string) => String(fd.get(name) || '').trim()
@@ -339,7 +356,10 @@ export default function Checkout() {
     if (!sessionLoaded) { setError(t('Authentication status is still loading. Please try again in a moment.')); return }
     if (guestBlocked) { setError(t('Guest checkout is disabled. Please sign in to continue.')); return }
     if (!enabledMethods.some(([value]) => value === paymentMethod)) { setError(t('Please choose an available payment method.')); return }
-    if (coinsToUse > coinBalance) { setError(t('You do not have enough coins for this redemption.')); return }
+    // The order is placed at the total the summary shows, so wait until that total is current and valid.
+    if (!quote || quoting || quoteFailed) { setError(t('We are still confirming your total. Please wait a moment, then place the order.')); return }
+    if (quote.coinsError || quote.giftCardError) { setError(t('Fix the coins or gift card above, then place the order.')); return }
+    if (giftCardInput.trim() && giftCardInput.trim().toUpperCase() !== appliedGiftCard) { setError(t('Tap Apply to use your gift card, or clear it.')); return }
     // A code typed but never applied: ask, rather than silently dropping it or failing the order.
     // One the server already turned down is simply left out.
     if (codeInput.trim() && codeInput.trim().toUpperCase() !== appliedCode && !codeMessage) {
@@ -360,14 +380,19 @@ export default function Checkout() {
     const value = (name: string) => String(fd.get(name) || '').trim()
     const data = {
       email: value('email').toLowerCase(), phone: value('phone'), paymentMethod,
-      couponCode: appliedCode, giftCardCode: value('giftCardCode'), coinsToUse, shippingRateId: selectedRateId,
+      couponCode: appliedCode, giftCardCode: appliedGiftCard, coinsToUse, expectedTotal: quote.total, shippingRateId: selectedRateId,
       isGift, giftMessage: isGift ? giftMessage.trim() : '',
       shippingAddress: { firstName: value('firstName'), lastName: value('lastName'), line1: value('line1'), line2: value('line2'), city: value('city'), region: useAreaList ? area : value('region'), postalCode: value('postalCode'), country: country.trim(), phone: value('phone'), ...(pin ? { lat: pin.lat, lng: pin.lng, ...(pin.accuracy !== null ? { locationAccuracy: pin.accuracy } : {}) } : {}) },
       items: items.map(item => ({ productId: item.productId, variantId: item.variantId || null, quantity: item.quantity, bundleId: item.bundleId || null })),
     }
     try {
       const response = await fetch('/api/checkout', { method: 'POST', headers: { 'content-type': 'application/json', 'x-idempotency-key': idempotencyKey.current }, body: JSON.stringify(data) })
-      const output = await response.json(); if (!response.ok) throw new Error(t(output.error || 'Unable to place order'))
+      const output = await response.json()
+      if (!response.ok) {
+        // The total moved between the summary and the order: fetch the new one so the shopper sees it.
+        if (output.code === 'TOTAL_CHANGED') setQuoteRetry(n => n + 1)
+        throw new Error(t(output.error || 'Unable to place order'))
+      }
       clearSelected()
       try { localStorage.removeItem('ecom-coupon-code') } catch {}
       if (checkoutToken.current) {
@@ -395,7 +420,10 @@ export default function Checkout() {
   const rateCost = (rate: ShippingRate) => rate.freeAbove !== null && subtotal >= rate.freeAbove ? 0 : rate.price
   // Before the server's price arrives: the cart and the chosen rate.
   const deliveryCost = quote ? quote.shipping : selectedRate ? rateCost(selectedRate) : null
-  const total = quote ? Math.max(0, quote.total - coinsToUse) : subtotal + (deliveryCost || 0) - coinsToUse
+  // The server's total, which already includes coins, delivery, tax and any gift card. Before the first price arrives, a rough figure.
+  const total = quote ? quote.total : subtotal + (deliveryCost || 0)
+  // The most coins this order can take: the balance, or the merchandise total if that is less.
+  const coinLimit = quote ? Math.min(coinBalance, quote.maxCoins) : coinBalance
   const areaEta = areas.find(a => a.name === area)?.eta || ''
   const paymentNotes: Record<string, string> = { COD: t('Pay in cash when your order arrives.'), CARD: t('Pay securely by card on the next step.'), BANK_TRANSFER: settings?.payment.details.bank?.label ? t('Send the payment to the account below; we ship once it arrives.') : t('Transfer to our bank account; we ship once it arrives.'), WALLET: t('Use your store wallet balance.') }
   const showBankDetails = paymentMethod === 'BANK_TRANSFER' && bankDetails
@@ -437,7 +465,8 @@ export default function Checkout() {
       <div className={s.totals}>
         <div><span>{t('Subtotal')}</span><strong>{money(quote?.subtotal ?? subtotal)}</strong></div>
         {quote && quote.discount > 0 && <div className={s.saving}><span>{quote.discountCode ? t('Discount ({code})', { code: quote.discountCode }) : t('Discount')}</span><strong>−{money(quote.discount)}</strong></div>}
-        {coinsToUse > 0 && <div className={s.saving}><span>{t('Coins')}</span><strong>−{money(coinsToUse)}</strong></div>}
+        {quote && quote.coins > 0 && <div className={s.saving}><span>{t('Coins')}</span><strong>−{money(quote.coins)}</strong></div>}
+        {quote && quote.giftCard > 0 && <div className={s.saving}><span>{t('Gift card')}</span><strong>−{money(quote.giftCard)}</strong></div>}
         <div><span>{t('Delivery')}{area ? ` · ${area}` : ''}</span><strong>{deliveryCost === null ? '—' : deliveryCost === 0 ? <span className={s.free}>{t('Free')}</span> : money(deliveryCost)}</strong></div>
         {quote && quote.tax > 0 && <div><span>{t('Tax')}</span><strong>{money(quote.tax)}</strong></div>}
         <div className={s.grand}><span>{t('Total')}</span><strong>{money(total)}</strong></div>
@@ -501,7 +530,8 @@ export default function Checkout() {
             : <div className={s.choices} role="radiogroup" aria-label={t('Delivery method')}>
                 {shippingRates.map(rate => {
                   const on = selectedRateId === (rate.id || '')
-                  const cost = rateCost(rate)
+                  // The selected method shows the server's price for this order (after coins); the others are estimates.
+                  const cost = on && quote ? quote.shipping : rateCost(rate)
                   const when = areaEta || (rate.estimatedDays ? plural(rate.estimatedDays, 'day') : '')
                   return <label key={rate.id || 'standard'} className={`${s.choice} ${on ? s.choiceOn : ''}`}>
                     <input type="radio" name="shippingRateOption" checked={on} onChange={() => setSelectedRateId(rate.id || '')} />
@@ -532,10 +562,12 @@ export default function Checkout() {
           : settings ? <div className={s.alert}>{t('No payment methods are currently enabled. Please contact the store.')}</div> : null}
         {paymentMethod === 'WALLET' && authenticated && <div className={s.note}><strong>{t('Store wallet')}</strong>{t('{amount} available for this order.', { amount: money(walletBalance, walletCurrency) })}</div>}
         {showBankDetails && <div className={s.note}><strong>{bankDetails.label ? t('Payment details') : t('Bank transfer details')}</strong>{bankDetails.bankName && <>{bankDetails.bankName}<br /></>}{bankDetails.accountName && <>{t('Account name:')} {bankDetails.accountName}<br /></>}{bankDetails.iban && <>{t('Account number:')} <span dir="ltr">{bankDetails.iban}</span></>}{bankDetails.instructions && <><br />{bankDetails.instructions}</>}{!bankDetails.bankName && !bankDetails.accountName && !bankDetails.iban && !bankDetails.instructions && t("We'll contact you with the bank details.")}</div>}
-        {authenticated && coinBalance > 0 && <div className={s.note}><strong>{t('Use loyalty coins')}</strong><span className={s.small}>{t('1 coin = 0.01 in store currency.')}</span><div className={s.code} style={{ marginTop: 8 }}><input className={s.input} type="number" min="0" max={coinBalance} step="1" inputMode="numeric" value={coinsToUse || ''} onChange={e => setCoinsToUse(Math.max(0, Math.min(coinBalance, Number(e.target.value) || 0)))} placeholder={t('Coins to use')} aria-label={t('Coins to use')} /><button className={s.codeBtn} type="button" onClick={() => setCoinsToUse(coinBalance)}>{t('Use all')}</button></div></div>}
-        {giftOpen
-          ? <label className={s.field}><span className={s.label}>{t('Gift card')}</span><input className={s.input} name="giftCardCode" autoCapitalize="characters" placeholder={t('Gift card code')} /><span className={s.help}>{t('Applied when you place the order.')}</span></label>
-          : <button type="button" className={s.linkBtn} onClick={() => setGiftOpen(true)}>{t('Have a gift card?')}</button>}
+        {authenticated && coinBalance > 0 && <div className={s.note}><strong>{t('Use loyalty coins')}</strong><span className={s.small}>{t('1 coin = 0.01 in store currency.')}</span><div className={s.code} style={{ marginTop: 8 }}><input className={s.input} type="number" min="0" max={coinLimit} step="1" inputMode="numeric" value={coinsToUse || ''} onChange={e => setCoinsToUse(Math.max(0, Math.min(coinLimit, Number(e.target.value) || 0)))} placeholder={t('Coins to use')} aria-label={t('Coins to use')} /><button className={s.codeBtn} type="button" onClick={() => setCoinsToUse(coinLimit)} disabled={coinLimit <= 0}>{t('Use all')}</button></div><span className={s.small}>{t('Up to {amount} on this order.', { amount: money(coinLimit) })}</span>{quote?.coinsError && <p className={s.codeError} role="alert">{t(quote.coinsError)}</p>}</div>}
+        {appliedGiftCard
+          ? <span className={s.applied}><Check size={14} /> {t('Gift card ending {last} applied', { last: appliedGiftCard.slice(-4) })}<button type="button" onClick={removeGiftCard} aria-label={t('Remove gift card')}><X size={14} /></button></span>
+          : giftOpen
+            ? <div className={s.field}><span className={s.label}>{t('Gift card')}</span><div className={s.code}><input className={s.input} value={giftCardInput} onChange={e => { setGiftCardInput(e.target.value); setGiftCardMessage('') }} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); applyGiftCard() } }} autoCapitalize="characters" placeholder={t('Gift card code')} aria-label={t('Gift card code')} /><button type="button" className={s.codeBtn} onClick={applyGiftCard} disabled={!giftCardInput.trim() || quoting}>{t('Apply')}</button></div>{giftCardMessage && <span className={s.error} role="alert">{t(giftCardMessage)}</span>}</div>
+            : <button type="button" className={s.linkBtn} onClick={() => setGiftOpen(true)}>{t('Have a gift card?')}</button>}
         {settings?.selling?.giftOption !== false && <div className={s.giftBox}>
           <label className={s.check}><input type="checkbox" checked={isGift} onChange={e => setIsGift(e.target.checked)} /> <span><Gift size={16} aria-hidden="true" /> {t('This is a gift')}</span></label>
           {isGift && <label className="giftNote"><span className={s.label}>{t('Gift message (optional)')}</span><textarea value={giftMessage} onChange={e => setGiftMessage(e.target.value)} maxLength={300} rows={3} placeholder={t('We put your message in the parcel. Prices are not shown inside.')} dir="auto" /></label>}
@@ -544,8 +576,9 @@ export default function Checkout() {
 
       {error && <div className={s.alert} role="alert" aria-live="polite">{error}</div>}
       <div className={s.placeBar}>
-        <button className={s.placeBtn} type="submit" disabled={loading || !items.length || !settings || !sessionLoaded || enabledMethods.length === 0 || guestBlocked} aria-busy={loading}>
-          <Lock size={18} />{loading ? t('Placing order…') : `${t('Place order')} · ${money(total)}`}
+        {quoteFailed && <p className={s.codeError} role="alert">{t("We couldn't update your total.")} <button type="button" className={s.linkBtn} onClick={() => setQuoteRetry(n => n + 1)}>{t('Try again')}</button></p>}
+        <button className={s.placeBtn} type="submit" disabled={loading || !items.length || !settings || !sessionLoaded || enabledMethods.length === 0 || guestBlocked || !quote || quoting || Boolean(quote.coinsError || quote.giftCardError)} aria-busy={loading || quoting}>
+          <Lock size={18} />{loading ? t('Placing order…') : !quote ? t('Calculating total…') : quoting ? t('Updating total…') : `${t('Place order')} · ${money(total)}`}
         </button>
         <div className={s.trust}><span><ShieldCheck size={14} /> {t('Your details are only used for this order')}</span>{settings?.payment.cod && <span><Banknote size={14} /> {t('Cash on delivery')}</span>}</div>
       </div>

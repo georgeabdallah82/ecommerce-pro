@@ -59,6 +59,17 @@ export function redeemedGiftCard(paymentTransactions: Array<{ provider: string; 
   }
 }
 
+// Why a gift card can't pay for an order in this currency, or null when it can. Checkout and the
+// price summary (app/api/checkout/quote/route.ts) both ask this, so the shopper gets the same reason
+// from either.
+export function giftCardProblem(card: { status: string; expiresAt: Date | null; balance: number; currency: string }, orderCurrency: string, now = new Date()) {
+  if (card.status !== 'ACTIVE') return 'This gift card is no longer active'
+  if (card.expiresAt && card.expiresAt < now) return 'This gift card has expired'
+  if (card.balance <= 0) return 'This gift card has no remaining balance'
+  if (card.currency !== orderCurrency) return 'This gift card cannot be used for this order currency'
+  return null
+}
+
 // Gift cards have no scheduled sweep (unlike inventory reservations), so status is
 // synced lazily on read: called before every admin list/detail query, this flips any
 // ACTIVE card whose expiresAt has passed to EXPIRED so the admin UI doesn't show a
