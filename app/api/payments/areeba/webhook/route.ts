@@ -64,8 +64,10 @@ async function processPaymentNotification(orderNumber: string) {
   if (['REFUNDED', 'PARTIALLY_REFUNDED'].includes(order.paymentStatus)) return true
 
   const transaction = await db.paymentTransaction.findFirst({ where: { orderId: order.id, provider: 'areeba_mpgs', status: { in: ['pending', 'paid', 'failed'] } }, orderBy: { createdAt: 'desc' } })
-  if (!transaction?.externalId || transaction.amount !== order.grandTotal || transaction.currency !== order.currency) return false
-  const status = await areebaMpgsPaymentProvider.getPaymentStatus(transaction.externalId, orderNumber)
+  // A record can exist before its gateway session id is saved (lib/invoice-payment.ts saves the record first). The
+  // gateway order, looked up by the order number, is what decides, so the session id is not needed here.
+  if (!transaction || transaction.amount !== order.grandTotal || transaction.currency !== order.currency) return false
+  const status = await areebaMpgsPaymentProvider.getPaymentStatus(transaction.externalId ?? '', orderNumber)
   if (status === 'paid') await markOnlinePaymentPaid(order, transaction.id, 'webhook')
   else if (status === 'failed') await markOnlinePaymentFailed(order, transaction.id, 'webhook')
   return true

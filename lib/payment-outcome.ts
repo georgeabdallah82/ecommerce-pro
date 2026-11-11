@@ -92,7 +92,7 @@ export async function markOnlinePaymentFailed(order: { id: string; orderNumber: 
     await tx.order.update({ where: { id: order.id }, data: { paymentStatus: 'FAILED', status: 'CANCELLED', events: { create: { status: 'CANCELLED', message: 'Online payment failed.' } } } })
     await tx.paymentTransaction.update({ where: { id: transactionId }, data: { status: 'failed' } })
     transitioned = true
-  })
+  }, { requireTransaction: true } as any)
   if (!transitioned) return false
   await audit(null, 'payment.failed', 'Order', order.id, { provider: 'areeba_mpgs', orderNumber: order.orderNumber, source })
   runInBackground(dispatchWebhookEvent('order.updated', { id: order.id, orderNumber: order.orderNumber, paymentStatus: 'FAILED' }).catch(error => console.error('[webhook] order.updated dispatch failed', error)))

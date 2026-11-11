@@ -143,7 +143,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       await tx.orderEvent.create({ data: { orderId: current.id, status: current.status, message: `Order edited by ${actor.name}.${paymentAdjustment?.type === 'refund' ? ` A refund of ${paymentAdjustment.amount} ${current.currency} is owed.` : paymentAdjustment?.type === 'charge' ? ` An additional ${paymentAdjustment.amount} ${current.currency} is due.` : ''}` } })
       await tx.orderEdit.update({ where: { id }, data: { subtotalAfter: nextSubtotal, deltaTotal: delta } })
       return { updated, refundToSettle, paymentAdjustment, userId: current.userId }
-    })
+    }, { requireTransaction: true } as any)
 
     runInBackground(dispatchWebhookEvent('order.updated', { id: order.updated.id, orderNumber: order.updated.orderNumber, status: order.updated.status, paymentStatus: order.updated.paymentStatus }).catch(error => console.error('[webhook] order.updated dispatch failed', error)))
 
@@ -174,6 +174,10 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       if (!settled.ok) {
         await audit(actor.id, 'order_edit.committed', 'OrderEdit', id, { orderId: order.updated.id, newSubtotal: order.updated.subtotal, newTotal: order.updated.grandTotal })
         return json({ order: order.updated, error: 'Order edit committed, but the gateway refund failed. The refund remains marked failed for admin retry.' }, { status: 502 })
+      }
+      if (!settled.recorded) {
+        await audit(actor.id, 'order_edit.committed', 'OrderEdit', id, { orderId: order.updated.id, newSubtotal: order.updated.subtotal, newTotal: order.updated.grandTotal, refundPending: true })
+        return json({ order: order.updated, paymentAdjustment: order.paymentAdjustment, refundPending: true, message: 'The order edit is saved. Its refund is pending until the gateway confirms it.' }, { status: 202 })
       }
     }
 

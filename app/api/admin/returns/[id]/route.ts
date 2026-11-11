@@ -30,6 +30,8 @@ const RETURN_MESSAGES = new Set([
 ])
 
 function returnFailure(error: unknown) {
+  // Nothing was kept: the store could not run this return as one transaction (lib/prisma.ts).
+  if (error instanceof Error && error.name === 'TransactionUnavailableError') return { message: error.message, status: 503 }
   if (error instanceof Error) {
     if (RETURN_MESSAGES.has(error.message)) return { message: error.message, status: error.message === 'Return request not found' ? 404 : 400 }
     if (error.message === 'UNAUTHORIZED') return { message: 'Unauthorized', status: 401 }
@@ -137,7 +139,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
         await audit(actor.id, 'return.received', 'ReturnRequest', id, { orderId: order.id, restocked: restock, refundId: refund?.id || null, refundAmount: requestedRefund, refundProvider })
         return { order: updatedOrder, returnRequest, refund, refundProvider, refundExternalId, restockedInventoryIds: [...restockedInventoryIds] }
-      })
+      }, { requireTransaction: true } as any)
 
       runInBackground(dispatchWebhookEvent('order.updated', { id: result.order.id, orderNumber: result.order.orderNumber, status: result.order.status, paymentStatus: result.order.paymentStatus }).catch(error => console.error('[webhook] order.updated dispatch failed', error)))
       dispatchInventoryUpdated(result.restockedInventoryIds)

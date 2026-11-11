@@ -135,34 +135,31 @@ function parseCoinsUsed(rawJson: string | null) {
   } catch { return 0 }
 }
 
-async function restoreCheckoutGiftCard(orderId: string, grandTotal: number) {
-  await db.$transaction(async tx => {
-    const checkoutTx = await tx.paymentTransaction.findFirst({ where: { orderId, provider: 'checkout' }, select: { rawJson: true } })
-    const redeemed = redeemedGiftCard([{ provider: 'checkout', rawJson: checkoutTx?.rawJson || null }])
-    if (!redeemed) return
-    await restoreGiftCardBalance(tx, orderId, redeemed, grandTotal, grandTotal)
-  })
+// Both restores run inside the transaction that cancels an unpaid checkout (the payment-start compensation below).
+async function restoreCheckoutGiftCard(tx: any, orderId: string, grandTotal: number) {
+  const checkoutTx = await tx.paymentTransaction.findFirst({ where: { orderId, provider: 'checkout' }, select: { rawJson: true } })
+  const redeemed = redeemedGiftCard([{ provider: 'checkout', rawJson: checkoutTx?.rawJson || null }])
+  if (!redeemed) return
+  await restoreGiftCardBalance(tx, orderId, redeemed, grandTotal, grandTotal)
 }
 
-async function restoreCheckoutCoins(orderId: string, userId: string | null) {
+async function restoreCheckoutCoins(tx: any, orderId: string, userId: string | null) {
   if (!userId) return
-  await db.$transaction(async tx => {
-    const checkoutTx = await tx.paymentTransaction.findFirst({ where: { orderId, provider: 'checkout' }, select: { rawJson: true } })
-    const coinsUsed = parseCoinsUsed(checkoutTx?.rawJson || null)
-    if (!coinsUsed) return
-    const referenceId = `coin-reversal:${orderId}:payment-init-failed`
-    const existing = await tx.coinTransaction.findFirst({ where: { userId, referenceId, type: 'REVERSAL' }, select: { id: true } })
-    if (existing) return
-    await tx.coinTransaction.create({
-      data: {
-        id: `coin_${orderId}_payment_init_failed_reversal`,
-        userId,
-        amount: coinsUsed,
-        type: 'REVERSAL',
-        reason: 'Payment initialization failure coin restoration',
-        referenceId,
-      },
-    })
+  const checkoutTx = await tx.paymentTransaction.findFirst({ where: { orderId, provider: 'checkout' }, select: { rawJson: true } })
+  const coinsUsed = parseCoinsUsed(checkoutTx?.rawJson || null)
+  if (!coinsUsed) return
+  const referenceId = `coin-reversal:${orderId}:payment-init-failed`
+  const existing = await tx.coinTransaction.findFirst({ where: { userId, referenceId, type: 'REVERSAL' }, select: { id: true } })
+  if (existing) return
+  await tx.coinTransaction.create({
+    data: {
+      id: `coin_${orderId}_payment_init_failed_reversal`,
+      userId,
+      amount: coinsUsed,
+      type: 'REVERSAL',
+      reason: 'Payment initialization failure coin restoration',
+      referenceId,
+    },
   })
 }
 
@@ -454,13 +451,15 @@ export async function POST(req: Request) {
         }
         clientCheckout = payment.clientCheckout || null
       } catch (paymentError) {
+        // The cancellation and the coins and gift card that come back with it are one transaction. If it cannot run,
+        // nothing is cancelled, and the expired-reservation job clears the order later.
         await db.$transaction(async tx => {
           await releaseOrderReservations(tx, order.id, 'Online payment initialization failed')
           if (order.couponCode) await tx.coupon.updateMany({ where: { code: order.couponCode, usedCount: { gt: 0 } }, data: { usedCount: { decrement: 1 } } })
+          await restoreCheckoutCoins(tx, order.id, order.userId)
+          await restoreCheckoutGiftCard(tx, order.id, order.grandTotal)
           await tx.order.update({ where: { id: order.id }, data: { status: 'CANCELLED', fulfillmentStatus: 'UNFULFILLED', events: { create: { status: 'CANCELLED', message: 'Online payment initialization failed.' } } } })
-        })
-        await restoreCheckoutCoins(order.id, order.userId)
-        await restoreCheckoutGiftCard(order.id, order.grandTotal)
+        }, { requireTransaction: true } as any)
         throw paymentError
       }
     }

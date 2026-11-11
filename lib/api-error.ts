@@ -15,6 +15,8 @@ export function routeError(e: unknown, fallback: string, status = 400, headers?:
   const init = (s: number): ResponseInit => (headers ? { status: s, headers } : { status: s })
   if (e instanceof Error && (e.message === 'UNAUTHORIZED' || e.message === 'FORBIDDEN')) return json({ error: e.message }, init(status))
   if (e instanceof UserError) return json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, init(e.status ?? status))
+  // A write that must run as one transaction could not run, so none of it was kept (lib/prisma.ts): ask for a retry.
+  if (e instanceof Error && e.name === 'TransactionUnavailableError') return json({ error: e.message }, init(503))
   if (e instanceof SyntaxError) return json({ error: 'The request was not valid. Please try again.' }, init(400))
   if (e instanceof Error && e.name === 'ZodError') return json({ error: 'Please check the details and try again.' }, init(400))
   if (isUniqueConflict(e)) return json({ error: 'That value is already used by another record.' }, init(409))

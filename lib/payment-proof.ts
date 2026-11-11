@@ -44,6 +44,33 @@ export function sniffProofType(bytes: Uint8Array): ProofType | null {
   return null
 }
 
+// Reads an upload's form without keeping more than `maxBytes` of its body: the stream is cut off at the limit, so a
+// request that leaves out Content-Length (or lies about it) costs at most the limit. Resolves to 'too-big' past the
+// limit, and to null when the body is not a form.
+export async function readProofForm(req: Request, maxBytes: number): Promise<FormData | 'too-big' | null> {
+  if (!req.body) return null
+  const reader = req.body.getReader()
+  const chunks: Uint8Array[] = []
+  let total = 0
+  for (;;) {
+    const result = await reader.read()
+    if (result.done) break
+    total += result.value.byteLength
+    if (total > maxBytes) {
+      await reader.cancel().catch(() => {})
+      return 'too-big'
+    }
+    chunks.push(result.value)
+  }
+  const bytes = new Uint8Array(total)
+  let offset = 0
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return new Response(bytes, { headers: { 'content-type': req.headers.get('content-type') || '' } }).formData().catch(() => null)
+}
+
 // Storage keys: "proof-" and 32 random hex characters. Only keys of this exact shape are ever read
 // or served, and the public media route refuses the "proof-" prefix altogether.
 export const PROOF_KEY_PREFIX = 'proof-'

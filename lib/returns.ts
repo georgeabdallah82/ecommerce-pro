@@ -196,34 +196,47 @@ export async function settleReturnRefund(actorId: string, params: { returnId?: s
   // leaves the return's status (and thus the email for it) up to the caller. A wallet refund is
   // also settled synchronously (the wallet credit, not a gateway call) by the caller, so it's
   // skipped here exactly like manual.
-  if (refundProvider === 'manual' || refundProvider === 'wallet') return { ok: true as const, completed: false as const }
+  if (refundProvider === 'manual' || refundProvider === 'wallet') return { ok: true as const, completed: false as const, recorded: true as const }
+  // The gateway is asked first, outside any transaction. A gateway that refuses marks the refund failed.
+  let gatewayResult: 'refunded' | 'pending' | null = null
   try {
     if (!refundExternalId) throw userError('Paid gateway transaction is missing its external reference')
     const provider = await getPaymentProvider(refundProvider)
     if (provider.name !== refundProvider || !provider.refundPayment) throw new Error(`Payment provider ${refundProvider} is not available for refunds`)
-    const gatewayResult = await provider.refundPayment(refundExternalId, amount, currency)
-    if (gatewayResult === 'refunded') {
-      await db.$transaction(async tx => {
-        await tx.paymentTransaction.update({ where: { id: refundId }, data: { status: 'refunded' } })
-        if (returnId) await tx.returnRequest.update({ where: { id: returnId }, data: { status: 'REFUNDED', refundedAt: new Date() } })
-        const orderRow = await tx.order.findUnique({ where: { id: orderId }, include: { paymentTransactions: true } })
-        if (!orderRow) throw userError('Order not found')
-        const successfulRefunds = orderRow.paymentTransactions.filter(t => ['refunded', 'partially_refunded'].includes(t.status)).reduce((sum, t) => sum + t.amount, 0)
-        const paymentStatus = successfulRefunds >= orderRow.grandTotal ? 'REFUNDED' : 'PARTIALLY_REFUNDED'
-        await tx.order.update({ where: { id: orderRow.id }, data: { paymentStatus, status: keepOrderStatus ? orderRow.status : (paymentStatus === 'REFUNDED' ? 'REFUNDED' : orderRow.status) } })
-        await restoreCoinsForRefund(tx, { order: orderRow, successfulRefunds, refundId })
-        const redeemedGift = redeemedGiftCard(orderRow.paymentTransactions)
-        if (redeemedGift) await restoreGiftCardBalance(tx, orderRow.id, redeemedGift, successfulRefunds, orderRow.grandTotal)
-        await tx.auditLog.create({ data: { actorId, action: `${auditAction}_completed`, entity: 'Order', entityId: orderRow.id, metadataJson: JSON.stringify({ returnId, refundId, amount, provider: refundProvider }) } })
-      })
-      if (returnId) runInBackground(sendReturnStatusEmail(returnId, orderId).catch(error => console.error('[email] return status email failed', error)))
-      return { ok: true as const, completed: true as const }
-    }
-    await audit(actorId, `${auditAction}_pending`, 'Order', orderId, { returnId, refundId, amount, provider: refundProvider })
-    return { ok: true as const, completed: false as const }
+    gatewayResult = await provider.refundPayment(refundExternalId, amount, currency)
   } catch (error) {
     await db.paymentTransaction.update({ where: { id: refundId }, data: { status: 'refund_failed', rawJson: JSON.stringify({ returnId, error: error instanceof Error ? error.message : 'Gateway refund failed' }).slice(0, 5000) } })
     await audit(actorId, `${auditAction}_failed`, 'Order', orderId, { returnId, refundId, provider: refundProvider })
-    return { ok: false as const, completed: false as const }
+    return { ok: false as const, completed: false as const, recorded: false as const }
   }
+  if (gatewayResult !== 'refunded') {
+    await audit(actorId, `${auditAction}_pending`, 'Order', orderId, { returnId, refundId, amount, provider: refundProvider })
+    return { ok: true as const, completed: false as const, recorded: false as const }
+  }
+
+  // The gateway has refunded the money, so from here the refund is never marked failed. If the store cannot record
+  // it in one transaction, it stays pending on the order until the gateway confirms it.
+  try {
+    await db.$transaction(async tx => {
+      // Locks the order row, so two refunds on one order record their coin and gift-card restores one after the other.
+      await tx.order.update({ where: { id: orderId }, data: { updatedAt: new Date() } })
+      await tx.paymentTransaction.update({ where: { id: refundId }, data: { status: 'refunded' } })
+      if (returnId) await tx.returnRequest.update({ where: { id: returnId }, data: { status: 'REFUNDED', refundedAt: new Date() } })
+      const orderRow = await tx.order.findUnique({ where: { id: orderId }, include: { paymentTransactions: true } })
+      if (!orderRow) throw userError('Order not found')
+      const successfulRefunds = orderRow.paymentTransactions.filter(t => ['refunded', 'partially_refunded'].includes(t.status)).reduce((sum, t) => sum + t.amount, 0)
+      const paymentStatus = successfulRefunds >= orderRow.grandTotal ? 'REFUNDED' : 'PARTIALLY_REFUNDED'
+      await tx.order.update({ where: { id: orderRow.id }, data: { paymentStatus, status: keepOrderStatus ? orderRow.status : (paymentStatus === 'REFUNDED' ? 'REFUNDED' : orderRow.status) } })
+      await restoreCoinsForRefund(tx, { order: orderRow, successfulRefunds, refundId })
+      const redeemedGift = redeemedGiftCard(orderRow.paymentTransactions)
+      if (redeemedGift) await restoreGiftCardBalance(tx, orderRow.id, redeemedGift, successfulRefunds, orderRow.grandTotal)
+      await tx.auditLog.create({ data: { actorId, action: `${auditAction}_completed`, entity: 'Order', entityId: orderRow.id, metadataJson: JSON.stringify({ returnId, refundId, amount, provider: refundProvider }) } })
+    }, { requireTransaction: true } as any)
+  } catch (error) {
+    console.error(`[${auditAction}] gateway refund ${refundId} was accepted but not recorded; it stays pending`, error)
+    await audit(actorId, `${auditAction}_recording_failed`, 'Order', orderId, { returnId, refundId, amount, provider: refundProvider }).catch(() => {})
+    return { ok: true as const, completed: false as const, recorded: false as const }
+  }
+  if (returnId) runInBackground(sendReturnStatusEmail(returnId, orderId).catch(error => console.error('[email] return status email failed', error)))
+  return { ok: true as const, completed: true as const, recorded: true as const }
 }
