@@ -71,16 +71,18 @@ Latent, now closed by F1: the orders API, the orders page and the dashboard incl
 
 ## Found while checking
 
-- `prisma/seed.ts` creates the demo customer with the admin's password hash. Only the update branch uses the customer hash, so a fresh seed signs the demo customer in with the admin password. The seed is for development and demos, so production is not affected. Fix: use `customerHash` in the `create` branch.
+- `prisma/seed.ts` created the demo customer with the admin's password hash. Fixed on this branch: the `create` branch now stores the customer's own hash. A fresh database seeded this way opens both demo accounts with their documented passwords.
 - `roles` is not paged (see item 1).
 
-## Not yet checked
+## Checked after the merge
 
-- Sign out everywhere from Users & roles, and a refund end to end. The refund path shares the re-confirm check that the staff removal exercised, but a refund itself was not run.
+- **Refunds, end to end.** A refund without a recent confirmation is refused with `REAUTH_REQUIRED`. The refund from the orders screen asks to confirm, then refunds (the `Refund issued.` notice). An over-refund answers 400 with the remaining amount; an unknown order answers 404; the rest of the amount completes the refund (`REFUNDED`); a refund after that is refused with `Only paid orders can be refunded`, because the payment status is checked before the remaining amount.
+- **Sign out everywhere.** Signing a staff member out everywhere from Users & roles ends their session: their next request goes to sign-in.
 
 ## Verification
 
 - `tsc` is clean. The suite passes: 1033 tests, including 14 from earlier passes in `tests/user-public`, `tests/safe-url` and `tests/admin-access`, and 3 new ones in `tests/route-error-replies.test.ts`.
 - `npm run backend:audit` passes. `npm run build:cloudflare` passes with the CI build settings, including the charset check.
 - Browser checks: 11 of 11 pass against the production build, on a scratch Postgres 16 database seeded by `prisma/seed.ts`, with a temporary staff member, 60 extra audit rows and two WhatsApp numbers added for the checks. The checks were run in headless Chromium.
+- Refund and sign-out checks: 9 of 9 pass against the production build, on a fresh scratch database seeded by the fixed `prisma/seed.ts`.
 - Earlier measurements, taken against the local database and dev server before and after the first change: these admin pages return 200: `/admin`, `/admin/orders`, an order, `/admin/products`, `/admin/customers`, `/admin/customers/whatsapp`, `/admin/users` and `/admin/activity`.
