@@ -66,6 +66,12 @@ describe('lib/seo: shared product links', () => {
     assert.equal(productShareText({ name: 'Kit $10.00', cents: 1000, currency: 'USD', soldOut: false }).title, 'Kit $10.00')
   })
 
+  it('says pre-order, not in stock, for a sold-out product that still takes pre-orders', () => {
+    const t = productShareText({ name: 'Lamp', description: 'Hand-blown glass.', cents: 2500, currency: 'USD', soldOut: false, preorder: true })
+    assert.equal(t.stock, 'Pre-order')
+    assert.equal(t.description, '$25.00 · Pre-order. Hand-blown glass.')
+  })
+
   it('can leave og:type out so the product page writes its own', () => {
     assert.equal(shareMeta({ title: 'T', url: 'https://x.example/p' }).openGraph.type, 'website')
     assert.equal('type' in shareMeta({ title: 'T', url: 'https://x.example/p', type: null }).openGraph, false)
@@ -77,8 +83,9 @@ describe('lib/seo: shared product links', () => {
     assert.match(page, /shareMeta\(\{ title: share\.title, description: share\.description, url, type: null,/)
     assert.match(page, /<meta property="og:type" content="product" \/>/)
     assert.match(page, /<meta property="product:price:amount"/)
-    assert.match(page, /<meta property="product:availability" content=\{inStock \? 'in stock' : 'out of stock'\} \/>/)
+    assert.match(page, /<meta property="product:availability" content=\{availability\} \/>/)
     assert.match(page, /<ProductShareTags cents=\{fromPrice\(product\.basePrice, product\.variants\)\}/)
+    assert.match(page, /availability=\{SHARE_AVAILABILITY\[productState\]\}/)
     // Search results keep the plain title and description.
     assert.match(page, /\n    title,\n    description,\n    alternates: \{ canonical: url \},/)
   })

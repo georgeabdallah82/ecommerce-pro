@@ -99,10 +99,11 @@ export function fromPrice(basePrice: number, variants?: Array<{ price?: number |
 // What a shared product link says in WhatsApp, Instagram and Facebook: the price and whether it is in stock
 // come first (they are the first thing a friend wants to know, and the preview cuts the rest), then the
 // product's own description. A sale shows the old price too.
-export function productShareText(p: { name: string; description?: string; cents: number; compareAtCents?: number | null; currency: string; soldOut: boolean }) {
+export function productShareText(p: { name: string; description?: string; cents: number; compareAtCents?: number | null; currency: string; soldOut: boolean; preorder?: boolean }) {
   const price = sharePrice(p.cents, p.currency)
   const was = p.compareAtCents && p.compareAtCents > p.cents ? ` (was ${sharePrice(p.compareAtCents, p.currency)})` : ''
-  const stock = p.soldOut ? 'Out of stock' : 'In stock'
+  // A pre-order is sold out but still for sale, so it says so rather than "Out of stock".
+  const stock = p.preorder ? 'Pre-order' : p.soldOut ? 'Out of stock' : 'In stock'
   const title = p.name.includes(price) ? p.name : `${p.name} \u00b7 ${price}`
   const facts = `${price}${was} \u00b7 ${stock}`
   const description = metaText(p.description ? `${facts}. ${p.description}` : `${facts}. Buy ${p.name} online with fast delivery.`, 200)

@@ -36,3 +36,38 @@ export function withCardStock<T extends CardSource>(products: T[]): Array<Omit<T
     return { ...rest, variants, soldOut } as unknown as Omit<T, 'inventory' | 'variants'> & { variants: CardVariant[]; soldOut: boolean }
   })
 }
+
+// What the shopper can still buy, for the product as a whole and for each option, by the same rule
+// checkout uses. withCardStock only counts stock while it is limited; a pre-order needs the real count.
+export function stockLeft(source: { inventory?: StockRow[] | null; variants?: Array<{ id: string }> | null }) {
+  const rows = source.inventory || []
+  const variants = (source.variants || []).map(v => ({ id: v.id, available: Math.max(0, unitsLeft(rows, v.id)) }))
+  const product = variants.length ? Math.max(0, ...variants.map(v => v.available)) : Math.max(0, unitsLeft(rows, null))
+  return { product, variants }
+}
+
+// How a product reads to a shopper and to search engines. A pre-order is a product setting that keeps
+// it selling at zero stock, so it only shows once the stock is gone (the product page says "Pre-order").
+export type StockState = 'in_stock' | 'out_of_stock' | 'preorder'
+export function stockState({ available, trackInventory, continueSellingWhenOutOfStock, preorder }: {
+  available: number
+  trackInventory?: boolean | null
+  continueSellingWhenOutOfStock?: boolean | null
+  preorder?: boolean | null
+}): StockState {
+  const sellsWithoutStock = trackInventory === false || !!continueSellingWhenOutOfStock
+  if (!sellsWithoutStock && available <= 0) return 'out_of_stock'
+  return preorder && trackInventory !== false && available <= 0 ? 'preorder' : 'in_stock'
+}
+
+// The same state written for search engines (schema.org Offer) and for share links (product:availability).
+export const SCHEMA_AVAILABILITY: Record<StockState, string> = {
+  in_stock: 'https://schema.org/InStock',
+  out_of_stock: 'https://schema.org/OutOfStock',
+  preorder: 'https://schema.org/PreOrder',
+}
+export const SHARE_AVAILABILITY: Record<StockState, string> = {
+  in_stock: 'in stock',
+  out_of_stock: 'out of stock',
+  preorder: 'preorder',
+}

@@ -1,6 +1,6 @@
 import { db } from '@/lib/prisma'
 import { getUnpublishedProductIds } from '@/lib/sales-channels'
-import { CARD_STOCK_INCLUDE, withCardStock } from '@/lib/card-stock'
+import { CARD_STOCK_INCLUDE, stockLeft, stockState, withCardStock } from '@/lib/card-stock'
 import { getStoreIdentity } from '@/lib/store-identity'
 import { getStorefrontSettings } from '@/lib/storefront-settings'
 import { feedCategories, productFeedXml } from '@/lib/product-feed'
@@ -29,7 +29,7 @@ export async function GET(req: Request) {
       where: { status: 'ACTIVE', giftCard: false, id: { notIn: unpublishedIds } },
       select: {
         id: true, name: true, slug: true, description: true, shortDescription: true, brand: true, vendor: true,
-        basePrice: true, compareAtPrice: true, barcode: true, trackInventory: true, continueSellingWhenOutOfStock: true,
+        basePrice: true, compareAtPrice: true, barcode: true, trackInventory: true, continueSellingWhenOutOfStock: true, preorder: true,
         images: { select: { url: true }, orderBy: { sortOrder: 'asc' } },
         collections: { select: { collection: { select: { name: true, isActive: true, sortOrder: true } } } },
         ...CARD_STOCK_INCLUDE,
@@ -37,7 +37,12 @@ export async function GET(req: Request) {
       orderBy: { createdAt: 'desc' },
       take: 5000,
     })
-    const products = withCardStock(rows).map(({ collections, ...p }) => ({ ...p, categories: feedCategories(collections) }))
+    // A pre-order is sold out but still for sale, so the catalog is told "preorder", not "in stock".
+    const products = rows.map(({ collections, ...row }) => {
+      const [card] = withCardStock([row])
+      const state = stockState({ available: stockLeft(row).product, trackInventory: row.trackInventory, continueSellingWhenOutOfStock: row.continueSellingWhenOutOfStock, preorder: row.preorder })
+      return { ...card, preorder: state === 'preorder', categories: feedCategories(collections) }
+    })
     const body = productFeedXml(products, { name: store.name, url, currency: (settings.get('store.currency') || 'USD').toUpperCase() })
     const response = new Response(body, { headers: { 'content-type': 'application/xml; charset=utf-8', 'cache-control': `public, max-age=${FEED_SECONDS}` } })
     if (cache) await cache.put(cacheKey, response.clone()).catch(() => {})

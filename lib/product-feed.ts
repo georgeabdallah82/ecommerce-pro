@@ -14,6 +14,8 @@ export type FeedProduct = {
   compareAtPrice?: number | null
   barcode?: string | null
   soldOut: boolean
+  // A pre-order: sold out but still for sale. The feed says "preorder", not "in stock".
+  preorder?: boolean
   images: Array<{ url: string }>
   // The store collections the product is in ("Kitchenware", "Personal Care"), in the store's
   // order. Sent as product_type (all of them) and custom_label_0 (the first), so Meta can group
@@ -82,7 +84,7 @@ export function productFeedXml(products: FeedProduct[], store: { name: string; u
         `<g:link>${xml(`${store.url}/product/${encodeURIComponent(p.slug)}`)}</g:link>`,
         `<g:image_link>${xml(images[0])}</g:image_link>`,
         ...images.slice(1, 10).map(url => `<g:additional_image_link>${xml(url)}</g:additional_image_link>`),
-        `<g:availability>${p.soldOut ? 'out of stock' : 'in stock'}</g:availability>`,
+        `<g:availability>${p.preorder ? 'preorder' : p.soldOut ? 'out of stock' : 'in stock'}</g:availability>`,
         `<g:condition>new</g:condition>`,
         // Shown as a sale in the ad: the regular price crossed out next to the sale price.
         `<g:price>${xml(price(onSale ? p.compareAtPrice! : p.basePrice, store.currency))}</g:price>`,
