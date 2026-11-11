@@ -23,25 +23,39 @@ async function pendingStaff() {
   return user
 }
 
-// The set-up key. A new one is made only the first time; refreshing the page shows the same key.
+function setupReply(email: string, secret: string) {
+  return getStoreIdentity().then(identity => {
+    const issuer = identity.name || 'Store admin'
+    return NextResponse.json({ started: true, secret, uri: otpauthUri(issuer, email, secret), account: email, issuer }, { headers })
+  })
+}
+
+// Reads the set-up key and changes nothing. Until the key has been made, the answer is { started: false }.
 export async function GET() {
   const user = await pendingStaff()
   if (!user) return restart()
-  let secret = await openSecret(user.totpSecret)
-  if (!secret) {
-    secret = newSecret()
-    await db.user.update({ where: { id: user.id }, data: { totpSecret: await sealSecret(secret), totpLastStep: null, totpBackupCodes: [] } })
-  }
-  const issuer = (await getStoreIdentity()).name || 'Store admin'
-  return NextResponse.json({ secret, uri: otpauthUri(issuer, user.email, secret), account: user.email, issuer }, { headers })
+  const secret = await openSecret(user.totpSecret)
+  if (!secret) return NextResponse.json({ started: false }, { headers })
+  return setupReply(user.email, secret)
 }
 
-// The first code from the app turns 2-step login on, and only then is the session started.
+// { action: 'start' } makes the set-up key. Asking again returns the same key, so a refresh is harmless.
+// { code } is the first code from the app: it turns 2-step login on, and only then is the session started.
 export async function POST(req: Request) {
-  const body = await req.json().catch(() => ({})) as { code?: unknown }
-  const code = String(body.code ?? '').trim().slice(0, 40)
+  const body = await req.json().catch(() => ({})) as { action?: unknown; code?: unknown }
   const user = await pendingStaff()
   if (!user) return restart()
+
+  if (body.action === 'start') {
+    let secret = await openSecret(user.totpSecret)
+    if (!secret) {
+      secret = newSecret()
+      await db.user.update({ where: { id: user.id }, data: { totpSecret: await sealSecret(secret), totpLastStep: null, totpBackupCodes: [] } })
+    }
+    return setupReply(user.email, secret)
+  }
+
+  const code = String(body.code ?? '').trim().slice(0, 40)
   const limit = await consumeDurableRateLimit(`admin-enroll:${user.id}`, 10, 15 * 60 * 1000)
   if (!limit.allowed) {
     return NextResponse.json({ error: 'Too many tries. Wait 15 minutes and try again.' }, { status: 429, headers: { ...headers, 'Retry-After': String(limit.retryAfterSeconds) } })
