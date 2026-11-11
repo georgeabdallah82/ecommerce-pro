@@ -8,6 +8,9 @@ import { ALL_PERMISSIONS, OWNER_ONLY_PERMISSIONS, ROLE_PERMISSIONS, type Permiss
 export type StaffRole = { id: string; name: string; description: string; permissions: Permission[] }
 
 const KEY = 'staff.roles'
+
+// The most custom roles there can be. Creating one past this is refused, and the list read is capped to it.
+export const MAX_CUSTOM_ROLES = 30
 const VALID = new Set<Permission>(ALL_PERMISSIONS)
 
 export function cleanPermissions(input: unknown): Permission[] {
