@@ -1,0 +1,26 @@
+/* Readiness strip and panel, shared by the product and collection editors. Colours are the
+   --admin-* tokens, so dark mode is automatic. */
+.strip { display: grid; gap: 10px; margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); background: var(--admin-surface); }
+.stripHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--admin-ink); }
+.stripHead strong { font-size: 13px; font-weight: 800; }
+.summaryBlock, .summaryWarn, .summaryOk { padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 800; white-space: nowrap; }
+.summaryBlock { background: var(--admin-danger-soft); color: var(--admin-danger); }
+.summaryWarn { background: var(--admin-warning-soft); color: var(--admin-warning); }
+.summaryOk { background: var(--admin-success-soft); color: var(--admin-success-strong); }
+.issues { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.issues button { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-height: 30px; padding: 4px 10px; border: 1px solid transparent; border-radius: 999px; font: inherit; font-size: 12px; text-align: start; cursor: pointer; }
+.issues button span { min-width: 0; }
+.issues button b { font-weight: 800; }
+.issues button:disabled { cursor: default; }
+.issues button:focus-visible { outline: 3px solid var(--admin-focus); outline-offset: 1px; }
+.issueBlock { background: var(--admin-danger-soft); color: var(--admin-danger); border-color: var(--admin-danger-border) !important; }
+.issueWarn { background: var(--admin-warning-soft); color: var(--admin-warning); }
+
+.panelList { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.panelItem { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start; }
+.panelItem strong { display: block; font-size: 13px; color: var(--admin-ink); }
+.panelItem small { display: block; margin-top: 2px; font-size: 12px; line-height: 1.45; color: var(--admin-muted); }
+.dotOk, .dotWarn, .dotBlock { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; }
+.dotOk { background: var(--admin-success-soft); color: var(--admin-success-strong); }
+.dotWarn { background: var(--admin-warning-soft); color: var(--admin-warning); }
+.dotBlock { background: var(--admin-danger-soft); color: var(--admin-danger); }

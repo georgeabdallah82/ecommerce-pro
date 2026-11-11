@@ -1,4 +1,5 @@
 import { requirePermission } from '@/lib/auth'
+import { priceProblem } from '@/lib/editor-readiness'
 import { audit } from '@/lib/audit'
 import { db } from '@/lib/prisma'
 import { json, slugify } from '@/lib/utils'
@@ -91,6 +92,8 @@ export async function POST(req: Request) {
     // Two products can share a name; give the second one "name-2" rather than failing.
     const slug = await freeProductSlug(db, (slugify(String(b.slug || '')) || slugify(String(name))).slice(0, 200).replace(/-$/, '') || `product-${Date.now().toString(36)}`)
 
+    const pricingError = priceProblem(Number(b.basePrice) || 0, b.compareAtPrice === undefined || b.compareAtPrice === null || b.compareAtPrice === '' ? null : Number(b.compareAtPrice))
+    if (pricingError) return json({ error: pricingError }, { status: 400 })
     const p = await db.$transaction(async tx => {
       const created = await tx.product.create({ data: {
         name, slug, sku, barcode,
