@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from '@/components/admin-link'
 import { CheckCircle2, Copy, Download, Eye, MoreHorizontal, Plus, Search, Tag, Trash2, Upload, XCircle, X } from 'lucide-react'
 import styles from './admin-collections.module.css'
@@ -18,12 +18,29 @@ async function api(path: string, init?: RequestInit) {
   return data
 }
 
-export default function CollectionsAdminShopify({ initial }: { initial: any[] }) {
+// The list is read a page at a time (app/api/admin/collections). The search and the status filter run on the server.
+const PAGE = 50
+
+type CollectionsPage = { rows: any[]; total: number; counts: { all: number; active: number; inactive: number } }
+
+function listQuery(skip: number, take: number, term: string, state: string) {
+  const params = new URLSearchParams({ skip: String(skip), take: String(take), status: state })
+  if (term) params.set('q', term)
+  return params.toString()
+}
+
+export default function CollectionsAdminShopify({ initial }: { initial: CollectionsPage }) {
   const confirm = useConfirm()
   const toast = useToast()
-  const [rows, setRows] = useState<any[]>(initial || [])
+  const [rows, setRows] = useState<any[]>(initial.rows)
+  const [total, setTotal] = useState(initial.total)
+  const [counts, setCounts] = useState(initial.counts)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('ALL')
+  // The search and status the rows on screen were loaded for.
+  const [applied, setApplied] = useState({ q: '', status: 'ALL' })
+  const requestId = useRef(0)
   const [show, setShow] = useState(false)
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
@@ -38,7 +55,41 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
   const [productBusy, setProductBusy] = useState(false)
   const [productError, setProductError] = useState('')
 
-  const refresh = async () => { setRows(await api('/api/admin/collections')); setSelected([]) }
+  // Reloads the rows already on screen, with the same search and status.
+  const refresh = async () => {
+    const take = Math.min(200, Math.max(PAGE, rows.length))
+    const d = await api(`/api/admin/collections?${listQuery(0, take, applied.q, applied.status)}`)
+    setRows(d.rows); setTotal(d.total); setCounts(d.counts); setSelected([])
+  }
+
+  const loadMore = async () => {
+    setLoadingMore(true)
+    try {
+      const d = await api(`/api/admin/collections?${listQuery(rows.length, PAGE, applied.q, applied.status)}`)
+      setRows(current => [...current, ...d.rows]); setTotal(d.total); setCounts(d.counts)
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'Unable to load collections', 'error')
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
+  // A new search or status loads the first page again once typing pauses. Older responses are ignored.
+  useEffect(() => {
+    const term = q.trim()
+    const id = ++requestId.current
+    if (term === applied.q && status === applied.status) return
+    const timer = window.setTimeout(async () => {
+      try {
+        const d = await api(`/api/admin/collections?${listQuery(0, PAGE, term, status)}`)
+        if (id !== requestId.current) return
+        setRows(d.rows); setTotal(d.total); setCounts(d.counts); setSelected([]); setApplied({ q: term, status })
+      } catch (error) {
+        if (id === requestId.current) toast(error instanceof Error ? error.message : 'Unable to load collections', 'error')
+      }
+    }, term === applied.q ? 0 : 250)
+    return () => window.clearTimeout(timer)
+  }, [q, status, applied])
 
   const create = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -97,7 +148,8 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
   }
 
   const toggleRow = (id: string) => setSelected(current => current.includes(id) ? current.filter(x => x !== id) : [...current, id])
-  const toggleAll = () => setSelected(current => current.length === filtered.length ? [] : filtered.map((c: any) => c.id))
+  // Selects the rows on screen. Rows on pages not loaded yet are not included.
+  const toggleAll = () => setSelected(current => current.length === rows.length ? [] : rows.map((c: any) => c.id))
 
   const bulk = async (bulkAction: 'ACTIVATE' | 'DEACTIVATE' | 'DELETE' | 'DUPLICATE') => {
     if (!selected.length) return
@@ -115,18 +167,6 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
       setBulkBusy(false)
     }
   }
-
-  const filtered = useMemo(() => {
-    const term = q.trim().toLowerCase()
-    return rows.filter((collection) => {
-      const matchesStatus =
-        status === 'ALL' ||
-        (status === 'ACTIVE' ? collection.isActive : collection.isActive === false)
-      const matchesSearch =
-        !term || `${collection.name} ${collection.slug}`.toLowerCase().includes(term)
-      return matchesStatus && matchesSearch
-    })
-  }, [rows, q, status])
 
   const views: Array<[string, string]> = [
     ['ALL', 'All'],
@@ -160,11 +200,7 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
           >
             {label}{' '}
             <span className={ui.muted}>
-              {value === 'ALL'
-                ? rows.length
-                : rows.filter((collection) =>
-                    value === 'ACTIVE' ? collection.isActive : collection.isActive === false,
-                  ).length}
+              {value === 'ALL' ? counts.all : value === 'ACTIVE' ? counts.active : counts.inactive}
             </span>
           </button>
         ))}
@@ -184,7 +220,7 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
             </button>
           )}
         </div>
-        <span className={ui.pill}>{filtered.length} shown</span>
+        <span className={ui.pill}>{rows.length} of {total} shown</span>
         <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={refresh} disabled={busy}>
           {busy ? 'Refreshing…' : 'Refresh'}
         </button>
@@ -234,7 +270,7 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
           <table className={`${ui.table} ${styles.resultsTable}`}>
             <thead>
               <tr>
-                <th><input type="checkbox" checked={filtered.length > 0 && selected.length === filtered.length} onChange={toggleAll} aria-label="Select all collections" /></th>
+                <th><input type="checkbox" checked={rows.length > 0 && selected.length === rows.length} onChange={toggleAll} aria-label="Select all collections on this page" /></th>
                 <th>Collection</th>
                 <th>Products</th>
                 <th>Status</th>
@@ -244,7 +280,7 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
               </tr>
             </thead>
             <tbody>
-              {filtered.map((collection) => (
+              {rows.map((collection) => (
                 <tr key={collection.id}>
                   <td><input type="checkbox" checked={selected.includes(collection.id)} onChange={() => toggleRow(collection.id)} aria-label={`Select ${collection.name}`} /></td>
                   <td>
@@ -305,8 +341,16 @@ export default function CollectionsAdminShopify({ initial }: { initial: any[] })
             </tbody>
           </table>
         </div>
-        {!filtered.length && <div className={ui.empty}>No collections match your current filters.</div>}
+        {!rows.length && <div className={ui.empty}>No collections match your current filters.</div>}
       </div>
+
+      {rows.length < total && (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0' }}>
+          <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={loadMore} disabled={loadingMore}>
+            {loadingMore ? 'Loading…' : `Load more (${total - rows.length} left)`}
+          </button>
+        </div>
+      )}
 
       {show && (
         <div className={ui.modalOverlay} onClick={() => setShow(false)}>

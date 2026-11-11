@@ -167,10 +167,10 @@ export default function CouponsAdminPro({ initial }: { initial: Coupon[] }) {
     if (!formOpen || catalog) return
     Promise.all([
       api('/api/admin/products?page=1&pageSize=200&sort=name_asc'),
-      api('/api/admin/collections'),
+      api('/api/admin/collections?take=200'),
     ]).then(([p, c]) => setCatalog({
       products: (p.rows || []).map((x: any) => ({ id: x.id, name: x.name, sku: x.sku })),
-      collections: (Array.isArray(c) ? c : []).map((x: any) => ({ id: x.id, name: x.name })),
+      collections: (Array.isArray(c?.rows) ? c.rows : []).map((x: any) => ({ id: x.id, name: x.name })),
     })).catch(() => setCatalog({ products: [], collections: [] }))
   }, [formOpen, catalog])
 

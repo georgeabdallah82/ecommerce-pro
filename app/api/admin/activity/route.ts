@@ -1,6 +1,7 @@
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
-import { json, clampInt } from '@/lib/utils'
+import { json } from '@/lib/utils'
+import { readPaging } from '@/lib/admin-paging'
 import { getStoreTimezone } from '@/lib/store-timezone'
 import { activityWhere } from '@/lib/activity-query'
 
@@ -10,8 +11,8 @@ export async function GET(req: Request) {
   try {
     await requirePermission('activity.view')
     const { searchParams } = new URL(req.url)
-    const skip = clampInt(searchParams.get('skip'), 0, 100000, 0)
-    const take = clampInt(searchParams.get('take'), 1, PAGE_SIZE, PAGE_SIZE)
+    // The filters are read by activityWhere (lib/activity-query.ts); the page window by readPaging.
+    const { skip, take } = readPaging(searchParams, PAGE_SIZE, PAGE_SIZE)
 
     const timezone = await getStoreTimezone()
     const where = activityWhere(searchParams, timezone)
