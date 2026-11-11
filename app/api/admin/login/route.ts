@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/prisma'
 import { verifyPassword } from '@/lib/auth'
-import { consumeRateLimit, clearRateLimit } from '@/lib/rate-limit'
+import { consumeDurableRateLimit, clearDurableRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { setEnrollTicket, setTwoStepTicket } from '@/lib/two-step'
 import { alertLockout } from '@/lib/sign-in-alerts'
@@ -11,10 +11,10 @@ const WINDOW_MS = 15 * 60 * 1000
 const MAX_PER_IP = 15
 const MAX_PER_EMAIL = 8
 
-// Persistent, cross-instance lockout (backed by the database) in addition to the in-memory
-// limiter above. The in-memory limiter only protects a single warm instance; on serverless/edge
-// deployments an attacker can spread a brute-force attempt across many instances and bypass it
-// entirely, so this is the authoritative guard against distributed credential stuffing.
+// Persistent, cross-instance lockout (backed by the database). The per-IP and per-email limits
+// below are durable too, so an attacker cannot spread attempts across Cloudflare Worker isolates,
+// each of which starts with an empty in-memory count. The durable limiter keeps a fast in-memory
+// check first, so a request that is already over the limit costs nothing extra.
 const MAX_FAILED_ATTEMPTS = 8
 const LOCKOUT_MS = 15 * 60 * 1000
 
@@ -30,8 +30,8 @@ export async function POST(request: Request) {
 
   const ipKey = `admin-login:ip:${clientIp(request.headers)}`
   const emailKey = `admin-login:email:${email}`
-  const ipLimit = consumeRateLimit(ipKey, MAX_PER_IP, WINDOW_MS)
-  const emailLimit = consumeRateLimit(emailKey, MAX_PER_EMAIL, WINDOW_MS)
+  const ipLimit = await consumeDurableRateLimit(ipKey, MAX_PER_IP, WINDOW_MS)
+  const emailLimit = await consumeDurableRateLimit(emailKey, MAX_PER_EMAIL, WINDOW_MS)
   if (!ipLimit.allowed || !emailLimit.allowed) {
     const retryAfter = Math.max(ipLimit.retryAfterSeconds, emailLimit.retryAfterSeconds)
     return NextResponse.json(
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid admin credentials' }, { status: 401, headers })
   }
 
-  clearRateLimit(emailKey)
+  await clearDurableRateLimit(emailKey)
   if (lockout && lockout.failedCount > 0) {
     await db.adminLoginLockout.upsert({ where: { email }, create: { email, failedCount: 0, lockedUntil: null }, update: { failedCount: 0, lockedUntil: null } })
   }
