@@ -3,12 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from '@/components/admin-link'
-import { AlertTriangle, ArrowLeft, Ban, Check, ChevronDown, Copy, FileEdit, FileText, Mail, MapPin, MessageCircle, MoreHorizontal, PackageCheck, Pencil, Phone, Plus, Save, Send, SlidersHorizontal, Truck, X, XCircle, Gift } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Ban, Check, ChevronDown, Copy, FileEdit, FileText, Gift, Mail, MapPin, MessageCircle, MoreHorizontal, PackageCheck, Pencil, Phone, Plus, Save, Send, SlidersHorizontal, Truck, X, XCircle } from 'lucide-react'
 import { money } from '@/lib/config'
 import { formatAdminDate, formatAdminDateTime } from '@/lib/admin-datetime'
 import { canTransitionOrder, canTransitionPayment } from '@/lib/orders'
 import { JOURNEY, addressLines, customerName, customerPhone, driverShareLink, mapsLink, nextStep, orderPin, paymentInfo, paymentMethodLabel, statusInfo, telLink } from '@/lib/order-flow'
-import s from './admin-order-page.module.css'
+import s from './order-detail-admin.module.css'
 import ui from './admin-ui.module.css'
 import { CountrySelect } from './field-selects'
 import DeliveryTrackingAdmin from './delivery-tracking-admin'
@@ -20,9 +20,10 @@ import type { PhoneHistory } from '@/lib/customer-history'
 import type { Risk } from '@/lib/order-risk'
 import { useConfirm } from './admin-confirm'
 
-// Admin > Orders > one order. Top to bottom: where the order is (a progress line), the one thing
-// to do next, who and where it goes (with call / WhatsApp / map buttons), what's in it, notes and
-// history. Changing a status by hand (corrections) is tucked away under "Fix status by hand".
+// Admin > Orders > one order. Top to bottom: the order number and where it stands, the progress
+// line, the one thing to do next, then the customer, what was bought and paid, and the parcels.
+// Notes and history run down the side. Changing a status by hand is for corrections only and sits
+// behind "Fix status by hand" in the menu. Every action calls the same routes as before.
 
 async function api(path: string, init?: RequestInit) {
   const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
@@ -240,36 +241,44 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
   const billingText = addressText(o.billingAddressJson)
 
   return <div className={s.page}>
-    <div className={s.top}>
-      <Link className={ui.textLink} href="/admin/orders"><ArrowLeft size={15}/> Orders</Link>
-      <div className={s.titleRow}>
-        <div className={s.titleBlock}>
-          <h1 className={s.title}>#{o.orderNumber} <button type="button" className={s.copyBtn} onClick={() => copy(String(o.orderNumber), 'number')} aria-label="Copy order number">{copied === 'number' ? <Check size={15}/> : <Copy size={15}/>}</button></h1>
-          <div className={s.sub}>Placed {formatAdminDateTime(o.createdAt, storeTimezone)}</div>
-          <div className={s.pills}><span className={`${s.pill} ${TONE[info.tone]}`}>{info.label}</span><span className={`${s.pill} ${TONE[payment.tone]}`}>{payment.label}</span></div>
-        </div>
-        <Menu>
-          <Link role="menuitem" href={`/admin/orders/${o.id}/invoice`}><FileText size={15}/> Invoice / print</Link>
-          <Link role="menuitem" href={`/admin/orders/packing-slips?ids=${o.id}`}><FileText size={15}/> Packing slip (no prices)</Link>
-          <button role="menuitem" type="button" onClick={beginEdit}><Pencil size={15}/> Edit contact &amp; address</button>
-          {canStartOrderEdit && <Link role="menuitem" href={`/admin/order-edits/new?orderId=${o.id}`}><FileEdit size={15}/> Change items</Link>}
-          {!closed && <button role="menuitem" type="button" onClick={() => { setTracking(o.trackingNumber || ''); setTrackingOpen(true) }}><Truck size={15}/> Tracking number</button>}
-          {!closed && <a role="menuitem" href={driverShareLink(o, storeName, money)} target="_blank" rel="noreferrer"><Send size={15}/> Send to driver (WhatsApp)</a>}
-          <button role="menuitem" type="button" onClick={() => { setStatus(o.status); setPaymentStatus(o.paymentStatus); setTracking(o.trackingNumber || ''); setManual(true) }}><SlidersHorizontal size={15}/> Fix status by hand</button>
-          {canTransitionOrder(o.status, 'CANCELLED') && o.status !== 'CANCELLED' && <button role="menuitem" type="button" className={s.danger} onClick={cancelOrder}><XCircle size={15}/> Cancel order</button>}
-        </Menu>
-      </div>
+    <div className={s.bar}>
+      <Link className={s.back} href="/admin/orders"><ArrowLeft size={15}/> All orders</Link>
+      <Menu>
+        <Link role="menuitem" href={`/admin/orders/${o.id}/invoice`}><FileText size={15}/> Invoice / print</Link>
+        <Link role="menuitem" href={`/admin/orders/packing-slips?ids=${o.id}`}><FileText size={15}/> Packing slip (no prices)</Link>
+        <button role="menuitem" type="button" onClick={beginEdit}><Pencil size={15}/> Edit contact &amp; address</button>
+        {canStartOrderEdit && <Link role="menuitem" href={`/admin/order-edits/new?orderId=${o.id}`}><FileEdit size={15}/> Change items</Link>}
+        {!closed && <button role="menuitem" type="button" onClick={() => { setTracking(o.trackingNumber || ''); setTrackingOpen(true) }}><Truck size={15}/> Tracking number</button>}
+        {!closed && <a role="menuitem" href={driverShareLink(o, storeName, money)} target="_blank" rel="noreferrer"><Send size={15}/> Send to driver (WhatsApp)</a>}
+        <button role="menuitem" type="button" onClick={() => { setStatus(o.status); setPaymentStatus(o.paymentStatus); setTracking(o.trackingNumber || ''); setManual(true) }}><SlidersHorizontal size={15}/> Fix status by hand</button>
+        {canTransitionOrder(o.status, 'CANCELLED') && o.status !== 'CANCELLED' && <button role="menuitem" type="button" className={s.danger} onClick={cancelOrder}><XCircle size={15}/> Cancel order</button>}
+      </Menu>
     </div>
+
+    <header className={s.head}>
+      <div>
+        <p className={s.kicker}>Order</p>
+        <div className={s.orderRow}>
+          <h1 className={s.orderNo}>#{o.orderNumber}</h1>
+          <button type="button" className={s.iconBtn} onClick={() => copy(String(o.orderNumber), 'number')} aria-label="Copy order number">{copied === 'number' ? <Check size={15}/> : <Copy size={15}/>}</button>
+        </div>
+        <p className={s.meta}>Placed {formatAdminDateTime(o.createdAt, storeTimezone)}{o.isGift ? ' · Gift order' : ''}</p>
+      </div>
+      <div className={s.tags}>
+        <span className={`${s.tag} ${TONE[info.tone]}`}>{info.label}</span>
+        <span className={`${s.tag} ${TONE[payment.tone]}`}>{payment.label}</span>
+      </div>
+    </header>
 
     {msg && <div className={`${ui.alert} ${msgIsError ? ui.alertDanger : ''}`} role="status">{msg}</div>}
 
-    {risk && <section className={`${s.riskBanner}${risk.level === 'high' ? ` ${s.riskHigh}` : ''}`} aria-label="Risky order">
+    {risk && <section className={`${s.risk}${risk.level === 'high' ? ` ${s.riskHigh}` : ''}`} aria-label="Risky order">
       <AlertTriangle size={20} aria-hidden="true" />
       <div className={s.riskBody}>
         <strong>{risk.headline}</strong>
         <ul>{risk.reasons.map(reason => <li key={reason}>{reason}</li>)}</ul>
         <span className={ui.muted}>{risk.context}. Cash on delivery: a short call now saves a wasted trip.</span>
-        <div className={s.rowButtons}>
+        <div className={s.actions}>
           {call && <a className={`${ui.btn} ${ui.btnSecondary}`} href={call}><Phone size={15}/> Call</a>}
           {chatLink && <a className={`${ui.btn} ${ui.btnSecondary}`} href={chatLink} target="_blank" rel="noreferrer"><MessageCircle size={15}/> WhatsApp</a>}
           {phoneNumber && !blocked && <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={toggleBlock}><Ban size={15}/> Block this number</button>}
@@ -278,176 +287,288 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
     </section>}
 
     {o.status === 'CANCELLED' || o.status === 'REFUNDED'
-      ? <div className={`${s.closedBanner} ${o.status === 'CANCELLED' ? s.toneDanger : s.toneNeutral}`}><XCircle size={18}/> This order was {o.status === 'CANCELLED' ? 'cancelled' : 'refunded'}. Nothing more to do.</div>
-      : <ol className={s.journey} aria-label="Order progress">
-          {JOURNEY.map((st, i) => <li key={st} className={i < stage ? s.done : i === stage ? s.current : ''} aria-current={i === stage ? 'step' : undefined}><span>{i < stage ? <Check size={13}/> : i + 1}</span>{statusInfo(st).label}</li>)}
+      ? <div className={`${s.closed} ${o.status === 'CANCELLED' ? s.closedCancelled : ''}`}><XCircle size={18}/> This order was {o.status === 'CANCELLED' ? 'cancelled' : 'refunded'}. Nothing more to do.</div>
+      : <ol className={s.stages} aria-label="Order progress">
+          {JOURNEY.map((st, i) => <li key={st} className={`${s.stage}${i < stage ? ` ${s.stageDone}` : ''}${i === stage ? ` ${s.stageNow}` : ''}`} aria-current={i === stage ? 'step' : undefined}><span className={s.stageNo}>{i < stage ? <Check size={12}/> : i + 1}</span>{statusInfo(st).label}</li>)}
         </ol>}
 
-    {editing && <section className={`${ui.card} ${s.editBar}`}>
-      <div><strong>Edit contact &amp; address</strong><div className={ui.muted}>Change the contact details, addresses or the staff note, then save.</div></div>
-      <div className={s.rowButtons}><button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setEditing(false)} disabled={saving}><X size={15}/> Cancel</button><button className={ui.btn} onClick={saveDetails} disabled={saving}><Save size={15}/>{saving?'Saving…':'Save'}</button></div>
+    {editing && <section className={s.panel}>
+      <div className={s.panelHead}>
+        <h2 className={s.panelTitle}>Editing contact &amp; address</h2>
+        <div className={s.actions}>
+          <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setEditing(false)} disabled={saving}><X size={15}/> Cancel</button>
+          <button className={ui.btn} onClick={saveDetails} disabled={saving}><Save size={15}/>{saving ? 'Saving…' : 'Save'}</button>
+        </div>
+      </div>
     </section>}
 
-    {!editing && !closed && <section className={`${ui.card} ${s.nextCard}`}>
-      <div className={s.nextHead}><span className={s.nextLabel}>Next step</span><h2>{info.hint}</h2></div>
-      {o.status === 'PENDING' && <>
-        {confirmLink
-          ? <a className={`${ui.btn} ${s.whatsappBtn}`} href={confirmLink} target="_blank" rel="noreferrer"><MessageCircle size={16}/> 1. Ask the customer on WhatsApp</a>
-          : whatsappProblem ? <div className={s.warning} role="note"><Phone size={16}/><span>{whatsappProblem}</span></div> : null}
-        <div className={s.answer}>
-          <span>2. What did they answer?</span>
-          <div className={s.choices}>{(Object.keys(WHATSAPP_OUTCOMES) as Array<keyof typeof WHATSAPP_OUTCOMES>).map(k=><button key={k} type="button" className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}${lastAnswer===k?` ${s.chosen}`:''}`} disabled={!!recordingAnswer} aria-pressed={lastAnswer===k} onClick={()=>recordWhatsappAnswer(k)}>{recordingAnswer===k?'Saving…':WHATSAPP_ANSWER_LABELS[k]}</button>)}</div>
-        </div>
-      </>}
-      {updateLink && <a className={`${ui.btn} ${s.whatsappBtn}`} href={updateLink} target="_blank" rel="noreferrer"><MessageCircle size={16}/> {updateKind === 'on_the_way' ? "Tell the customer it's on the way" : "Tell the customer it's confirmed"}</a>}
-      <div className={s.rowButtons}>
-        {step && <button type="button" className={`${ui.btn} ${s.bigBtn}`} disabled={moving} onClick={advance}>{moving ? 'Saving…' : `${o.status === 'PENDING' ? '3. ' : ''}${step.label}`}</button>}
-        {o.status !== 'PENDING' && <a className={`${ui.btn} ${ui.btnSecondary}`} href={driverShareLink(o, storeName, money)} target="_blank" rel="noreferrer"><Send size={15}/> Send to driver</a>}
+    {!editing && !closed && <section className={s.action} aria-labelledby="order-next-step">
+      <div className={s.actionHead}>
+        <span className={s.kicker}>Next step</span>
+        <p id="order-next-step" className={s.actionTitle} role="heading" aria-level={2}>{info.hint}</p>
       </div>
-      {lastAnswer === 'cancel_requested' && <button type="button" className={`${ui.btn} ${ui.btnDanger}`} onClick={cancelOrder} disabled={moving}><XCircle size={15}/> Cancel this order</button>}
+      <div className={s.actionBody}>
+        {o.status === 'PENDING' && <div className={s.steps}>
+          <div className={s.step}>
+            <span className={s.stepNo}>1</span>
+            <div className={s.stepBody}>
+              <span className={s.stepLabel}>Ask the customer on WhatsApp</span>
+              {confirmLink
+                ? <div className={s.actions}><a className={`${ui.btn} ${s.whatsapp}`} href={confirmLink} target="_blank" rel="noreferrer"><MessageCircle size={16}/> Open the confirm message</a></div>
+                : whatsappProblem ? <div className={s.warning} role="note"><Phone size={16}/><span>{whatsappProblem}</span></div> : null}
+            </div>
+          </div>
+          <div className={s.step}>
+            <span className={s.stepNo}>2</span>
+            <div className={s.stepBody}>
+              <span className={s.stepLabel}>What did they answer?</span>
+              <div className={s.choices}>{(Object.keys(WHATSAPP_OUTCOMES) as Array<keyof typeof WHATSAPP_OUTCOMES>).map(k => <button key={k} type="button" className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}${lastAnswer === k ? ` ${s.chosen}` : ''}`} disabled={!!recordingAnswer} aria-pressed={lastAnswer === k} onClick={() => recordWhatsappAnswer(k)}>{recordingAnswer === k ? 'Saving…' : WHATSAPP_ANSWER_LABELS[k]}</button>)}</div>
+            </div>
+          </div>
+          <div className={s.step}>
+            <span className={s.stepNo}>3</span>
+            <div className={s.stepBody}>
+              <span className={s.stepLabel}>Move the order on</span>
+              <div className={s.actions}>{step && <button type="button" className={`${ui.btn} ${s.primary}`} disabled={moving} onClick={advance}>{moving ? 'Saving…' : `3. ${step.label}`}</button>}</div>
+            </div>
+          </div>
+        </div>}
+
+        {o.status !== 'PENDING' && <div className={s.actions}>
+          {step && <button type="button" className={`${ui.btn} ${s.primary}`} disabled={moving} onClick={advance}>{moving ? 'Saving…' : step.label}</button>}
+          <a className={`${ui.btn} ${ui.btnSecondary}`} href={driverShareLink(o, storeName, money)} target="_blank" rel="noreferrer"><Send size={15}/> Send to driver</a>
+        </div>}
+
+        {updateLink && <div className={s.actions}><a className={`${ui.btn} ${ui.btnSecondary}`} href={updateLink} target="_blank" rel="noreferrer"><MessageCircle size={15}/> {updateKind === 'on_the_way' ? "Tell the customer it's on the way" : "Tell the customer it's confirmed"}</a></div>}
+        {lastAnswer === 'cancel_requested' && <div className={s.actions}><button type="button" className={`${ui.btn} ${ui.btnDanger}`} onClick={cancelOrder} disabled={moving}><XCircle size={15}/> Cancel this order</button></div>}
+      </div>
     </section>}
 
     {/* Delivered: ask the customer to rate what they bought (app/review/[orderNumber]). */}
-    {!editing && o.status === 'DELIVERED' && reviewLink && <section className={`${ui.card} ${s.nextCard}`}>
-      <div className={s.nextHead}><span className={s.nextLabel}>Delivered</span><h2>Ask for a review</h2></div>
-      <p className={ui.muted} style={{ margin: 0 }}>Send the customer a link to rate what they bought. Reviews show on the product page after you approve them in Reviews.{reviewEmailSent ? ' A review email was already sent to this customer.' : o.email ? ' Customers with an email also get it by email 1 day after delivery.' : ''}</p>
-      <div className={s.rowButtons}>
-        {reviewWhatsapp && <a className={`${ui.btn} ${s.whatsappBtn}`} href={reviewWhatsapp} target="_blank" rel="noreferrer"><MessageCircle size={16}/> Ask for a review on WhatsApp</a>}
-        <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => copy(reviewLink, 'review')}>{copied === 'review' ? <Check size={15}/> : <Copy size={15}/>} {copied === 'review' ? 'Link copied' : 'Copy review link'}</button>
+    {!editing && o.status === 'DELIVERED' && reviewLink && <section className={s.action}>
+      <div className={s.actionHead}><span className={s.kicker}>Delivered</span><p className={s.actionTitle} role="heading" aria-level={2}>Ask for a review</p></div>
+      <div className={s.actionBody}>
+        <p className={s.lede}>Send the customer a link to rate what they bought. Reviews show on the product page after you approve them in Reviews.{reviewEmailSent ? ' A review email was already sent to this customer.' : o.email ? ' Customers with an email also get it by email 1 day after delivery.' : ''}</p>
+        <div className={s.actions}>
+          {reviewWhatsapp && <a className={`${ui.btn} ${s.whatsapp}`} href={reviewWhatsapp} target="_blank" rel="noreferrer"><MessageCircle size={16}/> Ask for a review on WhatsApp</a>}
+          <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => copy(reviewLink, 'review')}>{copied === 'review' ? <Check size={15}/> : <Copy size={15}/>} {copied === 'review' ? 'Link copied' : 'Copy review link'}</button>
+        </div>
       </div>
     </section>}
 
-    {trackingOpen && <section className={ui.card}>
-      <h3 className={s.cardTitle}>Tracking number</h3>
-      <div className={s.twoCol}><label className={ui.fieldLabel}>Tracking number<input className={ui.input} autoFocus value={tracking} onChange={e=>setTracking(e.target.value)} placeholder="From the delivery company"/></label><label className={ui.fieldLabel}>Delivery company<input className={ui.input} value={trackingCompany} onChange={e=>setTrackingCompany(e.target.value)} placeholder="Aramex, DHL, LibanPost…"/></label></div>
-      <div className={s.rowButtons}><button className={`${ui.btn} ${ui.btnSecondary}`} onClick={()=>setTrackingOpen(false)}>Close</button><button className={ui.btn} onClick={saveTracking} disabled={moving}><Save size={15}/> Save</button></div>
-    </section>}
-
-    {manual && <section className={`${ui.card} ${s.manual}`}>
-      <h3 className={s.cardTitle}>Fix status by hand</h3>
-      <p className={ui.muted}>For corrections only. To move an order forward, use the Next step button.</p>
-      <div className={s.twoCol}>
-        <label className={ui.fieldLabel}>Order status
-          <select className={ui.select} value={status} onChange={e=>setStatus(e.target.value)} disabled={statusLocked}>{availableStatuses.map(x=><option key={x} value={x}>{statusInfo(x).label}</option>)}</select>
-        </label>
-        <label className={ui.fieldLabel}>Payment
-          <select className={ui.select} value={paymentStatus} onChange={e=>setPaymentStatus(e.target.value)} disabled={paymentLocked}>{availablePaymentStatuses.map(x=><option key={x} value={x}>{PAYMENT_STATUS_WORDS[x] || x}</option>)}</select>
-        </label>
+    {trackingOpen && <section className={s.panel}>
+      <div className={s.panelHead}><h2 className={s.panelTitle}>Tracking number</h2></div>
+      <div className={s.panelBody}>
+        <div className={s.two}>
+          <label className={ui.fieldLabel}>Tracking number<input className={ui.input} autoFocus value={tracking} onChange={e=>setTracking(e.target.value)} placeholder="From the delivery company"/></label>
+          <label className={ui.fieldLabel}>Delivery company<input className={ui.input} value={trackingCompany} onChange={e=>setTrackingCompany(e.target.value)} placeholder="Aramex, DHL, LibanPost…"/></label>
+        </div>
+        <div className={s.actions}><button className={`${ui.btn} ${ui.btnSecondary}`} onClick={()=>setTrackingOpen(false)}>Close</button><button className={ui.btn} onClick={saveTracking} disabled={moving}><Save size={15}/> Save</button></div>
       </div>
-      {statusLocked && <p className={ui.muted}>This order's status can't change any more.</p>}
-      {paymentLocked && <p className={ui.muted}>Refunds are handled from the refund screen, not here.</p>}
-      {status === 'SHIPPED' && o.status !== 'SHIPPED' && <div className={s.twoCol}>
-        <label className={ui.fieldLabel}>Tracking number<input className={ui.input} value={tracking} onChange={e=>setTracking(e.target.value)} placeholder="Optional"/></label>
-        <label className={ui.fieldLabel}>Delivery company<input className={ui.input} value={trackingCompany} onChange={e=>setTrackingCompany(e.target.value)} placeholder="Optional"/></label>
-        <label className={`${ui.fieldLabel} ${s.full}`}>Tracking link<input className={ui.input} value={trackingUrl} onChange={e=>setTrackingUrl(e.target.value)} placeholder="https://…"/></label>
-      </div>}
-      <div className={s.rowButtons}><button className={`${ui.btn} ${ui.btnSecondary}`} onClick={()=>setManual(false)}>Close</button><button className={ui.btn} onClick={saveManual} disabled={moving}><Save size={15}/>{moving?'Saving…':'Save'}</button></div>
     </section>}
 
-    <div className={s.grid}>
+    {manual && <section className={s.panel}>
+      <div className={s.panelHead}><h2 className={s.panelTitle}>Fix status by hand</h2></div>
+      <div className={s.panelBody}>
+        <p className={s.lede}>For corrections only. To move an order forward, use the next step above.</p>
+        <div className={s.two}>
+          <label className={ui.fieldLabel}>Order status
+            <select className={ui.select} value={status} onChange={e=>setStatus(e.target.value)} disabled={statusLocked}>{availableStatuses.map(x=><option key={x} value={x}>{statusInfo(x).label}</option>)}</select>
+          </label>
+          <label className={ui.fieldLabel}>Payment
+            <select className={ui.select} value={paymentStatus} onChange={e=>setPaymentStatus(e.target.value)} disabled={paymentLocked}>{availablePaymentStatuses.map(x=><option key={x} value={x}>{PAYMENT_STATUS_WORDS[x] || x}</option>)}</select>
+          </label>
+        </div>
+        {statusLocked && <p className={ui.muted}>This order's status can't change any more.</p>}
+        {paymentLocked && <p className={ui.muted}>Refunds are handled from the refund screen, not here.</p>}
+        {status === 'SHIPPED' && o.status !== 'SHIPPED' && <div className={s.two}>
+          <label className={ui.fieldLabel}>Tracking number<input className={ui.input} value={tracking} onChange={e=>setTracking(e.target.value)} placeholder="Optional"/></label>
+          <label className={ui.fieldLabel}>Delivery company<input className={ui.input} value={trackingCompany} onChange={e=>setTrackingCompany(e.target.value)} placeholder="Optional"/></label>
+          <label className={`${ui.fieldLabel} ${s.full}`}>Tracking link<input className={ui.input} value={trackingUrl} onChange={e=>setTrackingUrl(e.target.value)} placeholder="https://…"/></label>
+        </div>}
+        <div className={s.actions}><button className={`${ui.btn} ${ui.btnSecondary}`} onClick={()=>setManual(false)}>Close</button><button className={ui.btn} onClick={saveManual} disabled={moving}><Save size={15}/>{moving ? 'Saving…' : 'Save'}</button></div>
+      </div>
+    </section>}
+
+    <div className={s.layout}>
       <main className={s.main}>
-        {!editing && <section className={ui.card}>
-          <h3 className={s.cardTitle}>Customer &amp; delivery</h3>
-          <div className={s.customer}>
-            <strong className={s.customerName}>{customerName(o)}</strong>
-            {phoneNumber && <div className={s.contactRow}><Phone size={14}/> <span>{phoneNumber}</span></div>}
-            {o.email && <div className={s.contactRow}><Mail size={14}/> <span className={s.wrap}>{o.email}</span></div>}
-            <div className={s.rowButtons}>
-              {call && <a className={`${ui.btn} ${ui.btnSecondary}`} href={call}><Phone size={15}/> Call</a>}
-              {chatLink && <a className={`${ui.btn} ${ui.btnSecondary}`} href={chatLink} target="_blank" rel="noreferrer"><MessageCircle size={15}/> WhatsApp</a>}
+        {editing && <section className={s.panel}>
+          <div className={s.panelHead}><h2 className={s.panelTitle}>Contact</h2></div>
+          <div className={s.panelBody}>
+            <div className={s.two}>
+              <label className={ui.fieldLabel}>Email<input className={ui.input} value={email} onChange={e=>setEmail(e.target.value)} /></label>
+              <label className={ui.fieldLabel}>Phone<input className={ui.input} value={phone} onChange={e=>setPhone(e.target.value)} /></label>
             </div>
           </div>
-          <div className={s.address}>
-            <div className={s.contactRow}><MapPin size={14}/> <span>{lines.length ? lines.join(', ') : 'No delivery address'}</span></div>
-            {o.shippingMethod && <div className={ui.muted}>Delivery: {o.shippingMethod}</div>}
-            {o.trackingNumber && <div className={ui.muted}>Tracking: <strong>{o.trackingNumber}</strong></div>}
-            <div className={s.rowButtons}>
-              {map && <a className={`${ui.btn} ${ui.btnSecondary}`} href={map} target="_blank" rel="noreferrer"><MapPin size={15}/> {orderPin(o) ? 'Open exact location' : 'Open in Maps'}</a>}
-              {lines.length > 0 && <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => copy([customerName(o), phoneNumber, ...lines].filter(Boolean).join('\n'), 'address')}>{copied === 'address' ? <Check size={15}/> : <Copy size={15}/>} {copied === 'address' ? 'Copied' : 'Copy address'}</button>}
+        </section>}
+        {editing && <section className={s.panel}>
+          <div className={s.panelHead}><h2 className={s.panelTitle}>Delivery address</h2></div>
+          <div className={s.panelBody}>
+            <div className={s.two}>
+              <label className={ui.fieldLabel}>First name<input className={ui.input} value={shipping.firstName} onChange={e=>setShipping({...shipping,firstName:e.target.value})}/></label>
+              <label className={ui.fieldLabel}>Last name<input className={ui.input} value={shipping.lastName} onChange={e=>setShipping({...shipping,lastName:e.target.value})}/></label>
+              <label className={`${ui.fieldLabel} ${s.full}`}>Address<input className={ui.input} value={shipping.line1} onChange={e=>setShipping({...shipping,line1:e.target.value})}/></label>
+              <label className={`${ui.fieldLabel} ${s.full}`}>Building / floor<input className={ui.input} value={shipping.line2} onChange={e=>setShipping({...shipping,line2:e.target.value})}/></label>
+              <label className={ui.fieldLabel}>City<input className={ui.input} value={shipping.city} onChange={e=>setShipping({...shipping,city:e.target.value})}/></label>
+              <label className={ui.fieldLabel}>Region<input className={ui.input} value={shipping.region} onChange={e=>setShipping({...shipping,region:e.target.value})}/></label>
+              <label className={ui.fieldLabel}>Postal code<input className={ui.input} value={shipping.postalCode} onChange={e=>setShipping({...shipping,postalCode:e.target.value})}/></label>
+              <label className={ui.fieldLabel}>Country<CountrySelect className={ui.select} value={shipping.country} onChange={v=>setShipping({...shipping,country:v})}/></label>
+              <label className={`${ui.fieldLabel} ${s.full}`}>Phone<input className={ui.input} value={shipping.phone} onChange={e=>setShipping({...shipping,phone:e.target.value})}/></label>
             </div>
           </div>
-          {billingText && billingText !== addressText(o.shippingAddressJson) && <div className={s.address}><div className={ui.muted}>Billing address</div><div className={s.pre}>{billingText}</div></div>}
-          {o.driver && <div className={s.giftNote}><Truck size={16}/><div><strong>Driver: {o.driver.name}</strong>{o.cashCollected ? <span className={ui.muted}>Collected {money(o.cashCollected, o.currency)} cash · {o.cashSettledAt ? 'handed to the store' : 'not handed over yet'}</span> : <span className={ui.muted}>{o.status === 'DELIVERED' ? 'Delivered, nothing to collect' : 'On their delivery list'}</span>} <Link className={ui.textLink} href="/admin/orders/drivers">Drivers</Link></div></div>}
-          {o.isGift && <div className={s.giftNote}><Gift size={16}/><div><strong>Gift order</strong>{o.giftMessage ? <span className={s.pre}>"{o.giftMessage}"</span> : <span className={ui.muted}>No message. Don't put prices in the parcel.</span>}</div></div>}
-          {history && <div className={`${s.history}${history.warning ? ` ${s.historyWarn}` : ''}`}>
-            <strong>{history.total ? `Ordered ${history.total} time${history.total === 1 ? '' : 's'} before with this phone` : 'First order from this phone number'}</strong>
-            {history.total > 0 && <span>{[history.delivered ? `${history.delivered} delivered` : '', history.cancelled ? `${history.cancelled} cancelled` : '', history.open ? `${history.open} in progress` : ''].filter(Boolean).join(' · ')}</span>}
-            {history.warning && <span className={s.historyNote}>{history.warning}</span>}
-            {history.total > 0 && <ul>{history.orders.slice(0, 5).map(h => <li key={h.id}><Link href={`/admin/orders/${h.id}`}>#{h.orderNumber}</Link> · {statusInfo(h.status).label}{h.refused ? ' (after sending)' : ''} · {money(h.grandTotal, h.currency)} · {formatAdminDate(h.createdAt, storeTimezone)}</li>)}</ul>}
-          </div>}
-          <div className={s.customerFoot}>
-            {o.user?.id && <Link className={ui.textLink} href={`/admin/customers/${o.user.id}`}>Customer's account and past orders</Link>}
-            {phoneNumber && <button type="button" className={`${s.linkBtn}${blocked ? '' : ` ${s.danger}`}`} onClick={toggleBlock}><Ban size={13}/> {blocked ? 'Unblock this number' : 'Block this number from ordering'}</button>}
-            {blocked && <span className={s.blockedNote}>This number is blocked from ordering.</span>}
+        </section>}
+        {editing && <section className={s.panel}>
+          <div className={s.panelHead}><h2 className={s.panelTitle}>Billing address <span className={ui.muted}>(optional)</span></h2></div>
+          <div className={s.panelBody}>
+            <div className={s.two}>
+              <label className={ui.fieldLabel}>First name<input className={ui.input} value={billing.firstName} onChange={e=>setBilling({...billing,firstName:e.target.value})}/></label>
+              <label className={ui.fieldLabel}>Last name<input className={ui.input} value={billing.lastName} onChange={e=>setBilling({...billing,lastName:e.target.value})}/></label>
+              <label className={`${ui.fieldLabel} ${s.full}`}>Address<input className={ui.input} value={billing.line1} onChange={e=>setBilling({...billing,line1:e.target.value})}/></label>
+              <label className={`${ui.fieldLabel} ${s.full}`}>Building / floor<input className={ui.input} value={billing.line2} onChange={e=>setBilling({...billing,line2:e.target.value})}/></label>
+              <label className={ui.fieldLabel}>City<input className={ui.input} value={billing.city} onChange={e=>setBilling({...billing,city:e.target.value})}/></label>
+              <label className={ui.fieldLabel}>Region<input className={ui.input} value={billing.region} onChange={e=>setBilling({...billing,region:e.target.value})}/></label>
+              <label className={ui.fieldLabel}>Postal code<input className={ui.input} value={billing.postalCode} onChange={e=>setBilling({...billing,postalCode:e.target.value})}/></label>
+              <label className={ui.fieldLabel}>Country<CountrySelect className={ui.select} value={billing.country} onChange={v=>setBilling({...billing,country:v})}/></label>
+              <label className={`${ui.fieldLabel} ${s.full}`}>Phone<input className={ui.input} value={billing.phone} onChange={e=>setBilling({...billing,phone:e.target.value})}/></label>
+            </div>
+          </div>
+        </section>}
+        {editing && <section className={s.panel}>
+          <div className={s.panelHead}><h2 className={s.panelTitle}>Staff note <span className={ui.muted}>(only staff see it)</span></h2></div>
+          <div className={s.panelBody}><textarea className={ui.textarea} rows={4} value={notesValue} onChange={e=>setNotesValue(e.target.value)} placeholder="A note about this order for the team…"/></div>
+        </section>}
+
+        {!editing && <section className={s.panel}>
+          <div className={s.panelHead}>
+            <h2 className={s.panelTitle}>Customer and delivery</h2>
+            {blocked && <span className={s.blockedNote}>Blocked from ordering</span>}
+          </div>
+          <div className={s.panelBody}>
+            <div className={s.two}>
+              <div className={s.kv}>
+                <span className={s.kvLabel}>Customer</span>
+                <strong className={s.name}>{customerName(o)}</strong>
+                {phoneNumber && <span className={s.line}><Phone size={14}/> <span>{phoneNumber}</span></span>}
+                {o.email && <span className={s.line}><Mail size={14}/> <span className={s.wrap}>{o.email}</span></span>}
+                <div className={s.actions}>
+                  {call && <a className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} href={call}><Phone size={14}/> Call</a>}
+                  {chatLink && <a className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} href={chatLink} target="_blank" rel="noreferrer"><MessageCircle size={14}/> WhatsApp</a>}
+                </div>
+              </div>
+              <div className={s.kv}>
+                <span className={s.kvLabel}>Deliver to</span>
+                <span className={s.line}><MapPin size={14}/> <span className={s.wrap}>{lines.length ? lines.join(', ') : 'No delivery address'}</span></span>
+                {o.shippingMethod && <span className={ui.muted}>Method: {o.shippingMethod}</span>}
+                {o.trackingNumber && <span className={ui.muted}>Tracking: <strong>{o.trackingNumber}</strong></span>}
+                <div className={s.actions}>
+                  {map && <a className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} href={map} target="_blank" rel="noreferrer"><MapPin size={14}/> {orderPin(o) ? 'Open exact location' : 'Open in Maps'}</a>}
+                  {lines.length > 0 && <button type="button" className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} onClick={() => copy([customerName(o), phoneNumber, ...lines].filter(Boolean).join('\n'), 'address')}>{copied === 'address' ? <Check size={14}/> : <Copy size={14}/>} {copied === 'address' ? 'Copied' : 'Copy address'}</button>}
+                </div>
+              </div>
+            </div>
+            {billingText && billingText !== addressText(o.shippingAddressJson) && <div className={s.kv}><span className={s.kvLabel}>Billing address</span><span className={s.pre}>{billingText}</span></div>}
+            {o.driver && <div className={s.note}><Truck size={16}/><div><strong>Driver: {o.driver.name}</strong>{o.cashCollected ? <span className={ui.muted}>Collected {money(o.cashCollected, o.currency)} cash · {o.cashSettledAt ? 'handed to the store' : 'not handed over yet'}</span> : <span className={ui.muted}>{o.status === 'DELIVERED' ? 'Delivered, nothing to collect' : 'On their delivery list'}</span>} <Link className={ui.textLink} href="/admin/orders/drivers">Drivers</Link></div></div>}
+            {o.isGift && <div className={s.note}><Gift size={16}/><div><strong>Gift order</strong>{o.giftMessage ? <span className={s.pre}>"{o.giftMessage}"</span> : <span className={ui.muted}>No message. Don't put prices in the parcel.</span>}</div></div>}
+            {history && <div className={`${s.history}${history.warning ? ` ${s.historyWarn}` : ''}`}>
+              <strong>{history.total ? `Ordered ${history.total} time${history.total === 1 ? '' : 's'} before with this phone` : 'First order from this phone number'}</strong>
+              {history.total > 0 && <span>{[history.delivered ? `${history.delivered} delivered` : '', history.cancelled ? `${history.cancelled} cancelled` : '', history.open ? `${history.open} in progress` : ''].filter(Boolean).join(' · ')}</span>}
+              {history.warning && <span className={s.historyNote}>{history.warning}</span>}
+              {history.total > 0 && <ul>{history.orders.slice(0, 5).map(h => <li key={h.id}><Link href={`/admin/orders/${h.id}`}>#{h.orderNumber}</Link> · {statusInfo(h.status).label}{h.refused ? ' (after sending)' : ''} · {money(h.grandTotal, h.currency)} · {formatAdminDate(h.createdAt, storeTimezone)}</li>)}</ul>}
+            </div>}
+            <div className={s.panelFoot}>
+              {o.user?.id && <Link className={ui.textLink} href={`/admin/customers/${o.user.id}`}>Customer's account and past orders</Link>}
+              {phoneNumber && <button type="button" className={`${s.linkBtn}${blocked ? '' : ` ${s.danger}`}`} onClick={toggleBlock}><Ban size={13}/> {blocked ? 'Unblock this number' : 'Block this number from ordering'}</button>}
+            </div>
           </div>
         </section>}
 
-        {editing && <section className={ui.card}>
-          <h3 className={s.cardTitle}>Contact</h3>
-          <div className={s.twoCol}><label className={ui.fieldLabel}>Email<input className={ui.input} value={email} onChange={e=>setEmail(e.target.value)} /></label><label className={ui.fieldLabel}>Phone<input className={ui.input} value={phone} onChange={e=>setPhone(e.target.value)} /></label></div>
-        </section>}
-        {editing && <section className={ui.card}>
-          <h3 className={s.cardTitle}>Delivery address</h3>
-          <div className={s.twoCol}><label className={ui.fieldLabel}>First name<input className={ui.input} value={shipping.firstName} onChange={e=>setShipping({...shipping,firstName:e.target.value})}/></label><label className={ui.fieldLabel}>Last name<input className={ui.input} value={shipping.lastName} onChange={e=>setShipping({...shipping,lastName:e.target.value})}/></label><label className={`${ui.fieldLabel} ${s.full}`}>Address<input className={ui.input} value={shipping.line1} onChange={e=>setShipping({...shipping,line1:e.target.value})}/></label><label className={`${ui.fieldLabel} ${s.full}`}>Building / floor<input className={ui.input} value={shipping.line2} onChange={e=>setShipping({...shipping,line2:e.target.value})}/></label><label className={ui.fieldLabel}>City<input className={ui.input} value={shipping.city} onChange={e=>setShipping({...shipping,city:e.target.value})}/></label><label className={ui.fieldLabel}>Region<input className={ui.input} value={shipping.region} onChange={e=>setShipping({...shipping,region:e.target.value})}/></label><label className={ui.fieldLabel}>Postal code<input className={ui.input} value={shipping.postalCode} onChange={e=>setShipping({...shipping,postalCode:e.target.value})}/></label><label className={ui.fieldLabel}>Country<CountrySelect className={ui.select} value={shipping.country} onChange={v=>setShipping({...shipping,country:v})}/></label><label className={`${ui.fieldLabel} ${s.full}`}>Phone<input className={ui.input} value={shipping.phone} onChange={e=>setShipping({...shipping,phone:e.target.value})}/></label></div>
-        </section>}
-        {editing && <section className={ui.card}>
-          <h3 className={s.cardTitle}>Billing address <span className={ui.muted}>(optional)</span></h3>
-          <div className={s.twoCol}><label className={ui.fieldLabel}>First name<input className={ui.input} value={billing.firstName} onChange={e=>setBilling({...billing,firstName:e.target.value})}/></label><label className={ui.fieldLabel}>Last name<input className={ui.input} value={billing.lastName} onChange={e=>setBilling({...billing,lastName:e.target.value})}/></label><label className={`${ui.fieldLabel} ${s.full}`}>Address<input className={ui.input} value={billing.line1} onChange={e=>setBilling({...billing,line1:e.target.value})}/></label><label className={`${ui.fieldLabel} ${s.full}`}>Building / floor<input className={ui.input} value={billing.line2} onChange={e=>setBilling({...billing,line2:e.target.value})}/></label><label className={ui.fieldLabel}>City<input className={ui.input} value={billing.city} onChange={e=>setBilling({...billing,city:e.target.value})}/></label><label className={ui.fieldLabel}>Region<input className={ui.input} value={billing.region} onChange={e=>setBilling({...billing,region:e.target.value})}/></label><label className={ui.fieldLabel}>Postal code<input className={ui.input} value={billing.postalCode} onChange={e=>setBilling({...billing,postalCode:e.target.value})}/></label><label className={ui.fieldLabel}>Country<CountrySelect className={ui.select} value={billing.country} onChange={v=>setBilling({...billing,country:v})}/></label><label className={`${ui.fieldLabel} ${s.full}`}>Phone<input className={ui.input} value={billing.phone} onChange={e=>setBilling({...billing,phone:e.target.value})}/></label></div>
-        </section>}
-        {editing && <section className={ui.card}><h3 className={s.cardTitle}>Staff note <span className={ui.muted}>(only staff see it)</span></h3><textarea className={ui.textarea} rows={4} value={notesValue} onChange={e=>setNotesValue(e.target.value)} placeholder="A note about this order for the team…"/></section>}
-
-        <section className={ui.card}>
-          <h3 className={s.cardTitle}>Items <span className={ui.muted}>{itemCount} item{itemCount === 1 ? '' : 's'}</span></h3>
-          {(o.items||[]).map((x:any)=><div className={s.itemRow} key={x.id}><div className={s.itemImage}>{x.product?.images?.[0]?.url?<img src={x.product.images[0].url} alt=""/>:<PackageCheck size={18}/>}</div><div className={s.itemName}><strong>{x.name}</strong><div className={ui.muted}>{[x.variant?.name && x.variant.name !== 'Default Title' ? x.variant.name : '', x.sku].filter(Boolean).join(' · ')}</div></div><span className={s.qty}>× {x.quantity}</span><strong>{money(x.totalPrice,o.currency)}</strong></div>)}
+        <section className={s.panel}>
+          <div className={s.panelHead}>
+            <h2 className={s.panelTitle}>Items</h2>
+            <span className={ui.muted}>{itemCount} item{itemCount === 1 ? '' : 's'}</span>
+          </div>
+          <div className={s.tableWrap}>
+            <table className={s.table}>
+              <thead><tr><th>Item</th><th className={s.num}>Qty</th><th className={s.num}>Total</th></tr></thead>
+              <tbody>{(o.items || []).map((x: any) => <tr key={x.id}>
+                <td>
+                  <div className={s.itemCell}>
+                    <div className={s.thumb}>{x.product?.images?.[0]?.url ? <img src={x.product.images[0].url} alt=""/> : <PackageCheck size={16}/>}</div>
+                    <div>
+                      <strong>{x.name}</strong>
+                      <div className={ui.muted}>{[x.variant?.name && x.variant.name !== 'Default Title' ? x.variant.name : '', x.sku].filter(Boolean).join(' · ')}</div>
+                    </div>
+                  </div>
+                </td>
+                <td className={s.num}>× {x.quantity}</td>
+                <td className={s.num}>{money(x.totalPrice, o.currency)}</td>
+              </tr>)}</tbody>
+            </table>
+          </div>
           <div className={s.totals}>
-            <div><span>Subtotal</span><span>{money(o.subtotal,o.currency)}</span></div>
-            {o.discountTotal > 0 && <div><span>Discount{o.couponCode ? ` (${o.couponCode})` : ''}</span><span>− {money(o.discountTotal,o.currency)}</span></div>}
-            <div><span>Delivery</span><span>{o.shippingTotal > 0 ? money(o.shippingTotal,o.currency) : 'Free'}</span></div>
-            {o.taxTotal > 0 && <div><span>Tax</span><span>{money(o.taxTotal,o.currency)}</span></div>}
-            <div className={s.grand}><span>Total</span><strong>{money(o.grandTotal,o.currency)}</strong></div>
+            <div className={s.ledger}>
+              <div className={s.ledgerRow}><span>Subtotal</span><span>{money(o.subtotal, o.currency)}</span></div>
+              {o.discountTotal > 0 && <div className={s.ledgerRow}><span>Discount{o.couponCode ? ` (${o.couponCode})` : ''}</span><span>− {money(o.discountTotal, o.currency)}</span></div>}
+              <div className={s.ledgerRow}><span>Delivery</span><span>{o.shippingTotal > 0 ? money(o.shippingTotal, o.currency) : 'Free'}</span></div>
+              {o.taxTotal > 0 && <div className={s.ledgerRow}><span>Tax</span><span>{money(o.taxTotal, o.currency)}</span></div>}
+              <div className={`${s.ledgerRow} ${s.ledgerTotal}`}><span>Total</span><span>{money(o.grandTotal, o.currency)}</span></div>
+            </div>
           </div>
-          <div className={`${s.payBox} ${TONE[payment.tone]}`}>
+          <div className={`${s.payStrip} ${TONE[payment.tone]}`}>
             <span>{collect ? <>Driver collects <strong>{money(o.grandTotal, o.currency)}</strong> in cash</> : payment.label}</span>
             {canMarkPaid && <button type="button" className={`${ui.btn} ${ui.btnSmall}`} onClick={markPaid} disabled={moving}><Check size={14}/> Mark as paid</button>}
           </div>
-          {(o.paymentProofs||[]).length>0&&<div className={s.proofs}>
-            <p className={s.proofsText}><strong>{o.paymentProofs.length} payment screenshot{o.paymentProofs.length===1?'':'s'} from the customer.</strong>{canMarkPaid?' Check that the money really arrived, then tap Mark as paid.':''} <span className={ui.muted}>Only staff can see these.</span></p>
-            <div className={s.proofList}>{o.paymentProofs.map((p:any)=><a key={p.id} className={s.proofThumb} href={`/api/admin/orders/${o.id}/payment-proof/${p.id}`} target="_blank" rel="noopener noreferrer"><img src={`/api/admin/orders/${o.id}/payment-proof/${p.id}`} alt="Payment screenshot from the customer" loading="lazy"/><span>{new Date(p.createdAt).toLocaleString()}</span></a>)}</div>
+          {(o.paymentProofs || []).length > 0 && <div className={s.proofBox}>
+            <p className={s.proofText}><strong>{o.paymentProofs.length} payment screenshot{o.paymentProofs.length === 1 ? '' : 's'} from the customer.</strong>{canMarkPaid ? ' Check that the money really arrived, then tap Mark as paid.' : ''} <span className={ui.muted}>Only staff can see these.</span></p>
+            <div className={s.proofs}>{o.paymentProofs.map((p: any) => <a key={p.id} className={s.proof} href={`/api/admin/orders/${o.id}/payment-proof/${p.id}`} target="_blank" rel="noopener noreferrer"><img src={`/api/admin/orders/${o.id}/payment-proof/${p.id}`} alt="Payment screenshot from the customer" loading="lazy"/><span>{new Date(p.createdAt).toLocaleString()}</span></a>)}</div>
           </div>}
         </section>
 
-        {(o.issuedGiftCards||[]).length>0&&<section className={ui.card}>
-          <h3 className={s.cardTitle}>Gift cards from this order</h3>
-          {o.issuedGiftCards.map((c:any)=><div key={c.id} className={s.line}><span>{c.code}</span><span>{c.status} · {money(c.balance,c.currency)} of {money(c.initialAmount,c.currency)}</span></div>)}
+        {(o.issuedGiftCards || []).length > 0 && <section className={s.panel}>
+          <div className={s.panelHead}><h2 className={s.panelTitle}>Gift cards from this order</h2></div>
+          <div className={s.panelBody}>
+            {o.issuedGiftCards.map((c: any) => <div key={c.id} className={s.line}><span>{c.code}</span><span>{c.status} · {money(c.balance, c.currency)} of {money(c.initialAmount, c.currency)}</span></div>)}
+          </div>
         </section>}
 
-        {fulfillments.length>0&&<section className={ui.card}>
-          <h3 className={s.cardTitle}>Parcels <span className={ui.muted}>{fulfillments.length}</span></h3>
-          <div className={s.timeline}>{fulfillments.map((f:any)=><div className={s.timelineItem} key={f.id}>
-            <div className={s.dot}/>
-            <div>
-              <strong>{f.status === 'DELIVERED' ? 'Delivered' : f.status === 'CANCELLED' ? 'Cancelled' : 'On its way'}</strong>{f.trackingCompany?` · ${f.trackingCompany}`:''}
-              <p className={ui.muted}>{f.trackingNumber?`Tracking: ${f.trackingNumber}`:'No tracking number'}{f.trackingUrl?<> · <a className={ui.textLink} href={f.trackingUrl} target="_blank" rel="noopener noreferrer">Track</a></>:''}</p>
-              <p className={ui.muted}>{f.lines?.length||0} item{f.lines?.length===1?'':'s'} · {f.shippedAt?`Sent ${formatAdminDate(f.shippedAt, storeTimezone)}`:'Not sent yet'}{f.deliveredAt?` · Delivered ${formatAdminDate(f.deliveredAt, storeTimezone)}`:''}</p>
-              {f.status!=='DELIVERED'&&f.status!=='CANCELLED'&&<button className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} onClick={()=>markDelivered(f.id)} disabled={markingDelivered===f.id}>{markingDelivered===f.id?'Saving…':'Mark delivered'}</button>}
-            </div>
-          </div>)}</div>
+        {fulfillments.length > 0 && <section className={s.panel}>
+          <div className={s.panelHead}><h2 className={s.panelTitle}>Parcels</h2><span className={ui.muted}>{fulfillments.length}</span></div>
+          <div className={s.panelBody}>
+            {fulfillments.map((f: any) => <div className={s.parcel} key={f.id}>
+              <div>
+                <strong>{f.status === 'DELIVERED' ? 'Delivered' : f.status === 'CANCELLED' ? 'Cancelled' : 'On its way'}</strong>{f.trackingCompany ? ` · ${f.trackingCompany}` : ''}
+                <p className={ui.muted}>{f.trackingNumber ? `Tracking: ${f.trackingNumber}` : 'No tracking number'}{f.trackingUrl ? <> · <a className={ui.textLink} href={f.trackingUrl} target="_blank" rel="noopener noreferrer">Track</a></> : ''}</p>
+                <p className={ui.muted}>{f.lines?.length || 0} item{f.lines?.length === 1 ? '' : 's'} · {f.shippedAt ? `Sent ${formatAdminDate(f.shippedAt, storeTimezone)}` : 'Not sent yet'}{f.deliveredAt ? ` · Delivered ${formatAdminDate(f.deliveredAt, storeTimezone)}` : ''}</p>
+              </div>
+              {f.status !== 'DELIVERED' && f.status !== 'CANCELLED' && <button className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} onClick={() => markDelivered(f.id)} disabled={markingDelivered === f.id}>{markingDelivered === f.id ? 'Saving…' : 'Mark delivered'}</button>}
+            </div>)}
+          </div>
         </section>}
 
-        <DeliveryTrackingAdmin orderId={o.id} orderStatus={o.status}/>
+        <DeliveryTrackingAdmin orderId={o.id} orderStatus={o.status} className={s.tracking}/>
       </main>
 
-      <aside className={s.rail}>
-        {!editing && <section className={ui.card}>
-          <h3 className={s.cardTitle}>Notes</h3>
-          <textarea className={ui.textarea} rows={3} value={note} onChange={e=>setNote(e.target.value)} placeholder="Add a note for the team (only staff see it)…"/>
-          <button className={`${ui.btn} ${s.noteBtn}`} onClick={addNote} disabled={addingNote||!note.trim()}><Plus size={15}/>{addingNote?'Adding…':'Add note'}</button>
-          {o.notes && <div className={s.staffNote}>{o.notes}</div>}
-          <div className={s.timeline}>{(o.notesHistory||[]).map((n:any)=><div className={s.timelineItem} key={n.id}><div className={s.dot}/><div><strong>{n.user?.name||'Staff'}</strong><p>{n.body}</p><small className={ui.muted}>{formatAdminDateTime(n.createdAt, storeTimezone)}</small></div></div>)}{!o.notesHistory?.length&&!o.notes&&<p className={ui.muted}>No notes yet.</p>}</div>
+      <aside className={s.side}>
+        {!editing && <section className={s.panel}>
+          <div className={s.panelHead}><h2 className={s.panelTitle}>Notes</h2></div>
+          <div className={s.panelBody}>
+            <textarea className={ui.textarea} rows={3} value={note} onChange={e=>setNote(e.target.value)} placeholder="Add a note for the team (only staff see it)…"/>
+            <button className={`${ui.btn} ${s.wide}`} onClick={addNote} disabled={addingNote || !note.trim()}><Plus size={15}/>{addingNote ? 'Adding…' : 'Add note'}</button>
+            {o.notes && <div className={s.staffNote}>{o.notes}</div>}
+            <div className={s.log}>
+              {(o.notesHistory || []).map((n: any) => <div className={s.logItem} key={n.id}><span className={s.logDot}/><div><strong>{n.user?.name || 'Staff'}</strong><p>{n.body}</p><small className={ui.muted}>{formatAdminDateTime(n.createdAt, storeTimezone)}</small></div></div>)}
+              {!o.notesHistory?.length && !o.notes && <p className={ui.muted}>No notes yet.</p>}
+            </div>
+          </div>
         </section>}
-        <section className={ui.card}>
-          <h3 className={s.cardTitle}>History</h3>
-          <div className={s.timeline}>{(o.events||[]).map((e:any)=><div className={s.timelineItem} key={e.id}><div className={s.dot}/><div><strong>{statusInfo(e.status).label}</strong><p className={ui.muted}>{e.message||'Order updated'}</p><small className={ui.muted}>{formatAdminDateTime(e.createdAt, storeTimezone)}</small></div></div>)}{!o.events?.length&&<p className={ui.muted}>Nothing yet.</p>}</div>
+        <section className={s.panel}>
+          <div className={s.panelHead}><h2 className={s.panelTitle}>History</h2></div>
+          <div className={s.panelBody}>
+            <div className={s.log}>
+              {(o.events || []).map((e: any) => <div className={s.logItem} key={e.id}><span className={s.logDot}/><div><strong>{statusInfo(e.status).label}</strong><p className={ui.muted}>{e.message || 'Order updated'}</p><small className={ui.muted}>{formatAdminDateTime(e.createdAt, storeTimezone)}</small></div></div>)}
+              {!o.events?.length && <p className={ui.muted}>Nothing yet.</p>}
+            </div>
+          </div>
         </section>
       </aside>
     </div>
