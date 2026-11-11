@@ -30,6 +30,20 @@ async function getAreebaConfig() {
 
 const safeError = (body: unknown) => { if (!body || typeof body !== 'object') return 'Payment gateway rejected the request'; const record=body as Record<string,any>; if(typeof record.error?.explanation==='string')return record.error.explanation; if(typeof record.error?.message==='string')return record.error.message; if(typeof record.message==='string')return record.message; return 'Payment gateway rejected the request' }
 
+// The gateway's own copy of an order: its status (upper case) and the amount refunded so far, in major units.
+async function fetchGatewayOrder(orderId: string) {
+  const config=await getAreebaConfig(); const endpoint=`${config.apiBaseUrl}/version/${encodeURIComponent(config.apiVersion)}/merchant/${encodeURIComponent(config.merchantId)}/order/${encodeURIComponent(orderId)}`
+  const response=await fetch(endpoint,{headers:{authorization:`Basic ${Buffer.from(`merchant.${config.merchantId}:${config.apiPassword}`).toString('base64')}`},cache:'no-store'})
+  const body=await response.json().catch(()=>({})) as Record<string,any>; if(!response.ok)throw userError(safeError(body))
+  return {status:String(body.order?.status||'').toUpperCase(), totalRefunded:Number(body.order?.totalRefundedAmount)}
+}
+
+// Refund reconciliation reads the refunds from the gateway, never from a webhook body: a body only says
+// that something happened, and the gateway has the amounts.
+export async function areebaOrderRefunds(orderId: string) {
+  return fetchGatewayOrder(orderId)
+}
+
 export const areebaMpgsPaymentProvider: PaymentProvider = {
   name: 'areeba_mpgs',
   async createPayment(input) {
@@ -43,10 +57,8 @@ export const areebaMpgsPaymentProvider: PaymentProvider = {
     return {provider:this.name,externalId:sessionId,clientCheckout:{type:'mpgs',merchantId:config.merchantId,sessionId,scriptUrl:config.checkoutScriptUrl,successIndicator:successIndicator||undefined},status:'pending'}
   },
   async getPaymentStatus(_externalId,orderId) {
-    const config=await getAreebaConfig(); const endpoint=`${config.apiBaseUrl}/version/${encodeURIComponent(config.apiVersion)}/merchant/${encodeURIComponent(config.merchantId)}/order/${encodeURIComponent(orderId)}`
-    const response=await fetch(endpoint,{headers:{authorization:`Basic ${Buffer.from(`merchant.${config.merchantId}:${config.apiPassword}`).toString('base64')}`},cache:'no-store'})
-    const body=await response.json().catch(()=>({})) as Record<string,any>; if(!response.ok)throw userError(safeError(body))
-    const status=String(body.order?.status||'').toUpperCase(); if(['CAPTURED','AUTHORIZED','PARTIALLY_CAPTURED'].includes(status))return 'paid'; if(['FAILED','CANCELLED','REFUNDED','EXCESSIVELY_REFUNDED'].includes(status))return 'failed'; return 'pending'
+    const { status } = await fetchGatewayOrder(orderId)
+    if(['CAPTURED','AUTHORIZED','PARTIALLY_CAPTURED'].includes(status))return 'paid'; if(['FAILED','CANCELLED','REFUNDED','EXCESSIVELY_REFUNDED'].includes(status))return 'failed'; return 'pending'
   },
   async refundPayment(externalId, amount, currency) {
     // Extended (Accelerate) client payload inference doesn't always widen nested `include`

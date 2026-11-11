@@ -5,7 +5,7 @@ import { runInBackground } from '@/lib/background'
 import { consumeDurableRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { canViewOrder } from '@/lib/order-access'
-import { MAX_PROOF_BYTES, PROOF_MESSAGES, proofState, sniffProofType } from '@/lib/payment-proof'
+import { MAX_PROOF_BYTES, MAX_PROOFS_PER_ORDER, PROOF_MESSAGES, proofState, sniffProofType } from '@/lib/payment-proof'
 import { deletePaymentProof, savePaymentProof } from '@/lib/payment-proof-storage'
 import { sendPaymentProofPush } from '@/lib/push'
 import { json } from '@/lib/utils'
@@ -48,10 +48,12 @@ export async function POST(req: Request) {
 
     const stored = await savePaymentProof(bytes, type)
     savedKey = stored.key
-    // Re-check the limit while saving: two uploads at the same moment cannot both squeeze in.
+    // Re-check the limit while saving. The order row is locked first, so a second upload at the same moment waits
+    // here and then counts the first one. This is the same lock the checkout takes for wallet and coin payments.
     const proof = await db.$transaction(async tx => {
+      await tx.order.update({ where: { id: order.id }, data: { updatedAt: new Date() } })
       const count = await tx.paymentProof.count({ where: { orderId: order.id } })
-      if (count >= 3) return null
+      if (count >= MAX_PROOFS_PER_ORDER) return null
       return tx.paymentProof.create({ data: { orderId: order.id, key: stored.key, contentType: stored.contentType, sizeBytes: stored.sizeBytes } })
     })
     if (!proof) { await deletePaymentProof(stored.key); savedKey = ''; return json({ error: PROOF_MESSAGES.limit }, { status: 400, headers: NO_STORE }) }

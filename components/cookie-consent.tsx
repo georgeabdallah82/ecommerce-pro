@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useI18n } from '@/components/lang-provider'
@@ -56,6 +56,27 @@ export function CookieBanner() {
     return () => window.removeEventListener(COOKIE_SETTINGS_EVENT, reopen)
   }, [])
 
+  // While the banner is up, the space it takes from the bottom of the screen is published as
+  // --cookie-banner-height. A sticky action bar (checkout's Place order) uses it to sit above the banner.
+  const bannerRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const element = bannerRef.current
+    if (!open || !element) {
+      document.documentElement.style.removeProperty('--cookie-banner-height')
+      return
+    }
+    const publish = () => document.documentElement.style.setProperty('--cookie-banner-height', `${element.offsetHeight + 12}px`)
+    publish()
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(publish)
+    observer?.observe(element)
+    window.addEventListener('resize', publish)
+    return () => {
+      observer?.disconnect()
+      window.removeEventListener('resize', publish)
+      document.documentElement.style.removeProperty('--cookie-banner-height')
+    }
+  }, [open, pathname])
+
   if (!open || pathname.startsWith('/admin')) return null
 
   const answer = (choice: Choice) => {
@@ -69,7 +90,7 @@ export function CookieBanner() {
     window.dispatchEvent(new Event(CHANGED))
   }
 
-  return <div role="region" aria-label={t('Cookies')} className={styles.banner}>
+  return <div ref={bannerRef} role="region" aria-label={t('Cookies')} className={styles.banner}>
     <p className={styles.text}>
       {t('We use cookies to measure visits and to show you relevant ads on Facebook, Instagram, Google and TikTok.')}{' '}
       <Link href="/privacy-policy">{t('Privacy policy')}</Link>

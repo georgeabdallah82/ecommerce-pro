@@ -2793,7 +2793,21 @@ function isTransactionInfrastructureError(error: unknown) {
   return name.startsWith('PrismaClient') && !code && /transaction/i.test(message)
 }
 
+// Thrown when a transaction that must not run one step at a time (requireTransaction) cannot run.
+// Nothing it did was kept, so the caller can ask the shopper to try again.
+export class TransactionUnavailableError extends Error {
+  constructor() {
+    super('The store could not complete this safely. Please try again in a moment.')
+    this.name = 'TransactionUnavailableError'
+  }
+}
+
 export async function runInteractiveTransaction(client: any, fn: (tx: any) => Promise<any>, options?: any): Promise<any> {
+  // Money that moves (wallet and coin balances) passes requireTransaction. Those steps then never run
+  // one at a time: when the transaction cannot run, TransactionUnavailableError is thrown instead of
+  // the step-by-step fallback below.
+  const { requireTransaction, ...prismaOptions } = options || {}
+  if (requireTransaction && Date.now() < transactionsUnavailableUntil) throw new TransactionUnavailableError()
   if (Date.now() >= transactionsUnavailableUntil) {
     for (let attempt = 0; attempt < 3; attempt++) {
       let started = false
@@ -2804,7 +2818,7 @@ export async function runInteractiveTransaction(client: any, fn: (tx: any) => Pr
           const result = await fn(tx)
           finished = true
           return result
-        }, { ...(customTimeoutRejected ? {} : TX_OPTIONS), ...options })
+        }, { ...(customTimeoutRejected ? {} : TX_OPTIONS), ...prismaOptions })
       } catch (error) {
         // Two transactions touched the same record: the loser was rolled back, so try again.
         if (errorCode(error) === 'P2034' && attempt < 2) continue
@@ -2821,6 +2835,7 @@ export async function runInteractiveTransaction(client: any, fn: (tx: any) => Pr
           continue
         }
         if (!started) transactionsUnavailableUntil = Date.now() + TX_COOLDOWN_MS
+        if (requireTransaction) throw new TransactionUnavailableError()
         console.warn('[db] transaction unavailable or timed out; ran the steps one by one instead', errorCode(error) || (error as Error)?.message)
         break
       }
