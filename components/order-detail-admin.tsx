@@ -19,6 +19,7 @@ import { customerUpdateLink, updateForStatus } from '@/lib/order-updates'
 import type { PhoneHistory } from '@/lib/customer-history'
 import type { Risk } from '@/lib/order-risk'
 import { useConfirm } from './admin-confirm'
+import { safeHttpUrl } from '@/lib/safe-url'
 
 // Admin > Orders > one order. Top to bottom: the order number and where it stands, the progress
 // line, the one thing to do next, then the customer, what was bought and paid, and the parcels.
@@ -537,7 +538,7 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
             {fulfillments.map((f: any) => <div className={s.parcel} key={f.id}>
               <div>
                 <strong>{f.status === 'DELIVERED' ? 'Delivered' : f.status === 'CANCELLED' ? 'Cancelled' : 'On its way'}</strong>{f.trackingCompany ? ` · ${f.trackingCompany}` : ''}
-                <p className={ui.muted}>{f.trackingNumber ? `Tracking: ${f.trackingNumber}` : 'No tracking number'}{f.trackingUrl ? <> · <a className={ui.textLink} href={f.trackingUrl} target="_blank" rel="noopener noreferrer">Track</a></> : ''}</p>
+                <p className={ui.muted}>{f.trackingNumber ? `Tracking: ${f.trackingNumber}` : 'No tracking number'}{safeHttpUrl(f.trackingUrl) ? <> · <a className={ui.textLink} href={safeHttpUrl(f.trackingUrl) ?? undefined} target="_blank" rel="noopener noreferrer">Track</a></> : ''}</p>
                 <p className={ui.muted}>{f.lines?.length || 0} item{f.lines?.length === 1 ? '' : 's'} · {f.shippedAt ? `Sent ${formatAdminDate(f.shippedAt, storeTimezone)}` : 'Not sent yet'}{f.deliveredAt ? ` · Delivered ${formatAdminDate(f.deliveredAt, storeTimezone)}` : ''}</p>
               </div>
               {f.status !== 'DELIVERED' && f.status !== 'CANCELLED' && <button className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} onClick={() => markDelivered(f.id)} disabled={markingDelivered === f.id}>{markingDelivered === f.id ? 'Saving…' : 'Mark delivered'}</button>}

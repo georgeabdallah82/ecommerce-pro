@@ -9,6 +9,7 @@ import { getStoreCurrency } from '@/lib/store-currency'
 import { hasPermission } from '@/lib/permissions'
 import { dashboardAccess } from '@/lib/dashboard-access'
 import { formatAdminDateTime } from '@/lib/admin-datetime'
+import { publicUserSelect } from '@/lib/user-public'
 import { MonthlyBars, YearAreas, Gauge } from '@/components/admin-dashboard-charts'
 import ui from '@/components/admin-ui.module.css'
 import s from '@/components/admin-dashboard.module.css'
@@ -91,7 +92,7 @@ export default async function Admin() {
     db.order.count({ where: { status: { in: OPEN_STATUSES } } }),
     db.inventoryItem.findMany({ select: { quantity: true, reserved: true, lowStockThreshold: true, product: { select: { name: true } } } }),
     db.review.count({ where: { approved: false } }),
-    db.order.findMany({ orderBy: { createdAt: 'desc' }, take: 6, include: { user: true, items: true } }),
+    db.order.findMany({ orderBy: { createdAt: 'desc' }, take: 6, include: { user: { select: publicUserSelect }, items: true } }),
     db.orderItem.groupBy({ by: ['productId'], where: { order: { status: { notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED] }, createdAt: { gte: new Date(now.getTime() - 30 * DAY_MS) } } }, _sum: { quantity: true }, orderBy: { _sum: { quantity: 'desc' } }, take: 4 }),
     visitorCounts(now).catch(() => ({ online: 0, today: 0, ordered: 0 })),
   ])

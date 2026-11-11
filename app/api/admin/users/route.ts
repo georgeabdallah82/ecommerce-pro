@@ -5,9 +5,9 @@ import { json } from '@/lib/utils'
 import { Role } from '@prisma/client'
 import { getStaffRoles } from '@/lib/staff-roles'
 import { deleteStaffCascade } from '@/lib/customers'
+import { publicUserSelect as safeUserSelect } from '@/lib/user-public'
 
 const staffRoles = new Set<Role>(['ADMIN', 'MANAGER', 'SUPPORT', 'EDITOR'])
-const safeUserSelect = { id: true, name: true, email: true, phone: true, role: true, staffRoleId: true, isActive: true, createdAt: true, lastLoginAt: true, totpEnabledAt: true } as const
 
 // A custom role (Users & roles › Roles) is picked as "custom:<id>"; the user then keeps SUPPORT
 // as their built-in role, which grants nothing while staffRoleId is set.
