@@ -1,0 +1,17 @@
+/* The not-found page: what happened, a search box and two ways on, then the shop's categories on the same cream band
+   as the home page (app/storefront-sprint4.css styles that band). Every selector starts with .page, so it beats the
+   market theme's element rules for headings and links without !important. */
+.page { background: var(--store-bg, #f6f6f4); }
+.page .intro { box-sizing: border-box; width: min(1328px, 100%); margin-inline: auto; padding: clamp(40px, 7vw, 96px) 24px clamp(40px, 5vw, 64px); }
+.page .title { margin: 0; font-family: var(--mk-display, var(--store-font-heading, system-ui)); font-size: clamp(38px, 6vw, 68px); font-weight: 700; line-height: 1; letter-spacing: -.035em; color: #121212; }
+.page .lead { margin: 18px 0 0; max-width: 52ch; color: #5b616b; font-size: 17px; line-height: 1.55; }
+.page .search { display: flex; align-items: center; gap: 10px; box-sizing: border-box; width: 100%; max-width: 560px; margin-top: 30px; padding: 6px; padding-inline-start: 18px; border: 1px solid #d6d6d1; border-radius: 14px; background: #fff; color: #5b616b; }
+.page .search:focus-within { border-color: #121212; box-shadow: 0 0 0 3px rgba(18, 18, 18, .12); }
+.page .search input { width: 0; flex: 1 1 auto; min-width: 0; padding: 12px 0; border: 0; outline: 0; background: transparent; color: #121212; font: inherit; font-size: 16px; }
+.page .search button { flex: none; min-height: 44px; padding: 0 22px; border: 0; border-radius: 10px; background: #121212; color: #fff; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+.page .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+.page .actions a { display: inline-flex; align-items: center; min-height: 46px; padding: 0 20px; border-radius: 12px; font-size: 15px; font-weight: 700; text-decoration: none; transition: background-color .15s ease, color .15s ease; }
+.page .actions .primary { background: var(--store-primary, #d7261e); color: #fff; }
+.page .actions .secondary { border: 1px solid #121212; color: #121212; }
+.page .actions .secondary:hover { background: #121212; color: #fff; }
+@media (max-width: 600px) { .page .intro { padding-inline: 16px; } }

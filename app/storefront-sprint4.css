@@ -1,0 +1,107 @@
+/* UX sprint 4: the category strip, the cart rows and the sign-in page. Imported last (app/layout.tsx), so these
+   rules win over the earlier stylesheets. The tokens are the market theme's own: --mk-ink, --mk-red, --mk-card,
+   --mk-line, the cream band (--br-cream) and the display face (--mk-display). */
+
+/* ---- Category strip ------------------------------------------------------------------------------------------
+   White tiles on the cream band. A collection photo fills the tile, a product photo sits on white, and a category
+   with neither shows a department glyph (lib/category-glyph.ts). Computers: up to four categories become wide cards
+   that share the row; more wrap into rows of tiles. Phones: one row that swipes. */
+html body.mk .aliCategoryStrip { --cat-line: color-mix(in srgb, var(--mk-red) 14%, #fff1e6); }
+html body.mk .aliCategoryRow { display: grid !important; grid-auto-flow: row !important; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)) !important; gap: 22px 16px !important; align-items: start !important; overflow: visible !important; padding: 4px 2px 6px !important; }
+html body.mk .aliCategoryItem { width: auto !important; min-width: 0; display: grid !important; justify-items: center !important; align-content: start !important; gap: 10px !important; text-align: center; color: var(--mk-ink); text-decoration: none; }
+html body.mk .aliCategoryItem:focus-visible { outline: none; }
+html body.mk .aliCategoryIcon { position: relative; width: 100% !important; height: auto !important; aspect-ratio: 1 / 1; display: grid !important; place-items: center; overflow: hidden !important; border: 1px solid var(--cat-line) !important; border-radius: 20px !important; background: var(--mk-card) !important; box-shadow: none !important; color: var(--mk-ink); transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+html body.mk .aliCategoryIcon img { position: absolute; inset: 0; box-sizing: border-box; width: 100% !important; height: 100% !important; object-fit: cover !important; }
+html body.mk .aliCategoryIcon.isProductPhoto img { padding: 12%; object-fit: contain !important; }
+html body.mk .aliCategoryIcon > svg { width: 36px; height: 36px; }
+html body.mk .aliCategoryItem > span:last-child { font-family: var(--mk-display); font-size: 14.5px; font-weight: 600; line-height: 1.25; }
+html body.mk .aliCategoryItem:hover .aliCategoryIcon { transform: translateY(-2px); border-color: var(--mk-ink) !important; box-shadow: 0 14px 24px -18px rgba(18, 18, 18, .5) !important; }
+html body.mk .aliCategoryItem:focus-visible .aliCategoryIcon { border-color: var(--mk-ink) !important; box-shadow: 0 0 0 2px var(--mk-ink) !important; }
+@media (min-width: 760px) {
+  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important; gap: 16px !important; }
+  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem { grid-template-columns: 76px minmax(0, 1fr) 20px; align-items: center; justify-items: start !important; gap: 18px !important; padding: 12px 20px 12px 12px; border: 1px solid var(--cat-line); border-radius: 20px; background: var(--mk-card); text-align: start; transition: border-color .18s ease, box-shadow .18s ease; }
+  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem::after { content: ""; width: 20px; height: 20px; background: currentColor; opacity: .45; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center / 20px no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center / 20px no-repeat; transition: transform .18s ease, opacity .18s ease; }
+  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem .aliCategoryIcon { width: 76px !important; border: 0 !important; border-radius: 14px !important; background: var(--br-cream, #fff1e6) !important; }
+  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem > span:last-child { font-size: 18px; }
+  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem:hover { border-color: var(--mk-ink); box-shadow: 0 16px 30px -24px rgba(18, 18, 18, .55); }
+  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem:hover .aliCategoryIcon,
+  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem:focus-visible .aliCategoryIcon { transform: none; box-shadow: none !important; }
+  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem:hover::after { opacity: 1; transform: translateX(3px); }
+  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem:focus-visible { border-color: var(--mk-ink); box-shadow: 0 0 0 2px var(--mk-ink); }
+  [dir="rtl"] body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem::after { transform: scaleX(-1); }
+  [dir="rtl"] body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem:hover::after { transform: scaleX(-1) translateX(3px); }
+}
+@media (max-width: 759px) {
+  html body.mk .aliCategoryRow { grid-auto-flow: column !important; grid-template-columns: none !important; grid-auto-columns: minmax(92px, 1fr) !important; gap: 12px !important; overflow-x: auto !important; scrollbar-width: none !important; scroll-snap-type: x proximity; padding-bottom: 8px !important; }
+  html body.mk .aliCategoryItem { scroll-snap-align: start; }
+  html body.mk .aliCategoryIcon { border-radius: 18px !important; }
+  html body.mk .aliCategoryIcon > svg { width: 28px; height: 28px; }
+  html body.mk .aliCategoryItem > span:last-child { font-size: 13.5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html body.mk .aliCategoryIcon, html body.mk .aliCategoryItem, html body.mk .aliCategoryItem::after { transition: none !important; }
+  html body.mk .aliCategoryItem:hover .aliCategoryIcon { transform: none; }
+}
+
+/* ---- Cart --------------------------------------------------------------------------------------------------------
+   Checkboxes: a 22 px box drawn inside a 44 px touch target. The real checkbox covers the whole target, so it stays
+   keyboard-accessible and clicking anywhere on the target ticks it. Each row's checkbox sits in its own lane left
+   of the photo, centred on it, so the boxes line up down the list. */
+html body.mk .aliCartRowCheckHit { position: relative; display: grid; place-items: center; width: 44px; height: 44px; cursor: pointer; }
+html body.mk .aliCartRowCheckHit::before { content: ""; width: 22px; height: 22px; box-sizing: border-box; border: 1.5px solid #b9b9b1; border-radius: 6px; background: #fff; transition: background-color .15s ease, border-color .15s ease; }
+html body.mk .aliCartRowCheckHit:has(input:checked)::before { border-color: var(--mk-red); background: var(--mk-red) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 14px no-repeat; }
+html body.mk .aliCartRowCheckHit:focus-within::before { outline: 2px solid var(--mk-ink); outline-offset: 2px; }
+html body.mk .aliCartRowCheckHit > input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+html body.mk .aliCartCheck { position: relative; display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding-inline-start: 34px; cursor: pointer; font-weight: 700; }
+html body.mk .aliCartCheck::before { content: ""; position: absolute; inset-inline-start: 6px; top: 50%; width: 22px; height: 22px; transform: translateY(-50%); box-sizing: border-box; border: 1.5px solid #b9b9b1; border-radius: 6px; background: #fff; transition: background-color .15s ease, border-color .15s ease; }
+html body.mk .aliCartCheck:has(input:checked)::before { border-color: var(--mk-red); background: var(--mk-red) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 14px no-repeat; }
+html body.mk .aliCartCheck:focus-within::before { outline: 2px solid var(--mk-ink); outline-offset: 2px; }
+html body.mk .aliCartCheck > input { position: absolute; inset-inline-start: 0; top: 0; width: 44px; height: 44px; margin: 0; opacity: 0; cursor: pointer; }
+html body.mk .cartPage .aliCartRowMedia { flex-direction: row !important; align-items: center !important; gap: 2px !important; }
+html body.mk .cartPage .cartRowUX { grid-template-columns: 162px minmax(0, 1fr) minmax(170px, auto) !important; }
+@media (max-width: 900px) {
+  html body.mk .cartPage .cartRowUX { grid-template-columns: 126px minmax(0, 1fr) !important; }
+}
+/* On computers the rows and the list header have the same 20 px padding, so the select-all box is centred in a 44 px
+   lane too, exactly above the row boxes. (On phones the rows have 14 px and the boxes already line up.) */
+@media (min-width: 901px) {
+  html body.mk .cartItemsHead .aliCartCheck { padding-inline-start: 39px; }
+  html body.mk .cartItemsHead .aliCartCheck::before { inset-inline-start: 11px; }
+}
+
+/* ---- Sign-in -----------------------------------------------------------------------------------------------------
+   One card. On computers the store's own first hero photo fills the left half under a dark scrim, with the welcome
+   and what an account is for; without a hero photo that half is the cream band. Phones get the form alone. */
+html body.mk .authPage { padding-block: clamp(20px, 5vw, 56px) clamp(40px, 7vw, 80px); }
+html body.mk main.authPage > .container { width: min(1180px, calc(100% - 32px)) !important; }
+html body.mk .authShell { display: grid; max-width: 520px; margin-inline: auto; overflow: hidden; border: 1px solid var(--mk-line); border-radius: 24px; background: var(--mk-card); box-shadow: 0 30px 60px -44px rgba(18, 18, 18, .45); }
+html body.mk .authPanel { display: none; }
+html body.mk .authMain { padding: 28px 22px 30px; }
+html body.mk .authTitle { margin: 0; font-family: var(--mk-display); font-size: clamp(30px, 3.4vw, 38px); line-height: 1.08; letter-spacing: -.02em; color: var(--mk-ink); }
+html body.mk .authLead { margin: 8px 0 0; max-width: 46ch; color: var(--mk-muted); font-size: 15px; line-height: 1.5; }
+html body.mk .authMain .alert { margin-top: 18px; }
+html body.mk .authForm { display: grid; margin-top: 24px; }
+html body.mk .authForm .fieldLabel { margin-bottom: 8px; font-size: 13.5px; font-weight: 700; }
+html body.mk .authFieldHead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 18px; }
+html body.mk .authForgot { padding-block: 14px; margin-block: -14px; color: var(--mk-muted); font-size: 13.5px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+html body.mk .authForgot:hover { color: var(--mk-ink); }
+html body.mk .authForm .input { box-sizing: border-box; width: 100%; height: 50px; padding: 0 14px; border: 1px solid #d6d6d1 !important; border-radius: 12px !important; background: #fff; font-size: 16px; }
+html body.mk .authForm .input:focus { border-color: var(--mk-ink) !important; outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--mk-ink) 14%, transparent) !important; }
+html body.mk .authSubmit { width: 100%; height: 50px; margin-top: 22px; border-radius: 12px !important; font-size: 16px; font-weight: 700; }
+html body.mk .authDivider { display: flex; align-items: center; gap: 14px; margin: 26px 0 14px; color: var(--mk-muted); font-size: 13.5px; }
+html body.mk .authDivider::before, html body.mk .authDivider::after { content: ""; flex: 1; height: 1px; background: var(--mk-line); }
+html body.mk .authSecondary { display: flex; align-items: center; justify-content: center; height: 50px; border: 1px solid var(--mk-ink); border-radius: 12px; color: var(--mk-ink); font-size: 15px; font-weight: 700; text-decoration: none; transition: background-color .15s ease, color .15s ease; }
+html body.mk .authSecondary:hover { background: var(--mk-ink); color: #fff; }
+@media (min-width: 900px) {
+  html body.mk .authShell { max-width: 1080px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: 600px; }
+  html body.mk .authPanel { position: relative; isolation: isolate; display: flex; align-items: flex-end; padding: 44px; background: var(--br-cream, #fff1e6); color: var(--mk-ink); }
+  html body.mk .authShell.hasPhoto .authPanel { background: #121212; color: #fff; }
+  html body.mk .authPanelPhoto { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; }
+  html body.mk .authShell.hasPhoto .authPanel::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(18, 18, 18, .08) 25%, rgba(18, 18, 18, .84) 100%); }
+  html body.mk .authPanelTitle { margin: 0; font-family: var(--mk-display); font-size: 44px; line-height: 1.02; letter-spacing: -.025em; font-weight: 700; }
+  html body.mk .authPanelLead { margin: 12px 0 0; max-width: 34ch; font-size: 16px; line-height: 1.5; opacity: .9; }
+  html body.mk .authPerks { display: grid; gap: 12px; margin: 26px 0 0; padding: 0; list-style: none; }
+  html body.mk .authPerks li { display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 600; }
+  html body.mk .authPerks svg { flex: none; }
+  html body.mk .authMain { display: grid; align-content: center; padding: 56px clamp(40px, 5vw, 64px); }
+}
