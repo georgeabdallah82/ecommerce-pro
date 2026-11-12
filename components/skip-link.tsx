@@ -14,7 +14,6 @@ export default function SkipLink() {
     const main = document.querySelector('main')
     if (!main) return
     event.preventDefault()
-    if (!main.id) main.id = 'main-content'
     main.setAttribute('tabindex', '-1')
     main.focus()
     main.scrollIntoView()
