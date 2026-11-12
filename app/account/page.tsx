@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import { db } from '@/lib/prisma'
 import { money } from '@/lib/config'
@@ -15,7 +16,8 @@ import { statusLabel } from '@/lib/i18n'
 export default async function Account(){
   const u=await getCurrentUser()
   const t=await getT()
-  if(!u)return <><main className="section"><div className="container"><span className="muted">{t('ACCOUNT')}</span><h1 className="h2">{t('Your account')}</h1><div className="card" style={{padding:24,maxWidth:560}}><h3>{t('Sign in or create an account')}</h3><p className="muted">{t('Track orders, manage addresses, save favorites and leave reviews.')}</p><div style={{display:'flex',gap:10}}><Link className="btn" href="/account/login">{t('Sign in')}</Link><Link className="btn secondary" href="/account/register">{t('Create account')}</Link></div></div></div></main><StoreFooter /></>
+  // Signed out: straight to the sign-in page (it also offers "Create an account" and brings the shopper back here).
+  if(!u)redirect('/account/login')
 
   const buyAgain=await buyAgainItems(u.id).catch(()=>[])
   const [orders, orderCount, addresses, walletAggregate, walletCurrencyRow, coinAggregate, unreadNotifications, storeCurrency]=await Promise.all([

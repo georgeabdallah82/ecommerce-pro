@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { StoreImage } from '@/components/storefront-sections'
+import { DepartmentGlyph } from '@/components/department-glyph'
 import { useI18n } from '@/components/lang-provider'
 
 type AnyMap = Record<string, any>
@@ -24,7 +25,8 @@ export default function AliExpressCollections({ collections }: { collections: An
               return (
                 <Link key={c.id} href={`/collections/${c.slug}`} className="focalCollectionCard aliCollectionCard">
                   <div className="focalCollectionMedia">
-                    <StoreImage src={c.imageUrl || '/placeholder-product.svg'} alt={c.name || t('Collection')} />
+                    {/* app/collections/page.tsx has already chosen the picture (lib/collection-photo.ts); with none, the department's glyph. */}
+                    {c.imageUrl ? <StoreImage src={c.imageUrl} alt={c.name || t('Collection')} /> : <span className="collectionArt"><DepartmentGlyph name={c.name || ''} size={44} strokeWidth={1.4} /></span>}
                   </div>
                   <div className="focalCollectionCopy">
                     <span className="focalCollectionName">{c.name}</span>

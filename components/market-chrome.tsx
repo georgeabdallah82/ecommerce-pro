@@ -13,6 +13,8 @@ import type { Shopper } from './use-shopper'
 import { InstallAppRow } from './install-app'
 import { LanguageSwitch, useI18n } from './lang-provider'
 import { loadStoreSettings } from '@/lib/store-settings-client'
+import { realPhoto } from '@/lib/collection-photo'
+import { DepartmentGlyph } from './department-glyph'
 
 export const DELIVERY_AREA_KEY = 'ecom-delivery-area-v1'
 // Fired when the shopper picks another area, so the product page's delivery line follows.
@@ -79,10 +81,12 @@ export function useMenuCollections(active: boolean) {
 }
 
 // A collection picture, or a neutral icon when there is none or it fails to load.
-function MenuImage({ src }: { src: string | null }) {
+// A category tile's picture: the collection's photo, or its department's glyph (never the stock placeholder).
+function MenuImage({ src, name }: { src: string | null; name: string }) {
   const [failed, setFailed] = useState(false)
-  if (!src || failed) return <LayoutGrid size={18} aria-hidden="true" />
-  return <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} />
+  const photo = realPhoto(src)
+  if (!photo || failed) return <span className="mkTileGlyph"><DepartmentGlyph name={name} size={22} strokeWidth={1.6} /></span>
+  return <img src={photo} alt="" loading="lazy" onError={() => setFailed(true)} />
 }
 
 function isActiveUrl(url: string, pathname: string, here: string) {
@@ -167,7 +171,7 @@ export function CategoryTabs({ navigation, phone = false }: { navigation: NavIte
               {collections === null ? <div className="mkCatsPanelGrid">{Array.from({ length: 8 }, (_, i) => <span key={i} className="mkCatsTile skeleton" />)}</div>
                 : collections.length ? <div className="mkCatsPanelGrid">
                   {collections.slice(0, 16).map(c => <Link key={c.id} href={`/collections/${c.slug}`} className="mkCatsTile" onClick={() => setPanel(null)}>
-                    <span className="mkCatsTileImg"><MenuImage src={c.imageUrl} /></span>
+                    <span className="mkCatsTileImg"><MenuImage src={c.imageUrl} name={c.name} /></span>
                     <span className="mkCatsTileText"><b>{c.name}</b><small>{count(c.count, 'product')}</small></span>
                   </Link>)}
                 </div>
@@ -272,7 +276,7 @@ export function MarketMenu({ open, onClose, navigation, brand, logo, logoWhite, 
             <div className="mkMenuLabel">{t('Shop by category')}</div>
             <div className="mkMenuTiles">
               {collections.slice(0, 12).map(c => <Link key={c.id} href={`/collections/${c.slug}`} className="mkMenuTile" onClick={onClose}>
-                <span className="mkMenuTileImg"><MenuImage src={c.imageUrl} /></span>
+                <span className="mkMenuTileImg"><MenuImage src={c.imageUrl} name={c.name} /></span>
                 <span>{c.name}</span>
               </Link>)}
             </div>

@@ -156,6 +156,15 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
     setActiveImgIndex(i => (i + (forward ? 1 : -1) + swipeCount) % swipeCount)
   }
   const activeImage = gallery[activeImgIndex]?.url || gallery[0]?.url || '/placeholder-product.svg'
+  // A photo the shopper turns to fades in (app/storefront-polish.css). The first one is the page's largest paint,
+  // so it never waits for an animation.
+  const [photoTurned, setPhotoTurned] = useState(false)
+  const shownPhoto = useRef(activeImgIndex)
+  useEffect(() => {
+    if (activeImgIndex === shownPhoto.current) return
+    shownPhoto.current = activeImgIndex
+    setPhotoTurned(true)
+  }, [activeImgIndex])
   const wished = Boolean(wishlist[product.id])
 
   const selectedVariantIndex = variants.findIndex((v: AnyMap) => v.id === selectedVariantId)
@@ -244,10 +253,12 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
       )}
       <div className="aliContainer aliProductLayout">
         <div className="aliProductGallery">
-          <div className="aliProductMainImage" onTouchStart={e => { swipeStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY } }} onTouchEnd={onSwipeEnd}>
-            <StoreImage src={activeImage} alt={gallery[activeImgIndex]?.alt || product.name} eager />
+          <div className={`aliProductMainImage${photoTurned ? ' isTurned' : ''}`} onTouchStart={e => { swipeStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY } }} onTouchEnd={onSwipeEnd}>
+            <StoreImage key={activeImage} src={activeImage} alt={gallery[activeImgIndex]?.alt || product.name} eager />
             {discountPct > 0 && <span className="focalBadge aliProductDiscountBadge">-{discountPct}%</span>}
             {gallery.length > 0 && <button type="button" className="pdpZoomOpen" onClick={() => setZoomOpen(true)} aria-label={t('Zoom photo')}><ZoomIn size={18} /></button>}
+            {/* Phones: which photo this is, so a swipe for the next one is expected (the thumbnails say the same to screen readers). */}
+            {swipeCount > 1 && <span className="pdpPhotoCount" aria-hidden="true">{activeImgIndex + 1} / {swipeCount}</span>}
           </div>
           {gallery.length > 1 && (
             <div className="aliProductThumbs">
