@@ -19,7 +19,7 @@ export default function ChangePassword() {
   }
   return (
     <form className="card" style={{ padding: 24, marginTop: 24 }} onSubmit={submit}>
-      <h2 className="h3" style={{ marginTop: 0 }}>{t('Change password')}</h2>
+      <h2 className="h3 accountTitle" style={{ marginTop: 0 }}>{t('Change password')}</h2>
       <label className="fieldLabel" htmlFor="currentPassword">{t('Current password')}</label>
       <input className="input" id="currentPassword" name="currentPassword" type="password" autoComplete="current-password" required />
       <label className="fieldLabel" htmlFor="newPassword" style={{ marginTop: 12 }}>{t('New password')}</label>

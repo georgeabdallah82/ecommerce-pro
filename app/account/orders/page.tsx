@@ -4,16 +4,19 @@ import { db } from '@/lib/prisma'
 import { money } from '@/lib/config'
 import { StoreFooter } from '@/components/store-footer'
 import { getLang, getT } from '@/lib/i18n-server'
-import { dateLocale } from '@/lib/i18n'
+import { countOf, dateLocale, statusLabel } from '@/lib/i18n'
+import { realPhoto } from '@/lib/collection-photo'
+import OrderThumbs from '@/components/order-thumbs'
 
 const PAGE_SIZE = 20
 
 export default async function AllOrders({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const t = await getT()
-  const locale = dateLocale(await getLang())
+  const lang = await getLang()
+  const locale = dateLocale(lang)
 
   const u = await getCurrentUser()
-  if (!u) return <><main className="section"><div className="container"><span className="muted">{t('ACCOUNT')}</span><h1 className="h2">{t('Your orders')}</h1><div className="card" style={{ padding: 24, maxWidth: 560 }}><h3>{t('Sign in to view your orders')}</h3><div style={{ display: 'flex', gap: 10 }}><Link className="btn" href="/account/login?next=%2Faccount%2Forders">{t('Sign in')}</Link></div></div></div></main><StoreFooter /></>
+  if (!u) return <><main className="section"><div className="container"><span className="muted">{t('ACCOUNT')}</span><h1 className="h2">{t('Your orders')}</h1><div className="card" style={{ padding: 24, maxWidth: 560 }}><h2 className="accountTitle">{t('Sign in to view your orders')}</h2><div style={{ display: 'flex', gap: 10 }}><Link className="btn" href="/account/login?next=%2Faccount%2Forders">{t('Sign in')}</Link></div></div></div></main><StoreFooter /></>
 
   const { page: pageParam } = await searchParams
   const requestedPage = Number(pageParam) || 1
@@ -26,6 +29,8 @@ export default async function AllOrders({ searchParams }: { searchParams: Promis
     orderBy: { createdAt: 'desc' },
     skip: (page - 1) * PAGE_SIZE,
     take: PAGE_SIZE,
+    // Each row shows what was bought: up to three product photos and the number of items.
+    include: { items: { select: { quantity: true, product: { select: { images: { orderBy: { sortOrder: 'asc' }, take: 1, select: { url: true } } } } } } },
   })
 
   return <><main className="section"><div className="container">
@@ -36,9 +41,11 @@ export default async function AllOrders({ searchParams }: { searchParams: Promis
     ) : (
       <div className="grid" style={{ gap: 10 }}>
         {orders.map(o => (
-          <Link href={`/account/orders/${o.orderNumber}`} className="card orderCard" key={o.id}>
-            <div><strong>#{o.orderNumber}</strong><span className="muted">{o.createdAt.toLocaleDateString(locale)}</span></div>
-            <div><span className="pill">{o.status}</span><strong>{money(o.grandTotal, o.currency)}</strong></div>
+          <Link href={`/account/orders/${o.orderNumber}`} className="card orderCard orderRow" key={o.id}>
+            <OrderThumbs photos={o.items.slice(0, 3).map(item => realPhoto(item.product?.images?.[0]?.url))} />
+            <div className="orderMeta"><strong dir="ltr">#{o.orderNumber}</strong><span className="muted">{o.createdAt.toLocaleDateString(locale)} · {countOf(lang, o.items.reduce((n, item) => n + item.quantity, 0), 'item')}</span></div>
+            {/* The status in the shopper's language (it showed the raw value, "CONFIRMED", in Arabic too), coloured by stage. */}
+            <div><span className="pill" data-status={o.status}>{statusLabel(t, o.status)}</span><strong>{money(o.grandTotal, o.currency)}</strong></div>
           </Link>
         ))}
       </div>

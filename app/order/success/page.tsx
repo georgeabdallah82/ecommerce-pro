@@ -153,7 +153,7 @@ export default async function Success({ searchParams }: { searchParams: Promise<
       <ul className={s.items}>{record.items.map((i, n) => <li key={n}><span>{i.quantity} × {i.name}</span><strong>{money(i.totalPrice, record.currency)}</strong></li>)}</ul>
       <div className={s.totals}>
         <div><span>{tr('Subtotal')}</span><strong>{money(record.subtotal, record.currency)}</strong></div>
-        {record.discountTotal > 0 && <div className={s.saving}><span>{tr('Discount')}</span><strong>−{money(record.discountTotal, record.currency)}</strong></div>}
+        {record.discountTotal > 0 && <div className={s.saving}><span>{tr('Discount')}</span><strong dir="ltr">−{money(record.discountTotal, record.currency)}</strong></div>}
         <div><span>{tr('Delivery')}</span><strong>{record.shippingTotal > 0 ? money(record.shippingTotal, record.currency) : tr('Free')}</strong></div>
         {record.taxTotal > 0 && <div><span>{tr('Tax')}</span><strong>{money(record.taxTotal, record.currency)}</strong></div>}
         <div className={s.grand}><span>{tr('Total')}</span><span>{totalText}</span></div>
