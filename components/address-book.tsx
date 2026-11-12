@@ -121,7 +121,7 @@ export default function AddressBook({ addresses }: { addresses: Address[] }) {
   return (
     <section>
       <div className="sectionHead small">
-        <h3>{t('Addresses')}</h3>
+        <h2 className="accountTitle">{t('Addresses')}</h2>
         {!formOpen && <button className="btn secondary" type="button" onClick={startAdd}>{t('Add address')}</button>}
       </div>
 

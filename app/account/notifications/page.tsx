@@ -14,7 +14,7 @@ export default async function Notifications({ searchParams }: { searchParams: Pr
   const locale = dateLocale(await getLang())
 
   const u = await getCurrentUser()
-  if (!u) return <><main className="section"><div className="container"><span className="muted">{t('ACCOUNT')}</span><h1 className="h2">{t('Notifications')}</h1><div className="card" style={{ padding: 24, maxWidth: 560 }}><h3>{t('Sign in to view your notifications')}</h3><div style={{ display: 'flex', gap: 10 }}><Link className="btn" href="/account/login?next=%2Faccount%2Fnotifications">{t('Sign in')}</Link></div></div></div></main><StoreFooter /></>
+  if (!u) return <><main className="section"><div className="container"><span className="muted">{t('ACCOUNT')}</span><h1 className="h2">{t('Notifications')}</h1><div className="card" style={{ padding: 24, maxWidth: 560 }}><h2 className="accountTitle">{t('Sign in to view your notifications')}</h2><div style={{ display: 'flex', gap: 10 }}><Link className="btn" href="/account/login?next=%2Faccount%2Fnotifications">{t('Sign in')}</Link></div></div></div></main><StoreFooter /></>
 
   const { page: pageParam } = await searchParams
   const requestedPage = Number(pageParam) || 1

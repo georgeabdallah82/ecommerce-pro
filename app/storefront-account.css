@@ -1,0 +1,98 @@
+/* Account pages (November 2026), imported last (app/layout.tsx). See docs/account-polish-2026-11.md.
+   The dashboard's tiles, the order history, order status colours and the empty wishlist. The identity passes in
+   storefront-market.css set the look; this file keeps it. */
+
+/* ---------------- Dashboard tiles ---------------- */
+/* They stacked one per row on phones and tablets: storefront-legacy.css forces one column below 900 px with
+   !important, hence the longer selector. Now: two columns on phones with the fifth tile across both (one column
+   below 360 px, where a balance would not fit), three and two on tablets, five in a row on computers. Every row is
+   as tall as the tallest, so a label that wraps ("Saved addresses") does not leave the tiles uneven. Each tile has
+   an icon; the ones with a page are links. */
+html body.mk main .grid.accountStats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; grid-auto-rows: 1fr; gap: 10px; margin: 18px 0 26px; }
+@media (max-width: 359px) { html body.mk main .grid.accountStats { grid-template-columns: minmax(0, 1fr) !important; } }
+@media (min-width: 360px) and (max-width: 639px) { html body.mk .accountStats > :last-child:nth-child(odd) { grid-column: 1 / -1; } }
+@media (min-width: 640px) and (max-width: 1023px) {
+  html body.mk main .grid.accountStats { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; gap: 12px; }
+  html body.mk .accountStats > * { grid-column: span 2; }
+  html body.mk .accountStats > :nth-child(n+4) { grid-column: span 3; }
+}
+@media (min-width: 1024px) { html body.mk main .grid.accountStats { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; gap: 12px; } }
+html body.mk .accountStats .stat { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 12px; row-gap: 2px; align-items: center; align-content: center; padding: 14px 16px; color: var(--mk-ink); text-decoration: none; }
+html body.mk .accountStats .statIcon { grid-row: span 2; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--br-cream, #fff1e6); color: var(--br-red, #d7261e); }
+html body.mk .accountStats .stat .muted { font-size: 13px; line-height: 1.3; }
+html body.mk .accountStats .stat strong { display: block; margin: 0; font-family: var(--mk-display); font-size: 22px; font-weight: 700; line-height: 1.15; letter-spacing: -.01em; overflow-wrap: anywhere; }
+html body.mk a.stat { transition: box-shadow .2s ease, transform .2s ease; }
+/* The hover shadow needs !important: storefront-legacy.css gives every .card a flat shadow with !important. */
+@media (hover: hover) { html body.mk a.stat:hover { box-shadow: 0 12px 26px -18px rgba(18, 18, 18, .45), 0 0 0 1px var(--mk-line) !important; transform: translateY(-2px); } }
+
+/* ---------------- Order history ---------------- */
+/* Each row: photos of what was bought, the number, date and item count, then the status and the total, and a
+   chevron (app/account/orders/page.tsx). Phones: the photos beside two lines. */
+html body.mk .orderRow { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 12px; row-gap: 6px; align-items: center; padding: 14px 40px 14px 14px; color: var(--mk-ink); text-decoration: none; }
+/* storefront-legacy.css tops order cards on phones and tablets (align-items: flex-start !important, for its old column
+   layout); the photos sit centred beside the two lines instead. */
+html body.mk main .card.orderRow { align-items: center !important; }
+html body.mk .orderRow > .orderThumbs { grid-row: span 2; }
+html body.mk .orderRow > div { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+html body.mk .orderRow .orderMeta { display: grid; gap: 2px; }
+/* The order number is written left to right in Arabic too; it still starts on the reading side. */
+html body.mk .orderRow .orderMeta > * { justify-self: start; }
+html body.mk .orderRow .orderMeta .muted { font-size: 13px; }
+html body.mk .orderRow::after { content: ""; position: absolute; inset-inline-end: 18px; top: 50%; width: 8px; height: 8px; margin-top: -5px; border: solid var(--mk-muted, #5b616b); border-width: 2px 2px 0 0; transform: rotate(45deg); }
+html[dir="rtl"] body.mk .orderRow::after { transform: rotate(-135deg); }
+html[dir="rtl"] body.mk .orderRow { padding: 14px 14px 14px 40px; }
+@media (min-width: 760px) {
+  html body.mk .orderRow { grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 16px; }
+  html body.mk .orderRow > .orderThumbs { grid-row: auto; }
+}
+html body.mk .orderThumbs { display: flex; flex: none; }
+html body.mk .orderThumbs > * { flex: none; width: 46px; height: 46px; border-radius: 12px; overflow: hidden; background: #fff; box-shadow: 0 0 0 2px var(--mk-card, #fff), 0 0 0 3px var(--mk-line, #ececec); }
+html body.mk .orderThumbs > * + * { margin-inline-start: -14px; }
+html body.mk .orderThumbs > img { display: block; object-fit: cover; }
+html body.mk .orderThumbBlank { display: grid; place-items: center; background: var(--br-cream, #fff1e6) !important; color: var(--mk-muted, #5b616b); }
+@media (hover: hover) {
+  html body.mk .orderRow { transition: box-shadow .2s ease; }
+  html body.mk .orderRow:hover { box-shadow: 0 12px 26px -18px rgba(18, 18, 18, .45), 0 0 0 1px var(--mk-line) !important; }
+}
+
+/* ---------------- Order status ---------------- */
+/* One colour per stage (they were all the same pink): waiting amber, under way blue, on the road violet, delivered
+   green, stopped grey. Every pair reads at 5.5:1 or more. */
+html body.mk .pill[data-status="PENDING"] { background: #fff3d6; color: #7a4a00; }
+html body.mk .pill:is([data-status="CONFIRMED"], [data-status="PROCESSING"]) { background: #e7efff; color: #1d4ed8; }
+html body.mk .pill[data-status="SHIPPED"] { background: #efe9ff; color: #5b21b6; }
+html body.mk .pill[data-status="DELIVERED"] { background: #e3f5e9; color: #166534; }
+html body.mk .pill:is([data-status="CANCELLED"], [data-status="REFUNDED"]) { background: #f1f1ef; color: #5b616b; }
+/* The pill's outline was the brand red at 18 %; it now takes the stage's colour. */
+html body.mk .pill[data-status] { border-color: color-mix(in srgb, currentColor 22%, transparent); }
+
+/* ---------------- Section titles and the way back ---------------- */
+/* The account and order pages' card titles were h3 straight after the page's h1, a skipped level for screen
+   readers, and "Change password" and "Delete my account" were h2 at a larger size. All are h2 now, at the size the
+   h3s had, so the titles match. */
+html body.mk h2.accountTitle { font-size: 1.17em; margin-block: 1em; }
+/* "Back to account" was a 20 px tall tap target on phones. */
+html body.mk main.section :is(.container > a.textLink:first-child, .sectionHead > div > a.textLink:first-child) { display: inline-flex; align-items: center; min-height: 44px; }
+
+/* ---------------- Order page ---------------- */
+/* A discount reads as a saving, in the confirmation page's green (5:1 on the card). */
+html body.mk .summaryLine.isSaving { color: #15803d; }
+/* The timeline's times were 11.7 px (<small>). */
+html body.mk .timelineItem small { font-size: 12.5px; }
+
+/* ---------------- Wishlist ---------------- */
+/* "SAVED" above the title was grey on a peach pill, 4.0:1 at 11 px. It is now plain small text, like the cart's
+   (5.8:1). */
+html body.mk .wishlistPage > .aliContainer > .focalEyebrow { font-size: 13px !important; font-weight: 600 !important; letter-spacing: 0 !important; color: var(--mk-muted, #5b616b) !important; background: none !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; min-height: 0 !important; }
+
+/* ---------------- Empty wishlist ---------------- */
+/* The same card as the empty cart (components/wishlist-grid.tsx): it was one line of text. */
+html body.mk .wishEmpty { display: grid; justify-items: center; gap: 6px; max-width: 560px; margin: 8px auto 48px; padding: 48px 24px; border: 1px solid var(--mk-line, #ececec); border-radius: 22px; background: var(--mk-card, #fff); text-align: center; }
+html body.mk .wishEmptyIcon { display: grid; place-items: center; width: 58px; height: 58px; margin-bottom: 10px; border-radius: 18px; background: var(--br-cream, #fff1e6); color: var(--br-red, #d7261e); }
+html body.mk .wishEmpty h2 { margin: 0; font-family: var(--mk-display); font-size: 24px; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; }
+html body.mk .wishEmpty p { max-width: 40ch; margin: 0 0 14px; color: var(--mk-muted, #5b616b); line-height: 1.6; }
+
+@media (prefers-reduced-motion: reduce) {
+  html body.mk :is(a.stat, .orderRow) { transition: none; }
+  html body.mk a.stat:hover { transform: none; }
+}

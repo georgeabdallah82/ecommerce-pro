@@ -13,7 +13,7 @@ export default function BuyAgain({ items, currency }: { items: CartItem[]; curre
   if (!items.length) return null
   return (
     <section className="card" style={{ padding: 18, marginBottom: 16 }}>
-      <div className="sectionHead small"><h3>{t('Buy again')}</h3></div>
+      <div className="sectionHead small"><h2 className="accountTitle">{t('Buy again')}</h2></div>
       <p className="muted" style={{ marginTop: 0 }}>{t("Products you bought before, at today's price.")}</p>
       <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
         {items.map(item => {

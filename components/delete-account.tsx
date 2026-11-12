@@ -21,7 +21,7 @@ export default function DeleteAccount() {
   }
   return (
     <section className="card" style={{ padding: 24, marginTop: 24 }}>
-      <h2 className="h3" style={{ marginTop: 0 }}>{t('Delete my account')}</h2>
+      <h2 className="h3 accountTitle" style={{ marginTop: 0 }}>{t('Delete my account')}</h2>
       <p className="muted">{t('Your name, email, phone number, addresses, wishlist, reviews and notifications are removed. Your past orders are kept for our records, but they are no longer linked to you.')}</p>
       {!open ? (
         <button type="button" className="btn" onClick={() => setOpen(true)}>{t('Delete my account…')}</button>

@@ -429,6 +429,7 @@ export const AR: Record<string, string> = {
   "Next slide": "الشريحة التالية",
   "Show slide {n}": "عرض الشريحة {n}",
   "Pause slides": "إيقاف الشرائح مؤقتاً",
+  "Tap the heart on any product to keep it here for later.": "اضغط على القلب في أي منتج لتحفظه هنا لوقت لاحق.",
   "Play slides": "تشغيل الشرائح",
   "Deals": "العروض",
   "Best sellers": "الأكثر مبيعاً",
