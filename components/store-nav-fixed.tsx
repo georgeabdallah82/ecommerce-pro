@@ -53,7 +53,7 @@ function AnnouncementBar({ theme, announcementSection, closed, onDismiss }: { th
   const current = messages[index % messages.length] || messages[0]
   const Icon = ANNOUNCEMENT_ICONS[iconKey] || Sparkles
   return (
-    <div className="focalAnnouncementGlobal">
+    <div className="focalAnnouncementGlobal" role="region" aria-label={t('Announcement')}>
       <div className="focalAnnouncementGlobalInner" style={{ '--focal-announcement-height': `${height}px`, textTransform: uppercase ? 'uppercase' : 'none' } as React.CSSProperties}>
         {showIcon && <span className="focalAnnouncementIcon"><Icon size={13}/></span>}
         <span>{syncFreeDeliveryAmount(current.text, free)}</span>

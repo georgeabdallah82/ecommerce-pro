@@ -350,6 +350,7 @@ export const AR: Record<string, string> = {
   "Cancelling…": "جارٍ الإلغاء…",
   "Cancel order": "إلغاء الطلب",
   "Your cart was updated": "تم تحديث سلتك",
+  "Announcement": "الإعلان",
   "Dismiss": "إغلاق",
   "Goes well with your cart": "يناسب ما في سلتك",
   "Choose": "اختر",
