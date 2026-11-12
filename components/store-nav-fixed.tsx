@@ -66,6 +66,7 @@ function AnnouncementBar({ theme, announcementSection, closed, onDismiss }: { th
 
 const css = `
 .navAvatar{width:24px;height:24px;border-radius:50%;display:inline-grid;place-items:center;flex:none;background:var(--store-primary,#171717);color:#fff;font-size:12px;font-weight:800;line-height:1}
+.navAvatar::before{content:attr(data-initial)}
 .focalNav{z-index:50;border-bottom:1px solid var(--focal-line);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);transition:background-color .3s ease}
 .focalNavInner{height:76px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:28px}
 .focalLogo{font-size:22px;font-weight:900;letter-spacing:-.045em;display:flex;align-items:center;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
@@ -103,6 +104,7 @@ const css = `
 .focalNavIcon:hover{transform:translateY(-1px);background:#fff;border-color:rgba(0,0,0,.15)}
 .focalNavIcon:active{transform:scale(.95)}
 .focalCartCount{position:absolute;top:-4px;right:-4px;min-width:19px;height:19px;border-radius:999px;background:var(--focal-primary);color:#fff;font-size:10px;font-weight:900;display:grid;place-items:center;padding:0 5px;box-shadow:0 2px 6px rgba(0,0,0,.2);animation:focalBadgeBounce .3s cubic-bezier(.16,1,.3,1)}
+.focalCartCount::before{content:attr(data-count)}
 @keyframes focalBadgeBounce{0%{transform:scale(.6)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
 .focalNavMobile{display:none;width:42px;height:42px;border:1px solid var(--focal-line);background:#fff;border-radius:12px;place-items:center;cursor:pointer}
 .focalAnnouncementGlobal{background:var(--store-announcement-bg,var(--focal-primary));color:var(--store-announcement-text,#fff)}.focalAnnouncementGlobalInner{display:flex;align-items:center;justify-content:center;gap:10px;padding:0 16px;font-size:12px;font-weight:850;transition:opacity .25s ease}.focalAnnouncementGlobalInner a{text-decoration:underline;text-underline-offset:3px;color:inherit}.focalAnnouncementDismiss{border:0;background:transparent;color:inherit;opacity:.8;cursor:pointer;flex:none}.focalAnnouncementIcon{display:inline-flex;flex:none;opacity:.9}
@@ -463,9 +465,9 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
         <div className="focalNavActions">
           {headerSettings.showSearch !== false && <button className="focalNavIcon aliNavSearchIconMobile" onClick={() => { setSearch(true); setSearchQuery('') }} aria-label={t('Search')}><Search size={18}/></button>}
           {market && <LanguageSwitch className="mkNavLang" />}
-          {headerSettings.showAccount !== false && <Link className={`focalNavIcon${shopper ? ' navSignedIn' : ''}`} href="/account" aria-label={shopper ? t('My account ({name})', { name: shopper.name }) : t('Account')} title={shopper ? shopper.name : undefined}>{shopper ? <span className="navAvatar" aria-hidden="true">{shopper.initial}</span> : <UserRound size={18}/>}{market && <span className="mkNavLabel">{shopper ? t('Hi, {name}', { name: shopper.firstName }) : t('Account')}</span>}</Link>}
+          {headerSettings.showAccount !== false && <Link className={`focalNavIcon${shopper ? ' navSignedIn' : ''}`} href="/account" aria-label={shopper ? `${t('Hi, {name}', { name: shopper.firstName })} (${t('My account')})` : t('Account')} title={shopper ? shopper.name : undefined}>{shopper ? <span className="navAvatar" aria-hidden="true" data-initial={shopper.initial} /> : <UserRound size={18}/>}{market && <span className="mkNavLabel">{shopper ? t('Hi, {name}', { name: shopper.firstName }) : t('Account')}</span>}</Link>}
           {headerSettings.showWishlist && <Link className="focalNavIcon" href="/wishlist" aria-label={t('Wishlist')}><Heart size={18}/>{market && <span className="mkNavLabel">{t('Wishlist')}</span>}</Link>}
-          {headerSettings.showCart !== false && <button className="focalNavIcon" onClick={openCart} aria-label={t('Cart with {count}', { count: plural(count, 'item') })}><ShoppingBag size={18}/>{market && <span className="mkNavLabel">{t('Cart')}</span>}{(count > 0 || market) && <span className="focalCartCount">{count > 99 ? '99+' : count}</span>}</button>}
+          {headerSettings.showCart !== false && <button className="focalNavIcon" onClick={openCart} aria-label={t('Cart with {count}', { count: plural(count, 'item') })}><ShoppingBag size={18}/>{market && <span className="mkNavLabel">{t('Cart')}</span>}{(count > 0 || market) && <span className="focalCartCount" aria-hidden="true" data-count={count > 99 ? '99+' : count} />}</button>}
         </div>
       </div>
       {!market && <div className="focalNavSecondary focalContainer">
@@ -622,7 +624,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
             <LanguageSwitch className="mkNavLang" />
             {headerSettings.showSearch !== false && <button className="focalNavIcon" onClick={() => { setMenu(false); setSearch(true); setSearchQuery('') }} aria-label={t('Search')}><Search size={17}/></button>}
             {headerSettings.showAccount !== false && <Link className="focalNavIcon" href="/account" onClick={() => setMenu(false)} aria-label={t('Account')}><UserRound size={17}/></Link>}
-            {headerSettings.showCart !== false && <button className="focalNavIcon" onClick={() => { setMenu(false); openCart() }} aria-label={t('Cart with {count}', { count: plural(count, 'item') })}><ShoppingBag size={17}/>{count > 0 && <span className="focalCartCount">{count > 99 ? '99+' : count}</span>}</button>}
+            {headerSettings.showCart !== false && <button className="focalNavIcon" onClick={() => { setMenu(false); openCart() }} aria-label={t('Cart with {count}', { count: plural(count, 'item') })}><ShoppingBag size={17}/>{count > 0 && <span className="focalCartCount" aria-hidden="true" data-count={count > 99 ? '99+' : count} />}</button>}
           </div>
         </div>
         <div className="zaraDeptTabs">

@@ -47,14 +47,14 @@ export default function AliExpressShop({ theme, products, collections, query, se
   ].filter(Boolean) as { label: string; href: string }[]
 
   return (
-    <div className="focalStorefront aliShopPage">
+    <main className="focalStorefront aliShopPage">
       {query.q ? <SearchTracker query={query.q} /> : null}
       <h1 className="srOnly">{query.q ? t('Search results for {query}', { query: query.q }) : collections.find(c => c.slug === query.collection)?.name || t('Shop all products')}</h1>
       <div className={`aliContainer aliShopLayout ${showFilters ? '' : 'noSidebar'}`}>
         {showFilters && (
           <aside className="aliShopSidebar">
             <div className="aliShopCollections">
-              <h3>{t('Collections')}</h3>
+              <h2>{t('Collections')}</h2>
               <ul className="aliCategoryList">
                 <li><Link href="/shop" className={!query.collection ? 'active' : ''}>{t('All collections')}</Link></li>
                 {collections.map(c => (
@@ -80,7 +80,7 @@ export default function AliExpressShop({ theme, products, collections, query, se
           </aside>
         )}
 
-        <main className="aliShopMain">
+        <div className="aliShopMain">
           <form method="GET" className="aliShopToolbar">
             {query.collection && <input type="hidden" name="collection" value={query.collection} />}
             {query.min && <input type="hidden" name="min" value={query.min} />}
@@ -133,7 +133,7 @@ export default function AliExpressShop({ theme, products, collections, query, se
               {pagination.page < pagination.pages && <Link className="focalButton secondary" href={pageHref(pagination.page + 1)} rel="next">{t('Next')}</Link>}
             </nav>
           )}
-        </main>
+        </div>
       </div>
 
       {/* Merchant-addable content appended below the fixed shop layout above --
@@ -147,6 +147,6 @@ export default function AliExpressShop({ theme, products, collections, query, se
       {sections.length > 0 && <StorefrontSections theme={theme} sections={sections} products={products} collections={collections} />}
 
       {quickProduct && <QuickView product={quickProduct} theme={theme} onClose={() => setQuickProduct(null)} />}
-    </div>
+    </main>
   )
 }
