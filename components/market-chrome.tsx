@@ -34,7 +34,7 @@ export function DeliveryBar({ theme }: { theme: any }) {
   const current = areas.find(a => a.name === area) || areas[0]
   const choose = (name: string) => { setArea(name); try { localStorage.setItem(DELIVERY_AREA_KEY, name) } catch {} window.dispatchEvent(new Event(DELIVERY_AREA_EVENT)) }
   return (
-    <div className="mkDelivery">
+    <div className="mkDelivery" role="region" aria-label={t('Delivery')}>
       <div className="mkWrap mkDeliveryInner">
         <MapPin size={16} className="mkDeliveryPin" aria-hidden="true" />
         <label>{d.label || t('Delivering to')}{' '}

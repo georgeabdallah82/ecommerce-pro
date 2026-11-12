@@ -371,7 +371,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .cartPage .cartImageUX{width:116px;height:116px;object-fit:cover;border-radius:15px;background:#f4eee9;display:block}
 .cartPage .cartInfoUX{display:grid;gap:6px}
 .cartPage .cartInfoUX a{font-size:16px;font-weight:850;letter-spacing:-.015em}
-.cartPage .cartInfoUX .sku{font-size:11px;color:var(--focal-muted)}
+.cartPage .cartInfoUX .sku{font-size:12px;color:var(--focal-muted)}
 .cartPage .cartInfoUX .unitPrice{font-size:13px;color:var(--focal-muted)}
 .cartPage .cartLineTotal{font-size:15px;font-weight:900;margin-top:3px}
 .cartPage .cartControlsUX{display:flex;align-items:center;gap:10px;justify-content:flex-end}
@@ -385,7 +385,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .cartPage .summaryUX h2{font-size:17px;margin:0 0 14px;letter-spacing:-.02em}
 .cartPage .summaryLineUX{display:flex;justify-content:space-between;gap:14px;padding:11px 0;border-bottom:1px solid var(--focal-line);font-size:13px}
 .cartPage .summaryTotalUX{display:flex;justify-content:space-between;gap:14px;padding:16px 0 6px;font-size:20px;font-weight:900}
-.cartPage .summaryNoteUX{font-size:11px;color:var(--focal-muted);line-height:1.6;margin:0 0 14px}
+.cartPage .summaryNoteUX{font-size:12px;color:var(--focal-muted);line-height:1.6;margin:0 0 14px}
 .cartPage .cartActionUX{display:grid;gap:9px}
 .cartPage .cartActionUX a{min-height:50px;border-radius:13px}
 .cartPage .emptyCartUX{border:1px dashed #d9c8bd;border-radius:22px;background:linear-gradient(180deg,#fff,#fffaf6);padding:64px 24px;text-align:center}
@@ -3746,7 +3746,7 @@ body > .footer {
   .aliCartPage .summaryUX .aliCartCheckoutLink{display:none}
   .aliCartStickyBar{position:fixed;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:14px;background:#fff;border-top:1px solid var(--focal-line);padding:12px 16px;box-shadow:0 -8px 24px rgba(25,21,18,.08);z-index:40}
   .aliCartStickyInfo{display:flex;flex-direction:column;line-height:1.3}
-  .aliCartStickyInfo span{font-size:11px;color:var(--focal-muted)}
+  .aliCartStickyInfo span{font-size:12px;color:var(--focal-muted)}
   .aliCartStickyInfo strong{font-size:17px}
   .aliCartStickyBar .focalButton{min-width:150px}
   body:has(.aliCartStickyBar) .lv-consent-root{top:110px;bottom:auto}

@@ -359,7 +359,7 @@ html body.mk .aliCategoryItem:hover .aliCategoryIcon { box-shadow: 0 0 0 3px var
 .mkSpot { display: grid; gap: 12px; }
 .mkSpotBanner { position: relative; display: block; border-radius: 18px; overflow: hidden; aspect-ratio: 16 / 9; color: #fff; background: var(--mk-well); text-decoration: none; }
 .mkSpotText { position: absolute; inset: 0; display: grid; align-content: end; gap: 4px; padding: 18px; background: linear-gradient(0deg, rgba(0,0,0,.7) 0%, rgba(0,0,0,0) 65%); }
-.mkSpotText small { font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--mk-yellow); }
+.mkSpotText small { display: inline-block; padding: 4px 8px; border-radius: 6px; background: rgba(0, 0, 0, .6); font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--mk-yellow); }
 .mkSpotText b { font-size: 22px; font-weight: 800; line-height: 1.1; }
 .mkSpotText .mkBtn { justify-self: start; margin-top: 6px; }
 .mkSpotGrid { display: grid; grid-auto-flow: column; grid-auto-columns: 46%; gap: 12px; overflow-x: auto; scrollbar-width: none; }
@@ -462,7 +462,7 @@ html body.mk .aliCartRow.unselected { opacity: .7; }
 @media (max-width: 900px) {
   .aliShopSidebar { gap: 10px !important; }
   .aliShopSidebar > .aliShopCollections { flex: 1 1 100% !important; min-width: 0 !important; }
-  .aliShopCollections h3 { display: none; }
+  .aliShopCollections h2 { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   .aliShopCollections .aliCategoryList { flex-wrap: nowrap !important; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); }
   .aliShopCollections .aliCategoryList::-webkit-scrollbar { display: none; }
   .aliShopCollections .aliCategoryList li { flex: none; }
@@ -630,6 +630,32 @@ html body.mk .mkDots button::after { content: ""; position: absolute; inset: -18
 .skipLink { position: fixed; top: 8px; inset-inline-start: 8px; z-index: 10000; padding: 12px 18px; border-radius: 8px; background: #111; color: #fff; font-weight: 700; font-size: 15px; text-decoration: none; transform: translateY(-250%); }
 .skipLink:focus { transform: none; outline: 3px solid #fff; outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .skipLink { transition: none; } }
+/* UX uplift, sprint 1: touch targets on phones are at least 44 px. */
+@media (max-width: 600px) {
+  html body.mk .focalNav.mkHeader .aliNavSearchBar { height: 54px !important; }
+  html body.mk .focalNav.mkHeader .aliNavSearchBar input { min-height: 44px !important; }
+  html body.mk .focalNav.mkHeader .aliNavSearchSubmit { height: auto !important; min-height: 44px !important; align-self: stretch !important; }
+  html body.mk .focalNav.mkHeader .focalNavIcon { min-width: 44px !important; min-height: 44px !important; }
+  html body.mk .mkDelivery select { min-height: 44px !important; }
+  html body.mk .mkTabs button { min-height: 44px !important; }
+  html body.mk .mkCardWish { width: 44px !important; height: 44px !important; }
+  html body.mk .focalFooter form input[type="email"], html body.mk .focalFooter form button[type="submit"] { min-height: 44px !important; }
+  html body .focalAnnouncementGlobal .focalAnnouncementGlobalInner { min-height: 44px !important; }
+  html body .focalAnnouncementGlobal .focalAnnouncementDismiss { min-width: 44px !important; min-height: 44px !important; margin: 0 !important; }
+  html body.mk .pdpZoomOpen { width: 44px; height: 44px; }
+  html body.mk .pdpPromise a { min-height: 44px; }
+  html body.mk .aliProductPage a[href^="/product/"] { min-height: 44px; }
+  html body.mk .aliReviewSignInBtn { min-height: 44px; }
+  html body.mk .cartPage .qtyUX input { width: 44px; }
+  html body.mk .aliProductPage button[aria-label$="out of 5 stars"] { min-width: 44px; min-height: 44px; }
+  html body.mk p.muted > a { display: inline-block; padding-block: 13px; margin-block: -13px; }
+}
+
+/* Slide dots: the dots keep their size; the button under each dot is 44 px. */
+html body.mk .mkDots { gap: 0; }
+html body.mk .mkDots button { width: 44px; height: 44px; border-radius: 0; background: none; display: inline-grid; place-items: center; }
+html body.mk .mkDots button::before { content: ""; width: 8px; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, .55); transition: width .3s; }
+html body.mk .mkDots button[aria-current="true"]::before { width: 24px; background: #fff; }
 
 /* ---- Stage 2 visual refresh -------------------------------------------------------------------
    One small set of shared values (shadow, radius, motion) and the places that looked flat or empty:
@@ -695,7 +721,7 @@ html body.mk .summaryUX { border-radius: var(--mk-radius) !important; box-shadow
 html body .focalAnnouncementGlobalInner { padding-inline: 42px !important; }
 html body .focalAnnouncementGlobalInner > span { text-align: center; text-wrap: balance; }
 html body .focalAnnouncementGlobal .focalAnnouncementDismiss { position: absolute; inset-inline-end: 12px; top: 50%; transform: translateY(-50%); }
-html body .focalAnnouncementGlobal .focalAnnouncementDismiss::after { content: ""; position: absolute; inset: -8px; }
+html body .focalAnnouncementGlobal .focalAnnouncementDismiss::after { content: ""; position: absolute; inset: -16px; }
 html body.mk .focalNav.mkHeader .aliNavSearchSubmit { height: 40px; align-self: center; }
 
 /* ---- Small controls from the UI audit (phone) -------------------------------------------------
@@ -709,7 +735,7 @@ html body.mk .cartPage .removeUX { min-height: 44px; padding-inline: 14px; }
 html body.mk .aliCartRowCheckHit { display: grid; place-items: center; width: 44px; height: 44px; cursor: pointer; }
 html body.mk .aliFilterToggle { min-height: 44px; }
 html body.mk .mkDeliveryInner select { min-height: 40px; }
-html body.mk :is(.aliProductReviewsLink, .aliReviewSignInAlt, a.muted, .aliBreadcrumbs a) { display: inline-block; padding-block: 13px; margin-block: -13px; }
+html body.mk :is(.aliProductReviewsLink, .aliReviewSignInAlt, a.muted, .aliBreadcrumbs a) { display: inline-block; padding-block: 13px; padding-inline: 6px; margin-block: -13px; margin-inline: -6px; }
 @media (max-width: 560px) {
   html body.mk .aliCouponRow { flex-wrap: wrap; }
   html body.mk .aliCouponRow input { flex: 1 1 calc(100% - 34px); min-height: 44px; font-size: 16px; }
@@ -731,8 +757,8 @@ html body .focalAnnouncementDismiss { display: inline-grid; place-items: center;
 html body.mk .focalStorefront .focalTrustGrid span { font-size: 12px !important; }
 html body.mk .focalNav.mkHeader .focalCartCount { font-size: 12px !important; }
 html body.mk .mkCardBadge { font-size: 12px; }
-.mkOfferText small { font-size: 11.5px; }
-.mkSpotText small { font-size: 11.5px; }
+.mkOfferText small { font-size: 12px; }
+.mkSpotText small { font-size: 12px; }
 html body.mk .aliProductPage .aliTapLink { display: inline-block; padding-block: 11px; }
 
 /* Checkout: logo, language switch and the account button only -- no menu, search, cart or category tabs --
