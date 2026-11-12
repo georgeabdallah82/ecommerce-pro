@@ -7,6 +7,7 @@ import { CARD_STOCK_INCLUDE, withCardStock } from '@/lib/card-stock'
 import {getUnpublishedProductIds} from '@/lib/sales-channels'
 import {storefrontCached} from '@/lib/storefront-cache'
 import StorefrontSections from '@/components/storefront-sections'
+import ScrollReveal from '@/components/scroll-reveal'
 import {Footer} from '@/components/footer'
 import TrustIcon from '@/components/trust-icon'
 import type { Metadata } from 'next'
@@ -51,6 +52,7 @@ export default async function Home(){
     <FlashSaleBanner/>
     <OccasionBanner/>
     <StorefrontSections theme={theme} sections={sections} products={products} collections={collections}/>
+    {theme.design==='market'&&<ScrollReveal/>}
     {trustItems.length>0&&(
       <section className="aliTrustStrip">
         <div className="aliContainer aliTrustRow">

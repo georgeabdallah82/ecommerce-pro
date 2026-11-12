@@ -6,7 +6,7 @@
 // shows half-empty rows.
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react'
 import { ProductCard, StoreImage, img, money } from '@/components/storefront-sections'
 import { useCart } from '@/components/cart-provider'
 import { useI18n } from '@/components/lang-provider'
@@ -32,6 +32,8 @@ const onSale = (p: AnyMap) => Number(p.compareAtPrice || 0) > Number(p.basePrice
 const newest = (list: AnyMap[]) => [...list].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
 const bestOf = (list: AnyMap[]) => [...list].filter(p => sold(p) > 0).sort((a, b) => sold(b) - sold(a))
 const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+// Focus from the keyboard, not from a click (older browsers without :focus-visible count every focus).
+const keyboardFocus = (el: Element) => { try { return el.matches(':focus-visible') } catch { return true } }
 
 function Hidden({ preview, name, reason, id, selected, click }: { preview?: boolean; name: string; reason: string; id: string; selected?: boolean; click: Common['click'] }) {
   if (!preview) return null
@@ -48,33 +50,66 @@ export function HeroSlider({ section, preview, selected, click }: Pick<Common, '
   const slides: AnyMap[] = (section.blocks || []).filter((b: AnyMap) => b && (b.settings?.heading || b.settings?.imageUrl))
   const layout = s.layout === 'split' ? 'split' : 'full'
   const [index, setIndex] = useState(0)
-  const [paused, setPaused] = useState(false)
   const { t: tr, dir } = useI18n()
   const count = slides.length
   const go = (i: number) => setIndex(((i % count) + count) % count)
+  // Rotation (WCAG 2.2.2): the pause button stops it, and it holds while a mouse is over the hero,
+  // while keyboard focus is inside it, and while the hero is off screen or the tab is hidden. It
+  // never runs in the theme editor (the slide being edited stays on screen) and starts stopped for
+  // visitors who ask for less motion; they can still press play. Pressing play from the keyboard
+  // starts it at once (the focus hold comes back when focus moves to another control).
+  const auto = count > 1 && s.autoplay !== false && !preview
+  const speed = Math.max(3, n(s.speed, 5)) * 1000
+  const [stopped, setStopped] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  const [focused, setFocused] = useState(false)
+  const [away, setAway] = useState(false)
+  const running = auto && !stopped && !hovered && !focused && !away
+  const heroRef = useRef<HTMLElement>(null)
+  useEffect(() => { if (reduceMotion()) setStopped(true) }, [])
   useEffect(() => {
-    // Never rotates in the theme editor, so the slide being edited stays on screen.
-    if (count < 2 || s.autoplay === false || paused || preview || reduceMotion()) return
-    const t = window.setInterval(() => setIndex(i => (i + 1) % count), Math.max(3, n(s.speed, 5)) * 1000)
-    return () => window.clearInterval(t)
-  }, [count, s.autoplay, s.speed, paused, preview])
+    const hero = heroRef.current
+    if (!auto || !hero) return
+    let offscreen = false
+    const sync = () => setAway(offscreen || document.hidden)
+    const io = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver(([entry]) => { offscreen = !entry.isIntersecting; sync() })
+    io?.observe(hero)
+    document.addEventListener('visibilitychange', sync)
+    return () => { io?.disconnect(); document.removeEventListener('visibilitychange', sync) }
+  }, [auto])
+  // A hold keeps the time left on the slide, so the progress bar on the active dot (a CSS animation
+  // paused with it) and the timer stay together; a new slide gets the full time.
+  const left = useRef(speed)
+  useEffect(() => { left.current = speed }, [index, speed])
+  useEffect(() => {
+    if (!running) return
+    const started = Date.now()
+    const timer = window.setTimeout(() => setIndex(i => (i + 1) % count), left.current)
+    return () => { window.clearTimeout(timer); left.current = Math.max(0, left.current - (Date.now() - started)) }
+  }, [running, index, count])
   const touch = useRef<number | null>(null)
   if (!count) return <Hidden preview={preview} name="Hero slider" reason="It has no slides." id={section.id} selected={selected} click={click} />
-  const style = { '--mk-hero-h': `${n(s.height, 560)}px`, '--mk-hero-hm': `${n(s.mobileHeight, 460)}px` } as React.CSSProperties
+  const style = { '--mk-hero-h': `${n(s.height, 560)}px`, '--mk-hero-hm': `${n(s.mobileHeight, 460)}px`, '--mk-hero-speed': `${speed}ms` } as React.CSSProperties
+  const timing = auto && !stopped
   return (
     <section
+      ref={heroRef}
       className={`mkHero mkHero-${layout} ${selected ? 'isSelected' : ''}`}
       style={style}
+      data-paused={timing && !running ? '' : undefined}
       onClick={e => click(section.id, e)}
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
+      onPointerEnter={e => { if (e.pointerType === 'mouse') setHovered(true) }}
+      onPointerLeave={e => { if (e.pointerType === 'mouse') setHovered(false) }}
+      onFocus={e => setFocused(keyboardFocus(e.target))}
+      onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false) }}
       onTouchStart={e => { touch.current = e.touches[0].clientX }}
       onTouchEnd={e => { if (touch.current == null) return; const dx = e.changedTouches[0].clientX - touch.current; if (Math.abs(dx) > 40) go(index + (dx < 0 ? 1 : -1)); touch.current = null }}
       aria-roledescription="carousel"
       aria-label={tr('Featured')}
     >
       <div className="mkHeroFrame">
-        <div className="mkHeroTrack" style={{ transform: `translateX(${dir === 'rtl' ? '' : '-'}${index * 100}%)` }}>
+        {/* Screen readers hear a slide the visitor moves to, but not each automatic change. */}
+        <div className="mkHeroTrack" aria-live={running ? 'off' : 'polite'} style={{ transform: `translateX(${dir === 'rtl' ? '' : '-'}${index * 100}%)` }}>
           {slides.map((b, i) => {
             const t = b.settings || {}
             const copy = (
@@ -111,7 +146,21 @@ export function HeroSlider({ section, preview, selected, click }: Pick<Common, '
         {count > 1 && <>
           <button type="button" className="mkArrow mkArrowPrev" aria-label={tr('Previous slide')} onClick={e => { e.stopPropagation(); go(index - 1) }}><ChevronLeft size={20} className="flipRtl" /></button>
           <button type="button" className="mkArrow mkArrowNext" aria-label={tr('Next slide')} onClick={e => { e.stopPropagation(); go(index + 1) }}><ChevronRight size={20} className="flipRtl" /></button>
-          <div className="mkDots">{slides.map((b, i) => <button type="button" key={b.id || i} aria-label={tr('Show slide {n}', { n: i + 1 })} aria-current={i === index} onClick={e => { e.stopPropagation(); go(i) }} />)}</div>
+          <div className="mkDots">
+            {auto ? (
+              <button type="button" className="mkHeroToggle" aria-label={stopped ? tr('Play slides') : tr('Pause slides')} onClick={e => { e.stopPropagation(); if (stopped) { left.current = speed; setFocused(false) } setStopped(!stopped) }}>
+                {stopped ? <Play size={14} fill="currentColor" aria-hidden="true" /> : <Pause size={14} fill="currentColor" aria-hidden="true" />}
+              </button>
+            ) : null}
+            {slides.map((b, i) => {
+              const live = timing && i === index
+              return (
+                <button type="button" key={b.id || i} className={live ? 'isTiming' : undefined} aria-label={tr('Show slide {n}', { n: i + 1 })} aria-current={i === index} onClick={e => { e.stopPropagation(); go(i) }}>
+                  {live ? <span className="mkDotFill" aria-hidden="true" /> : null}
+                </button>
+              )
+            })}
+          </div>
         </>}
       </div>
     </section>

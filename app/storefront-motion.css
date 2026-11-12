@@ -1,0 +1,137 @@
+/* Homepage motion (November 2026), imported last (app/layout.tsx). See docs/home-redesign-2026-11.md.
+   The identity passes in storefront-market.css set the look; this file only adds movement on top of it:
+   - the hero's slides can be paused (WCAG 2.2.2), the active dot fills over the slide's time, each
+     slide's words arrive in order behind the brand's speed lines, and its photo settles in;
+   - sections rise into view as the shopper scrolls to them, and the speed-lines mark before every
+     section title draws itself (components/scroll-reveal.tsx);
+   - product cards crossfade to their second photo on hover, and the "Added" check pops;
+   - the cart count in the header pops when something is added;
+   - department glyphs, promo banners and "Shop all" links answer the pointer.
+   Everything animates transform and opacity only (the speed lines also animate their background
+   size), runs once, and is off for visitors who ask for less motion. */
+
+/* ---------------- Hero: pause / play, and the active dot's progress ---------------- */
+/* The rotation control is the first button in the dots row; it has the dots' 44 px target. */
+html body.mk .mkDots .mkHeroToggle::before { content: none; }
+html body.mk .mkHeroToggle svg { width: 30px; height: 30px; padding: 8px; box-sizing: border-box; border-radius: 50%; background: rgba(18, 18, 18, .55); color: #fff; transition: background-color .2s ease, transform .15s ease; }
+html body.mk .mkHeroToggle:hover svg { background: rgba(18, 18, 18, .75); }
+html body.mk .mkHeroToggle:active svg { transform: scale(.92); }
+
+/* While the slides rotate, the active dot is a track that fills over the slide's time
+   (--mk-hero-speed, from the section's settings); it pauses with the slides. */
+html body.mk .mkDots button.isTiming::before { background: rgba(255, 255, 255, .45); }
+html body.mk .mkDotFill { position: absolute; top: calc(50% - 4px); left: calc(50% - 12px); width: 24px; height: 8px; border-radius: 4px; overflow: hidden; pointer-events: none; }
+html body.mk .mkDotFill::before { content: ""; position: absolute; inset: 0; background: #fff; animation: mkDotFill var(--mk-hero-speed, 5s) linear both; }
+html[dir="rtl"] body.mk .mkDotFill::before { animation-name: mkDotFillRtl; }
+html body.mk .mkHero[data-paused] .mkDotFill::before { animation-play-state: paused; }
+@keyframes mkDotFill { from { transform: translateX(-100%); } to { transform: none; } }
+@keyframes mkDotFillRtl { from { transform: translateX(100%); } to { transform: none; } }
+
+/* Phones: the controls row sat right under the buttons; the words now end a little higher and the
+   row a little lower, so a thumb on the pause button never lands on "Shop now". */
+@media (max-width: 759px) {
+  html body.mk .mkHero-full .mkSlideInner { padding-bottom: 64px; }
+  html body.mk .mkHero-full .mkDots { bottom: 10px; }
+}
+
+/* The photo's slight zoom (below) stays inside its slide. */
+html body.mk .mkSlidePic { overflow: hidden; }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Each slide's words arrive in order: the speed lines streak in, then the tag, the headline, the
+     line of text and the buttons. The photo settles from a slight zoom. Both run once per slide
+     (under five seconds), whenever a slide becomes the one on screen. */
+  html body.mk .mkHero-full .mkSlide[aria-hidden="false"] .mkSlideCopy::before { animation: mkHeroLines .7s linear backwards; }
+  html body.mk .mkSlide[aria-hidden="false"] .mkSlideCopy > * { animation: mkRise .7s var(--mk-ease, cubic-bezier(.2, .7, .2, 1)) backwards; }
+  html body.mk .mkSlide[aria-hidden="false"] .mkSlideCopy > :nth-child(1) { animation-delay: .12s; }
+  html body.mk .mkSlide[aria-hidden="false"] .mkSlideCopy > :nth-child(2) { animation-delay: .2s; }
+  html body.mk .mkSlide[aria-hidden="false"] .mkSlideCopy > :nth-child(3) { animation-delay: .28s; }
+  html body.mk .mkSlide[aria-hidden="false"] .mkSlideCopy > :nth-child(4) { animation-delay: .36s; }
+  html body.mk .mkSlide[aria-hidden="false"] .mkSlidePic img { animation: mkSettle 2.4s var(--mk-ease, cubic-bezier(.2, .7, .2, 1)) backwards; }
+}
+@keyframes mkRise { from { opacity: 0; transform: translateY(18px); } }
+@keyframes mkSettle { from { transform: scale(1.06); } }
+
+/* The speed-lines mark draws itself like the logo: the long middle line first, then the two short
+   ones (sizes as in storefront-market.css: hero 4/5/4 px, section titles 3/4/3 px). */
+@keyframes mkHeroLines {
+  0%   { background-size: 0% 4px, 0% 5px, 0% 4px; }
+  15%  { background-size: 0% 4px, 33% 5px, 0% 4px; }
+  30%  { background-size: 21% 4px, 67% 5px, 0% 4px; }
+  45%  { background-size: 42% 4px, 100% 5px, 16% 4px; }
+  70%  { background-size: 77% 4px, 100% 5px, 44% 4px; }
+  100% { background-size: 77% 4px, 100% 5px, 77% 4px; }
+}
+@keyframes mkHeadLines {
+  0%   { background-size: 0% 3px, 0% 4px, 0% 3px; }
+  15%  { background-size: 0% 3px, 33% 4px, 0% 3px; }
+  30%  { background-size: 21% 3px, 67% 4px, 0% 3px; }
+  45%  { background-size: 42% 3px, 100% 4px, 16% 3px; }
+  70%  { background-size: 77% 3px, 100% 4px, 44% 3px; }
+  100% { background-size: 77% 3px, 100% 4px, 77% 3px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* No moving progress bar: the active dot is plain white, as before. */
+  html body.mk .mkDotFill { display: none; }
+  html body.mk .mkDots button.isTiming::before { background: #fff; }
+}
+
+/* ---------------- Sections rise into view (components/scroll-reveal.tsx) ---------------- */
+/* The script marks only what starts below the first screen: blocks (.rvlSelf) rise on their own,
+   groups (.rvlKids) bring their items in 60 ms apart. */
+@media (prefers-reduced-motion: no-preference) {
+  html body.mk .rvlSelf, html body.mk .rvlKids > * { opacity: 0; }
+  html body.mk .rvlSelf.isIn, html body.mk .rvlKids.isIn > * { opacity: 1; animation: mkRise .7s var(--mk-ease, cubic-bezier(.2, .7, .2, 1)) backwards; }
+  html body.mk .rvlKids.isIn > :nth-child(2) { animation-delay: 60ms; }
+  html body.mk .rvlKids.isIn > :nth-child(3) { animation-delay: 120ms; }
+  html body.mk .rvlKids.isIn > :nth-child(4) { animation-delay: 180ms; }
+  html body.mk .rvlKids.isIn > :nth-child(5) { animation-delay: 240ms; }
+  html body.mk .rvlKids.isIn > :nth-child(6) { animation-delay: 300ms; }
+  html body.mk .rvlKids.isIn > :nth-child(7) { animation-delay: 360ms; }
+  html body.mk .rvlKids.isIn > :nth-child(n + 8) { animation-delay: 420ms; }
+  html body.mk .mkHead.rvlSelf.isIn h2::before { animation: mkHeadLines .7s .15s linear backwards; }
+}
+@media print {
+  html body.mk .rvlSelf, html body.mk .rvlKids > * { opacity: 1 !important; animation: none !important; }
+}
+
+/* ---------------- Product cards ---------------- */
+/* The second photo (loaded on the first mouse hover, see ProductCard) crossfades over the first. */
+html body.mk .mkCardMedia .mkCardAlt { position: absolute; inset: 0; opacity: 0; transition: opacity .45s ease, transform .5s ease; }
+@media (hover: hover) and (pointer: fine) {
+  html body.mk .mkCard:hover .mkCardAlt.isReady { opacity: 1; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* "Added": the check pops in. */
+  html body.mk .mkCardAdd.done svg { animation: mkPop .45s cubic-bezier(.3, 1.6, .5, 1) backwards; }
+  /* The cart count in the header pops when something is added (components/store-nav-fixed.tsx). The
+     market header turns animation off on the count (storefront-market.css), so the pop says so too. */
+  .focalCartCount.isBumped, html body.mk .focalNav.mkHeader .focalCartCount.isBumped { animation: mkBump .5s cubic-bezier(.3, 1.6, .5, 1) !important; }
+}
+@keyframes mkPop { from { opacity: 0; transform: scale(.3); } }
+@keyframes mkBump { 30% { transform: scale(1.4); } }
+
+/* ---------------- Pointer feedback: departments, promo banners, "Shop all" ---------------- */
+/* Promo banners: a light sweep crosses the photo, under the words. */
+html body.mk :is(.mkOffer, .mkSpotBanner) { isolation: isolate; }
+html body.mk :is(.mkOffer, .mkSpotBanner)::after { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(105deg, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, .24) 50%, rgba(255, 255, 255, 0) 70%); transform: translateX(-110%); }
+html[dir="rtl"] body.mk :is(.mkOffer, .mkSpotBanner)::after { background: linear-gradient(255deg, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, .24) 50%, rgba(255, 255, 255, 0) 70%); transform: translateX(110%); }
+html body.mk :is(.mkOfferText, .mkSpotText) { z-index: 2; }
+html body.mk .mkSpotBanner .mkCover { transition: transform .6s var(--mk-ease, ease); }
+
+/* "Shop all" links end with a chevron that leans toward where the link goes. */
+html body.mk .mkLink { gap: 6px; }
+html body.mk .mkLink::after { content: ""; width: 6px; height: 6px; border: solid currentColor; border-width: 2px 2px 0 0; transform: rotate(45deg); transition: transform .2s ease; }
+html[dir="rtl"] body.mk .mkLink::after { transform: rotate(-135deg); }
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  html body.mk :is(.mkOffer, .mkSpotBanner):hover::after { transform: translateX(110%); transition: transform .9s var(--mk-ease, ease); }
+  html[dir="rtl"] body.mk :is(.mkOffer, .mkSpotBanner):hover::after { transform: translateX(-110%); }
+  html body.mk .mkSpotBanner:hover .mkCover { transform: scale(1.04); }
+  /* Department glyphs give a small nod (photos keep still). */
+  html body.mk .aliCategoryIcon > svg { transition: transform .35s cubic-bezier(.3, 1.5, .5, 1); }
+  html body.mk .aliCategoryItem:hover .aliCategoryIcon > svg { transform: scale(1.12) rotate(-6deg); }
+  html body.mk .mkLink:hover::after { transform: translateX(3px) rotate(45deg); }
+  html[dir="rtl"] body.mk .mkLink:hover::after { transform: translateX(-3px) rotate(-135deg); }
+}
