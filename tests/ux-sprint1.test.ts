@@ -41,7 +41,7 @@ test('the announcement dismiss, the shop collections heading and the small capti
 
 test('on phones the header search, delivery select, tabs, wishlist, footer form and announcement are at least 44 px', () => {
   const css = read('app/storefront-market.css')
-  const start = css.indexOf('@media (max-width: 600px) {\n  html body.mk .focalNav.mkHeader .aliNavSearchBar')
+  const start = css.indexOf('@media (max-width: 600px), (pointer: coarse) {\n  html body.mk .focalNav.mkHeader .aliNavSearchBar')
   assert.notEqual(start, -1)
   const phone = css.slice(start, css.indexOf('\n}', start))
   assert.match(phone, /\.aliNavSearchBar \{ height: 54px !important; \}/)
@@ -91,7 +91,7 @@ test('the cart badge is drawn by CSS, so the button name is the only name text',
 })
 
 test('the delivery bar is a labelled region, and the shop heading is level 2', () => {
-  assert.match(read('components/market-chrome.tsx'), /<div className="mkDelivery" role="region" aria-label=\{t\('Delivery'\)\}>/)
+  assert.match(read('components/market-chrome.tsx'), /role="region" aria-label=\{t\('Delivery'\)\}>/)
   assert.match(read('components/aliexpress-shop.tsx'), /<h2>\{t\('Collections'\)\}<\/h2>/)
 })
 

@@ -51,7 +51,7 @@ export function priceBandDefaults() {
 export function marketSectionDefaults(type: string): Record<string, any> | null {
   if (type === 'hero_slider') return { settings: { layout: 'full', autoplay: true, speed: 5, height: 560, mobileHeight: 460 }, blocks: heroSlideDefaults() }
   if (type === 'offer_banners') return { settings: {}, blocks: offerDefaults() }
-  if (type === 'product_tabs') return { settings: { heading: "Today's deals", showDeals: true, showBest: true, showNew: true, limit: 10, minProducts: 4 } }
+  if (type === 'product_tabs') return { settings: { heading: "Today's deals", showDeals: true, showBest: true, showNew: true, limit: 5, minProducts: 4 } }
   if (type === 'product_rail') return { settings: { heading: 'Best sellers', subheading: 'What customers are ordering', source: 'best', limit: 12, showRank: true, minProducts: 4 } }
   if (type === 'category_spotlight') return { settings: { heading: '', collection: '', kicker: 'Featured', bannerHeading: 'A cleaner home in one order', buttonLabel: 'Shop now', imageUrl: STOCK.spotCleaning, bannerPosition: 'left', limit: 4, minProducts: 2 } }
   if (type === 'shop_by_price') return { settings: { heading: 'Shop by price', limit: 10, minProducts: 2 }, blocks: priceBandDefaults() }

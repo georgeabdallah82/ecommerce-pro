@@ -631,7 +631,7 @@ html body.mk .mkDots button::after { content: ""; position: absolute; inset: -18
 .skipLink:focus { transform: none; outline: 3px solid #fff; outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .skipLink { transition: none; } }
 /* UX uplift, sprint 1: touch targets on phones are at least 44 px. */
-@media (max-width: 600px) {
+@media (max-width: 600px), (pointer: coarse) {
   html body.mk .focalNav.mkHeader .aliNavSearchBar { height: 54px !important; }
   html body.mk .focalNav.mkHeader .aliNavSearchBar input { min-height: 44px !important; }
   html body.mk .focalNav.mkHeader .aliNavSearchSubmit { height: auto !important; min-height: 44px !important; align-self: stretch !important; }
@@ -649,6 +649,9 @@ html body.mk .mkDots button::after { content: ""; position: absolute; inset: -18
   html body.mk .cartPage .qtyUX input { width: 44px; }
   html body.mk .aliProductPage button[aria-label$="out of 5 stars"] { min-width: 44px; min-height: 44px; }
   html body.mk p.muted > a { display: inline-block; padding-block: 13px; margin-block: -13px; }
+  html body.mk .mkCatsAll { min-height: 44px !important; }
+  html body.mk .mkDeliveryChip select { min-height: 44px !important; }
+  html body.mk .mkArrow { width: 44px !important; height: 44px !important; }
 }
 
 /* Slide dots: the dots keep their size; the button under each dot is 44 px. */
@@ -656,6 +659,22 @@ html body.mk .mkDots { gap: 0; }
 html body.mk .mkDots button { width: 44px; height: 44px; border-radius: 0; background: none; display: inline-grid; place-items: center; }
 html body.mk .mkDots button::before { content: ""; width: 8px; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, .55); transition: width .3s; }
 html body.mk .mkDots button[aria-current="true"]::before { width: 24px; background: #fff; }
+
+/* Delivery area: one chip, in the header row on computers and under the logo on phones. */
+html body.mk .mkDeliveryChip { display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 300px; font-size: 12.5px; color: var(--mk-ink); }
+html body.mk .mkDeliveryChip select { font: inherit; font-weight: 700; color: var(--mk-red-dark); background: var(--mk-red-soft); border: 0; border-radius: 8px; padding: 4px 6px; max-width: 150px; cursor: pointer; }
+html body.mk .mkDeliveryChip small { min-width: 0; max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--mk-muted); font-size: 12px; }
+html body.mk .mkDeliveryChip svg { flex: none; color: var(--mk-red); }
+html body.mk .mkDeliveryChip--search { display: none; }
+@media (max-width: 900px) {
+  html body.mk .mkDeliveryChip--header { display: none; }
+  html body.mk .mkDeliveryChip--search { display: flex; flex: none; max-width: none; gap: 4px; padding: 0 4px 0 6px; border-inline-end: 1px solid var(--mk-line); }
+  html body.mk .mkDeliveryChip--search select { max-width: 96px; min-height: 44px !important; padding: 0 4px; background: transparent; color: var(--mk-ink); }
+  html body.mk .mkDeliveryChip--search small, html body.mk .mkDeliveryChip--search .mkDeliveryLabel { display: none; }
+}
+
+/* Category circles without a photo: a neutral tile with an icon, never a letter. */
+html body.mk .aliCategoryIcon { display: grid; place-items: center; color: var(--mk-muted); }
 
 /* ---- Stage 2 visual refresh -------------------------------------------------------------------
    One small set of shared values (shadow, radius, motion) and the places that looked flat or empty:
@@ -782,8 +801,8 @@ html body.mk .focalNav.mkHeaderCheckout .focalNavInner { grid-template-columns: 
 
 /* Shop page, phones: the header already has a search box, so the in-page one and its button are hidden
    (still sent with the sort form, so a search is kept when you change the sort). */
+.aliShopToolbar select { margin-inline-start: auto; }
 @media (max-width: 700px) {
-  .aliShopToolbar .aliShopSearch, .aliShopToolbar button[type=submit] { display: none; }
   .aliShopToolbar select { width: 100%; }
 }
 

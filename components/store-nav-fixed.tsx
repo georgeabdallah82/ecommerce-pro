@@ -426,6 +426,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
         {headerSettings.showSearch !== false && (
           <form className="aliNavSearchWrap" action="/shop" method="GET" onSubmit={() => setDesktopSearchOpen(false)}>
             <div className="aliNavSearchBar">
+              {market && <DeliveryBar theme={theme} variant="search" />}
               <input
                 name="q"
                 value={searchQuery}
@@ -462,6 +463,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
             )}
           </form>
         )}
+        {market && <DeliveryBar theme={theme} variant="header" />}
         <div className="focalNavActions">
           {headerSettings.showSearch !== false && <button className="focalNavIcon aliNavSearchIconMobile" onClick={() => { setSearch(true); setSearchQuery('') }} aria-label={t('Search')}><Search size={18}/></button>}
           {market && <LanguageSwitch className="mkNavLang" />}
@@ -478,7 +480,6 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
         </div>
       </div>}
     </header>
-    {market && <DeliveryBar theme={theme} />}
     {market && pathname !== '/checkout' && headerSettings.showCategoryTabs !== false && <CategoryTabs navigation={navigation} phone={headerSettings.showCategoryTabsPhone === true} />}
     {announcementEnabled && announcementPosition === 'below' && <AnnouncementBar theme={theme} announcementSection={announcementSection} closed={announcementClosed} onDismiss={dismissAnnouncement}/>}
 
