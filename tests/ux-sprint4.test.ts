@@ -28,6 +28,8 @@ test('a category without a photo gets a department glyph from its name, not one 
   assert.equal(categoryGlyph('Baby wipes'), 'baby', 'baby wins over wipes')
   assert.equal(categoryGlyph('Carpets'), 'other', '"carpet" is not a pet')
   assert.equal(categoryGlyph('مطبخ'), 'kitchen')
+  // Raw Arabic in a regular expression stays raw in the Cloudflare bundle and fails scripts/check-worker-charset.mjs.
+  assert.match(read('lib/category-glyph.ts'), /^[\x00-\x7f]*$/, 'the source is ASCII: Arabic words are \\u escapes in strings')
   assert.equal(categoryGlyph(''), 'other')
   assert.equal(categoryGlyph(undefined), 'other')
   const sections = read('components/storefront-sections.tsx')
