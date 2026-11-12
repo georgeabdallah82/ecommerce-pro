@@ -173,6 +173,7 @@ Cloudflare Workers don't share environment variables with any other platform —
 - `AUTH_SECRET`
 - `CRON_SECRET` (must match what's set on the `release-expired-reservations` worker above)
 - `PAYMENT_WEBHOOK_SECRET`
+- `AREEBA_WEBHOOK_SECRET` — the gateway's notification secret, set once webhooks are enabled in Merchant Administration and a test order shows the webhook accepted by the header. Not the same as `PAYMENT_WEBHOOK_SECRET`. See `docs/owner-decisions-2026-11.md`.
 - `NEXT_PUBLIC_SITE_URL`
 - `RESEND_API_KEY` and `EMAIL_FROM` — optional but recommended; without them, order confirmation and password reset emails silently no-op (see "Transactional email" above)
 - Other configured payment, notification, branding, and admin variables used by the application (see `.env.example`)

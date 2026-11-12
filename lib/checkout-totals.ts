@@ -18,7 +18,7 @@ export type OrderMoneyInput = {
   coinsApplied: number // coins the shopper uses; the caller has checked them against balance and subtotal
   requiresShipping: boolean
   freeShipping: boolean // a FREE_SHIPPING coupon: delivery is free whatever the rate
-  shippingFor: (merchandiseAfterCoins: number) => Promise<ShippingQuote>
+  shippingFor: (merchandise: number) => Promise<ShippingQuote> // priced on the merchandise before coins, after discounts
   taxRatePercent: number
   giftCardBalance: number | null // balance of a valid gift card, or null when none is used
 }
@@ -36,9 +36,9 @@ export type OrderMoney = {
 export async function orderMoney(input: OrderMoneyInput): Promise<OrderMoney> {
   const coinDiscount = Math.min(input.discountedSubtotal, Math.max(0, input.coinsApplied))
   const rewardAdjustedSubtotal = Math.max(0, input.discountedSubtotal - coinDiscount)
-  // Delivery is priced on what is left after coins, so coins can take a cart below the free-delivery
-  // threshold. The total the shopper sees has to include that charge.
-  const shipping = input.requiresShipping ? await input.shippingFor(rewardAdjustedSubtotal) : NO_SHIPPING
+  // Coins count toward the free-delivery threshold (owner decision, docs/owner-decisions-2026-11.md): delivery is
+  // priced on the merchandise before coins, so paying part of a cart in coins never adds a delivery charge to it.
+  const shipping = input.requiresShipping ? await input.shippingFor(input.discountedSubtotal) : NO_SHIPPING
   const shippingTotal = input.freeShipping ? 0 : shipping.total
   const freeShippingDiscount = input.freeShipping ? shipping.total : 0
   const taxableAmount = taxableAmountAfterRewards(input.taxableSubtotal, input.discountTaxable, input.discountedSubtotal, coinDiscount)

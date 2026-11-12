@@ -417,7 +417,9 @@ export default function Checkout() {
 
   const bankDetails = settings?.payment.details.bank
   const selectedRate = shippingRates.find(rate => (rate.id || '') === selectedRateId) || shippingRates[0]
-  const rateCost = (rate: ShippingRate) => rate.freeAbove !== null && subtotal >= rate.freeAbove ? 0 : rate.price
+  // The free-delivery threshold is judged on the merchandise after discounts and before coins: the server's rule.
+  const merchandise = quote ? Math.max(0, quote.subtotal - quote.discount) : subtotal
+  const rateCost = (rate: ShippingRate) => rate.freeAbove !== null && merchandise >= rate.freeAbove ? 0 : rate.price
   // Before the server's price arrives: the cart and the chosen rate.
   const deliveryCost = quote ? quote.shipping : selectedRate ? rateCost(selectedRate) : null
   // The server's total, which already includes coins, delivery, tax and any gift card. Before the first price arrives, a rough figure.
@@ -532,7 +534,7 @@ export default function Checkout() {
             : <div className={s.choices} role="radiogroup" aria-label={t('Delivery method')}>
                 {shippingRates.map(rate => {
                   const on = selectedRateId === (rate.id || '')
-                  // The selected method shows the server's price for this order (after coins); the others are estimates.
+                  // The selected method shows the server's price for this order; the others are estimates.
                   const cost = on && quote ? quote.shipping : rateCost(rate)
                   const when = areaEta || (rate.estimatedDays ? plural(rate.estimatedDays, 'day') : '')
                   return <label key={rate.id || 'standard'} className={`${s.choice} ${on ? s.choiceOn : ''}`}>

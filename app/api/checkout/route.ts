@@ -297,8 +297,8 @@ export async function POST(req: Request) {
       if (problem) throw userError(problem)
       giftCard = found
     }
-    // The figures the price summary showed (app/api/checkout/quote/route.ts): coins, delivery on what
-    // is left after them, tax, then the gift card against the final total.
+    // The figures the price summary showed (app/api/checkout/quote/route.ts): coins, delivery on the merchandise
+    // before them (coins count toward the free-delivery threshold), tax, then the gift card against the final total.
     const { coinDiscount, shipping, shippingTotal, freeShippingDiscount, taxTotal, giftCardDiscount, grandTotal } = await orderMoney({
       discountedSubtotal, taxableSubtotal, discountTaxable: discount.taxable, coinsApplied: requestedCoins,
       requiresShipping: requiresPhysicalShipping, freeShipping: coupon?.type === 'FREE_SHIPPING',
@@ -392,10 +392,11 @@ export async function POST(req: Request) {
         }
 
         const paidByWallet = paymentMethod === PaymentMethod.WALLET
-        // A gift card can cover the entire total on its own -- in that case there's
+        // Coins or a gift card can cover the entire total on their own -- in that case there's
         // nothing left for CARD to charge, so the order is treated as paid upfront
         // just like WALLET, and the CARD provider round-trip is skipped below.
         const paidUpfront = paidByWallet || grandTotal === 0
+        const coveredBy = [coinDiscount > 0 ? 'coins' : '', giftCardDiscount > 0 ? 'a gift card' : ''].filter(Boolean).join(' and ')
         const orderStatus = paidUpfront ? 'CONFIRMED' : 'PENDING'
         const paymentStatus = paidUpfront ? 'PAID' : 'UNPAID'
         const checkoutTxRaw: Record<string, unknown> = { coinDiscount, coinsUsed: requestedCoins }
@@ -423,7 +424,7 @@ export async function POST(req: Request) {
             isGift: input.isGift === true,
             giftMessage: input.isGift && input.giftMessage ? input.giftMessage : null,
             items: { create: normalized.map(({ taxable: _taxable, ...item }) => item) },
-            events: { create: { status: orderStatus, message: paidByWallet ? `Order placed using wallet${coinDiscount ? ` and ${requestedCoins} coins` : ''}.` : paidUpfront ? 'Order placed successfully using a gift card.' : 'Order placed successfully.' } },
+            events: { create: { status: orderStatus, message: paidByWallet ? `Order placed using wallet${coinDiscount ? ` and ${requestedCoins} coins` : ''}.` : paidUpfront ? `Order placed successfully${coveredBy ? ` using ${coveredBy}` : ''}.` : 'Order placed successfully.' } },
             paymentTransactions: { create: { provider: 'checkout', externalId: idempotencyKey, status: paidUpfront ? 'paid' : 'created', amount: grandTotal, currency: orderCurrency, rawJson: JSON.stringify(checkoutTxRaw) } },
           },
         })

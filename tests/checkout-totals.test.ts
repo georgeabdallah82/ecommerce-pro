@@ -10,7 +10,7 @@ const read = (path: string) => readFileSync(path, 'utf8')
 // Delivery like the seeded "Standard delivery" rate: 5.00, free from 100.00 (minor units).
 const rate = async (basis: number) => ({ total: basis >= 10000 ? 0 : 500, method: 'Standard delivery', estimatedDays: 3 })
 
-// A 198.00 cart: the case where coins can take the merchandise under the free-delivery threshold.
+// A 198.00 cart, with the free-delivery threshold at 100.00. Coins count toward that threshold (docs/owner-decisions-2026-11.md).
 const money = (over: Partial<OrderMoneyInput> = {}) => orderMoney({
   discountedSubtotal: 19800, taxableSubtotal: 19800, discountTaxable: 0, coinsApplied: 0,
   requiresShipping: true, freeShipping: false, shippingFor: rate, taxRatePercent: 0, giftCardBalance: null,
@@ -23,34 +23,46 @@ test('no coins: a cart over the free-delivery threshold pays no delivery', async
   assert.equal(m.grandTotal, 19800)
 })
 
-test('coins that take the merchandise under the threshold charge delivery, so the total includes it', async () => {
-  // The defect this covers: the summary showed 98.00 while checkout charged 103.00.
+test('coins count toward the free-delivery threshold: a cart that reaches it pays no delivery, even when coins pay for part of it', async () => {
   const m = await money({ coinsApplied: 10000 })
   assert.equal(m.coinDiscount, 10000)
-  assert.equal(m.shippingTotal, 500)
-  assert.equal(m.grandTotal, 10300)
-})
-
-test('a FREE_SHIPPING coupon waives the delivery charge and reports what it saved', async () => {
-  const m = await money({ coinsApplied: 10000, freeShipping: true })
   assert.equal(m.shippingTotal, 0)
-  assert.equal(m.freeShippingDiscount, 500)
   assert.equal(m.grandTotal, 9800)
 })
 
+test('a cart under the threshold pays delivery whatever coins it uses', async () => {
+  const m = await money({ discountedSubtotal: 9000, taxableSubtotal: 9000, coinsApplied: 9000 })
+  assert.equal(m.shippingTotal, 500)
+  assert.equal(m.grandTotal, 500)
+})
+
+test('delivery is priced on the merchandise before coins', async () => {
+  let basis = -1
+  await money({ coinsApplied: 10000, shippingFor: async merchandise => { basis = merchandise; return rate(merchandise) } })
+  assert.equal(basis, 19800)
+})
+
+test('a FREE_SHIPPING coupon waives the delivery charge and reports what it saved', async () => {
+  // Under the threshold, so the coupon has a charge to waive: 90.00 of merchandise, 10.00 paid in coins.
+  const m = await money({ discountedSubtotal: 9000, taxableSubtotal: 9000, coinsApplied: 1000, freeShipping: true })
+  assert.equal(m.shippingTotal, 0)
+  assert.equal(m.freeShippingDiscount, 500)
+  assert.equal(m.grandTotal, 8000)
+})
+
 test('tax is worked out on what the coins leave taxable', async () => {
-  // Taxable 19800 less the coins' share (10000) leaves 9800; 10% of that is 980.
+  // Taxable 19800 less the coins' share (10000) leaves 9800; 10% of that is 980. The cart is over the threshold: no delivery.
   const m = await money({ coinsApplied: 10000, taxRatePercent: 10 })
   assert.equal(m.taxTotal, 980)
-  assert.equal(m.grandTotal, 9800 + 500 + 980)
+  assert.equal(m.grandTotal, 9800 + 0 + 980)
 })
 
 test('a gift card pays the final total, after delivery and tax, and never more than that total', async () => {
   const partial = await money({ coinsApplied: 10000, giftCardBalance: 5000 })
   assert.equal(partial.giftCardDiscount, 5000)
-  assert.equal(partial.grandTotal, 10300 - 5000)
+  assert.equal(partial.grandTotal, 9800 - 5000)
   const covers = await money({ coinsApplied: 10000, giftCardBalance: 50000 })
-  assert.equal(covers.giftCardDiscount, 10300)
+  assert.equal(covers.giftCardDiscount, 9800)
   assert.equal(covers.grandTotal, 0)
 })
 
@@ -65,7 +77,8 @@ test('a cart with nothing to deliver is not charged delivery and does not ask fo
 test('coins above the merchandise are capped in the arithmetic (the routes refuse them first)', async () => {
   const m = await money({ coinsApplied: 30000 })
   assert.equal(m.coinDiscount, 19800)
-  assert.equal(m.grandTotal, 500)
+  assert.equal(m.shippingTotal, 0)
+  assert.equal(m.grandTotal, 0)
 })
 
 test('a gift card is refused with the same reason at checkout and in the summary', () => {

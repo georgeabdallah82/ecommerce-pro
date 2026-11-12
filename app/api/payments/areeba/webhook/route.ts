@@ -1,7 +1,7 @@
 import { db } from '@/lib/prisma'
 import { consumeDurableRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
-import { areebaMpgsPaymentProvider, areebaWebhookToken, safeTokenEqual } from '@/lib/payments'
+import { areebaMpgsPaymentProvider, areebaWebhookSecret, areebaWebhookToken, webhookCallerFor } from '@/lib/payments'
 import { reconcileGatewayRefunds } from '@/lib/refund-reconciliation'
 import { markOnlinePaymentFailed, markOnlinePaymentPaid } from '@/lib/payment-outcome'
 
@@ -26,7 +26,13 @@ export async function POST(req: Request) {
     const limit = await consumeDurableRateLimit(`areeba-webhook:${clientIp(req.headers)}`, 60, 60 * 1000)
     if (!limit.allowed) return Response.json({ error: 'Too many webhook requests' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds), 'Cache-Control': 'no-store' } })
     const url = new URL(req.url)
-    if (!safeTokenEqual(url.searchParams.get('token')?.trim() || '', areebaWebhookToken())) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: { 'Cache-Control': 'no-store' } })
+    // The gateway's X-Notification-Secret header, or the token in the URL of an order placed before the switch (lib/payments.ts).
+    const caller = webhookCallerFor({ header: req.headers.get('x-notification-secret'), urlToken: url.searchParams.get('token'), secret: areebaWebhookSecret(), expectedUrlToken: areebaWebhookToken() })
+    if (!caller) {
+      console.warn('[areeba-webhook] refused a notification: neither the secret header nor the URL token matched')
+      return Response.json({ error: 'Unauthorized' }, { status: 401, headers: { 'Cache-Control': 'no-store' } })
+    }
+    console.info(caller === 'header' ? '[areeba-webhook] notification accepted by the secret header' : '[areeba-webhook] notification accepted by the legacy URL token')
     const contentLength = Number(req.headers.get('content-length') || 0)
     if (contentLength > 128 * 1024) return Response.json({ error: 'Webhook payload too large' }, { status: 413, headers: { 'Cache-Control': 'no-store' } })
     const rawBody = await req.text()
