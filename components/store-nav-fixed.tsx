@@ -10,6 +10,7 @@ import { LanguageSwitch, useI18n } from './lang-provider'
 import CartSuggestions from './cart-suggestions'
 import { useShopper } from './use-shopper'
 import { money as formatMoney } from '@/lib/config'
+import { fontCssStack } from '@/lib/font-options'
 import { loadStoreSettings } from '@/lib/store-settings-client'
 import { siteHeaderSections } from '@/lib/site-header'
 import { useFreeDeliveryAmount } from './shipping-note'
@@ -422,7 +423,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
     <header className={`focalNav${market ? ` mkHeader${lightHeader ? ' mkHeaderLight' : ''}${pathname === '/checkout' ? ' mkHeaderCheckout' : ''}${pathname.startsWith('/product/') ? ' mkHeaderProduct' : ''}` : transparent ? ' focalNavTransparent' : ''}`} style={market ? { position: headerSettings.sticky === false ? 'relative' : 'sticky', top: 0, ...(theme.header?.background ? { '--mk-header-bg': theme.header.background } : {}) } as React.CSSProperties : { background: transparent ? 'transparent' : theme.colors.surface, borderColor: theme.colors.border, position: headerSettings.sticky ? 'sticky' : 'relative', top: 0 }}>
       <div className="focalNavInner focalContainer">
         <button className="focalNavMobile" aria-label={t('Menu')} onClick={() => setMenu(true)}><Menu size={19}/></button>
-        <Link href="/" className="focalLogo" style={{ fontFamily: theme.typography.heading }}>{logoSrc ? <img src={logoSrc} alt={theme.brandName} className={logoWhite ? 'mkLogoWhite' : undefined} style={{ maxWidth: headerSettings.logoWidth || 160 }} /> : <span>{theme.brandName}</span>}</Link>
+        <Link href="/" className="focalLogo" style={{ fontFamily: fontCssStack(theme.typography.heading) }}>{logoSrc ? <img src={logoSrc} alt={theme.brandName} className={logoWhite ? 'mkLogoWhite' : undefined} style={{ maxWidth: headerSettings.logoWidth || 160 }} /> : <span>{theme.brandName}</span>}</Link>
         {headerSettings.showSearch !== false && (
           <form className="aliNavSearchWrap" action="/shop" method="GET" onSubmit={() => setDesktopSearchOpen(false)}>
             <div className="aliNavSearchBar">

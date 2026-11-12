@@ -1,0 +1,38 @@
+/* Homepage pass (November 2026). Imported last (app/layout.tsx). The identity passes in storefront-market.css set
+   the look; this file only corrects layout: the spotlight's kicker and empty slots, the trust strip's spacing, and
+   the 760-1023 px range, where the desktop grids were too dense. */
+
+/* Spotlight: the kicker is a small label, not a bar across the banner (its parent is a grid that stretches). */
+html body.mk .mkSpotText small { justify-self: start; }
+
+/* Spotlight: when the collection has fewer products than the row has slots, a "Shop all" tile fills the gap. It has
+   the same square, ring and radius as a product photo, so the row keeps one rhythm. */
+html body.mk .mkSpotMore { display: grid; align-content: center; justify-items: center; gap: 4px; box-sizing: border-box; aspect-ratio: 1; padding: 16px; border-radius: 14px; background: #fff; box-shadow: 0 0 0 1px var(--mk-line); color: var(--mk-ink); text-align: center; text-decoration: none; transition: box-shadow .2s ease, transform .2s ease; }
+html body.mk .mkSpotMoreIcon { display: grid; place-items: center; width: 44px; height: 44px; margin-bottom: 6px; border-radius: 50%; background: var(--br-cream, #fff1e6); }
+html body.mk .mkSpotMore b { font-family: var(--mk-display); font-size: 17px; font-weight: 700; line-height: 1.2; }
+html body.mk .mkSpotMore > span:last-child { max-width: 100%; color: var(--mk-muted); font-size: 13px; line-height: 1.35; overflow-wrap: break-word; }
+html body.mk .mkSpotMore:hover { box-shadow: 0 14px 28px -16px rgba(18, 18, 18, .45), 0 0 0 1px var(--mk-ink); transform: translateY(-3px); }
+html body.mk .mkSpotMore:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--mk-ink); }
+
+/* Trust strip: the same gap above it as every other section (it had 22 px under the spotlight). */
+html body.mk .aliTrustStrip { padding-top: var(--mk-section-gap) !important; }
+
+/* Tablets and narrow windows (760-1023 px). The desktop layouts start at 760 px, where five product columns, a
+   side-by-side spotlight and four trust items were too tight: three product columns, the spotlight stacked, two
+   trust columns, and smaller department cards so their names never break mid-word. */
+@media (min-width: 760px) and (max-width: 1023px) {
+  html body.mk .mkGrid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  html body.mk .mkSpot { grid-template-columns: minmax(0, 1fr) !important; }
+  html body.mk .mkSpotRight .mkSpotBanner { order: 0; }
+  html body.mk .mkSpotBanner { aspect-ratio: 21 / 9; min-height: 0; }
+  html body.mk .aliTrustStrip .aliContainer { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem { grid-template-columns: 56px minmax(0, 1fr) 18px; gap: 14px !important; padding: 10px 14px 10px 10px; }
+  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem .aliCategoryIcon { width: 56px !important; border-radius: 12px !important; }
+  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem .aliCategoryIcon > svg { width: 28px; height: 28px; }
+  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem > span:last-child { font-size: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html body.mk .mkSpotMore { transition: none; }
+  html body.mk .mkSpotMore:hover { transform: none; }
+}
