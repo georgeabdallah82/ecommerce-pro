@@ -179,7 +179,7 @@ export function ProductTabs(c: Common) {
           <div className="mkTabs" role="tablist">
             {lists.map((l, i) => <button type="button" role="tab" key={l.key} aria-selected={l === active} onClick={e => { e.stopPropagation(); setTab(i) }}>{l.label}</button>)}
           </div>
-        ) : null} />
+        ) : <Link className="mkLink" href={active.key === 'new' ? '/shop?sort=newest' : active.key === 'best' ? '/shop?sort=bestselling' : '/shop'}>{tr('Shop all')}</Link>} />
         <div className="mkGrid"><Cards items={active.items.slice(0, limit)} c={c} /></div>
       </div>
     </section>
@@ -241,7 +241,8 @@ export function CategorySpotlight(c: Common) {
     return products.filter(p => ids.has(p.id) || (p.collections || []).some((x: AnyMap) => x.collection?.id === col.id || x.collectionId === col.id))
   }
   const chosen = s.collection ? collections.find((x: AnyMap) => x.id === s.collection || x.slug === s.collection) : collections.find((x: AnyMap) => membersOf(x).length >= need)
-  const items = membersOf(chosen).slice(0, n(s.limit, 4))
+  const limit = n(s.limit, 4)
+  const items = membersOf(chosen).slice(0, limit)
   if (!chosen || items.length < need) return <Hidden preview={preview} name="Category spotlight" reason={chosen ? `"${chosen.name}" has ${items.length} product${items.length === 1 ? '' : 's'}; it needs ${need}.` : 'No collection has enough products yet.'} id={section.id} selected={selected} click={click} />
   const href = `/collections/${chosen.slug}`
   const banner = (
@@ -260,7 +261,16 @@ export function CategorySpotlight(c: Common) {
         <Head heading={s.heading || chosen.name} right={<Link className="mkLink" href={href}>{tr('Shop all')}</Link>} />
         <div className={`mkSpot ${s.bannerPosition === 'right' ? 'mkSpotRight' : ''}`}>
           {banner}
-          <div className="mkSpotGrid"><Cards items={items} c={c} /></div>
+          {/* A collection with fewer products than the row has slots ends with a "Shop all" tile instead of a gap. */}
+          <div className="mkSpotGrid"><Cards items={items} c={c} />{items.length < limit ? (
+            <div className="mkCardSlot">
+              <Link className="mkSpotMore" href={href}>
+                <span className="mkSpotMoreIcon" aria-hidden="true"><ChevronRight size={20} className="flipRtl" /></span>
+                <b>{tr('Shop all')}</b>
+                <span>{chosen.name}</span>
+              </Link>
+            </div>
+          ) : null}</div>
         </div>
       </div>
     </section>
