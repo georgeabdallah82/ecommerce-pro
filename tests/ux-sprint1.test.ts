@@ -65,7 +65,8 @@ test('the slide dots keep their look, and each dot has a 44 px button', () => {
 test('the shop page is one main landmark, with its heading first', () => {
   const shop = read('components/aliexpress-shop.tsx')
   const main = shop.indexOf('<main className="focalStorefront aliShopPage">')
-  const heading = shop.indexOf('<h1 className="srOnly">')
+  // Market stores show the title (tests/storefront-uplift.test.ts); the classic design keeps it for screen readers.
+  const heading = shop.indexOf("<h1 className={market ? 'aliContainer aliShopTitle' : 'srOnly'}>")
   assert.ok(main !== -1 && main < heading && heading < shop.indexOf('<aside'), 'the heading sits inside the main landmark, before the sidebar')
   assert.match(shop, /<div className="aliShopMain">/)
   assert.doesNotMatch(shop, /<main className="aliShopMain">/)
