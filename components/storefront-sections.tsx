@@ -170,6 +170,10 @@ export function ProductCard({p,theme,onQuickView,preview,onSelect,wishlist,toggl
   const {addItem}=useCart();
   const {t}=useI18n();
   const [added,setAdded]=useState(false);
+  // Market cards: the second photo is fetched on the first mouse hover and crossfades in once loaded
+  // (app/storefront-motion.css), so phones and cards nobody points at never download it.
+  const [peek,setPeek]=useState(false);
+  const [peekReady,setPeekReady]=useState(false);
   const primaryImage=p.images?.[0]?.url||'/placeholder-product.svg';
   const secondaryImage=p.images?.[1]?.url||null;
   // A flash sale on this product (lib/flash-sale.ts) shows its price and a countdown badge.
@@ -197,9 +201,10 @@ export function ProductCard({p,theme,onQuickView,preview,onSelect,wishlist,toggl
     const card=theme.productCardMarket||{};
     const hasOptions=Array.isArray(p.variants)&&p.variants.length>0;
     return (
-      <Link href={`/product/${p.slug}`} onClick={preview?e=>{e.preventDefault();e.stopPropagation();onSelect?.()}:undefined} className="mkCard">
+      <Link href={`/product/${p.slug}`} onClick={preview?e=>{e.preventDefault();e.stopPropagation();onSelect?.()}:undefined} onPointerEnter={secondaryImage&&!peek?e=>{if(e.pointerType==='mouse')setPeek(true)}:undefined} className="mkCard">
         <div className="mkCardMedia">
           <StoreImage src={primaryImage} alt={p.images?.[0]?.alt||p.name}/>
+          {peek&&secondaryImage&&<img className={`mkCardAlt${peekReady?' isReady':''}`} src={img(secondaryImage)} alt="" decoding="async" onLoad={()=>setPeekReady(true)}/>}
           {discountPct>0&&<span className="mkCardBadge">-{discountPct}%</span>}
           {toggleWish&&<button type="button" className={`mkCardWish ${wished?'active':''}`} onClick={wish} aria-label={wished?t('Remove from wishlist'):t('Add to wishlist')}><Heart size={15} fill={wished?'currentColor':'none'}/></button>}
         </div>

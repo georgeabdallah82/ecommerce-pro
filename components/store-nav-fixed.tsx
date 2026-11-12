@@ -319,7 +319,16 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
   const logoSrc = market && !lightHeader && !logoWhite && theme.logoUrlDark ? theme.logoUrlDark : theme.logoUrl
   const announcementEnabled = theme.announcement?.enabled !== false && announcementSection?.enabled !== false && announcementSection?.settings?.enabled !== false
   
-  const { items, updateQty, removeItem, subtotal, count, isOpen: isCartOpen, openCart, closeCart } = useCart()
+  const { items, updateQty, removeItem, subtotal, count, isOpen: isCartOpen, openCart, closeCart, ready: cartReady } = useCart()
+  // The cart count pops when something is added (app/storefront-motion.css); not when the saved
+  // cart loads, and not when something is removed. The new key restarts the animation.
+  const shownCount = useRef<number | null>(null)
+  const [bump, setBump] = useState(0)
+  useEffect(() => {
+    if (!cartReady) return
+    if (shownCount.current !== null && count > shownCount.current) setBump(b => b + 1)
+    shownCount.current = count
+  }, [count, cartReady])
   const shopper = useShopper()
   const [menu, setMenu] = useState(false)
   const closeMenu = useCallback(() => setMenu(false), [])
@@ -470,7 +479,7 @@ export default function StoreNavFixed({ theme, navigation }: { theme: any; navig
           {market && <LanguageSwitch className="mkNavLang" />}
           {headerSettings.showAccount !== false && <Link className={`focalNavIcon${shopper ? ' navSignedIn' : ''}`} href="/account" aria-label={shopper ? `${t('Hi, {name}', { name: shopper.firstName })} (${t('My account')})` : t('Account')} title={shopper ? shopper.name : undefined}>{shopper ? <span className="navAvatar" aria-hidden="true" data-initial={shopper.initial} /> : <UserRound size={18}/>}{market && <span className="mkNavLabel">{shopper ? t('Hi, {name}', { name: shopper.firstName }) : t('Account')}</span>}</Link>}
           {headerSettings.showWishlist && <Link className="focalNavIcon" href="/wishlist" aria-label={t('Wishlist')}><Heart size={18}/>{market && <span className="mkNavLabel">{t('Wishlist')}</span>}</Link>}
-          {headerSettings.showCart !== false && <button className="focalNavIcon" onClick={openCart} aria-label={t('Cart with {count}', { count: plural(count, 'item') })}><ShoppingBag size={18}/>{market && <span className="mkNavLabel">{t('Cart')}</span>}{(count > 0 || market) && <span className="focalCartCount" aria-hidden="true" data-count={count > 99 ? '99+' : count} />}</button>}
+          {headerSettings.showCart !== false && <button className="focalNavIcon" onClick={openCart} aria-label={t('Cart with {count}', { count: plural(count, 'item') })}><ShoppingBag size={18}/>{market && <span className="mkNavLabel">{t('Cart')}</span>}{(count > 0 || market) && <span key={bump} className={bump ? 'focalCartCount isBumped' : 'focalCartCount'} aria-hidden="true" data-count={count > 99 ? '99+' : count} />}</button>}
         </div>
       </div>
       {!market && <div className="focalNavSecondary focalContainer">

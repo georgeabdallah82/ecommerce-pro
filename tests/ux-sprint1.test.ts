@@ -84,7 +84,8 @@ test('the signed-in account link names the visible "Hi, name" text, and product 
 
 test('the cart badge is drawn by CSS, so the button name is the only name text', () => {
   const nav = read('components/store-nav-fixed.tsx')
-  assert.equal((nav.match(/className="focalCartCount" aria-hidden="true" data-count=\{/g) || []).length, 2)
+  // The header's badge also takes "isBumped" when something is added (tests/home-redesign.test.ts).
+  assert.equal((nav.match(/className=(?:"focalCartCount"|\{bump \? 'focalCartCount isBumped' : 'focalCartCount'\}) aria-hidden="true" data-count=\{/g) || []).length, 2)
   assert.doesNotMatch(nav, /focalCartCount" aria-hidden="true">\{/)
   assert.match(nav, /\.focalCartCount::before\{content:attr\(data-count\)\}/)
   assert.match(nav, /aria-label=\{t\('Cart with \{count\}', \{ count: plural\(count, 'item'\) \}\)\}/)

@@ -428,6 +428,8 @@ export const AR: Record<string, string> = {
   "Previous slide": "الشريحة السابقة",
   "Next slide": "الشريحة التالية",
   "Show slide {n}": "عرض الشريحة {n}",
+  "Pause slides": "إيقاف الشرائح مؤقتاً",
+  "Play slides": "تشغيل الشرائح",
   "Deals": "العروض",
   "Best sellers": "الأكثر مبيعاً",
   "Popular": "الأكثر رواجاً",
