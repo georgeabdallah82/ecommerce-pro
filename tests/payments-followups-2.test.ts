@@ -26,7 +26,7 @@ test('an excessive refund at the gateway counts as refunded, and a missing total
   assert.deepEqual(refundOutcome({ gatewayStatus: 'REFUNDED', gatewayRefunded: Number.NaN, alreadyRefunded: 0, pendingAmount: 10000, grandTotal: 10000 }), { settle: false })
 })
 
-test('the scheduled reconciliation is an authenticated internal job, and the Worker runs it on every 15-minute cron', () => {
+test('the scheduled reconciliation is an authenticated internal job, and the Worker runs it once an hour, on the 15-minute cron', () => {
   const route = read('app/api/internal/reconcile-refunds/route.ts')
   assert.match(route, /isInternalJobRequest\(req\)/)
   assert.match(route, /status: 401/)

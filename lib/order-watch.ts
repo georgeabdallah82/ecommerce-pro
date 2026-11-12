@@ -12,6 +12,11 @@
 
 export const ORDER_WATCH_KEY = 'ops/order-watch.json'
 export const ORDER_WATCH_CRON = '*/15 * * * *'
+// The refund reconciliation shares that cron, and each run wakes the database. It runs at the top of the hour only,
+// so the other quarter-hours cost no database hours from the free plan's monthly allowance.
+export function reconcileDue(scheduledTime: number): boolean {
+  return new Date(scheduledTime).getUTCMinutes() === 0
+}
 export const ORDER_PROBLEMS_SETTING = 'notifications.orderProblems'
 export const WAIT_MINUTES_SETTING = 'notifications.stuckOrderMinutes'
 export const DEFAULT_WAIT_MINUTES = 60

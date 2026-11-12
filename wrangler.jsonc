@@ -26,6 +26,7 @@
   // check, so both use the same database wake-up.
   // Every 15 minutes: the order watch (lib/order-watch.ts). It reads a small marker file first and
   // only asks the database when an order is being watched, so it costs no database hours otherwise.
+  // The refund reconciliation runs on this cron too, but only at the top of the hour (worker.ts, reconcileDue).
   "triggers": {
     "crons": ["37 5 * * *", "*/15 * * * *"]
   },
