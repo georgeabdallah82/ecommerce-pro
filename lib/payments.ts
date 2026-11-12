@@ -12,6 +12,19 @@ export const manualPaymentProvider: PaymentProvider = { name: 'manual', async cr
 function setting(map: Map<string, string>, key: string, fallback = '') { return map.get(key) || fallback }
 function authDerivedToken(prefix: string, value: string) { const secret = process.env.AUTH_SECRET; if (!secret) throw new Error('AUTH_SECRET is required'); return createHash('sha256').update(`${prefix}:${secret}:${value}`).digest('hex') }
 export function areebaWebhookToken() { return authDerivedToken('areeba-webhook', '') }
+// The notification secret Merchant Administration shows once webhooks are enabled. The gateway sends it in the
+// X-Notification-Secret header of each notification. Until AREEBA_WEBHOOK_SECRET holds it, payment sessions keep
+// the token in their notification URL, as they always have. Not PAYMENT_WEBHOOK_SECRET, which guards another route.
+export function areebaWebhookSecret() { return (process.env.AREEBA_WEBHOOK_SECRET || '').trim() }
+// Which credential lets a notification in: the gateway's header, or the token in the URL of an order placed before
+// the switch. An empty value never matches.
+export function webhookCallerFor(input: { header: string | null; urlToken: string | null; secret: string; expectedUrlToken: string }) {
+  const header = (input.header || '').trim()
+  if (input.secret && header && safeTokenEqual(header, input.secret)) return 'header' as const
+  const urlToken = (input.urlToken || '').trim()
+  if (input.expectedUrlToken && urlToken && safeTokenEqual(urlToken, input.expectedUrlToken)) return 'url-token' as const
+  return null
+}
 export function paymentReturnToken(orderNumber: string) { return authDerivedToken('areeba-return', orderNumber) }
 export function draftInvoiceToken(draftOrderId: string) { return authDerivedToken('draft-invoice', draftOrderId) }
 export function safeTokenEqual(a: string, b: string) { try { const left=Buffer.from(a,'utf8'); const right=Buffer.from(b,'utf8'); return left.length===right.length && timingSafeEqual(left,right) } catch { return false } }
@@ -49,7 +62,9 @@ export const areebaMpgsPaymentProvider: PaymentProvider = {
   async createPayment(input) {
     const config=await getAreebaConfig(); if(!config.merchantId||!config.merchantName)throw new Error('Areeba merchant configuration is incomplete')
     const siteUrl=process.env.NEXT_PUBLIC_SITE_URL; if(!siteUrl)throw new Error('NEXT_PUBLIC_SITE_URL is required for online payments')
-    const webhookUrl=`${siteUrl}/api/payments/areeba/webhook?token=${areebaWebhookToken()}`
+    // With the gateway's secret set, the notification URL carries no token: the gateway sends the secret in its header.
+    const webhookBase=`${siteUrl}/api/payments/areeba/webhook`
+    const webhookUrl=areebaWebhookSecret()?webhookBase:`${webhookBase}?token=${areebaWebhookToken()}`
     const endpoint=`${config.apiBaseUrl}/version/${encodeURIComponent(config.apiVersion)}/merchant/${encodeURIComponent(config.merchantId)}/session`
     const response=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json',authorization:`Basic ${Buffer.from(`merchant.${config.merchantId}:${config.apiPassword}`).toString('base64')}`},body:JSON.stringify({apiOperation:'INITIATE_CHECKOUT',checkoutMode:'WEBSITE',interaction:{operation:'PURCHASE',merchant:{name:config.merchantName,url:siteUrl},returnUrl:input.returnUrl||`${siteUrl}/api/payments/areeba/return?order=${encodeURIComponent(input.orderId)}&token=${encodeURIComponent(paymentReturnToken(input.orderId))}`},order:{id:input.orderId,amount:(input.amount/100).toFixed(2),currency:input.currency,description:`Order ${input.orderId}`,notificationUrl:webhookUrl}})})
     const body=await response.json().catch(()=>({})) as Record<string,any>; const sessionId=typeof body.session?.id==='string'?body.session.id:''; const successIndicator=typeof body.successIndicator==='string'?body.successIndicator:''
