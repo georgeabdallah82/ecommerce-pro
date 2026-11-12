@@ -22,6 +22,8 @@ export default function AliExpressShop({ theme, products, collections, query, se
   const cp = theme.collectionPage || {}
   const showFilters = cp.showFilters !== false
   const showSort = cp.showSort !== false
+  // Market stores show the page title above the results; the classic design keeps it for screen readers.
+  const market = theme.design === 'market'
 
   // Sorted (and paginated) on the server across the whole catalog.
   const sorted = products
@@ -49,7 +51,7 @@ export default function AliExpressShop({ theme, products, collections, query, se
   return (
     <main className="focalStorefront aliShopPage">
       {query.q ? <SearchTracker query={query.q} /> : null}
-      <h1 className="srOnly">{query.q ? t('Search results for {query}', { query: query.q }) : collections.find(c => c.slug === query.collection)?.name || t('Shop all products')}</h1>
+      <h1 className={market ? 'aliContainer aliShopTitle' : 'srOnly'}>{query.q ? t('Search results for {query}', { query: query.q }) : collections.find(c => c.slug === query.collection)?.name || t('Shop all products')}</h1>
       <div className={`aliContainer aliShopLayout ${showFilters ? '' : 'noSidebar'}`}>
         {showFilters && (
           <aside className="aliShopSidebar">

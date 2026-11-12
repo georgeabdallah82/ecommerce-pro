@@ -1,0 +1,87 @@
+/* Storefront uplift (November 2026), imported last (app/layout.tsx). See docs/storefront-uplift-2026-11.md.
+   The sticky header, the shop page's title, and the brand's section titles on the product and cart pages.
+   The identity passes in storefront-market.css set the look; this file keeps it. */
+
+/* ---------------- Sticky header ---------------- */
+/* The header (components/store-nav-fixed.tsx), the shop filters and the product photos are
+   position: sticky. overflow-x: hidden on html and body (storefront-legacy.css) made the body a
+   scroll container, so none of them stuck. clip cuts off sideways overflow the same way without
+   making a scroll container. Market stores only (body.mk is set on every route, so the admin, which
+   keeps its own layout, is left out by its shell). */
+html:has(> body.mk):not(:has(.adminShell)), html:has(> body.mk):not(:has(.adminShell)) > body { overflow-x: clip; }
+
+/* The text logo kept a leftover 80 px minimum height (a placeholder tile in storefront-legacy.css),
+   which made the header 105 px tall on computers and 159 px on phones, for 50 px of controls. It keeps
+   the 44 px every other control in the header has, so it is still easy to tap. */
+html body.mk .focalNav.mkHeader .focalLogo { min-height: 44px !important; }
+
+/* Once the page scrolls, a soft shadow separates the header from what passes under it. */
+html body.mk .focalNav.mkHeader.focalNavScrolled { box-shadow: 0 12px 28px -20px rgba(18, 18, 18, .55) !important; }
+html body.mk .focalNav.mkHeader.mkHeaderLight.focalNavScrolled { box-shadow: 0 1px 0 var(--mk-line), 0 12px 28px -20px rgba(18, 18, 18, .55) !important; }
+
+/* Checkout keeps its header in place: the form gets the whole screen. */
+html body.mk .focalNav.mkHeaderCheckout { position: relative !important; }
+
+/* Keyboard focus and links to a part of the page land below the header (WCAG 2.4.11). */
+html:has(body.mk) { scroll-padding-top: 90px; }
+
+/* Phones: the first row (menu, logo, account, cart) tucks away while the shopper scrolls down and
+   comes back as soon as they scroll up (components/store-nav-scroll.tsx); the search bar stays on
+   screen. Product pages and checkout have a one-row header, so they never tuck. Focus anywhere in
+   the header brings the whole of it back. */
+@media (max-width: 900px) {
+  html:has(body.mk) { scroll-padding-top: 134px; }
+  html body.mk .focalNav.mkHeader { transition: transform .28s var(--mk-ease, ease), box-shadow .2s ease; }
+  html body.mk .focalNav.mkHeader.focalNavTucked:not(.mkHeaderProduct, .mkHeaderCheckout):not(:focus-within) { transform: translateY(calc(-100% + 68px)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  html body.mk .focalNav.mkHeader { transition: none; }
+}
+
+/* The shop filters and the product photos stick below the header instead of sliding under it. */
+@media (min-width: 901px) {
+  html body.mk .aliShopSidebar, html body.mk .aliProductGallery { top: 92px; }
+}
+
+/* ---------------- Section titles: the brand's speed-lines mark ---------------- */
+/* The shop page's title (it was for screen readers only), and the product and cart pages' section
+   titles, take the homepage's title style: the display face, led by the speed-lines mark. */
+html body.mk :is(.aliShopTitle, .aliSectionHead h2, .aliReviewsSection > h2, .aliQuestions > h2) { display: flex; align-items: center; flex-wrap: wrap; column-gap: 12px; row-gap: 6px; font-family: var(--mk-display); font-weight: 700; letter-spacing: -.02em; line-height: 1.15; color: var(--mk-ink); overflow-wrap: normal; }
+html body.mk :is(.aliShopTitle, .aliSectionHead h2, .aliReviewsSection > h2, .aliQuestions > h2)::before { content: ""; display: block; flex: none; width: 30px; height: 20px; margin-inline-end: 2px;
+  background:
+    linear-gradient(color-mix(in srgb, var(--br-orange) 45%, transparent), color-mix(in srgb, var(--br-orange) 45%, transparent)) left 1px / 77% 3px no-repeat,
+    linear-gradient(color-mix(in srgb, var(--br-orange) 80%, transparent), color-mix(in srgb, var(--br-orange) 80%, transparent)) left center / 100% 4px no-repeat,
+    linear-gradient(color-mix(in srgb, var(--br-orange) 45%, transparent), color-mix(in srgb, var(--br-orange) 45%, transparent)) left calc(100% - 1px) / 77% 3px no-repeat; }
+html[dir="rtl"] body.mk :is(.aliShopTitle, .aliSectionHead h2, .aliReviewsSection > h2, .aliQuestions > h2)::before { transform: scaleX(-1); }
+html body.mk :is(.aliSectionHead h2, .aliReviewsSection > h2, .aliQuestions > h2) { font-size: 24px; }
+@media (min-width: 760px) { html body.mk :is(.aliSectionHead h2, .aliReviewsSection > h2, .aliQuestions > h2) { font-size: 28px; } }
+/* The rating summary beside "Customer Reviews" stays in the body face. */
+html body.mk .aliReviewsSection > h2 .aliReviewAvg { font-family: var(--store-font-body); letter-spacing: 0; }
+
+/* ---------------- Shop ---------------- */
+html body.mk .aliShopTitle { margin-top: 18px !important; margin-bottom: 14px !important; font-size: 26px; }
+@media (min-width: 760px) { html body.mk .aliShopTitle { margin-top: 30px !important; margin-bottom: 22px !important; font-size: clamp(30px, 3.2vw, 40px); } }
+
+/* Computers: the product count and the sort menu share the row above the results (the menu sat a row
+   above the count). Everything else in the column (filter chips, results, pages) spans the row. */
+@media (min-width: 901px) {
+  html body.mk .aliShopMain { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; align-content: start; column-gap: 16px; row-gap: 14px; }
+  html body.mk .aliShopMain > * { grid-column: 1 / -1; }
+  html body.mk .aliShopMain > .aliResultCount { grid-column: 1; grid-row: 1; margin: 0; }
+  html body.mk .aliShopMain > .aliShopToolbar { grid-column: 2; grid-row: 1; margin: 0; }
+}
+
+/* Computers: the sidebar's "Collections" is a small label like "Price" below it. It was set as a big
+   title, too wide for the column, so it broke mid-word ("Collection / s"). */
+@media (min-width: 901px) {
+  html body.mk .aliShopCollections h2 { margin: 0 0 10px; font-family: inherit; font-size: 13px; font-weight: 700; letter-spacing: .06em; line-height: 1.4; text-transform: uppercase; color: var(--store-muted, #746b64); overflow-wrap: normal; }
+}
+
+/* ---------------- Cart ---------------- */
+/* Phones: the reassurance boxes under the total were set in three columns, so two boxes left a third
+   of the row empty and their words wrapped in narrow strips. One column per box, filling the row. */
+@media (max-width: 700px) {
+  html body.mk .cartTrustUX { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+  /* Each box reads from the top (the grid stretched its rows, so a box with less text started lower). */
+  html body.mk .cartTrustUX > div { align-content: start; }
+}

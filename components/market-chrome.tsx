@@ -204,13 +204,16 @@ export function MarketMenu({ open, onClose, navigation, brand, logo, logoWhite, 
 
   useEffect(() => {
     if (!open) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    // Lock the page itself: html sets overflow-x, so a lock on body never stopped the page scrolling
+    // (and it made body a scroll container, which unsticks the header).
+    const root = document.documentElement
+    const prev = root.style.overflow
+    root.style.overflow = 'hidden'
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)
     panelRef.current?.focus()
     storeSettings().then(data => { const st = data?.settings; if (st?.contact?.phone) setPhone({ phone: st.contact.phone, country: st?.store?.country || 'Lebanon' }) })
-    return () => { document.body.style.overflow = prev; window.removeEventListener('keydown', onKey) }
+    return () => { root.style.overflow = prev; window.removeEventListener('keydown', onKey) }
   }, [open, onClose])
   useEffect(() => { if (open) onClose() }, [pathname]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {

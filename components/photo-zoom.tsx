@@ -21,9 +21,11 @@ export default function PhotoZoom({ photos, index, onIndex, onClose }: { photos:
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null
     closeRef.current?.focus()
-    const overflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = overflow; opener?.focus?.() }
+    // The page itself is locked (see MarketMenu in components/market-chrome.tsx).
+    const root = document.documentElement
+    const overflow = root.style.overflow
+    root.style.overflow = 'hidden'
+    return () => { root.style.overflow = overflow; opener?.focus?.() }
   }, [])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
