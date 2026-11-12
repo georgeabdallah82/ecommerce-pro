@@ -49,7 +49,8 @@ test('category circles: no letter fallback; a neutral tile with an icon instead'
   const sections = read('components/storefront-sections.tsx')
   assert.doesNotMatch(sections, /categoryInitial/)
   assert.doesNotMatch(sections, /aliCategoryInitial/)
-  assert.match(sections, /<LayoutGrid size=\{22\} aria-hidden="true" \/>/)
+  // Sprint 4 replaced the one grid icon with a department glyph picked from the category's name (lib/category-glyph.ts).
+  assert.match(sections, /createElement\(GLYPH_ICONS\[categoryGlyph\(name\)\],\{size:32,strokeWidth:1\.6,'aria-hidden':true\}\)/)
 })
 
 test('touch devices get the 44 px targets too, not only phones', () => {

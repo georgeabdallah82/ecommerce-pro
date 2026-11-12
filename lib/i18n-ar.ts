@@ -1022,5 +1022,4 @@ export const AR: Record<string, string> = {
   "Track every order": "تابع كل طلباتك",
   "Keep your wishlist and addresses": "احفظ قائمة أمنياتك وعناوينك",
   "Check out faster next time": "أكمل الشراء أسرع في المرة القادمة",
-  "Try a search, or start from one of these.": "ابحث، أو ابدأ من أحد هذه الروابط.",
 }
