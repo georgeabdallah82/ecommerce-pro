@@ -663,7 +663,9 @@ html body.mk .mkDots button[aria-current="true"]::before { width: 24px; backgrou
 /* Delivery area: one chip, in the header row on computers and under the logo on phones. */
 html body.mk .mkDeliveryChip { display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 300px; font-size: 12.5px; color: var(--mk-ink); }
 html body.mk .mkDeliveryChip select { font: inherit; font-weight: 700; color: var(--mk-red-dark); background: var(--mk-red-soft); border: 0; border-radius: 8px; padding: 4px 6px; max-width: 150px; cursor: pointer; }
-html body.mk .mkDeliveryChip small { min-width: 0; max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--mk-muted); font-size: 12px; }
+html body.mk .mkDeliveryChip small { min-width: 0; max-width: 200px; line-height: 1.3; color: var(--mk-muted); font-size: 12px; }
+/* The delivery chip is the fourth item of the header row on computers, so that row gets a fourth column for it. */
+@media (min-width: 901px) { html body.mk .focalNav.mkHeader .focalNavInner { grid-template-columns: auto minmax(0, 1fr) auto auto !important; } }
 html body.mk .mkDeliveryChip svg { flex: none; color: var(--mk-red); }
 html body.mk .mkDeliveryChip--search { display: none; }
 @media (max-width: 900px) {
