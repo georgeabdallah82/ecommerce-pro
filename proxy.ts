@@ -71,6 +71,9 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   if (wwwTarget) return NextResponse.redirect(wwwTarget, 308)
 
   const pathname = request.nextUrl.pathname
+  // A path with broken percent-encoding (for example /product/%E0%A4%A) matches no page, and Next answers it with a
+  // bare 500 while it matches the route. Show the normal not-found page instead, before any route is matched.
+  try { decodeURIComponent(pathname) } catch { return NextResponse.rewrite(new URL('/not-found-page', request.url)) }
   const nonce = btoa(crypto.randomUUID())
   const isThemePreview = pathname === '/theme-editor-preview'
   // The theme editor's live preview (components/theme-preview-frame.tsx) embeds this one route
