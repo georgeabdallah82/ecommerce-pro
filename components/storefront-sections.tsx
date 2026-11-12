@@ -1,9 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import {ArrowRight,Award,Baby,Bath,BedDouble,Boxes,Briefcase,Check,ChevronDown,ChevronRight,CookingPot,CupSoda,Droplets,Flame,Gift,Heart,Headphones,House,Leaf,Lock,Milk,Minus,Package,PawPrint,Percent,Play,Plug,Plus,RotateCcw,ScrollText,Search,ShieldCheck,Shirt,ShoppingBag,ShoppingBasket,Sofa,Sparkles,SprayCan,Star,Truck,WashingMachine,X,Zap,type LucideIcon} from 'lucide-react'
+import {ArrowRight,Award,Check,ChevronDown,ChevronRight,Heart,Headphones,Lock,Minus,Play,Plus,RotateCcw,Search,ShieldCheck,ShoppingBag,Star,Truck,X,Zap} from 'lucide-react'
+import {GLYPH_ICONS} from '@/components/department-glyph'
 import {createElement,useContext,useEffect,useMemo,useState} from 'react'
-import {categoryGlyph,type CategoryGlyph} from '@/lib/category-glyph'
+import {categoryGlyph} from '@/lib/category-glyph'
 import {useCart} from '@/components/cart-provider'
 import NewsletterForm from '@/components/newsletter-form'
 import {StorefrontPreviewContext} from '@/components/preview-context'
@@ -34,7 +35,6 @@ export function StoreImage({src,alt,className,eager=false,width,height}:{src:any
 // Category circle: the photo, or a neutral tile with an icon until it has one (never a letter, never a blank disc).
 // A category without a photo shows a department glyph picked from its name (lib/category-glyph.ts): one set of
 // line icons, so the strip reads as departments rather than repeated placeholders.
-const GLYPH_ICONS:Record<CategoryGlyph,LucideIcon>={trending:Flame,featured:Star,new:Sparkles,bulk:Boxes,sale:Percent,paper:ScrollText,laundry:WashingMachine,cleaning:SprayCan,kitchen:CookingPot,drinks:CupSoda,bottles:Milk,grocery:ShoppingBasket,bath:Bath,pets:PawPrint,baby:Baby,care:Droplets,garden:Leaf,bedding:BedDouble,furniture:Sofa,electronics:Plug,office:Briefcase,fashion:Shirt,gifts:Gift,storage:Package,home:House,other:ShoppingBag}
 // The photo is decorative: the category's name is right beside it, so it would otherwise be read twice. A product
 // photo (contain) sits on white with room around it; a collection photo the merchant chose (cover) fills the tile.
 export function CategoryIcon({name,src,contain=false}:{name:string;src?:any;contain?:boolean}){const [failed,setFailed]=useState(false);const photo=img(src);const real=photo&&!photo.includes('placeholder-product')&&!failed;return <span className={`aliCategoryIcon ${real?(contain?'isProductPhoto':'isPhoto'):'isGlyph'}`}>{real?<img src={photo} alt="" loading="lazy" decoding="async" onError={()=>setFailed(true)}/>:createElement(GLYPH_ICONS[categoryGlyph(name)],{size:32,strokeWidth:1.6,'aria-hidden':true})}</span>}

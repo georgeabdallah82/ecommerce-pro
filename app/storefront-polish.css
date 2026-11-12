@@ -1,0 +1,43 @@
+/* Store polish (November 2026), imported last (app/layout.tsx). See docs/store-polish-2026-11.md.
+   Collections without a photo of their own, the product photos on phones, and the search box. The identity passes
+   in storefront-market.css set the look; this file keeps it. */
+
+/* ---------------- Collections without a photo ---------------- */
+/* A collection with no photo of its own and no product photo showed the stock placeholder, a grey box, on the
+   collections page and in the menus. It now shows its department's glyph (components/department-glyph.tsx), on
+   the brand cream, like the homepage's category strip. */
+html body.mk .collectionArt { display: grid; place-items: center; width: 100%; height: 100%; background: radial-gradient(120% 90% at 28% 18%, #fff 0%, var(--br-cream, #fff1e6) 64%); color: var(--mk-ink); }
+html body.mk .collectionArt svg { width: 56px; height: 56px; }
+html body.mk :is(.mkMenuTileImg, .mkCatsTileImg) .mkTileGlyph { display: grid; place-items: center; width: 100%; height: 100%; background: var(--br-cream, #fff1e6); color: var(--mk-ink); }
+html body.mk .mkMenuTileImg .mkTileGlyph svg { width: 34px; height: 34px; }
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  html body.mk .collectionArt svg { transition: transform .35s cubic-bezier(.3, 1.5, .5, 1); }
+  html body.mk .focalCollectionCard:hover .collectionArt svg { transform: scale(1.08) rotate(-4deg); }
+}
+
+/* ---------------- Product photos, phones ---------------- */
+/* "1 / 2" on the photo, so a swipe for the next one is expected (components/aliexpress-product.tsx). It sits at the
+   start of the bottom edge; the zoom button sits at the end. */
+.pdpPhotoCount { display: none; }
+@media (max-width: 899px) {
+  html body.mk .pdpPhotoCount { display: block; position: absolute; inset-block-end: 12px; inset-inline-start: 12px; z-index: 2; padding: 5px 11px; border-radius: 999px; background: rgba(18, 18, 18, .62); color: #fff; font-size: 12.5px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; pointer-events: none; }
+}
+
+/* ---------------- Search box (phones' search overlay) ---------------- */
+/* The field drew the store's square focus outline inside the rounded card. It is now a rounded field of its own,
+   so the outline follows its corners. */
+html body.mk .focalSearchHeader input { min-width: 0; border-radius: 10px; padding-inline: 12px; background: var(--mk-well, #f1f1ef); }
+html body.mk .focalSearchHeader input:focus-visible { outline: 2px solid var(--mk-red, #d7261e); outline-offset: 2px; }
+
+/* ---------------- Product photos: turning ---------------- */
+/* A photo the shopper turns to (thumbnail, swipe or option) fades in instead of snapping. Never the first photo,
+   which is the page's largest paint (components/aliexpress-product.tsx). */
+@media (prefers-reduced-motion: no-preference) {
+  html body.mk .aliProductMainImage.isTurned img { animation: pdpPhotoIn .32s ease-out; }
+}
+@keyframes pdpPhotoIn { from { opacity: .35; transform: scale(1.015); } }
+
+/* ---------------- Sale prices on product cards ---------------- */
+/* The old price of a product on sale (struck through) was #9ca3af on the page, 2.3:1. The theme's muted ink reads at
+   5.8:1 and still sits back behind the price. */
+html body.mk .mkCardPrice del { color: var(--mk-muted, #5b616b); }

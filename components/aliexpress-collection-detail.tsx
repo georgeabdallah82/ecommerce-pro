@@ -6,6 +6,7 @@ import { useMemo, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import StorefrontSections, { ProductCard, QuickView, StoreImage } from '@/components/storefront-sections'
 import { useWishlist } from '@/components/use-wishlist'
+import { realPhoto } from '@/lib/collection-photo'
 
 type AnyMap = Record<string, any>
 
@@ -37,9 +38,10 @@ export default function AliExpressCollectionDetail({ theme, collection, products
           <span>{collection.name}</span>
         </div>
       )}
-      {showImage ? (
+      {/* The photo banner needs a photo: without one (or with the stock placeholder) the title stands on its own. */}
+      {showImage && realPhoto(collection.imageUrl) ? (
         <div className="aliCollectionBanner">
-          <StoreImage src={collection.imageUrl || '/placeholder-product.svg'} alt={collection.name} eager />
+          <StoreImage src={collection.imageUrl} alt={collection.name} eager />
           <div className="aliCollectionBannerOverlay">
             <div className="aliContainer">
               <span className="focalEyebrow">{t('COLLECTION')}</span>

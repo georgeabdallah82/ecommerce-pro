@@ -1,6 +1,7 @@
 import { db } from '@/lib/prisma'
 import { json } from '@/lib/utils'
 import { getUnpublishedProductIds } from '@/lib/sales-channels'
+import { collectionPhoto } from '@/lib/collection-photo'
 
 // Active collections for the storefront menu ("All categories" and the phone menu): name, link,
 // picture (its own, or its first product's) and how many products it shows.
@@ -20,7 +21,7 @@ export async function GET() {
       const visible = c.products.filter(x => x.product?.status === 'ACTIVE' && !unpublished.has(x.productId))
       return {
         id: c.id, name: c.name, slug: c.slug,
-        imageUrl: c.imageUrl || visible.map(x => (x.product as any)?.images?.[0]?.url).find(Boolean) || null,
+        imageUrl: collectionPhoto(c.imageUrl, visible.map(x => (x.product as any)?.images?.[0]?.url)),
         count: visible.length,
       }
     }).filter(c => c.count > 0)

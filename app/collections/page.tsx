@@ -3,6 +3,7 @@ import { getThemeState } from '@/lib/theme'
 import { getUnpublishedProductIds } from '@/lib/sales-channels'
 import { Footer } from '@/components/footer'
 import AliExpressCollections from '@/components/aliexpress-collections'
+import { collectionPhoto } from '@/lib/collection-photo'
 import { getSiteSeo, metaText, shareMeta } from '@/lib/seo'
 import type { Metadata } from 'next'
 
@@ -32,8 +33,9 @@ export default async function Collections() {
   // already hides these same items, so the index must not advertise a count it can't show.
   const collections = rawCollections.map(({ products, ...c }) => {
     const visible = products.filter(x => x.product?.status === 'ACTIVE' && !unpublished.has(x.productId))
-    // A collection without its own picture shows its first product's photo, not a placeholder.
-    const imageUrl = c.imageUrl || visible.map(x => (x.product as any)?.images?.[0]?.url).find(Boolean) || null
+    // A collection without its own picture shows its first product's photo, and with neither, its department's
+    // glyph (lib/collection-photo.ts): never the stock placeholder.
+    const imageUrl = collectionPhoto(c.imageUrl, visible.map(x => (x.product as any)?.images?.[0]?.url))
     return { ...c, imageUrl, _count: { products: visible.length } }
   })
   return (
