@@ -363,8 +363,8 @@ export default function Checkout() {
     // A code typed but never applied: ask, rather than silently dropping it or failing the order.
     // One the server already turned down is simply left out.
     if (codeInput.trim() && codeInput.trim().toUpperCase() !== appliedCode && !codeMessage) {
-      setSummaryOpen(true); setCodeMessage('Tap Apply to use your discount code, or clear it.')
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      setCodeOpen(true); setCodeMessage('Tap Apply to use your discount code, or clear it.')
+      document.getElementById('co-discount')?.focus()
       return
     }
     const form = event.currentTarget; const fd = new FormData(form)
@@ -460,12 +460,6 @@ export default function Checkout() {
           <span className={`${s.itemPrice} ${s.free}`}>{t('Free')}</span>
         </li>}
       </ul>
-      {appliedCode && quote?.discountCode
-        ? <span className={s.applied}><Check size={14} /> {quote.discountCode}<button type="button" onClick={removeCode} aria-label={t('Remove discount code')}><X size={14} /></button></span>
-        : codeOpen
-          ? <div className={s.code}><input className={s.input} value={codeInput} onChange={e => { setCodeInput(e.target.value); setCodeMessage('') }} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); applyCode() } }} autoCapitalize="characters" autoFocus placeholder={t('Discount code')} aria-label={t('Discount code')} /><button type="button" className={s.codeBtn} onClick={applyCode} disabled={!codeInput.trim() || quoting}>{t('Apply')}</button></div>
-          : <button type="button" className={s.linkBtn} onClick={() => setCodeOpen(true)}>{t('Have a discount code?')}</button>}
-      {codeMessage && !appliedCode && <p className={s.codeError} role="alert">{t(codeMessage)}</p>}
       <div className={s.totals}>
         <div><span>{t('Subtotal')}</span><strong>{money(quote?.subtotal ?? subtotal)}</strong></div>
         {quote && quote.discount > 0 && <div className={s.saving}><span>{quote.discountCode ? t('Discount ({code})', { code: quote.discountCode }) : t('Discount')}</span><strong>−{money(quote.discount)}</strong></div>}
@@ -482,7 +476,7 @@ export default function Checkout() {
 
   return <main className={s.page}><div className={s.wrap}>
     <div className={s.head}><h1 className={s.title}>{t('Checkout')}</h1><span className={s.secure}><ShieldCheck size={16} /> {t('Secure checkout')}</span></div>
-    {summary}
+    <p className={s.totalBar}><span>{t('Total')}</span><strong>{money(total)}</strong></p>
     <form ref={formRef} className={s.form} onSubmit={submit} noValidate onInput={e => clearError((e.target as HTMLInputElement).name)}>
       <CartNotices />
       {!settings && <div className={s.info}>{t('Loading checkout settings…')}</div>}
@@ -567,6 +561,14 @@ export default function Checkout() {
         {paymentMethod === 'WALLET' && authenticated && <div className={s.note}><strong>{t('Store wallet')}</strong>{t('{amount} available for this order.', { amount: money(walletBalance, walletCurrency) })}</div>}
         {showBankDetails && <div className={s.note}><strong>{bankDetails.label ? t('Payment details') : t('Bank transfer details')}</strong>{bankDetails.bankName && <>{bankDetails.bankName}<br /></>}{bankDetails.accountName && <>{t('Account name:')} {bankDetails.accountName}<br /></>}{bankDetails.iban && <>{t('Account number:')} <span dir="ltr">{bankDetails.iban}</span></>}{bankDetails.instructions && <><br />{bankDetails.instructions}</>}{!bankDetails.bankName && !bankDetails.accountName && !bankDetails.iban && !bankDetails.instructions && t("We'll contact you with the bank details.")}</div>}
         {authenticated && coinBalance > 0 && <div className={s.note}><strong>{t('Use loyalty coins')}</strong><span className={s.small}>{t('1 coin = 0.01 in store currency.')}</span><div className={s.code} style={{ marginTop: 8 }}><input className={s.input} type="number" min="0" max={coinLimit} step="1" inputMode="numeric" value={coinsToUse || ''} onChange={e => setCoinsToUse(Math.max(0, Math.min(coinLimit, Number(e.target.value) || 0)))} placeholder={t('Coins to use')} aria-label={t('Coins to use')} /><button className={s.codeBtn} type="button" onClick={() => setCoinsToUse(coinLimit)} disabled={coinLimit <= 0}>{t('Use all')}</button></div><span className={s.small}>{t('Up to {amount} on this order.', { amount: money(coinLimit) })}</span>{quote?.coinsError && <p className={s.codeError} role="alert">{t(quote.coinsError)}</p>}</div>}
+        <div className={s.field}>
+          {appliedCode && quote?.discountCode
+            ? <span className={s.applied}><Check size={14} /> {quote.discountCode}<button type="button" onClick={removeCode} aria-label={t('Remove discount code')}><X size={14} /></button></span>
+            : codeOpen
+              ? <div className={s.code}><input id="co-discount" className={s.input} value={codeInput} onChange={e => { setCodeInput(e.target.value); setCodeMessage('') }} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); applyCode() } }} autoCapitalize="characters" autoFocus placeholder={t('Discount code')} aria-label={t('Discount code')} /><button type="button" className={s.codeBtn} onClick={applyCode} disabled={!codeInput.trim() || quoting}>{t('Apply')}</button></div>
+              : <button type="button" className={s.linkBtn} onClick={() => setCodeOpen(true)}>{t('Have a discount code?')}</button>}
+          {codeMessage && !appliedCode && <p className={s.codeError} role="alert">{t(codeMessage)}</p>}
+        </div>
         {appliedGiftCard
           ? <span className={s.applied}><Check size={14} /> {t('Gift card ending {last} applied', { last: appliedGiftCard.slice(-4) })}<button type="button" onClick={removeGiftCard} aria-label={t('Remove gift card')}><X size={14} /></button></span>
           : giftOpen
@@ -588,5 +590,6 @@ export default function Checkout() {
       </div>
       <Link className={s.back} href="/cart">{t('Back to cart')}</Link>
     </form>
+    {summary}
   </div></main>
 }

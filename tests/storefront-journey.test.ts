@@ -26,8 +26,8 @@ describe('storefront journey', () => {
     assert.match(css, /\.mkHeaderCheckout \.aliNavSearchWrap/)
     assert.match(css, /\.mkHeaderCheckout \.focalNavMobile/)
   })
-  it('shop page: the in-page search is hidden on phones but still sent with the sort form', () => {
-    assert.match(css, /@media \(max-width: 700px\) \{\s*\.aliShopToolbar \.aliShopSearch, \.aliShopToolbar button\[type=submit\] \{ display: none; \}/)
+  it('shop page: one search (the header); the sort form still sends the current search', () => {
+    assert.match(css, /\.aliShopToolbar select \{ margin-inline-start: auto; \}/)
     const shop = read('components/aliexpress-shop.tsx')
     assert.match(shop, /name="q"/)
     assert.match(shop, /onChange=\{e => e\.currentTarget\.form\?\.submit\(\)\}/)

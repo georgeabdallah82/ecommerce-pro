@@ -166,7 +166,8 @@ export function ProductTabs(c: Common) {
     // Before the first sale there is no best-seller list; a "Popular" tab would only repeat the New tab.
     if (s.showBest !== false && best.length) out.push({ key: 'best', label: s.bestLabel || tr('Best sellers'), items: best })
     if (s.showNew !== false) out.push({ key: 'new', label: s.newLabel || tr('New'), items: newest(products) })
-    return out.filter(l => l.items.length)
+    // A tab shows only when it can fill a row: one card reads as unfinished, so a shorter list is left out.
+    return out.filter(l => l.items.length >= n(s.minProducts, 4))
   }, [products, s.showDeals, s.showBest, s.showNew, s.dealsLabel, s.bestLabel, s.newLabel, tr])
   const [tab, setTab] = useState(0)
   const active = lists[Math.min(tab, lists.length - 1)]

@@ -85,10 +85,7 @@ export default function AliExpressShop({ theme, products, collections, query, se
             {query.collection && <input type="hidden" name="collection" value={query.collection} />}
             {query.min && <input type="hidden" name="min" value={query.min} />}
             {query.max && <input type="hidden" name="max" value={query.max} />}
-            <div className="aliShopSearch">
-              <Search size={16} />
-              <input type="text" name="q" aria-label={t('Search products')} placeholder={t('Search products…')} defaultValue={query.q} />
-            </div>
+            {query.q && <input type="hidden" name="q" value={query.q} />}
             {showSort && (
               <select name="sort" aria-label={t('Sort products')} defaultValue={sort} onChange={e => e.currentTarget.form?.submit()}>
                 <option value="newest">{t('Newest')}</option>
@@ -97,9 +94,7 @@ export default function AliExpressShop({ theme, products, collections, query, se
                 <option value="price_asc">{t('Price: low to high')}</option>
                 <option value="price_desc">{t('Price: high to low')}</option>
               </select>
-            )}
-            <button type="submit" className="focalButton primary">{t('Search')}</button>
-          </form>
+            )}          </form>
 
           {activeFilters.length > 0 && (
             <div className="shopActiveFilters">

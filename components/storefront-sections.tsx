@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import {ArrowRight,Award,Check,ChevronDown,ChevronRight,Heart,Headphones,Lock,Minus,Play,Plus,RotateCcw,Search,ShieldCheck,ShoppingBag,Star,Truck,X,Zap} from 'lucide-react'
+import {ArrowRight,Award,Check,ChevronDown,ChevronRight,Heart,Headphones,LayoutGrid,Lock,Minus,Play,Plus,RotateCcw,Search,ShieldCheck,ShoppingBag,Star,Truck,X,Zap} from 'lucide-react'
 import {useContext,useEffect,useMemo,useState} from 'react'
 import {useCart} from '@/components/cart-provider'
 import NewsletterForm from '@/components/newsletter-form'
@@ -11,7 +11,6 @@ import {useI18n} from '@/components/lang-provider'
 import { money as formatMoney } from '@/lib/config'
 import { FlashCountdown, useSelling } from '@/components/selling-client'
 import TrustIcon from '@/components/trust-icon'
-import { categoryInitial } from '@/lib/trust-icon'
 import { saleFor, salePrice } from '@/lib/flash-sale-shared'
 import { FreeDeliveryBadge, ShippingNote, merchantShippingText } from '@/components/shipping-note'
 import { sectionColors } from '@/lib/section-colors'
@@ -31,8 +30,8 @@ export function money(v:any,currency='USD'){return formatMoney(Number(v||0),curr
 const plainText=(v:any)=>String(v||'').replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/\s+/g,' ').trim()
 export {img}
 export function StoreImage({src,alt,className,eager=false,width,height}:{src:any;alt:string;className?:string;eager?:boolean;width?:number;height?:number}){const [failed,setFailed]=useState(false);const fallback='/placeholder-product.svg';const source=failed?fallback:(img(src)||fallback);return <img className={className} src={source} alt={alt} width={width} height={height} loading={eager?'eager':'lazy'} decoding="async" onError={()=>setFailed(true)}/>}
-// Category circle: the photo, or the category's first letter until it has one (never a blank disc).
-export function CategoryIcon({name,src}:{name:string;src?:any}){const [failed,setFailed]=useState(false);const photo=img(src);const real=photo&&!photo.includes('placeholder-product')&&!failed;return <span className="aliCategoryIcon">{real?<img src={photo} alt={name} loading="lazy" decoding="async" onError={()=>setFailed(true)}/>:<span className="aliCategoryInitial" aria-hidden="true">{categoryInitial(name)||'\u2022'}</span>}</span>}
+// Category circle: the photo, or a neutral tile with an icon until it has one (never a letter, never a blank disc).
+export function CategoryIcon({name,src}:{name:string;src?:any}){const [failed,setFailed]=useState(false);const photo=img(src);const real=photo&&!photo.includes('placeholder-product')&&!failed;return <span className="aliCategoryIcon">{real?<img src={photo} alt={name} loading="lazy" decoding="async" onError={()=>setFailed(true)}/>:<LayoutGrid size={22} aria-hidden="true" />}</span>}
 // On mobile, a merchant who never uploaded a dedicated mobile crop gets the
 // desktop banner reused verbatim -- but the mobile hero box is a different
 // (narrower, often taller) shape than a wide desktop banner, so `cover`

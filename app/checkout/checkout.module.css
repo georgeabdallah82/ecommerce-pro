@@ -29,6 +29,11 @@
 :global([dir="rtl"]) .page { --co-display: var(--store-font-heading), system-ui, sans-serif; }
 .secure { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--co-ok); }
 
+/* ---- Total above the form on phones; on desktop the summary is the column on the right ---- */
+.totalBar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 0; padding: 14px 16px; border: 1px solid var(--co-line); border-radius: var(--co-radius); background: var(--co-card); font-size: 14px; font-weight: 700; }
+.totalBar strong { font-size: 18px; font-weight: 800; }
+@media (min-width: 960px) { .totalBar { display: none; } }
+
 /* ---- Order summary ---- */
 .summary { background: var(--co-card); border: 1px solid var(--co-line); border-radius: var(--co-radius); overflow: hidden; }
 @media (min-width: 960px) { .summary { position: sticky; top: 20px; grid-column: 2; grid-row: 2; } }

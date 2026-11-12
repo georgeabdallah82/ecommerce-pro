@@ -22,29 +22,28 @@ export function readDeliveryArea(): string {
   try { return localStorage.getItem(DELIVERY_AREA_KEY) || '' } catch { return '' }
 }
 
-export function DeliveryBar({ theme }: { theme: any }) {
+export function DeliveryBar({ theme, variant = 'header' }: { theme: any; variant?: 'header' | 'search' }) {
   const d = theme.delivery || {}
   const areas = parseDeliveryAreas(d.areas)
   const [area, setArea] = useState('')
   const { t } = useI18n()
   const pathname = usePathname()
-  useEffect(() => { const saved = readDeliveryArea(); if (saved) setArea(saved) }, [])
+  // The header has one chip and the logo has another (only one shows at a time); both follow the same choice.
+  useEffect(() => { const sync = () => setArea(readDeliveryArea()); sync(); window.addEventListener(DELIVERY_AREA_EVENT, sync); return () => window.removeEventListener(DELIVERY_AREA_EVENT, sync) }, [])
   // The cart and checkout have their own delivery details, so the strip would only push them down.
   if (d.enabled === false || !areas.length || /^\/(cart|checkout|order)(\/|$)/.test(pathname || '')) return null
   const current = areas.find(a => a.name === area) || areas[0]
   const choose = (name: string) => { setArea(name); try { localStorage.setItem(DELIVERY_AREA_KEY, name) } catch {} window.dispatchEvent(new Event(DELIVERY_AREA_EVENT)) }
+  const small = [current.eta ? `${d.etaLabel || t('Delivery')}: ${current.eta}` : '', d.note || ''].filter(Boolean).join(' · ')
   return (
-    <div className="mkDelivery" role="region" aria-label={t('Delivery')}>
-      <div className="mkWrap mkDeliveryInner">
-        <MapPin size={16} className="mkDeliveryPin" aria-hidden="true" />
-        <label>{d.label || t('Delivering to')}{' '}
-          <select value={current.name} onChange={e => choose(e.target.value)} aria-label={t('Delivery area')}>
-            {areas.map(a => <option key={a.name} value={a.name}>{a.name}</option>)}
-          </select>
-        </label>
-        {current.eta ? <><span className="mkSep" aria-hidden="true">|</span><span>{d.etaLabel || t('Delivery')}: <b>{current.eta}</b></span></> : null}
-        {d.note ? <><span className="mkSep" aria-hidden="true">|</span><span className="mkDeliveryNote">{d.note}</span></> : null}
-      </div>
+    <div className={`mkDeliveryChip mkDeliveryChip--${variant}`} role="region" aria-label={t('Delivery')}>
+      <MapPin size={14} aria-hidden="true" />
+      <label><span className="mkDeliveryLabel">{d.label || t('Delivering to')}</span>{' '}
+        <select value={current.name} onChange={e => choose(e.target.value)} aria-label={t('Delivery area')}>
+          {areas.map(a => <option key={a.name} value={a.name}>{a.name}</option>)}
+        </select>
+      </label>
+      {small && <small>{small}</small>}
     </div>
   )
 }
