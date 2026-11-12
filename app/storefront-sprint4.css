@@ -1,0 +1,50 @@
+/* UX sprint 4: the category strip, the cart's checkboxes and the sign-in page. Imported last (app/layout.tsx),
+   so these rules win over the earlier stylesheets. */
+
+/* Category strip: one row of tinted tiles. On a computer the tiles share the width of the row; on a phone the row
+   swipes, as the market design already does. The focus ring stays visible for keyboard users. */
+html body.mk .aliCategoryRow { display: grid !important; grid-auto-flow: column !important; grid-template-columns: none !important; grid-auto-columns: minmax(104px, 1fr) !important; gap: 16px !important; align-items: start !important; overflow-x: auto !important; scrollbar-width: none !important; padding: 6px 2px 10px !important; }
+html body.mk .aliCategoryItem { width: 100% !important; min-width: 0; display: grid; justify-items: center; gap: 10px; text-align: center; }
+html body.mk .aliCategoryIcon { position: relative; width: 100% !important; max-width: 150px; height: auto !important; aspect-ratio: 1 / 1; justify-self: center; border: 0 !important; border-radius: 24px !important; box-shadow: none !important; padding: 0 !important; display: grid; place-items: center; overflow: hidden; background: var(--cat-tint, var(--mk-well)) !important; transition: transform .2s ease, box-shadow .2s ease; }
+html body.mk .aliCategoryIcon img { position: absolute; inset: 0; width: 100% !important; height: 100% !important; object-fit: cover; }
+html body.mk .aliCategoryIcon > svg { width: 36px; height: 36px; color: var(--cat-ink, var(--mk-muted)); }
+html body.mk .aliCategoryItem > span:last-child { font-size: 14px; font-weight: 700; line-height: 1.25; color: var(--mk-ink); }
+html body.mk .aliCategoryItem:hover .aliCategoryIcon { transform: translateY(-3px); box-shadow: 0 16px 28px -16px var(--cat-ink, #000) !important; }
+html body.mk .aliCategoryItem:focus-visible .aliCategoryIcon { transform: translateY(-3px); box-shadow: 0 0 0 2px var(--mk-ink) !important; }
+html body.mk .aliCategoryItem:nth-child(5n+1) { --cat-tint: #fde9e4; --cat-ink: #b42318; }
+html body.mk .aliCategoryItem:nth-child(5n+2) { --cat-tint: #e6f3ea; --cat-ink: #166534; }
+html body.mk .aliCategoryItem:nth-child(5n+3) { --cat-tint: #e7eefc; --cat-ink: #1d4ed8; }
+html body.mk .aliCategoryItem:nth-child(5n+4) { --cat-tint: #fdf3d8; --cat-ink: #92400e; }
+html body.mk .aliCategoryItem:nth-child(5n+5) { --cat-tint: #f1e9fb; --cat-ink: #6d28d9; }
+@media (max-width: 600px) {
+  html body.mk .aliCategoryRow { gap: 12px !important; }
+}
+
+/* Cart checkboxes: a 22 px box drawn inside a 44 px touch target. The real checkbox covers the whole target, so it
+   stays keyboard-accessible and clicking anywhere on the target ticks it. */
+html body.mk .aliCartRowCheckHit { position: relative; display: grid; place-items: center; width: 44px; height: 44px; cursor: pointer; }
+html body.mk .aliCartRowCheckHit::before { content: ""; width: 22px; height: 22px; box-sizing: border-box; border: 1.5px solid #b9b9b1; border-radius: 6px; background: #fff; transition: background-color .15s ease, border-color .15s ease; }
+html body.mk .aliCartRowCheckHit:has(input:checked)::before { border-color: var(--mk-red); background: var(--mk-red) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 14px no-repeat; }
+html body.mk .aliCartRowCheckHit:focus-within::before { outline: 2px solid var(--mk-ink); outline-offset: 2px; }
+html body.mk .aliCartRowCheckHit > input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+html body.mk .aliCartCheck { position: relative; display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding-inline-start: 34px; cursor: pointer; font-weight: 700; }
+html body.mk .aliCartCheck::before { content: ""; position: absolute; inset-inline-start: 6px; top: 50%; width: 22px; height: 22px; transform: translateY(-50%); box-sizing: border-box; border: 1.5px solid #b9b9b1; border-radius: 6px; background: #fff; transition: background-color .15s ease, border-color .15s ease; }
+html body.mk .aliCartCheck:has(input:checked)::before { border-color: var(--mk-red); background: var(--mk-red) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 14px no-repeat; }
+html body.mk .aliCartCheck:focus-within::before { outline: 2px solid var(--mk-ink); outline-offset: 2px; }
+html body.mk .aliCartCheck > input { position: absolute; inset-inline-start: 0; top: 0; width: 44px; height: 44px; margin: 0; opacity: 0; cursor: pointer; }
+
+/* Sign-in: a brand panel beside the form on computers. Phones keep the form alone. */
+html body.mk .authLayout { display: grid; gap: 40px; align-items: center; }
+html body.mk .authMain { width: 100%; max-width: 520px; justify-self: center; }
+html body.mk .authPanel { display: none; }
+@media (min-width: 900px) {
+  html body.mk .authLayout { grid-template-columns: minmax(0, 1fr) minmax(0, 520px); }
+  html body.mk .authMain { justify-self: start; }
+  html body.mk .authPanel { position: relative; display: grid; align-content: center; gap: 14px; min-height: 420px; padding: 44px; border-radius: 28px; overflow: hidden; color: #fff; background: radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--mk-red) 82%, #000) 0%, var(--mk-red) 56%, color-mix(in srgb, var(--mk-red) 70%, #5a0a06) 100%); box-shadow: 0 24px 60px color-mix(in srgb, var(--mk-red) 25%, transparent); }
+  html body.mk .authPanel::after { content: ""; position: absolute; inset-inline-end: -70px; bottom: -80px; width: 280px; height: 280px; border-radius: 50%; background: rgba(255, 255, 255, .08); }
+  html body.mk .authPanelTitle { position: relative; margin: 0; font-size: 42px; line-height: 1.05; letter-spacing: -.03em; font-weight: 800; }
+  html body.mk .authPanelLead { position: relative; margin: 0; max-width: 380px; font-size: 16px; line-height: 1.55; opacity: .92; }
+  html body.mk .authPerks { position: relative; list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 12px; }
+  html body.mk .authPerks li { display: flex; align-items: center; gap: 10px; font-weight: 650; }
+  html body.mk .authPerks li::before { content: ""; flex: none; width: 22px; height: 22px; border-radius: 50%; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d7261e' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12.5l4 4L18 8'/%3E%3C/svg%3E") center / 13px no-repeat; }
+}

@@ -1017,4 +1017,10 @@ export const AR: Record<string, string> = {
   "We couldn't update your total.": "تعذّر تحديث مجموع طلبك.",
   "Calculating total…": "جارٍ حساب المجموع…",
   "Updating total…": "جارٍ تحديث المجموع…",
+  "Welcome back": "أهلاً بعودتك",
+  "Your orders, addresses and wishlist, in one place.": "طلباتك وعناوينك وقائمة أمنياتك في مكان واحد.",
+  "Track every order": "تابع كل طلباتك",
+  "Keep your wishlist and addresses": "احفظ قائمة أمنياتك وعناوينك",
+  "Check out faster next time": "أكمل الشراء أسرع في المرة القادمة",
+  "Try a search, or start from one of these.": "ابحث، أو ابدأ من أحد هذه الروابط.",
 }
