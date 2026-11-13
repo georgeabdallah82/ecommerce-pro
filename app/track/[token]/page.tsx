@@ -4,6 +4,7 @@ import { db } from '@/lib/prisma'
 import { StoreFooter } from '@/components/store-footer'
 import DeliveryTrackingMap from '@/components/delivery-tracking-map'
 import { getT } from '@/lib/i18n-server'
+import { getCurrentUser } from '@/lib/auth'
 
 export default async function DeliveryTrackingPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
@@ -28,6 +29,8 @@ export default async function DeliveryTrackingPage({ params }: { params: Promise
     pollingSeconds: 15,
   }
 
-  const t = await getT()
-  return <><main className="section"><div className="container" style={{maxWidth:960}}><Link className="textLink" href="/account">{t('Back to account')}</Link><div style={{marginTop:18}}><DeliveryTrackingMap token={token} initial={initial}/></div></div></main><StoreFooter /></>
+  const [t, user] = await Promise.all([getT(), getCurrentUser().catch(() => null)])
+  // The link usually reaches a guest by WhatsApp: "Back to account" only led them to sign in.
+  const back = user ? { href: '/account', label: t('Back to account') } : { href: '/shop', label: t('Continue shopping') }
+  return <><main className="section"><div className="container" style={{maxWidth:960}}><Link className="textLink" href={back.href}>{back.label}</Link><div style={{marginTop:18}}><DeliveryTrackingMap token={token} initial={initial}/></div></div></main><StoreFooter /></>
 }

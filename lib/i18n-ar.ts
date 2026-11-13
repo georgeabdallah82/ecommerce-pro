@@ -448,6 +448,8 @@ export const AR: Record<string, string> = {
   "Earned": "نقاط مكتسبة",
   "Used at checkout": "استُخدمت عند الدفع",
   "No questions yet. Ask one and we will answer it here.": "لا توجد أسئلة بعد. اطرح سؤالك وسنجيب عنه هنا.",
+  "Read the article": "اقرأ المقال",
+  "More from the blog": "المزيد من المدونة",
   "Play slides": "تشغيل الشرائح",
   "Deals": "العروض",
   "Best sellers": "الأكثر مبيعاً",

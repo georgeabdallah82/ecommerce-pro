@@ -1,0 +1,71 @@
+/* Content pages (November 2026), imported last (app/layout.tsx). See docs/store-content-2026-11.md.
+   The blog and the live delivery tracking page. The identity passes in storefront-market.css set the look; this file
+   keeps it. */
+
+/* ---------------- Blog ---------------- */
+/* The newest post leads as a wide card, the rest follow in a grid, and an article ends with more posts
+   (components/blog-views.tsx). It was a list of small thumbnails. Headings keep the store's heading font
+   (storefront-legacy.css sets it with !important inside the storefront). */
+html body.mk .blogIndex { padding-bottom: 64px; }
+html body.mk .blogFilter { margin: -6px 0 18px; color: var(--mk-muted, #5b616b); font-size: 14px; }
+html body.mk .blogCard { display: grid; grid-template-rows: auto 1fr; overflow: hidden; border: 1px solid var(--mk-line); border-radius: 18px; background: var(--mk-card); }
+html body.mk .blogCardImage { display: block; aspect-ratio: 16 / 10; overflow: hidden; background: var(--br-cream, #fff1e6); }
+html body.mk .blogCardImage img { display: block; width: 100%; height: 100%; object-fit: cover; }
+html body.mk .blogCardImage.isEmpty { display: grid; place-items: center; color: var(--br-red, #d7261e); }
+html body.mk .blogCardBody { display: grid; align-content: start; gap: 8px; padding: 18px 20px 22px; }
+html body.mk .blogCardDate { color: var(--mk-muted, #5b616b); font-size: 13px; }
+html body.mk .blogCardTitle { margin: 0; font-size: 20px; line-height: 1.25; letter-spacing: -.01em; }
+html body.mk .blogCardTitle a { color: inherit; text-decoration: none; }
+html body.mk .blogCardTitle a:hover { text-decoration: underline; text-underline-offset: 3px; }
+html body.mk .blogCardExcerpt { display: -webkit-box; margin: 0; overflow: hidden; color: var(--mk-muted, #5b616b); font-size: 15px; line-height: 1.55; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+html body.mk .blogCardMore { display: inline-flex; align-items: center; gap: 6px; width: fit-content; margin-top: 6px; color: var(--mk-ink); font-size: 14.5px; font-weight: 700; text-decoration: none; }
+html[dir="rtl"] body.mk .blogCardMore svg { transform: scaleX(-1); }
+/* 44 px to tap on touch screens, like the store's other links on their own line ("Back to blog" too). */
+@media (pointer: coarse) { html body.mk .blogCardMore { min-height: 44px; } }
+html body.mk .aliLegalPage > a.textLink:first-child { display: inline-flex; align-items: center; min-height: 44px; }
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  html body.mk .blogCardImage img { transition: transform .45s cubic-bezier(.2, .7, .2, 1); }
+  html body.mk .blogCard:hover .blogCardImage img { transform: scale(1.03); }
+}
+html body.mk .blogCard.isFeatured { margin-bottom: 18px; }
+html body.mk .blogCard.isFeatured .blogCardTitle { font-size: clamp(24px, 3vw, 32px); line-height: 1.15; }
+@media (min-width: 800px) {
+  html body.mk .blogCard.isFeatured { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); grid-template-rows: none; }
+  /* The photo fills its half without setting the card's height (a tall photo made the card 660 px). */
+  html body.mk .blogCard.isFeatured .blogCardImage { position: relative; aspect-ratio: auto; min-height: 360px; }
+  html body.mk .blogCard.isFeatured .blogCardImage img { position: absolute; inset: 0; }
+  html body.mk .blogCard.isFeatured .blogCardBody { align-content: center; gap: 12px; padding: 34px 38px; }
+}
+html body.mk .blogGrid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+/* Tags: chips, 44 px tall on touch screens. */
+html body.mk .blogTags { display: flex; flex-wrap: wrap; gap: 8px; }
+html body.mk .blogTag { display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px; border-radius: 999px; background: var(--mk-well, #f1f1ef); color: var(--mk-ink); font-size: 13px; font-weight: 600; text-decoration: none; }
+html body.mk .blogTag:hover { background: var(--br-cream, #fff1e6); }
+@media (pointer: coarse) { html body.mk .blogTag { min-height: 44px; padding: 0 14px; } }
+html body.mk .blogPostTags { margin-top: 28px; }
+html body.mk .blogMore { padding-block: 8px 64px; }
+html body.mk .blogEmpty { display: grid; justify-items: center; gap: 10px; max-width: 560px; margin: 8px auto 24px; padding: 48px 24px; border: 1px solid var(--mk-line, #ececec); border-radius: 22px; background: var(--mk-card, #fff); text-align: center; }
+html body.mk .blogEmptyIcon { display: grid; place-items: center; width: 58px; height: 58px; border-radius: 18px; background: var(--br-cream, #fff1e6); color: var(--br-red, #d7261e); }
+html body.mk .blogEmpty h2 { margin: 0 0 8px; font-size: 22px; }
+
+/* ---------------- Live delivery tracking ---------------- */
+/* components/delivery-tracking-map.tsx. Its cards sat against each other (a spacing class the store does not have),
+   the status was in English capitals in a pink pill, and the time showed seconds. */
+html body.mk .trackPage { display: grid; gap: 16px; }
+html body.mk .trackCard { padding: 22px; }
+html body.mk .trackHead { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px 16px; padding-bottom: 18px; border-bottom: 1px solid var(--mk-line); }
+html body.mk .trackEyebrow { display: block; color: var(--mk-muted, #5b616b); font-size: 12px; font-weight: 700; letter-spacing: .06em; }
+html body.mk .trackTitle { margin: 4px 0 0; font-family: var(--mk-display); font-size: clamp(26px, 4vw, 38px); font-weight: 700; line-height: 1.08; letter-spacing: -.02em; }
+html body.mk .trackHead .pill { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+html body.mk .trackTiles { display: grid; gap: 12px; margin-top: 18px; }
+@media (min-width: 640px) { html body.mk .trackTiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+html body.mk .trackTile { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 12px; row-gap: 2px; align-items: center; padding: 14px 16px; border: 1px solid var(--mk-line); border-radius: 14px; }
+html body.mk .trackTileIcon { grid-row: span 3; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--br-cream, #fff1e6); color: var(--br-red, #d7261e); }
+html body.mk .trackTile strong { font-size: 20px; line-height: 1.2; }
+html body.mk .trackTile small { font-size: 13px; }
+html body.mk .trackMap { overflow: hidden; border: 1px solid var(--mk-line); border-radius: 18px; background: var(--mk-well, #f1f1ef); }
+html body.mk .trackMap iframe { display: block; width: 100%; height: 320px; border: 0; }
+@media (min-width: 640px) { html body.mk .trackMap iframe { height: 430px; } }
+html body.mk .trackNoMap { display: flex; align-items: center; gap: 8px; padding: 18px; }
+html body.mk .trackFoot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+html body.mk .trackFoot .muted { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
