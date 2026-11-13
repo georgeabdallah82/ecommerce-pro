@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Gift, X } from 'lucide-react'
 import { useI18n } from '@/components/lang-provider'
+import { useModalFocus } from '@/components/use-modal-focus'
 
 export const INVITE_STORAGE_KEY = 'yh-invite-v1'
 
@@ -38,16 +39,20 @@ export default function InviteLanding() {
     return () => { active = false }
   }, [])
 
-  if (!invite) return null
+  // Focus moves to "Start shopping" and stays in the box; Escape closes it (components/use-modal-focus.ts). The box's
+  // sentence is read with its title.
   const close = () => setInvite(null)
-  return <div className="welcomePop" role="dialog" aria-modal="true" aria-labelledby="invite-title" onClick={e => { if (e.target === e.currentTarget) close() }}>
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useModalFocus(dialogRef, !!invite, close)
+  if (!invite) return null
+  return <div ref={dialogRef} className="welcomePop" role="dialog" aria-modal="true" aria-labelledby="invite-title" aria-describedby="invite-text" tabIndex={-1} onClick={e => { if (e.target === e.currentTarget) close() }}>
     <div className="welcomeCard">
       <button type="button" className="welcomeClose" onClick={close} aria-label={t('Close')}><X size={20} /></button>
       <Gift size={34} aria-hidden="true" style={{ margin: '0 auto', color: 'var(--store-primary, #d7261e)' }} />
       <h2 id="invite-title">{invite.name ? t('{name} invited you!', { name: invite.name }) : t('A friend invited you!')}</h2>
-      <p>{t('You get {percent}% off your first order. Your code is saved for checkout.', { percent: invite.percent })}</p>
+      <p id="invite-text">{t('You get {percent}% off your first order. Your code is saved for checkout.', { percent: invite.percent })}</p>
       <div className="welcomeCode" dir="ltr">{invite.code}</div>
-      <button type="submit" onClick={close}>{t('Start shopping')}</button>
+      <button data-autofocus type="button" className="welcomeStart" onClick={close}>{t('Start shopping')}</button>
     </div>
   </div>
 }

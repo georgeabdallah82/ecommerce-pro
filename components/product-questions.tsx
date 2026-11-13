@@ -57,7 +57,8 @@ export default function ProductQuestions({ productId, questions }: { productId: 
         ? <button type="button" className="aliQaAsk" onClick={() => setOpen(true)}><MessageCircleQuestion size={18} /> {t('Ask a question')}</button>
         : <form className="aliQaForm" onSubmit={submit} noValidate>
           <label><span>{t('Your question')}</span>
-            <textarea rows={3} maxLength={500} value={question} onChange={e => setQuestion(e.target.value)} placeholder={t('e.g. Is it suitable for children?')} dir="auto" required />
+            {/* The form replaces the button that opened it: focus moves to the question instead of the top of the page. */}
+            <textarea autoFocus rows={3} maxLength={500} value={question} onChange={e => setQuestion(e.target.value)} placeholder={t('e.g. Is it suitable for children?')} dir="auto" required />
           </label>
           <label><span>{t('Your name')}</span>
             <input value={name} onChange={e => setName(e.target.value)} maxLength={60} autoComplete="given-name" dir="auto" required />

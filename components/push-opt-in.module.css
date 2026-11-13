@@ -78,3 +78,9 @@
 @media (max-width: 600px) {
   .box { left: 12px; right: 12px; bottom: 12px; width: auto; }
 }
+
+/* 44 px to tap on touch screens: "Not now", "Yes, notify me" (42 px) and the close button (30 px). */
+@media (pointer: coarse) {
+  .primary, .secondary { min-height: 44px; }
+  .close { width: 44px; height: 44px; }
+}

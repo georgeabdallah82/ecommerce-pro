@@ -40,6 +40,7 @@ function ReviewForm({ productId }: { productId: string }) {
   const [error, setError] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const { t } = useI18n()
+  const ratingLabelId = useId()
 
   if (submitted) {
     return <div className="aliReviewFormDone"><Check size={18} /> {t("Thanks, your review was submitted and will appear once it's approved.")}</div>
@@ -66,17 +67,23 @@ function ReviewForm({ productId }: { productId: string }) {
 
   return (
     <div className="aliReviewForm">
-      <span className="aliReviewFormLabel">{t('Your rating')}</span>
-      <div className="aliReviewStarPicker" onMouseLeave={() => setHoverRating(0)}>
+      {/* The stars are a named group, and the chosen one says so (it showed only in colour). The fields have their
+          words as visible labels (they were placeholders only), and an error is read out. */}
+      <span className="aliReviewFormLabel" id={ratingLabelId}>{t('Your rating')}</span>
+      <div className="aliReviewStarPicker" role="group" aria-labelledby={ratingLabelId} onMouseLeave={() => setHoverRating(0)}>
         {[1, 2, 3, 4, 5].map(n => (
-          <button key={n} type="button" aria-label={t('{n} out of 5 stars', { n })} onMouseEnter={() => setHoverRating(n)} onClick={() => setRating(n)}>
+          <button key={n} type="button" aria-pressed={rating === n} aria-label={t('{n} out of 5 stars', { n })} onMouseEnter={() => setHoverRating(n)} onClick={() => setRating(n)}>
             <Star size={22} fill="currentColor" opacity={n <= (hoverRating || rating) ? 1 : 0.22} />
           </button>
         ))}
       </div>
-      <input className="aliReviewFormInput" type="text" placeholder={t('Review title (optional)')} maxLength={140} value={title} onChange={e => setTitle(e.target.value)} />
-      <textarea className="aliReviewFormInput" placeholder={t('Share details about your experience (optional)')} maxLength={2000} rows={4} value={body} onChange={e => setBody(e.target.value)} />
-      {error && <p className="aliReviewFormError">{error}</p>}
+      <label className="aliReviewFormField"><span className="aliReviewFormLabel">{t('Review title (optional)')}</span>
+        <input className="aliReviewFormInput" type="text" maxLength={140} value={title} onChange={e => setTitle(e.target.value)} dir="auto" />
+      </label>
+      <label className="aliReviewFormField"><span className="aliReviewFormLabel">{t('Share details about your experience (optional)')}</span>
+        <textarea className="aliReviewFormInput" maxLength={2000} rows={4} value={body} onChange={e => setBody(e.target.value)} dir="auto" />
+      </label>
+      {error && <p className="aliReviewFormError" role="alert">{error}</p>}
       <button type="button" className="focalButton primary" disabled={submitting} onClick={submit}>{submitting ? t('Submitting…') : t('Submit review')}</button>
     </div>
   )

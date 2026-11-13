@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { usePathname } from 'next/navigation'
 import { Check, Copy, Gift, X } from 'lucide-react'
 import { useI18n } from '@/components/lang-provider'
 import { useSelling } from '@/components/selling-client'
 import { INVITE_STORAGE_KEY } from '@/components/invite-landing'
+import { useModalFocus } from '@/components/use-modal-focus'
 
 const KEY = 'yh-welcome-v1'
 const SKIP = ['/checkout', '/cart', '/admin', '/account', '/order', '/review', '/orders', '/invoice', '/pay-invoice', '/track', '/theme-editor-preview', '/maintenance', '/driver']
@@ -43,6 +44,12 @@ export default function WelcomePopup() {
     setOpen(false)
     delete document.documentElement.dataset.welcomePopup
   }
+  // Focus moves to the number field and stays in the box; Escape closes it (components/use-modal-focus.ts). Once the
+  // code is there, focus moves to it, so it is read out.
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const codeRef = useRef<HTMLDivElement>(null)
+  useModalFocus(dialogRef, open && !!welcome, close)
+  useEffect(() => { if (code) codeRef.current?.focus() }, [code])
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -64,18 +71,18 @@ export default function WelcomePopup() {
   }
 
   if (!open || !welcome) return null
-  return <div className="welcomePop" role="dialog" aria-modal="true" aria-labelledby="welcome-title" onClick={e => { if (e.target === e.currentTarget) close() }}>
+  return <div ref={dialogRef} className="welcomePop" role="dialog" aria-modal="true" aria-labelledby="welcome-title" aria-describedby="welcome-text" tabIndex={-1} onClick={e => { if (e.target === e.currentTarget) close() }}>
     <div className="welcomeCard">
       <button type="button" className="welcomeClose" onClick={close} aria-label={t('Close')}><X size={20} /></button>
       <Gift size={34} aria-hidden="true" style={{ margin: '0 auto', color: 'var(--store-primary, #d7261e)' }} />
       <h2 id="welcome-title">{welcome.title || t('A gift for your first order')}</h2>
       {code ? <>
-        <p>{t('Here is your code. It is already saved for checkout.')}</p>
-        <div className="welcomeCode" dir="ltr">{code}<button type="button" onClick={() => { navigator.clipboard?.writeText(code).then(() => setCopied(true)).catch(() => {}) }}>{copied ? <Check size={14} /> : <Copy size={14} />} {copied ? t('Copied') : t('Copy')}</button></div>
-        <button type="submit" onClick={close}>{t('Start shopping')}</button>
+        <p id="welcome-text">{t('Here is your code. It is already saved for checkout.')}</p>
+        <div ref={codeRef} tabIndex={-1} className="welcomeCode" dir="ltr">{code}<button type="button" onClick={() => { navigator.clipboard?.writeText(code).then(() => setCopied(true)).catch(() => {}) }}>{copied ? <Check size={14} /> : <Copy size={14} />} {copied ? t('Copied') : t('Copy')}</button></div>
+        <button type="button" className="welcomeStart" onClick={close}>{t('Start shopping')}</button>
       </> : <form onSubmit={submit} style={{ display: 'grid', gap: 12 }}>
-        <p>{t('Enter your WhatsApp number and get your discount code now.')}</p>
-        <input type="tel" inputMode="tel" autoComplete="tel" dir="ltr" value={phone} onChange={e => setPhone(e.target.value)} placeholder={t('e.g. 70 123 456')} aria-label={t('WhatsApp number')} />
+        <p id="welcome-text">{t('Enter your WhatsApp number and get your discount code now.')}</p>
+        <input data-autofocus type="tel" inputMode="tel" autoComplete="tel" dir="ltr" value={phone} onChange={e => setPhone(e.target.value)} placeholder={t('e.g. 70 123 456')} aria-label={t('WhatsApp number')} />
         {error && <p className="welcomeError" role="alert">{error}</p>}
         <button type="submit" disabled={busy}>{busy ? t('Sending…') : t('Get my code')}</button>
         <p className="welcomeFine">{t('By sending your number you agree to get our offers on WhatsApp. You can stop anytime.')}</p>

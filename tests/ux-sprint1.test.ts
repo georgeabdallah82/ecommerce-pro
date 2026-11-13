@@ -78,7 +78,7 @@ test('the signed-in account link names the visible "Hi, name" text, and product 
   const nav = read('components/store-nav-fixed.tsx')
   assert.match(nav, /aria-label=\{shopper \? `\$\{t\('Hi, \{name\}', \{ name: shopper\.firstName \}\)\} \(\$\{t\('My account'\)\}\)` : t\('Account'\)\}/)
   const css = read('app/storefront-market.css')
-  for (const selector of ['.pdpZoomOpen { width: 44px; height: 44px; }', '.pdpPromise a { min-height: 44px; }', '.aliReviewSignInBtn { min-height: 44px; }', '.cartPage .qtyUX input { width: 44px; }', 'button[aria-label$="out of 5 stars"] { min-width: 44px; min-height: 44px; }', 'p.muted > a { display: inline-block; padding-block: 13px; margin-block: -13px; }']) {
+  for (const selector of ['.pdpZoomOpen { width: 44px; height: 44px; }', '.pdpPromise a { min-height: 44px; }', '.aliReviewSignInBtn { min-height: 44px; }', '.cartPage .qtyUX input { width: 44px; }', '.aliReviewStarPicker button { min-width: 44px; min-height: 44px; }', 'p.muted > a { display: inline-block; padding-block: 13px; margin-block: -13px; }']) {
     assert.ok(css.includes(selector), `missing ${selector}`)
   }
 })

@@ -1,0 +1,20 @@
+/* Pop-ups and small forms (November 2026), imported last (app/layout.tsx). See docs/store-interactive-2026-11.md.
+   The welcome offer, a friend's invite, the quick view, the notifications prompt, "Notify me when it's back", the
+   review form and the question form. Their keyboard rules are in components/use-modal-focus.ts. */
+
+/* Close buttons 44 px to tap on touch screens: the welcome and invite pop-ups (36 px) and the quick view (40 px). */
+@media (pointer: coarse) {
+  html body .welcomeClose { width: 44px; height: 44px; }
+  html body .focalStorefront .focalQuickClose, html body .focalQuickClose { width: 44px; height: 44px; }
+}
+
+/* The quick view's small label above the name ("PRODUCT" or the brand): plain 13 px dark grey, like the collection
+   pages' (it was 11 px on a cream pill, 4.3:1). */
+html body .focalQuickInfo .focalEyebrow { min-height: 0; padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: none !important; color: var(--mk-muted, #5b616b) !important; font-size: 13px !important; font-weight: 600 !important; letter-spacing: 0 !important; }
+
+/* The review form: each field under its label. */
+html body .aliReviewFormField { display: grid; gap: 6px; }
+
+/* 16 px in the review form's fields on touch screens (14 px made iPhones zoom into the page on tap), like the
+   question form's. */
+@media (pointer: coarse) { html body .aliReviewFormInput { font-size: 16px; } }

@@ -28,7 +28,7 @@
 .welcomeCard h2 { margin: 0; font-size: 24px; font-weight: 850; letter-spacing: -.02em; }
 .welcomeCard p { margin: 0; font-size: 14.5px; line-height: 1.5; color: var(--store-muted, #5b616b); }
 .welcomeCard input { width: 100%; box-sizing: border-box; min-height: 48px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--store-border, #e7e7e4); background: var(--store-surface, #fff); color: var(--store-text, #121212); font: inherit; font-size: 16px; }
-.welcomeCard button[type=submit] { min-height: 50px; border: 0; border-radius: 12px; background: var(--store-primary, #d7261e); color: #fff; font: inherit; font-size: 16px; font-weight: 800; cursor: pointer; }
+.welcomeCard button[type=submit], .welcomeCard .welcomeStart { min-height: 50px; border: 0; border-radius: 12px; background: var(--store-primary, #d7261e); color: #fff; font: inherit; font-size: 16px; font-weight: 800; cursor: pointer; }
 .welcomeClose { position: absolute; top: 10px; inset-inline-end: 10px; width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--store-muted, #5b616b); cursor: pointer; }
 .welcomeCode { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px; border: 2px dashed var(--store-primary, #d7261e); border-radius: 12px; font-size: 22px; font-weight: 900; letter-spacing: .08em; }
 .welcomeCode button { min-height: 36px; padding: 0 12px; border: 1px solid var(--store-border, #e7e7e4); border-radius: 10px; background: var(--store-surface, #fff); color: var(--store-text, #121212); font-size: 13px; font-weight: 700; cursor: pointer; letter-spacing: 0; }

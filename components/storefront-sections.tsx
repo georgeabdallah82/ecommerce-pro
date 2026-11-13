@@ -3,7 +3,8 @@
 import Link from 'next/link'
 import {ArrowRight,Award,Check,ChevronDown,ChevronRight,Heart,Headphones,Lock,Minus,Play,Plus,RotateCcw,Search,ShieldCheck,ShoppingBag,Star,Truck,X,Zap} from 'lucide-react'
 import {GLYPH_ICONS} from '@/components/department-glyph'
-import {createElement,useContext,useEffect,useMemo,useState} from 'react'
+import {createElement,useContext,useEffect,useId,useMemo,useRef,useState} from 'react'
+import {useModalFocus} from '@/components/use-modal-focus'
 import {categoryGlyph} from '@/lib/category-glyph'
 import {useCart} from '@/components/cart-provider'
 import NewsletterForm from '@/components/newsletter-form'
@@ -264,6 +265,11 @@ export function QuickView({product,theme,onClose}:{product:AnyMap;theme:AnyMap;o
   const image=product.images?.[0]?.url||'/placeholder-product.svg';
   const soldOut=Boolean(product.soldOut)||variant?.available===0;
   const maxQty=typeof variant?.available==='number'?Math.max(1,variant.available):99;
+  // A dialog with a name (the product's), and the keyboard rules of the store's pop-ups: focus moves in and stays,
+  // Escape closes it, and focus goes back to the card's button (components/use-modal-focus.ts).
+  const dialogRef=useRef<HTMLDivElement>(null);
+  const titleId=useId();
+  useModalFocus(dialogRef,true,onClose);
   const handleAdd=()=>{
     if(soldOut)return;
     setAdded(true);
@@ -272,16 +278,17 @@ export function QuickView({product,theme,onClose}:{product:AnyMap;theme:AnyMap;o
     setTimeout(()=>{setAdded(false);onClose()},600);
   };
   return (
-    <div className="focalModal" role="dialog" aria-modal="true" onClick={onClose}>
+    <div ref={dialogRef} className="focalModal" role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} onClick={onClose}>
       <div className="focalQuickView" onClick={e=>e.stopPropagation()}>
-        <button className="focalQuickClose" onClick={onClose} aria-label={t('Close quick view')}><X size={18}/></button>
+        <button type="button" className="focalQuickClose" onClick={onClose} aria-label={t('Close quick view')}><X size={18}/></button>
         <div className="focalQuickImage"><StoreImage src={image} alt={product.name} eager/></div>
         <div className="focalQuickInfo">
           <span className="focalEyebrow">{product.vendor||t('PRODUCT')}</span>
-          <h2>{product.name}</h2>
+          <h2 id={titleId}>{product.name}</h2>
           <div className="focalPrice big">{money(value,theme.currency||'USD')}</div>
           <p>{plainText(product.shortDescription||product.description)}</p>
-          {product.variants?.length>0&&<div className="focalVariantList">{product.variants.map((v:any)=><button key={v.id} className={variantId===v.id?'selected':''} disabled={v.available===0} aria-label={v.available===0?t('{name} (sold out)',{name:v.name}):undefined} onClick={()=>setVariantId(v.id)}>{v.name}{v.available===0?' · '+t('Sold out'):''}</button>)}</div>}
+          {/* The chosen option says so; a sold-out one is named by its own words ("Large · Sold out"). */}
+          {product.variants?.length>0&&<div className="focalVariantList" role="group" aria-label={t('Options')}>{product.variants.map((v:any)=><button key={v.id} type="button" aria-pressed={variantId===v.id} className={variantId===v.id?'selected':''} disabled={v.available===0} onClick={()=>setVariantId(v.id)}>{v.name}{v.available===0?' · '+t('Sold out'):''}</button>)}</div>}
           <div className="focalQty">
             <button onClick={()=>setQty(Math.max(1,qty-1))} aria-label={t('Decrease quantity')}><Minus size={14}/></button>
             <span>{qty}</span>
