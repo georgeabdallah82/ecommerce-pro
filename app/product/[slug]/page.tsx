@@ -2,7 +2,7 @@ import { cleanVideoUrl } from '@/lib/product-video'
 import { db } from '@/lib/prisma'
 import { getThemeState } from '@/lib/theme'
 import { getCurrentUser } from '@/lib/auth'
-import { getProductStats, withProductStats } from '@/lib/product-stats'
+import { getProductStats, getRatingCounts, withProductStats } from '@/lib/product-stats'
 import { CARD_STOCK_INCLUDE, SCHEMA_AVAILABILITY, SHARE_AVAILABILITY, stockLeft, stockState, withCardStock, type StockState } from '@/lib/card-stock'
 import { getUnpublishedProductIds } from '@/lib/sales-channels'
 import { getStorefrontSettings } from '@/lib/storefront-settings'
@@ -175,7 +175,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   // there (product_recommendations, newsletter) never need it.
   const needsCollections = sections.some((s: any) => s.type === 'collection_grid' || s.type === 'collection_carousel')
   const reviewerIds = [...new Set(product.reviews.map(review => review.userId).filter((id): id is string => !!id))]
-  const [related, [ownStats], purchase, existingReview, zoneCollections, reviewerPurchases, boughtTogether] = await Promise.all([
+  const [related, [ownStats], purchase, existingReview, zoneCollections, reviewerPurchases, boughtTogether, ratingCounts] = await Promise.all([
     withProductStats(withCardStock(relatedRaw)),
     getProductStats([product.id]).then(stats => [stats[product.id]]),
     currentUser
@@ -195,6 +195,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       : Promise.resolve([] as Array<{ order: { userId: string } | null }>),
     // "Frequently bought together" (lib/recommendations.ts); the page works without it.
     getBoughtTogether([product.id], 2).catch(error => { console.error('[recommendations] product page', error); return [] }),
+    // How many reviews gave each rating, for the summary above the reviews; the page works without it.
+    product.reviews.length ? getRatingCounts(product.id).catch(() => null) : Promise.resolve(null),
   ])
   const verifiedBuyers = new Set(reviewerPurchases.map(item => item.order?.userId).filter(Boolean))
   const reviewEligibility: 'guest' | 'not_purchased' | 'already_reviewed' | 'can_review' = !currentUser
@@ -231,6 +233,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     compareAtPrice: product.compareAtPrice,
     rating: ownStats?.rating || 0,
     reviewCount: ownStats?.reviewCount || 0,
+    ratingCounts,
     soldCount: ownStats?.soldCount || 0,
     sku: product.sku,
     status: product.status,

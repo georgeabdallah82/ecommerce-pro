@@ -240,6 +240,9 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
   const [viewPhoto, setViewPhoto] = useState('')
   const [zoomOpen, setZoomOpen] = useState(false)
   const avgRating = Number(product.rating || 0)
+  // Every approved review counts, not only the 24 the page lists (app/product/[slug]/page.tsx).
+  const reviewTotal = Number(product.reviewCount) || reviews.length
+  const ratingCounts: Record<number, number> | null = product.ratingCounts || null
   const canWriteReview = reviewEligibility !== 'already_reviewed' && reviewEligibility !== 'not_purchased'
 
   return (
@@ -277,7 +280,7 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
           <div className="aliProductMeta">
             {/* No reviews yet: no empty stars and "0 reviews", just the invitation to write one. */}
             {reviews.length > 0 && <span className="aliProductRating"><StarRow rating={avgRating} size={14} /> {avgRating > 0 && avgRating.toFixed(1)}</span>}
-            {(reviews.length > 0 || canWriteReview) && <a href="#reviews" className="aliProductReviewsLink">{[reviews.length > 0 && plural(reviews.length, 'review'), canWriteReview && t('Write a review')].filter(Boolean).join(' · ')}</a>}
+            {(reviews.length > 0 || canWriteReview) && <a href="#reviews" className="aliProductReviewsLink">{[reviews.length > 0 && plural(reviewTotal, 'review'), canWriteReview && t('Write a review')].filter(Boolean).join(' · ')}</a>}
             {Number(product.soldCount || 0) > 0 && <span>{formatSold(Number(product.soldCount))}</span>}
           </div>
           <div className="aliProductPrice">
@@ -397,7 +400,29 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
 
       {showReviews && (
         <div className="aliContainer aliReviewsSection" id="reviews">
-          <h2>{t('Customer Reviews')} {reviews.length > 0 && <span className="aliReviewAvg"><StarRow rating={avgRating} size={16} /> {avgRating.toFixed(1)} ({reviews.length})</span>}</h2>
+          <h2>{t('Customer Reviews')}</h2>
+          {/* The rating at a glance: the average, how many reviews, and how many gave each star. */}
+          {reviews.length > 0 && <div className="aliReviewSummary">
+            <div className="aliReviewScore">
+              <strong aria-hidden="true">{avgRating.toFixed(1)}</strong>
+              <div>
+                <span aria-hidden="true"><StarRow rating={avgRating} size={18} /></span>
+                <span className="srOnly">{t('Rated {rating} out of 5', { rating: avgRating.toFixed(1) })}</span>
+                <span className="aliReviewScoreCount">{plural(reviewTotal, 'review')}</span>
+              </div>
+            </div>
+            {ratingCounts && <ul className="aliReviewBars">
+              {[5, 4, 3, 2, 1].map(star => {
+                const count = Number(ratingCounts[star] || 0)
+                return <li key={star}>
+                  <span className="aliReviewBarLabel" aria-hidden="true">{star}<Star size={12} fill="currentColor" /></span>
+                  <span className="aliReviewBar" aria-hidden="true"><span style={{ width: `${reviewTotal ? Math.round(count / reviewTotal * 100) : 0}%` }} /></span>
+                  <span className="aliReviewBarCount" aria-hidden="true">{count}</span>
+                  <span className="srOnly">{t('{stars} stars: {count}', { stars: star, count })}</span>
+                </li>
+              })}
+            </ul>}
+          </div>}
           {reviewEligibility === 'can_review' && <ReviewForm productId={product.id} />}
           {reviewEligibility === 'already_reviewed' && <p className="aliReviewFormNote">{t("You've already reviewed this product. Thanks for the feedback.")}</p>}
           {reviewEligibility === 'guest' && (() => {

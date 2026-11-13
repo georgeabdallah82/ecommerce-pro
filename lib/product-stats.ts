@@ -61,3 +61,23 @@ export async function withProductStats<T extends { id: string }>(products: T[]):
   const stats = await getProductStats(products.map(p => p.id))
   return attachProductStats(products, stats)
 }
+
+// How many approved reviews gave each rating, for the summary above a product's reviews
+// (components/aliexpress-product.tsx). All of them, not only the 24 the page lists; shared for 30
+// seconds like the stats above.
+export type RatingCounts = Record<1 | 2 | 3 | 4 | 5, number>
+type RatingGroupRow = { rating: number; _count: { rating: number } }
+
+export async function getRatingCounts(productId: string): Promise<RatingCounts> {
+  const rows = await storefrontCached(`rating-counts:${productId}`, async () => await db.review.groupBy({ by: ['rating'], where: { productId, approved: true }, _count: { rating: true } }) as unknown as RatingGroupRow[])
+  return ratingCountsFrom(rows)
+}
+
+export function ratingCountsFrom(rows: RatingGroupRow[]): RatingCounts {
+  const out: RatingCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+  for (const row of rows) {
+    const star = Math.min(5, Math.max(1, Math.round(Number(row.rating) || 0))) as keyof RatingCounts
+    out[star] += Number(row._count?.rating) || 0
+  }
+  return out
+}

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Bell, Gift, RotateCcw, ShoppingBag, Truck, type LucideIcon } from 'lucide-react'
 import { getCurrentUser } from '@/lib/auth'
 import { db } from '@/lib/prisma'
 import { StoreFooter } from '@/components/store-footer'
@@ -8,6 +9,9 @@ import { getLang, getT } from '@/lib/i18n-server'
 import { dateLocale } from '@/lib/i18n'
 
 const PAGE_SIZE = 20
+
+// What each kind of notice is about (the types written in app/api/checkout and app/api/admin).
+const NOTICE_ICONS: Record<string, LucideIcon> = { ORDER_CREATED: ShoppingBag, ORDER_STATUS: Truck, ORDER_REFUND: RotateCcw, GIFT_CARD: Gift }
 
 export default async function Notifications({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const t = await getT()
@@ -42,21 +46,23 @@ export default async function Notifications({ searchParams }: { searchParams: Pr
       <div className="card empty"><p className="muted">{t('No notifications yet.')}</p></div>
     ) : (
       <div className="grid" style={{ gap: 10 }}>
-        {notifications.map(n => (
-          <div className="card" style={{ padding: 18 }} key={n.id}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
-              <div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  {!n.readAt && <span className="pill">{t('New')}</span>}
-                  <strong>{n.title}</strong>
-                </div>
-                <p className="muted" style={{ marginTop: 6 }}>{n.body}</p>
-                <small className="muted">{n.createdAt.toLocaleString(locale)}</small>
+        {notifications.map(n => {
+          // An icon for what the notice is about, and unread ones stand out (app/storefront-details.css). The title and
+          // text are stored as written (in English), so they keep their own direction on the Arabic page.
+          const Icon = NOTICE_ICONS[n.type] || Bell
+          return <div className={n.readAt ? 'card noticeCard' : 'card noticeCard isUnread'} key={n.id}>
+            <span className="noticeIcon" aria-hidden="true"><Icon size={18} /></span>
+            <div className="noticeText">
+              <div className="noticeHead">
+                {!n.readAt && <span className="pill">{t('New')}</span>}
+                <strong dir="auto">{n.title}</strong>
               </div>
-              {!n.readAt && <MarkReadButton id={n.id} />}
+              <p className="muted" dir="auto">{n.body}</p>
+              <small className="muted">{n.createdAt.toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' })}</small>
             </div>
+            {!n.readAt && <MarkReadButton id={n.id} />}
           </div>
-        ))}
+        })}
       </div>
     )}
     {totalPages > 1 && (

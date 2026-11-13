@@ -1,0 +1,61 @@
+/* Details (November 2026), imported last (app/layout.tsx). See docs/store-details-2026-11.md.
+   The product page's rating summary and questions, the wallet's history and the notifications. The identity passes
+   in storefront-market.css set the look; this file keeps it. */
+
+/* ---------------- Rating summary (product page) ---------------- */
+/* Above the reviews: the average, how many reviews there are, and how many gave each star
+   (components/aliexpress-product.tsx). It was the average and a count beside the heading. */
+html body.mk .aliReviewSummary { display: grid; gap: 18px 36px; align-items: center; max-width: 760px; margin: 2px 0 18px; padding: 20px; border: 1px solid var(--mk-line); border-radius: 18px; background: var(--mk-card); }
+@media (min-width: 640px) { html body.mk .aliReviewSummary { grid-template-columns: auto minmax(0, 1fr); padding: 24px 28px; } }
+html body.mk .aliReviewScore { display: flex; align-items: center; gap: 14px; }
+html body.mk .aliReviewScore > strong { font-family: var(--mk-display); font-size: 52px; font-weight: 700; line-height: 1; letter-spacing: -.03em; color: var(--mk-ink); font-variant-numeric: tabular-nums; }
+html body.mk .aliReviewScore > div { display: grid; gap: 6px; }
+html body.mk .aliReviewScoreCount { color: var(--mk-muted, #5b616b); font-size: 14px; }
+html body.mk .aliReviewBars { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+html body.mk .aliReviewBars li { display: grid; grid-template-columns: 30px minmax(0, 1fr) 28px; align-items: center; gap: 10px; color: var(--mk-muted, #5b616b); font-size: 13px; }
+html body.mk .aliReviewBarLabel { display: inline-flex; align-items: center; gap: 3px; color: var(--mk-ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+html body.mk .aliReviewBarLabel svg { color: var(--store-primary, #d7261e); }
+html body.mk .aliReviewBar { display: block; height: 8px; overflow: hidden; border-radius: 999px; background: var(--mk-well, #f1f1ef); }
+html body.mk .aliReviewBar > span { display: block; height: 100%; border-radius: inherit; background: var(--store-primary, #d7261e); }
+html body.mk .aliReviewBarCount { text-align: end; font-variant-numeric: tabular-nums; }
+
+/* ---------------- Questions, before the first one ---------------- */
+/* The heading and a line saying there is none yet, with the button beside them on wider screens. */
+html body.mk .aliQuestions.aliQaEmpty { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; gap: 8px 24px; }
+html body.mk .aliQaEmpty > .aliQaAsk { justify-self: start; margin-top: 6px; }
+@media (min-width: 640px) {
+  html body.mk .aliQuestions.aliQaEmpty { grid-template-columns: minmax(0, 1fr) auto; }
+  html body.mk .aliQaEmpty > .aliQaAsk { grid-column: 2; grid-row: 1 / span 2; margin-top: 0; }
+}
+html body.mk .aliQaNone { margin: 0; color: var(--mk-muted, #5b616b); font-size: 15px; line-height: 1.5; }
+
+/* ---------------- Wallet and coins ---------------- */
+/* The balances have the dashboard tiles' icons; each history line reads: what it was, the store's note and the date,
+   and the amount, with money coming in in green (app/account/wallet/page.tsx). */
+html body.mk .walletBalance { display: grid; gap: 6px; padding: 24px; }
+html body.mk .walletBalanceIcon { display: grid; place-items: center; width: 44px; height: 44px; margin-bottom: 6px; border-radius: 14px; background: var(--br-cream, #fff1e6); color: var(--br-red, #d7261e); }
+html body.mk .walletBalance > strong { font-family: var(--mk-display); font-size: 40px; font-weight: 700; line-height: 1.1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+html body.mk .walletBalance > p { margin: 4px 0 0; }
+html body.mk .walletActivity { margin-top: 20px; }
+html body.mk .walletActivity > .card { padding: 24px; }
+html body.mk .walletEntries { display: grid; margin: 0; padding: 0; list-style: none; }
+html body.mk .walletEntry { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--mk-line); }
+html body.mk .walletEntryIcon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--mk-well, #f1f1ef); color: var(--mk-muted, #5b616b); }
+html body.mk .walletEntryIcon.isIn { background: #e3f5e9; color: #166534; }
+html body.mk .walletEntryText { display: grid; gap: 2px; min-width: 0; }
+html body.mk .walletEntryText strong { font-size: 14.5px; }
+html body.mk .walletEntryText small { color: var(--mk-muted, #5b616b); font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; }
+html body.mk .walletEntryAmount { font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+html body.mk .walletEntryAmount.isIn { color: #166534; }
+
+/* ---------------- Notifications ---------------- */
+/* An icon for what each notice is about, and unread ones on the brand cream (app/account/notifications/page.tsx). */
+html body.mk .noticeCard { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 6px 14px; padding: 18px; }
+@media (min-width: 640px) { html body.mk .noticeCard { grid-template-columns: auto minmax(0, 1fr) auto; } }
+html body.mk .noticeCard.isUnread { background: color-mix(in srgb, var(--br-cream, #fff1e6) 55%, var(--mk-card, #fff)) !important; }
+html body.mk .noticeIcon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--br-cream, #fff1e6); color: var(--br-red, #d7261e); }
+html body.mk .noticeCard.isUnread .noticeIcon { background: var(--mk-card, #fff); }
+html body.mk .noticeText { display: grid; gap: 4px; min-width: 0; }
+html body.mk .noticeHead { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+html body.mk .noticeText p { margin: 0; }
+@media (max-width: 639px) { html body.mk .noticeCard > :last-child:not(.noticeText) { grid-column: 2; justify-self: start; } }
