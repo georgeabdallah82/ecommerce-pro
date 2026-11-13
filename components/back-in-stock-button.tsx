@@ -101,7 +101,8 @@ export default function BackInStockButton({ productId, variantId, optionName, va
         <div className={styles.body}>
           <strong>{optionName ? t('Get an email when {name} is back', { name: optionName }) : t("Get an email when it's back")}</strong>
           <div className={styles.emailRow}>
-            <input type="email" required autoComplete="email" inputMode="email" placeholder={t('Your email')} value={email} onChange={e => setEmail(e.target.value)} aria-label={t('Your email')} />
+            {/* It appears in place of the button that was pressed, so focus moves here instead of to the top of the page. */}
+            <input autoFocus type="email" required autoComplete="email" inputMode="email" placeholder={t('Your email')} value={email} onChange={e => setEmail(e.target.value)} aria-label={t('Your email')} />
             <button type="submit" className={styles.primary} disabled={busy}>{busy ? t('Saving…') : t('Notify me')}</button>
           </div>
           {error && <p className={styles.error} role="alert">{error}</p>}

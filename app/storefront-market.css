@@ -640,7 +640,8 @@ html body.mk .mkDots button::after { content: ""; position: absolute; inset: -18
   html body.mk .aliProductPage a[href^="/product/"] { min-height: 44px; }
   html body.mk .aliReviewSignInBtn { min-height: 44px; }
   html body.mk .cartPage .qtyUX input { width: 44px; }
-  html body.mk .aliProductPage button[aria-label$="out of 5 stars"] { min-width: 44px; min-height: 44px; }
+  /* The review form's stars, by their class: their English label ("... out of 5 stars") missed them in Arabic. */
+  html body.mk .aliProductPage .aliReviewStarPicker button { min-width: 44px; min-height: 44px; }
   html body.mk p.muted > a { display: inline-block; padding-block: 13px; margin-block: -13px; }
   html body.mk .mkCatsAll { min-height: 44px !important; }
   html body.mk .mkDeliveryChip select { min-height: 44px !important; }
