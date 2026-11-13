@@ -1071,4 +1071,7 @@ export const AR: Record<string, string> = {
   "This invoice cannot be paid online right now. Please contact us.": "لا يمكن دفع هذه الفاتورة عبر الإنترنت حالياً. يُرجى التواصل معنا.",
   "This link no longer works": "لم يعد هذا الرابط يعمل",
   "Ask the store to send you your new delivery link.": "اطلب من المتجر أن يرسل لك رابط التوصيل الجديد.",
+  "Size": "المقاس",
+  "Color": "اللون",
+  "Colour": "اللون",
 }
