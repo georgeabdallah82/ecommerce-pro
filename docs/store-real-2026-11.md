@@ -1,6 +1,6 @@
 # A real store's settings: the storefront checked as a store is really set up (November 2026)
 
-Branch `claude/store-real`, based on `claude/store-links` (#614, not merged yet); it moves onto `main` once #614 is merged.
+Branch `claude/store-real`, up to date with `origin/main` at 4a448ee (after #614).
 
 The last round found three problems that only appear once the store has a phone number. Every earlier check ran on a local store with nothing switched on: no phone or email, no WhatsApp button, Arabic only through the editor's preview, no social links, no logo, no bank transfer, no collection photos, and no sale prices, sizes, sold-out products, reviews or saved items.
 
