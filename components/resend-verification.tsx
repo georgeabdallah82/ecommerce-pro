@@ -26,12 +26,12 @@ export default function ResendVerification() {
     }
   }
 
-  return <form onSubmit={submit} className="card" style={{ display: 'grid', gap: 12, padding: 18 }}>
-    <label style={{ display: 'grid', gap: 6, fontWeight: 700, fontSize: 14 }}>{t('Email')}
-      <input name="email" type="email" required maxLength={254} style={{ minHeight: 46, padding: '10px 12px', border: '1px solid #d6d6d0', borderRadius: 10, font: 'inherit', fontSize: 16 }} />
-    </label>
-    <button className="btn secondary" type="submit" disabled={busy}>{busy ? t('Sending…') : t('Send the link again')}</button>
-    {message ? <p role="status" style={{ margin: 0 }}>{message}</p> : null}
-    {error ? <p role="alert" style={{ margin: 0, color: '#b42318', fontWeight: 700 }}>{error}</p> : null}
+  // Inside the check-email card, with the sign-in form's fields (app/storefront-sprint4.css .authForm).
+  return <form onSubmit={submit} className="authForm">
+    <label className="fieldLabel" htmlFor="resend-email">{t('Email')}</label>
+    <input className="input" id="resend-email" name="email" type="email" autoComplete="email" placeholder="you@example.com" required maxLength={254} />
+    <button className="btn secondary authSubmit" type="submit" disabled={busy}>{busy ? t('Sending…') : t('Send the link again')}</button>
+    {message ? <p className="authNotice" role="status">{message}</p> : null}
+    {error ? <p className="authNotice isError" role="alert">{error}</p> : null}
   </form>
 }

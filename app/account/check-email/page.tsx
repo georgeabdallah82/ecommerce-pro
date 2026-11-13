@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { MailCheck } from 'lucide-react'
 import { StoreFooter } from '@/components/store-footer'
 import ResendVerification from '@/components/resend-verification'
 import { getT } from '@/lib/i18n-server'
@@ -15,17 +16,21 @@ export default async function CheckEmail({ searchParams }: { searchParams: Promi
     : error === 'unverified' ? t('Confirm your email first. Open the link we sent you, or send it again below.')
     : error === 'rate-limited' ? t('Too many attempts. Please wait a little and try again.')
     : ''
+  // The sign-in page's card, on its own (app/storefront-account.css: .authShell.isSolo).
   return <>
-    <main className="section">
-      <div className="container" style={{ maxWidth: 560, display: 'grid', gap: 18 }}>
-        <div>
-          <span className="muted">{t('ACCOUNT')}</span>
-          <h1 className="h2">{t('Check your email')}</h1>
-          <p className="muted">{t('We sent a link to confirm your address. Open it to finish creating your account. It works for 48 hours.')}</p>
+    <main className="section authPage">
+      <div className="container">
+        <div className="authShell isSolo">
+          <div className="authMain">
+            <span className="authBadge" aria-hidden="true"><MailCheck size={22} /></span>
+            <h1 className="authTitle">{t('Check your email')}</h1>
+            <p className="authLead">{t('We sent a link to confirm your address. Open it to finish creating your account. It works for 48 hours.')}</p>
+            {notice ? <div className="alert danger" role="alert">{notice}</div> : null}
+            <ResendVerification />
+            <p className="authDivider">{t('Already confirmed?')}</p>
+            <Link className="authSecondary" href="/account/login">{t('Sign in')}</Link>
+          </div>
         </div>
-        {notice ? <p role="alert" style={{ margin: 0, fontWeight: 700 }}>{notice}</p> : null}
-        <ResendVerification />
-        <p className="muted" style={{ margin: 0 }}>{t('Already confirmed?')} <Link href="/account/login" style={{ textDecoration: 'underline' }}>{t('Sign in')}</Link></p>
       </div>
     </main>
     <StoreFooter />

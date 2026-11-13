@@ -32,15 +32,16 @@ export async function LegalContact({ brand, contact }: { brand: string; contact:
 }
 
 export function LegalPage({ title, updated, updatedLabel = 'Last updated:', note, children }: { title: string; updated: string; updatedLabel?: string; note?: string; children: React.ReactNode }) {
+  // <main>, so the page has its landmark and "Skip to content" (components/skip-link.tsx) has somewhere to go.
   return (
-    <div className="focalStorefront">
+    <main className="focalStorefront">
       <div className="aliContainer aliLegalPage">
         <h1>{title}</h1>
         <p className="aliLegalUpdated">{updatedLabel} <span dir="auto">{updated}</span></p>
         {note ? <p className="aliLegalNote">{note}</p> : null}
         {children}
       </div>
-    </div>
+    </main>
   )
 }
 
@@ -55,7 +56,9 @@ export async function PolicyPage({ kind }: { kind: PolicyKind }) {
   const note = (await getLang()) === 'ar' ? t('This policy is written in English.') : undefined
   return <>
     <LegalPage title={t(POLICY_TITLES[kind])} updated={policy.updated} updatedLabel={t('Last updated:')} note={note}>
-      <div dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(html) }} />
+      {/* The policy keeps its own direction: English wording on an Arabic page read right to left, with each full stop
+          at the start of the line. */}
+      <div className="aliLegalBody" dir="auto" dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(html) }} />
       <h2>{t('Contact us')}</h2>
       <LegalContact brand={brand} contact={contact}/>
     </LegalPage>

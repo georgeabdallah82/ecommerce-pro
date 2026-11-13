@@ -66,6 +66,25 @@ html body.mk .pill:is([data-status="CANCELLED"], [data-status="REFUNDED"]) { bac
 /* The pill's outline was the brand red at 18 %; it now takes the stage's colour. */
 html body.mk .pill[data-status] { border-color: color-mix(in srgb, currentColor 22%, transparent); }
 
+/* ---------------- Signing up and getting back in ---------------- */
+/* Create account uses the sign-in page's card (storefront-sprint4.css), photo and all. Forgot password, reset
+   password and check your email use the same card on its own, with an icon: each was a plain form under a small
+   heading. */
+html body.mk .authShell.isSolo { max-width: 520px; grid-template-columns: minmax(0, 1fr); min-height: 0; }
+html body.mk .authShell.isSolo .authMain { padding: 32px 24px 28px; }
+@media (min-width: 900px) { html body.mk .authShell.isSolo .authMain { padding: 44px 48px 36px; } }
+html body.mk .authBadge { display: grid; place-items: center; width: 52px; height: 52px; margin-bottom: 18px; border-radius: 16px; background: var(--br-cream, #fff1e6); color: var(--br-red, #d7261e); }
+html body.mk .authForm :is(.input, .authHint) + .fieldLabel { margin-top: 18px; }
+html body.mk .authHint { margin: 8px 0 0; color: var(--mk-muted, #5b616b); font-size: 13px; line-height: 1.4; }
+html body.mk .authNotice { margin: 16px 0 0; padding: 12px 14px; border-radius: 12px; background: var(--mk-well, #f1f1ef); color: var(--mk-ink); font-size: 14px; line-height: 1.5; }
+html body.mk .authNotice.isError { background: #fdecea; color: #b42318; font-weight: 600; }
+html body.mk .authBack { display: flex; align-items: center; gap: 6px; width: fit-content; min-height: 44px; margin: 14px auto 0; color: var(--mk-muted, #5b616b); font-size: 14px; font-weight: 600; text-decoration: none; }
+html body.mk .authBack:hover { color: var(--mk-ink); }
+html[dir="rtl"] body.mk .authBack svg { transform: scaleX(-1); }
+html body.mk .authAfter { margin-top: 18px; }
+/* A button that cannot be used yet looks it (reset password without its link). */
+html body.mk .authSubmit:disabled { opacity: .5; box-shadow: none; cursor: not-allowed; }
+
 /* ---------------- Section titles and the way back ---------------- */
 /* The account and order pages' card titles were h3 straight after the page's h1, a skipped level for screen
    readers, and "Change password" and "Delete my account" were h2 at a larger size. All are h2 now, at the size the

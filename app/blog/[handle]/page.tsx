@@ -43,15 +43,15 @@ export default async function BlogPostPage({ params }: { params: Promise<{ handl
   const { products, collections } = sections.length ? await loadZoneData() : { products: [] as any[], collections: [] as any[] }
 
   return <>
-    <div className="focalStorefront">
+    <main className="focalStorefront">
       <div className="aliContainer aliLegalPage">
         <Link href="/blog" className="textLink">{t('Back to blog')}</Link>
-        <h1 style={{ marginTop: 16 }}>{post.title}</h1>
+        <h1 dir="auto" style={{ marginTop: 16 }}>{post.title}</h1>
         {post.publishedAt && <p className="aliLegalUpdated">{post.publishedAt.toLocaleDateString(dateLocale(lang))}</p>}
         {post.featuredImage && (
           <img src={post.featuredImage} alt="" style={{ width: '100%', maxHeight: 420, objectFit: 'cover', borderRadius: 14, margin: '0 0 24px', background: 'var(--focal-soft,#f1ebe6)' }} />
         )}
-        {post.bodyHtml && <div dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(post.bodyHtml) }} />}
+        {post.bodyHtml && <div dir="auto" dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(post.bodyHtml) }} />}
         {tags.length > 0 && (
           <span className="aliSpecList" style={{ marginTop: 24 }}>
             {tags.map(t => <Link className="aliSpecListItem" href={`/blog?tag=${encodeURIComponent(t)}`} key={t}>{t}</Link>)}
@@ -59,7 +59,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ handl
         )}
       </div>
       {sections.length > 0 && <StorefrontSections theme={theme} sections={sections} products={products} collections={collections} />}
-    </div>
+    </main>
     <Footer theme={theme} />
   </>
 }

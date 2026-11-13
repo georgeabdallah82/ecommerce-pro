@@ -34,10 +34,10 @@ export default async function BlogIndex({ searchParams }: { searchParams: Promis
   const { products, collections } = sections.length ? await loadZoneData() : { products: [] as any[], collections: [] as any[] }
 
   return <>
-    <div className="focalStorefront">
+    <main className="focalStorefront">
       <BlogIndexView posts={posts} tag={tag} t={translator(lang)} lang={lang} />
       {sections.length > 0 && <StorefrontSections theme={theme} sections={sections} products={products} collections={collections} />}
-    </div>
+    </main>
     <Footer theme={theme} />
   </>
 }

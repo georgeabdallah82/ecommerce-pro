@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { FormEvent, useState } from 'react'
+import { ArrowLeft, KeyRound } from 'lucide-react'
 import { useI18n } from '@/components/lang-provider'
 
 export default function ForgotPasswordPage() {
@@ -29,19 +30,24 @@ export default function ForgotPasswordPage() {
     }
   }
 
+  // The sign-in page's card, on its own (app/storefront-account.css: .authShell.isSolo).
   return (
-    <main className="section">
-      <div className="container" style={{ maxWidth: 520 }}>
-        <span className="muted">{t('ACCOUNT')}</span>
-        <h1 className="h2" style={{ fontSize: 42, marginTop: 10 }}>{t('Forgot password?')}</h1>
-        <p className="muted">{t("Enter your email and, if an account exists, we'll send recovery instructions.")}</p>
-        <form onSubmit={submit} className="card" style={{ padding: 24, marginTop: 20 }}>
-          <label className="fieldLabel" htmlFor="email">{t('Email')}</label>
-          <input className="input" id="email" name="email" type="email" autoComplete="email" placeholder="you@example.com" required value={email} onChange={e => setEmail(e.target.value)} />
-          <button className="btn" disabled={loading} style={{ width: '100%', marginTop: 16 }}>{loading ? t('Sending…') : t('Send reset instructions')}</button>
-          {message && <p className="muted" style={{ marginTop: 14 }} role="status">{message}</p>}
-        </form>
-        <p className="muted" style={{ marginTop: 16 }}><Link href="/account/login" style={{ textDecoration: 'underline' }}>{t('Back to sign in')}</Link></p>
+    <main className="section authPage">
+      <div className="container">
+        <div className="authShell isSolo">
+          <div className="authMain">
+            <span className="authBadge" aria-hidden="true"><KeyRound size={22} /></span>
+            <h1 className="authTitle">{t('Forgot password?')}</h1>
+            <p className="authLead">{t("Enter your email and, if an account exists, we'll send recovery instructions.")}</p>
+            <form onSubmit={submit} className="authForm">
+              <label className="fieldLabel" htmlFor="email">{t('Email')}</label>
+              <input className="input" id="email" name="email" type="email" autoComplete="email" placeholder="you@example.com" required value={email} onChange={e => setEmail(e.target.value)} />
+              <button className="btn authSubmit" disabled={loading}>{loading ? t('Sending…') : t('Send reset instructions')}</button>
+              {message && <p className="authNotice" role="status">{message}</p>}
+            </form>
+            <Link className="authBack" href="/account/login"><ArrowLeft size={16} aria-hidden="true" />{t('Back to sign in')}</Link>
+          </div>
+        </div>
       </div>
     </main>
   )

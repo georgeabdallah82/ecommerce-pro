@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { ArrowLeft, LockKeyhole } from 'lucide-react'
 import { useI18n } from '@/components/lang-provider'
 
 export default function ResetPasswordPage() {
@@ -31,22 +32,30 @@ export default function ResetPasswordPage() {
   }
 
   const done = /updated|reset|success/i.test(message) && !/unable|invalid|expired|match/i.test(message)
+  // The sign-in page's card, on its own (app/storefront-account.css: .authShell.isSolo).
   return (
-    <main className="section">
-      <div className="container" style={{ maxWidth: 520 }}>
-        <span className="muted">{t('ACCOUNT')}</span>
-        <h1 className="h2" style={{ fontSize: 42, marginTop: 10 }}>{t('Reset your password')}</h1>
-        <p className="muted">{t('Choose a new password for your account.')}</p>
-        {!token && <div className="alert danger" style={{ marginTop: 16 }}>{t('This reset link is missing or incomplete.')} <Link href="/account/forgot-password" style={{ textDecoration: 'underline' }}>{t('Request a new one')}</Link>.</div>}
-        <form onSubmit={submit} className="card" style={{ padding: 24, marginTop: 20 }}>
-          <label className="fieldLabel" htmlFor="password">{t('New password')}</label>
-          <input className="input" id="password" type="password" autoComplete="new-password" placeholder={t('8+ characters')} minLength={8} maxLength={128} required value={password} onChange={e => setPassword(e.target.value)} />
-          <label className="fieldLabel" htmlFor="confirm" style={{ marginTop: 12 }}>{t('Confirm password')}</label>
-          <input className="input" id="confirm" type="password" autoComplete="new-password" minLength={8} maxLength={128} required value={confirm} onChange={e => setConfirm(e.target.value)} />
-          <button className="btn" disabled={!token || loading} style={{ width: '100%', marginTop: 16 }} type="submit">{loading ? t('Resetting…') : t('Reset password')}</button>
-          {message && <p className="muted" style={{ marginTop: 14 }} role="status">{message}</p>}
-        </form>
-        <p className="muted" style={{ marginTop: 16 }}><Link href="/account/login" style={{ textDecoration: 'underline' }}>{done ? t('Sign in with your new password') : t('Back to sign in')}</Link></p>
+    <main className="section authPage">
+      <div className="container">
+        <div className="authShell isSolo">
+          <div className="authMain">
+            <span className="authBadge" aria-hidden="true"><LockKeyhole size={22} /></span>
+            <h1 className="authTitle">{t('Reset your password')}</h1>
+            <p className="authLead">{t('Choose a new password for your account.')}</p>
+            {!token && <div className="alert danger" role="alert">{t('This reset link is missing or incomplete.')} <Link href="/account/forgot-password" style={{ textDecoration: 'underline' }}>{t('Request a new one')}</Link>.</div>}
+            <form onSubmit={submit} className="authForm">
+              <label className="fieldLabel" htmlFor="password">{t('New password')}</label>
+              <input className="input" id="password" type="password" autoComplete="new-password" minLength={8} maxLength={128} required aria-describedby="password-hint" value={password} onChange={e => setPassword(e.target.value)} />
+              <p className="authHint" id="password-hint">{t('At least 8 characters.')}</p>
+              <label className="fieldLabel" htmlFor="confirm">{t('Confirm password')}</label>
+              <input className="input" id="confirm" type="password" autoComplete="new-password" minLength={8} maxLength={128} required value={confirm} onChange={e => setConfirm(e.target.value)} />
+              <button className="btn authSubmit" disabled={!token || loading} type="submit">{loading ? t('Resetting…') : t('Reset password')}</button>
+              {message && <p className="authNotice" role="status">{message}</p>}
+            </form>
+            {done
+              ? <Link className="authSecondary authAfter" href="/account/login">{t('Sign in with your new password')}</Link>
+              : <Link className="authBack" href="/account/login"><ArrowLeft size={16} aria-hidden="true" />{t('Back to sign in')}</Link>}
+          </div>
+        </div>
       </div>
     </main>
   )

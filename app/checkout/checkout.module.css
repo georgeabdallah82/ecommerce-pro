@@ -134,6 +134,13 @@
 /* Place order: stays at the bottom of the screen while the form scrolls */
 .placeBar { position: sticky; bottom: calc(var(--cookie-banner-height, 0px) + 8px); z-index: 5; display: grid; gap: 8px; margin: 0 -16px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--co-bg) 92%, transparent); backdrop-filter: blur(8px); border-top: 1px solid var(--co-line); }
 @media (min-width: 960px) { .placeBar { position: static; margin: 0; padding: 0; background: none; backdrop-filter: none; border: 0; } }
+/* While the bar is pinned (phones), a field reached with Tab or the keyboard's next key scrolls into view above it, not
+   behind it: at 390 x 844 First name, Last name and "Share my exact location" were fully hidden (WCAG 2.4.11). The
+   bar is about 130 px tall and sits above the cookie banner while that is open; the extra room is because a browser
+   scrolls a text field only far enough to show its cursor line. */
+@media (max-width: 959px) {
+  :global(html):has(.placeBar) { scroll-padding-bottom: calc(var(--cookie-banner-height, 0px) + 170px); }
+}
 .placeBtn { width: 100%; min-height: 54px; display: flex; align-items: center; justify-content: center; gap: 10px; border: 0; border-radius: 12px; background: var(--co-primary); color: #fff; font: inherit; font-size: 17px; font-weight: 800; cursor: pointer; box-shadow: 0 8px 20px color-mix(in srgb, var(--co-primary) 28%, transparent); transition: transform .1s, filter .15s; }
 .placeBtn:hover:not(:disabled) { filter: brightness(.95); }
 .placeBtn:active:not(:disabled) { transform: translateY(1px); }
