@@ -39,8 +39,11 @@ export default function ProductQuestions({ productId, questions }: { productId: 
     }
   }
 
-  return <div className={`aliContainer aliQuestions${questions.length === 0 && !open && !sent ? ' aliQaEmpty' : ''}`} id="questions">
+  // With no question yet the section says so, beside the button; it was a heading and a button on their own.
+  const empty = questions.length === 0 && !open && !sent
+  return <div className={`aliContainer aliQuestions${empty ? ' aliQaEmpty' : ''}`} id="questions">
     <h2>{t('Questions & answers')}</h2>
+    {empty && <p className="aliQaNone">{t('No questions yet. Ask one and we will answer it here.')}</p>}
     {questions.length > 0
       ? <div className="aliQaList">{questions.map(q => <div className="aliQaItem" key={q.id}>
         <p className="aliQaQ"><span aria-hidden="true">{t('Q:')}</span> <span dir="auto">{q.question}</span></p>
