@@ -9,7 +9,8 @@ import StorefrontSections from '@/components/storefront-sections'
 import { BLOG_TEMPLATE_KEY, zoneSections } from '@/lib/custom-pages'
 import { loadZoneData } from '@/lib/zone-data'
 import { sanitizeRichHtml } from '@/lib/sanitize-html'
-import { dateLocale, translator } from '@/lib/i18n'
+import { translator } from '@/lib/i18n'
+import { BlogCard, BlogTags, postDate } from '@/components/blog-views'
 
 function readTags(tagsJson: string | null) {
   const parsed = parseJson<unknown>(tagsJson, [])
@@ -40,24 +41,33 @@ export default async function BlogPostPage({ params }: { params: Promise<{ handl
   if (!post || post.status !== 'PUBLISHED') notFound()
   const tags = readTags(post.tagsJson)
   const sections = zoneSections(theme, BLOG_TEMPLATE_KEY)
-  const { products, collections } = sections.length ? await loadZoneData() : { products: [] as any[], collections: [] as any[] }
+  // Up to three other posts, newest first, so a finished article leads somewhere.
+  const [{ products, collections }, more] = await Promise.all([
+    sections.length ? loadZoneData() : Promise.resolve({ products: [] as any[], collections: [] as any[] }),
+    db.blogPost.findMany({
+      where: { status: 'PUBLISHED', id: { not: post.id } },
+      orderBy: { publishedAt: 'desc' },
+      take: 3,
+      select: { id: true, title: true, handle: true, excerpt: true, featuredImage: true, publishedAt: true, tagsJson: true },
+    }).catch(() => []),
+  ])
 
   return <>
     <main className="focalStorefront">
       <div className="aliContainer aliLegalPage">
         <Link href="/blog" className="textLink">{t('Back to blog')}</Link>
         <h1 dir="auto" style={{ marginTop: 16 }}>{post.title}</h1>
-        {post.publishedAt && <p className="aliLegalUpdated">{post.publishedAt.toLocaleDateString(dateLocale(lang))}</p>}
+        {post.publishedAt && <p className="aliLegalUpdated">{postDate(post.publishedAt, lang)}</p>}
         {post.featuredImage && (
           <img src={post.featuredImage} alt="" style={{ width: '100%', maxHeight: 420, objectFit: 'cover', borderRadius: 14, margin: '0 0 24px', background: 'var(--focal-soft,#f1ebe6)' }} />
         )}
         {post.bodyHtml && <div dir="auto" dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(post.bodyHtml) }} />}
-        {tags.length > 0 && (
-          <span className="aliSpecList" style={{ marginTop: 24 }}>
-            {tags.map(t => <Link className="aliSpecListItem" href={`/blog?tag=${encodeURIComponent(t)}`} key={t}>{t}</Link>)}
-          </span>
-        )}
+        {tags.length > 0 && <div className="blogPostTags"><BlogTags tags={tags} /></div>}
       </div>
+      {more.length > 0 && <section className="aliContainer blogMore" aria-labelledby="blog-more">
+        <div className="aliSectionHead"><h2 id="blog-more">{t('More from the blog')}</h2></div>
+        <div className="blogGrid">{more.map(item => <BlogCard key={item.id} post={{ ...item, tags: readTags(item.tagsJson) }} t={t} lang={lang} level={3} />)}</div>
+      </section>}
       {sections.length > 0 && <StorefrontSections theme={theme} sections={sections} products={products} collections={collections} />}
     </main>
     <Footer theme={theme} />
