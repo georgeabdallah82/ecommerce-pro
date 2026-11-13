@@ -20,13 +20,15 @@ export default function WishlistGrid({ theme, products }: { theme: AnyMap; produ
         <span className="focalEyebrow">{t('SAVED')}</span>
         <h1 style={{ margin: '8px 0 20px' }}>{t('Wishlist')}</h1>
 
-        {products.length ? (
+        {products.length ? (<>
+          {/* The product names are h3: this is the level between them and the page's h1, for screen readers. */}
+          <h2 className="srOnly">{t('Products')}</h2>
           <div className="aliDenseGrid">
             {products.map(p => (
               <ProductCard key={p.id} p={p} theme={theme} onQuickView={setQuickProduct} wishlist={wishlist} toggleWish={toggleWish} />
             ))}
           </div>
-        ) : (
+        </>) : (
           // Empty: the same card as the empty cart, saying how to save something, with the way to the shop.
           <section className="wishEmpty" role="status">
             <span className="wishEmptyIcon" aria-hidden="true"><Heart size={26} /></span>

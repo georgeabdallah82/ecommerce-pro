@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useI18n } from '@/components/lang-provider'
@@ -135,6 +135,11 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
 
   const gallery = product.images?.length ? product.images : [{ url: '/placeholder-product.svg', alt: product.name }]
   const variants = product.variants || []
+  // The heading over the choices: the option's own name when every variant has the same single one ("Size"), else
+  // "Options". A store's own name is shown as typed, or in Arabic when the dictionary has it.
+  const optionKeys = new Set<string>(variants.flatMap((v: AnyMap) => { try { return Object.keys(JSON.parse(v.optionJson || '{}')) } catch { return [] } }))
+  const optionName = optionKeys.size === 1 ? [...optionKeys][0] : ''
+  const variantLabelId = useId()
   const selectedVariant = variants.find((v: AnyMap) => v.id === selectedVariantId)
   const currentPrice = Number(selectedVariant?.price ?? product.basePrice ?? 0)
   // A flash sale (lib/flash-sale.ts) shows its price here; checkout takes it off the same way.
@@ -294,11 +299,12 @@ export default function AliExpressProduct({ theme, product, related, variantAvai
           <QuantityDealsBox deals={quantityDeals} />
 
           {variants.length > 0 && (
-            <div className="aliProductVariants">
-              <span>{t('Options')}</span>
+            // A named group of buttons that each say whether they are the one chosen (it was only a colour).
+            <div className="aliProductVariants" role="group" aria-labelledby={variantLabelId}>
+              <span id={variantLabelId}>{optionName && optionName !== 'Title' ? t(optionName) : t('Options')}</span>
               <div className="aliVariantList">
                 {variants.map((v: AnyMap) => (
-                  <button key={v.id} className={`${selectedVariantId === v.id ? 'selected' : ''} ${optionSoldOut(v) ? 'soldOut' : ''}`} aria-label={optionSoldOut(v) ? t('{name} (sold out)', { name: v.name }) : undefined} onClick={() => setSelectedVariantId(v.id)}>{v.name}</button>
+                  <button key={v.id} type="button" aria-pressed={selectedVariantId === v.id} className={`${selectedVariantId === v.id ? 'selected' : ''} ${optionSoldOut(v) ? 'soldOut' : ''}`} aria-label={optionSoldOut(v) ? t('{name} (sold out)', { name: v.name }) : undefined} onClick={() => setSelectedVariantId(v.id)}>{v.name}</button>
                 ))}
               </div>
             </div>

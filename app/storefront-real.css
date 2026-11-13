@@ -1,0 +1,27 @@
+/* A real store's settings (November 2026), imported last (app/layout.tsx). See docs/store-real-2026-11.md.
+   What showed once the local store was set up like a real one: a phone number and email, the WhatsApp button on,
+   Arabic on for customers, social links, a logo, bank transfer, collection photos, a sale price, a sold-out product,
+   sizes, reviews and a saved list. */
+
+/* The WhatsApp button moves out of the way while the focused link, button or field is under it
+   (components/market-chrome.tsx), at every width; on phones it also slides away on scroll (storefront-market.css). */
+html body .mkWhatsApp.clearOfFocus { transform: translateY(170%); opacity: 0; pointer-events: none; transition: transform .2s ease, opacity .2s ease; }
+@media (prefers-reduced-motion: reduce) { html body .mkWhatsApp.clearOfFocus { transition: none; } }
+
+/* 44 px to tap on touch screens: the sizes on a product page (41 px) and the search chip on the shop page (36 px). */
+@media (pointer: coarse) {
+  html body .aliVariantList button { min-height: 44px; }
+  html body .shopFilterChip { min-height: 44px; }
+}
+
+/* Text under 12 px: the discount badge on product photos (10 px) and the date under a notification on a phone
+   (11.7 px). */
+html body .focalStorefront .focalBadge { font-size: 12px !important; }
+html body.mk .noticeCard small { font-size: 12.5px; }
+
+/* The logo in the footer's white card was 20 px tall, and 12 px on a phone, where the name could not be read. */
+html body .focalFooter .footerLogoCard { max-height: 46px; }
+@media (max-width: 700px) { html body .focalFooter .footerLogoCard { max-height: 42px; } }
+
+/* A sold-out size: struck through on a dashed border, in a grey that reads (#9ca3af was 2.5:1 on white). */
+html body .aliVariantList button.soldOut { color: #6b7280; }

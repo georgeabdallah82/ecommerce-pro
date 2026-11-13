@@ -337,6 +337,32 @@ export function WhatsAppFloat({ theme }: { theme: any }) {
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [enabled])
+  // Keyboard focus is never hidden under the button: while the focused link, button or field is where the button
+  // rests, the button moves out of the way, at every width. offsetTop and offsetLeft give that resting place (a fixed
+  // element's, without the slide-away transform).
+  const ref = useRef<HTMLAnchorElement>(null)
+  const [focusUnder, setFocusUnder] = useState(false)
+  useEffect(() => {
+    if (!enabled) return
+    const check = () => {
+      const el = ref.current, focused = document.activeElement
+      if (!el || !focused || focused === document.body || el.contains(focused)) { setFocusUnder(false); return }
+      const r = focused.getBoundingClientRect()
+      const left = el.offsetLeft, top = el.offsetTop, right = left + el.offsetWidth, bottom = top + el.offsetHeight
+      setFocusUnder(r.width > 0 && r.left < right && r.right > left && r.top < bottom && r.bottom > top)
+    }
+    const afterFocusMoves = () => window.setTimeout(check, 0)
+    document.addEventListener('focusin', check)
+    document.addEventListener('focusout', afterFocusMoves)
+    window.addEventListener('scroll', check, { passive: true })
+    window.addEventListener('resize', check)
+    return () => {
+      document.removeEventListener('focusin', check)
+      document.removeEventListener('focusout', afterFocusMoves)
+      window.removeEventListener('scroll', check)
+      window.removeEventListener('resize', check)
+    }
+  }, [enabled, store])
   if (!enabled || !store) return null
   // Never over the checkout form or inside the admin.
   if (pathname.startsWith('/admin') || pathname.startsWith('/checkout') || pathname.startsWith('/driver/')) return null
@@ -346,16 +372,20 @@ export function WhatsAppFloat({ theme }: { theme: any }) {
   if (!base) return null
   const href = w.message ? `${base}?text=${encodeURIComponent(String(w.message).slice(0, 500))}` : base
   const label = String(w.label || '').trim()
+  // In a landmark of its own, so nothing on the page sits outside one (axe: region).
   return (
-    <a
-      className={`mkWhatsApp ${w.position === 'left' ? 'left' : 'right'} ${w.showOnMobile === false ? 'desktopOnly' : ''} ${label ? 'hasLabel' : ''} ${tucked ? 'tucked' : ''}`}
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label={label || t('Chat with us on WhatsApp')}
-    >
-      <WhatsAppIcon />
-      {label ? <span>{label}</span> : null}
-    </a>
+    <aside className="mkWhatsAppDock" aria-label={label || t('Chat with us on WhatsApp')}>
+      <a
+        ref={ref}
+        className={`mkWhatsApp ${w.position === 'left' ? 'left' : 'right'} ${w.showOnMobile === false ? 'desktopOnly' : ''} ${label ? 'hasLabel' : ''} ${tucked ? 'tucked' : ''} ${focusUnder ? 'clearOfFocus' : ''}`}
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={label || t('Chat with us on WhatsApp')}
+      >
+        <WhatsAppIcon />
+        {label ? <span>{label}</span> : null}
+      </a>
+    </aside>
   )
 }
