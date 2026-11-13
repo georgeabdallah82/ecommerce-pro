@@ -1,0 +1,42 @@
+/* Store pages (November 2026), imported last (app/layout.tsx). See docs/store-pages-2026-11.md.
+   The policies (and blog posts, which share their layout) and the stores page. The identity passes in
+   storefront-market.css set the look; this file keeps it. */
+
+/* ---------------- Policies ---------------- */
+/* Privacy, terms and refunds (components/legal-page.tsx). The text ran about 95 characters to a line at 15 px under a
+   32 px title. It now reads like a page meant to be read: a larger title over a rule, 16 px text at no more than 68
+   characters a line, and section titles that stand apart from the text. Headings keep the store's heading font
+   (storefront-legacy.css sets it with !important inside the storefront). */
+html body.mk .aliLegalPage { padding-block: clamp(28px, 5vw, 48px) 72px; }
+html body.mk .aliLegalPage h1 { margin: 0 0 10px; font-size: clamp(32px, 4.4vw, 46px); font-weight: 700; line-height: 1.06; letter-spacing: -.025em; }
+html body.mk .aliLegalUpdated { margin: 0 0 26px; padding-bottom: 22px; border-bottom: 1px solid var(--mk-line); color: var(--mk-muted); font-size: 14px; }
+html body.mk .aliLegalNote { display: inline-block; margin: 0 0 22px; padding: 8px 12px; border-radius: 10px; background: var(--mk-well, #f1f1ef); font-size: 14px; }
+html body.mk .aliLegalPage :is(p, ul, ol) { max-width: 68ch; line-height: 1.7; }
+html body.mk .aliLegalPage :is(p, li):not(.aliLegalUpdated, .aliLegalNote) { font-size: 16px; }
+html body.mk .aliLegalPage h2 { margin: 40px 0 10px; font-size: 22px; font-weight: 700; line-height: 1.25; letter-spacing: -.015em; }
+html body.mk .aliLegalPage h3 { margin: 28px 0 8px; font-size: 17px; line-height: 1.3; }
+/* Lists start on the reading side, so a policy written in Arabic indents correctly too. */
+html body.mk .aliLegalPage :is(ul, ol) { padding-left: 0; padding-inline-start: 22px; }
+html body.mk .aliLegalPage li::marker { color: var(--mk-muted); }
+
+/* ---------------- Our stores ---------------- */
+/* Each store is a card with its name, address and hours, and Call and Directions as buttons (app/stores/page.tsx).
+   With no store yet, the same empty card as the wishlist, leading to the shop. */
+html body.mk .storesHead { margin-bottom: 22px; }
+html body.mk .storesGrid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+html body.mk .storeCard { display: grid; align-content: start; gap: 10px; padding: 22px; border: 1px solid var(--mk-line); border-radius: 18px; background: var(--mk-card); }
+html body.mk .storeCardIcon { display: grid; place-items: center; width: 44px; height: 44px; margin-bottom: 2px; border-radius: 14px; background: var(--br-cream, #fff1e6); color: var(--br-red, #d7261e); }
+html body.mk .storeCardName { margin: 0; font-family: var(--mk-display); font-size: 20px; font-weight: 700; line-height: 1.2; letter-spacing: -.01em; }
+html body.mk .storeCardLine { display: flex; align-items: flex-start; gap: 8px; margin: 0; color: var(--mk-muted, #5b616b); font-size: 14.5px; line-height: 1.5; }
+html body.mk .storeCardLine svg { flex: none; margin-top: 3px; }
+html body.mk .storeCardActions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+html body.mk .storeCardBtn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border: 1px solid var(--mk-line); border-radius: 12px; background: var(--mk-card); color: var(--mk-ink); font-size: 14px; font-weight: 700; text-decoration: none; }
+html body.mk .storeCardBtn.isPrimary { border-color: var(--mk-ink); background: var(--mk-ink); color: #fff; }
+@media (hover: hover) {
+  html body.mk .storeCardBtn:hover { border-color: var(--mk-ink); }
+  html body.mk .storeCardBtn.isPrimary:hover { background: #000; }
+}
+html body.mk .storesEmpty { display: grid; justify-items: center; gap: 6px; max-width: 560px; margin: 8px auto 24px; padding: 48px 24px; border: 1px solid var(--mk-line, #ececec); border-radius: 22px; background: var(--mk-card, #fff); text-align: center; }
+html body.mk .storesEmptyIcon { display: grid; place-items: center; width: 58px; height: 58px; margin-bottom: 10px; border-radius: 18px; background: var(--br-cream, #fff1e6); color: var(--br-red, #d7261e); }
+html body.mk .storesEmpty h2 { margin: 0; font-family: var(--mk-display); font-size: 24px; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; }
+html body.mk .storesEmpty p { max-width: 40ch; margin: 0 0 14px; color: var(--mk-muted, #5b616b); line-height: 1.6; }
