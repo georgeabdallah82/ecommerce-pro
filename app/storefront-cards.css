@@ -1,0 +1,28 @@
+/* Product cards (November 2026), imported last (app/layout.tsx). See docs/store-cards-2026-11.md.
+   A card used to be one link holding its heart and "Add to cart" buttons, which HTML does not allow. The product's
+   name is the link now (components/storefront-sections.tsx), and it covers the card, so a click anywhere on the card
+   still opens the product. The card looks the same. */
+
+/* The name's link stretches over the whole card. The card keeps everything inside it on its own layer, so the
+   ranking badge on Best Sellers, the sticky bars and the menus stay above it as before. */
+html body.mk .mkCard { position: relative; isolation: isolate; }
+html body.mk .mkCardLink { color: inherit; text-decoration: none; }
+html body.mk .mkCardLink::after { content: ""; position: absolute; inset: 0; }
+
+/* The photo sits above the link's cover, so its heart can be clicked even while the photo lifts on hover (a lifted
+   photo becomes a layer of its own). Clicks on the photo itself pass through to the link, so it still opens the
+   product. "Add to cart" sits above the cover too. */
+html body.mk .mkCardMedia { z-index: 1; pointer-events: none; }
+html body.mk .mkCardWish { pointer-events: auto; }
+html body.mk .mkCardAdd { position: relative; z-index: 1; }
+
+/* The keyboard ring stays where it was: around the whole card, when its name has focus. A browser without :has()
+   draws it on the link's cover instead, which is the same size as the card. */
+@supports selector(:has(a)) {
+  html body.mk .mkCard:has(.mkCardLink:focus-visible) { outline: 3px solid var(--mk-red, #d7261e); outline-offset: 2px; }
+  html body.mk .mkCardLink:focus-visible { outline: none; }
+}
+@supports not selector(:has(a)) {
+  html body.mk .mkCardLink:focus-visible { outline: none; }
+  html body.mk .mkCardLink:focus-visible::after { outline: 3px solid var(--mk-red, #d7261e); outline-offset: 2px; }
+}
