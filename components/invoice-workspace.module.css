@@ -12,6 +12,9 @@
 .primary, .primary:hover:not(:disabled) { border-color: var(--admin-accent, #18181b); background: var(--admin-accent, #18181b); color: var(--admin-accent-ink, #fff); }
 .whatsapp, .whatsapp:hover:not(:disabled) { border-color: #1fa855; background: #25d366; color: #fff; }
 .hint { margin: 0; font-size: 13px; color: var(--admin-muted, #6b7280); }
+/* On the customer's page the hint sits on the store's background: the store's muted grey (5.7:1; the admin's grey was
+   4.46:1 there, under the 4.5:1 minimum). */
+.customerPage .hint { color: var(--mk-muted, #5b616b); }
 .message { margin: 0; padding: 10px 12px; border-radius: var(--admin-radius-md, 10px); background: var(--admin-success-soft, #ecfdf5); color: var(--admin-ink, #18181b); font-size: 14px; font-weight: 650; }
 
 .editor, .noteField { display: grid; gap: 10px; padding: 16px; border: 1px solid var(--admin-border, #e4e4e7); border-radius: var(--admin-radius-lg, 14px); background: var(--admin-surface, #fff); }

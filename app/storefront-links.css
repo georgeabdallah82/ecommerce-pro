@@ -1,0 +1,29 @@
+/* Store links (November 2026), imported last (app/layout.tsx). See docs/store-links-2026-11.md.
+   The collection pages, and the pages a customer reaches from a link the store sends: the invoice, paying an invoice,
+   the email preferences page and an expired courier link. */
+
+/* ---------------- Collection pages ---------------- */
+/* The small label above the title ("COLLECTION", "CURATED SHOPPING") was the old accent pill that storefront-legacy.css
+   forces to 11 px grey: 4.0:1 on its cream, under the 4.5:1 minimum. It is plain 13 px muted text now, like the cart's
+   and the wishlist's labels; over a collection photo it stays light. */
+html body.mk :is(.aliCollectionsHead, .aliCollectionBannerOverlay) .focalEyebrow { min-height: 0; padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: none !important; color: var(--mk-muted, #5b616b) !important; font-size: 13px !important; font-weight: 600 !important; letter-spacing: 0 !important; }
+html body.mk .aliCollectionBannerOverlay .focalEyebrow { color: rgba(255, 255, 255, .9) !important; }
+
+/* ---------------- Pages reached from a link the store sends ---------------- */
+/* Paying an invoice (app/pay-invoice/[id]), email preferences (app/unsubscribe) and an expired courier link
+   (app/driver/[token]) use the order confirmation's cards (app/order/success/success.module.css). These fill in what that
+   page does not need: a full-width row of buttons, a form button that looks like the links beside it, and an icon in
+   the store's colour for a question (the confirmation's icons are green for done and amber for a warning). */
+html body .linkActions { display: grid; width: 100%; }
+html body .linkSubmit { width: 100%; font-family: inherit; font-size: inherit; cursor: pointer; }
+/* The confirmation's small links are bold text; the ways to reach the store under an invoice are underlined too, so
+   they read as links. */
+html body .linkContact a { text-decoration: underline; text-underline-offset: 3px; }
+html body .linkBadge { background: color-mix(in srgb, var(--store-primary, #d7261e) 10%, var(--store-surface, #fff)); color: var(--store-primary, #d7261e); }
+
+/* ---------------- With the store's phone number set ---------------- */
+/* Two things the earlier checks could not see, because the local store had no phone number: the footer's "WhatsApp us"
+   link was 34 px tall on a phone, and the product page's "Order on WhatsApp" text was #128c4a on white, 4.3:1, under
+   the 4.5:1 minimum (#15803d is 5.0:1, and 4.6:1 on its hover tint). */
+@media (pointer: coarse) { html body .focalFooterWhatsapp { min-height: 44px; } }
+html body .waOrderBtn { color: #15803d !important; }

@@ -4,6 +4,10 @@ import { driverForToken } from '@/lib/drivers'
 import { getStoreIdentity } from '@/lib/store-identity'
 import { getContactInfo } from '@/lib/store-contact'
 import DriverRun from '@/components/driver-run'
+import { Link2Off } from 'lucide-react'
+import { getT } from '@/lib/i18n-server'
+// The order confirmation's card (app/order/success), like the store's other pages reached from a link it sends.
+import s from '@/app/order/success/success.module.css'
 
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = { title: 'My deliveries', robots: { index: false, follow: false }, referrer: 'no-referrer' }
@@ -14,10 +18,13 @@ export default async function DriverPage({ params }: { params: Promise<{ token: 
   const { token } = await params
   const driver = await driverForToken(token)
   if (!driver) {
-    return <main style={{ maxWidth: 460, margin: '0 auto', padding: '48px 20px', fontFamily: 'system-ui, sans-serif', textAlign: 'center' }}>
-      <h1 style={{ fontSize: 22 }}>This link no longer works</h1>
-      <p style={{ color: '#555' }}>Ask the store to send you your new delivery link.</p>
-    </main>
+    // In the store's language and font; it was English only, and in Arabic its full stop landed on the wrong side.
+    const t = await getT()
+    return <main className={s.page}><div className={s.wrap}><section className={`${s.card} ${s.hero}`}>
+      <span className={`${s.tick} ${s.tickWarn}`} aria-hidden="true"><Link2Off size={32} /></span>
+      <h1 className={s.title}>{t('This link no longer works')}</h1>
+      <p className={s.lead}>{t('Ask the store to send you your new delivery link.')}</p>
+    </section></div></main>
   }
   const since = new Date(Date.now() - 18 * 60 * 60 * 1000)
   const [orders, store, contact] = await Promise.all([

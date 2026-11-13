@@ -4,6 +4,10 @@
 // gateway already created stays pending, so a payment on it is still matched, and because the order is cancelled, staff
 // are told to refund it or re-open the order (lib/payment-outcome.ts).
 
+// Payment statuses of an order that has been paid for, in whole or in part. A completed invoice is "already paid" only
+// when its order has one of these: the pay route (app/api/invoice/[id]/pay/route.ts) and the page (app/pay-invoice/[id]).
+export const PAID_STATUSES = ['PAID', 'PARTIALLY_REFUNDED', 'REFUNDED']
+
 export type InvoicePaymentSession = {
   provider: string
   externalId?: string | null

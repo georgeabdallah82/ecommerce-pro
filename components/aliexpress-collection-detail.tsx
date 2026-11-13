@@ -38,7 +38,8 @@ export default function AliExpressCollectionDetail({ theme, collection, products
           <span>{collection.name}</span>
         </div>
       )}
-      {/* The photo banner needs a photo: without one (or with the stock placeholder) the title stands on its own. */}
+      {/* The photo banner needs a photo: without one (or with the stock placeholder) the title stands on its own.
+          The product count is in the toolbar below (it was in both places). */}
       {showImage && realPhoto(collection.imageUrl) ? (
         <div className="aliCollectionBanner">
           <StoreImage src={collection.imageUrl} alt={collection.name} eager />
@@ -47,7 +48,6 @@ export default function AliExpressCollectionDetail({ theme, collection, products
               <span className="focalEyebrow">{t('COLLECTION')}</span>
               <h1>{collection.name}</h1>
               {showDescription && collection.description && <p>{collection.description}</p>}
-              <span className="aliCollectionCount">{plural(products.length, 'product')}</span>
             </div>
           </div>
         </div>
@@ -56,7 +56,6 @@ export default function AliExpressCollectionDetail({ theme, collection, products
           <span className="focalEyebrow">{t('COLLECTION')}</span>
           <h1>{collection.name}</h1>
           {showDescription && collection.description && <p>{collection.description}</p>}
-          <span className="aliCollectionCount">{plural(products.length, 'product')}</span>
         </header>
       )}
 
@@ -64,7 +63,7 @@ export default function AliExpressCollectionDetail({ theme, collection, products
         <div className="aliCollectionToolbar">
           <span className="focalResultCount">{plural(products.length, 'product')}</span>
           {showSort && (
-            <select value={sort} onChange={e => setSort(e.target.value)}>
+            <select value={sort} onChange={e => setSort(e.target.value)} aria-label={t('Sort products')}>
               <option value="curated">{t('Featured')}</option>
               <option value="price_asc">{t('Price: low to high')}</option>
               <option value="price_desc">{t('Price: high to low')}</option>
@@ -74,6 +73,8 @@ export default function AliExpressCollectionDetail({ theme, collection, products
           )}
         </div>
 
+        {/* The product names are h3: this is the level between them and the page's h1, for screen readers. */}
+        <h2 className="srOnly">{t('Products')}</h2>
         {sorted.length ? (
           <div className="aliDenseGrid">
             {sorted.map(p => (

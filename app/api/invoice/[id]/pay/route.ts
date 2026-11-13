@@ -2,14 +2,11 @@ import { db } from '@/lib/prisma'
 import { completeDraftOrder } from '@/lib/draft-orders'
 import { releaseOrderReservations } from '@/lib/inventory'
 import { getPaymentProvider, draftInvoiceToken, safeTokenEqual } from '@/lib/payments'
-import { startInvoicePayment } from '@/lib/invoice-payment'
+import { PAID_STATUSES, startInvoicePayment } from '@/lib/invoice-payment'
 import { consumeDurableRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { json } from '@/lib/utils'
 import { PaymentMethod } from '@prisma/client'
-
-// Payment statuses of an order that has been paid for, in whole or in part.
-const PAID_STATUSES = ['PAID', 'PARTIALLY_REFUNDED', 'REFUNDED']
 
 // Public, token-secured counterpart to the admin "Complete order" action --
 // that one always force-completes a draft as COD with staff collecting

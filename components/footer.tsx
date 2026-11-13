@@ -111,7 +111,8 @@ export function Footer({ theme }: { theme?: any }) {
 }
 ` }} />
     {whatsappLink && (
-      <div className="focalFooterHelp">
+      // A landmark of its own, like the delivery chip: it sits just above the <footer>, and its styles follow it there.
+      <div className="focalFooterHelp" role="region" aria-label={t('Need help with your order?')}>
         <div className="focalContainer focalFooterHelpInner">
           <span>{t('Need help with your order?')}</span>
           <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="focalFooterWhatsapp">
