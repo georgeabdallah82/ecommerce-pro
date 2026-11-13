@@ -8,7 +8,9 @@ type ClientCheckout = { type: 'mpgs'; merchantId: string; sessionId: string; scr
 
 declare global { interface Window { Checkout?: { configure: (options: unknown) => void; showPaymentPage: () => void } } }
 
-export default function InvoicePayClient({ draftOrderId, token }: { draftOrderId: string; token: string }) {
+// "Pay now" on an invoice the store sent (app/pay-invoice/[id]): starts the card payment and opens the gateway's
+// secure page. The page gives the button its look (buttonClassName).
+export default function InvoicePayClient({ draftOrderId, token, buttonClassName = 'btn' }: { draftOrderId: string; token: string; buttonClassName?: string }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const { t } = useI18n()
@@ -42,10 +44,10 @@ export default function InvoicePayClient({ draftOrderId, token }: { draftOrderId
     } catch (e) { setError(e instanceof Error ? e.message : markT('Unable to start payment')); setLoading(false) }
   }
 
-  if (clientCheckout) return <div className="alert" style={{ marginTop: 20 }}>{t('Loading secure payment…')}</div>
+  if (clientCheckout) return <div className="alert" role="status">{t('Loading secure payment…')}</div>
 
-  return <div style={{ marginTop: 24 }}>
-    {error && <div className="alert danger" style={{ marginBottom: 12 }}>{t(error)}</div>}
-    <button className="btn" onClick={pay} disabled={loading}>{loading ? t('Starting payment…') : t('Pay now')}</button>
+  return <div style={{ display: 'grid', gap: 12 }}>
+    {error && <div className="alert danger" role="alert">{t(error)}</div>}
+    <button type="button" className={buttonClassName} onClick={pay} disabled={loading} aria-busy={loading}>{loading ? t('Starting payment…') : t('Pay now')}</button>
   </div>
 }

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from '@/components/admin-link'
 import { ArrowLeft, Check, Copy, MessageCircle, Pencil, Printer, X } from 'lucide-react'
 import OrderInvoice from './order-invoice'
+import { useI18n } from '@/components/lang-provider'
 import { internationalPhone } from '@/lib/phone'
 import { customerName, customerPhone } from '@/lib/order-flow'
 import type { InvoiceOrder, InvoiceStore } from '@/lib/invoice-template'
@@ -13,7 +14,8 @@ import s from './invoice-workspace.module.css'
 
 // The invoice screen: the invoice itself, and above it what can be done with it. Staff (inside the
 // admin) can print or save it as a PDF, send the customer a link on WhatsApp, add a one-off note,
-// and edit the texts every invoice shows. Customers (/invoice/<id>) only get "Print / Save PDF".
+// and edit the texts every invoice shows. Customers (/invoice/<id>) only get "Print / Save PDF",
+// and their copy is in the language of the store they shop in; the admin's stays English.
 //
 // Printing: a second copy of the invoice is placed directly in <body>, and while printing
 // everything else on the page is hidden, so the paper shows the invoice alone (no admin menus,
@@ -31,6 +33,8 @@ type Props = {
 
 export default function InvoiceWorkspace({ order, store, timezone, mode, customerLink = '', storeCountry = 'Lebanon', canEditTemplate = false }: Props) {
   const router = useRouter()
+  const { t, lang } = useI18n()
+  const customer = mode === 'customer'
   const [note, setNote] = useState('')
   const [copied, setCopied] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -73,19 +77,19 @@ export default function InvoiceWorkspace({ order, store, timezone, mode, custome
     finally { setSaving(false) }
   }
 
-  const invoice = <OrderInvoice order={order} store={shown} note={note} timezone={timezone}/>
+  const invoice = <OrderInvoice order={order} store={shown} note={note} timezone={timezone} t={customer ? t : undefined} lang={customer ? lang : 'en'}/>
 
   return (
     <div className={`${s.page} ${mode === 'customer' ? s.customerPage : ''}`}>
       <div className={s.toolbar}>
         {mode === 'admin' && <Link className={s.back} href={`/admin/orders/${order.id}`}><ArrowLeft size={16}/> Order #{order.orderNumber}</Link>}
         <div className={s.actions}>
-          <button type="button" className={`${s.btn} ${s.primary}`} onClick={() => window.print()}><Printer size={17}/> Print / Save PDF</button>
+          <button type="button" className={`${s.btn} ${s.primary}`} onClick={() => window.print()}><Printer size={17} aria-hidden="true"/> {t('Print / Save PDF')}</button>
           {mode === 'admin' && whatsapp && <a className={`${s.btn} ${s.whatsapp}`} href={whatsapp} target="_blank" rel="noopener noreferrer"><MessageCircle size={17}/> Send on WhatsApp</a>}
           {mode === 'admin' && customerLink && <button type="button" className={s.btn} onClick={copyLink}>{copied ? <><Check size={16}/> Link copied</> : <><Copy size={16}/> Copy customer link</>}</button>}
           {mode === 'admin' && canEditTemplate && <button type="button" className={s.btn} aria-expanded={editing} onClick={() => setEditing(!editing)}>{editing ? <><X size={16}/> Close</> : <><Pencil size={16}/> Edit invoice</>}</button>}
         </div>
-        {mode === 'customer' && <p className={s.hint}>To keep a copy, tap “Print / Save PDF” and choose “Save as PDF”.</p>}
+        {customer && <p className={s.hint}>{t('To keep a copy, tap “Print / Save PDF” and choose “Save as PDF”.')}</p>}
       </div>
 
       {message && <p className={s.message} role="status">{message}</p>}
