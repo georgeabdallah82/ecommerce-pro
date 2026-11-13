@@ -68,7 +68,7 @@ How the layers work (`app/storefront-cards.css`):
 - Every grid was checked before and after: the home page, shop, a collection, a product page, the cart and the wishlist, each at 1280 px, 390 px and 390 px in Arabic.
   - **Buttons inside links:** 4 to 16 per page before, none now.
   - **Names:** each card's link is the product's name, and its two buttons are described by it.
-  - **Layout:** the positions and sizes of the card, photo, name, price, heart and button are identical on all 18.
+  - **Layout:** the positions and sizes of the card, photo, name, price, heart and button are identical on all 18. A picture of the shop grid on a phone is the same pixel for pixel.
   - **Clicks** behave as before at all three sizes:
     - the photo, the name, the price and the space beside them open the product
     - "Add to cart" stays on the page
@@ -76,9 +76,12 @@ How the layers work (`app/storefront-cards.css`):
   - **Hover:** the second photo fades in, the photo lifts, the name stays unstyled (no underline), and the pointer is a hand.
   - **Keyboard:** the ring goes around the card, 3 px red and 2 px out, as before. A long name still stops at two lines with an ellipsis.
   - **Layers:** the header and the sticky "Buy" bar stay above the cards when the page scrolls cards under them.
+  - **"Recently viewed"** (after viewing four products) uses the same card. Its links are the names, and a tap on a photo opens the product, a sold-out one included.
   - **axe** finds nothing on any of these pages, before or after.
 - Regression checks:
-  - UX audit of 9 pages at both widths.
+  - UX audit of 9 pages at both widths: no axe findings, no phone tap target under 44 px, no text under 12 px, no sideways scroll.
+    - The audit now counts a link's invisible cover as its tap area, as the realistic-store audit already did.
+    - Otherwise each card's name would be measured as a 20 px line of text, though a tap anywhere on the card opens the product.
   - Crash sweep: 72 page loads, only the expected 404s.
   - Homepage motion: 37 checks. The photo hover is now reached by the mouse's position, since the photo passes the pointer to the link.
   - Sticky header, focus and scroll lock: 10 checks.
