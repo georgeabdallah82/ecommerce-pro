@@ -289,6 +289,8 @@
   text-align: center;
 }
 .empty strong { color: var(--admin-ink); }
+/* An empty state's heading is an h2 (it follows the page's h1), sized as the h3 it was. */
+.empty h2 { font-size: 1.17em; margin: 1em 0; }
 
 /* Tables */
 .tableWrap { overflow: auto; }

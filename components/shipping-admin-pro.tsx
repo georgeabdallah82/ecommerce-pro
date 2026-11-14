@@ -4,7 +4,10 @@ import { useMemo, useState } from 'react'
 import { Check, Globe2, Pencil, Plus, RefreshCw, Trash2, Truck, X } from 'lucide-react'
 import { money } from '@/lib/config'
 import ui from './admin-ui.module.css'
+import s from './admin-content-editors.module.css'
 import { useConfirm } from './admin-confirm'
+import AdminFormDialog, { DialogError } from './admin-form-dialog'
+import AdminScrollArea from './admin-scroll-area'
 
 type Rate = { id: string; name: string; price: number; freeAbove: number | null; estimatedDays: number | null; isActive: boolean }
 type Zone = { id: string; name: string; countries: string; regions: string | null; isActive: boolean; rates: Rate[] }
@@ -47,6 +50,10 @@ export default function ShippingAdminPro({ initial, deliveryTimes, areaNames = [
   const [formOpen, setFormOpen] = useState(false)
   const [form, setForm] = useState(initialForm)
   const [error, setError] = useState('')
+  // Why a save in the New zone / Edit zone dialog failed, shown in the dialog (it was shown on the page behind the
+  // overlay), and why a rate form's save failed, shown in that form (docs/admin-settings-2026-11.md).
+  const [dialogError, setDialogError] = useState('')
+  const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
 
@@ -73,7 +80,7 @@ export default function ShippingAdminPro({ initial, deliveryTimes, areaNames = [
   }
 
   async function createZone(e: React.FormEvent) {
-    e.preventDefault(); setSaving(true); setError('')
+    e.preventDefault(); setSaving(true); setDialogError('')
     try {
       const value = await api('/api/admin/shipping', { method: 'POST', body: JSON.stringify({
         name: form.name, countries: form.countries, regions: form.regions || null, rateName: form.rateName,
@@ -81,7 +88,7 @@ export default function ShippingAdminPro({ initial, deliveryTimes, areaNames = [
         estimatedDays: form.estimatedDays === '' ? null : Number(form.estimatedDays), isActive: form.isActive,
       }) })
       await refresh(); setOpen(value.zone.id); setForm(initialForm); setFormOpen(false)
-    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to create shipping zone') }
+    } catch (e) { setDialogError(e instanceof Error ? e.message : 'Unable to create shipping zone') }
     finally { setSaving(false) }
   }
 
@@ -112,30 +119,30 @@ export default function ShippingAdminPro({ initial, deliveryTimes, areaNames = [
   function openEditZone(zone: Zone) {
     setEditZone(zone)
     setEditZoneForm({ name: zone.name, countries: zone.countries, regions: zone.regions || '' })
-    setError('')
+    setDialogError('')
   }
 
   async function saveEditZone(e: React.FormEvent) {
     e.preventDefault()
     if (!editZone) return
-    setSaving(true); setError('')
+    setSaving(true); setDialogError('')
     try {
       await api('/api/admin/shipping', { method: 'PATCH', body: JSON.stringify({
         id: editZone.id, name: editZoneForm.name, countries: editZoneForm.countries, regions: editZoneForm.regions || null,
       }) })
       await refresh(); setEditZone(null)
-    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to update zone details') }
+    } catch (e) { setDialogError(e instanceof Error ? e.message : 'Unable to update zone details') }
     finally { setSaving(false) }
   }
 
   function openAddRate(zoneId: string) {
     setAddRateFor(zoneId)
     setRateForm(initialRateForm)
-    setError('')
+    setFormError('')
   }
 
   async function submitAddRate(e: React.FormEvent, zone: Zone) {
-    e.preventDefault(); setSaving(true); setError('')
+    e.preventDefault(); setSaving(true); setFormError('')
     try {
       await api('/api/admin/shipping', { method: 'PATCH', body: JSON.stringify({
         id: zone.id, addRates: [{
@@ -146,18 +153,18 @@ export default function ShippingAdminPro({ initial, deliveryTimes, areaNames = [
         }],
       }) })
       await refresh(); setAddRateFor(null)
-    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to add rate') }
+    } catch (e) { setFormError(e instanceof Error ? e.message : 'Unable to add rate') }
     finally { setSaving(false) }
   }
 
   function startEditRate(rate: Rate) {
     setEditingRate(rate.id)
     setEditRateForm({ name: rate.name, price: dollars(rate.price), freeAbove: dollars(rate.freeAbove), estimatedDays: rate.estimatedDays === null ? '' : String(rate.estimatedDays) })
-    setError('')
+    setFormError('')
   }
 
   async function saveEditRate(e: React.FormEvent, zone: Zone, rateId: string) {
-    e.preventDefault(); setBusy(rateId); setError('')
+    e.preventDefault(); setBusy(rateId); setFormError('')
     try {
       await api('/api/admin/shipping', { method: 'PATCH', body: JSON.stringify({
         id: zone.id, rate: {
@@ -169,13 +176,13 @@ export default function ShippingAdminPro({ initial, deliveryTimes, areaNames = [
         },
       }) })
       await refresh(); setEditingRate(null)
-    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to update rate') }
+    } catch (e) { setFormError(e instanceof Error ? e.message : 'Unable to update rate') }
     finally { setBusy(null) }
   }
 
   return <div className="catalogPage">
-    <div className={`${ui.sectionHead} catalogHead`}><div><span className={ui.muted}>SETTINGS</span><h1 className={ui.title}>Shipping</h1><p className={ui.muted}>Control where you ship, which rates customers see, and free-shipping thresholds.</p></div><div className="inline"><button className={`${ui.btn} ${ui.btnSecondary}`} onClick={refresh}><RefreshCw size={15}/> Refresh</button><button className={ui.btn} onClick={() => setFormOpen(true)}><Plus size={16}/> Add zone</button></div></div>
-    {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
+    <div className={`${ui.sectionHead} catalogHead`}><div><span className={ui.muted}>SETTINGS</span><h1 className={ui.title}>Shipping</h1><p className={ui.muted}>Control where you ship, which rates customers see, and free-shipping thresholds.</p></div><div className="inline"><button className={`${ui.btn} ${ui.btnSecondary}`} onClick={refresh}><RefreshCw size={15}/> Refresh</button><button className={ui.btn} onClick={() => { setDialogError(''); setFormOpen(true) }}><Plus size={16}/> Add zone</button></div></div>
+    {error && <div className={`${ui.alert} ${ui.alertDanger}`} role="alert">{error}</div>}
     {deliveryTimes}
 
     <div className="catalogStats">
@@ -186,21 +193,21 @@ export default function ShippingAdminPro({ initial, deliveryTimes, areaNames = [
     </div>
 
     <div className={`${ui.card} catalogToolbar`}>
-      <div className="productSearch"><Globe2 size={16}/><input placeholder="Search zones, countries or regions…" value={query} onChange={e => setQuery(e.target.value)}/>{query && <button className="searchClear" onClick={() => setQuery('')}><X size={14}/></button>}</div>
-      <select className={ui.input} value={status} onChange={e => setStatus(e.target.value as typeof status)}><option value="ALL">All zones</option><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option></select>
+      <div className="productSearch"><Globe2 size={16}/><input placeholder="Search zones, countries or regions…" aria-label="Search zones" value={query} onChange={e => setQuery(e.target.value)}/>{query && <button type="button" className="searchClear" aria-label="Clear search" onClick={() => setQuery('')}><X size={14} aria-hidden="true"/></button>}</div>
+      <select className={ui.input} aria-label="Show zones" value={status} onChange={e => setStatus(e.target.value as typeof status)}><option value="ALL">All zones</option><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option></select>
       <span className={ui.muted}>{filtered.length} zone{filtered.length === 1 ? '' : 's'}</span>
     </div>
 
-    <div className={`${ui.card} productTableCard`}><div className={ui.tableWrap}><table className={`${ui.table} productTable`} style={{ minWidth: 980 }}><thead><tr><th>Zone</th><th>Coverage</th><th>Rates</th><th>Status</th><th></th></tr></thead><tbody>
+    <div className={`${ui.card} productTableCard`}><AdminScrollArea label="Shipping zones"><table className={`${ui.table} productTable`} style={{ minWidth: 980 }}><thead><tr><th>Zone</th><th>Coverage</th><th>Rates</th><th>Status</th><th><span className={s.srOnly}>Actions</span></th></tr></thead><tbody>
       {filtered.map(zone => <tr key={zone.id}>
-        <td><button className={ui.textButton} onClick={() => setOpen(open === zone.id ? null : zone.id)}><strong>{zone.name}</strong></button></td>
+        <td><button className={ui.textButton} aria-expanded={open === zone.id} onClick={() => setOpen(open === zone.id ? null : zone.id)}><strong>{zone.name}</strong></button></td>
         <td><div><strong>{zone.countries || 'All countries'}</strong>{zone.regions && <div className={ui.muted}>{zone.regions}</div>}</div></td>
         <td><strong>{zone.rates.length}</strong><div className={ui.muted}>{zone.rates.filter(r => r.isActive).length} active</div></td>
         <td><span className={`${ui.statusPill} ${zone.isActive ? ui.statusPillSuccess : ui.statusPillWarning}`}>{zone.isActive ? <><Check size={13}/> Active</> : 'Inactive'}</span></td>
-        <td><div className="inline"><button className={zone.isActive ? `${ui.textButton} ${ui.textButtonDanger}` : ui.textButton} disabled={busy === zone.id} onClick={() => toggleZone(zone)}>{zone.isActive ? 'Disable' : 'Enable'}</button><button className={ui.iconBtn} title="Edit zone" aria-label="Edit zone" onClick={() => openEditZone(zone)}><Pencil size={15}/></button><button className={`${ui.iconBtn} ${ui.iconBtnDanger}`} title="Delete zone" aria-label="Delete zone" disabled={busy === zone.id} onClick={() => deleteZone(zone)}><Trash2 size={15}/></button></div></td>
+        <td><div className="inline"><button className={zone.isActive ? `${ui.textButton} ${ui.textButtonDanger}` : ui.textButton} disabled={busy === zone.id} onClick={() => toggleZone(zone)}>{zone.isActive ? 'Disable' : 'Enable'}</button><button className={ui.iconBtn} title={`Edit ${zone.name}`} aria-label={`Edit ${zone.name}`} onClick={() => openEditZone(zone)}><Pencil size={15}/></button><button className={`${ui.iconBtn} ${ui.iconBtnDanger}`} title={`Delete ${zone.name}`} aria-label={`Delete ${zone.name}`} disabled={busy === zone.id} onClick={() => deleteZone(zone)}><Trash2 size={15}/></button></div></td>
       </tr>)}
-    </tbody></table></div>
-    {!filtered.length && <div className={ui.empty}><Truck size={28}/><h3>No shipping zones</h3><p className={ui.muted}>Create a zone to define where and how you ship.</p></div>}
+    </tbody></table></AdminScrollArea>
+    {!filtered.length && <div className={ui.empty}><Truck size={28}/><h2>No shipping zones</h2><p className={ui.muted}>Create a zone to define where and how you ship.</p></div>}
     </div>
 
     {filtered.filter(z => z.id === open).map(zone => <div className={`${ui.card} opsPanel`} key={zone.id} style={{ marginTop: 14 }}>
@@ -213,10 +220,11 @@ export default function ShippingAdminPro({ initial, deliveryTimes, areaNames = [
             <label className={ui.fieldLabel}>Free over<input className={ui.input} type="number" min="0" step="0.01" value={editRateForm.freeAbove} onChange={e => setEditRateForm({ ...editRateForm, freeAbove: e.target.value })} placeholder="None"/></label>
             <label className={ui.fieldLabel}>Est. days<input className={ui.input} type="number" min="0" step="1" value={editRateForm.estimatedDays} onChange={e => setEditRateForm({ ...editRateForm, estimatedDays: e.target.value })}/></label>
           </div>
+          {formError && <div className={`${ui.alert} ${ui.alertDanger}`} role="alert">{formError}</div>}
           <div className="inline" style={{ justifyContent: 'flex-end' }}><button type="button" className={ui.textButton} onClick={() => setEditingRate(null)} disabled={busy === rate.id}>Cancel</button><button className={ui.btn} disabled={busy === rate.id}>{busy === rate.id ? 'Saving…' : 'Save rate'}</button></div>
         </form>
       ) : (
-        <div className="opsRow" key={rate.id}><div><strong>{rate.name}</strong><div className={ui.muted}>{rate.estimatedDays ? `${rate.estimatedDays} day estimate` : 'No delivery estimate'}{rate.freeAbove ? ` · Free over ${money(rate.freeAbove)}` : ''}</div></div><div className="inline"><strong>{money(rate.price)}</strong><span className={`${ui.statusPill} ${rate.isActive ? ui.statusPillSuccess : ui.statusPillWarning}`}>{rate.isActive ? 'Active' : 'Inactive'}</span><button className={ui.iconBtn} title="Edit rate" aria-label="Edit rate" disabled={busy === rate.id} onClick={() => startEditRate(rate)}><Pencil size={14}/></button><button className={ui.textButton} disabled={busy === rate.id} onClick={() => toggleRate(zone, rate)}>{rate.isActive ? 'Disable' : 'Enable'}</button></div></div>
+        <div className="opsRow" key={rate.id}><div><strong>{rate.name}</strong><div className={ui.muted}>{rate.estimatedDays ? `${rate.estimatedDays} day estimate` : 'No delivery estimate'}{rate.freeAbove ? ` · Free over ${money(rate.freeAbove)}` : ''}</div></div><div className="inline"><strong>{money(rate.price)}</strong><span className={`${ui.statusPill} ${rate.isActive ? ui.statusPillSuccess : ui.statusPillWarning}`}>{rate.isActive ? 'Active' : 'Inactive'}</span><button className={ui.iconBtn} title={`Edit ${rate.name}`} aria-label={`Edit ${rate.name}`} disabled={busy === rate.id} onClick={() => startEditRate(rate)}><Pencil size={14}/></button><button className={ui.textButton} disabled={busy === rate.id} onClick={() => toggleRate(zone, rate)}>{rate.isActive ? 'Disable' : 'Enable'}</button></div></div>
       ))}{!zone.rates.length && <div className={ui.empty}>No rates configured.</div>}</div>
       {addRateFor === zone.id && <form className={`${ui.card} discountForm`} style={{ marginTop: 14, padding: 16 }} onSubmit={e => submitAddRate(e, zone)}>
         <div className="discountFormGrid">
@@ -225,21 +233,23 @@ export default function ShippingAdminPro({ initial, deliveryTimes, areaNames = [
           <label className={ui.fieldLabel}>Free over<input className={ui.input} type="number" min="0" step="0.01" value={rateForm.freeAbove} onChange={e => setRateForm({ ...rateForm, freeAbove: e.target.value })} placeholder="None"/></label>
           <label className={ui.fieldLabel}>Est. days<input className={ui.input} type="number" min="0" step="1" value={rateForm.estimatedDays} onChange={e => setRateForm({ ...rateForm, estimatedDays: e.target.value })}/></label>
         </div>
+        {formError && <div className={`${ui.alert} ${ui.alertDanger}`} role="alert">{formError}</div>}
         <div className="inline" style={{ justifyContent: 'flex-end', marginTop: 8 }}><button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setAddRateFor(null)} disabled={saving}>Cancel</button><button className={ui.btn} disabled={saving}>{saving ? 'Adding…' : 'Add rate'}</button></div>
       </form>}
     </div>)}
 
-    {formOpen && <div className={ui.modalOverlay} onClick={() => !saving && setFormOpen(false)}><div className={`${ui.card} discountsModal`} onClick={e => e.stopPropagation()}><div className="inventoryModalHead"><div><span className={`${ui.muted} ${ui.tiny}`}>CREATE SHIPPING ZONE</span><h2>New zone</h2><p className={ui.muted}>Define coverage and your first customer-facing rate.</p></div><button className={ui.iconBtn} onClick={() => setFormOpen(false)} disabled={saving}><X size={17}/></button></div>
-      <form className="discountForm" onSubmit={createZone}><label className={ui.fieldLabel}>Zone name<input className={ui.input} required value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Lebanon"/></label><label className={ui.fieldLabel}>Countries<input className={ui.input} required value={form.countries} onChange={e => setForm({...form, countries: e.target.value})} placeholder="Lebanon"/><small className={ui.muted}>Country name or ISO code (e.g. Lebanon or LB), comma-separated for multiple countries.</small></label><AreaField value={form.regions} onChange={regions => setForm({...form, regions})} areas={areaNames}/><div className="discountFormGrid"><label className={ui.fieldLabel}>Rate name<input className={ui.input} required value={form.rateName} onChange={e => setForm({...form, rateName: e.target.value})}/></label><label className={ui.fieldLabel}>Price<input className={ui.input} type="number" min="0" step="0.01" value={form.price} onChange={e => setForm({...form, price: e.target.value})}/></label><label className={ui.fieldLabel}>Free over<input className={ui.input} type="number" min="0" step="0.01" value={form.freeAbove} onChange={e => setForm({...form, freeAbove: e.target.value})} placeholder="None"/></label><label className={ui.fieldLabel}>Est. days<input className={ui.input} type="number" min="0" step="1" value={form.estimatedDays} onChange={e => setForm({...form, estimatedDays: e.target.value})}/></label></div><label className="toggleRow"><input type="checkbox" checked={form.isActive} onChange={e => setForm({...form, isActive: e.target.checked})}/><span><strong>Zone is active</strong><small>Customers can use this zone immediately.</small></span></label><div className="inline" style={{ justifyContent: 'flex-end', marginTop: 8 }}><button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setFormOpen(false)} disabled={saving}>Cancel</button><button className={ui.btn} disabled={saving}>{saving ? 'Creating…' : 'Create zone'}</button></div></form>
-    </div></div>}
+    <AdminFormDialog open={formOpen} eyebrow="CREATE SHIPPING ZONE" title="New zone" description="Define coverage and your first customer-facing rate." busy={saving} onClose={() => setFormOpen(false)}>
+      <form className="discountForm" onSubmit={createZone}><label className={ui.fieldLabel}>Zone name<input className={ui.input} required data-autofocus value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Lebanon"/></label><label className={ui.fieldLabel}>Countries<input className={ui.input} required value={form.countries} onChange={e => setForm({...form, countries: e.target.value})} placeholder="Lebanon"/><small className={ui.muted}>Country name or ISO code (e.g. Lebanon or LB), comma-separated for multiple countries.</small></label><AreaField value={form.regions} onChange={regions => setForm({...form, regions})} areas={areaNames}/><div className="discountFormGrid"><label className={ui.fieldLabel}>Rate name<input className={ui.input} required value={form.rateName} onChange={e => setForm({...form, rateName: e.target.value})}/></label><label className={ui.fieldLabel}>Price<input className={ui.input} type="number" min="0" step="0.01" value={form.price} onChange={e => setForm({...form, price: e.target.value})}/></label><label className={ui.fieldLabel}>Free over<input className={ui.input} type="number" min="0" step="0.01" value={form.freeAbove} onChange={e => setForm({...form, freeAbove: e.target.value})} placeholder="None"/></label><label className={ui.fieldLabel}>Est. days<input className={ui.input} type="number" min="0" step="1" value={form.estimatedDays} onChange={e => setForm({...form, estimatedDays: e.target.value})}/></label></div><label className="toggleRow"><input type="checkbox" checked={form.isActive} onChange={e => setForm({...form, isActive: e.target.checked})}/><span><strong>Zone is active</strong><small>Customers can use this zone immediately.</small></span></label><DialogError error={dialogError}/><div className="inline" style={{ justifyContent: 'flex-end', marginTop: 8 }}><button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setFormOpen(false)} disabled={saving}>Cancel</button><button className={ui.btn} disabled={saving}>{saving ? 'Creating…' : 'Create zone'}</button></div></form>
+    </AdminFormDialog>
 
-    {editZone && <div className={ui.modalOverlay} onClick={() => !saving && setEditZone(null)}><div className={`${ui.card} discountsModal`} onClick={e => e.stopPropagation()}><div className="inventoryModalHead"><div><span className={`${ui.muted} ${ui.tiny}`}>EDIT SHIPPING ZONE</span><h2>{editZone.name}</h2><p className={ui.muted}>Update coverage details for this zone.</p></div><button className={ui.iconBtn} onClick={() => setEditZone(null)} disabled={saving}><X size={17}/></button></div>
+    <AdminFormDialog open={!!editZone} eyebrow="EDIT SHIPPING ZONE" title={editZone?.name || ''} description="Update coverage details for this zone." busy={saving} onClose={() => setEditZone(null)}>
       <form className="discountForm" onSubmit={saveEditZone}>
-        <label className={ui.fieldLabel}>Zone name<input className={ui.input} required value={editZoneForm.name} onChange={e => setEditZoneForm({ ...editZoneForm, name: e.target.value })}/></label>
+        <label className={ui.fieldLabel}>Zone name<input className={ui.input} required data-autofocus value={editZoneForm.name} onChange={e => setEditZoneForm({ ...editZoneForm, name: e.target.value })}/></label>
         <label className={ui.fieldLabel}>Countries<input className={ui.input} required value={editZoneForm.countries} onChange={e => setEditZoneForm({ ...editZoneForm, countries: e.target.value })}/><small className={ui.muted}>Country name or ISO code (e.g. Lebanon or LB), comma-separated for multiple countries.</small></label>
         <AreaField value={editZoneForm.regions} onChange={regions => setEditZoneForm({ ...editZoneForm, regions })} areas={areaNames}/>
+        <DialogError error={dialogError}/>
         <div className="inline" style={{ justifyContent: 'flex-end', marginTop: 8 }}><button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setEditZone(null)} disabled={saving}>Cancel</button><button className={ui.btn} disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button></div>
       </form>
-    </div></div>}
+    </AdminFormDialog>
   </div>
 }
