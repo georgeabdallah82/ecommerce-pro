@@ -19,6 +19,7 @@ import { customerUpdateLink, updateForStatus } from '@/lib/order-updates'
 import type { PhoneHistory } from '@/lib/customer-history'
 import type { Risk } from '@/lib/order-risk'
 import { useConfirm } from './admin-confirm'
+import AdminMenu from './admin-menu'
 import { safeHttpUrl } from '@/lib/safe-url'
 
 // Admin > Orders > one order. Top to bottom: the order number and where it stands, the progress
@@ -53,23 +54,10 @@ function addressText(raw: string | null | undefined) {
   return [`${a.firstName} ${a.lastName}`.trim(),a.line1,a.line2,[a.city,a.region,a.postalCode].filter(Boolean).join(', '),a.country,a.phone].filter(Boolean).join('\n')
 }
 
+// The order's "More" menu (components/admin-menu.tsx: keyboard, focus and Escape).
 function Menu({ children }: { children: React.ReactNode }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    const close = (event: Event) => { if (!ref.current?.contains(event.target as Node)) setOpen(false) }
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false) }
-    document.addEventListener('pointerdown', close)
-    document.addEventListener('keydown', onKey)
-    return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', onKey) }
-  }, [open])
-  return (
-    <div className={s.menuWrap} ref={ref}>
-      <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} aria-expanded={open} onClick={() => setOpen(!open)}><MoreHorizontal size={16}/> More <ChevronDown size={14}/></button>
-      {open && <div className={s.menu} role="menu" onClick={() => setOpen(false)}>{children}</div>}
-    </div>
-  )
+  return <AdminMenu className={s.menuWrap} buttonClassName={`${ui.btn} ${ui.btnSecondary}`} menuClassName={s.menu} label="More actions for this order"
+    content={<><MoreHorizontal size={16} aria-hidden="true"/> More <ChevronDown size={14} aria-hidden="true"/></>}>{children}</AdminMenu>
 }
 
 export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTimezone, storeName = '', storeCountry = 'Lebanon', phoneBlocked = false, reviewLink = '', trackLink = '', history = null, risk = null }: { initial: any; canStartOrderEdit?: boolean; storeTimezone?: string; storeName?: string; storeCountry?: string; phoneBlocked?: boolean; reviewLink?: string; trackLink?: string; history?: PhoneHistory | null; risk?: Risk | null }) {
@@ -127,7 +115,7 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
   }
 
   // Moving the order along (the next-step button, cancel, mark paid): one PATCH, the server's
-  // answer replaces the local copy.
+  // answer replaces the local copy. True when it saved, so a panel stays open when it didn't.
   const [moving, setMoving] = useState(false)
   async function patch(data: Record<string, unknown>, done: (d: any) => string) {
     setMoving(true); say('')
@@ -138,7 +126,8 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
       say(done(d))
       // The page reloads its data from the server (history, parcels), see the effect below.
       router.refresh()
-    } catch (e) { say(e instanceof Error ? e.message : 'Unable to update order', true) }
+      return true
+    } catch (e) { say(e instanceof Error ? e.message : 'Unable to update order', true); return false }
     finally { setMoving(false) }
   }
   const step = nextStep(o, money)
@@ -208,12 +197,11 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
     if (status !== o.status || paymentStatus !== o.paymentStatus) {
       if (!(await confirm({ title: 'Change the status by hand?', message: `${status !== o.status ? `Order: ${statusInfo(o.status).label} → ${statusInfo(status).label}. ` : ''}${paymentStatus !== o.paymentStatus ? `Payment: ${PAYMENT_STATUS_WORDS[o.paymentStatus]} → ${PAYMENT_STATUS_WORDS[paymentStatus]}. ` : ''}This can't be undone.`, confirmLabel: 'Change', tone: 'default' }))) return
     }
-    await patch({ status, paymentStatus, trackingNumber: tracking, trackingCompany, trackingUrl }, d => d.cancelRefund ? `Saved. A ${money(d.cancelRefund.amount, o.currency)} refund ${d.cancelRefund.pending ? 'is being processed' : 'was issued'}.` : 'Saved.')
-    setManual(false)
+    if (await patch({ status, paymentStatus, trackingNumber: tracking, trackingCompany, trackingUrl }, d => d.cancelRefund ? `Saved. A ${money(d.cancelRefund.amount, o.currency)} refund ${d.cancelRefund.pending ? 'is being processed' : 'was issued'}.` : 'Saved.')) setManual(false)
   }
+  // Both panels stay open when the save fails, with what was typed (the reason shows above them).
   async function saveTracking(){
-    await patch({ trackingNumber: tracking, ...(trackingCompany ? { trackingCompany } : {}) }, () => 'Tracking number saved.')
-    setTrackingOpen(false)
+    if (await patch({ trackingNumber: tracking, ...(trackingCompany ? { trackingCompany } : {}) }, () => 'Tracking number saved.')) setTrackingOpen(false)
   }
   async function addNote(){const value=note.trim();if(!value)return;setAddingNote(true);say('');try{const d=await api('/api/admin/orders',{method:'PATCH',body:JSON.stringify({id:o.id,addNote:value})});setO((c:any)=>({...c,notesHistory:[d.note,...(c.notesHistory||[])]}));setNote('');say('Note added.')}catch(e){say(e instanceof Error?e.message:'Unable to add note', true)}finally{setAddingNote(false)}}
   async function copy(text: string, what: string){try{await navigator.clipboard.writeText(text);setCopied(what);window.setTimeout(()=>setCopied(''),1500)}catch{}}
@@ -260,7 +248,7 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
       <div>
         <p className={s.kicker}>Order</p>
         <div className={s.orderRow}>
-          <h1 className={s.orderNo}>#{o.orderNumber}</h1>
+          <h1 className={s.orderNo} data-admin-title={`Order #${o.orderNumber}`}>#{o.orderNumber}</h1>
           <button type="button" className={s.iconBtn} onClick={() => copy(String(o.orderNumber), 'number')} aria-label="Copy order number">{copied === 'number' ? <Check size={15}/> : <Copy size={15}/>}</button>
         </div>
         <p className={s.meta}>Placed {formatAdminDateTime(o.createdAt, storeTimezone)}{o.isGift ? ' · Gift order' : ''}</p>
@@ -361,8 +349,8 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
       <div className={s.panelHead}><h2 className={s.panelTitle}>Tracking number</h2></div>
       <div className={s.panelBody}>
         <div className={s.two}>
-          <label className={ui.fieldLabel}>Tracking number<input className={ui.input} autoFocus value={tracking} onChange={e=>setTracking(e.target.value)} placeholder="From the delivery company"/></label>
-          <label className={ui.fieldLabel}>Delivery company<input className={ui.input} value={trackingCompany} onChange={e=>setTrackingCompany(e.target.value)} placeholder="Aramex, DHL, LibanPost…"/></label>
+          <label className={ui.fieldLabel}>Tracking number<input className={ui.input} autoFocus maxLength={120} value={tracking} onChange={e=>setTracking(e.target.value)} placeholder="From the delivery company"/></label>
+          <label className={ui.fieldLabel}>Delivery company<input className={ui.input} maxLength={120} value={trackingCompany} onChange={e=>setTrackingCompany(e.target.value)} placeholder="Aramex, DHL, LibanPost…"/></label>
         </div>
         <div className={s.actions}><button className={`${ui.btn} ${ui.btnSecondary}`} onClick={()=>setTrackingOpen(false)}>Close</button><button className={ui.btn} onClick={saveTracking} disabled={moving}><Save size={15}/> Save</button></div>
       </div>
@@ -392,7 +380,8 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
     </section>}
 
     <div className={s.layout}>
-      <main className={s.main}>
+      {/* Not a second <main>: the order sits in the admin's own main landmark. */}
+      <div className={s.main}>
         {editing && <section className={s.panel}>
           <div className={s.panelHead}><h2 className={s.panelTitle}>Contact</h2></div>
           <div className={s.panelBody}>
@@ -436,8 +425,13 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
         </section>}
         {editing && <section className={s.panel}>
           <div className={s.panelHead}><h2 className={s.panelTitle}>Staff note <span className={ui.muted}>(only staff see it)</span></h2></div>
-          <div className={s.panelBody}><textarea className={ui.textarea} rows={4} value={notesValue} onChange={e=>setNotesValue(e.target.value)} placeholder="A note about this order for the team…"/></div>
+          <div className={s.panelBody}><textarea className={ui.textarea} rows={4} value={notesValue} onChange={e=>setNotesValue(e.target.value)} placeholder="A note about this order for the team…" aria-label="Staff note"/></div>
         </section>}
+        {/* Save and Cancel at the end of the form too: they were only at the top, a long scroll back from the last field. */}
+        {editing && <div className={`${s.actions} ${s.editEnd}`}>
+          <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setEditing(false)} disabled={saving}><X size={15}/> Cancel</button>
+          <button className={ui.btn} onClick={saveDetails} disabled={saving}><Save size={15}/>{saving ? 'Saving…' : 'Save'}</button>
+        </div>}
 
         {!editing && <section className={s.panel}>
           <div className={s.panelHead}>
@@ -521,7 +515,7 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
           </div>
           {(o.paymentProofs || []).length > 0 && <div className={s.proofBox}>
             <p className={s.proofText}><strong>{o.paymentProofs.length} payment screenshot{o.paymentProofs.length === 1 ? '' : 's'} from the customer.</strong>{canMarkPaid ? ' Check that the money really arrived, then tap Mark as paid.' : ''} <span className={ui.muted}>Only staff can see these.</span></p>
-            <div className={s.proofs}>{o.paymentProofs.map((p: any) => <a key={p.id} className={s.proof} href={`/api/admin/orders/${o.id}/payment-proof/${p.id}`} target="_blank" rel="noopener noreferrer"><img src={`/api/admin/orders/${o.id}/payment-proof/${p.id}`} alt="Payment screenshot from the customer" loading="lazy"/><span>{new Date(p.createdAt).toLocaleString()}</span></a>)}</div>
+            <div className={s.proofs}>{o.paymentProofs.map((p: any) => <a key={p.id} className={s.proof} href={`/api/admin/orders/${o.id}/payment-proof/${p.id}`} target="_blank" rel="noopener noreferrer"><img src={`/api/admin/orders/${o.id}/payment-proof/${p.id}`} alt="Payment screenshot from the customer" loading="lazy"/><span>{formatAdminDateTime(p.createdAt, storeTimezone)}</span></a>)}</div>
           </div>}
         </section>
 
@@ -547,13 +541,13 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
         </section>}
 
         <DeliveryTrackingAdmin orderId={o.id} orderStatus={o.status} className={s.tracking}/>
-      </main>
+      </div>
 
       <aside className={s.side}>
         {!editing && <section className={s.panel}>
           <div className={s.panelHead}><h2 className={s.panelTitle}>Notes</h2></div>
           <div className={s.panelBody}>
-            <textarea className={ui.textarea} rows={3} value={note} onChange={e=>setNote(e.target.value)} placeholder="Add a note for the team (only staff see it)…"/>
+            <textarea className={ui.textarea} rows={3} value={note} onChange={e=>setNote(e.target.value)} placeholder="Add a note for the team (only staff see it)…" aria-label="Note for the team"/>
             <button className={`${ui.btn} ${s.wide}`} onClick={addNote} disabled={addingNote || !note.trim()}><Plus size={15}/>{addingNote ? 'Adding…' : 'Add note'}</button>
             {o.notes && <div className={s.staffNote}>{o.notes}</div>}
             <div className={s.log}>

@@ -1,6 +1,7 @@
 'use client'
 import { createContext, useCallback, useContext, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import ui from './admin-ui.module.css'
+import { useModalFocus } from './use-modal-focus'
 
 type AskForConfirmation = () => Promise<boolean>
 const ReauthContext = createContext<AskForConfirmation | null>(null)
@@ -32,6 +33,10 @@ export function ReauthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const pending = useRef<((ok: boolean) => void) | null>(null)
+  // A modal dialog (components/use-modal-focus.ts): Tab stays in it, Escape cancels, focus goes back to the
+  // button that needed it. It opens on top of other dialogs (a refund), which leave its keys alone.
+  const form = useRef<HTMLFormElement>(null)
+  useModalFocus(form, open, () => { if (!busy) finish(false) })
 
   const askForConfirmation = useCallback<AskForConfirmation>(() => new Promise<boolean>(resolve => {
     pending.current = resolve
@@ -62,11 +67,11 @@ export function ReauthProvider({ children }: { children: ReactNode }) {
   return <ReauthContext.Provider value={askForConfirmation}>
     {children}
     {open && <div className={ui.modalOverlay} onClick={() => finish(false)}>
-      <form className={ui.card} role="dialog" aria-modal="true" aria-labelledby="reauth-title" style={{ width: 'min(420px,92vw)', padding: 24 }} onClick={e => e.stopPropagation()} onSubmit={submit}>
+      <form ref={form} className={ui.card} role="dialog" aria-modal="true" aria-labelledby="reauth-title" tabIndex={-1} style={{ width: 'min(420px,92vw)', padding: 24 }} onClick={e => e.stopPropagation()} onSubmit={submit}>
         <h2 id="reauth-title" style={{ margin: 0 }}>Confirm it is you</h2>
         <p className={ui.muted}>This action needs your password or a code from your 2-step app. The confirmation lasts 10 minutes.</p>
         {error && <div className={`${ui.alert} ${ui.alertDanger}`} role="alert">{error}</div>}
-        <label className={ui.fieldLabel}>Password<input className={ui.input} type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} autoFocus /></label>
+        <label className={ui.fieldLabel}>Password<input className={ui.input} type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} data-autofocus /></label>
         <label className={ui.fieldLabel}>or the 6-digit code from your app<input className={ui.input} inputMode="numeric" autoComplete="one-time-code" value={code} onChange={e => setCode(e.target.value)} /></label>
         <div className="inline" style={{ justifyContent: 'flex-end', marginTop: 18 }}>
           <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => finish(false)}>Cancel</button>

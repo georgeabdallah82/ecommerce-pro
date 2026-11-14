@@ -54,7 +54,7 @@
   font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase;
 }
 .toneWarning { color: var(--admin-warning); background: var(--admin-warning-soft); }
-.toneInfo { color: var(--admin-accent); background: var(--admin-accent-soft); }
+.toneInfo { color: var(--admin-accent-strong); background: var(--admin-accent-soft); }
 .toneSuccess { color: var(--admin-success); background: var(--admin-success-soft); }
 .toneDanger { color: var(--admin-danger); background: var(--admin-danger-soft); }
 .toneNeutral { color: var(--admin-muted); background: var(--admin-surface); }
@@ -113,8 +113,8 @@
 .choices { display: flex; flex-wrap: wrap; gap: 8px; }
 .choices > .chosen { outline: 2px solid var(--admin-ink); outline-offset: 2px; }
 .action .primary { min-height: 52px; padding: 0 22px; font-size: 15px; }
-.action .whatsapp { background: #1f8f4e; border-color: #1f8f4e; color: #fff; }
-.action .whatsapp:hover:not(:disabled) { background: #187a41; border-color: #187a41; }
+.action .whatsapp { background: #15803d; border-color: #15803d; color: #fff; }
+.action .whatsapp:hover:not(:disabled) { background: #166534; border-color: #166534; }
 .warning {
   display: flex; align-items: center; gap: 8px; padding: 10px 12px;
   border: 2px solid var(--admin-warning); border-radius: 3px; background: var(--admin-warning-soft);
@@ -235,3 +235,6 @@
   .panelBody { padding-left: 14px; padding-right: 14px; }
   .menu { min-width: min(280px, calc(100vw - 32px)); }
 }
+
+/* The edit form's Save and Cancel, repeated at its end. */
+.editEnd { justify-content: flex-end; }

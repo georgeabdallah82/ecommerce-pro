@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import Link from '@/components/admin-link'
 import { AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, FileText, MessageCircle, MoreHorizontal, PackageCheck, Phone, Plus, RefreshCw, Search, Send, ShoppingCart, Truck, X, XCircle } from 'lucide-react'
 import { money } from '@/lib/config'
@@ -9,7 +9,9 @@ import { canTransitionOrder } from '@/lib/orders'
 import { whatsappConfirmLink } from '@/lib/whatsapp-confirm'
 import { ORDER_VIEWS, customerCity, customerName, customerPhone, driverShareLink, itemsSummary, nextStep, paymentInfo, statusInfo, telLink, viewCount, type OrderViewId } from '@/lib/order-flow'
 import { useConfirm } from './admin-confirm'
+import AdminMenu from './admin-menu'
 import { runReauthed, useReauth } from './admin-reauth'
+import { useModalFocus } from './use-modal-focus'
 import styles from './admin-orders-board.module.css'
 import ui from './admin-ui.module.css'
 
@@ -35,23 +37,12 @@ async function api(path: string, init?: RequestInit) {
 
 const TONE: Record<string, string> = { warning: styles.toneWarning, info: styles.toneInfo, success: styles.toneSuccess, danger: styles.toneDanger, neutral: styles.toneNeutral }
 
+// The "More" menus (components/admin-menu.tsx: keyboard, focus and Escape). A count sits on the button's corner,
+// outside its name; `label` says what it counts.
 function MoreMenu({ label, children, badge = 0, down = false }: { label: string; children: React.ReactNode; badge?: number; down?: boolean }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    const close = (event: Event) => { if (!ref.current?.contains(event.target as Node)) setOpen(false) }
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false) }
-    document.addEventListener('pointerdown', close)
-    document.addEventListener('keydown', onKey)
-    return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', onKey) }
-  }, [open])
-  return (
-    <div className={styles.more} ref={ref}>
-      <button type="button" className={`${ui.btn} ${ui.btnSecondary} ${styles.actionBtn}`} aria-expanded={open} aria-label={label} onClick={() => setOpen(!open)}><MoreHorizontal size={16} /> More <ChevronDown size={14} />{badge ? <span className={styles.menuBadge}>{badge}</span> : null}</button>
-      {open && <div className={`${styles.menu}${down ? ` ${styles.menuDown}` : ''}`} role="menu" onClick={() => setOpen(false)}>{children}</div>}
-    </div>
-  )
+  return <AdminMenu className={styles.more} buttonClassName={`${ui.btn} ${ui.btnSecondary} ${styles.actionBtn}`} menuClassName={`${styles.menu}${down ? ` ${styles.menuDown}` : ''}`} label={label}
+    content={<><MoreHorizontal size={16} aria-hidden="true" /> More <ChevronDown size={14} aria-hidden="true" /></>}
+    badge={badge ? <span className={`${styles.menuBadge} ${styles.menuBadgeCorner}`} aria-hidden="true">{badge}</span> : null}>{children}</AdminMenu>
 }
 
 export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone, storeName = '', storeCountry = 'Lebanon', unfinishedCount = 0 }: { initial: Initial; canRefund?: boolean; storeTimezone?: string; storeName?: string; storeCountry?: string; unfinishedCount?: number }) {
@@ -73,6 +64,13 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone, 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  // The refund and tracking dialog: modal (focus in, Tab kept inside, Escape closes, focus back), and why a save
+  // failed shows inside it. It showed on the page behind the dark overlay, where nobody could see it.
+  const [modalError, setModalError] = useState('')
+  const modalRef = useRef<HTMLDivElement>(null)
+  const modalTitle = useId()
+  const closeModal = () => { setModal(null); setModalError('') }
+  useModalFocus(modalRef, !!modal, () => { if (!busy) closeModal() })
 
   const viewStatuses = (ORDER_VIEWS.find(v => v.id === view)?.statuses || []) as readonly string[]
   const allSelected = rows.length > 0 && rows.every(o => selected.includes(o.id))
@@ -182,22 +180,31 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone, 
     const amount = Math.round(Number(refundAmount) * 100)
     const alreadyRefunded = Number(modal.order.refundedTotal || modal.order.refundedAmount || 0)
     const max = Math.max(0, Number(modal.order.grandTotal || 0) - alreadyRefunded)
-    if (!Number.isInteger(amount) || amount <= 0 || amount > max) { setError(`Refund must be between 0.01 and ${money(max, modal.order.currency)}`); return }
-    setBusy(modal.order.id); setError(''); setNotice('')
+    if (!Number.isInteger(amount) || amount <= 0 || amount > max) { setModalError(`Refund must be between 0.01 and ${money(max, modal.order.currency)}`); return }
+    setBusy(modal.order.id); setModalError(''); setError(''); setNotice('')
     try {
       await runReauthed(askForConfirmation, () => api('/api/admin/refunds', { method: 'POST', body: JSON.stringify({ orderId: modal.order.id, amount, reason: 'Admin refund' }) }))
       await load(page, true)
-      setModal(null); setRefundAmount(''); setNotice('Refund issued.')
+      closeModal(); setRefundAmount(''); setNotice('Refund issued.')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unable to refund order')
+      setModalError(e instanceof Error ? e.message : 'Unable to refund order')
     } finally {
       setBusy(null)
     }
   }
+  // Stays open when the save fails, with what was typed and why.
   async function saveTracking() {
     if (!modal || modal.type !== 'tracking') return
-    await update(modal.order, { trackingNumber: trackingNumber.trim(), trackingCompany: trackingCompany.trim() || null }, 'Tracking number saved.')
-    setModal(null)
+    setBusy(modal.order.id); setModalError(''); setError(''); setNotice('')
+    try {
+      await api('/api/admin/orders', { method: 'PATCH', body: JSON.stringify({ id: modal.order.id, trackingNumber: trackingNumber.trim(), trackingCompany: trackingCompany.trim() || null }) })
+      await load(page, true)
+      closeModal(); setNotice('Tracking number saved.')
+    } catch (e) {
+      setModalError(e instanceof Error ? e.message : 'Unable to save the tracking number')
+    } finally {
+      setBusy(null)
+    }
   }
 
   const toConfirm = counts.PENDING || 0
@@ -224,9 +231,9 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone, 
           <p className={styles.subtitle}>{toConfirm ? <><strong>{toConfirm} new order{toConfirm === 1 ? '' : 's'}</strong> to confirm with the customer.</> : 'No new orders waiting to be confirmed.'}</p>
         </div>
         <div className={styles.headerActions}>
-          <MoreMenu label="More order pages" down badge={unfinishedCount}>
-            <Link href="/admin/orders/deliveries"><Truck size={15} /> Delivery sheet</Link>
-            <Link href="/admin/orders/unfinished"><ShoppingCart size={15} /> Unfinished checkouts{unfinishedCount ? <span className={styles.menuCount}>{unfinishedCount}</span> : null}</Link>
+          <MoreMenu label={`More order pages${unfinishedCount ? `, ${unfinishedCount} unfinished checkout${unfinishedCount === 1 ? '' : 's'} to follow up` : ''}`} down badge={unfinishedCount}>
+            <Link role="menuitem" href="/admin/orders/deliveries"><Truck size={15} aria-hidden="true" /> Delivery sheet</Link>
+            <Link role="menuitem" href="/admin/orders/unfinished"><ShoppingCart size={15} aria-hidden="true" /> Unfinished checkouts{unfinishedCount ? <span className={styles.menuCount}>{unfinishedCount}</span> : null}</Link>
           </MoreMenu>
           <Link className={ui.btn} href="/admin/orders/new"><Plus size={15} /> Create order</Link>
         </div>
@@ -312,15 +319,16 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone, 
                   {tel && <a role="menuitem" href={tel}><Phone size={15} /> Call customer</a>}
                   {open && <a role="menuitem" href={driverShareLink(o, storeName, money)} target="_blank" rel="noreferrer"><Send size={15} /> Send to driver (WhatsApp)</a>}
                   <Link role="menuitem" href={`/admin/orders/${o.id}/invoice`}><FileText size={15} /> Invoice / print</Link>
-                  {open && <button role="menuitem" type="button" onClick={() => { setTrackingNumber(o.trackingNumber || ''); setTrackingCompany(o.trackingCompany || ''); setModal({ type: 'tracking', order: o }) }}><Truck size={15} /> Tracking number</button>}
-                  {canRefund && ['PAID', 'PARTIALLY_REFUNDED'].includes(o.paymentStatus) && o.status !== 'CANCELLED' && <button role="menuitem" type="button" onClick={() => { setRefundAmount(''); setModal({ type: 'refund', order: o }) }}><RefreshCw size={15} /> Refund</button>}
+                  {open && <button role="menuitem" type="button" onClick={() => { setTrackingNumber(o.trackingNumber || ''); setTrackingCompany(o.trackingCompany || ''); setModalError(''); setModal({ type: 'tracking', order: o }) }}><Truck size={15} /> Tracking number</button>}
+                  {/* Only when something paid is left to give back (an order paid in full with a gift card or a 100% discount has nothing). */}
+                  {canRefund && ['PAID', 'PARTIALLY_REFUNDED'].includes(o.paymentStatus) && o.status !== 'CANCELLED' && Number(o.grandTotal || 0) - Number(o.refundedTotal || o.refundedAmount || 0) > 0 && <button role="menuitem" type="button" onClick={() => { setRefundAmount(''); setModalError(''); setModal({ type: 'refund', order: o }) }}><RefreshCw size={15} /> Refund</button>}
                   {canTransitionOrder(o.status, 'CANCELLED') && o.status !== 'CANCELLED' && <button role="menuitem" type="button" className={styles.danger} onClick={() => cancelOrder(o)}><XCircle size={15} /> Cancel order</button>}
                 </MoreMenu>
               </div>
             </article>
           )
         })}
-        {!rows.length && !loading && <div className={ui.empty}><PackageCheck size={28} /><h3>No orders here</h3><p className={ui.muted}>{q ? 'Nothing matches that search.' : 'Try another view.'}</p></div>}
+        {!rows.length && !loading && <div className={ui.empty}><PackageCheck size={28} aria-hidden="true" /><h2 className={styles.emptyTitle}>No orders here</h2><p className={ui.muted}>{q ? 'Nothing matches that search.' : 'Try another view.'}</p></div>}
       </div>
 
       <div className={styles.pagination}>
@@ -339,31 +347,33 @@ export function OrdersAdminShopify({ initial, canRefund = false, storeTimezone, 
       </div>
 
       {modal && (
-        <div className={ui.modalOverlay} onClick={() => setModal(null)}>
-          <div className={`${ui.card} ${styles.modal}`} onClick={e => e.stopPropagation()} role="dialog" aria-label={modal.type === 'refund' ? 'Refund order' : 'Tracking number'}>
+        <div className={ui.modalOverlay} onClick={() => { if (!busy) closeModal() }}>
+          <div ref={modalRef} className={`${ui.card} ${styles.modal}`} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby={modalTitle} tabIndex={-1}>
             <div className={styles.modalHead}>
               <div>
                 <span className={ui.muted}>Order #{modal.order.orderNumber}</span>
-                <h2>{modal.type === 'refund' ? 'Refund' : 'Tracking number'}</h2>
+                <h2 id={modalTitle}>{modal.type === 'refund' ? 'Refund' : 'Tracking number'}</h2>
                 <p className={ui.muted}>{modal.type === 'refund' ? 'The refund is recorded on the order; it can never be more than was paid.' : 'The customer can follow the parcel with it. Changing it after the order went out tells the customer.'}</p>
               </div>
-              <button className={ui.iconBtn} onClick={() => setModal(null)} aria-label="Close"><X size={17} /></button>
+              <button className={ui.iconBtn} onClick={closeModal} disabled={!!busy} aria-label="Close"><X size={17} aria-hidden="true" /></button>
             </div>
             {modal.type === 'refund' && <>
               <label className={ui.fieldLabel}>Amount to refund
-                <input className={ui.input} autoFocus type="number" min="0.01" step="0.01" value={refundAmount} onChange={e => setRefundAmount(e.target.value)} placeholder={money(modal.order.grandTotal, modal.order.currency)} />
+                <input className={ui.input} data-autofocus type="number" min="0.01" step="0.01" value={refundAmount} onChange={e => { setRefundAmount(e.target.value); setModalError('') }} placeholder={money(modal.order.grandTotal, modal.order.currency)} />
               </label>
               <p className={ui.muted}>At most <strong>{money(Math.max(0, Number(modal.order.grandTotal || 0) - Number(modal.order.refundedTotal || modal.order.refundedAmount || 0)), modal.order.currency)}</strong></p>
+              {modalError && <div className={`${ui.alert} ${ui.alertDanger}`} role="alert">{modalError}</div>}
               <div className={styles.modalFooter}>
-                <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setModal(null)}>Close</button>
+                <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={closeModal} disabled={!!busy}>Close</button>
                 <button className={ui.btn} onClick={refundOrder} disabled={busy === modal.order.id}>{busy === modal.order.id ? 'Refunding…' : 'Refund'}</button>
               </div>
             </>}
             {modal.type === 'tracking' && <>
-              <label className={ui.fieldLabel}>Tracking number<input className={ui.input} autoFocus value={trackingNumber} onChange={e => setTrackingNumber(e.target.value)} placeholder="From the delivery company" /></label>
-              <label className={ui.fieldLabel}>Delivery company<input className={ui.input} value={trackingCompany} onChange={e => setTrackingCompany(e.target.value)} placeholder="Aramex, DHL, LibanPost…" /></label>
+              <label className={ui.fieldLabel}>Tracking number<input className={ui.input} data-autofocus maxLength={120} value={trackingNumber} onChange={e => setTrackingNumber(e.target.value)} placeholder="From the delivery company" /></label>
+              <label className={ui.fieldLabel}>Delivery company<input className={ui.input} maxLength={120} value={trackingCompany} onChange={e => setTrackingCompany(e.target.value)} placeholder="Aramex, DHL, LibanPost…" /></label>
+              {modalError && <div className={`${ui.alert} ${ui.alertDanger}`} role="alert">{modalError}</div>}
               <div className={styles.modalFooter}>
-                <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setModal(null)}>Close</button>
+                <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={closeModal} disabled={!!busy}>Close</button>
                 <button className={ui.btn} onClick={saveTracking} disabled={busy === modal.order.id}>{busy === modal.order.id ? 'Saving…' : 'Save'}</button>
               </div>
             </>}

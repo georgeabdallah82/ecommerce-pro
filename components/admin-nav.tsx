@@ -244,18 +244,24 @@ export default function AdminNav({
   // The browser tab names the page ("Orders \u00b7 Admin") instead of the store name on every page.
   // After a click between pages Next adds a fresh <title> with the store name in front of the old one
   // and the browser reads the first, so every <title> is kept in step, and again whenever the head changes.
+  // A page can name itself more exactly with data-admin-title on an element ("Order #1001"), so several orders
+  // open in tabs can be told apart; it is looked for again as the page's content arrives.
   useEffect(() => {
     const current = allItems.filter(item => itemActive(pathname, item)).sort((a, b) => b.href.length - a.href.length)[0]
     if (!current) return
-    const wanted = `${current.label} \u00b7 Admin`
+    const wantedTitle = () => `${document.querySelector<HTMLElement>('[data-admin-title]')?.dataset.adminTitle || current.label} \u00b7 Admin`
     const apply = () => {
+      const wanted = wantedTitle()
       document.querySelectorAll('title').forEach(el => { if (el.textContent !== wanted) el.textContent = wanted })
       if (document.title !== wanted) document.title = wanted
     }
     apply()
     const observer = new MutationObserver(apply)
     observer.observe(document.head, { childList: true, subtree: true, characterData: true })
-    return () => observer.disconnect()
+    let frame = 0
+    const content = new MutationObserver(() => { cancelAnimationFrame(frame); frame = requestAnimationFrame(() => { if (document.title !== wantedTitle()) apply() }) })
+    content.observe(document.body, { childList: true, subtree: true })
+    return () => { observer.disconnect(); content.disconnect(); cancelAnimationFrame(frame) }
   }, [allItems, pathname])
 
   const normalizedQuery = query.trim().toLowerCase()
