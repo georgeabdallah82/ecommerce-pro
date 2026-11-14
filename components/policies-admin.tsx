@@ -8,6 +8,7 @@ import s from './admin-policies.module.css'
 import RichTextEditor from './rich-text-editor'
 import { useConfirm } from './admin-confirm'
 import { defaultPolicyHtml, POLICY_PATHS, POLICY_TITLES, type PolicyKind, type PolicyVars } from '@/lib/policy-templates'
+import { useLeaveGuard } from './use-leave-guard'
 
 const KINDS: PolicyKind[] = ['refund', 'privacy', 'terms']
 
@@ -42,12 +43,8 @@ export default function PoliciesAdmin({ vars, custom: initialCustom, setup, canM
   const load = (k: PolicyKind, html: string, isDirty = false) => { setKind(k); setDraft(html); setEditorKey(x => x + 1); setDirty(isDirty) }
 
   // Warn before leaving the page with unsaved edits.
-  useEffect(() => {
-    if (!dirty) return
-    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
-    window.addEventListener('beforeunload', warn)
-    return () => window.removeEventListener('beforeunload', warn)
-  }, [dirty])
+  // Asks before leaving with unsaved changes: admin links, Back, reload (components/use-leave-guard.ts).
+  useLeaveGuard(dirty)
 
   // Ctrl+S / Cmd+S saves the policy being edited.
   useEffect(() => {

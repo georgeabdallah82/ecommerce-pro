@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Link from '@/components/admin-link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Mail, MapPin, Phone, ShieldOff, UserCheck, Plus, Trash2, X, CreditCard, UsersRound, Coins, Star } from 'lucide-react'
@@ -9,6 +9,7 @@ import s from './admin-customer-detail.module.css'
 import ui from './admin-ui.module.css'
 import UnsavedBar from './admin-unsaved-bar'
 import { useConfirm } from './admin-confirm'
+import { useLeaveGuard } from './use-leave-guard'
 
 async function api(path: string, init?: RequestInit) {
   const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
@@ -56,11 +57,8 @@ export default function CustomerDetailAdmin({ initial }: { initial: any }) {
   const [coinReason, setCoinReason] = useState('')
   const [coinBusy, setCoinBusy] = useState(false)
 
-  useEffect(() => {
-    const handler = (e: BeforeUnloadEvent) => { if (dirty) { e.preventDefault(); e.returnValue = '' } }
-    window.addEventListener('beforeunload', handler)
-    return () => window.removeEventListener('beforeunload', handler)
-  }, [dirty])
+  // Asks before leaving with unsaved changes: admin links, Back, reload (components/use-leave-guard.ts).
+  useLeaveGuard(dirty)
 
   function updateProfile(patch: Partial<ProfileFields>) {
     setCustomer((c: any) => ({ ...c, ...patch }))
@@ -174,7 +172,7 @@ export default function CustomerDetailAdmin({ initial }: { initial: any }) {
   return <div className={s.page}>
     <div className={s.topbar}>
       <div className={s.topLeft}>
-        <Link href="/admin/customers" className={ui.iconBtn} onClick={async e => { if (!dirty) return; e.preventDefault(); if (await confirm({ title: 'Discard unsaved changes?', message: 'Your edits to this customer will be lost.', confirmLabel: 'Discard' })) router.push('/admin/customers') }}><ArrowLeft size={18}/></Link>
+        <Link href="/admin/customers" className={ui.iconBtn} aria-label="Back to customers"><ArrowLeft size={18}/></Link>
         <div><div className={`${ui.muted} ${ui.tiny}`}>CUSTOMER</div><h1 className={s.title}>{customer.name}</h1></div>
       </div>
       <div className={s.topActions}>

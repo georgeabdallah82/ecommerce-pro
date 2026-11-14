@@ -14,6 +14,7 @@ import SignInAlertsCard from './sign-in-alerts-card'
 import { REGION_CODES, countryName, deliveryCountries } from '@/lib/delivery-countries'
 import { POLICY_DEFAULTS } from '@/lib/policy-defaults'
 import { CountrySelect, CountryMultiSelect, CurrencySelect, TimezoneSelect } from './field-selects'
+import { allowLeave, useLeaveGuard } from './use-leave-guard'
 
 const groups = [
   { key: 'General', label: 'General', icon: Store, desc: 'Store identity and regional defaults' },
@@ -162,15 +163,9 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
     || Object.keys(values).some(key => (values[key] || '') !== (saved.values[key] || ''))
     || Object.keys(flags).some(key => flags[key] !== saved.flags[key])
   const [saveError, setSaveError] = useState('')
-  // Discard reloads the page; the browser's own leave warning shouldn't ask a second time.
-  const discarding = useRef(false)
 
-  useEffect(() => {
-    if (!dirty) return
-    const warn = (e: BeforeUnloadEvent) => { if (discarding.current) return; e.preventDefault(); e.returnValue = '' }
-    window.addEventListener('beforeunload', warn)
-    return () => window.removeEventListener('beforeunload', warn)
-  }, [dirty])
+  // Asks before leaving with unsaved changes: admin links, Back, reload (components/use-leave-guard.ts).
+  useLeaveGuard(dirty)
 
   useEffect(() => {
     // Loaded once: coming back to Payments keeps what was typed there (it used to load again over it).
@@ -190,7 +185,8 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
   // Discard: the page reloads the saved values from the server.
   async function discardChanges() {
     if (!(await confirm({ title: 'Discard your changes?', message: 'Settings you changed on this page go back to their saved values.', confirmLabel: 'Discard changes' }))) return
-    discarding.current = true
+    // It has asked already: reload without the leave warning asking a second time.
+    allowLeave()
     window.location.reload()
   }
 
