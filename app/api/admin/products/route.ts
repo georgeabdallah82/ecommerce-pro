@@ -8,6 +8,7 @@ import { setProductCollections } from '@/lib/product-collections'
 import { deleteProductCascade } from '@/lib/product-delete'
 import { cleanBarcode, freeProductSlug, productConflict, uniqueConflictMessage, variantConflict } from '@/lib/product-uniqueness'
 import { cleanVideoUrl } from '@/lib/product-video'
+import { PRODUCT_VIEWS, productViewCounts, withChannelOptOuts, type ProductView } from '@/lib/product-editor'
 
 export async function GET(req: Request) {
   try {
@@ -21,16 +22,19 @@ export async function GET(req: Request) {
     const page = Number.isFinite(pageRaw) ? Math.max(1, Math.floor(pageRaw)) : 1
     const pageSize = Number.isFinite(pageSizeRaw) ? Math.min(100, Math.max(12, Math.floor(pageSizeRaw))) : 25
     const boundedQuery = q.slice(0, 120)
-    const where: any = {
-      ...(status !== 'ALL' ? { status } : {}),
-      ...(boundedQuery ? { OR: [{ name: { contains: boundedQuery, mode: 'insensitive' } }, { sku: { contains: boundedQuery, mode: 'insensitive' } }, { slug: { contains: boundedQuery, mode: 'insensitive' } }, { vendor: { contains: boundedQuery, mode: 'insensitive' } }, { brand: { contains: boundedQuery, mode: 'insensitive' } }] } : {}),
-    }
+    const search: any = boundedQuery ? { OR: [{ name: { contains: boundedQuery, mode: 'insensitive' } }, { sku: { contains: boundedQuery, mode: 'insensitive' } }, { slug: { contains: boundedQuery, mode: 'insensitive' } }, { vendor: { contains: boundedQuery, mode: 'insensitive' } }, { brand: { contains: boundedQuery, mode: 'insensitive' } }] } : {}
+    const where: any = { ...(status !== 'ALL' ? { status } : {}), ...search }
     const orderBy = sort === 'name_asc' ? { name: 'asc' as const } : sort === 'name_desc' ? { name: 'desc' as const } : sort === 'price_asc' ? { basePrice: 'asc' as const } : sort === 'price_desc' ? { basePrice: 'desc' as const } : sort === 'created_desc' ? { createdAt: 'desc' as const } : { updatedAt: 'desc' as const }
-    const [total, rows] = await Promise.all([
-      db.product.count({ where }),
+    // Every view's count for this search, whichever view is open (the list showed counts of the rows on screen),
+    // and what the Sales channels column needs: the active channels and the products taken off one.
+    const [counts, rows, channels, optOuts] = await Promise.all([
+      productViewCounts(args => db.product.count(args as any), search),
       db.product.findMany({ where, include: { inventory: true, variants: { include: { inventory: true } }, images: true }, orderBy, skip: (page - 1) * pageSize, take: pageSize }),
+      db.salesChannel.findMany({ where: { status: 'ACTIVE' }, orderBy: { createdAt: 'asc' }, select: { id: true, name: true } }),
+      db.productPublication.findMany({ where: { available: false }, select: { productId: true, channelId: true } }),
     ])
-    return json({ rows, total, page, pageSize, pages: Math.max(1, Math.ceil(total / pageSize)) })
+    const total = (PRODUCT_VIEWS as readonly string[]).includes(status) ? counts[status as ProductView] : await db.product.count({ where })
+    return json({ rows: withChannelOptOuts(rows, optOuts), total, counts, channels, page, pageSize, pages: Math.max(1, Math.ceil(total / pageSize)) })
   } catch (e) {
     const message = e instanceof Error ? e.message : ''
     const status = message === 'UNAUTHORIZED' ? 401 : message === 'FORBIDDEN' ? 403 : 500

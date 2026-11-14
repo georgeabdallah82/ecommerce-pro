@@ -466,8 +466,11 @@
 
 /* Responsive ------------------------------------------------------------- */
 @media (max-width: 900px) {
+  /* The top bar is 58px here, and bars that stick below it (unsaved changes, bulk actions) read this: at 64px they
+     left a 6px strip where the page showed through as it scrolled. */
+  :root { --admin-topbar-h: 58px; }
   .sidebar { display: none; }
-  .topbar { padding: 0 14px; gap: 10px; height: 58px; min-height: 58px; }
+  .topbar { padding: 0 14px; gap: 10px; height: var(--admin-topbar-h); min-height: var(--admin-topbar-h); }
   .topbarLogo { display: flex; }
   /* The icon alone shows, but "Search admin…" stays the button's name for screen readers (it had none). */
   .topbarSearch kbd { display: none; }

@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from '@/components/admin-link'
 import { ArrowLeft, Copy, Eye, Plus, Trash2, X } from 'lucide-react'
 import s from './admin-product-editor.module.css'
@@ -14,6 +14,8 @@ import StockByLocation, { type StockRow } from './stock-by-location'
 import { descriptionHtml } from '@/lib/sanitize-html'
 import { describeVariantPlan, planVariants, stockOf } from '@/lib/variant-plan'
 import { priceProblem, productReadiness } from '@/lib/editor-readiness'
+import { channelsShowing, parseOptionValues, pricingSummary, tagsFromInput } from '@/lib/product-editor'
+import { money } from '@/lib/config'
 import { allowLeave, useLeaveGuard } from './use-leave-guard'
 
 const STATUS_LABEL: Record<string, string> = { ACTIVE: 'Active', DRAFT: 'Draft', ARCHIVED: 'Archived' }
@@ -48,37 +50,76 @@ async function api(path: string, init?: RequestInit) {
   return data
 }
 function parseOptions(v: Variant) { try { const x = JSON.parse(v.optionJson || '{}'); return x && typeof x === 'object' ? x : {} } catch { return {} } }
+// The option names, each option's values (as the text in its box) and the collections of a product as saved.
+function optionNamesOf(p: Product) {
+  const set = new Set<string>()
+  ;(p.variants || []).forEach(v => Object.keys(parseOptions(v)).forEach(k => set.add(k)))
+  const names = Array.from(set).slice(0, 3)
+  return names.length ? names : ['']
+}
+function optionTextOf(p: Product, names: string[]) {
+  return names.map(n => Array.from(new Set((p.variants || []).map(v => String(parseOptions(v)[n] || '')).filter(Boolean))).join(', '))
+}
+function collectionIdsOf(p: Product) { return (p.collections || []).map(c => c.collectionId) }
 // Defined at module scope, not inside ProductEditorV2: a component declared inside another
 // component's body is a new function on every render, so React treats each render's <Card>/
 // <Field>/etc as a different component type and remounts its whole subtree -- every field in
 // this editor (title, price, SKU, variants, SEO...) lost focus, and with it the on-screen
 // keyboard, after a single keystroke.
+// Cards are h2s under the page's h1 (they were h3s, a level skipped).
 function Card({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
-  return <section className={s.card}><div className={s.cardHead}><h3>{title}</h3>{sub && <p>{sub}</p>}</div><div className={s.cardBody}>{children}</div></section>
+  return <section className={s.card}><div className={s.cardHead}><h2>{title}</h2>{sub && <p>{sub}</p>}</div><div className={s.cardBody}>{children}</div></section>
 }
+// A <label> around its one control. A field holding buttons too (tags, collections) or help text uses a
+// <label htmlFor> instead: a wrapping label names its first control, which there was a tag's remove button.
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <label className={s.field}>{label}{children}</label>
 }
-function MoneyField({ label, value, onChange }: { label: string; value?: number | null; onChange: (v: number | null) => void }) {
-  return <Field label={label}><div className={s.moneyInput}><span>$</span><MoneyInput cents={value} onCents={onChange} placeholder="0.00" /></div></Field>
+// The "$" is decoration (the field was named "Price$"); the box shows focus like every other field.
+function MoneyField({ label, value, onChange, id }: { label: string; value?: number | null; onChange: (v: number | null) => void; id?: string }) {
+  return <Field label={label}><div className={s.moneyInput}><span aria-hidden="true">$</span><MoneyInput id={id} className={s.moneyField} cents={value} onCents={onChange} placeholder="0.00" /></div></Field>
 }
 function Check({ checked, onChange, title, text }: { checked: boolean; onChange: (v: boolean) => void; title: string; text: string }) {
   return <label className={s.checkCard}><input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} /><span><strong>{title}</strong><small>{text}</small></span></label>
 }
 
 // Search-and-tick list of collections, with the chosen ones shown as removable chips.
-function CollectionPicker({ options, value, onChange }: { options: CollectionOption[]; value: string[]; onChange: (ids: string[]) => void }) {
+// The list stays open while focus is anywhere in the picker, so Tab (or the Down arrow) reaches its tick boxes;
+// it closed 150 ms after the search box lost focus, taking the box Tab had just moved to with it. Up and Down move
+// through the list (Down opens it again after Escape), Escape closes it and goes back to the search box.
+function CollectionPicker({ id, options, value, onChange }: { id: string; options: CollectionOption[]; value: string[]; onChange: (ids: string[]) => void }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
+  const wrap = useRef<HTMLDivElement>(null)
+  const search = useRef<HTMLInputElement>(null)
+  // Set while Escape puts focus back on the search box, so that focus doesn't open the list again.
+  const quiet = useRef(false)
   const chosen = value.map(id => options.find(o => o.id === id)).filter(Boolean) as CollectionOption[]
   const q = query.trim().toLowerCase()
   const matches = options.filter(o => !q || o.name.toLowerCase().includes(q)).slice(0, 60)
   const toggle = (id: string) => onChange(value.includes(id) ? value.filter(x => x !== id) : [...value, id])
+  function onKeyDown(event: React.KeyboardEvent) {
+    if (event.key === 'Escape' && open) {
+      event.preventDefault(); event.stopPropagation(); setOpen(false)
+      if (document.activeElement !== search.current) { quiet.current = true; search.current?.focus() }
+      return
+    }
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
+    if (!open) { if (event.key === 'ArrowDown') { event.preventDefault(); setOpen(true) } return }
+    const boxes = [...(wrap.current?.querySelectorAll<HTMLInputElement>(`#${id}-list input[type="checkbox"]`) || [])]
+    if (!boxes.length) return
+    event.preventDefault()
+    const at = boxes.indexOf(document.activeElement as HTMLInputElement)
+    if (at < 0) { if (event.key === 'ArrowDown') boxes[0].focus(); return }
+    const next = at + (event.key === 'ArrowDown' ? 1 : -1)
+    if (next < 0) search.current?.focus()
+    else boxes[Math.min(next, boxes.length - 1)].focus()
+  }
   if (!options.length) return <p className={ui.muted} style={{ margin: 0 }}>No collections yet. <Link href="/admin/collections" className="textLink">Create one</Link> first.</p>
-  return <div className={s.collectionPicker}>
+  return <div className={s.collectionPicker} ref={wrap} onKeyDown={onKeyDown} onBlur={event => { if (!wrap.current?.contains(event.relatedTarget as Node | null)) setOpen(false) }}>
     {chosen.length > 0 && <div className={s.tagRow}>{chosen.map(c => <span className={s.tagChip} key={c.id}>{c.name}<button type="button" aria-label={`Remove from ${c.name}`} onClick={() => toggle(c.id)}>×</button></span>)}</div>}
-    <input className={ui.input} placeholder={chosen.length ? 'Add to another collection…' : 'Search collections…'} value={query} onChange={e => { setQuery(e.target.value); setOpen(true) }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)} />
-    {open && <div className={s.collectionMenu} onMouseDown={e => e.preventDefault()}>
+    <input id={id} ref={search} className={ui.input} placeholder={chosen.length ? 'Add to another collection…' : 'Search collections…'} value={query} onChange={e => { setQuery(e.target.value); setOpen(true) }} onFocus={() => { if (quiet.current) quiet.current = false; else setOpen(true) }} onClick={() => setOpen(true)} />
+    {open && <div id={`${id}-list`} className={s.collectionMenu} role="group" aria-label="Collections to choose from" onMouseDown={e => e.preventDefault()}>
       {matches.length ? matches.map(o => <label key={o.id} className={s.collectionOption}>
         <input type="checkbox" checked={value.includes(o.id)} onChange={() => toggle(o.id)} />
         <span>{o.name}</span>{o.isActive === false && <small>hidden</small>}
@@ -94,7 +135,13 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  // Why the last save failed, said in the unsaved-changes bar: it stays in view where Save was pressed, while the
+  // message at the top of the page was out of sight further down.
+  const [saveError, setSaveError] = useState('')
   const [dirty, setDirty] = useState(false)
+  // The product as last saved. Discard goes back to it: it went back to the page as first loaded, so after a save
+  // it showed the old values again, and the next save wrote them back.
+  const [saved, setSaved] = useState<Product>(initial)
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false)
   const [productPublications, setProductPublications] = useState<any[]>(publications || [])
   const [seoMediaPickerOpen, setSeoMediaPickerOpen] = useState(false)
@@ -103,17 +150,12 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   // Bumped on discard so the description editor shows the saved text again.
   const [editorKey, setEditorKey] = useState(0)
-  const initialCollectionIds = (initial.collections || []).map(c => c.collectionId)
-  const [collectionIds, setCollectionIds] = useState<string[]>(initialCollectionIds)
+  const [collectionIds, setCollectionIds] = useState<string[]>(() => collectionIdsOf(initial))
 
-  const initialNames = (() => {
-    const set = new Set<string>()
-    ;(initial.variants || []).forEach(v => Object.keys(parseOptions(v)).forEach(k => set.add(k)))
-    const r = Array.from(set).slice(0, 3)
-    return r.length ? r : ['']
-  })()
-  const [optionNames, setOptionNames] = useState<string[]>(initialNames)
-  const [optionValues, setOptionValues] = useState<string[][]>(() => initialNames.map(n => Array.from(new Set((initial.variants || []).map(v => String(parseOptions(v)[n] || '')).filter(Boolean)))))
+  const [optionNames, setOptionNames] = useState<string[]>(() => optionNamesOf(initial))
+  // Each option's values box keeps exactly what was typed ("S, M, L"); parseOptionValues reads it.
+  const [optionText, setOptionText] = useState<string[]>(() => optionTextOf(initial, optionNamesOf(initial)))
+  const optionValues = useMemo(() => optionText.map(parseOptionValues), [optionText])
 
   const available = useMemo(
     () => product.quantity !== undefined ? Number(product.quantity) : (product.inventory || []).filter((x: any) => !x.variantId).reduce((s: number, x: any) => s + Number(x.quantity || 0) - Number(x.reserved || 0), 0),
@@ -148,8 +190,11 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
     name: product.name || '', sku: product.sku || '', basePrice: Number(product.basePrice) || 0, compareAtPrice: product.compareAtPrice,
     description: product.description, shortDescription: product.shortDescription, status: product.status, images: product.images || [],
     seoTitle: product.seoTitle, seoDescription: product.seoDescription, collectionCount: collectionIds.length,
-    publishedChannels: productPublications.filter((p: any) => p.available).length,
-  }), [product, collectionIds, productPublications])
+    // A product is on every active channel unless it was taken off one, as the Channels tab and the store read it.
+    // Counting only "available" rows warned "not on any sales channel yet" on every product never changed there.
+    // A new product goes on every channel once saved.
+    publishedChannels: creating ? 1 : channelsShowing(channels || [], productPublications).length,
+  }), [product, collectionIds, productPublications, channels, creating])
 
   // Asks before leaving with unsaved changes: admin links, Back, reload (components/use-leave-guard.ts).
   useLeaveGuard(dirty)
@@ -182,12 +227,18 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
     } catch (e) { setVideoError(e instanceof Error ? e.message : 'Unable to upload the video') } finally { setVideoBusy(false) }
   }
 
+  // A save problem: said in the bar, with the tab holding the field opened and the field focused.
+  function saveProblem(problem: string, where: typeof tabs[number], field: string) {
+    setSaveError(problem); setTab(where)
+    requestAnimationFrame(() => document.getElementById(field)?.focus())
+  }
+
   async function save() {
-    if (!product.name.trim()) { setError('Title is required'); setTab('General'); return }
-    if (!product.sku.trim()) { setError('SKU is required'); setTab('Inventory'); return }
+    if (!product.name.trim()) return saveProblem('Title is required', 'General', 'product-title')
+    if (!product.sku.trim()) return saveProblem('SKU is required', 'Inventory', 'product-sku')
     const pricing = priceProblem(product.basePrice, product.compareAtPrice)
-    if (pricing) { setError(pricing); setTab('General'); return }
-    setBusy(true); setError(''); setMessage('')
+    if (pricing) return saveProblem(pricing, 'General', 'product-compare-at')
+    setBusy(true); setSaveError(''); setError(''); setMessage('')
     try {
       const payload = {
         ...product,
@@ -198,26 +249,31 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
         collectionIds,
       }
       const data = creating ? await api('/api/admin/products', { method: 'POST', body: JSON.stringify(payload) }) : await api(`/api/admin/products/${product.id}`, { method: 'PATCH', body: JSON.stringify(payload) })
-      setProduct(data.product); setDirty(false); setMessage('Saved')
+      setProduct(data.product); setSaved(data.product); setDirty(false); setMessage('Saved')
       // Saved: open the new product's page without the leave warning.
       if (creating) { allowLeave(); window.location.href = `/admin/products/${data.product.id}` }
-    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to save') } finally { setBusy(false) }
+    } catch (e) { setSaveError(e instanceof Error ? e.message : 'Unable to save') } finally { setBusy(false) }
   }
 
   function discard() {
-    setProduct(initial)
-    setCollectionIds(initialCollectionIds)
-    setOptionNames(initialNames)
-    setOptionValues(initialNames.map(n => Array.from(new Set((initial.variants || []).map(v => String(parseOptions(v)[n] || '')).filter(Boolean)))))
+    setProduct(saved)
+    setCollectionIds(collectionIdsOf(saved))
+    const names = optionNamesOf(saved)
+    setOptionNames(names)
+    setOptionText(optionTextOf(saved, names))
     setEditorKey(k => k + 1)
-    setDirty(false); setError(''); setMessage('')
+    setDirty(false); setSaveError(''); setError(''); setMessage('')
   }
 
+  // The copy is made from the product as saved, and opening it leaves this page. With unsaved changes it asks
+  // first: it used to make the copy, then the browser asked about leaving, and staying kept a copy nobody opened.
   async function duplicate() {
     if (!product.id) return
+    if (dirty && !(await confirm({ title: 'Duplicate without your changes?', message: "The copy is made from this product as last saved. Your unsaved changes here are lost when the copy opens.", confirmLabel: 'Duplicate saved version', cancelLabel: 'Keep editing' }))) return
     setBusy(true); setError('')
     try {
       const data = await api(`/api/admin/products/${product.id}/duplicate`, { method: 'POST' })
+      allowLeave()
       window.location.href = `/admin/products/${data.product.id}`
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to duplicate') } finally { setBusy(false) }
   }
@@ -273,6 +329,20 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
     update({ images: a })
   }
 
+  // The section tabs: the arrow keys, Home and End move between them (the tabs pattern); Tab goes on into the section.
+  function onTabKey(event: React.KeyboardEvent) {
+    const at = tabs.indexOf(tab)
+    const to = event.key === 'ArrowRight' ? at + 1 : event.key === 'ArrowLeft' ? at - 1 : event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : null
+    if (to === null) return
+    event.preventDefault()
+    const next = (to + tabs.length) % tabs.length
+    setTab(tabs[next])
+    document.getElementById(`product-tab-${next}`)?.focus()
+  }
+
+  const pricing = pricingSummary(product.basePrice, product.costPrice)
+  const tagName = (t: any) => String(typeof t === 'string' ? t : t?.value || '')
+
   return <div className={s.page}>
     <div className={s.topbar}>
       <div className={s.topLeft}>
@@ -288,36 +358,46 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
       </div>
     </div>
 
-    {!creating && <UnsavedBar dirty={dirty} saving={busy} onDiscard={discard} onSave={save} />}
-
     {(error || message) && <div className={`${ui.alert} ${error ? ui.alertDanger : ''}`} role={error ? 'alert' : 'status'} style={{ margin: '0 0 14px' }}>{error || message}</div>}
 
     <ReadinessStrip title={creating ? 'Before you save' : 'Ready to sell'} checks={readiness} onGo={t => setTab(t as typeof tabs[number])} />
 
-    <div className={s.tabs}>{tabs.map(t => <button key={t} className={tab === t ? s.active : ''} onClick={() => setTab(t)}>{t}</button>)}</div>
+    {/* The unsaved-changes bar and the section tabs stay in view together, just below the app's top bar. The title
+        bar above scrolls away: it stuck at the very top, under the app's top bar, and covered the bar and the tabs. */}
+    <div className={s.stickyBand}>
+      <UnsavedBar dirty={dirty || !!saveError} saving={busy} onDiscard={discard} onSave={save} error={saveError} label={creating ? 'Unsaved product' : undefined} />
+      <div className={s.tabs} role="tablist" aria-label="Product sections" onKeyDown={onTabKey}>
+        {tabs.map((t, i) => <button key={t} type="button" role="tab" id={`product-tab-${i}`} aria-selected={tab === t} aria-controls="product-panel" tabIndex={tab === t ? 0 : -1} className={tab === t ? s.active : ''} onClick={() => setTab(t)}>{t}</button>)}
+      </div>
+    </div>
 
     <div className={s.body}>
-      <main className={s.main}>
+      {/* Not a <main>: the admin layout's <main> already holds the page. */}
+      <div className={s.main} role="tabpanel" id="product-panel" aria-labelledby={`product-tab-${tabs.indexOf(tab)}`}>
         {tab === 'General' && <>
           <Card title="Title & description" sub="Storefront-facing product content">
-            <Field label="Title"><input className={ui.input} value={product.name} onChange={e => update({ name: e.target.value })} /></Field>
+            <Field label="Title"><input id="product-title" className={ui.input} value={product.name} onChange={e => update({ name: e.target.value })} /></Field>
             <Field label="Short description"><textarea className={ui.textarea} rows={4} value={product.shortDescription || ''} onChange={e => update({ shortDescription: e.target.value })} /></Field>
-            <Field label="Size guide (optional)"><textarea className={ui.textarea} rows={5} placeholder={'Size | Chest (cm) | Length (cm)\nS | 88-92 | 68\nM | 96-100 | 70'} value={product.sizeGuide || ''} onChange={e => update({ sizeGuide: e.target.value })} /><span className={ui.muted} style={{ fontSize: 12 }}>First line: the column names. Then one size per line, cells separated by |. Shown under the description.</span></Field>
-            <div className={s.field}><span>Description</span><RichTextEditor value={descriptionHtml(product.description)} resetKey={editorKey} minHeight={280} onChange={html => update({ description: html })} /></div>
+            <div className={s.field}>
+              <label htmlFor="product-size-guide">Size guide (optional)</label>
+              <textarea id="product-size-guide" aria-describedby="product-size-guide-help" className={ui.textarea} rows={5} placeholder={'Size | Chest (cm) | Length (cm)\nS | 88-92 | 68\nM | 96-100 | 70'} value={product.sizeGuide || ''} onChange={e => update({ sizeGuide: e.target.value })} />
+              <span id="product-size-guide-help" className={ui.muted} style={{ fontSize: 12 }}>First line: the column names. Then one size per line, cells separated by |. Shown under the description.</span>
+            </div>
+            <div className={s.field}><span>Description</span><RichTextEditor value={descriptionHtml(product.description)} resetKey={editorKey} minHeight={280} label="Description" onChange={html => update({ description: html })} /></div>
           </Card>
 
           <Card title="Media" sub="Reorder, upload, or choose from your media library">
             <div className={s.mediaGrid}>
-              {(product.images || []).map((im, i) => <div className={s.mediaItem} key={im.id || i} draggable onDragStart={() => setDragIndex(i)} onDragOver={e => e.preventDefault()} onDrop={() => { if (dragIndex !== null) moveImageTo(dragIndex, i); setDragIndex(null) }} onDragEnd={() => setDragIndex(null)}>
+              {(product.images || []).map((im, i) => <div className={s.mediaItem} key={im.id || i} role="group" aria-label={`Image ${i + 1}`} draggable onDragStart={() => setDragIndex(i)} onDragOver={e => e.preventDefault()} onDrop={() => { if (dragIndex !== null) moveImageTo(dragIndex, i); setDragIndex(null) }} onDragEnd={() => setDragIndex(null)}>
                 {im.url ? <img src={im.url} alt={im.alt || ''} /> : <div className={s.mediaPlaceholder}>No image</div>}
                 <div className={s.mediaControls}>
                   {i === 0 && <span className={s.pill}>Main image</span>}
-                  {i > 0 && <button className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} onClick={() => moveImageTo(i, 0)}>Make main</button>}
-                  <input className={ui.input} placeholder="Alt text" value={im.alt || ''} onChange={e => update({ images: product.images.map((x, n) => n === i ? { ...x, alt: e.target.value } : x) })} />
+                  {i > 0 && <button type="button" className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} onClick={() => moveImageTo(i, 0)}>Make main</button>}
+                  <input className={ui.input} placeholder="Alt text" aria-label="Alt text" value={im.alt || ''} onChange={e => update({ images: product.images.map((x, n) => n === i ? { ...x, alt: e.target.value } : x) })} />
                   <div className="inline">
-                    <button className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} onClick={() => moveImage(i, -1)} disabled={i === 0}>↑</button>
-                    <button className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} onClick={() => moveImage(i, 1)} disabled={i === product.images.length - 1}>↓</button>
-                    <button className={`${ui.textButton} ${ui.textButtonDanger}`} onClick={() => update({ images: product.images.filter((_, n) => n !== i) })}><Trash2 size={14} /> Remove</button>
+                    <button type="button" className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} aria-label="Move earlier" onClick={() => moveImage(i, -1)} disabled={i === 0}><span aria-hidden="true">↑</span></button>
+                    <button type="button" className={`${ui.btn} ${ui.btnGhost} ${ui.btnSmall}`} aria-label="Move later" onClick={() => moveImage(i, 1)} disabled={i === product.images.length - 1}><span aria-hidden="true">↓</span></button>
+                    <button type="button" className={`${ui.textButton} ${ui.textButtonDanger}`} onClick={() => update({ images: product.images.filter((_, n) => n !== i) })}><Trash2 size={14} /> Remove</button>
                   </div>
                 </div>
               </div>)}
@@ -342,25 +422,34 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
               <Field label="Product type"><input className={ui.input} value={product.productType || ''} onChange={e => update({ productType: e.target.value })} /></Field>
               <Field label="Status"><select className={ui.select} value={product.status} onChange={e => update({ status: e.target.value, publishedAt: e.target.value === 'ACTIVE' ? new Date().toISOString() : null })}><option value="DRAFT">Draft</option><option value="ACTIVE">Active</option><option value="ARCHIVED">Archived</option></select></Field>
             </div>
-            {/* Not a <Field>: that is a <label>, and the picker holds its own labelled checkboxes. */}
-            <div className={s.field}>Collections
-              <CollectionPicker options={collections} value={collectionIds} onChange={ids => { setCollectionIds(ids); setDirty(true); setMessage('') }} />
+            <Check checked={product.featured} onChange={v => update({ featured: v })} title="Featured" text="Comes first on the home page and among the suggestions in the cart and on product pages." />
+            {/* Not <Field>s: a wrapping <label> names its first control, and these hold remove buttons and tick boxes. */}
+            <div className={s.field}>
+              {collections.length ? <label htmlFor="product-collections">Collections</label> : <span>Collections</span>}
+              <CollectionPicker id="product-collections" options={collections} value={collectionIds} onChange={ids => { setCollectionIds(ids); setDirty(true); setMessage('') }} />
             </div>
-            <Field label="Tags">
+            <div className={s.field}>
+              <label htmlFor="product-tags">Tags</label>
               <div className={s.tagRow}>
-                {(product.tags || []).map((t: any, i: number) => <span className={s.tagChip} key={i}>{typeof t === 'string' ? t : t.value}<button onClick={() => update({ tags: product.tags.filter((_, n) => n !== i) })}>×</button></span>)}
-                <input className={`${ui.input} ${s.tagRowField}`} placeholder="Add tag and press Enter" onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); const v = e.currentTarget.value.trim(); if (v) update({ tags: [...(product.tags || []), { value: v }] }); e.currentTarget.value = '' } }} />
+                {(product.tags || []).map((t: any, i: number) => <span className={s.tagChip} key={i}>{tagName(t)}<button type="button" aria-label={`Remove tag ${tagName(t)}`} onClick={() => update({ tags: product.tags.filter((_, n) => n !== i) })}>×</button></span>)}
+                <input id="product-tags" className={`${ui.input} ${s.tagRowField}`} placeholder="Add tag and press Enter" onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); const added = tagsFromInput(e.currentTarget.value, (product.tags || []).map(tagName)); if (added.length) update({ tags: [...(product.tags || []), ...added.map(value => ({ value }))] }); e.currentTarget.value = '' } }} />
               </div>
-            </Field>
+            </div>
           </Card>
 
           <Card title="Pricing" sub="Price, compare-at and cost">
             <div className={s.threeCol}>
-              <MoneyField label="Price" value={product.basePrice} onChange={v => update({ basePrice: v || 0 })} />
-              <MoneyField label="Compare-at price" value={product.compareAtPrice} onChange={v => update({ compareAtPrice: v })} />
+              <MoneyField id="product-price" label="Price" value={product.basePrice} onChange={v => update({ basePrice: v || 0 })} />
+              <MoneyField id="product-compare-at" label="Compare-at price" value={product.compareAtPrice} onChange={v => update({ compareAtPrice: v })} />
               <MoneyField label="Cost per item" value={product.costPrice} onChange={v => update({ costPrice: v })} />
             </div>
-            <div className={s.pricingPreview}><span>Margin</span><strong>{product.costPrice && product.basePrice ? `${Math.max(0, Math.round((1 - product.costPrice / product.basePrice) * 100))}%` : '—'}</strong></div>
+            {/* Below cost the margin and profit are negative (it showed 0%). */}
+            <div className={`${s.pricingPreview} ${pricing && pricing.profit < 0 ? s.pricingLoss : ''}`}>
+              <div><span>Margin</span><strong>{pricing ? `${pricing.margin}%` : '—'}</strong></div>
+              <div><span>Profit per item</span><strong>{pricing ? money(pricing.profit) : '—'}</strong></div>
+            </div>
+            {pricing && pricing.profit < 0 && <p className={s.pricingNote}>The price is below the cost per item: each sale loses {money(-pricing.profit)}.</p>}
+            {!product.costPrice && <p className={`${ui.muted} ${s.pricingHint}`}>Add the cost per item to see the margin and profit on each sale. Customers never see it.</p>}
           </Card>
         </>}
 
@@ -368,7 +457,7 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
           <Card title="Inventory" sub="Stock tracking and identifiers">
             {waitingCount > 0 && <div className={s.notice}><strong>{waitingCount} customer{waitingCount === 1 ? ' is' : 's are'} waiting for this</strong><span>They tapped &ldquo;Notify me when it&rsquo;s back&rdquo;. Add stock and save, and they get a message straight away.</span></div>}
             <div className={s.threeCol}>
-              <Field label="SKU"><input className={ui.input} value={product.sku} onChange={e => update({ sku: e.target.value })} /></Field>
+              <Field label="SKU"><input id="product-sku" className={ui.input} value={product.sku} onChange={e => update({ sku: e.target.value })} /></Field>
               <Field label="Barcode"><input className={ui.input} value={product.barcode || ''} onChange={e => update({ barcode: e.target.value })} /></Field>
               <Field label="Low stock at"><NumInput className={ui.input} value={product.lowStockThreshold ?? 5} empty={0} onValue={v => update({ lowStockThreshold: v ?? 0 })} /></Field>
             </div>
@@ -396,13 +485,13 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
           <Card title="Options" sub="Up to three option dimensions">
             <div className={s.optionList}>
               {optionNames.map((n, i) => <div className={s.optionRow} key={i}>
-                <input className={ui.input} placeholder={`Option ${i + 1} name`} value={n} onChange={e => { const a = [...optionNames]; a[i] = e.target.value; setOptionNames(a); setDirty(true) }} />
-                <input className={ui.input} placeholder="Values separated by commas" value={(optionValues[i] || []).join(', ')} onChange={e => { const a = [...optionValues]; a[i] = e.target.value.split(',').map(x => x.trim()).filter(Boolean); setOptionValues(a); setDirty(true) }} />
-                {optionNames.length > 1 && <button className={ui.iconBtn} onClick={() => { setOptionNames(optionNames.filter((_, x) => x !== i)); setOptionValues(optionValues.filter((_, x) => x !== i)); setDirty(true) }}><X size={15} /></button>}
+                <input className={ui.input} aria-label={`Option ${i + 1} name`} placeholder={`Option ${i + 1} name`} value={n} onChange={e => { const a = [...optionNames]; a[i] = e.target.value; setOptionNames(a); setDirty(true) }} />
+                <input className={ui.input} aria-label={`Option ${i + 1} values`} placeholder="Values separated by commas" value={optionText[i] || ''} onChange={e => { const a = [...optionText]; a[i] = e.target.value; setOptionText(a); setDirty(true) }} />
+                {optionNames.length > 1 && <button type="button" className={ui.iconBtn} aria-label={`Remove option ${i + 1}`} onClick={() => { setOptionNames(optionNames.filter((_, x) => x !== i)); setOptionText(optionText.filter((_, x) => x !== i)); setDirty(true) }}><X size={15} /></button>}
               </div>)}
             </div>
             <div className="inline">
-              <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => { if (optionNames.length < 3) { setOptionNames(x => [...x, '']); setOptionValues(x => [...x, []]); setDirty(true) } }} disabled={optionNames.length >= 3}><Plus size={15} /> Add option</button>
+              <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => { if (optionNames.length < 3) { setOptionNames(x => [...x, '']); setOptionText(x => [...x, '']); setDirty(true) } }} disabled={optionNames.length >= 3}><Plus size={15} /> Add option</button>
               <button className={ui.btn} onClick={generateVariants}><Plus size={15} /> Generate variants</button>
             </div>
           </Card>
@@ -411,23 +500,24 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
           </Card>
           <Card title="Variants" sub={`${product.variants.length} variants`}>
             {product.variants.length > 0 && <div className="inline"><button type="button" className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} onClick={() => { update({ variants: product.variants.map(v => ({ ...v, price: product.basePrice })) }); setMessage('Every variant now uses the product price. Save to apply.') }}>Use the product price for every variant</button></div>}
-            <div className={s.variantHead}><span>Variant</span><span>SKU</span><span>Price</span><span>Stock</span><span></span></div>
-            {product.variants.map((v, i) => <div className={s.variantRow} key={v.id || i}>
-              <input className={`${ui.input} ${s.variantField}`} value={v.name} onChange={e => updateVariant(i, { name: e.target.value })} />
-              <input className={`${ui.input} ${s.variantField}`} value={v.sku} onChange={e => updateVariant(i, { sku: e.target.value })} />
-              <MoneyInput className={`${ui.input} ${s.variantField}`} cents={v.price} empty={0} onCents={c => updateVariant(i, { price: c ?? 0 })} />
-              {variantLocationSplit(v) ? <span className={`${s.variantField} ${ui.muted}`} title="Stock is split across multiple locations -- manage it from the Inventory page">{variantStock(v)} (split)</span> : <NumInput className={`${ui.input} ${s.variantField}`} value={variantStock(v)} empty={0} disabled={Boolean(product.sharedInventory)} onValue={q => updateVariant(i, { quantity: q ?? 0 })} />}
-              <button className={`${ui.iconBtn} ${s.variantDeleteBtn}`} onClick={() => update({ variants: product.variants.filter((_, n) => n !== i) })}><Trash2 size={16} /></button>
-            </div>)}
+            <div className={s.variantHead} aria-hidden="true"><span>Variant</span><span>SKU</span><span>Price</span><span>Stock</span><span></span></div>
+            {/* Each box is named for its variant (the column heads are only drawn). */}
+            {product.variants.map((v, i) => { const label = (v.name || '').trim() || `Variant ${i + 1}`; return <div className={s.variantRow} key={v.id || i}>
+              <input className={`${ui.input} ${s.variantField}`} aria-label={`Variant ${i + 1} name`} value={v.name} onChange={e => updateVariant(i, { name: e.target.value })} />
+              <input className={`${ui.input} ${s.variantField}`} aria-label={`${label} SKU`} value={v.sku} onChange={e => updateVariant(i, { sku: e.target.value })} />
+              <MoneyInput className={`${ui.input} ${s.variantField}`} aria-label={`${label} price`} cents={v.price} empty={0} onCents={c => updateVariant(i, { price: c ?? 0 })} />
+              {variantLocationSplit(v) ? <span className={`${s.variantField} ${ui.muted}`} title="Stock is split across multiple locations -- manage it from the Inventory page">{variantStock(v)} (split)</span> : <NumInput className={`${ui.input} ${s.variantField}`} aria-label={`${label} stock`} value={variantStock(v)} empty={0} disabled={Boolean(product.sharedInventory)} onValue={q => updateVariant(i, { quantity: q ?? 0 })} />}
+              <button type="button" className={`${ui.iconBtn} ${s.variantDeleteBtn}`} aria-label={`Remove variant ${label}`} onClick={() => update({ variants: product.variants.filter((_, n) => n !== i) })}><Trash2 size={16} /></button>
+            </div> })}
             {!product.variants.length && <div className={s.emptyInline}>No variants yet.</div>}
           </Card>
         </>}
 
-        {tab === 'Shipping' && <Card title="Shipping & tax" aria-label="Shipping & tax" sub="Fulfillment behavior">
+        {tab === 'Shipping' && <Card title="Shipping & tax" sub="Fulfillment behavior">
           <div className={s.checkGrid}>
-            <Check checked={product.requiresShipping} onChange={v => update({ requiresShipping: v })} title="Physical product" aria-label="Physical product" text="Collect shipping details." />
-            <Check checked={product.taxable} onChange={v => update({ taxable: v })} title="Charge tax" aria-label="Charge tax" text="Use store tax rules." />
-            <Check checked={product.giftCard} onChange={v => update({ giftCard: v })} title="Gift card" aria-label="Gift card" text="Reserved for gift-card product types." />
+            <Check checked={product.requiresShipping} onChange={v => update({ requiresShipping: v })} title="Physical product" text="Collect shipping details." />
+            <Check checked={product.taxable} onChange={v => update({ taxable: v })} title="Charge tax" text="Use store tax rules." />
+            <Check checked={product.giftCard} onChange={v => update({ giftCard: v })} title="Gift card" text="Reserved for gift-card product types." />
           </div>
           <div className={s.threeCol}>
             <Field label="Weight"><NumInput className={ui.input} decimals value={product.weight} onValue={w => update({ weight: w })} /></Field>
@@ -436,7 +526,7 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
           </div>
         </Card>}
 
-        {tab === 'Channels' && <Card title="Sales channels" aria-label="Sales channels" sub="Where this product can be seen and bought">
+        {tab === 'Channels' && <Card title="Sales channels" sub="Where this product can be seen and bought">
           {creating ? <p className={ui.fieldHelp}>Save this product first to manage channel availability.</p> : (channels || []).length ? (channels || []).map((c: any) => {
             const pub = productPublications.find((p: any) => p.channelId === c.id)
             const isAvailable = pub ? pub.available : true
@@ -450,30 +540,32 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
           }) : <p className={ui.fieldHelp}>No active sales channels yet.</p>}
         </Card>}
 
-        {tab === 'Metafields' && <Card title="Metafields" aria-label="Metafields" sub="Structured custom data">
+        {tab === 'Metafields' && <Card title="Metafields" sub="Structured custom data">
           {definitions.length ? definitions.map((d: any) => {
             const cur = product.metafields?.find((m: any) => m.definitionId === d.id)?.value || ''
-            return <Field key={d.id} label={d.name}>
-              <span className={ui.fieldHelp}>{d.namespace}.{d.key} · {d.type}{d.isList ? ' · list (comma-separated)' : ''}</span>
-              <input className={ui.input} placeholder={d.isList ? 'Value one, value two, value three' : undefined} value={cur} onChange={e => { const n = [...(product.metafields || [])].filter((m: any) => m.definitionId !== d.id); if (e.target.value) n.push({ definitionId: d.id, value: e.target.value }); update({ metafields: n }) }} />
-            </Field>
+            return <div className={s.field} key={d.id}>
+              <label htmlFor={`metafield-${d.id}`}>{d.name}</label>
+              <span id={`metafield-${d.id}-help`} className={ui.fieldHelp}>{d.namespace}.{d.key} · {d.type}{d.isList ? ' · list (comma-separated)' : ''}</span>
+              <input id={`metafield-${d.id}`} aria-describedby={`metafield-${d.id}-help`} className={ui.input} placeholder={d.isList ? 'Value one, value two, value three' : undefined} value={cur} onChange={e => { const n = [...(product.metafields || [])].filter((m: any) => m.definitionId !== d.id); if (e.target.value) n.push({ definitionId: d.id, value: e.target.value }); update({ metafields: n }) }} />
+            </div>
           }) : <div className={s.emptyInline}>No metafield definitions yet.</div>}
         </Card>}
 
-        {tab === 'Search & SEO' && <Card title="Search engine listing" aria-label="Search engine listing" sub="SEO title, description and URL handle">
+        {tab === 'Search & SEO' && <Card title="Search engine listing" sub="SEO title, description and URL handle">
           <Field label="URL handle"><input className={ui.input} value={product.slug} onChange={e => update({ slug: e.target.value })} /></Field>
           <Field label="SEO title"><input className={ui.input} value={product.seoTitle || ''} onChange={e => update({ seoTitle: e.target.value })} /></Field>
           <Field label="SEO description"><textarea className={ui.textarea} rows={5} value={product.seoDescription || ''} onChange={e => update({ seoDescription: e.target.value })} /></Field>
-          <Field label="SEO image">
+          <div className={s.field}>
+            <span>SEO image</span>
             <div className="inline" style={{ gap: 10 }}>
               {product.seoImageUrl && <img src={product.seoImageUrl} alt="" style={{ width: 56, height: 56, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--admin-border)' }} />}
               <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setSeoMediaPickerOpen(true)}>{product.seoImageUrl ? 'Change image' : 'Upload image'}</button>
               {product.seoImageUrl && <button type="button" className={ui.iconBtn} aria-label="Remove SEO image" onClick={() => update({ seoImageUrl: '' })}><X size={16} /></button>}
             </div>
-          </Field>
+          </div>
           <div className={s.notice} style={{ display: 'block' }}><strong>{product.seoTitle || product.name}</strong><span style={{ display: 'block', marginTop: 4 }}>/product/{product.slug || 'product-handle'}</span><span style={{ display: 'block', marginTop: 4 }}>{product.seoDescription || product.shortDescription || 'Add an SEO description.'}</span></div>
         </Card>}
-      </main>
+      </div>
 
       <aside className={s.rail}>
         <Card title="Status" sub="Publishing"><span className={`${ui.statusPill} ${product.status === 'ACTIVE' ? ui.statusPillSuccess : product.status === 'DRAFT' ? ui.statusPillWarning : ''}`}>{product.status === 'ACTIVE' ? 'Active' : product.status === 'DRAFT' ? 'Draft' : 'Archived'}</span></Card>
