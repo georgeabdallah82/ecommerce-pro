@@ -78,6 +78,7 @@
   transition: background .15s ease, color .15s ease;
 }
 .navButton:hover { background: var(--admin-border-soft); color: var(--admin-ink); }
+.navEmpty { margin: 0; padding: 12px 10px; font-size: 13px; color: var(--admin-muted); }
 .navButton:focus-visible { outline: 3px solid var(--admin-focus); outline-offset: 1px; }
 .navIcon {
   display: grid;

@@ -3,8 +3,11 @@
 import { useMemo, useState } from 'react'
 import { Check, Globe2, Pencil, Percent, Plus, RefreshCw, Trash2, X } from 'lucide-react'
 import ui from './admin-ui.module.css'
+import s from './admin-content-editors.module.css'
 import { CountryMultiSelect } from './field-selects'
 import { useConfirm } from './admin-confirm'
+import AdminFormDialog, { DialogError } from './admin-form-dialog'
+import AdminScrollArea from './admin-scroll-area'
 
 type TaxRateRow = { id: string; name: string; countries: string; rate: number; isActive: boolean }
 
@@ -27,6 +30,9 @@ export default function TaxAdminPro({ initial }: { initial: TaxRateRow[] }) {
   const [editRow, setEditRow] = useState<TaxRateRow | null>(null)
   const [editForm, setEditForm] = useState(initialForm)
   const [error, setError] = useState('')
+  // Why a save in the New / Edit tax rate dialog failed, shown in the dialog (it was shown on the page behind the
+  // overlay; docs/admin-settings-2026-11.md).
+  const [dialogError, setDialogError] = useState('')
   const [saving, setSaving] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
 
@@ -44,11 +50,11 @@ export default function TaxAdminPro({ initial }: { initial: TaxRateRow[] }) {
   }
 
   async function createRate(e: React.FormEvent) {
-    e.preventDefault(); setSaving(true); setError('')
+    e.preventDefault(); setSaving(true); setDialogError('')
     try {
       await api('/api/admin/tax-rates', { method: 'POST', body: JSON.stringify({ name: form.name, countries: form.countries || '*', rate: Number(form.rate), isActive: form.isActive }) })
       await refresh(); setForm(initialForm); setFormOpen(false)
-    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to create tax rate') }
+    } catch (e) { setDialogError(e instanceof Error ? e.message : 'Unable to create tax rate') }
     finally { setSaving(false) }
   }
 
@@ -71,23 +77,23 @@ export default function TaxAdminPro({ initial }: { initial: TaxRateRow[] }) {
   function openEdit(row: TaxRateRow) {
     setEditRow(row)
     setEditForm({ name: row.name, countries: row.countries, rate: String(row.rate), isActive: row.isActive })
-    setError('')
+    setDialogError('')
   }
 
   async function saveEdit(e: React.FormEvent) {
     e.preventDefault()
     if (!editRow) return
-    setSaving(true); setError('')
+    setSaving(true); setDialogError('')
     try {
       await api('/api/admin/tax-rates', { method: 'PATCH', body: JSON.stringify({ id: editRow.id, name: editForm.name, countries: editForm.countries || '*', rate: Number(editForm.rate), isActive: editForm.isActive }) })
       await refresh(); setEditRow(null)
-    } catch (e) { setError(e instanceof Error ? e.message : 'Unable to update tax rate') }
+    } catch (e) { setDialogError(e instanceof Error ? e.message : 'Unable to update tax rate') }
     finally { setSaving(false) }
   }
 
   return <div className="catalogPage">
-    <div className={`${ui.sectionHead} catalogHead`}><div><span className={ui.muted}>SETTINGS</span><h1 className={ui.title}>Tax</h1><p className={ui.muted}>Charge different tax rates by destination country. The Settings page's default rate applies when no zone below matches.</p></div><div className="inline"><button className={`${ui.btn} ${ui.btnSecondary}`} onClick={refresh}><RefreshCw size={15}/> Refresh</button><button className={ui.btn} onClick={() => setFormOpen(true)}><Plus size={16}/> Add tax rate</button></div></div>
-    {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
+    <div className={`${ui.sectionHead} catalogHead`}><div><span className={ui.muted}>SETTINGS</span><h1 className={ui.title}>Tax</h1><p className={ui.muted}>Charge different tax rates by destination country. The Settings page's default rate applies when no zone below matches.</p></div><div className="inline"><button className={`${ui.btn} ${ui.btnSecondary}`} onClick={refresh}><RefreshCw size={15}/> Refresh</button><button className={ui.btn} onClick={() => { setDialogError(''); setFormOpen(true) }}><Plus size={16}/> Add tax rate</button></div></div>
+    {error && <div className={`${ui.alert} ${ui.alertDanger}`} role="alert">{error}</div>}
 
     <div className="catalogStats">
       <button className={`statCard ${status === 'ALL' ? 'active' : ''}`} onClick={() => setStatus('ALL')}><span>Tax rates</span><strong>{rows.length}</strong></button>
@@ -95,40 +101,42 @@ export default function TaxAdminPro({ initial }: { initial: TaxRateRow[] }) {
     </div>
 
     <div className={`${ui.card} catalogToolbar`}>
-      <div className="productSearch"><Globe2 size={16}/><input placeholder="Search tax rates or countries…" value={query} onChange={e => setQuery(e.target.value)}/>{query && <button className="searchClear" onClick={() => setQuery('')}><X size={14}/></button>}</div>
-      <select className={ui.input} value={status} onChange={e => setStatus(e.target.value as typeof status)}><option value="ALL">All rates</option><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option></select>
+      <div className="productSearch"><Globe2 size={16}/><input placeholder="Search tax rates or countries…" aria-label="Search tax rates" value={query} onChange={e => setQuery(e.target.value)}/>{query && <button type="button" className="searchClear" aria-label="Clear search" onClick={() => setQuery('')}><X size={14} aria-hidden="true"/></button>}</div>
+      <select className={ui.input} aria-label="Show tax rates" value={status} onChange={e => setStatus(e.target.value as typeof status)}><option value="ALL">All rates</option><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option></select>
       <span className={ui.muted}>{filtered.length} rate{filtered.length === 1 ? '' : 's'}</span>
     </div>
 
-    <div className={`${ui.card} productTableCard`}><div className={ui.tableWrap}><table className={`${ui.table} productTable`} style={{ minWidth: 760 }}><thead><tr><th>Name</th><th>Countries</th><th>Rate</th><th>Status</th><th></th></tr></thead><tbody>
+    <div className={`${ui.card} productTableCard`}><AdminScrollArea label="Tax rates"><table className={`${ui.table} productTable`} style={{ minWidth: 760 }}><thead><tr><th>Name</th><th>Countries</th><th>Rate</th><th>Status</th><th><span className={s.srOnly}>Actions</span></th></tr></thead><tbody>
       {filtered.map(row => <tr key={row.id}>
         <td><strong>{row.name}</strong></td>
         <td>{row.countries === '*' ? 'All countries (fallback)' : row.countries}</td>
         <td><strong>{row.rate}%</strong></td>
         <td><span className={`${ui.statusPill} ${row.isActive ? ui.statusPillSuccess : ui.statusPillWarning}`}>{row.isActive ? <><Check size={13}/> Active</> : 'Inactive'}</span></td>
-        <td><div className="inline"><button className={row.isActive ? `${ui.textButton} ${ui.textButtonDanger}` : ui.textButton} disabled={busy === row.id} onClick={() => toggleRate(row)}>{row.isActive ? 'Disable' : 'Enable'}</button><button className={ui.iconBtn} title="Edit tax rate" aria-label="Edit tax rate" onClick={() => openEdit(row)}><Pencil size={15}/></button><button className={`${ui.iconBtn} ${ui.iconBtnDanger}`} title="Delete tax rate" aria-label="Delete tax rate" disabled={busy === row.id} onClick={() => deleteRate(row)}><Trash2 size={15}/></button></div></td>
+        <td><div className="inline"><button className={row.isActive ? `${ui.textButton} ${ui.textButtonDanger}` : ui.textButton} disabled={busy === row.id} onClick={() => toggleRate(row)}>{row.isActive ? 'Disable' : 'Enable'}</button><button className={ui.iconBtn} title={`Edit ${row.name}`} aria-label={`Edit ${row.name}`} onClick={() => openEdit(row)}><Pencil size={15}/></button><button className={`${ui.iconBtn} ${ui.iconBtnDanger}`} title={`Delete ${row.name}`} aria-label={`Delete ${row.name}`} disabled={busy === row.id} onClick={() => deleteRate(row)}><Trash2 size={15}/></button></div></td>
       </tr>)}
-    </tbody></table></div>
-    {!filtered.length && <div className={ui.empty}><Percent size={28}/><h3>No tax rates</h3><p className={ui.muted}>Add a tax rate to charge different rates by destination country.</p></div>}
+    </tbody></table></AdminScrollArea>
+    {!filtered.length && <div className={ui.empty}><Percent size={28}/><h2>No tax rates</h2><p className={ui.muted}>Add a tax rate to charge different rates by destination country.</p></div>}
     </div>
 
-    {formOpen && <div className={ui.modalOverlay} onClick={() => !saving && setFormOpen(false)}><div className={`${ui.card} discountsModal`} onClick={e => e.stopPropagation()}><div className="inventoryModalHead"><div><span className={`${ui.muted} ${ui.tiny}`}>CREATE TAX RATE</span><h2>New tax rate</h2><p className={ui.muted}>Define which countries this rate applies to.</p></div><button className={ui.iconBtn} onClick={() => setFormOpen(false)} disabled={saving}><X size={17}/></button></div>
+    <AdminFormDialog open={formOpen} eyebrow="CREATE TAX RATE" title="New tax rate" description="Define which countries this rate applies to." busy={saving} onClose={() => setFormOpen(false)}>
       <form className="discountForm" onSubmit={createRate}>
-        <label className={ui.fieldLabel}>Name<input className={ui.input} required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="EU VAT"/></label>
+        <label className={ui.fieldLabel}>Name<input className={ui.input} required data-autofocus value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="EU VAT"/></label>
         <label className={ui.fieldLabel}>Countries<CountryMultiSelect className={ui.select} value={form.countries} onChange={v => setForm({ ...form, countries: v })} aria-label="Countries" /><small className={ui.muted}>Choose one or more countries. Leave it empty or choose All countries (fallback) to apply this rate to every country without a more specific match.</small></label>
         <label className={ui.fieldLabel}>Rate (%)<input className={ui.input} type="number" min="0" max="100" step="0.01" value={form.rate} onChange={e => setForm({ ...form, rate: e.target.value })}/></label>
         <label className="toggleRow"><input type="checkbox" checked={form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })}/><span><strong>Rate is active</strong><small>Applies to checkout immediately.</small></span></label>
+        <DialogError error={dialogError}/>
         <div className="inline" style={{ justifyContent: 'flex-end', marginTop: 8 }}><button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setFormOpen(false)} disabled={saving}>Cancel</button><button className={ui.btn} disabled={saving}>{saving ? 'Creating…' : 'Create tax rate'}</button></div>
       </form>
-    </div></div>}
+    </AdminFormDialog>
 
-    {editRow && <div className={ui.modalOverlay} onClick={() => !saving && setEditRow(null)}><div className={`${ui.card} discountsModal`} onClick={e => e.stopPropagation()}><div className="inventoryModalHead"><div><span className={`${ui.muted} ${ui.tiny}`}>EDIT TAX RATE</span><h2>{editRow.name}</h2><p className={ui.muted}>Update coverage and rate.</p></div><button className={ui.iconBtn} onClick={() => setEditRow(null)} disabled={saving}><X size={17}/></button></div>
+    <AdminFormDialog open={!!editRow} eyebrow="EDIT TAX RATE" title={editRow?.name || ''} description="Update coverage and rate." busy={saving} onClose={() => setEditRow(null)}>
       <form className="discountForm" onSubmit={saveEdit}>
-        <label className={ui.fieldLabel}>Name<input className={ui.input} required value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })}/></label>
+        <label className={ui.fieldLabel}>Name<input className={ui.input} required data-autofocus value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })}/></label>
         <label className={ui.fieldLabel}>Countries<CountryMultiSelect className={ui.select} value={editForm.countries} onChange={v => setEditForm({ ...editForm, countries: v })} aria-label="Countries" /><small className={ui.muted}>Choose one or more countries, or All countries (fallback) for every country without a more specific rate.</small></label>
         <label className={ui.fieldLabel}>Rate (%)<input className={ui.input} type="number" min="0" max="100" step="0.01" value={editForm.rate} onChange={e => setEditForm({ ...editForm, rate: e.target.value })}/></label>
+        <DialogError error={dialogError}/>
         <div className="inline" style={{ justifyContent: 'flex-end', marginTop: 8 }}><button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setEditRow(null)} disabled={saving}>Cancel</button><button className={ui.btn} disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button></div>
       </form>
-    </div></div>}
+    </AdminFormDialog>
   </div>
 }

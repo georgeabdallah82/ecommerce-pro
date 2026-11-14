@@ -41,6 +41,8 @@ type PaymentConfig = {
   apiPassword: string
 }
 
+const PAYMENT_FIELDS = ['provider', 'merchantId', 'merchantName', 'apiBaseUrl', 'apiVersion', 'checkoutScriptUrl'] as const
+
 const defaultPaymentConfig: PaymentConfig = {
   provider: 'manual',
   enabled: false,
@@ -66,17 +68,14 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
       if (groups.toLowerCase().split('\n').some(line => line.split('=')[0].trim().toLowerCase() === word.toLowerCase())) return current
       return { ...current, 'search.synonyms': groups.trim() ? `${groups.replace(/\s+$/, '')}\n${word} = ` : `${word} = ` }
     })
-    setDirty(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addSearchWord])
   const [search, setSearch] = useState('')
   const [saving, setSaving] = useState(false)
-  // Any edit on this page marks it unsaved (the bar and the leave warning below); a save clears it.
-  const [dirty, setDirty] = useState(false)
   const confirm = useConfirm()
   const [notice, setNotice] = useState('')
   const [shareImageOpen, setShareImageOpen] = useState(false)
-  const [values, setValues] = useState<Record<string, string>>({
+  const [values, setValues] = useState<Record<string, string>>(() => ({
     'store.name': map.get('store.name') || 'YOUR BRAND',
     'store.currency': map.get('store.currency') || 'USD',
     'store.country': map.get('store.country') || 'Lebanon',
@@ -124,8 +123,10 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
     'maintenance.headline': map.get('maintenance.headline') || '',
     'maintenance.message': map.get('maintenance.message') || '',
     'maintenance.backBy': map.get('maintenance.backBy') || '',
-  })
-  const savedPolicy = useRef<Record<string, string>>(values)
+    // The countries checkout delivers to (Shipping & delivery). It wasn't read here, so the card showed only the
+    // store's own country, and adding a country saved that one over the saved list.
+    'checkout.countries': map.get('checkout.countries') || '',
+  }))
   // The Conversions API token is write-only: typed in to save or replace it, never shown back.
   const [capiToken, setCapiToken] = useState('')
   const [capiTokenSaved, setCapiTokenSaved] = useState(metaCapiTokenSet)
@@ -147,21 +148,38 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
     'maintenance.enabled': map.get('maintenance.enabled') === 'true',
   }))
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig>(defaultPaymentConfig)
+  // The provider settings as saved: loaded the first time Payments is opened (null until then).
+  const [paymentSaved, setPaymentSaved] = useState<PaymentConfig | null>(null)
+  const paymentRequested = useRef(false)
   const [paymentLoading, setPaymentLoading] = useState(false)
+  const [paymentError, setPaymentError] = useState('')
+  // What the server has. The page compares what is on screen with it to know what is unsaved (the status, the bar
+  // and the leave warning): a switch, a country taken off or a share image count; the search box, the Section list
+  // on phones and the cards that save by themselves (blocked numbers, 2-step login) don't.
+  const [saved, setSaved] = useState(() => ({ values, flags }))
+  const paymentChanged = !!paymentSaved && (!!paymentConfig.apiPassword.trim() || PAYMENT_FIELDS.some(key => paymentConfig[key] !== paymentSaved[key]))
+  const dirty = paymentChanged || !!capiToken.trim()
+    || Object.keys(values).some(key => (values[key] || '') !== (saved.values[key] || ''))
+    || Object.keys(flags).some(key => flags[key] !== saved.flags[key])
+  const [saveError, setSaveError] = useState('')
+  // Discard reloads the page; the browser's own leave warning shouldn't ask a second time.
+  const discarding = useRef(false)
 
   useEffect(() => {
     if (!dirty) return
-    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
+    const warn = (e: BeforeUnloadEvent) => { if (discarding.current) return; e.preventDefault(); e.returnValue = '' }
     window.addEventListener('beforeunload', warn)
     return () => window.removeEventListener('beforeunload', warn)
   }, [dirty])
 
   useEffect(() => {
-    if (tab !== 'Payments') return
-    setPaymentLoading(true)
+    // Loaded once: coming back to Payments keeps what was typed there (it used to load again over it).
+    if (tab !== 'Payments' || paymentRequested.current) return
+    paymentRequested.current = true
+    setPaymentLoading(true); setPaymentError('')
     api('/api/admin/payment-provider')
-      .then(d => setPaymentConfig({ ...defaultPaymentConfig, ...d, apiPassword: '' }))
-      .catch(e => setNotice(e instanceof Error ? e.message : 'Unable to load payment provider settings'))
+      .then(d => { const config = { ...defaultPaymentConfig, ...d, apiPassword: '' }; setPaymentConfig(config); setPaymentSaved(config) })
+      .catch(e => { paymentRequested.current = false; setPaymentError(e instanceof Error ? e.message : 'Unable to load payment provider settings') })
       .finally(() => setPaymentLoading(false))
   }, [tab])
 
@@ -172,31 +190,37 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
   // Discard: the page reloads the saved values from the server.
   async function discardChanges() {
     if (!(await confirm({ title: 'Discard your changes?', message: 'Settings you changed on this page go back to their saved values.', confirmLabel: 'Discard changes' }))) return
+    discarding.current = true
     window.location.reload()
   }
 
   async function save() {
     setSaving(true)
-    setNotice('')
+    setNotice(''); setSaveError('')
     try {
       // One request for everything; the server writes only what changed.
       const settings: Record<string, string> = { ...values, ...Object.fromEntries(Object.entries(flags).map(([key, value]) => [key, String(value)])) }
       // The policy pages show "Last updated"; move it forward only when their wording changed.
       const policyKeys = ['store.address', 'contact.email', 'contact.phone', 'store.country', 'policy.returnDays', 'policy.refundTime', 'policy.damageReportHours']
-      const policyChanged = policyKeys.some(key => (values[key] || '') !== (savedPolicy.current[key] || ''))
+      const policyChanged = policyKeys.some(key => (values[key] || '') !== (saved.values[key] || ''))
       if (policyChanged) settings['policy.updatedAt'] = new Date().toISOString()
       if (capiToken.trim()) settings['tracking.metaCapiToken'] = capiToken.trim()
+      // The online payment provider is saved whichever tab is open (it was saved only from Payments, so what was typed
+      // there was lost if Save was pressed on another tab). It also owns the Online card switch, payment.card, with its
+      // own checks: both saves used to write the switch at once, the provider's with the value it had on opening.
+      const sendPayment = !!paymentSaved && (paymentChanged || flags['payment.card'] !== saved.flags['payment.card'])
+      if (sendPayment) delete settings['payment.card']
       const [, savedPayment] = await Promise.all([
         api('/api/admin/settings', { method: 'PATCH', body: JSON.stringify({ settings }) }),
-        tab === 'Payments' ? api('/api/admin/payment-provider', { method: 'PATCH', body: JSON.stringify(paymentConfig) }) : Promise.resolve(null),
+        sendPayment ? api('/api/admin/payment-provider', { method: 'PATCH', body: JSON.stringify({ ...paymentConfig, enabled: flags['payment.card'] }) }) : Promise.resolve(null),
       ])
-      if (policyChanged) savedPolicy.current = { ...values }
-      if (savedPayment) setPaymentConfig({ ...defaultPaymentConfig, ...savedPayment, apiPassword: '' })
+      if (savedPayment) { const config = { ...defaultPaymentConfig, ...savedPayment, apiPassword: '' }; setPaymentConfig(config); setPaymentSaved(config) }
       if (capiToken.trim()) { setCapiTokenSaved(true); setCapiToken('') }
-      setDirty(false)
+      setSaved({ values, flags })
       setNotice('All settings saved')
     } catch (e) {
-      setNotice(e instanceof Error ? e.message : 'Unable to save settings')
+      // Shown in the bar that stays at the top of the screen, where Save was pressed (it was shown above the page).
+      setSaveError(e instanceof Error ? e.message : 'Unable to save settings')
     } finally {
       setSaving(false)
     }
@@ -206,7 +230,7 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
   const ActiveIcon = activeGroup.icon
 
   return (
-    <div className={styles.page} onChangeCapture={() => setDirty(true)}>
+    <div className={styles.page}>
       <div className={styles.head}>
         <div className={styles.headTitle}>
           <span className={`${ui.muted} ${ui.tiny}`}>Store configuration</span>
@@ -227,8 +251,8 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
         </div>
       </div>
 
-      <UnsavedBar dirty={dirty} saving={saving} onDiscard={discardChanges} onSave={save} />
-      {notice && <div className={ui.alert} style={{ marginBottom: 14 }}>{notice}</div>}
+      <UnsavedBar dirty={dirty || !!saveError} saving={saving} onDiscard={discardChanges} onSave={save} error={saveError} />
+      {notice && <div className={ui.alert} role="status" style={{ marginBottom: 14 }}>{notice}</div>}
 
       <div className={styles.layout}>
         {/* Phones: one dropdown for all settings sections instead of a sideways-scrolling row of cards. */}
@@ -238,13 +262,16 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
             {(filtered.some(g => g.key === tab) ? filtered : [...groups.filter(g => g.key === tab), ...filtered]).map(g => <option key={g.key} value={g.key}>{g.label}</option>)}
           </select>
         </label>
-        <aside className={styles.nav}>
+        {/* The section open now is marked for screen readers too (it was shown only by its colour). */}
+        <nav className={styles.nav} aria-label="Settings sections">
           {filtered.map(g => {
             const Icon = g.icon
             return (
               <button
                 key={g.key}
+                type="button"
                 className={tab === g.key ? `${styles.navButton} ${styles.navButtonActive}` : styles.navButton}
+                aria-current={tab === g.key ? 'true' : undefined}
                 onClick={() => setTab(g.key)}
               >
                 <span className={styles.navIcon}><Icon size={17} /></span>
@@ -253,9 +280,11 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
               </button>
             )
           })}
-        </aside>
+          {!filtered.length && <p className={styles.navEmpty}>No section matches your search.</p>}
+        </nav>
 
-        <main className={styles.main}>
+        {/* Not a second main landmark: the admin's own main holds the page. */}
+        <div className={styles.main}>
           <div className={styles.sectionHead}>
             <span className={styles.sectionIcon} aria-hidden="true"><ActiveIcon size={22} /></span>
             <div>
@@ -271,8 +300,8 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
                   <label className={ui.fieldLabel}>Currency<CurrencySelect className={ui.select} value={values['store.currency']} onChange={v => set('store.currency', v)} /></label>
                   <label className={ui.fieldLabel}>Country<CountrySelect className={ui.select} value={values['store.country']} onChange={v => set('store.country', v)} /></label>
                   <label className={ui.fieldLabel}>Timezone<TimezoneSelect className={ui.select} value={values['store.timezone']} onChange={v => set('store.timezone', v)} /></label>
-                  <Field label="Store email" value={values['contact.email']} onChange={v => set('contact.email', v)} />
-                  <Field label="Phone / WhatsApp" value={values['contact.phone']} onChange={v => set('contact.phone', v)} />
+                  <Field label="Store email" type="email" value={values['contact.email']} onChange={v => set('contact.email', v)} />
+                  <Field label="Phone / WhatsApp" type="tel" value={values['contact.phone']} onChange={v => set('contact.phone', v)} />
                 </div>
                 <Field label="Business address" value={values['store.address']} onChange={v => set('store.address', v)} />
                 <label className={ui.fieldLabel}>Pickup locations (optional)<textarea className={ui.textarea} rows={4} placeholder={'Hamra shop | Hamra St 12 | Mon-Sat 9:00-20:00 | +961 1 234 567'} value={values['stores.list'] || ''} onChange={e => set('stores.list', e.target.value)} /><span className={ui.muted} style={{ fontSize: 12 }}>One place per line: name | address | opening hours | phone. Shown on the Our stores page.</span></label>
@@ -281,8 +310,8 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
 
               <Card title="Policies" desc="Used in the wording of your Refund Policy page. Customers see these exact values.">
                 <div className={ui.twoCol}>
-                  <Field label="Return window (days)" value={values['policy.returnDays']} onChange={v => set('policy.returnDays', v.replace(/\D/g, ''))} />
-                  <Field label="Report damaged items within (hours)" value={values['policy.damageReportHours']} onChange={v => set('policy.damageReportHours', v.replace(/\D/g, ''))} />
+                  <Field label="Return window (days)" inputMode="numeric" value={values['policy.returnDays']} onChange={v => set('policy.returnDays', v.replace(/\D/g, ''))} />
+                  <Field label="Report damaged items within (hours)" inputMode="numeric" value={values['policy.damageReportHours']} onChange={v => set('policy.damageReportHours', v.replace(/\D/g, ''))} />
                   <Field label="Refunds arrive within" value={values['policy.refundTime']} onChange={v => set('policy.refundTime', v)} />
                 </div>
                 <span className={ui.fieldHelp}>To rewrite a policy, or to stop accepting returns, go to <a className={ui.textLink} href="/admin/online-store/policies">Online Store › Policies</a>.</span>
@@ -338,6 +367,7 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
               </Card>
 
               <Card title="Online payment provider" desc="Connect and switch gateways without changing checkout code.">
+                {paymentError && <div className={`${ui.alert} ${ui.alertDanger}`} role="alert">{paymentError}</div>}
                 <label className={ui.fieldLabel}>
                   Provider
                   <select className={ui.select} value={paymentConfig.provider} onChange={e => setPaymentConfig(v => ({ ...v, provider: e.target.value }))}>
@@ -378,8 +408,8 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
             <>
             <Card title="Shipping & delivery" desc="Configure checkout defaults; detailed shipping rates are managed in Shipping and per-country tax rates in Tax.">
               <div className={ui.twoCol}>
-                <Field label="Free shipping threshold" value={values['checkout.freeShippingThreshold']} onChange={v => set('checkout.freeShippingThreshold', v)} />
-                <Field label="Default tax rate (%)" value={values['checkout.taxRatePercent']} onChange={v => set('checkout.taxRatePercent', v)} />
+                <Field label="Free shipping threshold" inputMode="decimal" value={values['checkout.freeShippingThreshold']} onChange={v => set('checkout.freeShippingThreshold', v)} />
+                <Field label="Default tax rate (%)" inputMode="decimal" value={values['checkout.taxRatePercent']} onChange={v => set('checkout.taxRatePercent', v)} />
               </div>
               <p className={ui.muted}>The default tax rate above applies only when no Tax rate zone matches the customer's country.</p>
               <Toggle label="Guest checkout" keyName="checkout.guestCheckout" value={flags['checkout.guestCheckout']} onChange={() => toggle('checkout.guestCheckout')} />
@@ -399,7 +429,7 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
             </Card>
             <Card title="Prices in Lebanese pounds" desc="Show an approximate LBP amount under prices and totals. Customers still pay the price in your store currency.">
               <Toggle label="Show prices in LBP too" keyName="currency.showLbp" value={flags['currency.showLbp']} onChange={() => toggle('currency.showLbp')} />
-              <Field label="Rate: LBP for $1" value={values['currency.lbpRate']} placeholder="e.g. 89500" onChange={v => set('currency.lbpRate', v.replace(/[^\d]/g, ''))} />
+              <Field label="Rate: LBP for $1" inputMode="numeric" value={values['currency.lbpRate']} placeholder="e.g. 89500" onChange={v => set('currency.lbpRate', v.replace(/[^\d]/g, ''))} />
             </Card>
             </>
           )}
@@ -408,7 +438,7 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
             <>
             <Card title="Free gift above an amount" desc="Orders that reach the amount get the gift product free, while it is in stock. Shoppers see how far they are in the cart.">
               <Toggle label="Give a free gift" keyName="freeGift.enabled" value={flags['freeGift.enabled']} onChange={() => toggle('freeGift.enabled')} />
-              <Field label="Orders over (in your currency)" value={values['freeGift.threshold']} placeholder="e.g. 50" onChange={v => set('freeGift.threshold', v.replace(/[^\d.]/g, ''))} />
+              <Field label="Orders over (in your currency)" inputMode="decimal" value={values['freeGift.threshold']} placeholder="e.g. 50" onChange={v => set('freeGift.threshold', v.replace(/[^\d.]/g, ''))} />
               <label className={ui.fieldLabel}>Gift product
                 <select className={ui.select} value={values['freeGift.productId']} onChange={e => set('freeGift.productId', e.target.value)}>
                   <option value="">Choose a product</option>
@@ -423,14 +453,14 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
               <Toggle label="Show the welcome popup" keyName="welcome.enabled" value={flags['welcome.enabled']} onChange={() => toggle('welcome.enabled')} />
               <Field label="Discount code to give" value={values['welcome.code']} placeholder="e.g. WELCOME10" onChange={v => set('welcome.code', v.toUpperCase().replace(/\s+/g, ''))} />
               <Field label="Title" value={values['welcome.title']} placeholder="A gift for your first order" onChange={v => set('welcome.title', v)} />
-              <Field label="Show after (seconds)" value={values['welcome.delaySeconds']} placeholder="8" onChange={v => set('welcome.delaySeconds', v.replace(/[^\d]/g, ''))} />
+              <Field label="Show after (seconds)" inputMode="numeric" value={values['welcome.delaySeconds']} placeholder="8" onChange={v => set('welcome.delaySeconds', v.replace(/[^\d]/g, ''))} />
               <p className={ui.muted}><a className={ui.textLink} href="/admin/customers/whatsapp">See the WhatsApp list ({whatsappListCount})</a></p>
             </Card>
             <Card title="Invite a friend" desc="Every customer gets their own code on the thank-you page to share on WhatsApp. Friends get a discount on their first order. When a friend's order is delivered, you send the customer a thank-you code from Marketing > Invite a friend.">
               <Toggle label="Turn on invite a friend" keyName="invite.enabled" value={flags['invite.enabled']} onChange={() => toggle('invite.enabled')} />
-              <Field label="Friend's discount on their first order (%)" value={values['invite.friendPercent']} placeholder="10" onChange={v => set('invite.friendPercent', v.replace(/[^\d]/g, '').slice(0, 2))} />
-              <Field label="Thank-you amount for the customer (in your currency)" value={values['invite.reward']} placeholder="5" onChange={v => set('invite.reward', v.replace(/[^\d.]/g, ''))} />
-              <Field label="Thank-you code valid for (days)" value={values['invite.rewardDays']} placeholder="60" onChange={v => set('invite.rewardDays', v.replace(/[^\d]/g, '').slice(0, 3))} />
+              <Field label="Friend's discount on their first order (%)" inputMode="numeric" value={values['invite.friendPercent']} placeholder="10" onChange={v => set('invite.friendPercent', v.replace(/[^\d]/g, '').slice(0, 2))} />
+              <Field label="Thank-you amount for the customer (in your currency)" inputMode="decimal" value={values['invite.reward']} placeholder="5" onChange={v => set('invite.reward', v.replace(/[^\d.]/g, ''))} />
+              <Field label="Thank-you code valid for (days)" inputMode="numeric" value={values['invite.rewardDays']} placeholder="60" onChange={v => set('invite.rewardDays', v.replace(/[^\d]/g, '').slice(0, 3))} />
               <p className={ui.muted}><a className={ui.textLink} href="/admin/marketing/invites">See friends&apos; orders and thank-you codes</a></p>
             </Card>
             <Card title="Questions on product pages" desc="Shoppers can ask about a product. You answer in Content > Questions, and published answers show on the product page for everyone.">
@@ -441,7 +471,7 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
               <Toggle label="Show the button" keyName="product.whatsappOrder" value={flags['product.whatsappOrder']} onChange={() => toggle('product.whatsappOrder')} />
             </Card>
             <Card title="Only a few left" desc="When a product's real stock is at or below this number, its page says &quot;Only 3 left&quot;. It uses the stock you keep in Products, so it is always true, and it never shows for products that are not counted or that you sell when out of stock.">
-              <Field label="Show it when stock is at or below (leave empty to switch off)" value={values['product.lowStockThreshold']} placeholder="e.g. 5" onChange={v => set('product.lowStockThreshold', v.replace(/[^\d]/g, '').slice(0, 2))} />
+              <Field label="Show it when stock is at or below (leave empty to switch off)" inputMode="numeric" value={values['product.lowStockThreshold']} placeholder="e.g. 5" onChange={v => set('product.lowStockThreshold', v.replace(/[^\d]/g, '').slice(0, 2))} />
             </Card>
             <Card title="Search words" desc="Words people type for your products, one group per line, e.g. soap = sabon, saboun. Arabic words work too. Search already forgives small typos.">
               <label className={ui.fieldLabel}>Word groups<textarea className={ui.textarea} rows={5} value={values['search.synonyms']} onChange={e => set('search.synonyms', e.target.value)} placeholder={'soap = sabon, saboun\ntissue = tissues, mahareem'} dir="auto" /></label>
@@ -459,12 +489,12 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
             </Card>
             <Card title="Order problems" desc="An instant phone notification and email when a customer could not place an order, or when a new order has not been confirmed for too long. No reminders at night (11 pm to 8 am store time): they wait for the morning.">
               <Toggle label="Tell me about order problems" keyName="notifications.orderProblems" value={flags['notifications.orderProblems']} onChange={() => toggle('notifications.orderProblems')} />
-              <Field label="Remind me when a new order waits this many minutes (empty = 60, 0 = never)" value={values['notifications.stuckOrderMinutes']} placeholder="60" onChange={v => set('notifications.stuckOrderMinutes', v.replace(/[^\d]/g, '').slice(0, 3))} />
+              <Field label="Remind me when a new order waits this many minutes (empty = 60, 0 = never)" inputMode="numeric" value={values['notifications.stuckOrderMinutes']} placeholder="60" onChange={v => set('notifications.stuckOrderMinutes', v.replace(/[^\d]/g, '').slice(0, 3))} />
             </Card>
             <Card title="Morning summary" desc="Every morning at about 8:30 (store time): yesterday's orders and sales, orders waiting for you, low stock and new reviews. Sent by email and as a phone notification to staff who turned notifications on. On Mondays, a weekly report email too: last week's sales against the week before, best sellers and top areas.">
               <Toggle label="Send the morning summary" keyName="notifications.dailySummary" value={flags['notifications.dailySummary']} onChange={() => toggle('notifications.dailySummary')} />
               <Toggle label="Weekly report by email on Mondays" keyName="notifications.weeklyReport" value={flags['notifications.weeklyReport']} onChange={() => toggle('notifications.weeklyReport')} />
-              <Field label="Send the email to" value={values['notifications.summaryEmail']} placeholder={values['contact.email'] || 'Store email (Settings > General)'} onChange={v => set('notifications.summaryEmail', v)} />
+              <Field label="Send the email to" type="email" value={values['notifications.summaryEmail']} placeholder={values['contact.email'] || 'Store email (Settings > General)'} onChange={v => set('notifications.summaryEmail', v)} />
             </Card>
             </>
           )}
@@ -473,7 +503,7 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
             <>
             <Card title="Sender" desc={defaultSender.domain ? `The name and address customers see on your emails. The address must end with @${defaultSender.domain}. Leave a box empty to use the default.` : 'Email sending is not set up yet.'}>
               <Field label="Sender name" value={values['email.fromName']} placeholder={defaultSender.name} onChange={v => set('email.fromName', v)} />
-              <Field label="Sender address" value={values['email.fromAddress']} placeholder={defaultSender.address} onChange={v => set('email.fromAddress', v)} />
+              <Field label="Sender address" type="email" value={values['email.fromAddress']} placeholder={defaultSender.address} onChange={v => set('email.fromAddress', v)} />
             </Card>
             <Card title="Customer email events" desc="Control automated customer messaging. Provider credentials are configured separately.">
               <Toggle label="Order confirmation" keyName="email.customerOrder" value={flags['email.customerOrder']} onChange={() => toggle('email.customerOrder')} />
@@ -527,7 +557,7 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
               <p className={ui.muted}>To check the connection: in Events Manager open Test events, copy the test code shown there, paste it here, Save, then press Check connection. Clear the code afterwards so real sales aren't marked as tests.</p>
               <div className="inline" style={{ gap: 10 }}>
                 <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={async () => { setCapiCheck('Checking…'); try { await api('/api/admin/tracking/meta-test', { method: 'POST' }); setCapiCheck('Sent. A test Purchase should appear in Events Manager › Test events within a minute.') } catch (e) { setCapiCheck(e instanceof Error ? e.message : 'Check failed') } }}>Check connection</button>
-                {capiCheck && <span className={ui.muted}>{capiCheck}</span>}
+                {capiCheck && <span className={ui.muted} role="status">{capiCheck}</span>}
               </div>
             </Card>
             <ProductFeedCard />
@@ -556,7 +586,7 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
               <a className={`${ui.btn} ${ui.btnSecondary}`} href="/admin/metafields">Open metafields</a>
             </Card>
           )}
-        </main>
+        </div>
       </div>
     </div>
   )
@@ -575,10 +605,10 @@ function BlockedPhonesCard() {
   return (
     <Card title="Blocked phone numbers" desc="These numbers can't place orders on the store — for customers who keep ordering cash on delivery and refusing the package. You can also block a number from any order's page.">
       <div className="inline" style={{ gap: 8 }}>
-        <input className={ui.input} value={phone} onChange={e => setPhone(e.target.value)} placeholder="e.g. 70 123 456" inputMode="tel" />
+        <input className={ui.input} value={phone} onChange={e => setPhone(e.target.value)} placeholder="e.g. 70 123 456" inputMode="tel" aria-label="Phone number to block" />
         <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} disabled={!phone.trim()} onClick={() => update({ phone, note: 'Added in Settings' }, 'Number blocked.')}>Block number</button>
       </div>
-      {msg && <p className={ui.muted}>{msg}</p>}
+      {msg && <p className={ui.muted} role="status">{msg}</p>}
       {list === null ? <p className={ui.muted}>Loading…</p> : list.length === 0 ? <p className={ui.muted}>No blocked numbers.</p> : (
         <div>{list.map(item => (
           <div key={item.phone} className="inline" style={{ justifyContent: 'space-between', gap: 8, padding: '8px 0', borderTop: '1px solid var(--admin-border)' }}>
@@ -601,7 +631,7 @@ function ProductFeedCard() {
     <Card title="Product feed for catalog ads" desc="A live list of your products (photos, prices, stock) for Meta and TikTok catalog ads, which show each shopper the products they looked at. It updates by itself as you edit products.">
       <label className={ui.fieldLabel}>Feed address
         <div className="inline" style={{ gap: 8 }}>
-          <input className={ui.input} value={url} readOnly onFocus={e => e.currentTarget.select()} />
+          <input className={ui.input} value={url} readOnly onFocus={e => e.currentTarget.select()} aria-label="Feed address" />
           <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={copy}>{copied ? 'Copied' : 'Copy'}</button>
         </div>
       </label>
@@ -653,11 +683,12 @@ function DeliveryCountriesCard({ value, storeCountry, onChange }: { value: strin
   )
 }
 
-function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
+// `type` and `inputMode` bring up the right keyboard on a phone (email, phone, numbers).
+function Field({ label, value, onChange, placeholder, type, inputMode }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: 'email' | 'tel'; inputMode?: 'numeric' | 'decimal' }) {
   return (
     <label className={ui.fieldLabel}>
       {label}
-      <input className={ui.input} value={value || ''} placeholder={placeholder} onChange={e => onChange(e.target.value)} />
+      <input className={ui.input} type={type} inputMode={inputMode} value={value || ''} placeholder={placeholder} onChange={e => onChange(e.target.value)} />
     </label>
   )
 }

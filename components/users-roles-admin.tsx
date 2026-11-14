@@ -1,10 +1,12 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Eye, EyeOff, KeyRound, Pencil, Plus, RefreshCw, Search, ShieldCheck, Trash2, UserPlus, X } from 'lucide-react'
 import ui from './admin-ui.module.css'
 import s from './admin-users.module.css'
 import { useConfirm } from './admin-confirm'
+import { useModalFocus } from './use-modal-focus'
+import { DialogError } from './admin-form-dialog'
 import { runReauthed, useReauth } from './admin-reauth'
 import { BUILT_IN_ROLES, PERMISSION_SECTIONS, builtInRoleName } from '@/lib/permission-groups'
 import { ROLE_PERMISSIONS, type Permission } from '@/lib/permissions'
@@ -34,10 +36,11 @@ function generatePassword() {
 
 const roleValue = (u: { role: string; staffRoleId?: string | null }) => u.staffRoleId ? `custom:${u.staffRoleId}` : u.role
 
-function PasswordInput({ value, onChange, autoFocus }: { value: string; onChange: (v: string) => void; autoFocus?: boolean }) {
+// `label` names the box itself (its label also holds the Show and Generate buttons).
+function PasswordInput({ value, onChange, autoFocus, label }: { value: string; onChange: (v: string) => void; autoFocus?: boolean; label?: string }) {
   const [show, setShow] = useState(false)
   return <div className={s.passwordRow}>
-    <input className={ui.input} type={show ? 'text' : 'password'} minLength={8} required value={value} onChange={e => onChange(e.target.value)} autoComplete="new-password" autoFocus={autoFocus} placeholder="At least 8 characters" />
+    <input className={ui.input} type={show ? 'text' : 'password'} minLength={8} required value={value} onChange={e => onChange(e.target.value)} autoComplete="new-password" data-autofocus={autoFocus ? '' : undefined} aria-label={label} placeholder="At least 8 characters" />
     <button type="button" className={ui.iconBtn} onClick={() => setShow(v => !v)} aria-label={show ? 'Hide password' : 'Show password'}>{show ? <EyeOff size={15} /> : <Eye size={15} />}</button>
     <button type="button" className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} onClick={() => { onChange(generatePassword()); setShow(true) }}><RefreshCw size={13} /> Generate</button>
   </div>
@@ -52,11 +55,15 @@ function RoleSelect({ value, onChange, customRoles, allowSuper, disabled }: { va
   </select>
 }
 
-function Modal({ title, eyebrow, onClose, children, wide }: { title: string; eyebrow?: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
+// Tab stays inside, Escape closes it and focus goes back to the button that opened it (components/use-modal-focus.ts);
+// a save that fails says why in the dialog (it was said on the page behind the overlay; docs/admin-settings-2026-11.md).
+function Modal({ title, eyebrow, onClose, children, wide, error = '' }: { title: string; eyebrow?: string; onClose: () => void; children: React.ReactNode; wide?: boolean; error?: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useModalFocus(ref, true, onClose)
   return <div className={ui.modalOverlay} onMouseDown={onClose}>
-    <div className={`${ui.modal} ${s.modal} ${wide ? s.modalWide : ''}`} onMouseDown={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={title}>
+    <div ref={ref} className={`${ui.modal} ${s.modal} ${wide ? s.modalWide : ''}`} onMouseDown={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}>
       <div className={ui.modalHead}><div>{eyebrow && <span className={`${ui.muted} ${ui.tiny}`}>{eyebrow}</span>}<h2>{title}</h2></div><button type="button" className={ui.iconBtn} onClick={onClose} aria-label="Close"><X size={16} /></button></div>
-      <div className={s.modalBody}>{children}</div>
+      <div className={s.modalBody}>{children}<DialogError error={error} /></div>
     </div>
   </div>
 }
@@ -72,6 +79,9 @@ export default function UsersRolesAdmin({ initialUsers, initialRoles, currentUse
   const [staffForm, setStaffForm] = useState<null | { id?: string; name: string; email: string; phone: string; role: string; password: string }>(null)
   const [passwordFor, setPasswordFor] = useState<null | { user: UserRow; password: string }>(null)
   const [roleForm, setRoleForm] = useState<null | { id?: string; name: string; description: string; permissions: Permission[] }>(null)
+  // While a dialog is open its errors show in it, not on the page behind; opening or closing one starts clean.
+  const modalOpen = !!(staffForm || passwordFor || roleForm)
+  useEffect(() => { setError('') }, [modalOpen])
   const isSuper = currentUser?.role === 'SUPER_ADMIN'
   const [query, setQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
@@ -209,7 +219,7 @@ export default function UsersRolesAdmin({ initialUsers, initialRoles, currentUse
       <button role="tab" aria-selected={tab === 'roles'} className={tab === 'roles' ? s.tabOn : ''} onClick={() => setTab('roles')}>Roles <span>{BUILT_IN_ROLES.length + roles.length}</span></button>
     </div>
 
-    {(error || notice) && <div className={`${ui.alert} ${error ? ui.alertDanger : ''}`} role="status">{error || notice}</div>}
+    {!modalOpen && (error || notice) && <div className={`${ui.alert} ${error ? ui.alertDanger : ''}`} role={error ? 'alert' : 'status'}>{error || notice}</div>}
 
     {tab === 'staff' && <div className={`${ui.card} ${s.listCard}`}>
       <div className={s.toolbar}>
@@ -279,10 +289,10 @@ export default function UsersRolesAdmin({ initialUsers, initialRoles, currentUse
       </div>)}
     </div>}
 
-    {staffForm && <Modal title={staffForm.id ? `Edit ${staffForm.name || 'staff member'}` : 'Add a staff member'} eyebrow="STAFF" onClose={() => !busy && setStaffForm(null)}>
+    {staffForm && <Modal title={staffForm.id ? `Edit ${staffForm.name || 'staff member'}` : 'Add a staff member'} eyebrow="STAFF" onClose={() => !busy && setStaffForm(null)} error={error}>
       <form onSubmit={saveStaff} className={s.form}>
         <div className={ui.twoCol}>
-          <label className={ui.fieldLabel}>Full name<input className={ui.input} required value={staffForm.name} onChange={e => setStaffForm({ ...staffForm, name: e.target.value })} autoFocus /></label>
+          <label className={ui.fieldLabel}>Full name<input className={ui.input} required value={staffForm.name} onChange={e => setStaffForm({ ...staffForm, name: e.target.value })} data-autofocus /></label>
           <label className={ui.fieldLabel}>Phone (optional)<input className={ui.input} value={staffForm.phone} onChange={e => setStaffForm({ ...staffForm, phone: e.target.value })} /></label>
         </div>
         <label className={ui.fieldLabel}>Email (used to sign in)<input className={ui.input} required type="email" value={staffForm.email} onChange={e => setStaffForm({ ...staffForm, email: e.target.value })} /></label>
@@ -290,24 +300,24 @@ export default function UsersRolesAdmin({ initialUsers, initialRoles, currentUse
           <RoleSelect value={staffForm.role} onChange={role => setStaffForm({ ...staffForm, role })} customRoles={roles} allowSuper={isSuper} disabled={staffForm.id === currentUser?.id} />
           <span className={ui.fieldHelp}>{staffForm.id === currentUser?.id ? 'You cannot change your own role.' : 'Need something else? Create a role in the Roles tab.'}</span>
         </label>
-        {!staffForm.id && <label className={ui.fieldLabel}>Password<PasswordInput value={staffForm.password} onChange={password => setStaffForm({ ...staffForm, password })} /><span className={ui.fieldHelp}>Give it to them privately. They can change it later from their account.</span></label>}
+        {!staffForm.id && <label className={ui.fieldLabel}>Password<PasswordInput label="Password" value={staffForm.password} onChange={password => setStaffForm({ ...staffForm, password })} /><span className={ui.fieldHelp}>Give it to them privately. They can change it later from their account.</span></label>}
         <div className={s.formActions}><button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setStaffForm(null)} disabled={busy}>Cancel</button><button className={ui.btn} disabled={busy}>{busy ? 'Saving…' : staffForm.id ? 'Save changes' : 'Add staff member'}</button></div>
       </form>
     </Modal>}
 
-    {passwordFor && <Modal title={`New password for ${passwordFor.user.name}`} eyebrow="PASSWORD" onClose={() => !busy && setPasswordFor(null)}>
+    {passwordFor && <Modal title={`New password for ${passwordFor.user.name}`} eyebrow="PASSWORD" onClose={() => !busy && setPasswordFor(null)} error={error}>
       <form onSubmit={savePassword} className={s.form}>
-        <PasswordInput value={passwordFor.password} onChange={password => setPasswordFor({ ...passwordFor, password })} autoFocus />
+        <label className={ui.fieldLabel}>New password<PasswordInput label="New password" value={passwordFor.password} onChange={password => setPasswordFor({ ...passwordFor, password })} autoFocus /></label>
         <p className={ui.muted} style={{ margin: 0 }}>They are signed out on every device and must use this password next time. Copy it before saving.</p>
         <div className={s.formActions}><button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setPasswordFor(null)} disabled={busy}>Cancel</button><button className={ui.btn} disabled={busy}>{busy ? 'Saving…' : 'Set password'}</button></div>
       </form>
     </Modal>}
 
-    {roleForm && <RoleModal form={roleForm} setForm={setRoleForm} busy={busy} onSubmit={saveRole} onClose={() => !busy && setRoleForm(null)} />}
+    {roleForm && <RoleModal form={roleForm} setForm={setRoleForm} busy={busy} onSubmit={saveRole} onClose={() => !busy && setRoleForm(null)} error={error} />}
   </div>
 }
 
-function RoleModal({ form, setForm, busy, onSubmit, onClose }: { form: { id?: string; name: string; description: string; permissions: Permission[] }; setForm: (f: any) => void; busy: boolean; onSubmit: (e: React.FormEvent) => void; onClose: () => void }) {
+function RoleModal({ form, setForm, busy, onSubmit, onClose, error }: { form: { id?: string; name: string; description: string; permissions: Permission[] }; setForm: (f: any) => void; busy: boolean; onSubmit: (e: React.FormEvent) => void; onClose: () => void; error: string }) {
   const has = (p?: Permission) => !!p && form.permissions.includes(p)
   const set = (list: Permission[], on: boolean) => {
     const next = new Set(form.permissions)
@@ -315,10 +325,10 @@ function RoleModal({ form, setForm, busy, onSubmit, onClose }: { form: { id?: st
     setForm({ ...form, permissions: Array.from(next) })
   }
   const total = useMemo(() => PERMISSION_SECTIONS.flatMap(sec => sec.areas.flatMap(a => [a.view, a.manage, ...(a.extra || []).map(x => x.permission)].filter(Boolean))).length, [])
-  return <Modal title={form.id ? `Edit role: ${form.name}` : 'Create a role'} eyebrow="ROLE" onClose={onClose} wide>
+  return <Modal title={form.id ? `Edit role: ${form.name}` : 'Create a role'} eyebrow="ROLE" onClose={onClose} wide error={error}>
     <form onSubmit={onSubmit} className={s.form}>
       <div className={ui.twoCol}>
-        <label className={ui.fieldLabel}>Role name<input className={ui.input} required maxLength={60} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Delivery coordinator" autoFocus /></label>
+        <label className={ui.fieldLabel}>Role name<input className={ui.input} required maxLength={60} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Delivery coordinator" data-autofocus /></label>
         <label className={ui.fieldLabel}>Description (optional)<input className={ui.input} maxLength={200} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="What this person does" /></label>
       </div>
       <div className={s.permHead}><strong>What can this role do?</strong><span className={ui.muted}>{form.permissions.length} of {total} selected · “Change” includes “See”</span></div>

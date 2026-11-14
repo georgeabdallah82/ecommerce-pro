@@ -14,8 +14,10 @@
 .counts { display: flex; gap: 8px; flex-wrap: wrap; }
 .counts span { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: var(--admin-radius-pill); font-size: 12px; font-weight: 700; }
 .counts strong { font-size: 13px; }
-.countOk { background: color-mix(in srgb, #15803d 14%, transparent); color: #15803d; }
-.countWarn { background: color-mix(in srgb, #b7791f 16%, transparent); color: #b7791f; }
+/* Darker text on the soft tints (#15803d and #b7791f on theirs were 4.1:1 and 3.0:1 at 12 px); lighter in dark mode. */
+.countOk { background: var(--admin-success-soft); color: var(--admin-success-strong); }
+.countWarn { background: var(--admin-warning-soft); color: #854d0e; }
+:global(html[data-admin-theme='dark']) .countWarn { color: var(--admin-warning); }
 .countTodo { background: var(--admin-border-soft); color: var(--admin-ink-soft); }
 
 .bar { height: 10px; border-radius: 999px; background: color-mix(in srgb, var(--admin-ink) 10%, transparent); overflow: hidden; }
@@ -78,8 +80,10 @@
 .text strong { font-size: 15px; color: var(--admin-ink); }
 .text span { overflow-wrap: anywhere; }
 .state { font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--admin-muted); }
-.ok .state { color: #15803d; }
-.warn .state { color: #b7791f; }
+/* A row's state in words: the amber was 3.6:1 at 11 px. The same darker shades as the counts above. */
+.ok .state { color: var(--admin-success-strong); }
+.warn .state { color: #854d0e; }
+:global(html[data-admin-theme='dark']) .warn .state { color: var(--admin-warning); }
 .ok .text strong { color: var(--admin-muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--admin-muted) 50%, transparent); }
 .action { display: grid; gap: 6px; justify-items: end; align-content: start; font-size: 13px; }
 .where { font-size: 12px; color: var(--admin-muted); text-align: end; max-width: 190px; }

@@ -23,6 +23,7 @@
   animation: unsavedBarIn .15s ease-out;
 }
 .label { font-size: 13px; font-weight: 700; color: var(--admin-ink); }
+.error { color: var(--admin-danger); }
 .actions { display: flex; align-items: center; gap: 8px; }
 
 @keyframes unsavedBarIn {
