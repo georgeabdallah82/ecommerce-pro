@@ -5,7 +5,7 @@
 /* ---- Category strip ------------------------------------------------------------------------------------------
    White tiles on the cream band. A collection photo fills the tile, a product photo sits on white, and a category
    with neither shows a department glyph (lib/category-glyph.ts). Computers: up to four categories become wide cards
-   that share the row; more wrap into rows of tiles. Phones: one row that swipes. */
+   that share the row; more wrap into rows of tiles. Phones: rows of tiles too, four across on most phones. */
 html body.mk .aliCategoryStrip { --cat-line: color-mix(in srgb, var(--mk-red) 14%, #fff1e6); }
 html body.mk .aliCategoryRow { display: grid !important; grid-auto-flow: row !important; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)) !important; gap: 22px 16px !important; align-items: start !important; overflow: visible !important; padding: 4px 2px 6px !important; }
 html body.mk .aliCategoryItem { width: auto !important; min-width: 0; display: grid !important; justify-items: center !important; align-content: start !important; gap: 10px !important; text-align: center; color: var(--mk-ink); text-decoration: none; }
@@ -31,12 +31,13 @@ html body.mk .aliCategoryItem:focus-visible .aliCategoryIcon { border-color: var
   [dir="rtl"] body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem::after { transform: scaleX(-1); }
   [dir="rtl"] body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem:hover::after { transform: scaleX(-1) translateX(3px); }
 }
+/* Phones show every category, in rows: four across on most phones, three on the narrowest. They were one row that
+   scrolled sideways with no scrollbar, so a phone showed three and a half and the rest were out of sight. */
 @media (max-width: 759px) {
-  html body.mk .aliCategoryRow { grid-auto-flow: column !important; grid-template-columns: none !important; grid-auto-columns: minmax(92px, 1fr) !important; gap: 12px !important; overflow-x: auto !important; scrollbar-width: none !important; scroll-snap-type: x proximity; padding-bottom: 8px !important; }
-  html body.mk .aliCategoryItem { scroll-snap-align: start; }
-  html body.mk .aliCategoryIcon { border-radius: 18px !important; }
-  html body.mk .aliCategoryIcon > svg { width: 28px; height: 28px; }
-  html body.mk .aliCategoryItem > span:last-child { font-size: 13.5px; }
+  html body.mk .aliCategoryRow { grid-auto-flow: row !important; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)) !important; gap: 16px 10px !important; overflow: visible !important; padding-bottom: 4px !important; }
+  html body.mk .aliCategoryIcon { border-radius: 16px !important; }
+  html body.mk .aliCategoryIcon > svg { width: 26px; height: 26px; }
+  html body.mk .aliCategoryItem > span:last-child { font-size: 12.5px; }
 }
 @media (prefers-reduced-motion: reduce) {
   html body.mk .aliCategoryIcon, html body.mk .aliCategoryItem, html body.mk .aliCategoryItem::after { transition: none !important; }

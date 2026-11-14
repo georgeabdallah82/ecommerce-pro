@@ -4,7 +4,9 @@ import { getUnpublishedProductIds } from '@/lib/sales-channels'
 import { collectionPhoto } from '@/lib/collection-photo'
 
 // Active collections for the storefront menu ("All categories" and the phone menu): name, link,
-// picture (its own, or its first product's) and how many products it shows.
+// picture (its own, or its first product's) and how many products it shows. Every active collection is
+// listed, one with no products yet too: the owner chose that (docs/store-category-strip-2026-11.md), and the
+// home page's strip and the Collections page list them the same way. Taking one off is "Inactive".
 export async function GET() {
   try {
     const [unpublishedIds, rows] = await Promise.all([
@@ -24,7 +26,7 @@ export async function GET() {
         imageUrl: collectionPhoto(c.imageUrl, visible.map(x => (x.product as any)?.images?.[0]?.url)),
         count: visible.length,
       }
-    }).filter(c => c.count > 0)
+    })
     return json({ collections }, { headers: { 'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=600' } })
   } catch {
     return json({ collections: [] }, { status: 200, headers: { 'Cache-Control': 'no-store' } })

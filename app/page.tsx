@@ -23,7 +23,9 @@ export default async function Home(){
   const t=translator(lang)
   const [rawProducts,collections,contentBlocks]=await Promise.all([
     storefrontCached(`home-products:${unpublishedIds.join(',')}`,()=>db.product.findMany({where:{status:'ACTIVE',id:{notIn:unpublishedIds}},include:{images:{orderBy:{sortOrder:'asc'}},collections:{include:{collection:true}},...CARD_STOCK_INCLUDE},orderBy:[{featured:'desc'},{createdAt:'desc'}],take:60})),
-    storefrontCached('home-collections',()=>db.collection.findMany({where:{isActive:true},include:{products:{select:{productId:true}}},take:12,orderBy:{sortOrder:'asc'}})),
+    // The same active collections the theme editor previews and its pickers offer (lib/zone-data.ts). It took 12,
+    // so a strip set to show more, or a collection picked beyond the first 12, was missing from the live page.
+    storefrontCached('home-collections',()=>db.collection.findMany({where:{isActive:true},include:{products:{select:{productId:true}}},take:24,orderBy:{sortOrder:'asc'}})),
     // Legacy: the announcement bar and trust strip used to live in these admin "Content"
     // rows. They are theme-studio sections now (announcement_strip / trust_strip); the
     // studio converts these rows into sections the first time it is opened and records
