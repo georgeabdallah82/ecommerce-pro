@@ -6,9 +6,9 @@ The realistic-store round (`docs/store-real-2026-11.md`) left the WhatsApp butto
 
 For this round the button was switched on locally with a test phone number. It was then measured on 15 pages at 1280 px, 390 px and 390 px in Arabic, at three points on each page: the top, partway down, and the end. That makes 135 states. The theme was restored byte for byte afterwards.
 
-Before, the button sat on a link, button or field in 55 of the 135:
+Before, the button sat on a link, button or field in 53 of the 135:
 - **"Cookie settings", at the end of every page on a phone.** The footer's last row could never be scrolled clear of the button.
-- **The phone cart's sticky "Checkout" bar, in every state.** The button sat above a product page's buy bar, but not above the cart's.
+- **The phone cart's sticky checkout bar, in every state.** In English the button covered "Checkout"; in Arabic, where the bar is mirrored, it covered the total. The button sat above a product page's buy bar, but not above the cart's.
 - **Other things in its corner:**
   - a card's heart
   - "Shop all"
@@ -59,7 +59,7 @@ How it moves:
   - It now reads the new code. The rule is the same: focus is never under the button.
 - `npm run build:cloudflare` with the CI environment passes, including the worker charset check.
 - **Every page, before and after.** The 135 states were measured on the button where it really is, counting only the visible part of each link, button or field:
-  - It covered one in 55 states before, and in none now.
+  - It covered one in 53 states before, and in none now.
   - It rose 33 times and stepped aside 11 times.
 - **Keyboard.** Tab was pressed through the home page, shop, a product page and the cart at all three sizes, 89 stops each.
   - Once the page settles, no focused element is under the button.
