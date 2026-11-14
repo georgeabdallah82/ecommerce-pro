@@ -32,6 +32,13 @@ function stable(value: any): string {
   return JSON.stringify(value === undefined ? null : value)
 }
 const isPlain = (value: any) => !!value && typeof value === 'object' && !Array.isArray(value)
+// A block's id is the editor's handle on it and is never shown. The one-time switch to the market
+// storefront gives a slideshow's slides new ids each time it runs, so ids alone are not a change.
+const blockContent = (blocks: any[] | undefined) => (Array.isArray(blocks) ? blocks : []).map(block => {
+  if (!isPlain(block)) return block
+  const { id: _id, ...rest } = block
+  return rest
+})
 
 function diffTheme(published: Record<string, any>, draft: Record<string, any>): ReviewGroup[] {
   const groups: ReviewGroup[] = []
@@ -62,7 +69,7 @@ function diffTemplate(before: ReviewSection[], after: ReviewSection[], labelFor:
     if (!old) continue
     const name = labelFor(section.type)
     if ((old.enabled !== false) !== (section.enabled !== false)) items.push(`${section.enabled !== false ? 'Shown' : 'Hidden'}: ${name}`)
-    if (stable(old.settings || {}) !== stable(section.settings || {}) || stable(old.blocks || []) !== stable(section.blocks || [])) items.push(`Edited ${name}`)
+    if (stable(old.settings || {}) !== stable(section.settings || {}) || stable(blockContent(old.blocks)) !== stable(blockContent(section.blocks))) items.push(`Edited ${name}`)
   }
   // Same sections, different order.
   const sharedBefore = before.filter(s => afterById.has(s.id)).map(s => s.id)

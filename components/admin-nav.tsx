@@ -288,7 +288,9 @@ export default function AdminNav({
   const accountMenu = (
     <div className={styles.account} ref={accountRef}>
       <button type="button" className={styles.accountBtn} onClick={() => setAccountOpen(value => !value)} aria-expanded={accountOpen} aria-haspopup="menu" aria-label="Account menu">
-        <span className={styles.avatar}>{avatarUrl ? <img className={styles.avatarImg} src={avatarUrl} alt="" /> : initials}</span>
+        {/* The initials are drawn by CSS (data-initials), so "Account menu" is the button's only name, as the
+            storefront does with its avatar (components/store-nav-fixed.tsx). */}
+        <span className={styles.avatar} aria-hidden="true" data-initials={avatarUrl ? undefined : initials}>{avatarUrl ? <img className={styles.avatarImg} src={avatarUrl} alt="" /> : null}</span>
       </button>
       {accountOpen && (
         <div className={styles.accountPanel} role="menu">

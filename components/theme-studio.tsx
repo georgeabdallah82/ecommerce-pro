@@ -1,6 +1,7 @@
 'use client'
 
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { useModalFocus } from '@/components/use-modal-focus'
 import {
   ArrowDown,
   ArrowLeft,
@@ -88,7 +89,7 @@ type AnyMap = Record<string, any>
 type Section = { id: string; type: string; enabled?: boolean; settings?: AnyMap; blocks?: AnyMap[] }
 type PageRow = { id: string; title: string; handle: string; bodyHtml: string | null; status: string; seoTitle?: string | null; seoDescription?: string | null }
 type Snapshot = { theme: AnyMap; templates: Record<string, Section[]>; page: string; selectedId: string }
-type Props = { initial: { theme: AnyMap; sections: Section[]; navigation: any[]; draft: boolean; legacyBlocks?: LegacyBlock[]; openPage?: string; openSettings?: string; products?: any[]; collections?: any[]; dataError?: string } }
+type Props = { initial: { theme: AnyMap; sections: Section[]; navigation: any[]; draft: boolean; legacyBlocks?: LegacyBlock[]; openPage?: string; openSettings?: string; openReview?: boolean; products?: any[]; collections?: any[]; dataError?: string } }
 
 // The four page templates the editor manages. Home is a full section builder;
 // the other three append a merchant-editable content zone below that page's own
@@ -540,11 +541,15 @@ export default function ThemeStudio({ initial }: Props) {
   const [previewHeight, setPreviewHeight] = useState(0)
   const [versions, setVersions] = useState<Array<{ id: string; createdAt: string; createdBy: string | null }>>([])
   const [versionsLoading, setVersionsLoading] = useState(false)
+  // Loaded once per visit to the History tab, and again after a publish adds a version. An empty list is a
+  // finished load too: keying the load on versions.length re-fetched it without end on a store with no versions.
+  const [versionsLoaded, setVersionsLoaded] = useState(false)
   const [versionsError, setVersionsError] = useState('')
   const [restoringId, setRestoringId] = useState<string | null>(null)
-  const [confirmState, setConfirmState] = useState<{ message: string; onConfirm: () => void } | null>(null)
+  const [confirmState, setConfirmState] = useState<{ message: string; onConfirm: () => void; label: string } | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
-  const confirmAction = (message: string, onConfirm: () => void) => setConfirmState({ message, onConfirm })
+  // The confirm button says what it does ("Discard changes", "Restore"), not just "Confirm".
+  const confirmAction = (message: string, onConfirm: () => void, label = 'Confirm') => setConfirmState({ message, onConfirm, label })
   // The toast used to stay on screen until the next action; it now clears itself, and
   // failures stay up longer than confirmations so they can be read.
   const flash = (text: string, isError = false) => { setMessageIsError(isError); setMessage(text) }
@@ -563,6 +568,14 @@ export default function ThemeStudio({ initial }: Props) {
   const [reviewError, setReviewError] = useState('')
   const [discarding, setDiscarding] = useState(false)
   const [themeQuery, setThemeQuery] = useState('')
+  // The section picker, the publish review and the confirmations are modal: focus moves in, Tab stays inside,
+  // Escape closes them and focus goes back to the button that opened them (components/use-modal-focus.ts).
+  const pickerRef = useRef<HTMLDivElement>(null)
+  const reviewRef = useRef<HTMLDivElement>(null)
+  const confirmRef = useRef<HTMLDivElement>(null)
+  useModalFocus(pickerRef, picker, () => { setPicker(false); setPickerQuery('') })
+  useModalFocus(reviewRef, reviewOpen, () => setReviewOpen(false))
+  useModalFocus(confirmRef, Boolean(confirmState), () => setConfirmState(null))
   // Set just before a deliberate reload after discarding, so the unsaved-changes prompt is skipped.
   const leavingRef = useRef(false)
 
@@ -757,7 +770,7 @@ export default function ThemeStudio({ initial }: Props) {
       commit(withPage(list))
       setSelectedId(nextId)
       setDrawer(false)
-    })
+    }, 'Delete section')
   }
   const duplicateSection = () => {
     if (!selected || !isContentSection(selected)) return
@@ -899,6 +912,8 @@ export default function ThemeStudio({ initial }: Props) {
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data.error || 'Unable to publish theme')
       setHasDraft(false)
+      // The publish kept a version: History loads again next time it is shown.
+      setVersionsLoaded(false)
       setPublishMessage('Published')
       window.setTimeout(() => setPublishMessage(''), 2500)
     } catch (error) {
@@ -928,7 +943,9 @@ export default function ThemeStudio({ initial }: Props) {
         if (isPageTemplateKey(key)) return pages.find(row => row.id === pageIdFromKey(key))?.title || 'Page'
         return key
       }
-      const groups = data.firstPublish ? [] : reviewThemeChanges(data.published as ReviewSnapshot, data.draft as ReviewSnapshot, labelFor, pageLabel)
+      // With no draft there is nothing to compare: what the editor shows is live. (Comparing the live theme with
+      // the missing draft listed every setting as changed.)
+      const groups = data.firstPublish || !data.hasDraft ? [] : reviewThemeChanges(data.published as ReviewSnapshot, data.draft as ReviewSnapshot, labelFor, pageLabel)
       setReview({ hasDraft: !!data.hasDraft, firstPublish: !!data.firstPublish, groups })
     } catch (error) {
       setReviewError(error instanceof Error ? error.message : 'Unable to check your changes')
@@ -936,6 +953,27 @@ export default function ThemeStudio({ initial }: Props) {
       setReviewLoading(false)
     }
   }
+
+  // From the online store overview's "Review and publish" (theme-editor?review=1): open the review at once.
+  useEffect(() => {
+    if (initial.openReview && initial.draft) void openReview()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Escape closes a section's or a setting's panel (when no dialog is open) and puts focus back on its row.
+  useEffect(() => {
+    if (!drawer) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented || picker || reviewOpen || confirmState) return
+      const target = event.target instanceof Element ? event.target : null
+      if (!target?.closest(`.${styles.drawer}, .${styles.side}`)) return
+      event.preventDefault()
+      setDrawer(false)
+      window.setTimeout(() => document.querySelector<HTMLElement>(`.${styles.side} .${styles.row}.${styles.active} .${styles.rowMain}`)?.focus(), 0)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [drawer, picker, reviewOpen, confirmState])
 
   const confirmPublish = async () => {
     setReviewOpen(false)
@@ -958,7 +996,7 @@ export default function ThemeStudio({ initial }: Props) {
       flash(error instanceof Error ? error.message : 'Unable to discard changes', true)
       setDiscarding(false)
     }
-  })
+  }, 'Discard changes')
 
   // Publish always publishes what's on screen: if there are unsaved edits it saves them
   // first. Publishing alone would push the previously saved draft and silently leave the
@@ -1008,18 +1046,17 @@ export default function ThemeStudio({ initial }: Props) {
   }, [])
 
   useEffect(() => {
-    if (sideTab !== 'history' || versions.length || versionsLoading) return
+    if (sideTab !== 'history' || versionsLoaded || versionsLoading || versionsError) return
     setVersionsLoading(true)
-    setVersionsError('')
     fetch('/api/admin/theme/versions', { cache: 'no-store' })
       .then(response => response.json())
-      .then(data => { if (Array.isArray(data.versions)) setVersions(data.versions); else throw new Error(data.error || 'Unable to load theme history') })
+      .then(data => { if (Array.isArray(data.versions)) { setVersions(data.versions); setVersionsLoaded(true) } else throw new Error(data.error || 'Unable to load theme history') })
       .catch(error => setVersionsError(error instanceof Error ? error.message : 'Unable to load theme history'))
       .finally(() => setVersionsLoading(false))
-  }, [sideTab, versions.length, versionsLoading])
+  }, [sideTab, versionsLoaded, versionsLoading, versionsError])
 
   const restoreVersion = (id: string) => {
-    confirmAction('Restore this version? It will replace your current draft (published content is unaffected until you publish again).', () => performRestore(id))
+    confirmAction('Restore this version? It will replace your current draft (published content is unaffected until you publish again).', () => performRestore(id), 'Restore')
   }
   const performRestore = async (id: string) => {
     setRestoringId(id)
@@ -1066,11 +1103,11 @@ export default function ThemeStudio({ initial }: Props) {
 
       <header className={styles.top}>
         <div className={styles.topLeft}>
-          <a className={styles.iconBtn} href="/admin/online-store">
-            <ArrowLeft size={16} />
+          <a className={styles.iconBtn} href="/admin/online-store" aria-label="Back to the online store" title="Back to the online store">
+            <ArrowLeft size={16} aria-hidden="true" />
           </a>
           <div>
-            <div className={styles.title}>Theme editor</div>
+            <h1 className={styles.title}>Theme editor</h1>
             <div className={styles.sub}>{pageLabel}</div>
           </div>
         </div>
@@ -1078,13 +1115,13 @@ export default function ThemeStudio({ initial }: Props) {
           <button className={styles.iconBtn} onClick={undo} disabled={!history.length} aria-label="Undo" title="Undo (Ctrl/Cmd+Z)"><Undo2 size={15} /></button>
           <button className={styles.iconBtn} onClick={redo} disabled={!future.length} aria-label="Redo" title="Redo (Ctrl/Cmd+Shift+Z)"><Redo2 size={15} /></button>
           <div className={styles.deviceGroup} role="group" aria-label="Language being edited">
-            <button className={`${styles.iconBtn} ${editLang === 'en' ? styles.active : ''}`} onClick={() => setEditLang('en')} aria-pressed={editLang === 'en'} title="Edit the English texts" aria-label="Edit the English texts">EN</button>
+            <button className={`${styles.iconBtn} ${editLang === 'en' ? styles.active : ''}`} onClick={() => setEditLang('en')} aria-pressed={editLang === 'en'} title="Edit the English texts">EN</button>
             <button className={`${styles.iconBtn} ${editLang === 'ar' ? styles.active : ''}`} onClick={() => setEditLang('ar')} aria-pressed={editLang === 'ar'} title="Edit the Arabic texts (the preview shows the Arabic store)" aria-label="Edit the Arabic texts (the preview shows the Arabic store)" lang="ar">ع</button>
           </div>
-          <div className={styles.deviceGroup}>
+          <div className={styles.deviceGroup} role="group" aria-label="Preview size">
             {(['desktop', 'tablet', 'mobile'] as const).map(item => (
-              <button className={`${styles.iconBtn} ${device === item ? styles.active : ''}`} key={item} onClick={() => setDevice(item)} aria-label={item}>
-                {item === 'desktop' ? <Monitor size={14} /> : item === 'tablet' ? <Tablet size={14} /> : <Smartphone size={14} />}
+              <button className={`${styles.iconBtn} ${device === item ? styles.active : ''}`} key={item} onClick={() => setDevice(item)} aria-pressed={device === item} aria-label={item === 'desktop' ? 'Desktop' : item === 'tablet' ? 'Tablet' : 'Phone'} title={item === 'desktop' ? 'Desktop' : item === 'tablet' ? 'Tablet' : 'Phone'}>
+                {item === 'desktop' ? <Monitor size={14} aria-hidden="true" /> : item === 'tablet' ? <Tablet size={14} aria-hidden="true" /> : <Smartphone size={14} aria-hidden="true" />}
               </button>
             ))}
           </div>
@@ -1254,9 +1291,9 @@ export default function ThemeStudio({ initial }: Props) {
                 </div>
               </div>
               <div className={styles.rows}>
-                {versionsLoading && <div className={styles.sideSectionsCount}>Loading history…</div>}
-                {versionsError && <div className={styles.sideSectionsCount}>{versionsError}</div>}
-                {!versionsLoading && !versionsError && !versions.length && <div className={styles.sideSectionsCount}>No published versions yet. History fills in after your next publish.</div>}
+                {versionsLoading && <div className={styles.sideSectionsCount} role="status">Loading history…</div>}
+                {versionsError && <div className={styles.historyError} role="alert">{versionsError} <button type="button" className={styles.linkBtn} onClick={() => setVersionsError('')}>Try again</button></div>}
+                {versionsLoaded && !versionsLoading && !versionsError && !versions.length && <div className={styles.sideSectionsCount}>No published versions yet. History fills in after your next publish.</div>}
                 {versions.map(version => (
                   <div className={styles.row} key={version.id}>
                     <div className={styles.rowMain}>
@@ -1276,12 +1313,14 @@ export default function ThemeStudio({ initial }: Props) {
           )}
         </aside>
 
-        <main className={styles.canvas}>
+        {/* Not a second <main>: the editor already sits in the admin's main landmark. The preview scrolls on its
+            own, so it takes keyboard focus to be scrolled with the arrow keys. */}
+        <div className={styles.canvas}>
           <div className={styles.canvasBar}>
             <strong>{pageLabel}</strong>
             <span className={styles.canvasBarStatus}>{dirty ? 'Live preview · unsaved changes' : 'Live preview'}</span>
           </div>
-          <div className={styles.preview}>
+          <div className={styles.preview} role="region" aria-label={`Preview: ${pageLabel}`} tabIndex={0}>
             <iframe
               ref={iframeRef}
               title="Storefront preview"
@@ -1289,7 +1328,7 @@ export default function ThemeStudio({ initial }: Props) {
               style={{ maxWidth, height: previewHeight || '100%', border: 0 }}
             />
           </div>
-        </main>
+        </div>
 
         {drawer && drawerMode === 'section' && selected && (
           <aside className={styles.drawer}>
@@ -1354,7 +1393,7 @@ export default function ThemeStudio({ initial }: Props) {
               </div>
               <div className={styles.drawerHeadActions}>
                 {changedSettings(activeCategory, theme).length > 0 && (
-                  <button className={styles.resetBtn} onClick={() => confirmAction(`Reset ${activeCategory.label} to the standard look? You can undo this with Undo.`, () => resetCategory(activeCategory))}><RotateCcw size={13} /> Reset</button>
+                  <button className={styles.resetBtn} onClick={() => confirmAction(`Reset ${activeCategory.label} to the standard look? You can undo this with Undo.`, () => resetCategory(activeCategory), 'Reset')}><RotateCcw size={13} /> Reset</button>
                 )}
                 <button className={styles.iconBtn} onClick={() => setDrawer(false)} aria-label="Close"><X size={15} /></button>
               </div>
@@ -1370,8 +1409,11 @@ export default function ThemeStudio({ initial }: Props) {
 
       {picker && (
         <div className={styles.pickerOverlay} onMouseDown={() => { setPicker(false); setPickerQuery('') }}>
-          <div className={styles.pickerDialog} onMouseDown={event => event.stopPropagation()}>
-            <strong className={styles.pickerTitle}>Add to this page</strong>
+          <div ref={pickerRef} className={styles.pickerDialog} role="dialog" aria-modal="true" aria-labelledby="theme-picker-title" tabIndex={-1} onMouseDown={event => event.stopPropagation()}>
+            <div className={styles.pickerHead}>
+              <h2 id="theme-picker-title" className={styles.pickerTitle}>Add to this page</h2>
+              <button type="button" className={styles.iconBtn} onClick={() => { setPicker(false); setPickerQuery('') }} aria-label="Close"><X size={15} /></button>
+            </div>
             <div className={styles.pickerTabs} role="tablist">
               <button role="tab" aria-selected={pickerTab === 'sections'} className={pickerTab === 'sections' ? styles.active : ''} onClick={() => setPickerTab('sections')}>Sections</button>
               <button role="tab" aria-selected={pickerTab === 'presets'} className={pickerTab === 'presets' ? styles.active : ''} onClick={() => setPickerTab('presets')}>Ready-made</button>
@@ -1392,7 +1434,8 @@ export default function ThemeStudio({ initial }: Props) {
               value={pickerQuery}
               onChange={event => setPickerQuery(event.target.value)}
               placeholder="Search sections…"
-              autoFocus
+              aria-label="Search sections"
+              data-autofocus
             />
             {(() => {
               const results = Object.entries(META)
@@ -1422,12 +1465,13 @@ export default function ThemeStudio({ initial }: Props) {
 
       {reviewOpen && (
         <div className={styles.pickerOverlay} onMouseDown={() => setReviewOpen(false)}>
-          <div className={styles.reviewDialog} role="dialog" aria-modal="true" aria-labelledby="theme-review-title" onMouseDown={event => event.stopPropagation()}>
+          <div ref={reviewRef} className={styles.reviewDialog} role="dialog" aria-modal="true" aria-labelledby="theme-review-title" tabIndex={-1} onMouseDown={event => event.stopPropagation()}>
             <div className={styles.reviewHead}>
-              <strong id="theme-review-title">Review before you publish</strong>
+              <h2 id="theme-review-title" className={styles.reviewTitle}>Review before you publish</h2>
               <button className={styles.iconBtn} onClick={() => setReviewOpen(false)} aria-label="Close"><X size={15} /></button>
             </div>
-            <div className={styles.reviewBody}>
+            {/* Scrolls on its own, so it takes keyboard focus to be scrolled with the arrow keys. */}
+            <div className={styles.reviewBody} tabIndex={0} role="group" aria-label="Changes and checks">
               {reviewLoading && <p className={styles.reviewMuted}>{dirty ? 'Saving your edits and checking them…' : 'Checking your changes…'}</p>}
               {reviewError && <p className={styles.reviewError} role="alert">{reviewError}</p>}
               {!reviewLoading && !reviewError && review && (<>
@@ -1474,10 +1518,10 @@ export default function ThemeStudio({ initial }: Props) {
 
       {confirmState && (
         <div className={styles.pickerOverlay} onMouseDown={() => setConfirmState(null)}>
-          <div className={styles.confirmDialog} onMouseDown={event => event.stopPropagation()}>
-            <p className={styles.confirmMessage}>{confirmState.message}</p>
+          <div ref={confirmRef} className={styles.confirmDialog} role="alertdialog" aria-modal="true" aria-labelledby="theme-confirm-message" tabIndex={-1} onMouseDown={event => event.stopPropagation()}>
+            <p id="theme-confirm-message" className={styles.confirmMessage}>{confirmState.message}</p>
             <div className={styles.confirmActions}>
-              <button className={styles.btn} onClick={() => setConfirmState(null)}>Cancel</button>
+              <button className={styles.btn} data-autofocus onClick={() => setConfirmState(null)}>Cancel</button>
               <button
                 className={`${styles.btn} ${styles.btnPrimary}`}
                 onClick={() => {
@@ -1486,7 +1530,7 @@ export default function ThemeStudio({ initial }: Props) {
                   action()
                 }}
               >
-                Confirm
+                {confirmState.label}
               </button>
             </div>
           </div>
