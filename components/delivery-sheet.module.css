@@ -11,8 +11,8 @@
 @media (max-width: 560px) { .stats { grid-template-columns: 1fr 1fr; } .stats > div:last-child { grid-column: 1 / -1; } }
 .driver { display: grid; gap: 10px; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.whatsapp { border-color: #1fa855; background: #25d366; color: #fff; }
-.whatsapp:hover { background: #1fa855; border-color: #1fa855; color: #fff; }
+.whatsapp { border-color: #15803d; background: #15803d; color: #fff; }
+.whatsapp:hover { background: #166534; border-color: #166534; color: #fff; }
 .group { display: grid; gap: 8px; }
 .area { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; font-size: 17px; font-weight: 850; color: var(--admin-ink); }
 .area span { font-size: 13px; font-weight: 700; color: var(--admin-muted); }

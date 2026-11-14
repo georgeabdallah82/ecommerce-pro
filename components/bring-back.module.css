@@ -21,8 +21,8 @@
 .wait { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; font-weight: 700; color: var(--admin-muted); }
 .code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 800; letter-spacing: .04em; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.whatsapp { border-color: #1fa855; background: #25d366; color: #fff; }
-.whatsapp:hover { background: #1fa855; border-color: #1fa855; color: #fff; }
+.whatsapp { border-color: #15803d; background: #15803d; color: #fff; }
+.whatsapp:hover { background: #166534; border-color: #166534; color: #fff; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { min-height: 38px; padding: 0 14px; border: 1px solid var(--admin-border); border-radius: 999px; background: var(--admin-surface); color: var(--admin-ink); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
 .chipOn { border-color: var(--admin-ink); background: var(--admin-ink); color: var(--admin-surface); }

@@ -9,6 +9,7 @@ import { useEffect, useRef, type RefObject } from 'react'
 // - Escape closes it.
 // - The page behind does not scroll.
 // - When it closes, focus goes back to what had it (the button that opened it).
+// - A dialog opened on top of it handles its own keys.
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 export function useModalFocus(ref: RefObject<HTMLElement | null>, open: boolean, onClose: () => void) {
@@ -24,6 +25,10 @@ export function useModalFocus(ref: RefObject<HTMLElement | null>, open: boolean,
     const overflow = root.style.overflow
     root.style.overflow = 'hidden'
     const onKey = (e: KeyboardEvent) => {
+      // A dialog opened on top of this one (the admin's password check before a refund, a "sure?"
+      // question) keeps its own keys: Escape closes only it, and Tab stays in it.
+      const inside = e.target instanceof Element ? e.target.closest('[role="dialog"], [role="alertdialog"]') : null
+      if (inside && inside !== dialog && !dialog.contains(inside)) return
       if (e.key === 'Escape') { e.preventDefault(); close.current(); return }
       if (e.key !== 'Tab') return
       const list = controls()

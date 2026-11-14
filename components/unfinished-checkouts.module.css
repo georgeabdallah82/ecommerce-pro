@@ -18,8 +18,8 @@
 .items { margin: 0; padding-inline-start: 18px; display: grid; gap: 2px; font-size: 14px; color: var(--admin-ink-soft); }
 .done { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; font-weight: 700; color: #15803d; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.whatsapp { border-color: #1fa855; background: #25d366; color: #fff; }
-.whatsapp:hover { background: #1fa855; border-color: #1fa855; color: #fff; }
+.whatsapp { border-color: #15803d; background: #15803d; color: #fff; }
+.whatsapp:hover { background: #166534; border-color: #166534; color: #fff; }
 .settings { display: grid; gap: 4px; }
 .settingsTitle { margin: 0; font-size: 16px; font-weight: 800; color: var(--admin-ink); }
 @media (max-width: 520px) { .actions > * { flex: 1 1 100%; justify-content: center; } }

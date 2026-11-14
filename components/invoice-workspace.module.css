@@ -10,7 +10,7 @@
 .btn:hover:not(:disabled) { background: var(--admin-border-soft, #f4f4f5); }
 .btn:disabled { opacity: .6; cursor: default; }
 .primary, .primary:hover:not(:disabled) { border-color: var(--admin-accent, #18181b); background: var(--admin-accent, #18181b); color: var(--admin-accent-ink, #fff); }
-.whatsapp, .whatsapp:hover:not(:disabled) { border-color: #1fa855; background: #25d366; color: #fff; }
+.whatsapp, .whatsapp:hover:not(:disabled) { border-color: #15803d; background: #15803d; color: #fff; }
 .hint { margin: 0; font-size: 13px; color: var(--admin-muted, #6b7280); }
 /* On the customer's page the hint sits on the store's background: the store's muted grey (5.7:1; the admin's grey was
    4.46:1 there, under the 4.5:1 minimum). */

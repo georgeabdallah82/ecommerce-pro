@@ -77,8 +77,8 @@
 .wide { grid-column: 1 / -1; }
 .phoneRow { display: flex; gap: 8px; align-items: center; }
 .phoneRow input { flex: 1; min-width: 0; }
-.chat { flex: none; min-height: 40px; border-color: #1fa855; background: #25d366; color: #fff; text-decoration: none; }
-.chat:hover { background: #1fa855; border-color: #1fa855; color: #fff; }
+.chat { flex: none; min-height: 40px; border-color: #15803d; background: #15803d; color: #fff; text-decoration: none; }
+.chat:hover { background: #166534; border-color: #166534; color: #fff; }
 
 .invalid { border-color: var(--admin-danger) !important; }
 .error { display: block; margin-top: 6px; font-size: 12px; font-weight: 700; color: var(--admin-danger); }

@@ -65,7 +65,8 @@ export default function DeliveryTrackingAdmin({ orderId, orderStatus, className 
 
   return <section className={className || ui.card}>
     <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><div><h3>Live delivery tracking</h3><span className={ui.muted}>Share an approximate courier position with the customer.</span></div><Navigation size={18} /></div>
-    {!canTrack && <p className={ui.muted}>Tracking becomes available when the order is PROCESSING or SHIPPED.</p>}
+    {/* In the order page's own words for the steps (lib/order-flow.ts), not the status codes. */}
+    {!canTrack && <p className={ui.muted}>Live tracking can start once the order is Preparing or Out for delivery.</p>}
     {canTrack && <>
       <div className={ui.twoCol}>
         <label className={ui.fieldLabel}>ETA (minutes)<input className={ui.input} inputMode="numeric" min="0" max="1440" value={eta} onChange={e=>setEta(e.target.value.replace(/\D/g,''))} placeholder="e.g. 25" /></label>

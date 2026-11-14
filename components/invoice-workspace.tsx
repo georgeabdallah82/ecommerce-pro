@@ -80,7 +80,8 @@ export default function InvoiceWorkspace({ order, store, timezone, mode, custome
   const invoice = <OrderInvoice order={order} store={shown} note={note} timezone={timezone} t={customer ? t : undefined} lang={customer ? lang : 'en'}/>
 
   return (
-    <div className={`${s.page} ${mode === 'customer' ? s.customerPage : ''}`}>
+    // In the admin the browser tab names the order ("Invoice #1001 · Admin"), see components/admin-nav.tsx.
+    <div className={`${s.page} ${mode === 'customer' ? s.customerPage : ''}`} data-admin-title={mode === 'customer' ? undefined : `Invoice #${order.orderNumber}`}>
       <div className={s.toolbar}>
         {mode === 'admin' && <Link className={s.back} href={`/admin/orders/${order.id}`}><ArrowLeft size={16}/> Order #{order.orderNumber}</Link>}
         <div className={s.actions}>
