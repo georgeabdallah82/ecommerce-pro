@@ -428,7 +428,9 @@ html body.mk .focalFooterNewsletterForm input { border-color: rgba(255,255,255,.
 html body.mk .focalFooterHelp:has(+ .focalFooter) { margin-top: 32px !important; }
 
 /* ---------------- Floating WhatsApp ---------------- */
-.mkWhatsApp { position: fixed; z-index: 70; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); display: inline-flex; align-items: center; gap: 8px; height: 56px; min-width: 56px; padding: 0 15px; border-radius: 999px; background: #25d366; color: #fff; text-decoration: none; font-weight: 700; font-size: 14.5px; box-shadow: 0 10px 26px -10px rgba(0,0,0,.45); transition: transform .18s ease; font-family: var(--store-font-body, system-ui); }
+/* WhatsApp green dark enough for its white logo and label: #25d366 was 2:1, #15803d is 5:1 (the admin's and the
+   product page's "Order on WhatsApp" use it too). */
+.mkWhatsApp { position: fixed; z-index: 70; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); display: inline-flex; align-items: center; gap: 8px; height: 56px; min-width: 56px; padding: 0 15px; border-radius: 999px; background: #15803d; color: #fff; text-decoration: none; font-weight: 700; font-size: 14.5px; box-shadow: 0 10px 26px -10px rgba(0,0,0,.45); transition: transform .18s ease; font-family: var(--store-font-body, system-ui); }
 .mkWhatsApp:hover { transform: translateY(-2px); }
 .mkWhatsApp.right { right: 18px; }
 .mkWhatsApp.left { left: 18px; }
