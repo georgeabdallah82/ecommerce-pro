@@ -6,9 +6,11 @@ import { AlertTriangle, Plus, RefreshCw } from 'lucide-react'
 import styles from './admin-operations-hub.module.css'
 import ui from './admin-ui.module.css'
 import { useConfirm } from './admin-confirm'
+import { fetchRead } from '@/lib/retry-fetch'
 
+// Reads the host stopped are tried again (lib/retry-fetch.ts); saves go once.
 async function api(path: string, init?: RequestInit) {
-  const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
+  const r = await fetchRead(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const data = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(data.error || `Request failed (${r.status})`)
   return data
@@ -412,7 +414,7 @@ export default function AdminOperationsHub() {
       catch { failed.push(label); return [key, []] as const }
     }))
     setData(Object.fromEntries(entries))
-    setError(failed.length ? `Could not load ${failed.join(', ')}. Refresh to try again.` : '')
+    setError(failed.length ? `Could not load ${failed.join(', ')}.` : '')
     setLoading(false)
     setRefreshing(false)
     hasLoadedOnce.current = true
@@ -452,7 +454,7 @@ export default function AdminOperationsHub() {
       </div>
       <button className={`${ui.btn} ${ui.btnSecondary}`} disabled={loading || refreshing} onClick={load}><RefreshCw size={15}/> {refreshing ? 'Refreshing…' : 'Refresh'}</button>
     </div>
-    {error && <div className={`${ui.alert} ${ui.alertDanger}`} role="alert">{error}</div>}
+    {error && <div className={`${ui.alert} ${ui.alertDanger}`} role="alert">{error} <button type="button" className={ui.textButton} disabled={loading || refreshing} onClick={load}>{refreshing ? 'Trying…' : 'Try again'}</button></div>}
 
     {loading ? <div className={`${ui.card} ${styles.loading}`}>Loading operations…</div> : <>
       <section className={`${ui.card} ${styles.attention}`} aria-labelledby="ops-attention">

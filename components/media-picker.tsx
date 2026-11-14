@@ -1,22 +1,28 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Check, Search, UploadCloud, X } from 'lucide-react'
 import s from './admin-media.module.css'
 import ui from './admin-ui.module.css'
 import { optimizeImage } from '@/lib/optimize-image'
+import { fetchRead } from '@/lib/retry-fetch'
+import { useModalFocus } from './use-modal-focus'
 
 type MediaAsset = { id: string; url: string; name: string; alt?: string | null }
 type PickedImage = { url: string; alt?: string | null }
 
 const PAGE = 48
 
-// One page of the library, optionally filtered by a search term (app/api/admin/media).
+const LIBRARY_ERROR = "Your library didn't load."
+
+// One page of the library, optionally filtered by a search term (app/api/admin/media). A read the host stopped is
+// tried again (lib/retry-fetch.ts).
 async function fetchLibrary(skip: number, term: string): Promise<{ rows: MediaAsset[]; total: number }> {
   const params = new URLSearchParams({ skip: String(skip), take: String(PAGE) })
   if (term) params.set('q', term)
-  const r = await fetch(`/api/admin/media?${params}`, { cache: 'no-store' })
+  const r = await fetchRead(`/api/admin/media?${params}`, { cache: 'no-store' }).catch(() => null)
+  if (!r) throw new Error(LIBRARY_ERROR)
   const d = await r.json().catch(() => ({}))
-  if (!r.ok) throw new Error(d.error || 'Unable to load your library')
+  if (!r.ok) throw new Error(d.error || LIBRARY_ERROR)
   return { rows: Array.isArray(d.rows) ? d.rows : [], total: Number(d.total) || 0 }
 }
 
@@ -36,18 +42,25 @@ export default function MediaPicker({ open, onClose, onAdd }: { open: boolean; o
   const [alt, setAlt] = useState('')
   const [dragging, setDragging] = useState(false)
   const [busy, setBusy] = useState(false)
+  // Upload problems (the Upload tab) and the library's own (the Library tab, with Try again) are kept apart: a library
+  // that didn't load was reported on the Upload tab, and the Library tab then said it was empty.
   const [error, setError] = useState('')
+  const [libraryError, setLibraryError] = useState('')
   const fileInput = useRef<HTMLInputElement>(null)
+  // A modal dialog named by its title: focus moves in, Tab stays inside, Escape closes it (components/use-modal-focus.ts).
+  const dialog = useRef<HTMLDivElement>(null)
+  const titleId = useId()
+  useModalFocus(dialog, open, onClose)
 
   // Loads the first page for a search term. A response that arrives after a newer request is ignored.
   async function loadFirst(term: string) {
     const id = ++requestId.current
-    setLoadingLibrary(true)
+    setLoadingLibrary(true); setLibraryError('')
     try {
       const d = await fetchLibrary(0, term)
       if (id === requestId.current) { setLibrary(d.rows); setLibraryTotal(d.total); setApplied(term) }
     } catch (e) {
-      if (id === requestId.current) setError(e instanceof Error ? e.message : 'Unable to load your library')
+      if (id === requestId.current) setLibraryError(e instanceof Error ? e.message : LIBRARY_ERROR)
     } finally {
       if (id === requestId.current) setLoadingLibrary(false)
     }
@@ -56,7 +69,7 @@ export default function MediaPicker({ open, onClose, onAdd }: { open: boolean; o
   // Opening the picker starts again from the upload tab and the first page of the library.
   useEffect(() => {
     if (!open) return
-    setTab('upload'); setSelected(new Map()); setFile(null); setAlt(''); setError(''); setQ('')
+    setTab('upload'); setSelected(new Map()); setFile(null); setAlt(''); setError(''); setLibraryError(''); setQ('')
     loadFirst('')
   }, [open])
 
@@ -71,10 +84,10 @@ export default function MediaPicker({ open, onClose, onAdd }: { open: boolean; o
 
   function loadMoreLibrary() {
     const id = requestId.current
-    setLoadingLibrary(true)
+    setLoadingLibrary(true); setLibraryError('')
     fetchLibrary(library.length, applied)
       .then(d => { if (id === requestId.current) { setLibrary(p => [...p, ...d.rows]); setLibraryTotal(d.total) } })
-      .catch(e => { if (id === requestId.current) setError(e instanceof Error ? e.message : 'Unable to load your library') })
+      .catch(e => { if (id === requestId.current) setLibraryError(e instanceof Error ? e.message : LIBRARY_ERROR) })
       .finally(() => { if (id === requestId.current) setLoadingLibrary(false) })
   }
 
@@ -96,7 +109,7 @@ export default function MediaPicker({ open, onClose, onAdd }: { open: boolean; o
       body.append('file', optimized)
       body.append('alt', alt || file.name)
       const r = await fetch('/api/admin/media/upload', { method: 'POST', body })
-      const d = await r.json()
+      const d = await r.json().catch(() => ({}))
       if (!r.ok) throw new Error(d.error || 'Unable to upload image')
       onAdd([{ url: d.asset.url, alt: d.asset.alt }])
       setFile(null); setAlt('')
@@ -120,13 +133,14 @@ export default function MediaPicker({ open, onClose, onAdd }: { open: boolean; o
 
   if (!open) return null
   return <div className={ui.modalOverlay} onClick={onClose}>
-    <div className={`${ui.card} ${s.pickerModal}`} onClick={e => e.stopPropagation()}>
-      <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><div><h2 className={s.modalTitle}>Add media</h2><p className={ui.muted}>Upload a new image or choose one already in your library.</p></div><button className={ui.iconBtn} onClick={onClose}><X size={16} /></button></div>
+    <div ref={dialog} className={`${ui.card} ${s.pickerModal}`} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} onClick={e => e.stopPropagation()}>
+      <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><div><h2 id={titleId} className={s.modalTitle}>Add media</h2><p className={ui.muted}>Upload a new image or choose one already in your library.</p></div><button type="button" className={ui.iconBtn} onClick={onClose} aria-label="Close"><X size={16} /></button></div>
       <div className={s.mediaTabs}>
-        <button className={tab === 'upload' ? s.active : ''} onClick={() => { setTab('upload'); setError('') }}>Upload</button>
-        <button className={tab === 'library' ? s.active : ''} onClick={() => { setTab('library'); setError('') }}>Library{libraryTotal ? ` (${libraryTotal})` : ''}</button>
+        <button type="button" className={tab === 'upload' ? s.active : ''} aria-pressed={tab === 'upload'} onClick={() => { setTab('upload'); setError('') }}>Upload</button>
+        <button type="button" className={tab === 'library' ? s.active : ''} aria-pressed={tab === 'library'} onClick={() => { setTab('library'); setError('') }}>Library{libraryTotal ? ` (${libraryTotal})` : ''}</button>
       </div>
-      {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
+      {tab === 'upload' && error && <div className={`${ui.alert} ${ui.alertDanger}`} role="alert">{error}</div>}
+      {tab === 'library' && libraryError && <div className={`${ui.alert} ${ui.alertDanger}`} role="alert">{libraryError} <button type="button" className={ui.textButton} onClick={() => loadFirst(q.trim())} disabled={loadingLibrary}>{loadingLibrary ? 'Trying…' : 'Try again'}</button></div>}
 
       <div className={s.pickerBody}>
         {tab === 'upload' ? <>
@@ -157,7 +171,7 @@ export default function MediaPicker({ open, onClose, onAdd }: { open: boolean; o
             {library.length < libraryTotal && <div style={{ textAlign: 'center', marginTop: 12 }}>
               <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={loadMoreLibrary} disabled={loadingLibrary}>{loadingLibrary ? 'Loading…' : `Load more (${libraryTotal - library.length} left)`}</button>
             </div>}
-          </> : <div className={ui.muted}>{q.trim() ? 'No files match your search.' : 'No files in your library yet — switch to Upload to add one.'}</div>}
+          </> : libraryError ? null : <div className={ui.muted}>{q.trim() ? 'No files match your search.' : 'No files in your library yet — switch to Upload to add one.'}</div>}
         </>}
       </div>
 
