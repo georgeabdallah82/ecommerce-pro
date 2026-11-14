@@ -1,0 +1,28 @@
+/* The WhatsApp button at rest (November 2026), imported last (app/layout.tsx). See docs/store-whatsapp-2026-11.md.
+   It no longer rests on what the shopper may want to click or type in (components/market-chrome.tsx, placeButton). */
+
+/* It rises above a link, button, field or the focused element in its corner, up to twice its height. The rise is the
+   translate property, so it adds to the hover nudge and to the slide-away transform. */
+html body .mkWhatsApp { translate: 0 calc(-1 * var(--wa-lift, 0px)); }
+html body.mk .mkWhatsApp { transition: transform .25s ease, opacity .25s ease, translate .25s ease; }
+/* When there is no room above, it slides away like it does for keyboard focus, and comes back at the next rest. */
+html body .mkWhatsApp.noRoom { transform: translateY(170%); opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { html body.mk .mkWhatsApp { transition: none; } }
+
+/* The end of the page leaves room for it, so the footer's last row (the copyright, "Cookie settings", the payment
+   badges) can be scrolled clear of it: its height, its distance from the edge and a 12 px gap. */
+@media (min-width: 760px) {
+  html body.mk:has(.mkWhatsApp) footer.focalFooter { padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px)) !important; }
+}
+@media (max-width: 759px) {
+  html body.mk:has(.mkWhatsApp:not(.desktopOnly)) footer.focalFooter { padding-bottom: calc(78px + env(safe-area-inset-bottom, 0px)) !important; }
+}
+
+/* The cart's checkout bar on phones (app/storefront-legacy.css): the button sat on its "Checkout". It now sits above
+   the bar, as it does above a product page's buy bar, and the end of the page leaves room for the bar (73 px) and,
+   when it shows, the button. Without that room the footer's last row stayed behind the bar. */
+@media (max-width: 700px) {
+  html body:has(.aliCartStickyBar) .mkWhatsApp { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
+  html body.mk:has(.aliCartStickyBar) footer.focalFooter { padding-bottom: calc(85px + env(safe-area-inset-bottom, 0px)) !important; }
+  html body.mk:has(.aliCartStickyBar):has(.mkWhatsApp:not(.desktopOnly)) footer.focalFooter { padding-bottom: calc(150px + env(safe-area-inset-bottom, 0px)) !important; }
+}

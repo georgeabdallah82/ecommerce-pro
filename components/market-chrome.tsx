@@ -305,6 +305,48 @@ function WhatsAppIcon() {
 // Shared with the header, footer and cart, so the store settings request is made once per page load.
 const storeSettings = loadStoreSettings
 
+// Where the WhatsApp button can rest without covering something to click or type in. It never sits on the focused
+// element or on a link, button or field, only on the corner of a large one (a product card's photo, an offer tile),
+// never its middle. It rises above what is under it, up to twice its own height, and moves out of the way only when
+// there is no room ('focus' or 'room'). offsetTop and offsetLeft give its resting place: a fixed element's, without
+// the slide-away transform or the rise.
+const CONTROL = 'a[href], button, input:not([type="hidden"]), select, textarea, summary, label, [role="button"]'
+type ButtonPlace = { lift: number; away: '' | 'focus' | 'room' }
+function placeButton(el: HTMLElement): ButtonPlace {
+  const left = el.offsetLeft, top = el.offsetTop, width = el.offsetWidth, height = el.offsetHeight
+  if (!width || !height) return { lift: 0, away: '' }
+  const highest = height * 2, right = left + width
+  // The links, buttons and fields in its column, from its resting place up to the highest it may rise: what is on top
+  // at six points across, edge to edge, every 8 px down, so a product card's photo (it passes clicks to the card's
+  // link) counts as that link, and the next card peeking in at the edge of a row is seen.
+  const controls = new Set<Element>()
+  for (let y = top - highest + 4; y < top + height; y += 8) {
+    for (let x = left + 2; x <= right - 2; x += (width - 4) / 5) {
+      const hit = document.elementsFromPoint(x, y).find(node => !node.closest('.mkWhatsAppDock'))
+      const control = hit?.closest(CONTROL)
+      if (control) controls.add(control)
+    }
+  }
+  const boxes = [...controls].map(control => control.getBoundingClientRect()).filter(box => box.width && box.height)
+  const active = document.activeElement
+  const focused = active instanceof HTMLElement && active !== document.body && !el.contains(active) ? active.getBoundingClientRect() : null
+  const hides = (t: number): ButtonPlace['away'] => {
+    const bottom = t + height
+    const covered = (box: DOMRect) => Math.max(0, Math.min(box.right, right) - Math.max(box.left, left)) * Math.max(0, Math.min(box.bottom, bottom) - Math.max(box.top, t))
+    if (focused && focused.width && covered(focused) > 0) return 'focus'
+    for (const box of boxes) {
+      const large = box.width >= width * 2.5 && box.height >= height * 2.5
+      const x = box.left + box.width / 2, y = box.top + box.height / 2
+      if (large ? x > left && x < right && y > t && y < bottom : covered(box) > 16) return 'room'
+    }
+    return ''
+  }
+  const atRest = hides(top)
+  if (!atRest) return { lift: 0, away: '' }
+  for (let lift = 8; lift <= highest; lift += 8) if (!hides(top - lift)) return { lift, away: '' }
+  return { lift: 0, away: atRest }
+}
+
 // The theme studio frame renders its own copy with the draft settings (theme.__preview); the
 // root layout's copy (published settings) stays out of it.
 export function WhatsAppFloat({ theme }: { theme: any }) {
@@ -337,32 +379,54 @@ export function WhatsAppFloat({ theme }: { theme: any }) {
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [enabled])
-  // Keyboard focus is never hidden under the button: while the focused link, button or field is where the button
-  // rests, the button moves out of the way, at every width. offsetTop and offsetLeft give that resting place (a fixed
-  // element's, without the slide-away transform).
+  // At rest it never hides keyboard focus or something to click or type in, at every width (placeButton): it is placed
+  // again whenever the page comes to rest, when focus moves, after a click (an accordion opens), when something stops
+  // moving (cards that slide in on the home page) and on a new page.
   const ref = useRef<HTMLAnchorElement>(null)
-  const [focusUnder, setFocusUnder] = useState(false)
+  const [place, setPlace] = useState<ButtonPlace>({ lift: 0, away: '' })
   useEffect(() => {
     if (!enabled) return
-    const check = () => {
+    const update = () => {
+      const el = ref.current
+      if (!el) return
+      const next = placeButton(el)
+      setPlace(prev => prev.lift === next.lift && prev.away === next.away ? prev : next)
+    }
+    let timer = 0
+    const after = (ms: number) => () => { window.clearTimeout(timer); timer = window.setTimeout(update, ms) }
+    const now = after(0), atRest = after(150), afterClick = after(250)
+    // While the page scrolls (a focused field scrolled into view, smoothly), the focused element under the button moves
+    // it at once, as before; anything else waits until the page comes to rest.
+    const onScroll = () => {
+      atRest()
       const el = ref.current, focused = document.activeElement
-      if (!el || !focused || focused === document.body || el.contains(focused)) { setFocusUnder(false); return }
-      const r = focused.getBoundingClientRect()
-      const left = el.offsetLeft, top = el.offsetTop, right = left + el.offsetWidth, bottom = top + el.offsetHeight
-      setFocusUnder(r.width > 0 && r.left < right && r.right > left && r.top < bottom && r.bottom > top)
+      if (!el || !(focused instanceof HTMLElement) || focused === document.body || el.contains(focused)) return
+      const r = focused.getBoundingClientRect(), b = el.getBoundingClientRect()
+      if (r.width && r.left < b.right && r.right > b.left && r.top < b.bottom && r.bottom > b.top) update()
     }
-    const afterFocusMoves = () => window.setTimeout(check, 0)
-    document.addEventListener('focusin', check)
-    document.addEventListener('focusout', afterFocusMoves)
-    window.addEventListener('scroll', check, { passive: true })
-    window.addEventListener('resize', check)
+    update()
+    const late = window.setTimeout(update, 600)
+    document.addEventListener('focusin', now)
+    document.addEventListener('focusout', now)
+    document.addEventListener('click', afterClick)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', atRest)
+    window.addEventListener('load', atRest)
+    document.addEventListener('transitionend', atRest)
+    document.addEventListener('animationend', atRest)
     return () => {
-      document.removeEventListener('focusin', check)
-      document.removeEventListener('focusout', afterFocusMoves)
-      window.removeEventListener('scroll', check)
-      window.removeEventListener('resize', check)
+      window.clearTimeout(timer)
+      window.clearTimeout(late)
+      document.removeEventListener('focusin', now)
+      document.removeEventListener('focusout', now)
+      document.removeEventListener('click', afterClick)
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', atRest)
+      window.removeEventListener('load', atRest)
+      document.removeEventListener('transitionend', atRest)
+      document.removeEventListener('animationend', atRest)
     }
-  }, [enabled, store])
+  }, [enabled, store, pathname])
   if (!enabled || !store) return null
   // Never over the checkout form or inside the admin.
   if (pathname.startsWith('/admin') || pathname.startsWith('/checkout') || pathname.startsWith('/driver/')) return null
@@ -377,7 +441,8 @@ export function WhatsAppFloat({ theme }: { theme: any }) {
     <aside className="mkWhatsAppDock" aria-label={label || t('Chat with us on WhatsApp')}>
       <a
         ref={ref}
-        className={`mkWhatsApp ${w.position === 'left' ? 'left' : 'right'} ${w.showOnMobile === false ? 'desktopOnly' : ''} ${label ? 'hasLabel' : ''} ${tucked ? 'tucked' : ''} ${focusUnder ? 'clearOfFocus' : ''}`}
+        className={`mkWhatsApp ${w.position === 'left' ? 'left' : 'right'} ${w.showOnMobile === false ? 'desktopOnly' : ''} ${label ? 'hasLabel' : ''} ${tucked ? 'tucked' : ''} ${place.away === 'focus' ? 'clearOfFocus' : ''} ${place.away === 'room' ? 'noRoom' : ''}`}
+        style={place.lift ? { '--wa-lift': `${place.lift}px` } as React.CSSProperties : undefined}
         href={href}
         target="_blank"
         rel="noopener noreferrer"

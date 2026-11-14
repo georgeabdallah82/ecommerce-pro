@@ -11,10 +11,12 @@ const read = (path: string) => readFileSync(path, 'utf8')
 test('the WhatsApp button sits in a landmark and moves out of the way of keyboard focus', () => {
   const chrome = read('components/market-chrome.tsx')
   assert.match(chrome, /<aside className="mkWhatsAppDock" aria-label=\{label \|\| t\('Chat with us on WhatsApp'\)\}>/)
-  // Where the button rests (offsetTop and offsetLeft ignore the slide-away transform) against the focused element.
-  assert.match(chrome, /const left = el\.offsetLeft, top = el\.offsetTop, right = left \+ el\.offsetWidth, bottom = top \+ el\.offsetHeight/)
-  assert.match(chrome, /document\.addEventListener\('focusin', check\)/)
-  assert.match(chrome, /\$\{focusUnder \? 'clearOfFocus' : ''\}/)
+  // Where the button rests (offsetTop and offsetLeft ignore the slide-away transform and the rise) against the focused
+  // element. Since docs/store-whatsapp-2026-11.md it first rises above it, and slides away only when there is no room.
+  assert.match(chrome, /const left = el\.offsetLeft, top = el\.offsetTop, width = el\.offsetWidth, height = el\.offsetHeight/)
+  assert.match(chrome, /if \(focused && focused\.width && covered\(focused\) > 0\) return 'focus'/)
+  assert.match(chrome, /document\.addEventListener\('focusin', now\)/)
+  assert.match(chrome, /\$\{place\.away === 'focus' \? 'clearOfFocus' : ''\}/)
   const css = read('app/storefront-real.css')
   // At every width: sliding away on scroll is for phones only.
   assert.match(css, /^html body \.mkWhatsApp\.clearOfFocus \{ transform: translateY\(170%\); opacity: 0; pointer-events: none;/m)
