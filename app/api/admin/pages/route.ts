@@ -6,6 +6,7 @@ import { json, slugify } from '@/lib/utils'
 import { RESERVED_HANDLES } from '@/lib/reserved-handles'
 import { sanitizeRichHtml } from '@/lib/sanitize-html'
 import { cappedJson, LIST_CAP } from '@/lib/admin-list'
+import { redirectMovedPage } from '@/lib/redirect-moves'
 
 function cleanHandle(value: unknown, fallback: string) {
   return slugify(String(value || fallback)).slice(0, 200)
@@ -85,8 +86,11 @@ export async function PATCH(req: Request) {
     }
 
     const page = await db.page.update({ where: { id }, data })
-    await audit(actor.id, 'page.updated', 'Page', id, { fields: Object.keys(data) })
-    return json({ page })
+    // A published page's new address: when asked, the old one sends visitors on (lib/redirect-moves.ts).
+    const moved = typeof data.handle === 'string' && data.handle !== existing.handle && existing.status === 'PUBLISHED'
+    const redirected = moved && b.redirectFromOld === true ? await redirectMovedPage(`/${existing.handle}`, `/${data.handle}`) : false
+    await audit(actor.id, 'page.updated', 'Page', id, { fields: Object.keys(data), ...(redirected ? { redirectedFrom: `/${existing.handle}` } : {}) })
+    return json({ page, redirected })
   } catch (e) {
     if (e instanceof Error && e.message.includes('Unique constraint')) return json({ error: 'A page with this handle already exists.' }, { status: 409 })
     return routeError(e, 'Unable to update page', 400)

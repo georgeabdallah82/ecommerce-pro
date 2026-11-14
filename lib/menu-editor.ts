@@ -135,8 +135,53 @@ export function collectionFor<C extends MenuCollection>(item: MenuItem, collecti
   return collections.find(c => c.id === item.resourceId) || collections.find(c => c.slug && item.url === `/collections/${c.slug}`)
 }
 
-// One line under each item's name saying where it goes.
-export function describeMenuItem(item: MenuItem, collections: MenuCollection[], childCount: number): string {
+// The store's own pages a menu link can open (the app/ routes a visitor uses), for the editor's "A page on your store"
+// choice, which also lists the store's custom pages (Admin > Online store > Pages, at /handle).
+export const STORE_LINKS: Array<{ path: string; label: string }> = [
+  { path: '/', label: 'Home page' },
+  { path: '/shop', label: 'All products' },
+  { path: '/collections', label: 'All collections' },
+  { path: '/blog', label: 'Blog' },
+  { path: '/track', label: 'Track an order' },
+  { path: '/stores', label: 'Our stores' },
+  { path: '/wholesale', label: 'Wholesale' },
+  { path: '/wishlist', label: 'Wishlist' },
+  { path: '/account', label: 'My account' },
+  { path: '/cart', label: 'Cart' },
+  { path: '/refund-policy', label: 'Refund policy' },
+  { path: '/privacy-policy', label: 'Privacy policy' },
+  { path: '/terms-of-service', label: 'Terms of service' },
+]
+export type StorePage = { title: string; handle: string; status: string }
+
+// Every page a link can choose: the store's own, then its custom pages (a draft says so).
+export function pageLinks(pages: StorePage[] = []): Array<{ path: string; label: string; custom: boolean }> {
+  return [
+    ...STORE_LINKS.map(link => ({ ...link, custom: false })),
+    ...pages.map(page => ({ path: `/${page.handle}`, label: page.status === 'PUBLISHED' ? page.title : `${page.title} (draft)`, custom: true })),
+  ]
+}
+
+// Why a link typed into the menu would let visitors down, or null.
+// - "#about" or "/#about": the store's pages have no sections to jump to (only #main-content), so it opens the
+//   top of the homepage; the store's first menu shipped with one.
+// - "/pages/about-us": pages are at /about-us, so this shows "page not found" (the editor's example used it).
+// - A custom page that is still a draft: "page not found" for visitors.
+export function linkProblem(url: unknown, pages?: StorePage[]): string | null {
+  const raw = String(url ?? '').trim()
+  if (!raw || raw === '#' || /^(https?:|mailto:|tel:)/i.test(raw)) return null
+  const anchor = raw.match(/^\/?#(.+)$/)
+  if (anchor) return anchor[1] === 'main-content' ? null : `Opens the top of your homepage: there is no “#${anchor[1]}” section on it`
+  const old = raw.match(/^\/pages\/([^/?#]+)/)
+  if (old) return `Pages are at /${old[1]}, not /pages/${old[1]}: this address shows “page not found”`
+  const handle = raw.match(/^\/([^/?#]+)\/?(?:[?#].*)?$/)?.[1]
+  const page = handle && pages ? pages.find(p => p.handle === handle) : undefined
+  if (page && page.status !== 'PUBLISHED') return `Goes to “${page.title}”, which is a draft: visitors see “page not found”`
+  return null
+}
+
+// One line under each item's name saying where it goes (a page by its name when it is one of the store's).
+export function describeMenuItem(item: MenuItem, collections: MenuCollection[], childCount: number, pages?: StorePage[]): string {
   const url = String(item.url || '').trim()
   if (item.type === 'collection') {
     const name = collectionFor(item, collections)?.name
@@ -144,7 +189,8 @@ export function describeMenuItem(item: MenuItem, collections: MenuCollection[], 
     if (!url || url === '#') return 'Collection: not chosen yet'
   }
   if (!url || url === '#') return childCount ? 'Opens a dropdown' : 'Goes nowhere yet'
-  return url
+  const page = pages ? pageLinks(pages).find(link => link.path === url) : undefined
+  return page ? `Page: ${page.label}` : url
 }
 
 // Headings already used under the same parent, for the heading field's suggestions.

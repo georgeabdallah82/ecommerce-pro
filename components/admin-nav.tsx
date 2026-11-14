@@ -13,7 +13,7 @@ import Link from '@/components/admin-link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Activity, ArrowLeftRight, ChevronDown, Rocket, Star, BarChart3, Boxes, ClipboardList, CreditCard, FileEdit, FileText, Gauge, Image as ImageIcon, Layers3, LayoutDashboard, LogOut, Mail, Megaphone, Menu, MessageSquare, PackageCheck, Palette, Percent, Radio, RotateCcw, Search, Settings2, ShoppingBag, MoreHorizontal, Store, Tag, Truck, UserCog, Users, UsersRound, Workflow, X, PackagePlus, MessageCircleQuestion, HeartHandshake, UserPlus, PackageSearch, ScanBarcode, Barcode, BadgeDollarSign, Contact, CalendarHeart, type LucideIcon, Gift, ChevronLeft, UserRound } from 'lucide-react'
+import { Activity, ArrowLeftRight, FileStack, Newspaper, Route, ChevronDown, Rocket, Star, BarChart3, Boxes, ClipboardList, CreditCard, FileEdit, FileText, Gauge, Image as ImageIcon, Layers3, LayoutDashboard, LogOut, Mail, Megaphone, Menu, MessageSquare, PackageCheck, Palette, Percent, Radio, RotateCcw, Search, Settings2, ShoppingBag, MoreHorizontal, Store, Tag, Truck, UserCog, Users, UsersRound, Workflow, X, PackagePlus, MessageCircleQuestion, HeartHandshake, UserPlus, PackageSearch, ScanBarcode, Barcode, BadgeDollarSign, Contact, CalendarHeart, type LucideIcon, Gift, ChevronLeft, UserRound } from 'lucide-react'
 import AdminThemeToggle from '@/components/admin-theme-toggle'
 import OrderAlerts from '@/components/order-alerts'
 import type { Permission } from '@/lib/permissions'
@@ -28,6 +28,7 @@ const iconMap: Record<string, LucideIcon> = {
   dashboard: LayoutDashboard, orders: ShoppingBag, products: Boxes, inventory: PackageCheck, operations: Workflow,
   customers: Users, collections: Layers3, discounts: Tag, reviews: MessageSquare,
   shipping: Truck, tax: Percent, store: ShoppingBag, theme: Palette, navigation: Menu, content: FileText, files: ImageIcon,
+  pages: FileStack, blog: Newspaper, redirects: Route,
   analytics: BarChart3, system: Activity, websiteStatus: Gauge, launch: Rocket, users: UserCog, activity: Activity, settings: Settings2,
   orderEdits: FileEdit, purchaseOrders: ClipboardList, transfers: ArrowLeftRight,
   draftOrders: ClipboardList, returns: RotateCcw,

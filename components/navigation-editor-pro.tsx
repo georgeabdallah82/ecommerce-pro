@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AlertTriangle, ArrowDown, ArrowUp, ChevronDown, ChevronRight, ChevronsUpDown, Copy, ExternalLink, ImagePlus, Pencil, Plus, Save, Trash2, X } from 'lucide-react'
 import {
-  MAX_MENU_DEPTH, childrenOf, collectionFor, describeMenuItem, descendantIds, headingGroups, headingsUnder, isPicture, moveHeading, moveMenuItem, normalizeMenu,
-  removeMenuItem, renameHeading, siblingsOf, type MenuItem,
+  MAX_MENU_DEPTH, childrenOf, collectionFor, describeMenuItem, descendantIds, headingGroups, headingsUnder, isPicture, linkProblem, moveHeading, moveMenuItem, normalizeMenu,
+  pageLinks, removeMenuItem, renameHeading, siblingsOf, type MenuItem, type StorePage,
 } from '@/lib/menu-editor'
 import { useConfirm } from './admin-confirm'
 import styles from './admin-navigation-editor.module.css'
@@ -15,7 +15,8 @@ import ThemePublishBar from './theme-publish-bar'
 type Collection = { id: string; name: string; slug: string }
 // grouped: the store design shows dropdown links by heading with pictures as tiles (false for the
 // Deals Market design, which shows them in plain order; see lib/menu-editor.ts).
-type Props = { initial: MenuItem[]; collections: Collection[]; initialDraft: boolean; grouped?: boolean }
+// pages: the store's custom pages (Admin > Online store > Pages), to open one by name.
+type Props = { initial: MenuItem[]; collections: Collection[]; pages?: StorePage[]; initialDraft: boolean; grouped?: boolean }
 
 const newId = () => `nav-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
@@ -24,7 +25,7 @@ const newId = () => `nav-${Date.now()}-${Math.random().toString(36).slice(2, 8)}
 // them), and is edited right where it is. The data is the same flat list the store reads
 // (lib/menu-editor.ts); Save writes it to the theme draft and Publish puts it live, like the theme
 // editor.
-export default function NavigationEditorPro({ initial, collections, initialDraft, grouped = true }: Props) {
+export default function NavigationEditorPro({ initial, collections, pages = [], initialDraft, grouped = true }: Props) {
   const confirm = useConfirm()
   const [items, setItems] = useState<MenuItem[]>(() => normalizeMenu(initial || []))
   const savedJson = useRef(JSON.stringify(normalizeMenu(initial || [])))
@@ -52,9 +53,12 @@ export default function NavigationEditorPro({ initial, collections, initialDraft
       if (isPicture(item) && !item.imageUrl) out.push({ id: item.id, text: 'Picture has no image and will not be saved' })
       if (item.parentId && item.type === 'custom' && (!String(item.url || '').trim() || String(item.url).trim() === '#')) out.push({ id: item.id, text: 'Link has no address' })
       if (item.type === 'collection' && item.resourceId && !collectionIds.has(item.resourceId)) out.push({ id: item.id, text: 'Points to a collection that was deleted' })
+      // A section that isn't there, /pages/…, or a page that is still a draft (lib/menu-editor.ts).
+      const link = item.type !== 'collection' ? linkProblem(item.url, pages) : null
+      if (link) out.push({ id: item.id, text: link })
     }
     return out
-  }, [items, collectionIds])
+  }, [items, collectionIds, pages])
 
   // Warn before leaving with unsaved changes, and save with Ctrl+S / Cmd+S.
   useEffect(() => {
@@ -196,7 +200,7 @@ export default function NavigationEditorPro({ initial, collections, initialDraft
   }
 
   const rowProps = {
-    items, collections, grouped, open, editing, toggle, startEdit, finishEdit, cancelEdit, add, remove, patch, duplicate,
+    items, collections, pages, grouped, open, editing, toggle, startEdit, finishEdit, cancelEdit, add, remove, patch, duplicate,
     move: (id: string, d: -1 | 1) => setItems(cur => moveMenuItem(cur, id, d, grouped)),
     moveHeading: (parentId: string, name: string, d: -1 | 1) => setItems(cur => moveHeading(cur, parentId, name, d)),
     renameHeading: (parentId: string, from: string, to: string) => setItems(cur => renameHeading(cur, parentId, from, to)),
@@ -274,6 +278,7 @@ type RowProps = {
   depth: number
   items: MenuItem[]
   collections: Collection[]
+  pages: StorePage[]
   grouped: boolean
   open: Set<string>
   editing: { id: string; before: MenuItem | null } | null
@@ -291,7 +296,7 @@ type RowProps = {
 }
 
 function MenuRow(props: RowProps) {
-  const { item, depth, items, collections, grouped, open, editing, toggle, startEdit, finishEdit, cancelEdit, add, remove, patch, move } = props
+  const { item, depth, items, collections, pages, grouped, open, editing, toggle, startEdit, finishEdit, cancelEdit, add, remove, patch, move } = props
   const kids = childrenOf(items, item.id)
   // Grouped design: a top-level item's dropdown shows its picture tiles, then its links heading by
   // heading. Otherwise (and below the dropdown) the links are one plain list, pictures included.
@@ -322,7 +327,7 @@ function MenuRow(props: RowProps) {
           <span className={styles.text}>
             <strong>{label}</strong>
             <small>
-              {tile ? 'Picture at the top of the dropdown' : describeMenuItem(item, collections, kids.length)}
+              {tile ? 'Picture at the top of the dropdown' : describeMenuItem(item, collections, kids.length, pages)}
               {canNest && links.length > 0 ? <span className={styles.count}>{links.length} link{links.length === 1 ? '' : 's'} inside</span> : null}
               {canNest && tiles.length > 0 ? <span className={styles.count}>{tiles.length} picture{tiles.length === 1 ? '' : 's'}</span> : null}
             </small>
@@ -341,6 +346,7 @@ function MenuRow(props: RowProps) {
           depth={depth}
           grouped={grouped}
           collections={collections}
+          pages={pages}
           headings={headingsUnder(items, item.parentId ?? null)}
           hasChildren={kids.length > 0}
           isNew={!editing?.before}
@@ -425,11 +431,12 @@ function HeadingSection({ name, first, last, onMove, onRename, onAdd, children }
   )
 }
 
-function EditForm({ item, depth, grouped, collections, headings, hasChildren, isNew, onChange, onDone, onCancel }: {
+function EditForm({ item, depth, grouped, collections, pages, headings, hasChildren, isNew, onChange, onDone, onCancel }: {
   item: MenuItem
   depth: number
   grouped: boolean
   collections: Collection[]
+  pages: StorePage[]
   headings: string[]
   hasChildren: boolean
   isNew: boolean
@@ -438,13 +445,17 @@ function EditForm({ item, depth, grouped, collections, headings, hasChildren, is
   onCancel: () => void
 }) {
   const tile = grouped && isPicture(item)
-  const target = item.type === 'collection' ? 'collection' : (!item.url || item.url === '#') && depth === 0 ? 'none' : 'custom'
+  // What it opens: kept as chosen (a page not picked yet has no address, which would otherwise read as "nothing").
+  const links = pageLinks(pages)
+  const [target, setTargetState] = useState(() => item.type === 'collection' ? 'collection' : links.some(link => link.path === item.url) ? 'page' : (!item.url || item.url === '#') && depth === 0 ? 'none' : 'custom')
   const [showMore, setShowMore] = useState(!!item.group?.trim())
   const listId = `menu-headings-${item.id}`
 
   function setTarget(next: string) {
+    setTargetState(next)
     if (next === 'collection') onChange({ type: 'collection', url: '', resourceId: null })
     else if (next === 'none') onChange({ type: 'custom', url: '#', resourceId: null })
+    else if (next === 'page') onChange({ type: 'custom', url: links.some(link => link.path === item.url) ? item.url : '', resourceId: null })
     else onChange({ type: 'custom', url: item.url && item.url !== '#' ? item.url : '', resourceId: null })
   }
 
@@ -477,7 +488,8 @@ function EditForm({ item, depth, grouped, collections, headings, hasChildren, is
         <span>When tapped, it opens</span>
         <select value={target} onChange={e => setTarget(e.target.value)}>
           <option value="collection">A collection</option>
-          <option value="custom">A page or web address</option>
+          <option value="page">A page on your store</option>
+          <option value="custom">A web address</option>
           {depth === 0 && <option value="none">Nothing, it only opens its dropdown</option>}
         </select>
       </label>
@@ -494,10 +506,20 @@ function EditForm({ item, depth, grouped, collections, headings, hasChildren, is
           </select>
         </label>
       )}
+      {target === 'page' && (
+        <label className={styles.field}>
+          <span>Page</span>
+          <select value={links.some(link => link.path === item.url) ? String(item.url) : ''} onChange={e => onChange({ url: e.target.value })}>
+            <option value="">Choose a page</option>
+            <optgroup label="Your store">{links.filter(link => !link.custom).map(link => <option key={link.path} value={link.path}>{link.label}</option>)}</optgroup>
+            {links.some(link => link.custom) && <optgroup label="Your pages">{links.filter(link => link.custom).map(link => <option key={link.path} value={link.path}>{link.label}</option>)}</optgroup>}
+          </select>
+        </label>
+      )}
       {target === 'custom' && (
         <label className={styles.field}>
-          <span>Page or web address</span>
-          <input value={item.url || ''} onChange={e => onChange({ url: e.target.value })} placeholder="/pages/about-us or https://…" inputMode="url" />
+          <span>Web address</span>
+          <input value={item.url || ''} onChange={e => onChange({ url: e.target.value })} placeholder="/about-us or https://…" inputMode="url" />
         </label>
       )}
       {target === 'none' && !hasChildren && <p className={styles.hint}>Add links under it after Done, or it will open an empty dropdown.</p>}

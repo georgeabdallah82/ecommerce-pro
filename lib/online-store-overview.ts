@@ -54,7 +54,7 @@ export function setupItems(f: OverviewFacts): SetupItem[] {
   const favicon = Boolean(f.theme.faviconUrl)
   items.push({ id: 'favicon', title: 'Browser tab icon', status: favicon ? 'ok' : 'todo', detail: favicon ? 'Shown in browser tabs and bookmarks.' : 'Browser tabs show the default icon.', href: settingsOf('branding'), fix: favicon ? 'Change' : 'Add an icon' })
 
-  const menuProblems = [...has('menu-empty'), ...has('menu-noname'), ...has('menu-nolink')]
+  const menuProblems = [...has('menu-empty'), ...has('menu-noname'), ...has('menu-nolink'), ...has('menu-link')]
   const links = menuLinkCount(f.navigation)
   items.push({ id: 'menu', title: 'Main menu', status: menuProblems.length ? 'todo' : 'ok', detail: menuProblems.length ? menuProblems[0].text + (menuProblems.length > 1 ? ` (and ${menuProblems.length - 1} more)` : '') : `${links} ${links === 1 ? 'link' : 'links'} in the header.`, href: '/admin/online-store/navigation', fix: 'Edit the menu' })
 

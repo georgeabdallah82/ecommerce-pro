@@ -52,11 +52,16 @@ const groups: AdminSidebarGroup[] = [
     { href: '/admin/reviews', label: 'Reviews', permission: 'reviews.view', icon: 'reviews' },
     { href: '/admin/questions', label: 'Questions', permission: 'reviews.view', icon: 'questions' },
   ]},
-  { id: 'online-store', label: 'Online Store', items: [
+  // Pages, Blog and URL redirects are listed too (behind "More"): without them those pages took the browser tab title
+  // of the Overview, lit up Overview here, and the admin search could not find them.
+  { id: 'online-store', label: 'Online Store', moreLabel: 'More', items: [
     { href: '/admin/online-store', label: 'Overview', permission: 'content.view', icon: 'store' },
     { href: '/admin/online-store/theme-editor', label: 'Theme editor', permission: 'content.view', icon: 'theme' },
     { href: '/admin/online-store/navigation', label: 'Navigation', permission: 'content.view', icon: 'navigation' },
     { href: '/admin/online-store/policies', label: 'Policies', permission: 'content.view', icon: 'content' },
+    { href: '/admin/online-store/pages', label: 'Pages', permission: 'content.view', icon: 'pages', more: true },
+    { href: '/admin/online-store/blog', label: 'Blog', permission: 'content.view', icon: 'blog', more: true },
+    { href: '/admin/online-store/redirects', label: 'URL redirects', permission: 'content.view', icon: 'redirects', more: true },
   ]},
   { id: 'marketing', label: 'Marketing', moreLabel: 'More marketing', items: [
     { href: '/admin/coupons', label: 'Discounts', permission: 'coupons.view', icon: 'discounts' },

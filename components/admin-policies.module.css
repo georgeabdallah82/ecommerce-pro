@@ -57,3 +57,6 @@
   .checkItems li { grid-template-columns: 18px minmax(0, 1fr); }
   .checkItems li > a { grid-column: 2; justify-self: start; }
 }
+
+/* The cards bring the tabs and the editor into view; the admin's sticky top bar stays clear of them. */
+.tabs { scroll-margin-top: 84px; }
