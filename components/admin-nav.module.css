@@ -469,7 +469,9 @@
   .sidebar { display: none; }
   .topbar { padding: 0 14px; gap: 10px; height: 58px; min-height: 58px; }
   .topbarLogo { display: flex; }
-  .topbarSearch span, .topbarSearch kbd { display: none; }
+  /* The icon alone shows, but "Search admin…" stays the button's name for screen readers (it had none). */
+  .topbarSearch kbd { display: none; }
+  .topbarSearch span { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   .topbarSearch { width: 40px; height: 40px; padding: 0; justify-content: center; flex: 0 0 auto; margin-left: auto; border-radius: 12px; }
   .topbarRight { margin-left: 0; }
   .avatar { width: 34px; height: 34px; }
@@ -530,3 +532,6 @@
 @media (prefers-reduced-motion: reduce) {
   .sidebar, .sidebarItem, .sidebarItem svg, .pinBtn, .tabIcon, .collapseBtn svg, .sidebarMore svg { transition: none; }
 }
+
+/* The account button's initials, drawn by CSS so the button is named "Account menu" only (admin-nav.tsx). */
+.avatar[data-initials]::before { content: attr(data-initials); }

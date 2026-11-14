@@ -124,13 +124,15 @@ const withAbsoluteUrls=(items:any[]):any[]=>Array.isArray(items)?items.map(item=
 // Read once per page render: the layout, metadata and page all ask for the theme, and each
 // read is a database round trip (React's cache() scopes this to a single request).
 export const getThemeState=cache(loadThemeState)
-async function loadThemeState(){
-  const settings=await getStorefrontSettings()
-  const themeSetting={value:settings.get('theme.config')},sectionsSetting={value:settings.get('theme.sections')},navigationSetting={value:settings.get('navigation.main')}
 
-  const raw=parseJson<any>(themeSetting?.value,{})
+// What visitors see for a stored theme and homepage (theme.config and theme.sections, or a draft
+// that a publish would write there): the stored values over the defaults, the one-time switch to the
+// market storefront, and the page templates repaired. No database or request here, so the publish
+// review (app/api/admin/theme/review) compares exactly what the store shows before and after.
+export function resolveStoredTheme(themeValue:string|null|undefined,sectionsValue:string|null|undefined){
+  const raw=parseJson<any>(themeValue,{})
   const merged=deepMerge(defaultTheme,raw)
-  const storedSections=normalizeSections(parseJson<any[]>(sectionsSetting?.value,defaultSections),defaultSections)
+  const storedSections=normalizeSections(parseJson<any[]>(sectionsValue,defaultSections),defaultSections)
   // A store still on the older storefront is shown the new one (until its next publish
   // saves it); the market homepage never gets the old AliExpress rows appended back.
   const switched=switchToMarket(merged,storedSections)
@@ -154,12 +156,19 @@ async function loadThemeState(){
   for(const [key,value] of Object.entries(editorTemplates)){
     if(key!=='Home page') editorTemplates[key]=headerFirst(value as any[])
   }
+  delete theme.editorTemplates
+  return {theme,sections,editorTemplates:editorTemplates as Record<string,any[]>}
+}
+
+async function loadThemeState(){
+  const settings=await getStorefrontSettings()
+  const navigationSetting={value:settings.get('navigation.main')}
+  const {theme,sections,editorTemplates}=resolveStoredTheme(settings.get('theme.config'),settings.get('theme.sections'))
   // Server code reads every page template (product/collection/cart/custom page sections),
   // but the browser only needs the site-wide header + announcement (lib/site-header.ts).
   // Pages pass `theme` into client components, so the full templates were serialized into
   // every page's HTML. They're kept server-side instead (read them with themeTemplates(theme));
-  // siteHeader is the slim copy the browser gets.
-  delete theme.editorTemplates
+  // siteHeader is the slim copy the browser gets. (resolveStoredTheme has already taken them off the theme.)
   // English or Arabic for this visitor (lib/i18n.ts): the owner's Arabic texts and the
   // dictionary replace the English ones here, so every storefront page gets them.
   const {lang,switchable,preview}=await requestLang(theme.languages)

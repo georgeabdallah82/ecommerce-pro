@@ -445,3 +445,18 @@
 .resetBtn { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 9px; border: 1px solid var(--admin-border); border-radius: 999px; background: var(--admin-bg); color: var(--admin-ink-soft); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
 .resetBtn:hover { color: var(--admin-ink); border-color: var(--admin-muted-soft); }
 .resetBtn:focus-visible { outline: 3px solid var(--admin-focus); outline-offset: 1px; }
+
+/* Online store round (docs/admin-online-store-2026-11.md). */
+/* The spacer that stands in for the drag handle on the Header, Announcement bar and Footer rows. The label rule
+   above (.rowMain span) made it stretch too, which pushed their icon and name to the middle of the row. */
+.rowMain .rowGripSpacer { flex: 0 0 13px; }
+/* "Theme editor" is the page's heading, and the picker and the review have headings of their own. */
+h1.title { margin: 0; }
+.pickerHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+h2.pickerTitle { margin: 0; }
+.reviewTitle { margin: 0; font-size: 15px; font-weight: 800; }
+/* History that could not load says so, with a way to try again. */
+.historyError { font-size: 12px; color: var(--admin-danger); margin-top: 3px; }
+.linkBtn { border: 0; background: none; padding: 0; font: inherit; font-weight: 700; color: var(--admin-accent-strong); text-decoration: underline; cursor: pointer; }
+/* The preview and the review's list scroll on their own and take keyboard focus for it. */
+.preview:focus-visible, .reviewBody:focus-visible { outline: 3px solid var(--admin-focus); outline-offset: -3px; }

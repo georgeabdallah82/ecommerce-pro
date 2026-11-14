@@ -1,0 +1,78 @@
+/*
+ * Online store overview (app/admin/online-store/page.tsx). CSS Modules on the --admin-* tokens from
+ * app/admin/admin-overhaul.css, so dark mode follows. The page used global tile classes whose styles were gone, so its
+ * links showed as a long unstyled list.
+ */
+
+.page { display: grid; gap: 18px; padding-bottom: 32px; }
+.headActions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.h2 { margin: 0; font-size: 17px; font-weight: 800; letter-spacing: -.01em; color: var(--admin-ink); }
+.srOnly { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* Your theme: whether it is live, and how it looks. */
+.theme { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); padding: 0; overflow: hidden; }
+.themeStatus { display: grid; align-content: start; gap: 10px; padding: 22px; }
+.themeStatus p { margin: 0; }
+.themeHead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.lead { font-size: 14.5px; line-height: 1.5; color: var(--admin-ink); }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+.themeLook { display: grid; align-content: start; gap: 14px; padding: 22px; background: var(--admin-bg); border-left: 1px solid var(--admin-border-soft); }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand strong { font-size: 18px; font-weight: 800; letter-spacing: -.01em; overflow-wrap: anywhere; color: var(--admin-ink); }
+.logo { max-height: 32px; max-width: 140px; object-fit: contain; }
+.facts { display: grid; gap: 10px; margin: 0; }
+.facts > div { display: grid; grid-template-columns: 116px minmax(0, 1fr); gap: 10px; align-items: center; }
+.facts dt { font-size: 12.5px; font-weight: 700; color: var(--admin-muted); }
+.facts dd { margin: 0; font-size: 13.5px; color: var(--admin-ink); }
+.swatches { display: flex; gap: 6px; flex-wrap: wrap; }
+.swatch { display: inline-flex; }
+.chip { display: block; width: 24px; height: 24px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .14); }
+
+/* Setup: the online store's part of the launch checklist, ticked from the store's own data. */
+.setup { display: grid; gap: 12px; padding: 22px; }
+.setupHead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.progressText { font-size: 13px; font-weight: 700; color: var(--admin-muted); }
+.bar { height: 8px; border-radius: 999px; background: color-mix(in srgb, var(--admin-ink) 10%, transparent); overflow: hidden; }
+.bar > span { display: block; height: 100%; border-radius: 999px; background: var(--admin-success, #15803d); }
+.items { list-style: none; margin: 4px 0 0; padding: 0; display: grid; }
+.items li { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 11px 2px; border-top: 1px solid var(--admin-border-soft); }
+.items li:first-child { border-top: 0; }
+.items li > div { display: grid; gap: 2px; min-width: 0; }
+.items strong { font-size: 14px; color: var(--admin-ink); }
+.items li > div > span { font-size: 13px; color: var(--admin-muted); line-height: 1.45; }
+.ok > svg { color: var(--admin-success, #15803d); }
+.todo > svg { color: var(--admin-warning, #b7791f); }
+.optional > svg { color: var(--admin-muted); }
+.fix { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; font-size: 13px; font-weight: 700; color: var(--admin-accent-strong); text-decoration: none; white-space: nowrap; }
+.fix:hover { text-decoration: underline; }
+.fix:focus-visible { outline: 3px solid var(--admin-focus); outline-offset: 2px; border-radius: 6px; }
+.ok .fix { color: var(--admin-muted); font-weight: 600; }
+.more { margin: 2px 0 0; font-size: 13px; color: var(--admin-muted); }
+.more a { color: var(--admin-accent-strong); font-weight: 700; }
+
+/* The pages that manage the storefront, with what each holds. */
+.manageTitle { margin-bottom: 12px; }
+.tiles { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.tiles li { display: flex; }
+.tile { display: flex; flex: 1; gap: 12px; align-items: flex-start; padding: 16px; border: 1px solid var(--admin-border-soft); border-radius: var(--admin-card-radius, 14px); background: var(--admin-surface); box-shadow: var(--admin-card-shadow); color: var(--admin-ink); text-decoration: none; transition: border-color .15s ease, box-shadow .15s ease; }
+.tile:hover { border-color: var(--admin-border); box-shadow: var(--admin-shadow-md); }
+.tile:focus-visible { outline: 3px solid var(--admin-focus); outline-offset: 2px; }
+.tile > svg { flex: 0 0 auto; margin-top: 2px; color: var(--admin-accent-strong); }
+.tileText { display: grid; gap: 3px; min-width: 0; }
+.tileText strong { font-size: 14.5px; }
+.tileCount { font-size: 12.5px; font-weight: 700; color: var(--admin-ink-soft); }
+.tileNote { font-size: 13px; line-height: 1.45; color: var(--admin-muted); }
+
+@media (max-width: 1100px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 900px) {
+  .theme { grid-template-columns: 1fr; }
+  .themeLook { border-left: 0; border-top: 1px solid var(--admin-border-soft); }
+}
+@media (max-width: 560px) {
+  .tiles { grid-template-columns: 1fr; }
+  .items li { grid-template-columns: 22px minmax(0, 1fr); }
+  .items li .fix { grid-column: 2; justify-self: start; }
+  .facts > div { grid-template-columns: 1fr; gap: 2px; }
+}
+@media (pointer: coarse) { .fix { min-height: 44px; } }
+@media (prefers-reduced-motion: reduce) { .tile { transition: none; } }
