@@ -1,11 +1,13 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from '@/components/admin-link'
 import { Archive, CheckCircle2, ChevronDown, Download, ChevronLeft, ChevronRight, MoreHorizontal, Plus, Search, Star, StarOff, Tag, Trash2, Upload, X } from 'lucide-react'
 import ProductExportDialog from './product-export-dialog'
+import AdminMenu from './admin-menu'
 import { useConfirm } from './admin-confirm'
 import { money } from '@/lib/config'
+import { channelsShowing, type ProductViewCounts } from '@/lib/product-editor'
 import styles from './admin-products-list.module.css'
 import ui from './admin-ui.module.css'
 
@@ -28,6 +30,8 @@ function stockInfo(product: ProductRow) {
 }
 
 const statusClass: Record<string, string> = { ACTIVE: styles.statusActive, DRAFT: styles.statusDraft, ARCHIVED: styles.statusArchived }
+const STATUS_LABEL: Record<string, string> = { ACTIVE: 'Active', DRAFT: 'Draft', ARCHIVED: 'Archived' }
+type Channel = { id: string; name: string }
 
 export default function AdminProductsList({ initial }: { initial: any }) {
   const firstRows = Array.isArray(initial) ? initial : initial?.rows || []
@@ -39,21 +43,16 @@ export default function AdminProductsList({ initial }: { initial: any }) {
   const [pageSize, setPageSize] = useState(25)
   const [total, setTotal] = useState(Number(initial?.total || firstRows.length || 0))
   const [pages, setPages] = useState(Number(initial?.pages || 1))
+  // How many products each view holds for the search, whichever view is open (lib/product-editor.ts).
+  const [counts, setCounts] = useState<ProductViewCounts | null>(initial?.counts || null)
+  // Active sales channels, for the Sales channels column (it said "Online Store" for every product).
+  const [channels, setChannels] = useState<Channel[]>(initial?.channels || [])
   const [selected, setSelected] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [filtersOpen, setFiltersOpen] = useState(false)
-  const [bulkOpen, setBulkOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
-  const [toolsOpen, setToolsOpen] = useState(false)
-  const toolsRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!toolsOpen) return
-    const close = (event: Event) => { if (!toolsRef.current?.contains(event.target as Node)) setToolsOpen(false) }
-    document.addEventListener('pointerdown', close)
-    return () => document.removeEventListener('pointerdown', close)
-  }, [toolsOpen])
   const confirm = useConfirm()
 
   async function load(nextPage = page) {
@@ -63,6 +62,8 @@ export default function AdminProductsList({ initial }: { initial: any }) {
       const params = new URLSearchParams({ q, status, sort, page: String(nextPage), pageSize: String(pageSize) })
       const data = await api(`/api/admin/products?${params.toString()}`)
       setRows(data.rows || [])
+      if (data.counts) setCounts(data.counts)
+      if (Array.isArray(data.channels)) setChannels(data.channels)
       setTotal(Number(data.total || 0))
       setPages(Number(data.pages || 1))
       setPage(Number(data.page || nextPage))
@@ -74,12 +75,15 @@ export default function AdminProductsList({ initial }: { initial: any }) {
     }
   }
 
-  useEffect(() => { void load(1) }, [status, sort, pageSize])
+  // The page arrives with the first page of the default view, so the first run loads nothing (it asked for the
+  // same rows again on every visit); a change of view, sort or page size loads.
+  const firstRun = useRef(true)
+  useEffect(() => {
+    if (firstRun.current) { firstRun.current = false; return }
+    void load(1)
+  }, [status, sort, pageSize])
 
   const allSelected = rows.length > 0 && rows.every(product => selected.includes(product.id))
-  const draftCount = useMemo(() => rows.filter(product => product.status === 'DRAFT').length, [rows])
-  const activeCount = useMemo(() => rows.filter(product => product.status === 'ACTIVE').length, [rows])
-  const archivedCount = useMemo(() => rows.filter(product => product.status === 'ARCHIVED').length, [rows])
 
   function toggle(id: string) { setSelected(current => (current.includes(id) ? current.filter(value => value !== id) : [...current, id])) }
   function toggleAll() { setSelected(allSelected ? [] : rows.map(product => product.id)) }
@@ -89,7 +93,6 @@ export default function AdminProductsList({ initial }: { initial: any }) {
     setLoading(true)
     setError('')
     setNotice('')
-    setBulkOpen(false)
     try {
       const data = await api('/api/admin/products', { method: 'POST', body: JSON.stringify({ action: 'bulk', ids: selected, bulkAction: action }) })
       const count = Number(data.count || selected.length)
@@ -109,7 +112,6 @@ export default function AdminProductsList({ initial }: { initial: any }) {
     setLoading(true)
     setError('')
     setNotice('')
-    setBulkOpen(false)
     try {
       const data = await api('/api/admin/products', { method: 'POST', body: JSON.stringify({ action: 'bulk', ids: selected, bulkAction: 'DELETE' }) })
       const deleted = Number(data.count || 0)
@@ -124,12 +126,17 @@ export default function AdminProductsList({ initial }: { initial: any }) {
     }
   }
 
-  const views: Array<[string, string, number]> = [
-    ['ALL', 'All', total],
-    ['ACTIVE', 'Active', activeCount],
-    ['DRAFT', 'Draft', draftCount],
-    ['ARCHIVED', 'Archived', archivedCount],
-  ]
+  // Counted for every view at once; they were counted from the rows on screen, so on the Draft view Active read 0
+  // and All read the Draft count.
+  const views: Array<[keyof ProductViewCounts, string]> = [['ALL', 'All'], ['ACTIVE', 'Active'], ['DRAFT', 'Draft'], ['ARCHIVED', 'Archived']]
+  const allCount = counts ? counts.ALL : total
+
+  // The channels a product is on (lib/product-editor.ts). With no channel set up yet, the store itself still sells it.
+  function channelCell(product: ProductRow) {
+    if (!channels.length) return <span className={styles.channel}>Online Store</span>
+    const on = channelsShowing(channels, product.publications || [])
+    return on.length ? <span className={styles.channel}>{on.map(channel => channel.name).join(', ')}</span> : <span className={ui.muted}>Not on any channel</span>
+  }
 
   return (
     <div className={styles.page}>
@@ -138,31 +145,27 @@ export default function AdminProductsList({ initial }: { initial: any }) {
           <div className={styles.eyebrow}>Catalog</div>
           <div className={styles.titleRow}>
             <h1 className={styles.title}>Products</h1>
-            <span className={styles.countPill}>{total.toLocaleString()}</span>
+            <span className={styles.countPill}>{allCount.toLocaleString()}</span>
           </div>
         </div>
         <div className={styles.toolbar}>
-          <div className={styles.actionMenu} ref={toolsRef}>
-            <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} aria-expanded={toolsOpen} onClick={() => setToolsOpen(value => !value)}>More tools <ChevronDown size={14} /></button>
-            {toolsOpen && (
-              <div className={styles.menu} role="menu" onClick={() => setToolsOpen(false)}>
-                <Link href="/admin/products/prices" role="menuitem"><Tag size={14} /> Change prices</Link>
-                <Link href="/admin/products/import" role="menuitem"><Upload size={14} /> Import</Link>
-                <button type="button" role="menuitem" onClick={() => setExportOpen(true)}><Download size={14} /> Export</button>
-              </div>
-            )}
-          </div>
+          {/* The shared menu: opening it moves focus in, arrow keys move, Escape closes (components/admin-menu.tsx). */}
+          <AdminMenu className={styles.actionMenu} buttonClassName={`${ui.btn} ${ui.btnSecondary}`} menuClassName={styles.menu} content={<>More tools <ChevronDown size={14} /></>}>
+            <Link href="/admin/products/prices" role="menuitem"><Tag size={14} /> Change prices</Link>
+            <Link href="/admin/products/import" role="menuitem"><Upload size={14} /> Import</Link>
+            <button type="button" role="menuitem" onClick={() => setExportOpen(true)}><Download size={14} /> Export</button>
+          </AdminMenu>
           <Link className={ui.btn} href="/admin/products/new"><Plus size={16} /> Add product</Link>
         </div>
       </div>
       {exportOpen && <ProductExportDialog onClose={() => setExportOpen(false)} total={total} selectedIds={selected} status={status} q={q} />}
 
-      {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
-      {notice && <div className={ui.alert}>{notice}</div>}
+      {error && <div className={`${ui.alert} ${ui.alertDanger}`} role="alert">{error}</div>}
+      {notice && <div className={ui.alert} role="status">{notice}</div>}
 
       <div className={`${styles.viewBar} ${ui.card}`}>
         <div className={styles.views} role="tablist" aria-label="Product views">
-          {views.map(([value, label, count]) => (
+          {views.map(([value, label]) => (
             <button
               key={value}
               type="button"
@@ -171,11 +174,11 @@ export default function AdminProductsList({ initial }: { initial: any }) {
               className={`${styles.view}${status === value ? ` ${styles.viewActive}` : ''}`}
               onClick={() => setStatus(value)}
             >
-              <span>{label}</span><small>{count.toLocaleString()}</small>
+              <span>{label}</span><small>{(counts ? counts[value] : value === status ? total : 0).toLocaleString()}</small>
             </button>
           ))}
         </div>
-        <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setFiltersOpen(value => !value)}>
+        <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} aria-expanded={filtersOpen} onClick={() => setFiltersOpen(value => !value)}>
           Filters <ChevronDown className={`${styles.chevron}${filtersOpen ? ` ${styles.chevronOpen}` : ''}`} size={15} />
         </button>
       </div>
@@ -212,23 +215,18 @@ export default function AdminProductsList({ initial }: { initial: any }) {
             <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => bulk('DRAFT')}><Tag size={15} /> Draft</button>
             <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => bulk('ARCHIVED')}><Archive size={15} /> Archive</button>
             <button className={`${ui.btn} ${ui.btnDanger}`} onClick={deleteSelected}><Trash2 size={15} /> Delete</button>
-            <div className={styles.actionMenu}>
-              <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setBulkOpen(value => !value)}>More <ChevronDown size={14} /></button>
-              {bulkOpen && (
-                <div className={styles.menu}>
-                  <button onClick={() => bulk('FEATURED_ON')}><Star size={14} /> Feature products</button>
-                  <button onClick={() => bulk('FEATURED_OFF')}><StarOff size={14} /> Unfeature products</button>
-                  <button onClick={() => setSelected([])}><X size={14} /> Clear selection</button>
-                </div>
-              )}
-            </div>
+            <AdminMenu className={styles.actionMenu} buttonClassName={`${ui.btn} ${ui.btnSecondary}`} menuClassName={styles.menu} content={<>More <ChevronDown size={14} /></>}>
+              <button type="button" role="menuitem" onClick={() => bulk('FEATURED_ON')}><Star size={14} /> Feature products</button>
+              <button type="button" role="menuitem" onClick={() => bulk('FEATURED_OFF')}><StarOff size={14} /> Unfeature products</button>
+              <button type="button" role="menuitem" onClick={() => setSelected([])}><X size={14} /> Clear selection</button>
+            </AdminMenu>
           </div>
         </div>
       )}
 
       <div className={`${ui.card} ${styles.tableCard}`}>
         <div className={styles.tableMeta}>
-          <span>{total.toLocaleString()} products</span>
+          <span>{total.toLocaleString()} {total === 1 ? 'product' : 'products'}</span>
           <label>Rows
             <select className={`${ui.input} ${ui.inputCompact}`} value={pageSize} onChange={event => setPageSize(Number(event.target.value))}>
               <option value={25}>25</option>
@@ -248,7 +246,7 @@ export default function AdminProductsList({ initial }: { initial: any }) {
                 <th>Price</th>
                 <th>Sales channels</th>
                 <th>Updated</th>
-                <th />
+                <th className={styles.openHead}><span className={styles.srOnly}>Open</span></th>
               </tr>
             </thead>
             <tbody>
@@ -263,7 +261,7 @@ export default function AdminProductsList({ initial }: { initial: any }) {
                         <div><strong>{product.name}</strong><span>{product.sku || 'No SKU'}{product.featured ? ' · Featured' : ''}</span></div>
                       </Link>
                     </td>
-                    <td data-label="Status"><span className={`${styles.status} ${statusClass[product.status] || ''}`}>{product.status}</span></td>
+                    <td data-label="Status"><span className={`${styles.status} ${statusClass[product.status] || ''}`}>{STATUS_LABEL[product.status] || product.status}</span></td>
                     <td data-label="Inventory">
                       {stock.tracked ? (
                         <div className={stock.available <= 5 ? `${styles.stock} ${styles.stockLow}` : styles.stock}>
@@ -272,9 +270,9 @@ export default function AdminProductsList({ initial }: { initial: any }) {
                       ) : <span className={ui.muted}>Not tracked</span>}
                     </td>
                     <td data-label="Price"><strong>{money(product.basePrice)}</strong>{product.compareAtPrice ? <div className={`${ui.muted} strike`}>{money(product.compareAtPrice)}</div> : null}</td>
-                    <td data-cell="hide"><span className={styles.channel}>Online Store</span></td>
+                    <td data-cell="hide">{channelCell(product)}</td>
                     <td data-label="Updated">{new Date(product.updatedAt).toLocaleDateString()}</td>
-                    <td data-cell="hide"><Link className={ui.iconBtn} href={`/admin/products/${product.id}`} title="Open product" aria-label="Open product"><MoreHorizontal size={17} /></Link></td>
+                    <td data-cell="hide"><Link className={ui.iconBtn} href={`/admin/products/${product.id}`} title="Open product" aria-label={`Open ${product.name}`}><MoreHorizontal size={17} /></Link></td>
                   </tr>
                 )
               })}

@@ -253,3 +253,8 @@
   .productCell { min-width: 0; gap: 10px; }
   .thumb { width: 40px; height: 40px; font-size: 16px; }
 }
+
+/* Names the last column (the "Open" links) for screen readers; it had an empty header. Its cell holds it in place:
+   the table scrolls inside its wrapper on narrow screens, and a hidden name placed from further out widened the page. */
+.openHead { position: relative; }
+.srOnly { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
