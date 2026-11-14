@@ -175,6 +175,7 @@ export function ProductCard({p,theme,onQuickView,preview,onSelect,wishlist,toggl
   // (app/storefront-motion.css), so phones and cards nobody points at never download it.
   const [peek,setPeek]=useState(false);
   const [peekReady,setPeekReady]=useState(false);
+  const nameId=useId();
   const primaryImage=p.images?.[0]?.url||'/placeholder-product.svg';
   const secondaryImage=p.images?.[1]?.url||null;
   // A flash sale on this product (lib/flash-sale.ts) shows its price and a countdown badge.
@@ -201,25 +202,30 @@ export function ProductCard({p,theme,onQuickView,preview,onSelect,wishlist,toggl
   if(theme.design==='market'){
     const card=theme.productCardMarket||{};
     const hasOptions=Array.isArray(p.variants)&&p.variants.length>0;
+    // The card is not one big link: a link may not hold buttons. The product's name is the link, and the link covers
+    // the card (app/storefront-cards.css), so a click anywhere on the card still opens the product. The heart and
+    // "Add to cart" sit above it as buttons of their own, described by the product's name.
+    // The photo repeats the name right below it, so it is read only when it has a description of its own.
+    const photoAlt=p.images?.[0]?.alt&&p.images[0].alt!==p.name?p.images[0].alt:'';
     return (
-      <Link href={`/product/${p.slug}`} onClick={preview?e=>{e.preventDefault();e.stopPropagation();onSelect?.()}:undefined} onPointerEnter={secondaryImage&&!peek?e=>{if(e.pointerType==='mouse')setPeek(true)}:undefined} className="mkCard">
+      <div className="mkCard" onPointerEnter={secondaryImage&&!peek?e=>{if(e.pointerType==='mouse')setPeek(true)}:undefined}>
         <div className="mkCardMedia">
-          <StoreImage src={primaryImage} alt={p.images?.[0]?.alt||p.name}/>
+          <StoreImage src={primaryImage} alt={photoAlt}/>
           {peek&&secondaryImage&&<img className={`mkCardAlt${peekReady?' isReady':''}`} src={img(secondaryImage)} alt="" decoding="async" onLoad={()=>setPeekReady(true)}/>}
           {discountPct>0&&<span className="mkCardBadge">-{discountPct}%</span>}
-          {toggleWish&&<button type="button" className={`mkCardWish ${wished?'active':''}`} onClick={wish} aria-label={wished?t('Remove from wishlist'):t('Add to wishlist')}><Heart size={15} fill={wished?'currentColor':'none'}/></button>}
+          {toggleWish&&<button type="button" className={`mkCardWish ${wished?'active':''}`} onClick={wish} aria-label={wished?t('Remove from wishlist'):t('Add to wishlist')} aria-describedby={nameId}><Heart size={15} fill={wished?'currentColor':'none'}/></button>}
         </div>
         <div className="mkCardBody">
-          <h3>{p.name}</h3>
+          <h3 id={nameId}><Link href={`/product/${p.slug}`} onClick={preview?e=>{e.preventDefault();e.stopPropagation();onSelect?.()}:undefined} className="mkCardLink">{p.name}</Link></h3>
           {reviewCount>0&&<div className="mkCardRating"><StarRow rating={Number(p.rating||0)} size={12}/><span>({reviewCount})</span></div>}
           <div className="mkCardPrice"><strong>{money(price,theme.currency||'USD')}</strong>{compare>price&&<del>{money(compare,theme.currency||'USD')}</del>}</div>
           {flash&&<FlashCountdown endsAt={flash.endsAt} compact/>}
           {card.deliveryText!==''&&<span className="mkCardNote"><Truck size={13}/> {card.deliveryText||t('Cash on delivery')}</span>}
           {card.showAddToCart!==false&&(p.soldOut
-            ?<button type="button" className="mkCardAdd soldOut" disabled>{t('Sold out')}</button>
-            :<button type="button" className={`mkCardAdd ${added?'done':''}`} onClick={quickAdd}>{added?<><Check size={15}/> {t('Added')}</>:hasOptions?t('Choose options'):t('Add to cart')}</button>)}
+            ?<button type="button" className="mkCardAdd soldOut" disabled aria-describedby={nameId}>{t('Sold out')}</button>
+            :<button type="button" className={`mkCardAdd ${added?'done':''}`} onClick={quickAdd} aria-describedby={nameId}>{added?<><Check size={15}/> {t('Added')}</>:hasOptions?t('Choose options'):t('Add to cart')}</button>)}
         </div>
-      </Link>
+      </div>
     );
   }
   return (
