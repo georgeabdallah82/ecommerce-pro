@@ -2,6 +2,8 @@
 // before it goes live. No database or React here, so the server (the review endpoint) and the
 // editor run exactly the same logic, and tests/theme-review.test.ts can cover it.
 
+import { linkProblem } from '@/lib/menu-editor'
+
 export type ReviewSection = { id: string; type: string; enabled?: boolean; settings?: Record<string, any>; blocks?: any[] }
 export type ReviewSnapshot = { theme: Record<string, any>; templates: Record<string, ReviewSection[]>; navigation: any[] }
 export type ReviewGroup = { id: string; title: string; items: string[] }
@@ -158,6 +160,11 @@ export function readinessChecks(snapshot: { theme: Record<string, any>; template
     const label = String(item.label || '').trim()
     if (!label) checks.push({ id: `menu-noname-${item.id}`, level: 'warn', where: 'menu', text: 'A menu item has no name, so visitors see “Untitled”.' })
     else if (!String(item.url || '').trim() || String(item.url).trim() === '#') checks.push({ id: `menu-nolink-${item.id}`, level: 'warn', where: 'menu', text: `“${label}” has no link address.` })
+    else {
+      // A link to a section that isn't there, or to /pages/… (lib/menu-editor.ts).
+      const problem = linkProblem(item.url)
+      if (problem) checks.push({ id: `menu-link-${item.id}`, level: 'warn', where: 'menu', text: `“${label}”: ${problem}.` })
+    }
   }
 
   const visible = home.filter(s => s.enabled !== false)

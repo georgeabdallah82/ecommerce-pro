@@ -594,9 +594,12 @@ export default function ThemeStudio({ initial }: Props) {
   const selected = current[selectedIndex] || null
   const activeCategory = THEME_CATEGORIES.find(c => c.key === activeCategoryKey) || null
 
+  // A selection that is no longer on this page (another page, a deleted section) is cleared, and nothing is
+  // highlighted until a section is chosen. It used to fall back to the first section, so the editor opened with the
+  // Header row highlighted though nothing was open.
   useEffect(() => {
-    if (!current.some(section => section.id === selectedId)) {
-      setSelectedId(current[0]?.id || '')
+    if (selectedId && !current.some(section => section.id === selectedId)) {
+      setSelectedId('')
       if (drawerMode === 'section') setDrawer(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

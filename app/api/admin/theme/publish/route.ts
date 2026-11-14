@@ -41,9 +41,8 @@ export async function POST() {
       db.setting.upsert({ where: { key: 'theme.config' }, create: { key: 'theme.config', value: draft.value }, update: { value: draft.value } }),
       ...(draftSections ? [db.setting.upsert({ where: { key: 'theme.sections' }, create: { key: 'theme.sections', value: draftSections.value }, update: { value: draftSections.value } })] : []),
       ...(draftNavigation ? [db.setting.upsert({ where: { key: 'navigation.main' }, create: { key: 'navigation.main', value: draftNavigation.value }, update: { value: draftNavigation.value } })] : []),
-      db.setting.delete({ where: { key: 'theme.draft' } }),
-      db.setting.delete({ where: { key: 'theme.draft.sections' } }),
-      db.setting.delete({ where: { key: 'navigation.draft' } }),
+      // The draft's rows go in one step: deleting them one by one failed the whole publish when one was missing.
+      db.setting.deleteMany({ where: { key: { in: ['theme.draft', 'theme.draft.sections', 'navigation.draft'] } } }),
     ]
     await db.$transaction(writes)
 

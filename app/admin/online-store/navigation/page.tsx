@@ -14,9 +14,11 @@ export const revalidate = 0
 // silently reverted on every reload, since Save always writes to navigation.draft.
 export default async function Navigation(){
   await requirePermission('content.view')
-  const [state, collections] = await Promise.all([
+  // The store's custom pages, so a link can open one by name and a link to a draft is pointed out.
+  const [state, collections, pages] = await Promise.all([
     getThemeEditorState(),
     db.collection.findMany({orderBy:{name:'asc'}}),
+    db.page.findMany({orderBy:{title:'asc'},select:{title:true,handle:true,status:true},take:500}),
   ])
-  return <NavigationEditorPro initial={JSON.parse(JSON.stringify(state.navigation))} collections={JSON.parse(JSON.stringify(collections))} initialDraft={state.draft} grouped={!isMarket(state.theme)}/>
+  return <NavigationEditorPro initial={JSON.parse(JSON.stringify(state.navigation))} collections={JSON.parse(JSON.stringify(collections))} pages={pages} initialDraft={state.draft} grouped={!isMarket(state.theme)}/>
 }

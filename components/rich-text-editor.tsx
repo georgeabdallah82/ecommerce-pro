@@ -4,11 +4,13 @@ import { useEffect, useRef, useState } from 'react'
 import { Bold, Heading2, Heading3, Italic, Link2, List, ListOrdered, Pilcrow, Redo2, Undo2 } from 'lucide-react'
 import s from './rich-text-editor.module.css'
 
-// A small word-processor style editor for long text (policies): headings, bold, lists and
-// links, no HTML knowledge needed. The HTML it produces is sanitized again on the server.
+// A small word-processor style editor for long text (policies, pages, blog posts): headings, bold,
+// lists and links, no HTML knowledge needed. The HTML it produces is sanitized again on the server.
 // `value` is read once when the editor mounts (or when `resetKey` changes); after that the
-// editor owns the text and reports changes through onChange.
-export default function RichTextEditor({ value, onChange, resetKey, minHeight = 420 }: { value: string; onChange: (html: string) => void; resetKey?: string | number; minHeight?: number }) {
+// editor owns the text and reports changes through onChange. `label` names the text area.
+// The link bar is not a <form>: the editor sits inside the pages' and posts' forms, and a form
+// can't hold another one (Enter in the address field adds the link).
+export default function RichTextEditor({ value, onChange, resetKey, minHeight = 420, label = 'Text' }: { value: string; onChange: (html: string) => void; resetKey?: string | number; minHeight?: number; label?: string }) {
   const ref = useRef<HTMLDivElement>(null)
   const savedRange = useRef<Range | null>(null)
   const [linking, setLinking] = useState(false)
@@ -63,13 +65,13 @@ export default function RichTextEditor({ value, onChange, resetKey, minHeight = 
     <div className={s.toolbar} role="toolbar" aria-label="Text formatting">
       {tools.map((t, i) => <button key={t.label} type="button" className={`${s.tool} ${i === 3 || i === 5 || i === 8 ? s.gap : ''}`} title={t.label} aria-label={t.label} onMouseDown={e => { e.preventDefault(); t.action() }}>{t.icon}</button>)}
     </div>
-    {linking ? <form className={s.linkBar} onSubmit={e => { e.preventDefault(); applyLink() }}>
-      <input className={s.linkInput} value={linkUrl} onChange={e => { setLinkUrl(e.target.value); setLinkError('') }} placeholder="/contact or https://…" aria-label="Link address" aria-invalid={!!linkError} aria-describedby={linkError ? 'rte-link-error' : undefined} autoFocus />
-      <button type="submit" className={s.linkBtn}>Add link</button>
+    {linking ? <div className={s.linkBar} role="group" aria-label="Add a link">
+      <input className={s.linkInput} value={linkUrl} onChange={e => { setLinkUrl(e.target.value); setLinkError('') }} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); applyLink() } }} placeholder="/contact or https://…" aria-label="Link address" aria-invalid={!!linkError} aria-describedby={linkError ? 'rte-link-error' : undefined} autoFocus />
+      <button type="button" className={s.linkBtn} onClick={applyLink}>Add link</button>
       <button type="button" className={s.linkBtn} onClick={removeLink}>Remove link</button>
       <button type="button" className={s.linkBtn} onClick={() => setLinking(false)}>Cancel</button>
       {linkError ? <span id="rte-link-error" role="alert" className={s.linkError}>{linkError}</span> : null}
-    </form> : null}
+    </div> : null}
     <div
       ref={ref}
       className={s.editor}
@@ -77,7 +79,7 @@ export default function RichTextEditor({ value, onChange, resetKey, minHeight = 
       contentEditable
       suppressContentEditableWarning
       role="textbox"
-      aria-label="Text"
+      aria-label={label}
       aria-multiline="true"
       onInput={e => onChange((e.target as HTMLDivElement).innerHTML)}
       onPaste={e => {

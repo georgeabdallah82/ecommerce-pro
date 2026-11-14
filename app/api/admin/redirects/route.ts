@@ -4,23 +4,11 @@ import { requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { cappedJson, LIST_CAP } from '@/lib/admin-list'
+import { cleanFromPath, cleanToPath, redirectProblem } from '@/lib/redirects'
 
-const RESERVED_PREFIXES = ['/admin', '/api', '/_next', '/maintenance']
-
-function cleanPath(value: unknown) {
-  let path = String(value || '').trim()
-  if (path && !path.startsWith('/')) path = `/${path}`
-  path = path.replace(/\/+$/, '') || '/'
-  return path.slice(0, 400)
-}
-
-function validate(fromPath: string, toPath: string) {
-  if (!fromPath || fromPath === '/') return 'A source path other than / is required'
-  if (RESERVED_PREFIXES.some(p => fromPath === p || fromPath.startsWith(`${p}/`))) return 'This path is reserved and cannot be redirected'
-  if (!toPath) return 'A destination path or URL is required'
-  if (fromPath === toPath) return 'The source and destination cannot be the same'
-  return null
-}
+// The rules for the two addresses (a path only for the old one, no redirects from the store's own pages, no
+// circles) are in lib/redirects.ts. The circle check reads every redirect: the table is the store's own short list.
+const others = () => db.redirect.findMany({ select: { id: true, fromPath: true, toPath: true } })
 
 export async function GET() {
   try {
@@ -35,9 +23,9 @@ export async function POST(req: Request) {
   try {
     const actor = await requirePermission('content.manage')
     const b = await req.json()
-    const fromPath = cleanPath(b.fromPath)
-    const toPath = /^https?:\/\//i.test(String(b.toPath || '').trim()) ? String(b.toPath).trim().slice(0, 2000) : cleanPath(b.toPath)
-    const error = validate(fromPath, toPath)
+    const fromPath = cleanFromPath(b.fromPath)
+    const toPath = cleanToPath(b.toPath)
+    const error = redirectProblem(fromPath, toPath, await others())
     if (error) return json({ error }, { status: 400 })
 
     const redirect = await db.redirect.create({ data: { fromPath, toPath } })
@@ -58,11 +46,9 @@ export async function PATCH(req: Request) {
     const existing = await db.redirect.findUnique({ where: { id } })
     if (!existing) return json({ error: 'Redirect not found' }, { status: 404 })
 
-    const fromPath = b.fromPath !== undefined ? cleanPath(b.fromPath) : existing.fromPath
-    const toPath = b.toPath !== undefined
-      ? (/^https?:\/\//i.test(String(b.toPath).trim()) ? String(b.toPath).trim().slice(0, 2000) : cleanPath(b.toPath))
-      : existing.toPath
-    const error = validate(fromPath, toPath)
+    const fromPath = b.fromPath !== undefined ? cleanFromPath(b.fromPath) : existing.fromPath
+    const toPath = b.toPath !== undefined ? cleanToPath(b.toPath) : existing.toPath
+    const error = redirectProblem(fromPath, toPath, await others(), id)
     if (error) return json({ error }, { status: 400 })
 
     const redirect = await db.redirect.update({ where: { id }, data: { fromPath, toPath } })

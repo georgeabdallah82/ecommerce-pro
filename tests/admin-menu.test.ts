@@ -15,7 +15,9 @@ describe('admin menu', () => {
   })
   it('tucks only rarely used pages behind More, never the everyday ones', () => {
     const tucked = [...layout.matchAll(/href: '(\/admin[^']*)', label: '([^']*)'[^\n]*more: true/g)].map(m => m[2])
-    assert.deepEqual(tucked.sort(), ['Barcode stickers', 'Draft orders', 'Occasions', 'Invite a friend', 'Operations', 'Order edits', 'Purchase orders', 'Rewards', 'Stock count', 'Suppliers', 'Transfers'].sort())
+    // Pages, Blog and URL redirects were in no menu at all (docs/admin-online-store-pages-2026-11.md); they are
+    // listed behind Online Store's More.
+    assert.deepEqual(tucked.sort(), ['Barcode stickers', 'Blog', 'Draft orders', 'Occasions', 'Invite a friend', 'Operations', 'Order edits', 'Pages', 'Purchase orders', 'Rewards', 'Stock count', 'Suppliers', 'Transfers', 'URL redirects'].sort())
     for (const everyday of ['Orders', 'Products', 'Collections', 'Inventory', 'Customers', 'Discounts', 'Health']) assert.ok(!tucked.includes(everyday))
   })
   it('keeps the launch checklist and website status inside the Health entry', () => {

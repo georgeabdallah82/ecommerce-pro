@@ -5,6 +5,7 @@ import { audit } from '@/lib/audit'
 import { json, parseJson, slugify } from '@/lib/utils'
 import { sanitizeRichHtml } from '@/lib/sanitize-html'
 import { cappedJson, LIST_CAP } from '@/lib/admin-list'
+import { redirectMovedPage } from '@/lib/redirect-moves'
 
 // This storefront only ever exposes one blog (sitemap.ts and /blog/[handle]
 // address a post purely by its own globally-unique handle, with no blog
@@ -120,8 +121,11 @@ export async function PATCH(req: Request) {
     }
 
     const post = await db.blogPost.update({ where: { id }, data })
-    await audit(actor.id, 'blogPost.updated', 'BlogPost', id, { fields: Object.keys(data) })
-    return json({ post: { ...post, tags: readTags(post.tagsJson) } })
+    // A published post's new address: when asked, the old one sends readers on (lib/redirect-moves.ts).
+    const moved = typeof data.handle === 'string' && data.handle !== existing.handle && existing.status === 'PUBLISHED'
+    const redirected = moved && b.redirectFromOld === true ? await redirectMovedPage(`/blog/${existing.handle}`, `/blog/${data.handle}`) : false
+    await audit(actor.id, 'blogPost.updated', 'BlogPost', id, { fields: Object.keys(data), ...(redirected ? { redirectedFrom: `/blog/${existing.handle}` } : {}) })
+    return json({ post: { ...post, tags: readTags(post.tagsJson) }, redirected })
   } catch (e) {
     if (e instanceof Error && e.message.includes('Unique constraint')) return json({ error: 'A post with this handle already exists.' }, { status: 409 })
     return routeError(e, 'Unable to update post', 400)

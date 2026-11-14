@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from '@/components/admin-link'
-import { AlertCircle, CheckCircle2, ExternalLink, RotateCcw } from 'lucide-react'
+import { AlertCircle, ArrowDown, CheckCircle2, ExternalLink, RotateCcw } from 'lucide-react'
 import ui from './admin-ui.module.css'
 import s from './admin-policies.module.css'
 import RichTextEditor from './rich-text-editor'
@@ -75,11 +75,33 @@ export default function PoliciesAdmin({ vars, custom: initialCustom, setup, canM
   const missingCount = missing.filter(m => !m.ok).length
 
 
+  // True when policy k is the one in the editor afterwards (switching asks first when there are unsaved edits).
   async function switchTab(k: PolicyKind) {
-    if (k === kind) return
-    if (dirty && !(await confirm({ title: 'Discard your changes?', message: `Your edits to the ${POLICY_TITLES[kind]} are not saved yet.`, confirmLabel: 'Discard' }))) return
+    if (k === kind) return true
+    if (dirty && !(await confirm({ title: 'Discard your changes?', message: `Your edits to the ${POLICY_TITLES[kind]} are not saved yet.`, confirmLabel: 'Discard' }))) return false
     setNotice(''); setError('')
     load(k, shown(k))
+    return true
+  }
+
+  // The cards at the top: the editor is further down the page, so it comes into view (it used to change out of
+  // sight, and the click looked like it did nothing).
+  async function editFromCard(k: PolicyKind) {
+    if (!(await switchTab(k))) return
+    window.setTimeout(() => {
+      document.getElementById('policy-tabs')?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' })
+      document.getElementById(`policy-tab-${k}`)?.focus({ preventScroll: true })
+    }, 0)
+  }
+
+  // The tabs: arrow keys, Home and End move between them; Enter or Space opens one.
+  function onTabKey(e: React.KeyboardEvent) {
+    const at = KINDS.findIndex(k => document.activeElement?.id === `policy-tab-${k}`)
+    if (at < 0) return
+    const next = e.key === 'ArrowRight' ? (at + 1) % KINDS.length : e.key === 'ArrowLeft' ? (at - 1 + KINDS.length) % KINDS.length : e.key === 'Home' ? 0 : e.key === 'End' ? KINDS.length - 1 : -1
+    if (next < 0) return
+    e.preventDefault()
+    document.getElementById(`policy-tab-${KINDS[next]}`)?.focus()
   }
 
   async function saveText() {
@@ -139,11 +161,11 @@ export default function PoliciesAdmin({ vars, custom: initialCustom, setup, canM
     <div className={s.overview}>
       {KINDS.map(k => {
         const text = custom[k] || defaultPolicyHtml(k, v)
-        return <button key={k} type="button" className={`${ui.card} ${s.overviewCard} ${kind === k ? s.overviewOn : ''}`} onClick={() => switchTab(k)}>
+        return <button key={k} type="button" className={`${ui.card} ${s.overviewCard} ${kind === k ? s.overviewOn : ''}`} onClick={() => editFromCard(k)}>
           <span className={custom[k] ? s.badgeCustom : s.badgeDefault}>{custom[k] ? 'Your text' : 'Default text'}</span>
           <strong>{POLICY_TITLES[k]}</strong>
           <span className={ui.muted}>{wordCount(text).toLocaleString()} words · {custom[k] ? 'edited by you' : 'filled in from your settings'}</span>
-          <span className={s.overviewLink}>Edit <ExternalLink size={12} aria-hidden="true" /></span>
+          <span className={s.overviewLink}>Edit below <ArrowDown size={12} aria-hidden="true" /></span>
         </button>
       })}
     </div>
@@ -162,13 +184,13 @@ export default function PoliciesAdmin({ vars, custom: initialCustom, setup, canM
       </ul>
     </section>
 
-    <div className={s.tabs} role="tablist">
-      {KINDS.map(k => <button key={k} role="tab" aria-selected={kind === k} className={kind === k ? s.tabOn : ''} onClick={() => switchTab(k)}>
+    <div id="policy-tabs" className={s.tabs} role="tablist" aria-label="Policies" onKeyDown={onTabKey}>
+      {KINDS.map(k => <button key={k} id={`policy-tab-${k}`} role="tab" aria-selected={kind === k} aria-controls="policy-panel" tabIndex={kind === k ? 0 : -1} className={kind === k ? s.tabOn : ''} onClick={() => switchTab(k)}>
         {POLICY_TITLES[k]}<span className={custom[k] ? s.badgeCustom : s.badgeDefault}>{custom[k] ? 'Your text' : 'Default'}</span>
       </button>)}
     </div>
 
-    <div className={`${ui.card} ${s.editorCard}`}>
+    <div id="policy-panel" role="tabpanel" aria-labelledby={`policy-tab-${kind}`} className={`${ui.card} ${s.editorCard}`}>
       <div className={s.editorBar}>
         <div className={ui.muted}>{custom[kind] ? 'Your own text is shown on the store.' : 'Showing our default text, filled in from Settings. Edit it to make it yours.'} <span className={s.words}>{words.toLocaleString()} words{dirty ? ' · unsaved changes' : ''}</span></div>
         <div className={s.editorActions}>
@@ -179,7 +201,7 @@ export default function PoliciesAdmin({ vars, custom: initialCustom, setup, canM
       </div>
       {refundMismatch && <div className={`${ui.alert} ${s.inlineAlert}`}>Returns are off, but this is your own refund policy text. Check it doesn’t still offer returns, or <button type="button" className={ui.textButton} onClick={() => load('refund', defaultPolicyHtml('refund', { ...vars, returnsEnabled: false }), true)}>load the “all sales are final” text</button> and save.</div>}
       {canManage
-        ? <RichTextEditor value={draft} resetKey={`${kind}-${editorKey}`} onChange={html => { setDraft(html); setDirty(true); setNotice('') }} />
+        ? <RichTextEditor value={draft} resetKey={`${kind}-${editorKey}`} onChange={html => { setDraft(html); setDirty(true); setNotice('') }} label={`${POLICY_TITLES[kind]} text`} />
         : <div className={s.readOnly} dangerouslySetInnerHTML={{ __html: draft }} />}
       <p className={`${ui.muted} ${s.footNote}`}>Your contact details (Settings › General) are added under the text automatically, with a “Last updated” date at the top.</p>
     </div>
