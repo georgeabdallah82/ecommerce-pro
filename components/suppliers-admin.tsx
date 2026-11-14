@@ -9,6 +9,7 @@ import { MAX_SUPPLIERS, supplierHealth, supplierKey, type SupplierHealth } from 
 import { useConfirm } from './admin-confirm'
 import s from './suppliers-admin.module.css'
 import ui from './admin-ui.module.css'
+import { useLeaveGuard } from './use-leave-guard'
 
 export type SupplierRow = { name: string; phone: string; contact: string; note: string; products: number; orders: number; open: number; lastOrderedAt: string | null }
 type Draft = SupplierRow & { key: number; isNew: boolean }
@@ -94,12 +95,8 @@ export default function SuppliersAdmin({ initial, country, canEdit }: { initial:
   })
 
   // Leaving with unsaved changes asks first; Ctrl/Cmd+S saves.
-  useEffect(() => {
-    if (!dirty) return
-    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }
-    window.addEventListener('beforeunload', warn)
-    return () => window.removeEventListener('beforeunload', warn)
-  }, [dirty])
+  // Asks before leaving with unsaved changes: admin links, Back, reload (components/use-leave-guard.ts).
+  useLeaveGuard(dirty)
 
   async function save() {
     if (busy || !dirty || problemCount) return

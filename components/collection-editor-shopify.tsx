@@ -12,6 +12,7 @@ import UnsavedBar from './admin-unsaved-bar'
 import MediaPicker from './media-picker'
 import { useConfirm } from './admin-confirm'
 import { ReadinessPanel } from './admin-readiness'
+import { useLeaveGuard } from './use-leave-guard'
 
 type Product = { id: string; name: string; slug: string; sku?: string | null; status: string; basePrice: number; images?: { url: string }[] }
 type Collection = { id: string; name: string; slug: string; description?: string | null; imageUrl?: string | null; isActive: boolean; products: { product: Product }[]; seoTitle?: string | null; seoDescription?: string | null }
@@ -152,12 +153,8 @@ export default function CollectionEditorShopify({ id, currency = 'USD' }: { id: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dirty, saving, collection, selected])
 
-  useEffect(() => {
-    if (!dirty) return
-    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }
-    window.addEventListener('beforeunload', warn)
-    return () => window.removeEventListener('beforeunload', warn)
-  }, [dirty])
+  // Asks before leaving with unsaved changes: admin links, Back, reload (components/use-leave-guard.ts).
+  useLeaveGuard(dirty)
 
   function discard() {
     setCollection(original.collection)

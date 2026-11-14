@@ -27,9 +27,9 @@ test('Settings knows what is unsaved by comparing with what was saved', () => {
   assert.match(settings, /Object\.keys\(values\)\.some\(key => \(values\[key\] \|\| ''\) !== \(saved\.values\[key\] \|\| ''\)\)/)
   assert.match(settings, /Object\.keys\(flags\)\.some\(key => flags\[key\] !== saved\.flags\[key\]\)/)
   assert.match(settings, /setSaved\(\{ values, flags \}\)\n\s+setNotice\('All settings saved'\)/)
-  // Discard reloads once, without the browser's leave warning asking again.
-  assert.match(settings, /discarding\.current = true\n\s+window\.location\.reload\(\)/)
-  assert.match(settings, /const warn = \(e: BeforeUnloadEvent\) => \{ if \(discarding\.current\) return;/)
+  // Discard reloads once, without the leave warning asking again (components/use-leave-guard.ts).
+  assert.match(settings, /allowLeave\(\)\n\s+window\.location\.reload\(\)/)
+  assert.match(settings, /useLeaveGuard\(dirty\)/)
 })
 
 test('the payment provider is saved from any tab, and the Online card switch is written once', () => {

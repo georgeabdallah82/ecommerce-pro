@@ -1,7 +1,6 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import Link from '@/components/admin-link'
-import { useRouter } from 'next/navigation'
 import { ArrowLeft, Copy, Eye, Plus, Trash2, X } from 'lucide-react'
 import s from './admin-product-editor.module.css'
 import ui from './admin-ui.module.css'
@@ -15,6 +14,7 @@ import StockByLocation, { type StockRow } from './stock-by-location'
 import { descriptionHtml } from '@/lib/sanitize-html'
 import { describeVariantPlan, planVariants, stockOf } from '@/lib/variant-plan'
 import { priceProblem, productReadiness } from '@/lib/editor-readiness'
+import { allowLeave, useLeaveGuard } from './use-leave-guard'
 
 const STATUS_LABEL: Record<string, string> = { ACTIVE: 'Active', DRAFT: 'Draft', ARCHIVED: 'Archived' }
 const STATUS_CLASS: Record<string, string> = { ACTIVE: 'statusPillSuccess', DRAFT: 'statusPillWarning', ARCHIVED: 'statusPillDanger' }
@@ -89,7 +89,6 @@ function CollectionPicker({ options, value, onChange }: { options: CollectionOpt
 
 export default function ProductEditorV2({ initial, creating, definitions, locations, channels, publications, collections = [], waitingCount = 0 }: { initial: Product; creating: boolean; definitions: any[]; locations?: StoreLocationOption[]; channels?: any[]; publications?: any[]; collections?: CollectionOption[]; waitingCount?: number }) {
   const confirm = useConfirm()
-  const router = useRouter()
   const [product, setProduct] = useState<Product>(initial)
   const [tab, setTab] = useState<typeof tabs[number]>('General')
   const [busy, setBusy] = useState(false)
@@ -152,11 +151,8 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
     publishedChannels: productPublications.filter((p: any) => p.available).length,
   }), [product, collectionIds, productPublications])
 
-  useEffect(() => {
-    const h = (e: BeforeUnloadEvent) => { if (dirty) { e.preventDefault(); e.returnValue = '' } }
-    window.addEventListener('beforeunload', h)
-    return () => window.removeEventListener('beforeunload', h)
-  }, [dirty])
+  // Asks before leaving with unsaved changes: admin links, Back, reload (components/use-leave-guard.ts).
+  useLeaveGuard(dirty)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -203,7 +199,8 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
       }
       const data = creating ? await api('/api/admin/products', { method: 'POST', body: JSON.stringify(payload) }) : await api(`/api/admin/products/${product.id}`, { method: 'PATCH', body: JSON.stringify(payload) })
       setProduct(data.product); setDirty(false); setMessage('Saved')
-      if (creating) window.location.href = `/admin/products/${data.product.id}`
+      // Saved: open the new product's page without the leave warning.
+      if (creating) { allowLeave(); window.location.href = `/admin/products/${data.product.id}` }
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to save') } finally { setBusy(false) }
   }
 
@@ -231,6 +228,7 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
     setBusy(true); setError('')
     try {
       await api(`/api/admin/products/${product.id}`, { method: 'DELETE' })
+      allowLeave()
       window.location.href = '/admin/products'
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to delete product'); setBusy(false) }
   }
@@ -278,7 +276,7 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
   return <div className={s.page}>
     <div className={s.topbar}>
       <div className={s.topLeft}>
-        <Link href="/admin/products" aria-label="Back to products" className={ui.iconBtn} onClick={async e => { if (!dirty) return; e.preventDefault(); if (await confirm({ title: 'Discard unsaved changes?', message: 'Your edits to this product will be lost.', confirmLabel: 'Discard' })) router.push('/admin/products') }}><ArrowLeft size={18} /></Link>
+        <Link href="/admin/products" aria-label="Back to products" className={ui.iconBtn}><ArrowLeft size={18} /></Link>
         <div><div className={`${ui.muted} ${ui.tiny}`}>PRODUCT</div><h1 className={s.title}>{creating ? 'Add product' : product.name || 'Untitled product'}</h1>{!creating && <span className={ui.statusPill + ' ' + ui[STATUS_CLASS[product.status] || 'statusPillWarning'] + ' ' + s.statusChip}>{STATUS_LABEL[product.status] || product.status}</span>}</div>
       </div>
       <div className={s.topActions}>

@@ -11,6 +11,7 @@ import styles from './admin-navigation-editor.module.css'
 import ui from './admin-ui.module.css'
 import MediaPicker from './media-picker'
 import ThemePublishBar from './theme-publish-bar'
+import { useLeaveGuard } from './use-leave-guard'
 
 type Collection = { id: string; name: string; slug: string }
 // grouped: the store design shows dropdown links by heading with pictures as tiles (false for the
@@ -61,12 +62,8 @@ export default function NavigationEditorPro({ initial, collections, pages = [], 
   }, [items, collectionIds, pages])
 
   // Warn before leaving with unsaved changes, and save with Ctrl+S / Cmd+S.
-  useEffect(() => {
-    if (!dirty) return
-    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
-    window.addEventListener('beforeunload', warn)
-    return () => window.removeEventListener('beforeunload', warn)
-  }, [dirty])
+  // Asks before leaving with unsaved changes: admin links, Back, reload (components/use-leave-guard.ts).
+  useLeaveGuard(dirty)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); if (dirty && !saving) void save() }

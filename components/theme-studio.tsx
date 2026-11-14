@@ -81,6 +81,7 @@ import { marketHomeSections, marketSectionDefaults } from '@/lib/storefront-mark
 import { NumInput } from './num-input'
 import { siteHeaderSections } from '@/lib/site-header'
 import { humanize, readinessChecks, reviewThemeChanges, type ReadinessCheck, type ReviewGroup, type ReviewSnapshot } from '@/lib/theme-review'
+import { allowLeave, useLeaveGuard } from './use-leave-guard'
 
 // Deliberately not under /admin -- see app/theme-editor-preview/page.tsx's top comment.
 const PREVIEW_PATH = '/theme-editor-preview'
@@ -576,8 +577,6 @@ export default function ThemeStudio({ initial }: Props) {
   useModalFocus(pickerRef, picker, () => { setPicker(false); setPickerQuery('') })
   useModalFocus(reviewRef, reviewOpen, () => setReviewOpen(false))
   useModalFocus(confirmRef, Boolean(confirmState), () => setConfirmState(null))
-  // Set just before a deliberate reload after discarding, so the unsaved-changes prompt is skipped.
-  const leavingRef = useRef(false)
 
   const isHome = page === 'Home page'
   const isCustomPage = isPageTemplateKey(page)
@@ -992,7 +991,7 @@ export default function ThemeStudio({ initial }: Props) {
       const data = await response.json().catch(() => ({}))
       // 409 means there was no saved draft, so only unsaved edits to discard: same result.
       if (!response.ok && response.status !== 409) throw new Error(data.error || 'Unable to discard changes')
-      leavingRef.current = true
+      allowLeave()
       setDirty(false)
       window.location.reload()
     } catch (error) {
@@ -1011,12 +1010,8 @@ export default function ThemeStudio({ initial }: Props) {
   }
 
   // Leaving with unsaved edits asks first (closing the tab, reloading, the back arrow).
-  useEffect(() => {
-    if (!dirty) return
-    const warn = (event: BeforeUnloadEvent) => { if (leavingRef.current) return; event.preventDefault(); event.returnValue = '' }
-    window.addEventListener('beforeunload', warn)
-    return () => window.removeEventListener('beforeunload', warn)
-  }, [dirty])
+  // Asks before leaving with unsaved changes: admin links, Back, reload (components/use-leave-guard.ts).
+  useLeaveGuard(dirty)
 
   // Ctrl/Cmd+S saves, Ctrl/Cmd+Z undoes, Ctrl/Cmd+Shift+Z or Ctrl+Y redoes -- except while
   // typing in a field, where the browser's own text undo must keep working.

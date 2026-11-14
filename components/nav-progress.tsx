@@ -16,6 +16,8 @@ export function NavProgress() {
       setWidth(100)
       timers.current.push(window.setTimeout(() => setWidth(0), 250) as unknown as number)
     }
+    // An admin link held the click to ask about unsaved changes (components/admin-link.tsx): nothing is loading.
+    const stop = () => { clear(); setWidth(0) }
     const onClick = (event: MouseEvent) => {
       if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
       const target = event.target as Element | null
@@ -39,7 +41,8 @@ export function NavProgress() {
     // Capture phase: next/link cancels the click's default action before it bubbles here.
     document.addEventListener('click', onClick, true)
     window.addEventListener('popstate', finish)
-    return () => { clear(); document.removeEventListener('click', onClick, true); window.removeEventListener('popstate', finish) }
+    window.addEventListener('admin:navigation-held', stop)
+    return () => { clear(); document.removeEventListener('click', onClick, true); window.removeEventListener('popstate', finish); window.removeEventListener('admin:navigation-held', stop) }
   }, [])
 
   return <div aria-hidden="true" style={{ position: 'fixed', top: 0, left: 0, height: 3, zIndex: 10000, width: `${width}%`, opacity: width ? 1 : 0, background: 'var(--store-primary, #d42a2a)', transition: 'width .2s ease, opacity .25s ease', pointerEvents: 'none' }} />
