@@ -38,10 +38,11 @@ test('a category without a photo gets a department glyph from its name, not one 
   assert.match(sections, /<img src=\{photo\} alt="" /, 'the photo is decorative: the name is right beside it')
 })
 
-test('the category strip: wide cards for up to four categories, a swipe row on phones, a visible focus ring', () => {
+test('the category strip: wide cards for up to four categories, rows of tiles on phones, a visible focus ring', () => {
   const css = read('app/storefront-sprint4.css')
   assert.match(css, /html body\.mk \.aliCategoryRow:not\(:has\(> \.aliCategoryItem:nth-child\(5\)\)\) \{ grid-template-columns: repeat\(auto-fit, minmax\(220px, 1fr\)\) !important;/)
-  assert.match(css, /@media \(max-width: 759px\) \{\n  html body\.mk \.aliCategoryRow \{ grid-auto-flow: column !important;/)
+  // Phones show every category in rows (docs/store-category-strip-2026-11.md); the sideways row hid all but three.
+  assert.match(css, /@media \(max-width: 759px\) \{\n  html body\.mk \.aliCategoryRow \{ grid-auto-flow: row !important; grid-template-columns: repeat\(auto-fill, minmax\(76px, 1fr\)\) !important;/)
   assert.match(css, /html body\.mk \.aliCategoryItem:focus-visible \.aliCategoryIcon \{ border-color: var\(--mk-ink\) !important; box-shadow: 0 0 0 2px var\(--mk-ink\) !important; \}/)
 })
 
