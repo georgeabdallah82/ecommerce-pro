@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from '@/components/admin-link'
 import { useRouter } from 'next/navigation'
 import { AlertTriangle, ArrowDown, ArrowLeft, ArrowUp, Check, Eye, Image as ImageIcon, Plus, Search, Trash2, X } from 'lucide-react'
@@ -13,6 +13,7 @@ import MediaPicker from './media-picker'
 import { useConfirm } from './admin-confirm'
 import { ReadinessPanel } from './admin-readiness'
 import { useLeaveGuard } from './use-leave-guard'
+import { useModalFocus } from './use-modal-focus'
 import { fetchRead } from '@/lib/retry-fetch'
 
 type Product = { id: string; name: string; slug: string; sku?: string | null; status: string; basePrice: number; images?: { url: string }[] }
@@ -119,6 +120,10 @@ export default function CollectionEditorShopify({ id, currency = 'USD' }: { id: 
 
   function openPicker() { setDraft(selected); setQuery(''); setPickerPage(1); setPickerError(''); setPickerOpen(true) }
   function closePicker() { setPickerOpen(false) }
+  // Add products is a modal dialog: focus moves in, Tab stays inside, Escape closes it and focus goes back to the
+  // button (it had none of these: Tab walked off into the page behind it).
+  const pickerRef = useRef<HTMLDivElement>(null)
+  useModalFocus(pickerRef, pickerOpen, closePicker)
   function toggleDraft(productId: string) { setDraft(list => (list.includes(productId) ? list.filter(x => x !== productId) : [...list, productId])) }
   function donePicker() {
     if (JSON.stringify(draft) !== JSON.stringify(selected)) { setSelected(draft); setDirty(true); setNotice('') }
@@ -200,7 +205,8 @@ export default function CollectionEditorShopify({ id, currency = 'USD' }: { id: 
     {(error || notice) && <div className={`${ui.alert} ${error ? ui.alertDanger : ''}`} role={error ? 'alert' : 'status'}>{error || notice}</div>}
 
     <div className={s.grid}>
-      <main className={s.main}>
+      {/* Not a <main>: the admin layout's <main> already holds the page. */}
+      <div className={s.main}>
         <section className={`${ui.card} ${s.card}`}>
           <div className={s.cardHead}><div><h2>Collection details</h2><p>How this collection is named and presented in your store.</p></div></div>
           <div className={s.fields}>
@@ -208,7 +214,8 @@ export default function CollectionEditorShopify({ id, currency = 'USD' }: { id: 
             <label>Address (handle)<input className={ui.input} value={collection.slug} onChange={e => setField({ slug: e.target.value })} aria-describedby="collection-handle-note" /></label>
             <span id="collection-handle-note" className={ui.fieldHelp}>Customers reach this collection at /collections/{collection.slug || 'address'}. Changing it breaks links that already point to it.</span>
             <label>Description<textarea className={ui.textarea} rows={6} value={collection.description || ''} onChange={e => setField({ description: e.target.value })} /></label>
-            <label>Collection image
+            {/* Not a <label>: it held the image buttons, and a label names its first control. */}
+            <div className={s.imageLabel}><span>Collection image</span>
               <div className={s.imageField}>
                 <div className={s.imagePreview}>{collection.imageUrl ? <img src={collection.imageUrl} alt="" /> : <ImageIcon size={24} />}</div>
                 <div className="inline">
@@ -216,7 +223,7 @@ export default function CollectionEditorShopify({ id, currency = 'USD' }: { id: 
                   {collection.imageUrl && <button type="button" className={ui.iconBtn} aria-label="Remove image" onClick={() => setField({ imageUrl: '' })}><X size={16} /></button>}
                 </div>
               </div>
-            </label>
+            </div>
           </div>
         </section>
 
@@ -257,7 +264,7 @@ export default function CollectionEditorShopify({ id, currency = 'USD' }: { id: 
             <button type="button" className={ui.iconBtn} title="Remove from this collection" aria-label={`Remove ${p.name}`} onClick={() => removeAssigned(p.id)}><Trash2 size={16} /></button>
           </div>)}</div> : <div className="emptyInline">No products yet. Add products to build this collection.</div>}
         </section>
-      </main>
+      </div>
 
       <aside className={s.side}>
         <section className={`${ui.card} ${s.card}`}>
@@ -266,6 +273,9 @@ export default function CollectionEditorShopify({ id, currency = 'USD' }: { id: 
             <span className={s.statusDot} />
             <span><strong>{collection.isActive ? 'Active' : 'Inactive'}</strong><small>{collection.isActive ? 'Visible in the Online Store' : 'Hidden from the Online Store'}</small></span>
           </button>
+          {/* Active collections show in the store's menus and home page even with no products (the owner's choice,
+              docs/store-category-strip-2026-11.md), so say what customers then see. */}
+          {collection.isActive && !assigned.some(p => p.status === 'ACTIVE') && <p className={s.emptyNote}>No active products yet: it shows in the store's menus and home page, and customers who open it see an empty page. Add products, or set it to Inactive.</p>}
         </section>
         <section className={`${ui.card} ${s.card}`}>
           <div className={s.cardHead}>
@@ -282,14 +292,14 @@ export default function CollectionEditorShopify({ id, currency = 'USD' }: { id: 
     </div>
 
     {pickerOpen && <div className={ui.modalOverlay} onClick={closePicker}>
-      <div className={`${ui.card} ${s.picker}`} role="dialog" aria-modal="true" aria-labelledby="collection-picker-title" onClick={e => e.stopPropagation()}>
+      <div ref={pickerRef} className={`${ui.card} ${s.picker}`} role="dialog" aria-modal="true" aria-labelledby="collection-picker-title" onClick={e => e.stopPropagation()}>
         <div className={s.pickerHead}>
           <div><h2 id="collection-picker-title">Add products</h2><p>Search by name or SKU. Tick the products to include.</p></div>
           <button type="button" className={ui.iconBtn} onClick={closePicker} aria-label="Close"><X size={17} /></button>
         </div>
         <div className={s.pickerSearch}>
           <Search size={16} aria-hidden="true" />
-          <input autoFocus value={query} onChange={e => { setQuery(e.target.value); setPickerPage(1) }} placeholder="Search products…" aria-label="Search products" />
+          <input data-autofocus value={query} onChange={e => { setQuery(e.target.value); setPickerPage(1) }} placeholder="Search products…" aria-label="Search products" />
         </div>
         {pickerError && <div className={`${ui.alert} ${ui.alertDanger}`} role="alert">{pickerError}</div>}
         <div className={s.pickerList}>

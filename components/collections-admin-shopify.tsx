@@ -7,6 +7,7 @@ import styles from './admin-collections.module.css'
 import ui from './admin-ui.module.css'
 import { useToast } from './admin-toast'
 import { useConfirm } from './admin-confirm'
+import { useModalFocus } from './use-modal-focus'
 import { fetchRead } from '@/lib/retry-fetch'
 
 async function api(path: string, init?: RequestInit) {
@@ -50,6 +51,11 @@ export default function CollectionsAdminShopify({ initial }: { initial: Collecti
   const [selected, setSelected] = useState<string[]>([])
   const [bulkBusy, setBulkBusy] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
+  // Both dialogs are modal: focus moves in, Tab stays inside, Escape closes them and focus goes back to the opener.
+  const addRef = useRef<HTMLDivElement>(null)
+  const createRef = useRef<HTMLFormElement>(null)
+  useModalFocus(addRef, addOpen, () => setAddOpen(false))
+  useModalFocus(createRef, show, () => setShow(false))
   const [productQ, setProductQ] = useState('')
   const [productRows, setProductRows] = useState<any[]>([])
   const [productPick, setProductPick] = useState<string[]>([])
@@ -241,10 +247,10 @@ export default function CollectionsAdminShopify({ initial }: { initial: Collecti
       )}
 
       {addOpen && <div className={ui.modalOverlay} onClick={() => setAddOpen(false)}>
-        <div className={`${ui.card} ${styles.addDialog}`} role="dialog" aria-modal="true" aria-labelledby="add-products-title" onClick={e => e.stopPropagation()}>
+        <div ref={addRef} className={`${ui.card} ${styles.addDialog}`} role="dialog" aria-modal="true" aria-labelledby="add-products-title" onClick={e => e.stopPropagation()}>
           <h2 id="add-products-title">Add products to {selected.length} collection{selected.length === 1 ? '' : 's'}</h2>
           <p className={ui.muted}>Products already in a collection keep their place. New ones go to the end.</p>
-          <input className={ui.input} value={productQ} onChange={e => setProductQ(e.target.value)} placeholder="Search products" aria-label="Search products" autoFocus />
+          <input className={ui.input} value={productQ} onChange={e => setProductQ(e.target.value)} placeholder="Search products" aria-label="Search products" data-autofocus />
           {productError && <div className={`${ui.alert} ${ui.alertDanger}`} role="alert">{productError}</div>}
           <div className={styles.productPick}>
             {productRows.map(p => {
@@ -277,7 +283,7 @@ export default function CollectionsAdminShopify({ initial }: { initial: Collecti
                 <th>Status</th>
                 <th>Sales channel</th>
                 <th>Updated</th>
-                <th />
+                <th className={styles.actionsHead}><span className={styles.srOnly}>Actions</span></th>
               </tr>
             </thead>
             <tbody>
@@ -356,6 +362,10 @@ export default function CollectionsAdminShopify({ initial }: { initial: Collecti
       {show && (
         <div className={ui.modalOverlay} onClick={() => setShow(false)}>
           <form
+            ref={createRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-collection-title"
             className={ui.card}
             style={{ width: 'min(560px,94vw)', padding: 24 }}
             onClick={(event) => event.stopPropagation()}
@@ -363,7 +373,7 @@ export default function CollectionsAdminShopify({ initial }: { initial: Collecti
           >
             <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}>
               <div>
-                <h2 className={styles.modalTitle}>Create collection</h2>
+                <h2 id="create-collection-title" className={styles.modalTitle}>Create collection</h2>
                 <p className={ui.muted}>Set the collection identity now; products can be arranged from its editor.</p>
               </div>
               <button type="button" className={ui.iconBtn} onClick={() => setShow(false)} aria-label="Close">
@@ -372,7 +382,7 @@ export default function CollectionsAdminShopify({ initial }: { initial: Collecti
             </div>
             <label className={ui.fieldLabel}>
               Name
-              <input className={ui.input} required value={name} onChange={(event) => setName(event.target.value)} />
+              <input className={ui.input} required value={name} onChange={(event) => setName(event.target.value)} data-autofocus />
             </label>
             <label className={ui.fieldLabel}>
               Handle
