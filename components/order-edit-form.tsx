@@ -8,13 +8,14 @@ import { money } from '@/lib/config'
 import s from './admin-order-detail.module.css'
 import ui from './admin-ui.module.css'
 import { MoneyInput, NumInput } from './num-input'
+import { fetchRead } from '@/lib/retry-fetch'
 
 type Variant = { id: string; name: string; sku: string; price: number | null }
 type Product = { id: string; name: string; sku: string; basePrice: number; variants?: Variant[] }
 type Line = { orderItemId: string | null; productId: string; variantId: string | null; name: string; sku: string; quantity: number; unitPrice: number }
 
 async function api(path: string, init?: RequestInit) {
-  const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
+  const r = await fetchRead(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const d = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(d.error || 'Request failed')
   return d

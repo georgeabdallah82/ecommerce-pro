@@ -21,6 +21,7 @@ import type { Risk } from '@/lib/order-risk'
 import { useConfirm } from './admin-confirm'
 import AdminMenu from './admin-menu'
 import { safeHttpUrl } from '@/lib/safe-url'
+import { fetchRead } from '@/lib/retry-fetch'
 
 // Admin > Orders > one order. Top to bottom: the order number and where it stands, the progress
 // line, the one thing to do next, then the customer, what was bought and paid, and the parcels.
@@ -28,7 +29,7 @@ import { safeHttpUrl } from '@/lib/safe-url'
 // behind "Fix status by hand" in the menu. Every action calls the same routes as before.
 
 async function api(path: string, init?: RequestInit) {
-  const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
+  const r = await fetchRead(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const d = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(d.error || 'Request failed')
   return d

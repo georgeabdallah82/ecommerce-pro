@@ -17,6 +17,7 @@ import { priceProblem, productReadiness } from '@/lib/editor-readiness'
 import { channelsShowing, parseOptionValues, pricingSummary, tagsFromInput } from '@/lib/product-editor'
 import { money } from '@/lib/config'
 import { allowLeave, useLeaveGuard } from './use-leave-guard'
+import { fetchRead } from '@/lib/retry-fetch'
 
 const STATUS_LABEL: Record<string, string> = { ACTIVE: 'Active', DRAFT: 'Draft', ARCHIVED: 'Archived' }
 const STATUS_CLASS: Record<string, string> = { ACTIVE: 'statusPillSuccess', DRAFT: 'statusPillWarning', ARCHIVED: 'statusPillDanger' }
@@ -44,7 +45,7 @@ type CollectionOption = { id: string; name: string; isActive?: boolean }
 const tabs = ['General', 'Inventory', 'Variants', 'Shipping', 'Channels', 'Metafields', 'Search & SEO'] as const
 
 async function api(path: string, init?: RequestInit) {
-  const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
+  const r = await fetchRead(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const data = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(data.error || 'Request failed')
   return data

@@ -82,6 +82,7 @@ import { NumInput } from './num-input'
 import { siteHeaderSections } from '@/lib/site-header'
 import { humanize, readinessChecks, reviewThemeChanges, type ReadinessCheck, type ReviewGroup, type ReviewSnapshot } from '@/lib/theme-review'
 import { allowLeave, useLeaveGuard } from './use-leave-guard'
+import { fetchRead } from '@/lib/retry-fetch'
 
 // Deliberately not under /admin -- see app/theme-editor-preview/page.tsx's top comment.
 const PREVIEW_PATH = '/theme-editor-preview'
@@ -606,11 +607,11 @@ export default function ThemeStudio({ initial }: Props) {
 
   useEffect(() => {
     // Only the published posts, newest first, as sample content for the Blog preview.
-    fetch('/api/admin/blog-posts', { cache: 'no-store' }).then(r => (r.ok ? r.json() : [])).then(data => setBlogPosts(rows(data).filter((post: any) => post.status === 'PUBLISHED').slice(0, 6))).catch(() => {})
+    fetchRead('/api/admin/blog-posts', { cache: 'no-store' }).then(r => (r.ok ? r.json() : [])).then(data => setBlogPosts(rows(data).filter((post: any) => post.status === 'PUBLISHED').slice(0, 6))).catch(() => {})
   }, [])
 
   useEffect(() => {
-    fetch('/api/admin/pages', { cache: 'no-store' }).then(r => (r.ok ? r.json() : [])).then(data => setPages(rows(data))).catch(() => {})
+    fetchRead('/api/admin/pages', { cache: 'no-store' }).then(r => (r.ok ? r.json() : [])).then(data => setPages(rows(data))).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -625,14 +626,14 @@ export default function ThemeStudio({ initial }: Props) {
       const body = await r.json().catch(() => ({}))
       throw new Error(`${label} ${r.status}${body?.error ? ` ${body.error}` : ''}`)
     }
-    fetch('/api/admin/theme/preview-data', { cache: 'no-store' })
+    fetchRead('/api/admin/theme/preview-data', { cache: 'no-store' })
       .then(reason('preview data'))
       .then(data => ({ products: rows(data.products), collections: rows(data.collections) }))
       .catch(error => {
         reasons.push(error instanceof Error ? error.message : String(error))
         return Promise.all([
           fetch('/api/products', { cache: 'no-store' }).then(reason('products')),
-          fetch('/api/admin/collections?take=200', { cache: 'no-store' }).then(reason('collections')),
+          fetchRead('/api/admin/collections?take=200', { cache: 'no-store' }).then(reason('collections')),
         ]).then(([productData, collectionData]) => ({ products: rows(productData), collections: rows(collectionData).filter((collection: any) => collection.isActive !== false) }))
       })
       .then(({ products, collections }) => { setProducts(products); setCollections(collections); setDataError('') })
@@ -935,7 +936,7 @@ export default function ThemeStudio({ initial }: Props) {
     setReviewLoading(true)
     try {
       if (dirty && !(await save())) throw new Error('Your latest edits could not be saved, so there is nothing to review yet.')
-      const response = await fetch('/api/admin/theme/review', { cache: 'no-store' })
+      const response = await fetchRead('/api/admin/theme/review', { cache: 'no-store' })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data.error || 'Unable to check your changes')
       const labelFor = (type: string) => META[type] || humanize(type)
@@ -1046,7 +1047,7 @@ export default function ThemeStudio({ initial }: Props) {
   useEffect(() => {
     if (sideTab !== 'history' || versionsLoaded || versionsLoading || versionsError) return
     setVersionsLoading(true)
-    fetch('/api/admin/theme/versions', { cache: 'no-store' })
+    fetchRead('/api/admin/theme/versions', { cache: 'no-store' })
       .then(response => response.json())
       .then(data => { if (Array.isArray(data.versions)) { setVersions(data.versions); setVersionsLoaded(true) } else throw new Error(data.error || 'Unable to load theme history') })
       .catch(error => setVersionsError(error instanceof Error ? error.message : 'Unable to load theme history'))

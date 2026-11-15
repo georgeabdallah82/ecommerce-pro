@@ -15,6 +15,7 @@ import { REGION_CODES, countryName, deliveryCountries } from '@/lib/delivery-cou
 import { POLICY_DEFAULTS } from '@/lib/policy-defaults'
 import { CountrySelect, CountryMultiSelect, CurrencySelect, TimezoneSelect } from './field-selects'
 import { allowLeave, useLeaveGuard } from './use-leave-guard'
+import { fetchRead } from '@/lib/retry-fetch'
 
 const groups = [
   { key: 'General', label: 'General', icon: Store, desc: 'Store identity and regional defaults' },
@@ -714,7 +715,7 @@ function Toggle({ label, keyName, value, onChange }: { label: string; keyName: s
 }
 
 async function api(path: string, init?: RequestInit) {
-  const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
+  const r = await fetchRead(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const d = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(d.error || 'Request failed')
   return d

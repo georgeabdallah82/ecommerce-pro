@@ -9,6 +9,7 @@ import { AD_PLATFORMS, type ProfitReport as Report } from '@/lib/profit'
 import { useConfirm } from './admin-confirm'
 import ui from './admin-ui.module.css'
 import s from './admin-profit.module.css'
+import { fetchRead } from '@/lib/retry-fetch'
 
 type Spend = { id: string; date: string; platform: string; amount: number; currency: string; note: string | null }
 type ExpenseItem = { id: string; name: string; amount: number; currency: string; monthly: boolean; startsOn: string; endsOn: string | null }
@@ -16,7 +17,7 @@ type Data = { range: { since: string; until: string; days: number }; report: Rep
 type Preview = { rows: { line: number; date: string; platform: string; amount: number; replaces: number | null }[]; errors: { line: number; message: string }[]; dateOrder: 'dmy' | 'mdy'; total: number; currency: string }
 
 async function api(path: string, init?: RequestInit) {
-  const r = await fetch(path, { cache: 'no-store', ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
+  const r = await fetchRead(path, { cache: 'no-store', ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const d = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(d.error || 'Request failed')
   return d

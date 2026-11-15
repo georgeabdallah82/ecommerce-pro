@@ -5,6 +5,7 @@ import Link from '@/components/admin-link'
 import { ArrowLeft, Plus, RefreshCw, Search, UsersRound, X } from 'lucide-react'
 import styles from './admin-customer-segments.module.css'
 import ui from './admin-ui.module.css'
+import { fetchRead } from '@/lib/retry-fetch'
 
 type CustomerSegment = {
   id: string
@@ -41,7 +42,7 @@ function ruleConditionCount(ruleJson: string): number {
 }
 
 async function api(path: string, init?: RequestInit) {
-  const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
+  const r = await fetchRead(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const data = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(data.error || 'Request failed')
   return data

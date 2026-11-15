@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { NumInput } from './num-input'
 import { useI18n } from '@/components/lang-provider'
 import { dateLocale, markT } from '@/lib/i18n'
+import { fetchRead } from '@/lib/retry-fetch'
 
 type OrderItem = { id: string; name: string; quantity: number; remaining: number }
 type ReturnRequest = { id: string; status: string; reason: string; createdAt: string; items: { orderItemId: string; quantity: number }[] }
@@ -13,7 +14,7 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 async function api(path: string, init?: RequestInit) {
-  const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
+  const r = await fetchRead(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const data = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(data.error || 'Request failed')
   return data

@@ -7,6 +7,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import s from './admin-order-detail.module.css'
 import ui from './admin-ui.module.css'
 import { NumInput } from './num-input'
+import { fetchRead } from '@/lib/retry-fetch'
 
 type Variant = { id: string; name: string; sku: string }
 type Product = { id: string; name: string; sku: string; variants?: Variant[] }
@@ -14,7 +15,7 @@ type Location = { id: string; name: string; isDefault: boolean }
 type Line = { productId: string; variantId: string | null; name: string; sku: string; quantity: number }
 
 async function api(path: string, init?: RequestInit) {
-  const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
+  const r = await fetchRead(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const d = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(d.error || 'Request failed')
   return d

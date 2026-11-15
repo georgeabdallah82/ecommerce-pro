@@ -6,6 +6,7 @@ import { ClipboardList, Plus, RefreshCw, Search } from 'lucide-react'
 import { money } from '@/lib/config'
 import styles from './admin-draft-orders.module.css'
 import ui from './admin-ui.module.css'
+import { fetchRead } from '@/lib/retry-fetch'
 
 type DraftOrderItem = { id: string; quantity: number }
 type DraftOrder = { id: string; orderNumber: string; email: string; status: string; grandTotal: number; currency: string; updatedAt: string; items: DraftOrderItem[] }
@@ -14,7 +15,7 @@ const STATUSES = ['DRAFT', 'OPEN', 'COMPLETED', 'CANCELLED'] as const
 const STATUS_TONE: Record<string, string> = { DRAFT: '', OPEN: ui.statusPillWarning, COMPLETED: ui.statusPillSuccess, CANCELLED: ui.statusPillDanger }
 
 async function api(path: string, init?: RequestInit) {
-  const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
+  const r = await fetchRead(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const data = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(data.error || 'Request failed')
   return data

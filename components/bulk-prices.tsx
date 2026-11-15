@@ -9,6 +9,7 @@ import { useConfirm } from './admin-confirm'
 import { NumInput } from './num-input'
 import s from './bulk-prices.module.css'
 import ui from './admin-ui.module.css'
+import { fetchRead } from '@/lib/retry-fetch'
 
 type ScopeType = 'all' | 'collection' | 'supplier' | 'products'
 type Options = { last: { at: string; by: string; summary: string; count: number } | null; collections: Array<{ id: string; name: string; products: number }>; suppliers: Array<{ name: string; products: number }> }
@@ -21,7 +22,7 @@ const COMPARE_LABELS: Record<CompareAtRule, string> = { keep: 'Keep it as it is'
 const EXAMPLE_CENTS = 2000
 
 async function api(path: string, body?: unknown) {
-  const r = await fetch(path, body === undefined ? { cache: 'no-store' } : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+  const r = await fetchRead(path, body === undefined ? { cache: 'no-store' } : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
   const d = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(d.error || 'Request failed')
   return d

@@ -3,9 +3,10 @@ import { useState } from 'react'
 import { Code2, Plus, Trash2 } from 'lucide-react'
 import ui from './admin-ui.module.css'
 import { useConfirm } from './admin-confirm'
+import { fetchRead } from '@/lib/retry-fetch'
 
 type Definition={id:string;namespace:string;key:string;name:string;description?:string|null;type:string;ownerType:string;isList:boolean}
-async function api(path:string,init?:RequestInit){const r=await fetch(path,{...init,headers:{'content-type':'application/json',...(init?.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Request failed');return d}
+async function api(path:string,init?:RequestInit){const r=await fetchRead(path,{...init,headers:{'content-type':'application/json',...(init?.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Request failed');return d}
 
 export default function MetafieldsAdmin({initial}:{initial:Definition[]}){
   const confirm = useConfirm()

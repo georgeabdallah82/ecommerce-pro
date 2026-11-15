@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { Megaphone, X } from 'lucide-react'
 import s from './team-notices.module.css'
+import { fetchRead } from '@/lib/retry-fetch'
 
 // The team notice board at the top of every admin page (lib/team-notices.ts). "Got it" hides a notice on
 // this device only; it comes back on other devices until they tap it too, or until it expires.
@@ -36,7 +37,7 @@ export default function TeamNotices({ notices: initial }: { notices: ShownNotice
     if (!force && Date.now() - lastFetch.current < MIN_GAP_MS) return
     lastFetch.current = Date.now()
     try {
-      const response = await fetch('/api/admin/notices', { cache: 'no-store', credentials: 'same-origin' })
+      const response = await fetchRead('/api/admin/notices', { cache: 'no-store', credentials: 'same-origin' })
       if (!response.ok) return
       const data = await response.json().catch(() => null)
       if (Array.isArray(data?.notices)) setNotices(data.notices)

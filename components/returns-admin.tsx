@@ -7,6 +7,7 @@ import { money } from '@/lib/config'
 import styles from './admin-returns.module.css'
 import ui from './admin-ui.module.css'
 import { NumInput } from './num-input'
+import { fetchRead } from '@/lib/retry-fetch'
 
 type ReturnItem = { id: string; orderItemId: string; productId: string; variantId: string | null; quantity: number; condition: string | null }
 type OrderSummary = { id: string; orderNumber: string; email: string; grandTotal: number; currency: string; status: string; items?: { id: string; name: string }[] } | null
@@ -33,7 +34,7 @@ const CONDITION_OPTIONS: { value: string; label: string }[] = [
 const CONDITION_LABELS: Record<string, string> = Object.fromEntries(CONDITION_OPTIONS.filter(o => o.value).map(o => [o.value, o.label]))
 
 async function api(path: string, init?: RequestInit) {
-  const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
+  const r = await fetchRead(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const data = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(data.error || 'Request failed')
   return data

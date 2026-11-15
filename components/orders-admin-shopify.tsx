@@ -14,6 +14,7 @@ import { runReauthed, useReauth } from './admin-reauth'
 import { useModalFocus } from './use-modal-focus'
 import styles from './admin-orders-board.module.css'
 import ui from './admin-ui.module.css'
+import { fetchRead } from '@/lib/retry-fetch'
 
 // Admin > Orders. Each order is a card that says, in plain words, where it is ("New", "Out for
 // delivery"), what it is waiting for, and has one button for that next step. Everything else
@@ -24,7 +25,7 @@ type Modal = { type: 'refund' | 'tracking'; order: Order } | null
 type Initial = { rows: Order[]; total: number; page: number; pageSize: number; pages: number; counts?: Record<string, number> }
 
 async function api(path: string, init?: RequestInit) {
-  const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
+  const r = await fetchRead(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const data = await r.json().catch(() => ({}))
   if (!r.ok) {
     // `code` tells the screen when the server wants the person to confirm it is them (REAUTH_REQUIRED).

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Download, X } from 'lucide-react'
 import styles from './spreadsheet-import.module.css'
 import ui from './admin-ui.module.css'
+import { fetchRead } from '@/lib/retry-fetch'
 
 type Scope = 'all' | 'view' | 'selected' | 'collection'
 
@@ -16,7 +17,7 @@ export default function ProductExportDialog({ onClose, total, selectedIds, statu
   const [collectionId, setCollectionId] = useState('')
 
   useEffect(() => {
-    fetch('/api/admin/collections?take=200', { cache: 'no-store' }).then(r => (r.ok ? r.json() : { rows: [] })).then(data => { const list = Array.isArray(data?.rows) ? data.rows : []; setCollections(list); setCollectionId(list[0]?.id || '') }).catch(() => undefined)
+    fetchRead('/api/admin/collections?take=200', { cache: 'no-store' }).then(r => (r.ok ? r.json() : { rows: [] })).then(data => { const list = Array.isArray(data?.rows) ? data.rows : []; setCollections(list); setCollectionId(list[0]?.id || '') }).catch(() => undefined)
   }, [])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }

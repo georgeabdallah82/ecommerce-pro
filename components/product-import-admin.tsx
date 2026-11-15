@@ -7,9 +7,10 @@ import { ArrowLeft, Check, Copy, Download, Link2, MousePointerClick } from 'luci
 import ui from './admin-ui.module.css'
 import s from './admin-product-import.module.css'
 import { markedUpPrice, normalizeImport, type ImportedProduct } from '@/lib/product-import'
+import { fetchRead } from '@/lib/retry-fetch'
 
 async function api(path: string, init?: RequestInit) {
-  const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
+  const r = await fetchRead(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const d = await r.json().catch(() => ({}))
   if (!r.ok) throw Object.assign(new Error(d.error || 'Request failed'), { data: d })
   return d

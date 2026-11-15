@@ -10,6 +10,7 @@ import s from './admin-order-detail.module.css'
 import ui from './admin-ui.module.css'
 import { CountrySelect } from './field-selects'
 import { useConfirm } from './admin-confirm'
+import { fetchRead } from '@/lib/retry-fetch'
 
 type DraftOrderItem = { id: string; name: string; sku: string; quantity: number; unitPrice: number; totalPrice: number }
 type DraftOrder = {
@@ -33,7 +34,7 @@ function addressText(raw: string | null | undefined) {
 }
 
 async function api(path: string, init?: RequestInit) {
-  const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
+  const r = await fetchRead(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const data = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(data.error || 'Request failed')
   return data

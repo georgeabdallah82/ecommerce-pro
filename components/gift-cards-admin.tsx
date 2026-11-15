@@ -7,6 +7,7 @@ import styles from './admin-gift-cards.module.css'
 import ui from './admin-ui.module.css'
 import { CurrencySelect } from './field-selects'
 import { useConfirm } from './admin-confirm'
+import { fetchRead } from '@/lib/retry-fetch'
 
 type GiftCard = {
   id: string
@@ -27,7 +28,7 @@ const STATUS_TONE: Record<string, string> = { ACTIVE: ui.statusPillSuccess, DISA
 const STATUSES = ['ACTIVE', 'DISABLED', 'EXPIRED'] as const
 
 async function api(path: string, init?: RequestInit) {
-  const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
+  const r = await fetchRead(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const data = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(data.error || 'Request failed')
   return data

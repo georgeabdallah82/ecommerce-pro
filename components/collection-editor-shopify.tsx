@@ -14,6 +14,7 @@ import { useConfirm } from './admin-confirm'
 import { ReadinessPanel } from './admin-readiness'
 import { useLeaveGuard } from './use-leave-guard'
 import { useModalFocus } from './use-modal-focus'
+import { fetchRead } from '@/lib/retry-fetch'
 
 type Product = { id: string; name: string; slug: string; sku?: string | null; status: string; basePrice: number; images?: { url: string }[] }
 type Collection = { id: string; name: string; slug: string; description?: string | null; imageUrl?: string | null; isActive: boolean; products: { product: Product }[]; seoTitle?: string | null; seoDescription?: string | null }
@@ -22,7 +23,7 @@ const PAGE_SIZE = 24
 const STATUS_WORD: Record<string, string> = { ACTIVE: 'Active', DRAFT: 'Draft', ARCHIVED: 'Archived' }
 
 async function api(path: string, init?: RequestInit) {
-  const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
+  const r = await fetchRead(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const data = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(data.error || `Request failed (${r.status})`)
   return data
