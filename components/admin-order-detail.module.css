@@ -100,3 +100,7 @@
 .phoneWarning svg { flex: none; margin-top: 2px; color: var(--admin-warning); }
 .whatsappChoices { display: flex; flex-wrap: wrap; gap: 8px; }
 .whatsappChoices button[aria-pressed="true"] { border-color: #25d366; box-shadow: 0 0 0 2px rgba(37, 211, 102, .25); }
+
+/* Section headings on the new transfer and purchase order forms: level 2 under the page's h1 (they were h3s, a level
+   skipped), drawn as before. */
+.formSectionTitle { font-size: 1.17em; line-height: 1.5; margin: 1em 0; }

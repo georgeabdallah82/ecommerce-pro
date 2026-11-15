@@ -79,9 +79,9 @@ export default function InventoryTransferForm({ products, locations }: { product
       {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
 
       <div className={s.grid}>
-        <main className={s.main}>
+        {/* Not a <main>: the admin layout\'s <main> already holds the page. */}<div className={s.main}>
           <section className={ui.card} style={{ padding: 20 }}>
-            <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Locations</h3></div>
+            <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h2 className={s.formSectionTitle}>Locations</h2></div>
             <div className={ui.twoCol}>
               <label className={ui.fieldLabel}>From location<select className={ui.select} value={fromLocationId} onChange={e => setFromLocationId(e.target.value)}><option value="">Unassigned</option>{locations.map(l => <option key={l.id} value={l.id}>{l.name}{l.isDefault ? ' (default)' : ''}</option>)}</select></label>
               <label className={ui.fieldLabel}>To location<select className={ui.select} value={toLocationId} onChange={e => setToLocationId(e.target.value)}><option value="">Unassigned</option>{locations.map(l => <option key={l.id} value={l.id}>{l.name}{l.isDefault ? ' (default)' : ''}</option>)}</select></label>
@@ -89,7 +89,7 @@ export default function InventoryTransferForm({ products, locations }: { product
           </section>
 
           <section className={ui.card} style={{ padding: 20 }}>
-            <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Items</h3></div>
+            <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h2 className={s.formSectionTitle}>Items</h2></div>
             <div className={ui.twoCol}>
               <label className={ui.fieldLabel}>Product<select className={ui.select} value={productId} onChange={e => { setProductId(e.target.value); setVariantId('') }}><option value="">Select product</option>{products.map(p => <option key={p.id} value={p.id}>{p.name} — {p.sku}</option>)}</select></label>
               <label className={ui.fieldLabel}>Variant<select className={ui.select} value={variantId} disabled={!variants.length} onChange={e => setVariantId(e.target.value)}><option value="">Default / shared stock</option>{variants.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}</select></label>
@@ -100,7 +100,7 @@ export default function InventoryTransferForm({ products, locations }: { product
             </div>
             <div className={ui.tableWrap} style={{ marginTop: 14 }}>
               <table className={ui.table}>
-                <thead><tr><th>Item</th><th>SKU</th><th>Qty</th><th /></tr></thead>
+                <thead><tr><th>Item</th><th>SKU</th><th>Qty</th><th style={{ position: 'relative' }}><span className={ui.srOnly}>Actions</span></th></tr></thead>
                 <tbody>
                   {lines.map((l, i) => (
                     <tr key={`${l.productId}:${l.variantId || ''}`}>
@@ -117,14 +117,14 @@ export default function InventoryTransferForm({ products, locations }: { product
           </section>
 
           <section className={ui.card} style={{ padding: 20 }}>
-            <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Notes</h3></div>
+            <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h2 className={s.formSectionTitle}>Notes</h2></div>
             <textarea className={ui.textarea} rows={4} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional note for this transfer…" />
           </section>
-        </main>
+        </div>
 
         <aside className={s.rail}>
           <section className={ui.card} style={{ padding: 20 }}>
-            <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Summary</h3></div>
+            <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h2 className={s.formSectionTitle}>Summary</h2></div>
             <div className={s.summaryLine}><span>Items</span><strong>{lines.length}</strong></div>
             <div className={`${s.summaryLine} ${s.summaryLineTotal}`}><span>Total units</span><strong>{lines.reduce((sum, l) => sum + l.quantity, 0)}</strong></div>
             <button className={`${ui.btn} ${ui.btnWide}`} disabled={saving || !lines.length} onClick={create} style={{ marginTop: 14 }}>{saving ? 'Creating…' : 'Create transfer'}</button>

@@ -89,9 +89,9 @@ export default function PurchaseOrderDetail({ initial, canManage }: { initial: a
       {!po.location && !isTerminal && <div className={`${ui.alert} ${ui.alertDanger}`}>This purchase order has no receiving location. Set one before it can be marked received.</div>}
 
       <div className={styles.detailGrid}>
-        <main className={styles.detailMain}>
+        {/* Not a <main>: the admin layout\'s <main> already holds the page. */}<div className={styles.detailMain}>
           <section className={ui.card} style={{ padding: 20 }}>
-            <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Items</h3><span className={ui.muted}>{po.items.length} items</span></div>
+            <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h2 className={styles.formSectionTitle}>Items</h2><span className={ui.muted}>{po.items.length} items</span></div>
             <div className={styles.itemRow + ' ' + styles.itemHead}>
               <span>Product</span><span>Ordered</span><span>Received</span><span>Unit cost</span><span>Total</span><span>{!isTerminal ? 'Receive now' : ''}</span>
             </div>
@@ -130,22 +130,22 @@ export default function PurchaseOrderDetail({ initial, canManage }: { initial: a
 
           {po.notes && (
             <section className={ui.card} style={{ padding: 20 }}>
-              <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Notes</h3></div>
+              <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h2 className={styles.formSectionTitle}>Notes</h2></div>
               <p>{po.notes}</p>
             </section>
           )}
-        </main>
+        </div>
 
         <aside className={styles.detailRail}>
           <section className={ui.card} style={{ padding: 20 }}>
-            <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Details</h3></div>
+            <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h2 className={styles.formSectionTitle}>Details</h2></div>
             <div className={ui.summaryLine}><span>Supplier</span><strong>{po.supplierName || '—'}</strong></div>
             <div className={ui.summaryLine}><span>Location</span><strong>{po.location?.name || 'Unassigned'}</strong></div>
             <div className={ui.summaryLine}><span>Currency</span><strong>{po.currency}</strong></div>
             <div className={`${ui.summaryLine} ${ui.summaryLineTotal}`}><span>Total cost</span><strong>{money(po.totalCost, po.currency)}</strong></div>
           </section>
           <section className={ui.card} style={{ padding: 20 }}>
-            <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Timeline</h3></div>
+            <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h2 className={styles.formSectionTitle}>Timeline</h2></div>
             <div className={ui.summaryLine}><span>Created</span><strong>{new Date(po.createdAt).toLocaleDateString()}</strong></div>
             {po.orderedAt && <div className={ui.summaryLine}><span>Ordered</span><strong>{new Date(po.orderedAt).toLocaleDateString()}</strong></div>}
             {po.receivedAt && <div className={ui.summaryLine}><span>Received</span><strong>{new Date(po.receivedAt).toLocaleDateString()}</strong></div>}
