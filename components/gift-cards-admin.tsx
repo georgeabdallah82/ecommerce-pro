@@ -7,6 +7,7 @@ import styles from './admin-gift-cards.module.css'
 import ui from './admin-ui.module.css'
 import { CurrencySelect } from './field-selects'
 import { useConfirm } from './admin-confirm'
+import { useModalFocus } from './use-modal-focus'
 import { fetchRead } from '@/lib/retry-fetch'
 
 type GiftCard = {
@@ -119,6 +120,11 @@ export default function GiftCardsAdmin({ initial, canManage, defaultCurrency }: 
     setManageCard(card); setAdjustAmount(''); setManageNote(card.note || ''); setManageExpiresAt(card.expiresAt ? card.expiresAt.slice(0, 10) : ''); setManageError('')
   }
   function closeManage() { setManageCard(null) }
+  // Both gift card dialogs are modal: focus moves in, Tab stays inside, Escape closes them.
+  const createRef = useRef<HTMLDivElement>(null)
+  const manageRef = useRef<HTMLDivElement>(null)
+  useModalFocus(createRef, createOpen, closeCreate)
+  useModalFocus(manageRef, !!manageCard, closeManage)
 
   function applyUpdate(id: string, giftCard: GiftCard) {
     setRows(current => current.map(c => (c.id === id ? giftCard : c)))
@@ -177,16 +183,16 @@ export default function GiftCardsAdmin({ initial, canManage, defaultCurrency }: 
 
     <div className={`${ui.card} ${styles.toolbar}`}>
       <div className={styles.search}><Search size={15} /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search by code or last 4 digits…" /></div>
-      <select className={`${ui.select} ${ui.selectCompact}`} value={status} onChange={e => setStatus(e.target.value)}>
+      <select className={`${ui.select} ${ui.selectCompact}`} aria-label="Gift card status" value={status} onChange={e => setStatus(e.target.value)}>
         <option value="ALL">All statuses</option>
         {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
       </select>
     </div>
 
     <div className={ui.card}>
-      <div className={ui.tableWrap}>
+      <div className={ui.tableWrap} tabIndex={0} role="region" aria-label="Gift cards">
         <table className={ui.table}>
-          <thead><tr><th>Code</th><th>Balance</th><th>Status</th><th>Created</th><th>Expires</th><th></th></tr></thead>
+          <thead><tr><th>Code</th><th>Balance</th><th>Status</th><th>Created</th><th>Expires</th><th style={{ position: 'relative' }}><span className={ui.srOnly}>Actions</span></th></tr></thead>
           <tbody>
             {shown.map(card => <tr key={card.id}>
               <td><strong>{card.code}</strong><div className={ui.muted}>•••• {card.last4}</div></td>
@@ -199,19 +205,19 @@ export default function GiftCardsAdmin({ initial, canManage, defaultCurrency }: 
           </tbody>
         </table>
       </div>
-      {!shown.length && <div className={ui.empty}><CreditCard size={28} /><h3>No gift cards found</h3><p className={ui.muted}>{canManage ? 'Issue a gift card to see it here.' : 'Gift cards issued by staff will show up here.'}</p></div>}
+      {!shown.length && <div className={ui.empty}><CreditCard size={28} /><h2>No gift cards found</h2><p className={ui.muted}>{canManage ? 'Issue a gift card to see it here.' : 'Gift cards issued by staff will show up here.'}</p></div>}
     </div>
 
     {createOpen && <div className={ui.modalOverlay} onClick={closeCreate}>
-      <div className={`${ui.card} ${styles.modal}`} onClick={e => e.stopPropagation()}>
+      <div ref={createRef} role="dialog" aria-modal="true" aria-labelledby="gift-card-create-title" className={`${ui.card} ${styles.modal}`} onClick={e => e.stopPropagation()}>
         <div className={styles.modalHead}>
-          <div><span className={`${ui.muted} ${ui.tiny}`}>NEW GIFT CARD</span><h2>Issue a gift card</h2><p className={ui.muted}>A code is generated automatically unless you provide one.</p></div>
+          <div><span className={`${ui.muted} ${ui.tiny}`}>NEW GIFT CARD</span><h2 id="gift-card-create-title">Issue a gift card</h2><p className={ui.muted}>A code is generated automatically unless you provide one.</p></div>
           <button className={ui.iconBtn} onClick={closeCreate}><X size={17} /></button>
         </div>
         <div className={styles.modalBody}>
           {createError && <div className={`${ui.alert} ${ui.alertDanger}`}>{createError}</div>}
           <div className={ui.twoCol}>
-            <label className={ui.fieldLabel}>Initial balance<input className={ui.input} type="number" min="0" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="50.00" autoFocus /></label>
+            <label className={ui.fieldLabel}>Initial balance<input className={ui.input} type="number" min="0" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="50.00" data-autofocus /></label>
             <label className={ui.fieldLabel}>Currency<CurrencySelect className={ui.select} value={currency} onChange={setCurrency} placeholder={`Store currency (${defaultCurrency})`} /></label>
           </div>
           <div className={ui.twoCol}>
@@ -229,9 +235,9 @@ export default function GiftCardsAdmin({ initial, canManage, defaultCurrency }: 
     </div>}
 
     {manageCard && <div className={ui.modalOverlay} onClick={closeManage}>
-      <div className={`${ui.card} ${styles.modal}`} onClick={e => e.stopPropagation()}>
+      <div ref={manageRef} role="dialog" aria-modal="true" aria-labelledby="gift-card-manage-title" className={`${ui.card} ${styles.modal}`} onClick={e => e.stopPropagation()}>
         <div className={styles.modalHead}>
-          <div><span className={`${ui.muted} ${ui.tiny}`}>GIFT CARD</span><h2>{manageCard.code}</h2><p className={ui.muted}>{money(manageCard.balance, manageCard.currency)} available of {money(manageCard.initialAmount, manageCard.currency)}</p></div>
+          <div><span className={`${ui.muted} ${ui.tiny}`}>GIFT CARD</span><h2 id="gift-card-manage-title">{manageCard.code}</h2><p className={ui.muted}>{money(manageCard.balance, manageCard.currency)} available of {money(manageCard.initialAmount, manageCard.currency)}</p></div>
           <button className={ui.iconBtn} onClick={closeManage}><X size={17} /></button>
         </div>
         <div className={styles.modalBody}>
