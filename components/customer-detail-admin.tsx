@@ -206,7 +206,8 @@ export default function CustomerDetailAdmin({ initial }: { initial: any }) {
     </div>
 
     <div className={s.workspace}>
-      <main className={s.main}>
+      {/* Not a <main>: the admin layout's <main> already holds the page. */}
+      <div className={s.main}>
         <Card title="Customer information" sub="Contact details used across orders and account communications.">
           <div className={s.twoCol}>
             <label className={s.field}>Full name<input className={ui.input} value={customer.name} onChange={e => updateProfile({ name: e.target.value })}/></label>
@@ -231,7 +232,7 @@ export default function CustomerDetailAdmin({ initial }: { initial: any }) {
             {!(customer.segments || []).length && <span className={ui.muted}>No segments assigned.</span>}
           </div>
           <div className={s.addRow}>
-            <select className={`${ui.select} ${s.addRowField}`} value={segmentId} onChange={e => setSegmentId(e.target.value)}><option value="">Add to a segment…</option>{availableSegments.map((seg: any) => <option value={seg.id} key={seg.id}>{seg.name}</option>)}</select>
+            <select className={`${ui.select} ${s.addRowField}`} aria-label="Segment to add this customer to" value={segmentId} onChange={e => setSegmentId(e.target.value)}><option value="">Add to a segment…</option>{availableSegments.map((seg: any) => <option value={seg.id} key={seg.id}>{seg.name}</option>)}</select>
             <button className={`${ui.btn} ${ui.btnSecondary}`} onClick={addSegment} disabled={!segmentId}><UsersRound size={15}/> Add segment</button>
           </div>
           <Link href="/admin/customer-segments" className={s.link}>Manage segments</Link>
@@ -252,7 +253,7 @@ export default function CustomerDetailAdmin({ initial }: { initial: any }) {
             <span className={r.approved ? s.pillApproved : s.pillPending}>{r.approved ? 'Approved' : 'Pending approval'}</span>
           </div>)}
         </Card>
-      </main>
+      </div>
 
       <aside className={s.rail}>
         <Card title="Wallet" sub="Store credit balance with a protected ledger." icon={<CreditCard size={18}/>}>
