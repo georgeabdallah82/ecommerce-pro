@@ -70,9 +70,9 @@ export default function InventoryTransferDetail({ initial, canManage }: { initia
       {(!transfer.fromLocation || !transfer.toLocation) && !isTerminal && <div className={`${ui.alert} ${ui.alertDanger}`}>This transfer is missing a {!transfer.fromLocation ? 'source' : 'destination'} location, required before it can be shipped.</div>}
 
       <div className={styles.detailGrid}>
-        <main className={styles.detailMain}>
+        {/* Not a <main>: the admin layout\'s <main> already holds the page. */}<div className={styles.detailMain}>
           <section className={ui.card} style={{ padding: 20 }}>
-            <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Items</h3><span className={ui.muted}>{transfer.items.length} items</span></div>
+            <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h2 className={styles.formSectionTitle}>Items</h2><span className={ui.muted}>{transfer.items.length} items</span></div>
             <div className={styles.itemRow + ' ' + styles.itemHead}>
               <span>Product</span><span>Qty</span><span>Received</span>
             </div>
@@ -91,15 +91,15 @@ export default function InventoryTransferDetail({ initial, canManage }: { initia
 
           {transfer.notes && (
             <section className={ui.card} style={{ padding: 20 }}>
-              <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Notes</h3></div>
+              <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h2 className={styles.formSectionTitle}>Notes</h2></div>
               <p>{transfer.notes}</p>
             </section>
           )}
-        </main>
+        </div>
 
         <aside className={styles.detailRail}>
           <section className={ui.card} style={{ padding: 20 }}>
-            <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Route</h3></div>
+            <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h2 className={styles.formSectionTitle}>Route</h2></div>
             <div className={styles.route} style={{ fontSize: 15, marginBottom: 6 }}>
               <strong>{transfer.fromLocation?.name || 'Unassigned'}</strong>
               <ArrowRight size={14} />
@@ -107,7 +107,7 @@ export default function InventoryTransferDetail({ initial, canManage }: { initia
             </div>
           </section>
           <section className={ui.card} style={{ padding: 20 }}>
-            <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h3>Timeline</h3></div>
+            <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><h2 className={styles.formSectionTitle}>Timeline</h2></div>
             <div className={ui.summaryLine}><span>Created</span><strong>{new Date(transfer.createdAt).toLocaleDateString()}</strong></div>
             {transfer.shippedAt && <div className={ui.summaryLine}><span>Shipped</span><strong>{new Date(transfer.shippedAt).toLocaleDateString()}</strong></div>}
             {transfer.receivedAt && <div className={ui.summaryLine}><span>Received</span><strong>{new Date(transfer.receivedAt).toLocaleDateString()}</strong></div>}

@@ -63,3 +63,6 @@
   .title { font-size: 32px; }
   .views { width: 100%; }
 }
+
+/* Section headings on the detail page: level 2 under the page's h1 (they were h3s, a level skipped), drawn as before. */
+.formSectionTitle { font-size: 1.17em; line-height: 1.5; margin: 1em 0; }

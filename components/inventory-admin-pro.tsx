@@ -1,10 +1,11 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { AlertTriangle, Boxes, Check, ChevronDown, History, MapPin, Minus, Plus, Search, SlidersHorizontal, X } from 'lucide-react'
 import ui from './admin-ui.module.css'
 import s from './admin-inventory.module.css'
 import { fetchRead } from '@/lib/retry-fetch'
+import { useModalFocus } from './use-modal-focus'
 
 async function api(path: string, init?: RequestInit) {
   const r = await fetchRead(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
@@ -87,6 +88,9 @@ export default function InventoryAdminPro({ initial, locations: locationOptions,
     setNotice('')
   }
   function closeDrawer() { if (!busy) setSelected(null) }
+  // The edit drawer is a modal dialog: focus moves in, Tab stays inside, Escape closes it and focus goes back to the row.
+  const drawerRef = useRef<HTMLElement>(null)
+  useModalFocus(drawerRef, !!selected, closeDrawer)
 
   async function saveAdjustment() {
     if (!selected) return
@@ -165,7 +169,7 @@ export default function InventoryAdminPro({ initial, locations: locationOptions,
     </div>
 
     {selected && <div className={s.drawerOverlay} onMouseDown={closeDrawer}>
-      <aside className={s.drawer} role="dialog" aria-modal="true" aria-label={`Edit inventory for ${selected.product?.name || 'product'}`} onMouseDown={e => e.stopPropagation()}>
+      <aside ref={drawerRef} className={s.drawer} role="dialog" aria-modal="true" aria-label={`Edit inventory for ${selected.product?.name || 'product'}`} onMouseDown={e => e.stopPropagation()}>
         <div className={s.drawerHeader}><div><span className={`${ui.muted} ${ui.tiny}`}>INVENTORY</span><h2>{selected.product?.name || 'Product'}</h2><p className={ui.muted}>{selected.variant?.name || selected.product?.sku || 'Default'} · {selected.location?.name || 'Unassigned'}</p></div><button type="button" className={s.drawerClose} onClick={closeDrawer} disabled={busy} aria-label="Close inventory drawer"><X size={18}/></button></div>
         <div className={s.drawerStats}><div><span>On hand</span><strong>{current?.quantity}</strong></div><div><span>Reserved</span><strong>{current?.reserved}</strong></div><div><span>Available</span><strong>{current?.available}</strong></div></div>
         <div className={s.drawerStatus}><span className={`${ui.statusPill} ${selectedStatus?.tone === 'success' ? ui.statusPillSuccess : selectedStatus?.tone === 'warning' ? ui.statusPillWarning : ui.statusPillDanger}`}>{selectedStatus?.tone === 'success' ? <Check size={12}/> : <AlertTriangle size={12}/>} {selectedStatus?.label}</span><span className={ui.muted}>Threshold {selected.lowStockThreshold ?? 5}</span></div>
