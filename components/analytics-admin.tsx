@@ -7,6 +7,7 @@ import styles from './admin-analytics.module.css'
 import ui from './admin-ui.module.css'
 import { LineChart, Sparkline } from './analytics-charts'
 import ProfitReport from './profit-report'
+import { fetchRead } from '@/lib/retry-fetch'
 
 type Analytics = {
   periodDays: number
@@ -73,7 +74,7 @@ function downloadCsv(filename: string, headers: string[], rows: (string | number
 }
 
 async function api(path: string) {
-  const r = await fetch(path, { cache: 'no-store' })
+  const r = await fetchRead(path, { cache: 'no-store' })
   const data = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(data.error || 'Request failed')
   return data

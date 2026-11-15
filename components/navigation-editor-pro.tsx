@@ -12,6 +12,7 @@ import ui from './admin-ui.module.css'
 import MediaPicker from './media-picker'
 import ThemePublishBar from './theme-publish-bar'
 import { useLeaveGuard } from './use-leave-guard'
+import { fetchRead } from '@/lib/retry-fetch'
 
 type Collection = { id: string; name: string; slug: string }
 // grouped: the store design shows dropdown links by heading with pictures as tiles (false for the
@@ -155,7 +156,7 @@ export default function NavigationEditorPro({ initial, collections, pages = [], 
       const current = items
         .filter(x => !(isPicture(x) && !x.imageUrl))
         .map(x => (x.label.trim() ? x : { ...x, label: 'Untitled' }))
-      const theme = await (await fetch('/api/admin/theme', { cache: 'no-store' })).json()
+      const theme = await (await fetchRead('/api/admin/theme', { cache: 'no-store' })).json()
       if (theme?.error) throw new Error(theme.error)
       const response = await fetch('/api/admin/theme', {
         method: 'PATCH',

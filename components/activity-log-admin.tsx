@@ -6,6 +6,7 @@ import { Check, ChevronDown, ChevronRight, Copy, History, Search, X } from 'luci
 import { addCalendarDays, formatAdminDateTime, zonedDayKey } from '@/lib/admin-datetime'
 import styles from './admin-activity.module.css'
 import ui from './admin-ui.module.css'
+import { fetchRead } from '@/lib/retry-fetch'
 
 type Actor = { id: string; name: string; email: string }
 type Row = {
@@ -28,7 +29,7 @@ const PRESETS: { value: Preset; label: string }[] = [
 ]
 
 async function api(path: string) {
-  const res = await fetch(path, { headers: { 'content-type': 'application/json' } })
+  const res = await fetchRead(path, { headers: { 'content-type': 'application/json' } })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.error || 'Request failed')
   return data

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Check, Copy, Download, KeyRound, ShieldCheck, Smartphone } from 'lucide-react'
 import styles from './admin-settings-center.module.css'
 import ui from './admin-ui.module.css'
+import { fetchRead } from '@/lib/retry-fetch'
 
 type Status = { enabled: boolean; enabledAt?: string | null; backupLeft: number }
 type Setup = { secret: string; uri: string; account: string; issuer: string }
@@ -11,7 +12,7 @@ type Setup = { secret: string; uri: string; account: string; issuer: string }
 const AUTHENTICATOR_APP = 'https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2'
 
 async function api(path: string, body?: unknown) {
-  const r = await fetch(path, body === undefined ? { cache: 'no-store' } : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+  const r = await fetchRead(path, body === undefined ? { cache: 'no-store' } : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
   const d = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(d.error || 'Request failed')
   return d

@@ -7,6 +7,7 @@ import { RefreshCw, ShoppingCart, Users, CreditCard, Smartphone, Monitor, Tablet
 import type { LiveReport, OnlineRow, TodayReport } from '@/lib/visitor-report'
 import { STAGE_LABELS, type Stage } from '@/lib/visitor-tracking'
 import s from './visitors-live.module.css'
+import { fetchRead } from '@/lib/retry-fetch'
 
 // Leaflet reads `window` as soon as it is imported: load the map only in the browser.
 const VisitorsMap = dynamic(() => import('./visitors-map'), { ssr: false, loading: () => <div className={s.mapLoading}>Loading the map…</div> })
@@ -78,7 +79,7 @@ export default function VisitorsLive({ initialLive, initialToday }: { initialLiv
   const lastToday = useRef(Date.now())
 
   const load = useCallback(async (scope: 'live' | 'today') => {
-    const response = await fetch(`/api/admin/visitors?scope=${scope}`, { cache: 'no-store' })
+    const response = await fetchRead(`/api/admin/visitors?scope=${scope}`, { cache: 'no-store' })
     const data = await response.json().catch(() => null)
     if (!response.ok) throw new Error(data?.error || 'Unable to load visitors')
     if (scope === 'live') setLive(data as LiveReport)

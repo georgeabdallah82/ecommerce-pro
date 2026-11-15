@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Bell, BellOff, Send } from 'lucide-react'
 import { sameApplicationServerKey, urlBase64ToUint8Array } from '@/lib/push-opt-in'
 import ui from './admin-ui.module.css'
+import { fetchRead } from '@/lib/retry-fetch'
 
 // This browser's own push subscription, if it has one.
 async function currentSubscription() {
@@ -26,7 +27,7 @@ export default function OrderAlerts({ vapidPublicKey }: { vapidPublicKey?: strin
         // while this device got nothing.
         const subscription = await currentSubscription()
         if (!subscription || Notification.permission !== 'granted') { if (!cancelled) setState('disabled'); return }
-        const statusResponse = await fetch(`/api/admin/notifications/push?endpoint=${encodeURIComponent(subscription.endpoint)}`, { cache: 'no-store' })
+        const statusResponse = await fetchRead(`/api/admin/notifications/push?endpoint=${encodeURIComponent(subscription.endpoint)}`, { cache: 'no-store' })
         const status = await statusResponse.json().catch(() => ({}))
         if (!statusResponse.ok) throw new Error(status.error || 'Unable to check push subscription')
         if (!cancelled) setState(status.subscribed ? 'enabled' : 'disabled')

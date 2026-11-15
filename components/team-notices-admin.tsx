@@ -5,11 +5,12 @@ import { Bell, Megaphone, Trash2 } from 'lucide-react'
 import { DEFAULT_KEEP, KEEP_CHOICES, MAX_ACTIVE, MAX_NOTICE_TEXT, isActive, noticeAge, type KeepChoice, type Notice } from '@/lib/team-notices'
 import s from './team-notices-admin.module.css'
 import ui from './admin-ui.module.css'
+import { fetchRead } from '@/lib/retry-fetch'
 
 // Admin > Team notices: write a notice for the staff, and remove old ones (lib/team-notices.ts).
 
 async function api(method: 'POST' | 'DELETE', body: unknown) {
-  const response = await fetch('/api/admin/notices', { method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+  const response = await fetchRead('/api/admin/notices', { method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
   const data = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error(data.error || 'Unable to save the notice')
   return data as { notices: Notice[] }

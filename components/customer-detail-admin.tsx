@@ -10,9 +10,10 @@ import ui from './admin-ui.module.css'
 import UnsavedBar from './admin-unsaved-bar'
 import { useConfirm } from './admin-confirm'
 import { useLeaveGuard } from './use-leave-guard'
+import { fetchRead } from '@/lib/retry-fetch'
 
 async function api(path: string, init?: RequestInit) {
-  const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
+  const r = await fetchRead(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const data = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(data.error || 'Request failed')
   return data

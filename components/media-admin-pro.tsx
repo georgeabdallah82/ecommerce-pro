@@ -5,6 +5,7 @@ import s from './admin-media.module.css'
 import ui from './admin-ui.module.css'
 import { optimizeImage } from '@/lib/optimize-image'
 import { useConfirm } from './admin-confirm'
+import { fetchRead } from '@/lib/retry-fetch'
 
 // Files are read a page at a time (app/api/admin/media). The search runs on the server.
 const PAGE = 48
@@ -12,7 +13,7 @@ const PAGE = 48
 async function fetchFiles(skip: number, term: string): Promise<{ rows: any[]; total: number }> {
   const params = new URLSearchParams({ skip: String(skip), take: String(PAGE) })
   if (term) params.set('q', term)
-  const r = await fetch(`/api/admin/media?${params}`, { cache: 'no-store' })
+  const r = await fetchRead(`/api/admin/media?${params}`, { cache: 'no-store' })
   const d = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(d.error || 'Unable to load files')
   return { rows: Array.isArray(d.rows) ? d.rows : [], total: Number(d.total) || 0 }
@@ -119,7 +120,7 @@ export default function MediaAdminPro({ initial, total: initialTotal }: { initia
     setDeleting(asset.id)
     try {
       // Warn first if the image is still shown somewhere in the store.
-      const u = await fetch(`/api/admin/media/${asset.id}`).then(r => r.ok ? r.json() : { usedIn: [] }).catch(() => ({ usedIn: [] }))
+      const u = await fetchRead(`/api/admin/media/${asset.id}`).then(r => r.ok ? r.json() : { usedIn: [] }).catch(() => ({ usedIn: [] }))
       const usedIn: string[] = Array.isArray(u.usedIn) ? u.usedIn : []
       const message = usedIn.length
         ? `This image is still used in: ${usedIn.join(' · ')}. After deleting, it will no longer show there. This cannot be undone.`

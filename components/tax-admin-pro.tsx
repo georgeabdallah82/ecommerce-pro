@@ -8,11 +8,12 @@ import { CountryMultiSelect } from './field-selects'
 import { useConfirm } from './admin-confirm'
 import AdminFormDialog, { DialogError } from './admin-form-dialog'
 import AdminScrollArea from './admin-scroll-area'
+import { fetchRead } from '@/lib/retry-fetch'
 
 type TaxRateRow = { id: string; name: string; countries: string; rate: number; isActive: boolean }
 
 async function api(path: string, init?: RequestInit) {
-  const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
+  const r = await fetchRead(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const data = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(data.error || `Request failed (${r.status})`)
   return data

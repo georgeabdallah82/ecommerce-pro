@@ -7,6 +7,7 @@ import { formatAdminDateTime } from '@/lib/admin-datetime'
 import { useConfirm } from './admin-confirm'
 import styles from './admin-system-health.module.css'
 import ui from './admin-ui.module.css'
+import { fetchRead } from '@/lib/retry-fetch'
 
 type Severity = 'ok' | 'warning' | 'critical'
 type Check = { key: string; label: string; severity: Severity; message: string; count?: number }
@@ -61,7 +62,7 @@ const GROUPS: { id: string; title: string; keys: string[] }[] = [
 ]
 
 async function api(path: string, init?: RequestInit) {
-  const res = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
+  const res = await fetchRead(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.error || 'Request failed')
   return data

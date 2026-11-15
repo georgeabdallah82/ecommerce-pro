@@ -5,6 +5,7 @@ import { Bell, Check, Send, Smartphone } from 'lucide-react'
 import { useToast } from './admin-toast'
 import ui from './admin-ui.module.css'
 import s from './admin-marketing.module.css'
+import { fetchRead } from '@/lib/retry-fetch'
 
 export default function PushCampaignAdmin() {
   const toast = useToast()
@@ -21,7 +22,7 @@ export default function PushCampaignAdmin() {
 
   useEffect(() => {
     let live = true
-    fetch('/api/admin/marketing/push-settings', { cache: 'no-store' })
+    fetchRead('/api/admin/marketing/push-settings', { cache: 'no-store' })
       .then(res => res.ok ? res.json() : null)
       .then(data => { if (live && data) setVisitors(data) })
       .catch(() => undefined)

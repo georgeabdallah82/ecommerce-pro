@@ -7,9 +7,10 @@ import styles from './admin-collections.module.css'
 import ui from './admin-ui.module.css'
 import { useToast } from './admin-toast'
 import { useConfirm } from './admin-confirm'
+import { fetchRead } from '@/lib/retry-fetch'
 
 async function api(path: string, init?: RequestInit) {
-  const response = await fetch(path, {
+  const response = await fetchRead(path, {
     ...init,
     headers: { 'content-type': 'application/json', ...(init?.headers || {}) },
   })

@@ -6,6 +6,7 @@ import { money } from '@/lib/config'
 import styles from './admin-coupons.module.css'
 import ui from './admin-ui.module.css'
 import { useConfirm } from './admin-confirm'
+import { fetchRead } from '@/lib/retry-fetch'
 
 type Scope = 'ALL_PRODUCTS' | 'SPECIFIC_PRODUCTS' | 'SPECIFIC_COLLECTIONS'
 
@@ -45,7 +46,7 @@ const SCOPE_OPTIONS: { value: Scope; label: string }[] = [
 ]
 
 async function api(path: string, init?: RequestInit) {
-  const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
+  const r = await fetchRead(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const data = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(data.error || 'Request failed')
   return data
