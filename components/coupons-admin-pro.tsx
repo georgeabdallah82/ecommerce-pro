@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Copy, Gift, Layers, Pencil, Percent, Plus, Search, ShieldCheck, Tag, Trash2, X } from 'lucide-react'
 import { money } from '@/lib/config'
 import styles from './admin-coupons.module.css'
 import ui from './admin-ui.module.css'
 import { useConfirm } from './admin-confirm'
+import { useModalFocus } from './use-modal-focus'
 import { fetchRead } from '@/lib/retry-fetch'
 
 type Scope = 'ALL_PRODUCTS' | 'SPECIFIC_PRODUCTS' | 'SPECIFIC_COLLECTIONS'
@@ -156,6 +157,9 @@ export default function CouponsAdminPro({ initial }: { initial: Coupon[] }) {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<'ALL' | 'ACTIVE' | 'INACTIVE' | 'EXPIRING'>('ALL')
   const [formOpen, setFormOpen] = useState(false)
+  // The discount form is a modal dialog: focus moves in, Tab stays inside, Escape closes it (not while saving).
+  const formRef = useRef<HTMLDivElement>(null)
+  useModalFocus(formRef, formOpen, () => { if (!saving) setFormOpen(false) })
   const [copied, setCopied] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -293,8 +297,8 @@ export default function CouponsAdminPro({ initial }: { initial: Coupon[] }) {
     </div>
 
     <div className={`${ui.card} catalogToolbar`}>
-      <div className="productSearch"><Search size={16}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search discount codes…"/><button className="searchClear" hidden={!query} onClick={() => setQuery('')}><X size={14}/></button></div>
-      <select className={ui.input} value={status} onChange={e => setStatus(e.target.value as typeof status)}>
+      <div className="productSearch"><Search size={16}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search discount codes…" aria-label="Search discount codes"/><button type="button" className="searchClear" aria-label="Clear search" hidden={!query} onClick={() => setQuery('')}><X size={14}/></button></div>
+      <select className={ui.input} aria-label="Discount status" value={status} onChange={e => setStatus(e.target.value as typeof status)}>
         <option value="ALL">All discounts</option>
         <option value="ACTIVE">Active</option>
         <option value="INACTIVE">Inactive</option>
@@ -305,7 +309,7 @@ export default function CouponsAdminPro({ initial }: { initial: Coupon[] }) {
 
     <div className={`${ui.card} productTableCard`}>
       <div className={styles.tableTopline}><span className={ui.muted}>{filtered.length} discount{filtered.length === 1 ? '' : 's'}</span><span className={ui.muted}>Codes are case-insensitive</span></div>
-      <div className={ui.tableWrap}><table className={`${ui.table} ${ui.cardTable} productTable`}><thead><tr><th>Discount</th><th>Type</th><th>Value</th><th>Applies to</th><th>Usage</th><th>Schedule</th><th>Status</th><th></th></tr></thead><tbody>
+      <div className={ui.tableWrap}><table className={`${ui.table} ${ui.cardTable} productTable`}><thead><tr><th>Discount</th><th>Type</th><th>Value</th><th>Applies to</th><th>Usage</th><th>Schedule</th><th>Status</th><th style={{ position: 'relative' }}><span className={ui.srOnly}>Actions</span></th></tr></thead><tbody>
         {filtered.map(c => <tr key={c.id}>
           <td data-cell="primary"><div className="inline"><div className={styles.discountIcon}><Tag size={18}/></div><div><strong>{c.code}</strong>{c.isAutomatic && <span className={ui.statusPill} style={{ marginLeft: 8 }}>Automatic</span>}{c.flashSale && <span className={`${ui.statusPill} ${ui.statusPillWarning}`} style={{ marginLeft: 6 }}>Flash sale</span>}<div className={ui.muted}>{c.firstOrderOnly ? 'First order only' : 'Available to all customers'}</div></div></div></td>
           <td data-label="Type">{label(c.type)}</td><td data-label="Value"><strong>{valueLabel(c)}</strong>{c.minSubtotal ? <div className={ui.muted}>Min {money(c.minSubtotal)}</div> : null}</td>
@@ -316,11 +320,11 @@ export default function CouponsAdminPro({ initial }: { initial: Coupon[] }) {
           <td data-cell="actions"><div className="inline"><button className={ui.iconBtn} title="Copy code" aria-label={`Copy ${c.code}`} onClick={() => copyCode(c.code)}>{copied === c.code ? <Check size={15}/> : <Copy size={15}/>}</button><button className={ui.iconBtn} title="Edit discount" aria-label={`Edit ${c.code}`} onClick={() => openEdit(c)}><Pencil size={15}/></button><button className={c.isActive ? `${ui.textButton} ${ui.textButtonDanger}` : ui.textButton} onClick={() => toggle(c)}>{c.isActive ? 'Disable' : 'Enable'}</button><button className={`${ui.iconBtn} ${ui.iconBtnDanger}`} title="Delete discount" aria-label={`Delete ${c.code}`} onClick={() => deleteCoupon(c)}><Trash2 size={15}/></button></div></td>
         </tr>)}
       </tbody></table></div>
-      {!filtered.length && <div className={ui.empty}><Gift size={28}/><h3>No discounts found</h3><p className={ui.muted}>Try a different search or create a new discount.</p></div>}
+      {!filtered.length && <div className={ui.empty}><Gift size={28}/><h2>No discounts found</h2><p className={ui.muted}>Try a different search or create a new discount.</p></div>}
     </div>
 
-    {formOpen && <div className={ui.modalOverlay} onClick={() => !saving && setFormOpen(false)}><div className={`${ui.card} ${styles.modal}`} onClick={e => e.stopPropagation()}>
-      <div className="inventoryModalHead"><div><span className={`${ui.muted} ${ui.tiny}`}>{editing ? 'EDIT DISCOUNT' : 'CREATE DISCOUNT'}</span><h2>{editing ? editing.code : 'New discount'}</h2><p className={ui.muted}>{editing ? 'Changes apply to future checkouts. Past orders keep the discount they got.' : 'Set the code, value and eligibility rules.'}</p></div><button className={ui.iconBtn} onClick={() => setFormOpen(false)} disabled={saving}><X size={17}/></button></div>
+    {formOpen && <div className={ui.modalOverlay} onClick={() => !saving && setFormOpen(false)}><div ref={formRef} role="dialog" aria-modal="true" aria-labelledby="discount-dialog-title" className={`${ui.card} ${styles.modal}`} onClick={e => e.stopPropagation()}>
+      <div className="inventoryModalHead"><div><span className={`${ui.muted} ${ui.tiny}`}>{editing ? 'EDIT DISCOUNT' : 'CREATE DISCOUNT'}</span><h2 id="discount-dialog-title">{editing ? editing.code : 'New discount'}</h2><p className={ui.muted}>{editing ? 'Changes apply to future checkouts. Past orders keep the discount they got.' : 'Set the code, value and eligibility rules.'}</p></div><button type="button" className={ui.iconBtn} aria-label="Close" onClick={() => setFormOpen(false)} disabled={saving}><X size={17}/></button></div>
       <form onSubmit={saveCoupon} className={styles.form}>
         {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
         <div className={styles.codeRow}><label className={ui.fieldLabel}>Discount code<input className={ui.input} required value={form.code} onChange={e => setForm({...form, code: e.target.value.toUpperCase().replace(/\s+/g, '-').slice(0, 64)})} placeholder="SUMMER10"/></label><button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setForm({...form, code: `SAVE${Math.floor(1000 + Math.random()*9000)}`})}>Generate</button></div>

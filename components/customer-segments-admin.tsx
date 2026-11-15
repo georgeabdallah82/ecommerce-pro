@@ -1,10 +1,11 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import Link from '@/components/admin-link'
 import { ArrowLeft, Plus, RefreshCw, Search, UsersRound, X } from 'lucide-react'
 import styles from './admin-customer-segments.module.css'
 import ui from './admin-ui.module.css'
+import { useModalFocus } from './use-modal-focus'
 import { fetchRead } from '@/lib/retry-fetch'
 
 type CustomerSegment = {
@@ -80,6 +81,9 @@ export default function CustomerSegmentsAdmin({ initial, canManage }: { initial:
     setModalOpen(true); setName(''); setDescription(''); setConditions([]); setModalError('')
   }
   function closeModal() { setModalOpen(false) }
+  // Create a segment is a modal dialog: focus moves in, Tab stays inside, Escape closes it.
+  const modalRef = useRef<HTMLDivElement>(null)
+  useModalFocus(modalRef, modalOpen, closeModal)
 
   function addCondition() { setConditions(c => [...c, { field: 'totalSpent', operator: 'gte', value: '' }]) }
   function updateCondition(index: number, patch: Partial<Condition>) { setConditions(c => c.map((cond, i) => i === index ? { ...cond, ...patch } : cond)) }
@@ -138,9 +142,9 @@ export default function CustomerSegmentsAdmin({ initial, canManage }: { initial:
     </div>
 
     <div className={ui.card}>
-      <div className={ui.tableWrap}>
+      <div className={ui.tableWrap} tabIndex={0} role="region" aria-label="Customer segments">
         <table className={ui.table}>
-          <thead><tr><th>Segment</th><th>Description</th><th>Matching</th><th>Members</th><th>Updated</th>{canManage && <th></th>}</tr></thead>
+          <thead><tr><th>Segment</th><th>Description</th><th>Matching</th><th>Members</th><th>Updated</th>{canManage && <th style={{ position: 'relative' }}><span className={ui.srOnly}>Actions</span></th>}</tr></thead>
           <tbody>
             {shown.map(seg => { const ruleCount = ruleConditionCount(seg.ruleJson); return <tr key={seg.id}>
               <td><strong>{seg.name}</strong></td>
@@ -153,19 +157,19 @@ export default function CustomerSegmentsAdmin({ initial, canManage }: { initial:
           </tbody>
         </table>
       </div>
-      {!shown.length && <div className={ui.empty}><UsersRound size={28} /><h3>No segments yet</h3><p className={ui.muted}>{canManage ? 'Create a segment to start grouping customers.' : 'Segments created by staff will show up here.'}</p></div>}
+      {!shown.length && <div className={ui.empty}><UsersRound size={28} /><h2>No segments yet</h2><p className={ui.muted}>{canManage ? 'Create a segment to start grouping customers.' : 'Segments created by staff will show up here.'}</p></div>}
     </div>
 
     {modalOpen && <div className={ui.modalOverlay} onClick={closeModal}>
-      <div className={`${ui.card} ${styles.modal}`} onClick={e => e.stopPropagation()}>
+      <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="segment-create-title" className={`${ui.card} ${styles.modal}`} onClick={e => e.stopPropagation()}>
         <div className={ui.modalHead}>
-          <div><span className={`${ui.muted} ${ui.tiny}`}>NEW SEGMENT</span><h2>Create a customer segment</h2><p className={ui.muted}>Segments can be assigned to customers individually from their profile.</p></div>
+          <div><span className={`${ui.muted} ${ui.tiny}`}>NEW SEGMENT</span><h2 id="segment-create-title">Create a customer segment</h2><p className={ui.muted}>Segments can be assigned to customers individually from their profile.</p></div>
           <button className={ui.iconBtn} onClick={closeModal}><X size={17} /></button>
         </div>
 
         <div className={styles.modalBody}>
           {modalError && <div className={`${ui.alert} ${ui.alertDanger}`}>{modalError}</div>}
-          <label className={ui.fieldLabel}>Name<input className={ui.input} value={name} onChange={e => setName(e.target.value)} placeholder="VIP customers" autoFocus /></label>
+          <label className={ui.fieldLabel}>Name<input className={ui.input} value={name} onChange={e => setName(e.target.value)} placeholder="VIP customers" data-autofocus /></label>
           <label className={ui.fieldLabel}>Description<textarea className={ui.textarea} rows={2} value={description} onChange={e => setDescription(e.target.value)} placeholder="What this segment represents" /></label>
 
           <div>
