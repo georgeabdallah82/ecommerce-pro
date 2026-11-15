@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from '@/components/admin-link'
 import { ChevronLeft, ChevronRight, Eye, Plus, Search, ShieldOff, Tag, Trash2, UserCheck, UserX, X } from 'lucide-react'
 import { money } from '@/lib/config'
@@ -8,6 +8,7 @@ import ui from './admin-ui.module.css'
 import { useToast } from './admin-toast'
 import { useConfirm } from './admin-confirm'
 import { fetchRead } from '@/lib/retry-fetch'
+import { useModalFocus } from './use-modal-focus'
 
 async function api(path: string, init?: RequestInit) {
   const r = await fetchRead(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
@@ -35,6 +36,9 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showCreate, setShowCreate] = useState(false)
+  // Add customer is a modal dialog: focus moves in, Tab stays inside, Escape closes it and focus goes back to the button.
+  const createRef = useRef<HTMLDivElement>(null)
+  useModalFocus(createRef, showCreate, () => setShowCreate(false))
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' })
   const [selected, setSelected] = useState<string[]>([])
   const [bulkBusy, setBulkBusy] = useState(false)
@@ -153,7 +157,7 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
 
     <div className={`${ui.card} productTableCard`}>
       <div className="tableTopline"><span className={ui.muted}>{total.toLocaleString()} customers</span><label className={ui.muted}>Rows <select className={`${ui.input} ${ui.inputCompact}`} aria-label="Rows per page" value={pageSize} onChange={e => setPageSize(Number(e.target.value))}><option>25</option><option>50</option><option>100</option></select></label></div>
-      <div className={ui.tableWrap}><table className={`${ui.table} ${ui.cardTable}`}><thead><tr><th><input type="checkbox" checked={rows.length > 0 && selected.length === rows.length} onChange={toggleAll} aria-label="Select all customers" /></th><th>Customer</th><th>Contact</th><th>Tags</th><th>Orders</th><th>Reviews</th><th>Spend</th><th>Status</th><th>Joined</th><th></th></tr></thead><tbody>{rows.map(c => <tr key={c.id}>
+      <div className={ui.tableWrap}><table className={`${ui.table} ${ui.cardTable}`}><thead><tr><th><input type="checkbox" checked={rows.length > 0 && selected.length === rows.length} onChange={toggleAll} aria-label="Select all customers" /></th><th>Customer</th><th>Contact</th><th>Tags</th><th>Orders</th><th>Reviews</th><th>Spend</th><th>Status</th><th>Joined</th><th style={{ position: 'relative' }}><span className={ui.srOnly}>Actions</span></th></tr></thead><tbody>{rows.map(c => <tr key={c.id}>
         <td data-cell="check"><input type="checkbox" checked={selected.includes(c.id)} onChange={() => toggleRow(c.id)} aria-label={`Select ${c.name}`} /></td>
         <td data-cell="primary"><Link className="productListName" href={`/admin/customers/${c.id}`}><div className="customerAvatar">{initials(c.name)}</div><div><strong>{c.name}</strong><div className={ui.muted}>{c.email}</div></div></Link></td>
         <td data-label="Phone"><span>{c.phone || '—'}</span></td>
@@ -172,9 +176,9 @@ export default function CustomersAdmin({ initial }: { initial: any }) {
       <div className="catalogPagination"><span className={ui.muted}>Page {page} of {pages}</span><div className="inline"><button className={ui.iconBtn} aria-label="Previous page" disabled={page <= 1 || loading} onClick={() => load(page - 1)}><ChevronLeft size={16}/></button><button className={ui.iconBtn} aria-label="Next page" disabled={page >= pages || loading} onClick={() => load(page + 1)}><ChevronRight size={16}/></button></div></div>
     </div>
 
-    {showCreate && <div className={ui.modalOverlay} onClick={() => setShowCreate(false)}><div className={ui.card} style={{ width: 'min(520px, 92vw)', padding: 24 }} onClick={e => e.stopPropagation()}>
-      <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><div><h2 className="h3">Add customer</h2><p className={ui.muted}>Create a customer profile without leaving the catalog.</p></div><button className={ui.iconBtn} aria-label="Close" onClick={() => setShowCreate(false)}><X size={16}/></button></div>
-      <div className={ui.twoCol}><label className={ui.fieldLabel}>Name<input className={ui.input} required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}/></label><label className={ui.fieldLabel}>Email<input className={ui.input} type="email" required value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}/></label><label className={ui.fieldLabel}>Phone<input className={ui.input} value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })}/></label><label className={ui.fieldLabel}>Password <span className={ui.fieldHelp}>Optional; can be added later.</span><input className={ui.input} type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })}/></label></div>
+    {showCreate && <div className={ui.modalOverlay} onClick={() => setShowCreate(false)}><div ref={createRef} role="dialog" aria-modal="true" aria-labelledby="add-customer-title" className={ui.card} style={{ width: 'min(520px, 92vw)', padding: 24 }} onClick={e => e.stopPropagation()}>
+      <div className={`${ui.sectionHead} ${ui.sectionHeadSmall}`}><div><h2 id="add-customer-title" className="h3">Add customer</h2><p className={ui.muted}>Create a customer profile without leaving the catalog.</p></div><button className={ui.iconBtn} aria-label="Close" onClick={() => setShowCreate(false)}><X size={16}/></button></div>
+      <div className={ui.twoCol}><label className={ui.fieldLabel}>Name<input className={ui.input} data-autofocus required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}/></label><label className={ui.fieldLabel}>Email<input className={ui.input} type="email" required value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}/></label><label className={ui.fieldLabel}>Phone<input className={ui.input} value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })}/></label><label className={ui.fieldLabel}>Password <span className={ui.fieldHelp}>Optional; can be added later.</span><input className={ui.input} type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })}/></label></div>
       <div className="inline" style={{ justifyContent: 'flex-end', marginTop: 18 }}><button className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setShowCreate(false)}>Cancel</button><button className={ui.btn} onClick={createCustomer} disabled={loading || !form.name.trim() || !form.email.trim()}>{loading ? 'Creating…' : 'Create customer'}</button></div>
     </div></div>}
   </div>
