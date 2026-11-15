@@ -10,6 +10,7 @@ import { DialogError } from './admin-form-dialog'
 import { runReauthed, useReauth } from './admin-reauth'
 import { BUILT_IN_ROLES, PERMISSION_SECTIONS, builtInRoleName } from '@/lib/permission-groups'
 import { ROLE_PERMISSIONS, type Permission } from '@/lib/permissions'
+import { fetchRead } from '@/lib/retry-fetch'
 
 type UserRow = { id: string; name: string; email: string; phone?: string | null; role: string; staffRoleId?: string | null; isActive: boolean; lastLoginAt?: string | null; twoStep?: boolean; totpEnabledAt?: string | null }
 const hasTwoStep = (u: UserRow) => Boolean(u.twoStep || u.totpEnabledAt)
@@ -17,7 +18,7 @@ type CustomRole = { id: string; name: string; description: string; permissions: 
 type CurrentUser = { id: string; role: string } | null
 
 async function api(path: string, init?: RequestInit) {
-  const response = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
+  const response = await fetchRead(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const data = await response.json().catch(() => ({}))
   if (!response.ok) {
     // `code` tells the screen when the server wants the person to confirm it is them (REAUTH_REQUIRED).

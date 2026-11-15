@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react'
 import { LocateFixed, Copy, Check, Navigation, Clock3 } from 'lucide-react'
 import ui from './admin-ui.module.css'
+import { fetchRead } from '@/lib/retry-fetch'
 
 async function api(path: string, init?: RequestInit) {
-  const response = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
+  const response = await fetchRead(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const data = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error(data.error || 'Request failed')
   return data

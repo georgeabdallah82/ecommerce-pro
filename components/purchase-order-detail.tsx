@@ -7,9 +7,10 @@ import { money } from '@/lib/config'
 import styles from './admin-purchase-orders.module.css'
 import ui from './admin-ui.module.css'
 import { useConfirm } from './admin-confirm'
+import { fetchRead } from '@/lib/retry-fetch'
 
 async function api(path: string, init?: RequestInit) {
-  const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
+  const r = await fetchRead(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const d = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(d.error || 'Request failed')
   return d

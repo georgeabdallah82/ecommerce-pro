@@ -10,6 +10,7 @@ import { driverWelcomeMessage } from '@/lib/drivers-shared'
 import { useConfirm } from './admin-confirm'
 import s from './bring-back.module.css'
 import ui from './admin-ui.module.css'
+import { fetchRead } from '@/lib/retry-fetch'
 
 export type DriverRow = {
   id: string; name: string; phone: string; active: boolean; link: string; expiresAt: string | null
@@ -19,7 +20,7 @@ export type DriverRow = {
 }
 
 async function api(path: string, method: string, body: unknown) {
-  const r = await fetch(path, { method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+  const r = await fetchRead(path, { method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
   const d = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(d.error || 'Request failed')
   return d

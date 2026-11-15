@@ -11,11 +11,12 @@ import { cartLines, displayPhone, unfinishedCheckoutMessage, whatsappChatLink } 
 import { CartReminderSettings } from './admin-operations-hub'
 import s from './unfinished-checkouts.module.css'
 import ui from './admin-ui.module.css'
+import { fetchRead } from '@/lib/retry-fetch'
 
 type Row = { id: string; name: string | null; phone: string | null; email: string | null; cartJson: string; subtotal: number; currency: string; recoveryUrl: string | null; lastActivity: string; whatsappAt: string | null; reminderState: string | null; reminderAt: string | null; reminderNote: string | null; city: string | null; area: string | null; pinLat: number | null; pinLng: number | null }
 
 async function api(path: string, init?: RequestInit) {
-  const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
+  const r = await fetchRead(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const d = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(d.error || 'Request failed')
   return d

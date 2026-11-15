@@ -5,6 +5,7 @@ import Link from '@/components/admin-link'
 import { ArrowLeft, Camera, CameraOff, Check, Minus, Plus, ScanBarcode } from 'lucide-react'
 import s from './bring-back.module.css'
 import ui from './admin-ui.module.css'
+import { fetchRead } from '@/lib/retry-fetch'
 
 type Found = { code: string; productId: string; name: string; variant: string; sku: string; image: string; items: Array<{ id: string; location: string; quantity: number; reserved: number }> }
 type Counted = { key: string; name: string; location: string; before: number; after: number }
@@ -69,7 +70,7 @@ export default function StockCount({ canManage }: { canManage: boolean }) {
   async function lookup(value: string) {
     setBusy(true); setError(''); setNotice(''); setFound(null)
     try {
-      const r = await fetch(`/api/admin/inventory/lookup?code=${encodeURIComponent(value)}`, { cache: 'no-store' })
+      const r = await fetchRead(`/api/admin/inventory/lookup?code=${encodeURIComponent(value)}`, { cache: 'no-store' })
       const d = await r.json().catch(() => ({}))
       if (!r.ok) throw new Error(d.error || 'Not found')
       setFound(d)

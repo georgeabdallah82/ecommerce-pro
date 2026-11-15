@@ -5,13 +5,14 @@ import { LogOut, ShieldAlert, Smartphone, Trash2 } from 'lucide-react'
 import styles from './admin-settings-center.module.css'
 import ui from './admin-ui.module.css'
 import { useConfirm } from './admin-confirm'
+import { fetchRead } from '@/lib/retry-fetch'
 
 type Device = { id: string; label: string; country: string; first: string; last: string; current: boolean }
 type EventRow = { id: string; at: string; text: string; warn: boolean }
 type Data = { alertsOn: boolean; devices: Device[]; events: EventRow[] }
 
 async function api(body?: unknown) {
-  const r = await fetch('/api/admin/security', body === undefined ? { cache: 'no-store' } : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+  const r = await fetchRead('/api/admin/security', body === undefined ? { cache: 'no-store' } : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
   const d = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(d.error || 'Request failed')
   return d

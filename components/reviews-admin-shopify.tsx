@@ -4,9 +4,10 @@ import { useMemo, useState } from 'react'
 import { Check, Eye, RefreshCw, Search, Star, X } from 'lucide-react'
 import ui from './admin-ui.module.css'
 import styles from './admin-reviews.module.css'
+import { fetchRead } from '@/lib/retry-fetch'
 
 type Review = { id:string; rating:number; title:string|null; body:string|null; approved:boolean; featured:boolean; createdAt:string; product:{id:string;name:string;slug:string}; user:{id:string;name:string;email:string}|null; authorName?:string|null; order?:{id:string;orderNumber:string}|null; photos?:string[] }
-async function api(path:string,init?:RequestInit){const r=await fetch(path,{...init,headers:{'content-type':'application/json',...(init?.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Request failed');return d}
+async function api(path:string,init?:RequestInit){const r=await fetchRead(path,{...init,headers:{'content-type':'application/json',...(init?.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Request failed');return d}
 export default function ReviewsAdminShopify({initial}:{initial:Review[]}){
  const [rows,setRows]=useState(initial||[]),[tab,setTab]=useState('all'),[q,setQ]=useState(''),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState<string|null>(null)
  const shown=useMemo(()=>{const n=q.trim().toLowerCase();return rows.filter(r=>(tab==='all'||(tab==='pending'&&!r.approved)||(tab==='approved'&&r.approved)||(tab==='featured'&&r.featured))&&(!n||`${r.product.name} ${r.user?.name||r.authorName||''} ${r.user?.email||''} ${r.order?.orderNumber||''} ${r.title||''} ${r.body||''}`.toLowerCase().includes(n)))},[rows,tab,q])

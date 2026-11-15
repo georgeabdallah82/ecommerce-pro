@@ -12,6 +12,7 @@ import AdminFormDialog, { DialogError } from './admin-form-dialog'
 import AdminScrollArea from './admin-scroll-area'
 import MediaPicker from './media-picker'
 import RichTextEditor from './rich-text-editor'
+import { fetchRead } from '@/lib/retry-fetch'
 
 type PostRow = { id: string; title: string; handle: string; excerpt: string | null; bodyHtml: string | null; featuredImage: string | null; status: string; tags: string[]; seoTitle: string | null; seoDescription: string | null; updatedAt: string }
 type Form = { title: string; handle: string; excerpt: string; bodyHtml: string; featuredImage: string; status: string; tags: string[]; seoTitle: string; seoDescription: string }
@@ -31,7 +32,7 @@ function TagEditor({ id, tags, typed, onTags, onTyped }: { id: string; tags: str
 }
 
 async function api(path: string, init?: RequestInit) {
-  const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
+  const r = await fetchRead(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const data = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(data.error || `Request failed (${r.status})`)
   return data

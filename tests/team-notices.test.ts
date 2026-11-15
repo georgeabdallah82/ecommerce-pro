@@ -115,7 +115,8 @@ test('wiring: posting needs the permission, is audited and rate limited; only st
 
 test('open pages keep the banner up to date by themselves, and notice alerts keep their own place on the lock screen', () => {
   const banner = read('components/team-notices.tsx')
-  assert.match(banner, /fetch\('\/api\/admin\/notices'/)
+  // Through fetchRead: a read the host cut off is tried again (docs/admin-retry-reads-2026-11.md).
+  assert.match(banner, /fetchRead\('\/api\/admin\/notices'/)
   assert.match(banner, /useEffect\(\(\) => \{ refresh\(\) \}, \[pathname, refresh\]\)/, 'asks again on every page change')
   assert.match(banner, /addEventListener\('visibilitychange'/, 'and when the app is opened or switched back to')
   assert.match(banner, /event\.data\?\.type === 'team-notice'/, 'and when the phone alert arrives')

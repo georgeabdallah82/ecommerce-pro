@@ -10,12 +10,13 @@ import { useConfirm } from './admin-confirm'
 import AdminFormDialog, { DialogError } from './admin-form-dialog'
 import AdminScrollArea from './admin-scroll-area'
 import RichTextEditor from './rich-text-editor'
+import { fetchRead } from '@/lib/retry-fetch'
 
 type PageRow = { id: string; title: string; handle: string; bodyHtml: string | null; status: string; seoTitle: string | null; seoDescription: string | null; updatedAt: string }
 type Form = { title: string; handle: string; bodyHtml: string; status: string; seoTitle: string; seoDescription: string }
 
 async function api(path: string, init?: RequestInit) {
-  const r = await fetch(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
+  const r = await fetchRead(path, { ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   const data = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(data.error || `Request failed (${r.status})`)
   return data
