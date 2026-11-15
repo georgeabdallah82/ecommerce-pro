@@ -115,3 +115,8 @@
 .pickRow span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pickRow small { color: var(--admin-muted); }
 .dialogFoot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+/* Names the last column (each row's actions) for screen readers; it had an empty header. Its cell holds it in place,
+   so the hidden name never widens the page when the table scrolls inside its wrapper. */
+.actionsHead { position: relative; }
+.srOnly { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

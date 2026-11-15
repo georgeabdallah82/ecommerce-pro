@@ -24,7 +24,10 @@
 .cardHead p { margin: 5px 0 0; color: var(--admin-muted); font-size: 12px; }
 
 .fields { display: grid; gap: 14px; }
-.fields label { display: grid; gap: 7px; font-size: 11px; font-weight: 700; color: var(--admin-ink-soft); }
+.fields label, .fields .imageLabel { display: grid; gap: 7px; font-size: 11px; font-weight: 700; color: var(--admin-ink-soft); }
+/* An active collection with no active products: what customers see then. */
+.emptyNote { margin: 10px 0 0; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--admin-warning) 30%, transparent); border-radius: var(--admin-radius-sm); background: var(--admin-warning-soft); color: #854d0e; font-size: 12.5px; line-height: 1.45; }
+:global(html[data-admin-theme='dark']) .emptyNote { color: var(--admin-warning); }
 .fields textarea { resize: vertical; }
 
 .imageField { display: grid; grid-template-columns: 76px 1fr; gap: 10px; align-items: center; }
