@@ -16,6 +16,7 @@ import { countryCode as isoCountryCode, countryName } from '@/lib/delivery-count
 import { type LocationPin } from '@/lib/location-pin'
 import LocationPinButton from './location-pin'
 import s from './checkout.module.css'
+import { adConsentChoice } from '@/components/cookie-consent'
 
 // Checkout: phone first, email optional (many customers in Lebanon don't want to give one), the
 // delivery area picked from the store's list (delivery can cost more outside Beirut), then
@@ -384,6 +385,7 @@ export default function Checkout() {
       isGift, giftMessage: isGift ? giftMessage.trim() : '',
       shippingAddress: { firstName: value('firstName'), lastName: value('lastName'), line1: value('line1'), line2: value('line2'), city: value('city'), region: useAreaList ? area : value('region'), postalCode: value('postalCode'), country: country.trim(), phone: value('phone'), ...(pin ? { lat: pin.lat, lng: pin.lng, ...(pin.accuracy !== null ? { locationAccuracy: pin.accuracy } : {}) } : {}) },
       items: items.map(item => ({ productId: item.productId, variantId: item.variantId || null, quantity: item.quantity, bundleId: item.bundleId || null })),
+      adConsent: adConsentChoice(),
     }
     try {
       const response = await fetch('/api/checkout', { method: 'POST', headers: { 'content-type': 'application/json', 'x-idempotency-key': idempotencyKey.current }, body: JSON.stringify(data) })

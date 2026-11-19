@@ -7,6 +7,8 @@ export const checkoutSchema = z.object({
   // simply no confirmation email; the phone (required for deliveries) is how the store reaches them.
   email: z.union([emailSchema, z.literal('')]).optional().transform(value => (value || '').trim().toLowerCase()),
   phone: z.string().trim().max(40).optional().or(z.literal('')),
+  // The shopper's cookie choice (components/cookie-consent.tsx), kept on the order for the Meta Purchase event.
+  adConsent: z.enum(['granted', 'denied']).nullable().optional(),
   paymentMethod: z.enum(['COD','CARD','BANK_TRANSFER','WALLET']),
   couponCode: z.string().trim().max(60).optional().or(z.literal('')),
   giftCardCode: z.string().trim().max(60).optional().or(z.literal('')),

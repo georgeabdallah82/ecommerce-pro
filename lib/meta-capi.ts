@@ -127,8 +127,10 @@ export async function sendMetaPurchase(orderId: string, opts: { context?: AdClie
   try {
     const config = await metaCapiConfig()
     if (!config.enabled) return
-    const order = await db.order.findUnique({ where: { id: orderId }, select: { orderNumber: true, email: true, phone: true, userId: true, grandTotal: true, currency: true, shippingAddressJson: true, items: { select: { productId: true, quantity: true, unitPrice: true } } } })
-    if (!order) return
+    const order = await db.order.findUnique({ where: { id: orderId }, select: { adConsent: true, orderNumber: true, email: true, phone: true, userId: true, grandTotal: true, currency: true, shippingAddressJson: true, items: { select: { productId: true, quantity: true, unitPrice: true } } } })
+    // Only when the shopper accepted cookies at checkout, as the browser pixel does: Decline (or no answer) means
+    // no ad tracking, from the browser or from here.
+    if (!order || order.adConsent !== 'granted') return
     await sendMetaEvents([buildMetaPurchaseEvent(order, { storeCountry: config.storeCountry, storeUrl: opts.storeUrl, context: opts.context })], config)
   } catch (error) {
     console.error('[meta-capi] purchase not sent', orderId, error instanceof Error ? error.message : error)

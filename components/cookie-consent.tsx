@@ -18,6 +18,9 @@ export const COOKIE_SETTINGS_EVENT = 'cookie-consent:open'
 
 type Choice = 'granted' | 'denied'
 
+// The shopper's answer, for the checkout request: the order keeps it, and the server's Purchase event follows it.
+export function adConsentChoice(): Choice | null { return readChoice() }
+
 function readChoice(): Choice | null {
   try {
     const value = localStorage.getItem(KEY)
