@@ -29,7 +29,7 @@ import { runInBackground } from '@/lib/background'
 import { markCheckoutsRecovered, maybeSendCartReminders } from '@/lib/cart-reminders'
 import { internationalPhone } from '@/lib/phone'
 import { freeGiftFor } from '@/lib/free-gift'
-import { orderedBefore } from '@/lib/customer-history'
+import { orderedBefore, usedCodeBefore } from '@/lib/customer-history'
 import { checkInvite } from '@/lib/invites'
 import { adContextFromRequest, sendMetaPurchase } from '@/lib/meta-capi'
 import { orderSuccessPath } from '@/lib/order-access'
@@ -89,6 +89,7 @@ const SAFE_CHECKOUT_MESSAGES = new Set([
   'This discount does not apply to the items in your cart',
   'This coupon requires a customer account',
   'This coupon is for first orders only',
+  'You have already used this code',
   'This coupon is no longer available',
   'This is your own invite code. Share it with your friends.',
   'Your cart is empty.',
@@ -276,6 +277,8 @@ export async function POST(req: Request) {
     // "First order only" without an account (the welcome-popup code): this phone number or email
     // must not have ordered before.
     if (coupon?.firstOrderOnly && !user?.id && await orderedBefore(input.phone || input.shippingAddress.phone, orderEmail, settings['store.country'] || 'Lebanon')) throw userError('This coupon is for first orders only')
+    // "Once per customer" codes: this account, email or phone number has not used the code on an order that stands.
+    if (coupon?.oncePerCustomer && input.couponCode && await usedCodeBefore(coupon.code, { userId: user?.id, phone: input.phone || input.shippingAddress.phone, email: orderEmail }, settings['store.country'] || 'Lebanon')) throw userError('You have already used this code')
     // A friend's invite code (lib/invites.ts): new customers only, and not the inviter's own.
     if (coupon?.invite) await checkInvite(coupon.invite, { phone: input.phone || input.shippingAddress.phone, email: orderEmail, userId: user?.id }, settings['store.country'] || 'Lebanon')
     const discountedSubtotal = Math.max(0, subtotal - discount.total)

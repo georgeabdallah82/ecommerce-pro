@@ -60,3 +60,20 @@ export async function orderedBefore(phone: string | null | undefined, email: str
     LIMIT 50`
   return rows.some(row => internationalPhone(row.phone, storeCountry) === target)
 }
+
+// A "once per customer" discount code (Admin > Discounts): has this customer -- their account, email or phone
+// number -- an order with this code that wasn't cancelled? A cancelled order gives the use back, as it gives back
+// the code's count. Matching by phone and email as well stops a second order without an account using it again.
+export async function usedCodeBefore(code: string, customer: { userId?: string | null; phone?: string | null; email?: string | null }, storeCountry: string) {
+  const used = { couponCode: { equals: code, mode: 'insensitive' as const }, status: { not: 'CANCELLED' as const } }
+  if (customer.userId && await db.order.findFirst({ where: { ...used, userId: customer.userId }, select: { id: true } })) return true
+  const e = String(customer.email || '').trim().toLowerCase()
+  if (e && await db.order.findFirst({ where: { ...used, email: { equals: e, mode: 'insensitive' } }, select: { id: true } })) return true
+  const target = internationalPhone(customer.phone, storeCountry)
+  if (!target) return false
+  const rows = await db.$queryRaw<Array<{ phone: string | null }>>`
+    SELECT "phone" FROM "Order"
+    WHERE "status"::text <> 'CANCELLED' AND lower("couponCode") = lower(${code}) AND regexp_replace(coalesce("phone", ''), '[^0-9]', '', 'g') LIKE ${`%${target.slice(-7)}`}
+    LIMIT 50`
+  return rows.some(row => internationalPhone(row.phone, storeCountry) === target)
+}
