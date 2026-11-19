@@ -1,6 +1,8 @@
 import { db } from '@/lib/prisma'
 import { releaseOrderReservations } from '@/lib/inventory'
-import { restoreUnpaidCheckoutBenefits } from '@/lib/payment-outcome'
+import { isInternalJobRequest } from '@/lib/internal-job'
+import { areebaMpgsPaymentProvider } from '@/lib/payments'
+import { markOnlinePaymentPaid, restoreUnpaidCheckoutBenefits } from '@/lib/payment-outcome'
 import { OrderStatus, PaymentMethod, PaymentStatus } from '@prisma/client'
 
 const RESERVATION_MINUTES = 30
@@ -13,9 +15,26 @@ const RESERVATION_MINUTES = 30
 // and no customer notification.
 const RESOLVED_PAYMENT_STATUSES: PaymentStatus[] = [PaymentStatus.PAID, PaymentStatus.PARTIALLY_REFUNDED, PaymentStatus.REFUNDED]
 
-export async function GET(req: Request) {
-  const configured = process.env.CRON_SECRET
-  if (!configured || req.headers.get('authorization') !== `Bearer ${configured}`) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+// A card order the gateway did take payment for, whose notification never arrived: marked paid, not cancelled. Any
+// other answer, or none (the gateway unreachable or not set up), lets the release go ahead; money that still arrives
+// afterwards is flagged on the cancelled order for staff (lib/payment-outcome.ts).
+async function paidAtGateway(order: { id: string; orderNumber: string }) {
+  const transaction = await db.paymentTransaction.findFirst({ where: { orderId: order.id, provider: 'areeba_mpgs', status: { in: ['pending', 'created'] } }, orderBy: { createdAt: 'desc' } })
+  if (!transaction) return false
+  try {
+    if (await areebaMpgsPaymentProvider.getPaymentStatus(transaction.externalId ?? '', order.orderNumber) !== 'paid') return false
+  } catch {
+    return false
+  }
+  await markOnlinePaymentPaid(order, transaction.id, 'expiry')
+  return true
+}
+
+// Run at the top of each hour by the Worker's cron (worker.ts), or by hand with the CRON_SECRET bearer
+// (lib/internal-job.ts). It used to answer only a GET with that bearer, for the old host's scheduler, and nothing
+// on Cloudflare called it: card checkouts left at the payment page kept their stock until staff cancelled them.
+export async function POST(req: Request) {
+  if (!isInternalJobRequest(req)) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   const cutoff = new Date(Date.now() - RESERVATION_MINUTES * 60 * 1000)
   // Only online card checkouts hold stock while the customer is away at the payment page.
@@ -26,7 +45,15 @@ export async function GET(req: Request) {
 
   let released = 0
   let failed = 0
+  let paid = 0
   for (const candidate of candidates) {
+    try {
+      if (await paidAtGateway(candidate)) { paid += 1; continue }
+    } catch (error) {
+      failed += 1
+      console.error('[expired-reservations] could not record a gateway payment', candidate.orderNumber, error)
+      continue
+    }
     try {
       const didRelease = await db.$transaction(async tx => {
         const order = await tx.order.findUnique({ where: { id: candidate.id }, include: { paymentTransactions: true } })
@@ -51,5 +78,5 @@ export async function GET(req: Request) {
     }
   }
 
-  return Response.json({ released, failed, checked: candidates.length })
+  return Response.json({ released, failed, paid, checked: candidates.length })
 }

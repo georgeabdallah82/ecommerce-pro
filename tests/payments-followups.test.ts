@@ -162,5 +162,5 @@ test('an upload is refused before its body is read when its address is over the 
 test('the expiry job releases each order on its own, so one order that cannot be released does not stop the others', () => {
   const cron = read('app/api/internal/release-expired-reservations/route.ts')
   assert.match(cron, /failed \+= 1/)
-  assert.match(cron, /Response\.json\(\{ released, failed, checked: candidates\.length \}\)/)
+  assert.match(cron, /Response\.json\(\{ released, failed, paid, checked: candidates\.length \}\)/)
 })

@@ -202,7 +202,7 @@ function WebhooksPanel({ webhooks, onChange }: { webhooks: any[]; onChange: () =
     {error && <div className={`${ui.alert} ${ui.alertDanger}`}>{error}</div>}
     {revealedSecret && <div className={styles.secretReveal}>
       <strong>Webhook signing secret</strong>
-      <p className={ui.fieldHelp}>Copy this now — it won't be shown again. Use it to verify the <code>X-Webhook-Signature</code> header on incoming requests.</p>
+      <p className={ui.fieldHelp}>Copy this now — it won't be shown again. Use it to verify the <code>X-Webhook-Signature</code> header (the HMAC-SHA256 of the body), or <code>X-Webhook-Signature-V2</code>: the HMAC-SHA256 of <code>X-Webhook-Timestamp</code>, a dot and the body, so a delivery replayed later can be refused.</p>
       <code className={styles.secretValue}>{revealedSecret}</code>
       <div className={styles.actions}><button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setRevealedSecret('')}>Done</button></div>
     </div>}

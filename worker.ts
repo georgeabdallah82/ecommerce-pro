@@ -69,9 +69,12 @@ const worker = {
     const site = String(env?.NEXT_PUBLIC_SITE_URL || env?.APP_URL || 'https://internal.invalid').replace(/\/$/, '')
     const paths: string[] = []
     if (controller.cron === ORDER_WATCH_CRON) {
-      // Refunds the store has not recorded are confirmed with the gateway once an hour (lib/refund-reconciliation.ts).
-      // This cron runs every 15 minutes and each run wakes the database, so only the top-of-hour run includes it.
+      // Once an hour: refunds the store has not recorded are confirmed with the gateway (lib/refund-reconciliation.ts),
+      // and card checkouts left at the payment page for over 30 minutes give their stock back
+      // (app/api/internal/release-expired-reservations). This cron runs every 15 minutes and each run wakes the
+      // database, so only the top-of-hour run includes them.
       if (reconcileDue(controller.scheduledTime)) paths.push('/api/internal/reconcile-refunds')
+      if (reconcileDue(controller.scheduledTime)) paths.push('/api/internal/release-expired-reservations')
       // The marker file is the only thing read first: no order being watched, or night time, means the
       // database is never touched by the order watch.
       try {

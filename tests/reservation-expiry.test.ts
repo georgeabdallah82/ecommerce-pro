@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { db } from '@/lib/prisma'
-import { GET } from '@/app/api/internal/release-expired-reservations/route'
+import { POST } from '@/app/api/internal/release-expired-reservations/route'
 
 // Runs the real cron handler against the in-memory mock database.
 async function storefrontOrder(orderNumber: string, paymentMethod: 'COD' | 'CARD' | 'BANK_TRANSFER') {
@@ -19,10 +19,10 @@ describe('release-expired-reservations cron', () => {
     const bank = await storefrontOrder('ORD-TEST-BANK', 'BANK_TRANSFER')
     const card = await storefrontOrder('ORD-TEST-CARD', 'CARD')
 
-    const unauthorized = await GET(new Request('http://x/api/internal/release-expired-reservations'))
+    const unauthorized = await POST(new Request('http://x/api/internal/release-expired-reservations', { method: 'POST' }))
     assert.equal(unauthorized.status, 401)
 
-    const res = await GET(new Request('http://x/api/internal/release-expired-reservations', { headers: { authorization: 'Bearer test-cron-secret' } }))
+    const res = await POST(new Request('http://x/api/internal/release-expired-reservations', { method: 'POST', headers: { authorization: 'Bearer test-cron-secret' } }))
     assert.equal(res.status, 200)
 
     assert.equal((await db.order.findUnique({ where: { id: cod } }))?.status, 'PENDING')

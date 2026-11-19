@@ -1,7 +1,7 @@
 'use server'
 
 import { db } from '@/lib/prisma'
-import { verifyPassword, setSession } from '@/lib/auth'
+import { verifyPassword, setSession, upgradePasswordHash } from '@/lib/auth'
 import { consumeDurableRateLimit, clearDurableRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { redirect } from 'next/navigation'
@@ -26,6 +26,7 @@ export async function login(formData: FormData) {
   if (!user || !user.isActive || user.role !== 'CUSTOMER' || !(await verifyPassword(password, user.passwordHash))) {
     redirect(`/account/login?error=invalid${back}`)
   }
+  await upgradePasswordHash(user.id, password, user.passwordHash)
 
   if (!user.emailVerifiedAt) redirect('/account/check-email?error=unverified')
 
