@@ -1,7 +1,8 @@
-import { createHmac } from 'node:crypto'
+import { createHmac, randomUUID } from 'node:crypto'
 import { db } from '@/lib/prisma'
 import { runInBackground } from '@/lib/background'
 import { userError } from '@/lib/user-error'
+import { queueRetry, type DeliveryResult } from '@/lib/outbox'
 
 const MAX_DELIVERY_ATTEMPTS = 3
 const RETRY_DELAY_MS = 200
@@ -11,18 +12,19 @@ function delay(ms: number) {
 }
 
 // Retries a handful of times with a short backoff before giving up -- covers the
-// brief-outage case (a receiver mid-deploy, a transient DNS/network blip) without
-// needing a separate queue. lastPayload is only ever populated after every attempt
+// brief-outage case (a receiver mid-deploy, a transient DNS/network blip); a longer
+// one is left to the hourly retries (lib/outbox.ts). lastPayload is only ever populated after every attempt
 // has failed, and only ever cleared on a subsequent success, so it always reflects
 // "the exact body that still needs to be redelivered" (or nothing, if none does).
-async function deliver(endpoint: { id: string; endpointUrl: string; secret: string }, body: string) {
+async function deliver(endpoint: { id: string; endpointUrl: string; secret: string }, body: string, options: { attempts?: number; queue?: boolean } = {}): Promise<DeliveryResult> {
   // X-Webhook-Signature: the body's HMAC-SHA256, as before. X-Webhook-Signature-V2 signs "<timestamp>.<body>" with the
   // X-Webhook-Timestamp (Unix seconds) sent beside it, so a receiver can refuse a delivery replayed later.
   const signature = createHmac('sha256', endpoint.secret).update(body).digest('hex')
   let lastStatus: number | null = null
   let lastError: string | null = null
 
-  for (let attempt = 1; attempt <= MAX_DELIVERY_ATTEMPTS; attempt++) {
+  const tries = options.attempts ?? MAX_DELIVERY_ATTEMPTS
+  for (let attempt = 1; attempt <= tries; attempt++) {
     const timestamp = String(Math.floor(Date.now() / 1000))
     const signatureV2 = createHmac('sha256', endpoint.secret).update(`${timestamp}.${body}`).digest('hex')
     try {
@@ -37,7 +39,7 @@ async function deliver(endpoint: { id: string; endpointUrl: string; secret: stri
           where: { id: endpoint.id },
           data: { lastStatus: response.status, lastSentAt: new Date(), lastError: null, lastPayload: null },
         }).catch(() => undefined)
-        return
+        return { ok: true }
       }
       lastStatus = response.status
       lastError = `HTTP ${response.status}`
@@ -45,13 +47,16 @@ async function deliver(endpoint: { id: string; endpointUrl: string; secret: stri
       lastStatus = null
       lastError = (error instanceof Error ? error.message : 'Delivery failed').slice(0, 500)
     }
-    if (attempt < MAX_DELIVERY_ATTEMPTS) await delay(RETRY_DELAY_MS * attempt)
+    if (attempt < tries) await delay(RETRY_DELAY_MS * attempt)
   }
 
   await db.webhookEndpoint.update({
     where: { id: endpoint.id },
     data: { lastStatus, lastSentAt: new Date(), lastError, lastPayload: body },
   }).catch(() => undefined)
+  // Still failing after the quick retries: the hourly job tries again for about a day (lib/outbox.ts).
+  if (options.queue !== false) await queueRetry('webhook', { endpointId: endpoint.id, body }, lastError || 'Delivery failed')
+  return { ok: false, error: lastError }
 }
 
 // Manually re-sends the body captured from an endpoint's last failed delivery
@@ -61,7 +66,14 @@ export async function redeliverWebhook(endpointId: string) {
   const endpoint = await db.webhookEndpoint.findUnique({ where: { id: endpointId } })
   if (!endpoint) throw userError('Webhook endpoint not found', 404)
   if (!endpoint.lastPayload) throw userError('This endpoint has no failed delivery to retry')
-  await deliver(endpoint, endpoint.lastPayload)
+  await deliver(endpoint, endpoint.lastPayload, { queue: false })
+}
+
+// A queued delivery's next try (lib/outbox.ts): one try, to an endpoint that is still there and on.
+export async function retryQueuedWebhook(message: { endpointId?: unknown; body?: unknown }): Promise<DeliveryResult> {
+  const endpoint = typeof message?.endpointId === 'string' ? await db.webhookEndpoint.findUnique({ where: { id: message.endpointId } }) : null
+  if (!endpoint || endpoint.status !== 'ACTIVE' || typeof message.body !== 'string') return { ok: false, error: 'The endpoint was removed or turned off', permanent: true }
+  return deliver(endpoint, message.body, { attempts: 1, queue: false })
 }
 
 /**
@@ -73,7 +85,8 @@ export async function redeliverWebhook(endpointId: string) {
 export async function dispatchWebhookEvent(topic: string, payload: Record<string, unknown>) {
   const endpoints = await db.webhookEndpoint.findMany({ where: { topic, status: 'ACTIVE' } })
   if (!endpoints.length) return
-  const body = JSON.stringify({ topic, payload, sentAt: new Date().toISOString() })
+  // Each event has an id, the same on every try, so a receiver can skip one it already has.
+  const body = JSON.stringify({ id: randomUUID(), topic, payload, sentAt: new Date().toISOString() })
   await Promise.all(endpoints.map((endpoint) => deliver(endpoint, body)))
 }
 

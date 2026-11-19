@@ -1,6 +1,7 @@
 import { db } from '@/lib/prisma'
 import { issueGiftCardsForOrder } from '@/lib/gift-cards'
 import { runInBackground } from '@/lib/background'
+import { queueRetry } from '@/lib/outbox'
 import type { WeeklyFacts } from '@/lib/weekly-report'
 import { securityAlertText, type SecurityAlert } from '@/lib/sign-in-devices'
 
@@ -125,21 +126,25 @@ function logEmail(to: string, subject: string, status: 'sent' | 'failed' | 'skip
   )
 }
 
-export async function sendEmail(to: string, subject: string, html: string, text: string, extra?: { headers?: Record<string, string> }) {
-  // Orders taken on WhatsApp or by phone may have no email address: there is nobody to send to.
-  if (!to || !to.includes('@')) return { sent: false, skipped: true }
-  const config = credentials()
-  if (!config) {
-    console.warn('[email] RESEND_API_KEY/EMAIL_FROM not configured; skipping send', { to, subject })
-    logEmail(to, subject, 'skipped', null, 'Email sending is not set up (RESEND_API_KEY / EMAIL_FROM)')
-    return { sent: false, skipped: true }
-  }
+// The Resend endpoint (a test server's address in local checks, through RESEND_API_URL).
+const resendUrl = () => process.env.RESEND_API_URL || 'https://api.resend.com/emails'
+
+// Too many requests, or Resend's own server error, may pass; anything else it refuses (an address, the sender's
+// domain, the key) will not, and is not tried again.
+export function emailFailureIsPermanent(status: number) {
+  return status !== 429 && status < 500
+}
+
+export type QueuedEmail = { to: string; subject: string; html: string; text: string; headers?: Record<string, string>; idempotencyKey: string }
+
+// One try. The same idempotency key goes with every try of an email, so Resend sends it once.
+async function deliverEmail(config: { apiKey: string; from: string }, message: QueuedEmail): Promise<{ ok: boolean; error?: string; permanent?: boolean; providerId?: string | null }> {
   try {
     const from = await configuredSender(config.from)
-    const response = await fetch('https://api.resend.com/emails', {
+    const response = await fetch(resendUrl(), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${config.apiKey}` },
-      body: JSON.stringify({ from, to, subject, html, text, ...(extra?.headers ? { headers: extra.headers } : {}) }),
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${config.apiKey}`, 'idempotency-key': message.idempotencyKey },
+      body: JSON.stringify({ from, to: message.to, subject: message.subject, html: message.html, text: message.text, ...(message.headers ? { headers: message.headers } : {}) }),
       signal: AbortSignal.timeout(10000),
     })
     if (!response.ok) {
@@ -148,17 +153,42 @@ export async function sendEmail(to: string, subject: string, html: string, text:
       // Resend answers {"message": "..."}; keep its explanation, not the raw body.
       let reason = detail
       try { reason = String(JSON.parse(detail)?.message || detail) } catch {}
-      logEmail(to, subject, 'failed', null, `Resend answered ${response.status}${reason ? `: ${reason}` : ''}`)
-      return { sent: false, skipped: false }
+      return { ok: false, error: `Resend answered ${response.status}${reason ? `: ${reason}` : ''}`, permanent: emailFailureIsPermanent(response.status) }
     }
     const accepted = await response.json().catch(() => null) as { id?: string } | null
-    logEmail(to, subject, 'sent', accepted?.id || null)
-    return { sent: true, skipped: false }
+    return { ok: true, providerId: accepted?.id || null }
   } catch (error) {
     console.error('[email] send failed', error)
-    logEmail(to, subject, 'failed', null, error instanceof Error ? error.message : String(error))
-    return { sent: false, skipped: false }
+    return { ok: false, error: error instanceof Error ? error.message : String(error) }
   }
+}
+
+// `retry: false` for an email that is no use later: a password reset link expires within the hour.
+export async function sendEmail(to: string, subject: string, html: string, text: string, extra?: { headers?: Record<string, string>; retry?: boolean }) {
+  // Orders taken on WhatsApp or by phone may have no email address: there is nobody to send to.
+  if (!to || !to.includes('@')) return { sent: false, skipped: true }
+  const config = credentials()
+  if (!config) {
+    console.warn('[email] RESEND_API_KEY/EMAIL_FROM not configured; skipping send', { to, subject })
+    logEmail(to, subject, 'skipped', null, 'Email sending is not set up (RESEND_API_KEY / EMAIL_FROM)')
+    return { sent: false, skipped: true }
+  }
+  const message: QueuedEmail = { to, subject, html, text, ...(extra?.headers ? { headers: extra.headers } : {}), idempotencyKey: crypto.randomUUID() }
+  const result = await deliverEmail(config, message)
+  logEmail(to, subject, result.ok ? 'sent' : 'failed', result.providerId, result.error)
+  // A failure that may pass is tried again by the hourly job (lib/outbox.ts).
+  if (!result.ok && !result.permanent && extra?.retry !== false) await queueRetry('email', message, result.error || 'Send failed')
+  return { sent: result.ok, skipped: false }
+}
+
+// A queued email's next try (lib/outbox.ts), with the idempotency key of its first.
+export async function retryQueuedEmail(message: QueuedEmail) {
+  const config = credentials()
+  if (!config) return { ok: false, error: 'Email sending is not set up (RESEND_API_KEY / EMAIL_FROM)', permanent: true }
+  if (!message?.to || !message.idempotencyKey) return { ok: false, error: 'Nothing to send', permanent: true }
+  const result = await deliverEmail(config, message)
+  logEmail(message.to, message.subject, result.ok ? 'sent' : 'failed', result.providerId, result.error)
+  return result
 }
 
 export async function sendPasswordResetEmail(to: string, resetUrl: string, expiresInMinutes: number) {
@@ -170,7 +200,7 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string, expir
     <p style="font-size:12px;color:#6b7280">If you didn't request this, you can safely ignore this email.</p>
   `, brand)
   const text = `Reset your password: ${resetUrl} (expires in ${expiresInMinutes} minutes). If you didn't request this, ignore this email.`
-  return sendEmail(to, 'Reset your password', html, text)
+  return sendEmail(to, 'Reset your password', html, text, { retry: false })
 }
 
 export async function sendOrderConfirmationEmail(orderId: string) {
