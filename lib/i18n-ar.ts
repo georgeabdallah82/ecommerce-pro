@@ -833,6 +833,7 @@ export const AR: Record<string, string> = {
   "Price: {price}": "السعر: {price}",
   "Shop the sale": "تسوّق العرض",
   "This is a gift": "هذا الطلب هدية",
+  "Send my order updates on WhatsApp": "أرسلوا لي تحديثات طلبي على واتساب",
   "We put your message in the parcel. Prices are not shown inside.": "نضع رسالتك داخل الطرد، ولا تظهر الأسعار في الداخل.",
   "WhatsApp number": "رقم واتساب",
   "You get a free {gift} with this order!": "تحصل على {gift} مجاناً مع هذا الطلب!",

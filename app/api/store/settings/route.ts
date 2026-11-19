@@ -5,6 +5,7 @@ import { getPublicPaymentMethods } from '@/lib/payment-methods-public'
 import { config } from '@/lib/config'
 import { getSellingConfig } from '@/lib/selling-config'
 import { DELIVERY_COUNTRIES_KEY, deliveryCountries, deliveryCountryOptions } from '@/lib/delivery-countries'
+import { whatsappUpdatesOffered } from '@/lib/whatsapp-cloud'
 
 const PUBLIC_KEYS = [
   'payment.cod', 'payment.card', 'payment.bank', 'payment.wallet',
@@ -14,12 +15,14 @@ const PUBLIC_KEYS = [
 
 export async function GET(){
   try{
-    const [rows,paymentProvider,paymentMethods,selling]=await Promise.all([
+    const [rows,paymentProvider,paymentMethods,selling,whatsappUpdates]=await Promise.all([
       db.setting.findMany({where:{key:{in:PUBLIC_KEYS}},select:{key:true,value:true}}),
       Promise.resolve(getPaymentProvider()),
       getPublicPaymentMethods(),
       // Selling tools (lib/selling-config.ts): LBP prices, free gift, gift option, welcome popup, flash sales.
       getSellingConfig().catch(()=>null),
+      // "Send my order updates on WhatsApp" at checkout (lib/whatsapp-cloud.ts): a yes or no, never the settings.
+      whatsappUpdatesOffered().catch(()=>false),
     ])
     const map=Object.fromEntries(rows.map(row=>[row.key,row.value]))
     return json({settings:{
@@ -31,7 +34,7 @@ export async function GET(){
         details: paymentMethods,
       },
       // The countries checkout offers (Settings > Shipping & delivery), the store's own first.
-      checkout:{guestCheckout:map['checkout.guestCheckout']!=='false',freeShippingThreshold:map['checkout.freeShippingThreshold']||'100',taxRatePercent:map['checkout.taxRatePercent']||'0',countries:deliveryCountryOptions(deliveryCountries(map[DELIVERY_COUNTRIES_KEY],map['store.country']))},
+      checkout:{guestCheckout:map['checkout.guestCheckout']!=='false',whatsappUpdates,freeShippingThreshold:map['checkout.freeShippingThreshold']||'100',taxRatePercent:map['checkout.taxRatePercent']||'0',countries:deliveryCountryOptions(deliveryCountries(map[DELIVERY_COUNTRIES_KEY],map['store.country']))},
       store:{currency:map['store.currency']||'USD',country:map['store.country']||'Lebanon'},
       contact:{email:map['contact.email']?.trim()||config.supportEmail,phone:map['contact.phone']?.trim()||config.whatsapp},
       selling:selling?{lbp:selling.lbp,freeGift:selling.freeGift,giftOption:selling.giftOption,welcome:selling.welcome,flashSales:selling.flashSales,quantityDeals:selling.quantityDeals,occasions:selling.occasions}:null,

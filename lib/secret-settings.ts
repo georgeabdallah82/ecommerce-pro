@@ -10,7 +10,7 @@ export async function isReadableSecret(stored: string | null | undefined) {
 
 // Settings that hold secrets are kept sealed (see app/api/admin/settings/route.ts). Any value saved
 // before sealing existed is sealed here, once; the daily job runs this.
-const SEALED_KEYS = ['tracking.metaCapiToken']
+const SEALED_KEYS = ['tracking.metaCapiToken', 'whatsapp.cloud.accessToken']
 
 export async function sealPlainSecrets() {
   const rows = await db.setting.findMany({ where: { key: { in: SEALED_KEYS } }, select: { key: true, value: true } })

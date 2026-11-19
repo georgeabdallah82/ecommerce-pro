@@ -16,6 +16,11 @@ import { POLICY_DEFAULTS } from '@/lib/policy-defaults'
 import { CountrySelect, CountryMultiSelect, CurrencySelect, TimezoneSelect } from './field-selects'
 import { allowLeave, useLeaveGuard } from './use-leave-guard'
 import { fetchRead } from '@/lib/retry-fetch'
+import { SUGGESTED_TEMPLATE_NAMES, WHATSAPP_LABELS, WHATSAPP_LANGUAGES, WHATSAPP_UPDATES, templateBody, type WhatsAppUpdate } from '@/lib/whatsapp-templates'
+
+// Settings › Email & messaging › Automatic WhatsApp messages: the template name saved for each message.
+const WA_TEMPLATE_KEYS: Record<WhatsAppUpdate, string> = { confirmed: 'whatsapp.cloud.templateConfirmed', on_the_way: 'whatsapp.cloud.templateOnTheWay', delivered: 'whatsapp.cloud.templateDelivered' }
+const waTemplateInput = (v: string) => v.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '').slice(0, 512)
 
 const groups = [
   { key: 'General', label: 'General', icon: Store, desc: 'Store identity and regional defaults' },
@@ -24,7 +29,7 @@ const groups = [
   { key: 'Markets', label: 'Markets', icon: Globe2, desc: 'Currency and localization' },
   { key: 'Selling', label: 'Selling tools', icon: Gift, desc: 'Free gift, gift option, cancel an order, welcome discount, invite a friend, questions, WhatsApp button, search words' },
   { key: 'Notifications', label: 'Notifications', icon: Bell, desc: 'Order and operational alerts' },
-  { key: 'Email', label: 'Email & messaging', icon: Mail, desc: 'Customer communication preferences' },
+  { key: 'Email', label: 'Email & messaging', icon: Mail, desc: 'Customer emails and automatic WhatsApp messages' },
   { key: 'Security', label: 'Security & access', icon: ShieldCheck, desc: 'Staff access and account protection' },
   { key: 'Tracking', label: 'Tracking & pixels', icon: BarChart3, desc: 'Facebook/Meta, Google Analytics, and TikTok pixels' },
   { key: 'Maintenance', label: 'Maintenance mode', icon: Wrench, desc: 'Close the store for customers with a maintenance page' },
@@ -57,7 +62,7 @@ const defaultPaymentConfig: PaymentConfig = {
   apiPassword: '',
 }
 
-export default function SettingsCenterPro({ initial, addSearchWord, metaCapiTokenSet = false, metaCapiTokenUnreadable = false, emailFromDefault = '', appIcon, products = [], whatsappListCount = 0 }: { initial: any[]; addSearchWord?: string; metaCapiTokenSet?: boolean; metaCapiTokenUnreadable?: boolean; emailFromDefault?: string; appIcon?: { brandName: string; source: string; brandColor: string; saved: { large: string; small: string } }; products?: Array<{ id: string; name: string }>; whatsappListCount?: number }) {
+export default function SettingsCenterPro({ initial, addSearchWord, metaCapiTokenSet = false, metaCapiTokenUnreadable = false, whatsappTokenSet = false, whatsappTokenUnreadable = false, emailFromDefault = '', appIcon, products = [], whatsappListCount = 0 }: { initial: any[]; addSearchWord?: string; metaCapiTokenSet?: boolean; metaCapiTokenUnreadable?: boolean; whatsappTokenSet?: boolean; whatsappTokenUnreadable?: boolean; emailFromDefault?: string; appIcon?: { brandName: string; source: string; brandColor: string; saved: { large: string; small: string } }; products?: Array<{ id: string; name: string }>; whatsappListCount?: number }) {
   const map = useMemo(() => new Map(initial.map(x => [x.key, x.value])), [initial])
   const [tab, setTab] = useState('General')
   // A term the shoppers searched for and found nothing: add it as a new word group, left for the owner to finish.
@@ -128,11 +133,24 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
     // The countries checkout delivers to (Shipping & delivery). It wasn't read here, so the card showed only the
     // store's own country, and adding a country saved that one over the saved list.
     'checkout.countries': map.get('checkout.countries') || '',
+    // Automatic WhatsApp messages (Email & messaging); template names stay empty until the owner types them.
+    'whatsapp.cloud.phoneNumberId': map.get('whatsapp.cloud.phoneNumberId') || '',
+    'whatsapp.cloud.language': map.get('whatsapp.cloud.language') || 'en',
+    'whatsapp.cloud.templateConfirmed': map.get('whatsapp.cloud.templateConfirmed') || '',
+    'whatsapp.cloud.templateOnTheWay': map.get('whatsapp.cloud.templateOnTheWay') || '',
+    'whatsapp.cloud.templateDelivered': map.get('whatsapp.cloud.templateDelivered') || '',
   }))
   // The Conversions API token is write-only: typed in to save or replace it, never shown back.
   const [capiToken, setCapiToken] = useState('')
   const [capiTokenSaved, setCapiTokenSaved] = useState(metaCapiTokenSet)
   const [capiCheck, setCapiCheck] = useState('')
+  // The WhatsApp access key is write-only too. "Send a test" sends one message, with a sample order, to the number typed.
+  const [waToken, setWaToken] = useState('')
+  const [waTokenSaved, setWaTokenSaved] = useState(whatsappTokenSet)
+  const [waNote, setWaNote] = useState('')
+  const [waTestPhone, setWaTestPhone] = useState('')
+  const [waTestKind, setWaTestKind] = useState<WhatsAppUpdate>('confirmed')
+  const [waTesting, setWaTesting] = useState(false)
   const defaultSender = useMemo(() => {
     const match = /^\s*(.*?)\s*<\s*([^<>\s]+)\s*>\s*$/.exec(emailFromDefault)
     const address = (match ? match[2] : emailFromDefault).trim()
@@ -146,7 +164,7 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
       'checkout.giftOption', 'product.whatsappOrder', 'product.questions',
     ].map(k => [k, map.get(k) !== 'false'])),
     // Off until switched on.
-    ...Object.fromEntries(['currency.showLbp', 'freeGift.enabled', 'welcome.enabled', 'invite.enabled'].map(k => [k, map.get(k) === 'true'])),
+    ...Object.fromEntries(['currency.showLbp', 'freeGift.enabled', 'welcome.enabled', 'invite.enabled', 'whatsapp.cloud.enabled'].map(k => [k, map.get(k) === 'true'])),
     'maintenance.enabled': map.get('maintenance.enabled') === 'true',
   }))
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig>(defaultPaymentConfig)
@@ -160,7 +178,7 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
   // on phones and the cards that save by themselves (blocked numbers, 2-step login) don't.
   const [saved, setSaved] = useState(() => ({ values, flags }))
   const paymentChanged = !!paymentSaved && (!!paymentConfig.apiPassword.trim() || PAYMENT_FIELDS.some(key => paymentConfig[key] !== paymentSaved[key]))
-  const dirty = paymentChanged || !!capiToken.trim()
+  const dirty = paymentChanged || !!capiToken.trim() || !!waToken.trim()
     || Object.keys(values).some(key => (values[key] || '') !== (saved.values[key] || ''))
     || Object.keys(flags).some(key => flags[key] !== saved.flags[key])
   const [saveError, setSaveError] = useState('')
@@ -180,6 +198,30 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
   }, [tab])
 
   const filtered = groups.filter(g => `${g.label} ${g.desc}`.toLowerCase().includes(search.toLowerCase()))
+  // The test uses what is saved, so it waits for unsaved WhatsApp changes to be saved.
+  const waUnsaved = !!waToken.trim() || Object.keys(values).some(key => key.startsWith('whatsapp.cloud.') && (values[key] || '') !== (saved.values[key] || ''))
+  async function sendWhatsAppTest() {
+    if (waUnsaved) { setWaNote('Save your changes first, then send the test.'); return }
+    setWaTesting(true); setWaNote('Sending…')
+    try {
+      await api('/api/admin/whatsapp/test', { method: 'POST', body: JSON.stringify({ phone: waTestPhone, kind: waTestKind }) })
+      setWaNote('Sent. It should arrive on that WhatsApp within a minute.')
+    } catch (e) {
+      setWaNote(e instanceof Error ? e.message : 'The test was not sent')
+    } finally {
+      setWaTesting(false)
+    }
+  }
+  async function removeWhatsAppToken() {
+    if (!(await confirm({ title: 'Remove the WhatsApp access key?', message: 'No automatic WhatsApp messages go out until you paste a key again, and checkout stops offering them.', confirmLabel: 'Remove key' }))) return
+    try {
+      await api('/api/admin/settings', { method: 'PATCH', body: JSON.stringify({ key: 'whatsapp.cloud.accessToken', value: '' }) })
+      setWaTokenSaved(false)
+      setWaNote('Access key removed. No WhatsApp messages go out until you paste a new one.')
+    } catch (e) {
+      setWaNote(e instanceof Error ? e.message : 'Could not remove the key')
+    }
+  }
   const set = (key: string, value: string) => setValues(v => ({ ...v, [key]: value }))
   const toggle = (key: string) => setFlags(v => ({ ...v, [key]: !v[key] }))
 
@@ -202,6 +244,7 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
       const policyChanged = policyKeys.some(key => (values[key] || '') !== (saved.values[key] || ''))
       if (policyChanged) settings['policy.updatedAt'] = new Date().toISOString()
       if (capiToken.trim()) settings['tracking.metaCapiToken'] = capiToken.trim()
+      if (waToken.trim()) settings['whatsapp.cloud.accessToken'] = waToken.trim()
       // The online payment provider is saved whichever tab is open (it was saved only from Payments, so what was typed
       // there was lost if Save was pressed on another tab). It also owns the Online card switch, payment.card, with its
       // own checks: both saves used to write the switch at once, the provider's with the value it had on opening.
@@ -213,6 +256,7 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
       ])
       if (savedPayment) { const config = { ...defaultPaymentConfig, ...savedPayment, apiPassword: '' }; setPaymentConfig(config); setPaymentSaved(config) }
       if (capiToken.trim()) { setCapiTokenSaved(true); setCapiToken('') }
+      if (waToken.trim()) { setWaTokenSaved(true); setWaToken('') }
       setSaved({ values, flags })
       setNotice('All settings saved')
     } catch (e) {
@@ -510,6 +554,47 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
               <Toggle label="Return status updates" keyName="email.returnStatus" value={flags['email.returnStatus']} onChange={() => toggle('email.returnStatus')} />
               <Toggle label="Order edited by staff" keyName="email.orderEdit" value={flags['email.orderEdit']} onChange={() => toggle('email.orderEdit')} />
               <Toggle label="Ask for a review 1 day after delivery" keyName="email.reviewRequest" value={flags['email.reviewRequest']} onChange={() => toggle('email.reviewRequest')} />
+            </Card>
+            <Card title="Automatic WhatsApp messages" desc="Customers who tick “Send my order updates on WhatsApp” at checkout get a message from your WhatsApp Business number when you confirm their order, when it is out for delivery and when it is delivered. Checkout offers the choice once this is switched on and set up. Meta charges per message, at its utility rate.">
+              <Toggle label="Send automatic WhatsApp messages" keyName="whatsapp.cloud.enabled" value={flags['whatsapp.cloud.enabled']} onChange={() => toggle('whatsapp.cloud.enabled')} />
+              <div className={ui.twoCol}>
+                <Field label="Phone number ID" inputMode="numeric" value={values['whatsapp.cloud.phoneNumberId']} placeholder="e.g. 106540352242922" onChange={v => set('whatsapp.cloud.phoneNumberId', v.replace(/\D/g, '').slice(0, 25))} />
+                <label className={ui.fieldLabel}>Template language
+                  <select className={ui.select} value={values['whatsapp.cloud.language']} onChange={e => set('whatsapp.cloud.language', e.target.value)}>
+                    {WHATSAPP_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label} ({l.code})</option>)}
+                  </select>
+                </label>
+              </div>
+              <label className={ui.fieldLabel}>Access key
+                <input className={ui.input} type="password" autoComplete="off" value={waToken} onChange={e => setWaToken(e.target.value)} placeholder={waTokenSaved ? 'Saved — paste a new one to replace it' : 'Paste the permanent access key'} />
+              </label>
+              <p className={ui.muted}>Both come from Meta: the phone number ID is in WhatsApp Manager › Phone numbers (or your app › WhatsApp › API setup). The access key is a permanent one from Business settings › Users › System users › Generate token, with the whatsapp_business_messaging permission. It is stored encrypted and never shown again.{waTokenSaved ? ' A key is saved.' : ''}</p>
+              {whatsappTokenUnreadable && <p role="alert" style={{ margin: 0, color: '#b42318', fontWeight: 700 }}>The saved access key can no longer be read (the store&apos;s secret key changed). No WhatsApp messages go out until you paste it again.</p>}
+              {waTokenSaved && <button type="button" className={`${ui.btn} ${ui.btnDanger} ${ui.btnSmall}`} onClick={removeWhatsAppToken}>Remove access key</button>}
+              <div className={ui.twoCol}>
+                {WHATSAPP_UPDATES.map(kind => <Field key={kind} label={`“${WHATSAPP_LABELS[kind]}” template name`} value={values[WA_TEMPLATE_KEYS[kind]]} placeholder={SUGGESTED_TEMPLATE_NAMES[kind]} onChange={v => set(WA_TEMPLATE_KEYS[kind], waTemplateInput(v))} />)}
+              </div>
+              <p className={ui.muted}>Leave a name empty to not send that message.</p>
+              <details>
+                <summary style={{ cursor: 'pointer', fontWeight: 700 }}>The three templates to create in WhatsApp Manager</summary>
+                <p className={ui.muted}>In WhatsApp Manager › Message templates › Create template: category Utility, language {WHATSAPP_LANGUAGES.find(l => l.code === values['whatsapp.cloud.language'])?.label || 'English'}, the name below, and this text as the body (the {'{{1}}'}-style values are filled in for each order). Meta usually approves them within minutes.</p>
+                {WHATSAPP_UPDATES.map(kind => (
+                  <div key={kind} style={{ marginTop: 10 }}>
+                    <strong>{values[WA_TEMPLATE_KEYS[kind]] || SUGGESTED_TEMPLATE_NAMES[kind]}</strong> <span className={ui.muted}>({WHATSAPP_LABELS[kind]})</span>
+                    <pre dir="auto" style={{ whiteSpace: 'pre-wrap', margin: '6px 0 0', padding: '10px 12px', border: '1px solid var(--admin-border)', borderRadius: 'var(--admin-radius-md)', background: 'var(--admin-bg)', fontFamily: 'inherit', fontSize: 13 }}>{templateBody(kind, values['whatsapp.cloud.language'])}</pre>
+                  </div>
+                ))}
+              </details>
+              <div className="inline" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                <Field label="Send a test to (your WhatsApp number)" type="tel" value={waTestPhone} placeholder="e.g. 70 123 456" onChange={setWaTestPhone} />
+                <label className={ui.fieldLabel}>Message
+                  <select className={ui.select} value={waTestKind} onChange={e => setWaTestKind(e.target.value as WhatsAppUpdate)}>
+                    {WHATSAPP_UPDATES.map(kind => <option key={kind} value={kind}>{WHATSAPP_LABELS[kind]}</option>)}
+                  </select>
+                </label>
+                <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} disabled={waTesting || !waTestPhone.trim()} onClick={sendWhatsAppTest}>{waTesting ? 'Sending…' : 'Send test'}</button>
+              </div>
+              {waNote && <p className={ui.muted} role="status" style={{ margin: 0 }}>{waNote}</p>}
             </Card>
             </>
           )}

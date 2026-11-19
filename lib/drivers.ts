@@ -10,6 +10,7 @@ import { sendDriverUpdatePush } from '@/lib/push'
 import { money } from '@/lib/config'
 import { problemLabel, type ProblemReason } from '@/lib/drivers-shared'
 import { userError } from '@/lib/user-error'
+import { sendOrderWhatsApp } from '@/lib/whatsapp-cloud'
 
 // Drivers, the database side (rules in lib/drivers-shared.ts). A driver's link is a long random
 // code: whoever has it sees that driver's current deliveries, so a new link can replace it at
@@ -29,8 +30,9 @@ export async function driverForToken(token: string | null | undefined) {
 type Driver = { id: string; name: string }
 
 // The driver's "Delivered": the same as staff marking a shipped order delivered (cash on
-// delivery is then marked paid), plus the cash the driver now holds for the store.
-export async function markDeliveredByDriver(driver: Driver, orderId: string) {
+// delivery is then marked paid), plus the cash the driver now holds for the store. `origin` is
+// the store's address, for the links in the customer's WhatsApp message.
+export async function markDeliveredByDriver(driver: Driver, orderId: string, origin = '') {
   const result = await db.$transaction(async tx => {
     const order = await tx.order.findFirst({ where: { id: orderId, driverId: driver.id }, select: { id: true, orderNumber: true, userId: true, status: true, paymentMethod: true, paymentStatus: true, grandTotal: true, currency: true } })
     if (!order) throw userError('This order is not on your list.')
@@ -54,6 +56,7 @@ export async function markDeliveredByDriver(driver: Driver, orderId: string) {
   const payload = { id: order.id, orderNumber: order.orderNumber, status: OrderStatus.DELIVERED, paymentStatus: cash ? PaymentStatus.PAID : order.paymentStatus, fulfillmentStatus: fulfillmentForStatus(OrderStatus.DELIVERED) }
   runInBackground(dispatchWebhookEvent('order.updated', payload).catch(error => console.error('[webhook] order.updated dispatch failed', error)))
   runInBackground(dispatchWebhookEvent('order.fulfilled', payload).catch(error => console.error('[webhook] order.fulfilled dispatch failed', error)))
+  runInBackground(sendOrderWhatsApp(order.id, OrderStatus.DELIVERED, origin).catch(error => console.error('[whatsapp] order update failed', error)))
   runInBackground(sendDriverUpdatePush({ title: `#${order.orderNumber} delivered`, body: `${driver.name}${cash ? ` collected ${money(cash, order.currency)}` : ' delivered it (already paid)'}`, orderId: order.id }).catch(error => console.error('[push] driver update failed', error)))
   await audit(null, 'order.delivered_by_driver', 'Order', order.id, { driverId: driver.id, cashCollected: cash })
   return result

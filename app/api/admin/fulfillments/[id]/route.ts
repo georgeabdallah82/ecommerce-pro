@@ -9,6 +9,8 @@ import { ShipmentStatus, OrderStatus } from '@prisma/client'
 import { runInBackground } from '@/lib/background'
 import { issueAndNotifyGiftCardsForOrder } from '@/lib/email'
 import { safeHttpUrl } from '@/lib/safe-url'
+import { sendOrderWhatsApp } from '@/lib/whatsapp-cloud'
+import { requestOrigin } from '@/lib/site-url'
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -56,6 +58,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         const eventPayload = { id: orderEvent.orderId, orderNumber: orderEvent.orderNumber, status: OrderStatus.DELIVERED, fulfillmentStatus: fulfillmentForStatus(OrderStatus.DELIVERED) }
         runInBackground(dispatchWebhookEvent('order.updated', eventPayload).catch(error => console.error('[webhook] order.updated dispatch failed', error)))
         runInBackground(dispatchWebhookEvent('order.fulfilled', eventPayload).catch(error => console.error('[webhook] order.fulfilled dispatch failed', error)))
+        // "Delivered" on WhatsApp, for a customer who asked for updates at checkout (lib/whatsapp-cloud.ts).
+        runInBackground(sendOrderWhatsApp(orderEvent.orderId, OrderStatus.DELIVERED, await requestOrigin()).catch(error => console.error('[whatsapp] order update failed', error)))
         // Payment confirmed by delivery: issue any gift-card products, as marking an order PAID does.
         if (orderEvent.codCollected) runInBackground(issueAndNotifyGiftCardsForOrder(orderEvent.orderId).catch(error => console.error('[email] gift card issuance on delivery failed', error)))
       }

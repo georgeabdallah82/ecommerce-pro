@@ -412,6 +412,7 @@ export async function POST(req: Request) {
             userId: user?.id ?? null,
             email: orderEmail,
             phone: input.phone || null,
+            whatsappUpdates: input.whatsappUpdates === true,
             adConsent: input.adConsent || null,
             subtotal,
             discountTotal: discount.total + freeShippingDiscount + coinDiscount + giftCardDiscount,
