@@ -20,7 +20,7 @@ import { clientIp } from '@/lib/request-ip'
 import { giftCardProblem, redeemedGiftCard, restoreGiftCardBalance } from '@/lib/gift-cards'
 import { getUnpublishedProductIds } from '@/lib/sales-channels'
 import { getStoreCurrency } from '@/lib/store-currency'
-import { orderMoney } from '@/lib/checkout-totals'
+import { orderMoney, orderRecordTotals } from '@/lib/checkout-totals'
 import { applyCoupon, findAutomaticDiscount } from '@/lib/checkout-discounts'
 import { PaymentMethod } from '@prisma/client'
 import { ZodError } from 'zod'
@@ -413,11 +413,7 @@ export async function POST(req: Request) {
             email: orderEmail,
             phone: input.phone || null,
             adConsent: input.adConsent || null,
-            subtotal,
-            discountTotal: discount.total + freeShippingDiscount + coinDiscount + giftCardDiscount,
-            shippingTotal,
-            taxTotal,
-            grandTotal,
+            ...orderRecordTotals(subtotal, discount.total, { coinDiscount, shipping, shippingTotal, freeShippingDiscount, taxTotal, giftCardDiscount, grandTotal }),
             currency: orderCurrency,
             status: orderStatus,
             paymentStatus,
