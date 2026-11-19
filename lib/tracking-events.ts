@@ -26,7 +26,7 @@ const safely = (fn: () => void) => { try { fn() } catch {} }
 // event is also reported to our own server (/api/analytics/meta), which forwards it to Meta with the
 // same id -- so Meta counts it once, and still hears about it when the browser blocks the pixel.
 const newEventId = (name: string) => `${name.toLowerCase()}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
-function reportToServer(name: 'AddToCart' | 'InitiateCheckout', eventId: string, items: TrackedLineItem[], total: number, currency: string) {
+function reportToServer(name: 'PageView' | 'ViewContent' | 'AddToCart' | 'InitiateCheckout', eventId: string, items: TrackedLineItem[], total: number, currency: string) {
   if (!window.__metaPixelId) return
   safely(() => {
     fetch('/api/analytics/meta', {
@@ -41,7 +41,9 @@ const value = (items: TrackedLineItem[]) => Math.round(items.reduce((s, i) => s 
 
 export function trackViewContent(item: Omit<TrackedLineItem, 'quantity'>, currency: string) {
   if (typeof window === 'undefined') return
-  safely(() => window.fbq?.('track', 'ViewContent', { content_ids: [item.id], content_name: item.name, content_type: 'product', value: item.price, currency }))
+  const eventID = newEventId('ViewContent')
+  safely(() => window.fbq?.('track', 'ViewContent', { content_ids: [item.id], content_name: item.name, content_type: 'product', value: item.price, currency }, { eventID }))
+  reportToServer('ViewContent', eventID, [{ ...item, quantity: 1 }], item.price, currency)
   safely(() => window.gtag?.('event', 'view_item', { currency, value: item.price, items: [{ item_id: item.id, item_name: item.name, price: item.price, quantity: 1 }] }))
   safely(() => window.ttq?.track('ViewContent', { contents: [{ content_id: item.id, content_name: item.name, price: item.price, quantity: 1 }], content_type: 'product', value: item.price, currency }))
 }
@@ -114,4 +116,13 @@ export function trackPurchase(order: { orderNumber: string; value: number; curre
     value: order.value,
     currency: order.currency,
   }, { event_id: `purchase-${order.orderNumber}` }))
+}
+
+// A change of page inside the store. Meta's own counting of address changes is off (components/tracking-scripts.tsx),
+// so each one is sent here, once, with an id the server's copy shares.
+export function trackPageView() {
+  if (typeof window === 'undefined' || !window.__metaPixelId) return
+  const eventID = newEventId('PageView')
+  safely(() => window.fbq?.('track', 'PageView', {}, { eventID }))
+  reportToServer('PageView', eventID, [], 0, '')
 }

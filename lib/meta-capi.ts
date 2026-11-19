@@ -127,8 +127,10 @@ export async function sendMetaPurchase(orderId: string, opts: { context?: AdClie
   try {
     const config = await metaCapiConfig()
     if (!config.enabled) return
-    const order = await db.order.findUnique({ where: { id: orderId }, select: { orderNumber: true, email: true, phone: true, userId: true, grandTotal: true, currency: true, shippingAddressJson: true, items: { select: { productId: true, quantity: true, unitPrice: true } } } })
-    if (!order) return
+    const order = await db.order.findUnique({ where: { id: orderId }, select: { adConsent: true, orderNumber: true, email: true, phone: true, userId: true, grandTotal: true, currency: true, shippingAddressJson: true, items: { select: { productId: true, quantity: true, unitPrice: true } } } })
+    // Only when the shopper accepted cookies at checkout, as the browser pixel does: Decline (or no answer) means
+    // no ad tracking, from the browser or from here.
+    if (!order || order.adConsent !== 'granted') return
     await sendMetaEvents([buildMetaPurchaseEvent(order, { storeCountry: config.storeCountry, storeUrl: opts.storeUrl, context: opts.context })], config)
   } catch (error) {
     console.error('[meta-capi] purchase not sent', orderId, error instanceof Error ? error.message : error)
@@ -138,7 +140,7 @@ export async function sendMetaPurchase(orderId: string, opts: { context?: AdClie
 
 // ---- Add to cart / checkout start, reported by the shopper's browser (/api/analytics/meta) ----
 
-export const FUNNEL_EVENTS = ['AddToCart', 'InitiateCheckout'] as const
+export const FUNNEL_EVENTS = ['PageView', 'ViewContent', 'AddToCart', 'InitiateCheckout'] as const
 export type FunnelEvent = {
   name: (typeof FUNNEL_EVENTS)[number]
   eventId: string
@@ -160,8 +162,11 @@ export function readFunnelEvent(raw: unknown): FunnelEvent | null {
     const i = (item && typeof item === 'object' ? item : {}) as Record<string, unknown>
     return { id: typeof i.id === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(i.id) ? i.id : '', quantity: Math.floor(Number(i.quantity)), price: Number(i.price) }
   }).filter(i => i.id && Number.isFinite(i.quantity) && i.quantity >= 1 && i.quantity <= 1000 && Number.isFinite(i.price) && i.price >= 0 && i.price <= 1_000_000)
+  const url = typeof body.url === 'string' ? body.url.slice(0, 500) : undefined
+  // A page view names no products.
+  if (name === 'PageView') return eventId ? { name, eventId, currency: '', value: 0, url, items: [] } : null
   if (!name || !eventId || !currency || !items.length || !Number.isFinite(value) || value < 0 || value > 10_000_000) return null
-  return { name, eventId, currency, value: Math.round(value * 100) / 100, url: typeof body.url === 'string' ? body.url.slice(0, 500) : undefined, items }
+  return { name, eventId, currency, value: Math.round(value * 100) / 100, url, items }
 }
 
 export function buildMetaFunnelEvent(event: FunnelEvent, opts: { storeUrl?: string; context?: AdClientContext; userId?: string | null; now?: number }) {
@@ -184,7 +189,7 @@ export function buildMetaFunnelEvent(event: FunnelEvent, opts: { storeUrl?: stri
     action_source: 'website',
     event_source_url: sourceUrl || opts.storeUrl,
     user_data: userData,
-    custom_data: {
+    custom_data: event.name === 'PageView' ? undefined : {
       currency: event.currency,
       value: event.value,
       content_type: 'product',

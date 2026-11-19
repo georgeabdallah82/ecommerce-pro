@@ -7,7 +7,7 @@ import { parseAgent } from '@/lib/visitor-agent'
 import { isStaffUser } from '@/lib/visitor-tracking'
 import { adContextFromRequest, metaCapiConfig, readFunnelEvent, sendMetaFunnelEvent } from '@/lib/meta-capi'
 
-// "Added to cart" and "started checkout", reported by the shopper's browser next to the Meta pixel
+// Page views, product views, "added to cart" and "started checkout", reported by the shopper's browser next to the Meta pixel
 // (lib/tracking-events.ts). They are forwarded to Meta from here with the pixel's own event id, so Meta
 // counts each once and still hears about it when the shopper's browser blocks the pixel. Nothing is
 // stored; nothing happens until a Pixel ID and access token are saved in Settings > Tracking.

@@ -4,6 +4,7 @@ import Script from 'next/script'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useRef } from 'react'
 import type { TrackingConfig } from '@/lib/tracking'
+import { trackPageView } from '@/lib/tracking-events'
 
 function RouteChangePageViews({ config }: { config: TrackingConfig }) {
   const pathname = usePathname()
@@ -17,10 +18,11 @@ function RouteChangePageViews({ config }: { config: TrackingConfig }) {
     const page = `${pathname}?${searchParams.toString()}`
     if (lastPage.current === null || lastPage.current === page) { lastPage.current = page; return }
     lastPage.current = page
-    // Only TikTok needs telling about in-site page changes: the Meta pixel and GA4 (enhanced
-    // measurement) already count them on their own, so reporting them here too counted every
-    // page change twice on those two.
+    // TikTok and Meta are told about in-site page changes here; GA4 (enhanced measurement) counts them on its own.
+    // Meta's own counting of address changes is off (fbq.disablePushState), so each page change is sent once, with
+    // an id its server copy shares and Meta matches (lib/tracking-events.ts).
     try { window.ttq?.page?.() } catch {}
+    trackPageView()
   }, [pathname, searchParams, config])
 
   return null
@@ -36,8 +38,11 @@ export function TrackingScripts({ config, nonce }: { config: TrackingConfig; non
     {metaPixelId && <Script id="meta-pixel" strategy="afterInteractive" nonce={nonce} dangerouslySetInnerHTML={{ __html: `
 !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
 window.__metaPixelId='${metaPixelId}';
+fbq.disablePushState=true;
 fbq('init','${metaPixelId}');
-fbq('track','PageView');
+var pv='pageview-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10);
+fbq('track','PageView',{},{eventID:pv});
+try{fetch('/api/analytics/meta',{method:'POST',headers:{'content-type':'application/json'},keepalive:true,body:JSON.stringify({name:'PageView',eventId:pv,url:location.href})})}catch(e){}
 ` }} />}
 
     {(gaMeasurementId || googleAdsId) && <>
