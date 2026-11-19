@@ -341,6 +341,9 @@ model Coupon {
   getProductIds      String[]      @default([])
   getCollectionIds   String[]      @default([])
   firstOrderOnly     Boolean       @default(false)
+  // "Once per customer" (Admin > Discounts, codes only): an account, email or phone number can use the code on one
+  // order that is not cancelled (lib/customer-history.ts usedCodeBefore).
+  oncePerCustomer    Boolean       @default(false)
   // Flash sale: an automatic discount shown on the store with its sale price and a countdown to
   // expiresAt (lib/flash-sale.ts).
   flashSale          Boolean       @default(false)

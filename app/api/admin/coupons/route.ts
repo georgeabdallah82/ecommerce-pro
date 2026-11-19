@@ -25,6 +25,8 @@ function couponFields(b: any): { error: string } | { data: any } {
     minSubtotal: b.minSubtotal ? Math.trunc(Number(b.minSubtotal)) : null,
     maxUses: b.maxUses ? Math.trunc(Number(b.maxUses)) : null,
     startsAt, expiresAt, firstOrderOnly: Boolean(b.firstOrderOnly), flashSale, ...targeting(b),
+    // Codes only: an automatic discount is never typed, so there is no customer asking for it to refuse.
+    oncePerCustomer: !b.isAutomatic && Boolean(b.oncePerCustomer),
   } }
 }
 function saveError(e: unknown, fallback: string) {

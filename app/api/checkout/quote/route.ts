@@ -10,7 +10,7 @@ import { zeroSplit } from '@/lib/discounts'
 import { applyCoupon, findAutomaticDiscount } from '@/lib/checkout-discounts'
 import { bundleDiscount } from '@/lib/bundles'
 import { freeGiftFor } from '@/lib/free-gift'
-import { orderedBefore } from '@/lib/customer-history'
+import { orderedBefore, usedCodeBefore } from '@/lib/customer-history'
 import { checkInvite } from '@/lib/invites'
 import { userError } from '@/lib/user-error'
 import { orderMoney } from '@/lib/checkout-totals'
@@ -39,7 +39,7 @@ const quoteSchema = z.object({
 const COUPON_MESSAGES = new Set([
   'Invalid coupon code', 'This discount is not configured correctly', 'This coupon is not active yet', 'This coupon has expired',
   'This coupon has reached its usage limit', 'Minimum order is required for this coupon', 'This discount does not apply to the items in your cart',
-  'This coupon requires a customer account', 'This coupon is for first orders only',
+  'This coupon requires a customer account', 'This coupon is for first orders only', 'You have already used this code',
   'This is your own invite code. Share it with your friends.',
 ])
 
@@ -86,6 +86,7 @@ export async function POST(req: Request) {
     try {
       applied = input.couponCode ? await applyCoupon(input.couponCode, subtotal, normalized) : await findAutomaticDiscount(subtotal, user?.id ?? null, normalized)
       if (applied.coupon?.firstOrderOnly && !user?.id && await orderedBefore(input.phone, input.email, await storeCountry())) throw userError('This coupon is for first orders only')
+      if (applied.coupon?.oncePerCustomer && input.couponCode && await usedCodeBefore(applied.coupon.code, { userId: user?.id, phone: input.phone, email: input.email }, await storeCountry())) throw userError('You have already used this code')
       if (applied.coupon?.invite) await checkInvite(applied.coupon.invite, { phone: input.phone, email: input.email, userId: user?.id }, await storeCountry())
     } catch (error) {
       const message = error instanceof Error ? error.message : ''

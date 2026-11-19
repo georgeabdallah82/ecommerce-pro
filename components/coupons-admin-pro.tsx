@@ -24,6 +24,7 @@ type Coupon = {
   expiresAt: string | null
   isActive: boolean
   firstOrderOnly: boolean
+  oncePerCustomer?: boolean
   flashSale?: boolean
   appliesTo?: Scope
   productIds?: string[]
@@ -125,7 +126,7 @@ function ScopePicker({
 
 const emptyForm = {
   code: '', isAutomatic: false, type: 'PERCENTAGE' as Coupon['type'], value: '10',
-  minSubtotal: '', maxUses: '', startsAt: '', expiresAt: '', firstOrderOnly: false, flashSale: false,
+  minSubtotal: '', maxUses: '', startsAt: '', expiresAt: '', firstOrderOnly: false, oncePerCustomer: false, flashSale: false,
   appliesTo: 'ALL_PRODUCTS' as Scope, productIds: [] as string[], collectionIds: [] as string[],
   buyQuantity: '1', getQuantity: '1', getDiscountPercent: '100',
   getAppliesTo: 'ALL_PRODUCTS' as Scope, getProductIds: [] as string[], getCollectionIds: [] as string[],
@@ -144,7 +145,7 @@ function formFromCoupon(c: Coupon): typeof emptyForm {
     code: c.code, isAutomatic: c.isAutomatic, type: c.type,
     value: c.type === 'PERCENTAGE' ? String(c.value) : c.type === 'FIXED' ? (c.value / 100).toFixed(2) : '0',
     minSubtotal: c.minSubtotal ? (c.minSubtotal / 100).toFixed(2) : '', maxUses: c.maxUses ? String(c.maxUses) : '',
-    startsAt: toLocalInput(c.startsAt), expiresAt: toLocalInput(c.expiresAt), firstOrderOnly: c.firstOrderOnly, flashSale: !!c.flashSale,
+    startsAt: toLocalInput(c.startsAt), expiresAt: toLocalInput(c.expiresAt), firstOrderOnly: c.firstOrderOnly, oncePerCustomer: !!c.oncePerCustomer, flashSale: !!c.flashSale,
     appliesTo: c.appliesTo || 'ALL_PRODUCTS', productIds: c.productIds || [], collectionIds: c.collectionIds || [],
     buyQuantity: String(c.buyQuantity || 1), getQuantity: String(c.getQuantity || 1), getDiscountPercent: String(c.getDiscountPercent ?? 100),
     getAppliesTo: c.getAppliesTo || 'ALL_PRODUCTS', getProductIds: c.getProductIds || [], getCollectionIds: c.getCollectionIds || [],
@@ -244,6 +245,7 @@ export default function CouponsAdminPro({ initial }: { initial: Coupon[] }) {
         startsAt: form.startsAt ? new Date(form.startsAt).toISOString() : null,
         expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : null,
         firstOrderOnly: form.firstOrderOnly,
+        oncePerCustomer: !form.isAutomatic && form.oncePerCustomer,
         flashSale: form.flashSale,
         appliesTo: form.appliesTo,
         productIds: form.productIds,
@@ -373,6 +375,7 @@ export default function CouponsAdminPro({ initial }: { initial: Coupon[] }) {
 
         <div className={styles.formGrid}><label className={ui.fieldLabel}>Minimum order<input className={ui.input} type="number" min="0" step="0.01" value={form.minSubtotal} onChange={e => setForm({...form, minSubtotal: e.target.value})} placeholder="None"/></label><label className={ui.fieldLabel}>Maximum uses<input className={ui.input} type="number" min="1" step="1" value={form.maxUses} onChange={e => setForm({...form, maxUses: e.target.value})} placeholder="Unlimited"/></label><label className={ui.fieldLabel}>Starts<input className={ui.input} type="datetime-local" value={form.startsAt} onChange={e => setForm({...form, startsAt: e.target.value})}/></label><label className={ui.fieldLabel}>Ends<input className={ui.input} type="datetime-local" value={form.expiresAt} onChange={e => setForm({...form, expiresAt: e.target.value})}/></label></div>
         <label className={styles.toggleRow}><input type="checkbox" checked={form.firstOrderOnly} onChange={e => setForm({...form, firstOrderOnly: e.target.checked})}/><span><strong>First order only</strong><small>Limit this discount to customers with no previous completed order.</small></span></label>
+        {!form.isAutomatic && <label className={styles.toggleRow}><input type="checkbox" checked={form.oncePerCustomer} onChange={e => setForm({...form, oncePerCustomer: e.target.checked})}/><span><strong>Once per customer</strong><small>Each customer can use this code on one order, matched by their account, email or phone number. A cancelled order gives the use back.</small></span></label>}
         {form.type === 'PERCENTAGE' && <label className={styles.toggleRow}><input type="checkbox" checked={form.flashSale} onChange={e => setForm({...form, flashSale: e.target.checked, ...(e.target.checked ? { isAutomatic: true } : {})})}/><span><strong>Flash sale</strong><small>Shows the sale price and a countdown on the store until the end date. Needs Automatic, an end date and no minimum order.</small></span></label>}
         <div className={`inline ${styles.formFooter}`}><div className="inline"><ShieldCheck size={15}/><span className={ui.muted}>Validated again at checkout</span></div><div className="inline"><button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={() => setFormOpen(false)} disabled={saving}>Cancel</button><button className={ui.btn} disabled={saving}>{saving ? 'Saving…' : editing ? 'Save changes' : 'Create discount'}</button></div></div>
       </form>
