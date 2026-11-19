@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers'
 import { SignJWT, jwtVerify } from 'jose'
 import bcrypt from 'bcryptjs'
+import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto'
 import { db } from '@/lib/prisma'
 import { hasPermission, type Permission } from '@/lib/permissions'
 import { getStaffRoles, resolvePermissions } from '@/lib/staff-roles'
@@ -16,8 +17,56 @@ function getSecret() {
   return new TextEncoder().encode(rawSecret)
 }
 
-export async function hashPassword(password: string) { return bcrypt.hash(password, 12) }
-export async function verifyPassword(password: string, hash: string) { return bcrypt.compare(password, hash) }
+// Passwords are hashed with scrypt (N=16384, r=8, p=1: each try needs 16 MiB of memory, which slows down cracking
+// hardware). Node and Cloudflare's runtime both run it as native code: about 40 ms of CPU. Older accounts have
+// bcryptjs hashes (pure JavaScript at cost 12: about 380 ms, far over the Workers Free plan's 10 ms per request).
+// Those still verify, and are replaced at the next sign-in (upgradePasswordHash).
+const SCRYPT_N = 16384
+const SCRYPT_R = 8
+const SCRYPT_P = 1
+const SCRYPT_PREFIX = `scrypt$${SCRYPT_N}$${SCRYPT_R}$${SCRYPT_P}$`
+
+function scryptKey(password: string, salt: Buffer, keyLength: number, N: number, r: number, p: number) {
+  return new Promise<Buffer>((resolve, reject) => {
+    scrypt(password, salt, keyLength, { N, r, p, maxmem: 64 * 1024 * 1024 }, (error, key) => (error ? reject(error) : resolve(key)))
+  })
+}
+
+export async function hashPassword(password: string) {
+  const salt = randomBytes(16)
+  const key = await scryptKey(password, salt, 32, SCRYPT_N, SCRYPT_R, SCRYPT_P)
+  return `${SCRYPT_PREFIX}${salt.toString('base64')}$${key.toString('base64')}`
+}
+
+export async function verifyPassword(password: string, hash: string) {
+  if (hash.startsWith('scrypt$')) {
+    const parts = hash.split('$')
+    if (parts.length !== 6) return false
+    const [N, r, p] = parts.slice(1, 4).map(Number)
+    // Only settings this code could have written are run: N a power of two, at most 32 MiB of memory, small p.
+    if (!Number.isInteger(N) || N < 1024 || (N & (N - 1)) !== 0 || !Number.isInteger(r) || r < 1 || 128 * N * r > 32 * 1024 * 1024) return false
+    if (!Number.isInteger(p) || p < 1 || p > 4) return false
+    const expected = Buffer.from(parts[5], 'base64')
+    if (expected.length < 16 || expected.length > 64) return false
+    const actual = await scryptKey(password, Buffer.from(parts[4], 'base64'), expected.length, N, r, p)
+    return timingSafeEqual(actual, expected)
+  }
+  if (/^\$2[aby]\$\d{2}\$/.test(hash)) return bcrypt.compare(password, hash)
+  return false
+}
+
+// A bcryptjs hash, or scrypt with other settings: replaced the next time the password is checked at sign-in.
+export function passwordHashOutdated(hash: string) { return !hash.startsWith(SCRYPT_PREFIX) }
+
+// After a password was checked: stores it the current way. If that fails, it is tried again at the next sign-in.
+export async function upgradePasswordHash(userId: string, password: string, hash: string) {
+  if (!passwordHashOutdated(hash)) return
+  try {
+    await db.user.update({ where: { id: userId }, data: { passwordHash: await hashPassword(password) } })
+  } catch (error) {
+    console.error('[auth] password hash not upgraded', error instanceof Error ? error.message : error)
+  }
+}
 
 // The signed session token for an account, and the cookie it is kept in. A route that answers with
 // its own redirect (app/api/auth/verify-email) sets the cookie on that response directly.

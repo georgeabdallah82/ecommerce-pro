@@ -50,6 +50,10 @@ describe('lib/webhooks dispatchWebhookEvent', () => {
     assert.deepEqual(parsed.payload, { orderId: 'order_1', total: 4900 })
     const expectedSignature = createHmac('sha256', secret).update(body).digest('hex')
     assert.equal((capturedInit?.headers as Record<string, string>)?.['x-webhook-signature'], expectedSignature)
+    // V2 signs the timestamp sent beside it and the body together, so a delivery replayed later can be refused.
+    const sent = capturedInit?.headers as Record<string, string>
+    assert.match(sent['x-webhook-timestamp'], /^\d{10}$/)
+    assert.equal(sent['x-webhook-signature-v2'], createHmac('sha256', secret).update(`${sent['x-webhook-timestamp']}.${body}`).digest('hex'))
 
     const updated = await db.webhookEndpoint.findUnique({ where: { id: endpoint.id } })
     assert.equal(updated?.lastStatus, 200)

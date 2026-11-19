@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/prisma'
-import { verifyPassword } from '@/lib/auth'
+import { upgradePasswordHash, verifyPassword } from '@/lib/auth'
 import { consumeDurableRateLimit, clearDurableRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { setEnrollTicket, setTwoStepTicket } from '@/lib/two-step'
@@ -65,6 +65,7 @@ export async function POST(request: Request) {
   }
 
   await clearDurableRateLimit(emailKey)
+  await upgradePasswordHash(user.id, password, user.passwordHash)
   if (lockout && lockout.failedCount > 0) {
     await db.adminLoginLockout.upsert({ where: { email }, create: { email, failedCount: 0, lockedUntil: null }, update: { failedCount: 0, lockedUntil: null } })
   }

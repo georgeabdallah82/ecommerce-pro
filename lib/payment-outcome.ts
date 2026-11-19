@@ -21,7 +21,7 @@ export function parseCoinsUsed(rawJson: string | null) {
   } catch { return 0 }
 }
 
-type Source = 'return' | 'webhook'
+type Source = 'return' | 'webhook' | 'expiry'
 
 // Gives back what an unpaid card checkout used -- the coupon use, redeemed coins and gift-card
 // balance -- when the order dies without being paid (payment failed, or the reservation expired).

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/prisma'
-import { requireStaff, verifyPassword } from '@/lib/auth'
+import { requireStaff, upgradePasswordHash, verifyPassword } from '@/lib/auth'
 import { REAUTH_SECONDS, hasRecentReauth, setReauth } from '@/lib/reauth'
 import { audit } from '@/lib/audit'
 import { consumeDurableRateLimit, clearDurableRateLimit } from '@/lib/rate-limit'
@@ -43,6 +43,7 @@ export async function POST(request: Request) {
     ? await verifyPassword(password, user.passwordHash)
     : code ? await confirmWithCode(user, code) : false
   if (!confirmed) return NextResponse.json({ error: 'That password or code is not right.' }, { status: 401, headers })
+  if (password) await upgradePasswordHash(user.id, password, user.passwordHash)
 
   await clearDurableRateLimit(limitKey)
   await setReauth(user.id)

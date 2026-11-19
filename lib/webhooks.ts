@@ -16,15 +16,19 @@ function delay(ms: number) {
 // has failed, and only ever cleared on a subsequent success, so it always reflects
 // "the exact body that still needs to be redelivered" (or nothing, if none does).
 async function deliver(endpoint: { id: string; endpointUrl: string; secret: string }, body: string) {
+  // X-Webhook-Signature: the body's HMAC-SHA256, as before. X-Webhook-Signature-V2 signs "<timestamp>.<body>" with the
+  // X-Webhook-Timestamp (Unix seconds) sent beside it, so a receiver can refuse a delivery replayed later.
   const signature = createHmac('sha256', endpoint.secret).update(body).digest('hex')
   let lastStatus: number | null = null
   let lastError: string | null = null
 
   for (let attempt = 1; attempt <= MAX_DELIVERY_ATTEMPTS; attempt++) {
+    const timestamp = String(Math.floor(Date.now() / 1000))
+    const signatureV2 = createHmac('sha256', endpoint.secret).update(`${timestamp}.${body}`).digest('hex')
     try {
       const response = await fetch(endpoint.endpointUrl, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-webhook-signature': signature },
+        headers: { 'content-type': 'application/json', 'x-webhook-signature': signature, 'x-webhook-timestamp': timestamp, 'x-webhook-signature-v2': signatureV2 },
         body,
         signal: AbortSignal.timeout(10000),
       })

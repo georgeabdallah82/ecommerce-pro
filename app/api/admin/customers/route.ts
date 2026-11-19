@@ -1,9 +1,8 @@
-import { requirePermission } from '@/lib/auth'
+import { hashPassword, requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { db } from '@/lib/prisma'
 import { json } from '@/lib/utils'
 import { Role, OrderStatus } from '@prisma/client'
-import bcrypt from 'bcryptjs'
 import { deleteCustomerCascade } from '@/lib/customers'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { sumCustomerSpend } from '@/lib/orders'
@@ -119,7 +118,8 @@ export async function POST(req: Request) {
     if (password && password.length < 8) return json({ error: 'Password must be at least 8 characters' }, { status: 400 })
     const existing = await db.user.findUnique({ where: { email }, select: { id: true } })
     if (existing) return json({ error: 'A customer with this email already exists' }, { status: 409 })
-    const passwordHash = await bcrypt.hash(password || `${crypto.randomUUID()}-${Date.now()}`, 12)
+    // No password given: a random one nobody knows (the customer can set their own with "Forgot password").
+    const passwordHash = await hashPassword(password || `${crypto.randomUUID()}-${Date.now()}`)
     const customer = await db.user.create({ data: { name, email, phone, passwordHash, role: Role.CUSTOMER, isActive: true, emailVerifiedAt: new Date() } })
     await audit(actor.id, 'customer.created', 'User', customer.id, { email: customer.email })
     runInBackground(dispatchWebhookEvent('customer.created', { id: customer.id, name: customer.name, email: customer.email }).catch(error => console.error('[webhook] customer.created dispatch failed', error)))
