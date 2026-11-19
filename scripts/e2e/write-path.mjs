@@ -229,7 +229,8 @@ if (customer) {
 // The scheduled job that releases stock held by abandoned card checkouts (database reads and
 // transactions outside any browser session). Only when the store was started with a CRON_SECRET.
 if (process.env.CRON_SECRET) {
-  const cron = await fetch(B + '/api/internal/release-expired-reservations', { headers: { authorization: `Bearer ${process.env.CRON_SECRET}` } })
+  // A POST, as the Worker's own hourly cron sends it (worker.ts); the job changes data, so a GET is refused.
+  const cron = await fetch(B + '/api/internal/release-expired-reservations', { method: 'POST', headers: { authorization: `Bearer ${process.env.CRON_SECRET}` } })
   step('scheduled job: release expired reservations', cron.status === 200, `http=${cron.status} ${(await cron.text()).slice(0, 80)}`)
 }
 

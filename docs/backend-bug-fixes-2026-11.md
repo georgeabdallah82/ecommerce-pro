@@ -48,6 +48,7 @@ Branch `claude/backend-bug-fixes`, based on `origin/main` at 74359c6 (after #633
 - `npm run typecheck`, `npm test` (1308 pass) and `npm run backend:audit` pass.
   - `tests/backend-bug-fixes.test.ts` adds 7 tests.
   - `tests/reservation-expiry.test.ts`, `tests/payments-followups.test.ts` and `tests/webhooks.test.ts` follow the changes: the POST, the `paid` count and the V2 signature.
+  - The CI browser test (`scripts/e2e/write-path.mjs`) calls the job with a POST. Its GET got 405 in the first CI run.
 - `npm run build:cloudflare` with the CI environment passes.
 - **Cloudflare's runtime:** scrypt ran in the workerd binary the build uses. It matched Node's output for the same input and took about 37 to 46 ms per check. bcryptjs at cost 12 takes 379 ms of CPU in Node.
 - **16 checks pass on the production build,** with the local database:
