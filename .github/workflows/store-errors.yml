@@ -1,0 +1,57 @@
+name: Store errors (scheduled)
+
+# Every 6 hours: how many of the store Worker's requests failed in that time (Cloudflare analytics, read-only).
+# The run fails when more than 2% did, and at least 25: GitHub then emails you about the failed run (your
+# GitHub settings, Notifications, Actions). Counted here are requests Cloudflare stopped or that crashed, for
+# example "exceededResources", the Workers Free plan's 10 ms CPU limit. A page the store answered with an
+# error of its own is not counted; a failed checkout already alerts the owner (lib/order-alerts.ts).
+on:
+  schedule:
+    - cron: "23 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      hours:
+        description: "How many hours back to look"
+        required: false
+        default: "6"
+
+permissions:
+  contents: read
+
+jobs:
+  errors:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      HOURS: ${{ inputs.hours || '6' }}
+      MAX_PERCENT: "2"
+      MIN_FAILED: "25"
+    steps:
+      - name: Failed requests in the last hours
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::warning::The Cloudflare secrets are not set, so nothing was checked."
+            exit 0
+          fi
+          since="$(date -u -d "-$HOURS hours" +%Y-%m-%dT%H:%M:%SZ)"; until="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          query='query($acct: string!, $since: Time!, $until: Time!) { viewer { accounts(filter: {accountTag: $acct}) { workersInvocationsAdaptive(limit: 100, filter: {scriptName: "ecommerce-pro", datetime_geq: $since, datetime_leq: $until}) { sum { requests } dimensions { status } } } } }'
+          result="$(jq -n --arg q "$query" --arg acct "$CLOUDFLARE_ACCOUNT_ID" --arg since "$since" --arg until "$until" '{query: $q, variables: {acct: $acct, since: $since, until: $until}}' \
+            | curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' --data @- https://api.cloudflare.com/client/v4/graphql)"
+          if [ "$(echo "$result" | jq '.errors | length')" != "0" ] || [ "$(echo "$result" | jq '.data.viewer.accounts | length')" = "0" ]; then
+            echo "$result" | jq -c '.errors' || true
+            echo "::error::Cloudflare's analytics could not be read, so the store's errors were not checked."
+            exit 1
+          fi
+          rows="$(echo "$result" | jq -c '[.data.viewer.accounts[0].workersInvocationsAdaptive[]? | {status: .dimensions.status, requests: .sum.requests}] | group_by(.status) | map({status: .[0].status, requests: (map(.requests) | add)})')"
+          total="$(echo "$rows" | jq '[.[].requests] | add // 0')"
+          # A visitor who left before the answer came is not a failure.
+          failed="$(echo "$rows" | jq '[.[] | select(.status != "success" and .status != "clientDisconnected") | .requests] | add // 0')"
+          percent="$(jq -n --argjson f "$failed" --argjson t "$total" 'if $t > 0 then (($f * 1000 / $t) | floor) / 10 else 0 end')"
+          breakdown="$(echo "$rows" | jq -r 'map("\(.status): \(.requests)") | join(", ")')"
+          echo "Last $HOURS hours: $total requests, $failed failed ($percent%). ${breakdown:-no requests}" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$failed" -ge "$MIN_FAILED" ] && jq -e -n --argjson p "$percent" --argjson max "$MAX_PERCENT" '$p > $max' > /dev/null; then
+            echo "::error::$failed of $total store requests ($percent%) failed in the last $HOURS hours ($breakdown). \"exceededResources\" is the Workers Free plan's CPU limit; the Paid plan lifts it."
+            exit 1
+          fi

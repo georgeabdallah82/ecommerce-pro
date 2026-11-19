@@ -23,6 +23,17 @@ const requestCounts: { started: number; finished: number } = ((globalThis as any
 const INTERNAL_JOB_KEY = Symbol.for('yallahaul.internalJobKey')
 const internalJobKey = (): string => ((globalThis as any)[INTERNAL_JOB_KEY] ??= `${crypto.randomUUID()}${crypto.randomUUID()}`)
 
+// A scheduled job that answered with an error: app/api/internal/job-failed keeps it in the activity log and tells
+// the owner (lib/order-alerts.ts). Failing to report it only loses the alert; the cron run still records the error.
+async function reportJobFailure(site: string, path: string, status: number, detail: string, env: any, ctx: ExecutionContext) {
+  try {
+    const request = new Request(`${site}/api/internal/job-failed`, { method: 'POST', headers: { 'x-internal-job': internalJobKey(), 'content-type': 'application/json' }, body: JSON.stringify({ path, status, detail: detail.slice(0, 300) }) })
+    await (await worker.fetch(request, env, ctx)).text()
+  } catch (error) {
+    console.error('[cron] job failure not reported', path, error)
+  }
+}
+
 const worker = {
   async fetch(request: Request, env: unknown, ctx: ExecutionContext): Promise<Response> {
     requestCounts.started++
@@ -85,13 +96,16 @@ const worker = {
     } else {
       paths.push('/api/internal/daily')
     }
-    // Each job runs even when an earlier one failed. The first failure is reported to the cron run.
+    // Each job runs even when an earlier one failed. The first failure is reported to the cron run, and every
+    // failure is told to the owner (at most once per job every 6 hours).
     let failure: Error | null = null
     for (const path of paths) {
       const request = new Request(`${site}${path}`, { method: 'POST', headers: { 'x-internal-job': internalJobKey(), 'x-cron': controller.cron } })
       const response = await worker.fetch(request, env, ctx)
       const body = await response.text().catch(() => '')
-      if (!response.ok && !failure) failure = new Error(`${path} answered ${response.status}: ${body.slice(0, 300)}`)
+      if (response.ok) continue
+      if (!failure) failure = new Error(`${path} answered ${response.status}: ${body.slice(0, 300)}`)
+      await reportJobFailure(site, path, response.status, body, env, ctx)
     }
     if (failure) throw failure
   },

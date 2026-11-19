@@ -1,4 +1,5 @@
 import { db } from '@/lib/prisma'
+import { audit } from '@/lib/audit'
 import { consumeDurableRateLimit } from '@/lib/rate-limit'
 import { sendOrderProblemEmail } from '@/lib/email'
 import { sendOrderProblemPush } from '@/lib/push'
@@ -59,6 +60,34 @@ export async function alertWaitingOrders(orders: WaitingOrder[], now = new Date(
     return true
   } catch (error) {
     console.error('[order-alerts] waiting order alert failed', error)
+    return false
+  }
+}
+
+// The Worker's scheduled jobs (worker.ts), by the names the owner knows them.
+export const SCHEDULED_JOBS: Record<string, string> = {
+  '/api/internal/daily': 'The morning summary and daily clean-up',
+  '/api/internal/order-watch': 'The check for orders waiting too long',
+  '/api/internal/reconcile-refunds': 'The hourly refund check',
+  '/api/internal/release-expired-reservations': 'The hourly stock release for abandoned card checkouts',
+}
+export const JOB_ALERT_WINDOW_MS = 6 * 60 * 60 * 1000
+
+// A scheduled job answered with an error (app/api/internal/job-failed). Every failure goes in the activity log;
+// the owner is told at most once per job every 6 hours, shared by every server instance, and only while
+// "Tell me about order problems" is on (Settings > Notifications).
+export async function alertJobFailure(path: string, status: number, detail: string) {
+  const name = SCHEDULED_JOBS[path] || path
+  await audit(null, 'job.failed', 'Job', path, { status, detail }).catch(error => console.error('[order-alerts] job failure not logged', error))
+  try {
+    if (!(await orderProblemAlertsOn())) return false
+    const gate = await consumeDurableRateLimit(`alert:job:${path}`, 1, JOB_ALERT_WINDOW_MS)
+    if (!gate.allowed) return false
+    const body = `${name} failed${status ? ` (it answered ${status})` : ''}. It runs again on its next schedule; if this keeps happening, open Website status.`
+    await tell({ title: 'A scheduled job failed', body, subject: `${name} failed`, path: '/admin/website-status', button: 'Open website status' })
+    return true
+  } catch (error) {
+    console.error('[order-alerts] job failure alert failed', error)
     return false
   }
 }
