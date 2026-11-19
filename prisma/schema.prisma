@@ -517,6 +517,22 @@ model EmailLog {
   @@index([createdAt])
 }
 
+// Emails and webhook deliveries that failed for a reason that may pass (no answer, a timeout, too many requests, the
+// other side's server error), tried again by the hourly job (lib/outbox.ts) for about a day. The content is kept only
+// while it still has to go out.
+model OutboxMessage {
+  id            String   @id @default(cuid())
+  kind          String
+  payloadJson   String
+  attempts      Int      @default(1)
+  nextAttemptAt DateTime
+  lastError     String?
+  status        String   @default("pending")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@index([status, nextAttemptAt])
+}
+
 // A browser that said yes to the store's notifications: from the visitor popup or Account >
 // Notifications. Push campaigns go to all of them. userId is set when a signed-in customer
 // subscribed; guests have none. (Staff order-alert devices are kept separately, in Setting.)

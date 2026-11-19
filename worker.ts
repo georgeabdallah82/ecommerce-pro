@@ -82,10 +82,12 @@ const worker = {
     if (controller.cron === ORDER_WATCH_CRON) {
       // Once an hour: refunds the store has not recorded are confirmed with the gateway (lib/refund-reconciliation.ts),
       // and card checkouts left at the payment page for over 30 minutes give their stock back
-      // (app/api/internal/release-expired-reservations). This cron runs every 15 minutes and each run wakes the
+      // (app/api/internal/release-expired-reservations), and failed emails and webhooks are tried again (lib/outbox.ts).
+      // This cron runs every 15 minutes and each run wakes the
       // database, so only the top-of-hour run includes them.
       if (reconcileDue(controller.scheduledTime)) paths.push('/api/internal/reconcile-refunds')
       if (reconcileDue(controller.scheduledTime)) paths.push('/api/internal/release-expired-reservations')
+      if (reconcileDue(controller.scheduledTime)) paths.push('/api/internal/retry-outbox')
       // The marker file is the only thing read first: no order being watched, or night time, means the
       // database is never touched by the order watch.
       try {
