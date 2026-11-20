@@ -4,10 +4,11 @@ import { useState } from 'react'
 import { AlertTriangle, Check, MapPin, MessageCircle, Package, Phone, Wallet } from 'lucide-react'
 import { money } from '@/lib/config'
 import { internationalPhone } from '@/lib/phone'
-import { addressLines, customerName, customerPhone, mapsLink, orderPin, shippingAddress, type FlowOrder } from '@/lib/order-flow'
+import { addressParts, customerName, customerPhone, mapsLink, orderPin, shippingAddress, type FlowOrder } from '@/lib/order-flow'
 import { toCollect } from '@/lib/delivery-sheet'
 import { PROBLEM_REASONS, cashToHandOver } from '@/lib/drivers-shared'
 import s from './driver-run.module.css'
+import { AddressParts } from './address-parts'
 
 type RunOrder = FlowOrder & { id: string; cashCollected: number | null; cashSettledAt: string | null; updatedAt: string }
 
@@ -74,7 +75,7 @@ export default function DriverRun({ token, driverName, storeName, storeCountry, 
           <span className={collect ? s.collect : s.paid}>{collect ? `Collect ${money(collect, order.currency)}` : 'Paid: collect nothing'}</span>
         </div>
         <div className={s.name}>{customerName(order)}</div>
-        <div className={s.address}>{addressLines(order).join(', ') || 'No address: call the customer'}</div>
+        <div className={s.address}><AddressParts lines={addressParts(order)} empty="No address: call the customer" /></div>
         {a.notes && <div className={s.note}>Note: {String(a.notes)}</div>}
         <ul className={s.items}>{(order.items || []).map((item, i) => <li key={i}><Package size={14} /> {item.quantity} × {item.name}{item.variant?.name && item.variant.name !== 'Default Title' ? ` (${item.variant.name})` : ''}</li>)}</ul>
         <div className={s.contact}>

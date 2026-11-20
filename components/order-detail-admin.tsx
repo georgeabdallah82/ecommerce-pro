@@ -7,7 +7,7 @@ import { AlertTriangle, ArrowLeft, Ban, Check, ChevronDown, Copy, FileEdit, File
 import { money } from '@/lib/config'
 import { formatAdminDate, formatAdminDateTime } from '@/lib/admin-datetime'
 import { canTransitionOrder, canTransitionPayment } from '@/lib/orders'
-import { JOURNEY, addressLines, customerName, customerPhone, driverShareLink, mapsLink, nextStep, orderPin, paymentInfo, paymentMethodLabel, statusInfo, telLink } from '@/lib/order-flow'
+import { JOURNEY, addressLines, addressParts, customerName, customerPhone, driverShareLink, mapsLink, nextStep, orderPin, paymentInfo, paymentMethodLabel, statusInfo, telLink } from '@/lib/order-flow'
 import s from './order-detail-admin.module.css'
 import ui from './admin-ui.module.css'
 import { CountrySelect } from './field-selects'
@@ -19,6 +19,7 @@ import { customerUpdateLink, updateForStatus } from '@/lib/order-updates'
 import type { PhoneHistory } from '@/lib/customer-history'
 import type { Risk } from '@/lib/order-risk'
 import { useConfirm } from './admin-confirm'
+import { AddressParts } from './address-parts'
 import AdminMenu from './admin-menu'
 import { safeHttpUrl } from '@/lib/safe-url'
 import { fetchRead } from '@/lib/retry-fetch'
@@ -453,7 +454,7 @@ export default function OrderDetailAdmin({ initial, canStartOrderEdit, storeTime
               </div>
               <div className={s.kv}>
                 <span className={s.kvLabel}>Deliver to</span>
-                <span className={s.line}><MapPin size={14}/> <span className={s.wrap}>{lines.length ? lines.join(', ') : 'No delivery address'}</span></span>
+                <span className={s.line}><MapPin size={14}/> <span className={s.wrap}><AddressParts lines={addressParts(o)} empty="No delivery address" /></span></span>
                 {o.shippingMethod && <span className={ui.muted}>Method: {o.shippingMethod}</span>}
                 {o.trackingNumber && <span className={ui.muted}>Tracking: <strong>{o.trackingNumber}</strong></span>}
                 <div className={s.actions}>

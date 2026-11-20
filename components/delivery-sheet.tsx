@@ -5,11 +5,12 @@ import Link from '@/components/admin-link'
 import { ArrowLeft, Check, FileText, MapPin, MessageCircle, Phone, Printer, Truck, Users } from 'lucide-react'
 import { money } from '@/lib/config'
 import { internationalPhone } from '@/lib/phone'
-import { addressLines, customerName, customerPhone, itemsSummary, mapsLink, orderPin, statusInfo, telLink } from '@/lib/order-flow'
+import { addressParts, customerName, customerPhone, itemsSummary, mapsLink, orderPin, statusInfo, telLink } from '@/lib/order-flow'
 import { driverRunMessage, groupByArea, toCollect, type SheetOrder } from '@/lib/delivery-sheet'
 import { useConfirm } from './admin-confirm'
 import s from './delivery-sheet.module.css'
 import ui from './admin-ui.module.css'
+import { AddressParts } from './address-parts'
 
 const DRIVER_KEY = 'yh-driver-phone'
 const CHOICE_KEY = 'yh-driver-choice'
@@ -169,7 +170,7 @@ export default function DeliverySheet({ initial, deliveredToday, areaOrder, dayL
                 <strong className={s.collect}>{collect ? `Collect ${money(collect, order.currency)}` : 'Paid'}</strong>
               </div>
               <div className={s.customer}>{customerName(order)}{customerPhone(order) ? <> · <span dir="ltr">{customerPhone(order)}</span></> : null}</div>
-              <div className={s.address}>{addressLines(order).join(', ') || 'No address'}</div>
+              <div className={s.address}><AddressParts lines={addressParts(order)} empty="No address" /></div>
               <div className={s.items}>{itemsSummary(order)}</div>
               <div className={`${s.actions} ${s.noPrint}`}>
                 {call && <a className={`${ui.btn} ${ui.btnSecondary} ${ui.btnSmall}`} href={call}><Phone size={14} /> Call</a>}
