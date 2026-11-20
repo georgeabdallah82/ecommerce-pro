@@ -1,5 +1,6 @@
 // End-to-end test of the store's write paths: checkout, customer account, and the admin actions
-// that save data (orders, products, collections, coupons, theme, settings, files, customers).
+// that save data (orders, products, collections, coupons, theme, settings, files, customers), with
+// the critical paths checked against the database too (scripts/e2e/critical-paths.mjs).
 // Used by .github/workflows/postgres-staging.yml against a copy of the store running locally on
 // the runner (wrangler dev) with its own throwaway database -- never against the live site.
 //
@@ -10,6 +11,7 @@
 import { chromium } from 'playwright-core'
 import pg from 'pg'
 import { createHash, createHmac, randomBytes } from 'node:crypto'
+import { customerSignIn, orderPaths, staffSignIn, totpStep } from './critical-paths.mjs'
 const B = process.env.BASE || 'http://127.0.0.1:8787'
 const ADMIN = { email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD }
 if (!ADMIN.email || !ADMIN.password) throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD are required')
@@ -130,6 +132,7 @@ const wish = await cp.evaluate(async id => { const r = await fetch('/api/wishlis
 step('wishlist add', wish.startsWith('200') || wish.startsWith('201'), wish)
 const news = await cp.evaluate(async email => { const r = await fetch('/api/newsletter', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email }) }); return r.status + ' ' + (await r.text()).slice(0, 80) }, `pg-news-${stamp}@example.com`)
 step('newsletter signup', /^20[01]/.test(news), news)
+await customerSignIn({ browser: b, B, step, email: `pg-cust-${stamp}@example.com`, password: 'Secret123!pg' })
 
 // ---------- Admin
 const admin = await b.newContext({ viewport: { width: 1366, height: 900 } }); const ap = await admin.newPage()
@@ -137,6 +140,8 @@ const adminErrors = []; ap.on('pageerror', e => adminErrors.push(String(e).slice
 await ap.goto(B + '/admin-login', { waitUntil: 'networkidle' })
 await ap.locator('input[name=email]').fill(ADMIN.email); await ap.locator('input[name=password]').fill(ADMIN.password); await ap.locator('button.adminLoginSubmit').click()
 const signedIn = await ap.waitForURL(/\/admin(?!-login)/, { timeout: 15000 }).then(() => true).catch(() => false)
+// Kept for the staff sign-in checks at the end: the 2-step key, and the last code's 30-second step (a code works once).
+let totpSecret = null, lastTotpStep = 0
 if (!signedIn) {
   const setup = await ap.evaluate(async () => {
     const read = await (await fetch('/api/admin/login/enroll', { cache: 'no-store' })).json()
@@ -144,6 +149,7 @@ if (!signedIn) {
     return (await fetch('/api/admin/login/enroll', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'start' }) })).json()
   })
   const code = totpNow(setup.secret)
+  totpSecret = setup.secret; lastTotpStep = totpStep()
   const done = await ap.evaluate(async code => (await fetch('/api/admin/login/enroll', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code }) })).json(), code)
   step('admin 2-step set-up on first sign-in', done.ok === true, done.error || `backup codes=${(done.backupCodes || []).length}`)
   await ap.goto(B + '/admin', { waitUntil: 'networkidle' })
@@ -219,6 +225,9 @@ for (const [label, code] of [['10% code', 'PG' + stamp.toUpperCase()], ['free-de
   step(`money: what it keeps adds up, with the summary's discount and delivery`, !!row && row.subtotal - row.discountTotal + row.shippingTotal + row.taxTotal === row.grandTotal && row.discountTotal === q.discount && row.shippingTotal === q.shipping, row ? `${row.subtotal} - ${row.discountTotal} + ${row.shippingTotal} + ${row.taxTotal} = ${row.grandTotal}` : 'no order')
 }
 
+// Orders through their whole life, refunds, cancelling and stock (scripts/e2e/critical-paths.mjs).
+await orderPaths({ B, step, api, shopPage: sp, checkoutRequest, stamp, adminPassword: ADMIN.password })
+
 // Theme draft save (array $transaction of upserts)
 const theme = await api('/api/admin/theme')
 const saveTheme = await api('/api/admin/theme', 'PATCH', { theme: theme.body?.theme, homeSections: theme.body?.homeSections || theme.body?.sections, navigation: theme.body?.navigation, templateKey: 'Home page', editorTemplates: theme.body?.editorTemplates })
@@ -276,6 +285,9 @@ if (process.env.CRON_SECRET) {
   if (process.env.LOAD_REPORT_ONLY) console.log('INFO 160 page loads (judged by load-compare)', note)
   else step(process.env.CRON_SECRET ? '160 page loads, database clients given back' : '160 page loads', failures.length === 0 && clientsOk, note)
 }
+
+// Staff sign-in with the password and the 2-step code, in fresh browsers (last: it uses up a code).
+await staffSignIn({ browser: b, B, step, email: ADMIN.email, password: ADMIN.password, totpSecret, lastStep: lastTotpStep })
 
 await probe('end')
 step('no browser errors', !shopErrors.length && !adminErrors.length, [...shopErrors, ...adminErrors].join(' | '))
