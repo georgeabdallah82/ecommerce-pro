@@ -6,9 +6,9 @@ import { audit } from '@/lib/audit'
 // which worker.ts runs at the top of each hour) for about a day. An email keeps the idempotency key of its first try,
 // so Resend sends it once even if an earlier try went through after all; a webhook keeps its event id, so the
 // receiver can skip one it already has. A WhatsApp message (lib/whatsapp-cloud.ts) has no such key, so only a
-// failure that never reached WhatsApp or that WhatsApp said to retry is kept. The content is kept only while it still
-// has to go out.
-export type OutboxKind = 'email' | 'webhook' | 'whatsapp'
+// failure that never reached WhatsApp or that WhatsApp said to retry is kept. A sale reported to Meta (lib/meta-capi.ts)
+// keeps its event id, which Meta counts once. The content is kept only while it still has to go out.
+export type OutboxKind = 'email' | 'webhook' | 'whatsapp' | 'meta'
 export type DeliveryResult = { ok: boolean; error?: string | null; permanent?: boolean }
 
 export const OUTBOX_MAX_ATTEMPTS = 6
@@ -29,12 +29,13 @@ export async function queueRetry(kind: OutboxKind, payload: unknown, error: stri
   }
 }
 
-// Imported when needed: lib/email.ts, lib/webhooks.ts and lib/whatsapp-cloud.ts import this module to queue their
-// failures. `lastTry` lets a WhatsApp message note on its order that it was not sent.
+// Imported when needed: lib/email.ts, lib/webhooks.ts, lib/whatsapp-cloud.ts and lib/meta-capi.ts import this module
+// to queue their failures. `lastTry` lets a WhatsApp message note on its order that it was not sent.
 async function attempt(kind: string, payload: any, lastTry: boolean): Promise<DeliveryResult> {
   if (kind === 'email') return (await import('@/lib/email')).retryQueuedEmail(payload)
   if (kind === 'webhook') return (await import('@/lib/webhooks')).retryQueuedWebhook(payload)
   if (kind === 'whatsapp') return (await import('@/lib/whatsapp-cloud')).retryQueuedWhatsApp(payload, lastTry)
+  if (kind === 'meta') return (await import('@/lib/meta-capi')).retryQueuedMeta(payload)
   return { ok: false, error: `Unknown kind: ${kind}`, permanent: true }
 }
 
