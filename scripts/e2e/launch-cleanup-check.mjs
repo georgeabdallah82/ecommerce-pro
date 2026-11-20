@@ -55,7 +55,8 @@ await insert('Notification', { userId: keepUser.id, title: 't', body: 't', type:
 await insert('Coupon', { code: 'LCTEST', type: 'PERCENTAGE', value: 10, usedCount: 5 })
 
 const order = (id, number, extra) => insert('Order', { id, orderNumber: number, email: 'x@example.com', subtotal: 1000, grandTotal: 1000, shippingAddressJson: '{}', ...extra })
-await order('lc_o_keep_num', '1005', { userId: keepUser.id, status: 'CONFIRMED', couponCode: 'LCTEST' })
+// A kept order with a store number, above any order the browser test placed before this (write-path.mjs).
+await order('lc_o_keep_num', '1500', { userId: keepUser.id, status: 'CONFIRMED', couponCode: 'LCTEST' })
 await order('lc_o_keep_txt', 'LC-KEEP-1', { userId: keepUser.id })
 await order('lc_o_gone_shipped', 'LC-GONE-1', { userId: goneUser.id, status: 'SHIPPED', couponCode: 'LCTEST' })
 await order('lc_o_gone_new', 'LC-GONE-2', {})
@@ -93,16 +94,16 @@ await insert('AuditLog', { action: 'order.created', entity: 'Order' })
 await insert('Setting', { key: 'newsletter.subscriber.x@example.com', value: '{}' })
 await insert('Setting', { key: 'push.subscription.lc-staff-phone', value: '{}' })
 await db.query(`INSERT INTO "Setting" (id, key, value, "updatedAt") VALUES ('lc_maint', 'maintenance.enabled', 'false', now()) ON CONFLICT (key) DO UPDATE SET value = 'false'`)
-// Stock: LC-GONE-2 holds 3; LC-GONE-1 reserved 2 and delivered them; kept #1005 holds 4.
+// Stock: LC-GONE-2 holds 3; LC-GONE-1 reserved 2 and delivered them; kept #1500 holds 4.
 const move = (type, quantity, referenceId) => insert('InventoryMovement', { inventoryId: inv.id, type, quantity, referenceId })
 await move('SALE_RESERVATION', 3, 'LC-GONE-2')
 await move('SALE_RESERVATION', 2, 'LC-GONE-1'); await move('SALE_FULFILLMENT', 2, 'LC-GONE-1')
-await move('SALE_RESERVATION', 4, '1005')
+await move('SALE_RESERVATION', 4, '1500')
 await db.query(`UPDATE "InventoryItem" SET quantity = 48, reserved = 7 WHERE id = $1`, [inv.id])
 
 const ordersBefore = await n(`SELECT count(*) AS n FROM "Order"`)
 const settingsBefore = await n(`SELECT count(*) AS n FROM "Setting" WHERE key NOT LIKE 'newsletter.subscriber.%'`)
-const keep = ['--keep-orders', '#1005, lc-keep-1']
+const keep = ['--keep-orders', '#1500, lc-keep-1']
 
 // ---- Preview changes nothing
 const preview = await quiet(() => main(['preview', ...keep], { DATABASE_URL: url }))
@@ -113,13 +114,13 @@ ok(await n(`SELECT count(*) AS n FROM "Order"`) === ordersBefore, 'preview: noth
 await expectRefusal(['clean', '--confirm', 'DELETE TEST DATA', ...keep], /maintenance mode/, 'clean refuses while the store is open')
 await db.query(`UPDATE "Setting" SET value = 'true' WHERE key = 'maintenance.enabled'`)
 await expectRefusal(['clean', '--confirm', 'delete', ...keep], /confirmation exactly/, 'clean refuses a wrong confirmation phrase')
-await expectRefusal(['clean', '--confirm', 'DELETE TEST DATA', '--keep-orders', '1005 9999'], /do not exist: 9999/, 'clean refuses an order number to keep that does not exist')
+await expectRefusal(['clean', '--confirm', 'DELETE TEST DATA', '--keep-orders', '1500 9999'], /do not exist: 9999/, 'clean refuses an order number to keep that does not exist')
 ok(await n(`SELECT count(*) AS n FROM "Order"`) === ordersBefore, 'refusals: nothing deleted')
 
 // ---- Clean, keeping two orders and putting delivered stock back
 const result = await quiet(() => main(['clean', '--confirm', 'DELETE TEST DATA', ...keep, '--restore-stock'], { DATABASE_URL: url }))
 const left = (await db.query(`SELECT "orderNumber" FROM "Order" ORDER BY "orderNumber"`)).rows.map(r => r.orderNumber)
-ok(JSON.stringify(left) === JSON.stringify(['1005', 'LC-KEEP-1']), `clean: only the kept orders are left (${left.join(', ')})`)
+ok(JSON.stringify(left) === JSON.stringify(['1500', 'LC-KEEP-1']), `clean: only the kept orders are left (${left.join(', ')})`)
 ok(result.after.ordersAll === 2, 'clean: the result reports 2 orders left')
 ok(await n(`SELECT count(*) AS n FROM "OrderItem"`) === 2 && await n(`SELECT count(*) AS n FROM "PaymentTransaction"`) === 0, 'clean: items and payments of removed orders are gone')
 ok(await n(`SELECT count(*) AS n FROM "User" WHERE id = 'lc_keep'`) === 1 && await n(`SELECT count(*) AS n FROM "User" WHERE id = 'lc_gone'`) === 0, 'clean: the customer of a kept order stays, the test customer goes')
@@ -127,7 +128,7 @@ ok(await n(`SELECT count(*) AS n FROM "User" WHERE role <> 'CUSTOMER'`) === staf
 ok(await n(`SELECT count(*) AS n FROM "Product"`) === productsBefore, 'clean: products all stay')
 const stock = await one(`SELECT quantity, reserved FROM "InventoryItem" WHERE id = $1`, [inv.id])
 ok(stock.reserved === 4 && stock.quantity === 50, `clean: stock held by test orders released, delivered units put back (quantity ${stock.quantity}, reserved ${stock.reserved}; expected 50 and 4)`)
-ok(await n(`SELECT count(*) AS n FROM "InventoryMovement" WHERE "referenceId" IN ('LC-GONE-1', 'LC-GONE-2')`) === 0 && await n(`SELECT count(*) AS n FROM "InventoryMovement" WHERE "referenceId" = '1005'`) === 1, 'clean: stock history of removed orders gone, kept order\'s stays')
+ok(await n(`SELECT count(*) AS n FROM "InventoryMovement" WHERE "referenceId" IN ('LC-GONE-1', 'LC-GONE-2')`) === 0 && await n(`SELECT count(*) AS n FROM "InventoryMovement" WHERE "referenceId" = '1500'`) === 1, 'clean: stock history of removed orders gone, kept order\'s stays')
 ok(await n(`SELECT count(*) AS n FROM "Fulfillment"`) === 0 && await n(`SELECT count(*) AS n FROM "DeliveryTracking"`) === 0 && await n(`SELECT count(*) AS n FROM "DraftOrder"`) === 0, 'clean: parcels, delivery tracking and draft orders gone')
 ok(await n(`SELECT count(*) AS n FROM "GiftCard" WHERE code = 'LC-GC-GONE'`) === 0 && await n(`SELECT count(*) AS n FROM "GiftCard" WHERE code = 'LC-GC-KEEP'`) === 1, 'clean: gift card from a test order gone, hand-made one stays')
 ok(await n(`SELECT count(*) AS n FROM "Review"`) === 0 && await n(`SELECT count(*) AS n FROM "WishlistItem" WHERE "userId" = 'lc_keep'`) === 1, 'clean: reviews gone, kept customer\'s wishlist stays')
@@ -139,7 +140,7 @@ ok(await n(`SELECT count(*) AS n FROM "InfluencerPayout"`) === 0 && await n(`SEL
 ok(await n(`SELECT count(*) AS n FROM "Setting" WHERE key LIKE 'newsletter.subscriber.%'`) === 0, 'clean: newsletter signups gone')
 ok(await n(`SELECT count(*) AS n FROM "Setting" WHERE key NOT LIKE 'newsletter.subscriber.%'`) === settingsBefore, 'clean: all other settings stay (staff phone alerts, maintenance)')
 ok((await one(`SELECT "usedCount" FROM "Coupon" WHERE code = 'LCTEST'`)).usedCount === 1, 'clean: coupon use count = kept orders using it')
-ok((await one(`SELECT value FROM "Counter" WHERE name = 'order'`)).value === 1005, 'clean: next order number follows the highest kept number (#1006)')
+ok((await one(`SELECT value FROM "Counter" WHERE name = 'order'`)).value === 1500, 'clean: next order number follows the highest kept number (#1501)')
 ok(await n(`SELECT count(*) AS n FROM "AuditLog"`) === 1 && await n(`SELECT count(*) AS n FROM "AuditLog" WHERE action = 'launch.cleanup'`) === 1, 'clean: audit log holds only the clean-up record')
 
 // ---- Clean everything: next order is #1001

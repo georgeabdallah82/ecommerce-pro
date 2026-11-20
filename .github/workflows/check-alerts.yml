@@ -1,0 +1,49 @@
+name: Failed check alerts
+
+# When one of the checks below fails on main, the owner hears about it the way a failing store job is reported: a
+# phone notification and an email (Admin > Settings > Notifications, "Tell me about order problems"), at most once
+# per check every 6 hours, and the store's activity log keeps it. GitHub's own email for a failed run goes only to
+# whoever set the check up, and only if their notifications allow it.
+#
+# No secret is shared: GitHub signs a short-lived token for this run, and the store checks that it comes from this
+# workflow on main (lib/github-check-alerts.ts, app/api/internal/github-check-failed). STORE_URL (a repository
+# variable) points it at another address than the live store.
+on:
+  workflow_run:
+    workflows:
+      - Database hours check (daily)
+      - Database backup (daily)
+      - Store errors (scheduled)
+      - Backup restore check (monthly)
+      - CI
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  tell:
+    # Only main's own runs: pull requests have their own checks on the pull request page.
+    if: >-
+      github.event.workflow_run.head_branch == 'main' &&
+      contains(fromJSON('["failure", "timed_out", "startup_failure"]'), github.event.workflow_run.conclusion) &&
+      contains(fromJSON('["schedule", "workflow_dispatch", "push"]'), github.event.workflow_run.event)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      id-token: write
+    env:
+      STORE_URL: ${{ vars.STORE_URL || 'https://yallahaul.com' }}
+      CHECK_PATH: ${{ github.event.workflow.path || github.event.workflow_run.path }}
+      RUN_ID: ${{ github.event.workflow_run.id }}
+      RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+    steps:
+      - name: Tell the owner
+        run: |
+          check="${CHECK_PATH##*/}"; check="${check%%@*}"
+          echo "$check failed: https://github.com/$GITHUB_REPOSITORY/actions/runs/$RUN_ID (attempt $RUN_ATTEMPT)"
+          token="$(curl -fsS -m 30 -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=store-check-alerts" | jq -r .value)"
+          body="$(jq -nc --arg check "$check" --arg run "$RUN_ID" --arg attempt "$RUN_ATTEMPT" '{check: $check, run: $run, attempt: $attempt}')"
+          answer="$(curl -sS -m 30 -o answer.json -w '%{http_code}' -X POST -H "Authorization: Bearer $token" -H 'content-type: application/json' --data "$body" "$STORE_URL/api/internal/github-check-failed")"
+          echo "The store answered $answer: $(cat answer.json)"
+          [ "$answer" = 200 ] || { echo "::error::The store could not be told about this failure."; exit 1; }
