@@ -48,6 +48,9 @@ const probe = async label => { if (!process.env.PROBE_DB) return; const r = awai
 const shop = await b.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
 await shop.route(/facebook|tiktok|googletagmanager|google-analytics/, r => r.abort())
 const sp = await shop.newPage()
+// The first price summary and order requests the checkout page sends, copied later for the money checks.
+let quoteRequest = null, checkoutRequest = null
+sp.on('request', r => { if (r.method() !== 'POST') return; const body = () => { try { return JSON.parse(r.postData() || 'null') } catch { return null } }; if (!quoteRequest && r.url().endsWith('/api/checkout/quote')) quoteRequest = body(); if (!checkoutRequest && r.url().endsWith('/api/checkout')) checkoutRequest = body() })
 const shopErrors = []; sp.on('pageerror', e => shopErrors.push(String(e).slice(0, 150)))
 const productPath = process.env.PRODUCT_PATH || await (async () => { await sp.goto(B + '/shop', { waitUntil: 'networkidle' }); return sp.evaluate(() => [...document.querySelectorAll('a[href^="/product/"]')].map(a => a.getAttribute('href'))[0]) })()
 await sp.goto(B + productPath, { waitUntil: 'networkidle' })
@@ -197,6 +200,24 @@ step('create collection (Arabic name)', col.status === 201 && /^[a-z0-9-]+$/.tes
 // Coupon create
 const coupon = await api('/api/admin/coupons', 'POST', { code: 'PG' + stamp.toUpperCase(), type: 'PERCENTAGE', value: 10, isActive: true })
 step('create coupon', coupon.status === 200 || coupon.status === 201, `http=${coupon.status} ${coupon.body?.error || ''}`)
+
+// Money (lib/checkout-totals.ts): two more orders, with that 10% code and with a free-delivery code, sent the way the
+// checkout page sends them with the price summary's total as the expected total (checkout refuses another). What each
+// order keeps must add up the way invoices and order edits read it: subtotal - discount + delivery + tax = total.
+for (const [label, code] of [['10% code', 'PG' + stamp.toUpperCase()], ['free-delivery code', 'PGFREE' + stamp.toUpperCase()]]) {
+  if (label === 'free-delivery code') await api('/api/admin/coupons', 'POST', { code, type: 'FREE_SHIPPING', value: 0, isActive: true })
+  if (!quoteRequest || !checkoutRequest) { step(`money: an order with a ${label}`, false, 'the checkout page sent no request to copy'); break }
+  const placed = await sp.evaluate(async ([quoteBody, checkoutBody, code]) => {
+    const quote = await (await fetch('/api/checkout/quote', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...quoteBody, couponCode: code }) })).json()
+    const r = await fetch('/api/checkout', { method: 'POST', headers: { 'content-type': 'application/json', 'x-idempotency-key': crypto.randomUUID() }, body: JSON.stringify({ ...checkoutBody, couponCode: code, expectedTotal: quote.total }) })
+    return { status: r.status, body: await r.json().catch(() => ({})), quote }
+  }, [quoteRequest, checkoutRequest, code])
+  const number = placed.body?.order?.orderNumber
+  const row = number ? ((await api(`/api/admin/orders?q=${encodeURIComponent(number)}`)).body?.rows || []).find(o => o.orderNumber === number) : null
+  const q = placed.quote || {}
+  step(`money: an order with a ${label} is charged the price summary's total`, !!row && row.grandTotal === q.total, `http=${placed.status} ${placed.body?.error || ''} total=${row?.grandTotal} summary=${q.total}`)
+  step(`money: what it keeps adds up, with the summary's discount and delivery`, !!row && row.subtotal - row.discountTotal + row.shippingTotal + row.taxTotal === row.grandTotal && row.discountTotal === q.discount && row.shippingTotal === q.shipping, row ? `${row.subtotal} - ${row.discountTotal} + ${row.shippingTotal} + ${row.taxTotal} = ${row.grandTotal}` : 'no order')
+}
 
 // Theme draft save (array $transaction of upserts)
 const theme = await api('/api/admin/theme')

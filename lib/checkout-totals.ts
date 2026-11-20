@@ -57,3 +57,18 @@ export async function orderMoney(input: OrderMoneyInput): Promise<OrderMoney> {
     grandTotal: Math.max(0, preGiftCardTotal - giftCardDiscount),
   }
 }
+
+// What the order keeps (Order: subtotal, discountTotal, shippingTotal, taxTotal, grandTotal): the figures the price
+// summary showed, adding up as subtotal - discount + delivery + tax = total, the way invoices, the confirmation email,
+// order edits and draft orders read them. Coins and a gift card count in the discount. Delivery is what was charged,
+// so a free-delivery code is kept as no delivery charge and not also as a discount: it used to be counted in both,
+// and the stored figures came to less than the total, by the delivery.
+export function orderRecordTotals(subtotal: number, merchandiseDiscount: number, money: OrderMoney) {
+  return {
+    subtotal,
+    discountTotal: merchandiseDiscount + money.coinDiscount + money.giftCardDiscount,
+    shippingTotal: money.shippingTotal,
+    taxTotal: money.taxTotal,
+    grandTotal: money.grandTotal,
+  }
+}
