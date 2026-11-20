@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Banknote, Check, ChevronDown, CreditCard, Gift, Landmark, Lock, ShieldCheck, ShoppingBag, Truck, Wallet, X } from 'lucide-react'
+import { Banknote, Check, ChevronDown, CreditCard, Gift, Landmark, Lock, MessageCircle, ShieldCheck, ShoppingBag, Truck, Wallet, X } from 'lucide-react'
 import { readDeliveryArea } from '@/components/market-chrome'
 import { useCart } from '@/components/cart-provider'
 import { config, money } from '@/lib/config'
@@ -32,7 +32,7 @@ type PaymentDetails = {
   bank: { label?: string; bankName: string; accountName: string; iban: string; instructions: string } | null
   wallet: { provider: string; accountName: string; accountNumber: string; instructions: string } | null
 }
-type StoreSettings = { payment: { cod: boolean; card: boolean; bank: boolean; wallet: boolean; details: PaymentDetails }; checkout: { guestCheckout: boolean; countries?: Array<{ code: string; name: string }> }; selling?: { giftOption?: boolean; lbp?: { show: boolean; rate: number } } | null }
+type StoreSettings = { payment: { cod: boolean; card: boolean; bank: boolean; wallet: boolean; details: PaymentDetails }; checkout: { guestCheckout: boolean; whatsappUpdates?: boolean; countries?: Array<{ code: string; name: string }> }; selling?: { giftOption?: boolean; lbp?: { show: boolean; rate: number } } | null }
 type ClientCheckout = { type: 'mpgs'; merchantId: string; sessionId: string; scriptUrl: string }
 type ShippingRate = { id: string | null; name: string; price: number; freeAbove: number | null; estimatedDays: number | null }
 type DeliveryArea = { name: string; eta: string }
@@ -309,6 +309,8 @@ export default function Checkout() {
   const [codeMessage, setCodeMessage] = useState('')
   // "This is a gift" (Settings > Selling tools > Gift option).
   const [isGift, setIsGift] = useState(false)
+  // "Send my order updates on WhatsApp": offered when the store sends them (Settings > Email & messaging); never ticked for the shopper.
+  const [whatsappUpdates, setWhatsappUpdates] = useState(false)
   const [giftMessage, setGiftMessage] = useState('')
   const lbpRate = settings?.selling?.lbp?.show ? settings.selling.lbp.rate : 0
   useEffect(() => { if (quote?.couponError) setCodeMessage(quote.couponError) }, [quote?.couponError])
@@ -386,6 +388,7 @@ export default function Checkout() {
       shippingAddress: { firstName: value('firstName'), lastName: value('lastName'), line1: value('line1'), line2: value('line2'), city: value('city'), region: useAreaList ? area : value('region'), postalCode: value('postalCode'), country: country.trim(), phone: value('phone'), ...(pin ? { lat: pin.lat, lng: pin.lng, ...(pin.accuracy !== null ? { locationAccuracy: pin.accuracy } : {}) } : {}) },
       items: items.map(item => ({ productId: item.productId, variantId: item.variantId || null, quantity: item.quantity, bundleId: item.bundleId || null })),
       adConsent: adConsentChoice(),
+      whatsappUpdates: settings?.checkout.whatsappUpdates ? whatsappUpdates : false,
     }
     try {
       const response = await fetch('/api/checkout', { method: 'POST', headers: { 'content-type': 'application/json', 'x-idempotency-key': idempotencyKey.current }, body: JSON.stringify(data) })
@@ -491,6 +494,7 @@ export default function Checkout() {
           <span className={s.phone}>{inLebanon && <span className={s.phonePrefix}>+961</span>}<input id="co-phone" className={s.input} name="phone" type="tel" autoComplete="tel" inputMode="tel" placeholder={t('e.g. 70 123 456')} dir="ltr" aria-required="true" aria-labelledby="co-phone-label" aria-describedby={describedBy('phone', true)} aria-invalid={!!errors.phone} onBlur={e => captureCheckoutProgress(e.currentTarget.form)} /></span>
           {fieldError('phone') || <span id="co-phone-help" className={s.help}>{t('We confirm your order and the courier calls you on this number.')}</span>}
         </label>
+        {settings?.checkout.whatsappUpdates && <label className={s.check}><input type="checkbox" name="whatsappUpdates" checked={whatsappUpdates} onChange={e => setWhatsappUpdates(e.target.checked)} /> <span><MessageCircle size={16} aria-hidden="true" /> {t('Send my order updates on WhatsApp')}</span></label>}
         <label className={fieldClass('email')}><span id="co-email-label" className={s.label}>{t('Email')} <i>{t('(optional)')}</i></span>
           <input id="co-email" ref={emailRef} className={s.input} name="email" type="email" autoComplete="email" inputMode="email" placeholder="you@example.com" defaultValue={recoveredEmail} key={recoveredEmail} dir="ltr" aria-labelledby="co-email-label" aria-describedby={describedBy('email', true)} aria-invalid={!!errors.email} onBlur={e => captureCheckoutProgress(e.currentTarget.form)} />
           {fieldError('email') || <span id="co-email-help" className={s.help}>{t('For your receipt and order updates.')}</span>}

@@ -395,6 +395,9 @@ model Order {
   currency            String               @default("USD")
   // The shopper's cookie choice at checkout ("granted" or "denied"). Purchase goes to Meta's Conversions API only when granted.
   adConsent           String?
+  // "Send my order updates on WhatsApp" ticked at checkout: the store's WhatsApp number then messages the
+  // customer when the order is confirmed, out for delivery and delivered (lib/whatsapp-cloud.ts).
+  whatsappUpdates     Boolean              @default(false)
   status              OrderStatus          @default(PENDING)
   paymentStatus       PaymentStatus        @default(UNPAID)
   fulfillmentStatus   FulfillmentStatus    @default(UNFULFILLED)

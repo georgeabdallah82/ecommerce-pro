@@ -5,8 +5,10 @@ import { audit } from '@/lib/audit'
 // the other side's server error -- are kept here and tried again by the hourly job (app/api/internal/retry-outbox,
 // which worker.ts runs at the top of each hour) for about a day. An email keeps the idempotency key of its first try,
 // so Resend sends it once even if an earlier try went through after all; a webhook keeps its event id, so the
-// receiver can skip one it already has. The content is kept only while it still has to go out.
-export type OutboxKind = 'email' | 'webhook'
+// receiver can skip one it already has. A WhatsApp message (lib/whatsapp-cloud.ts) has no such key, so only a
+// failure that never reached WhatsApp or that WhatsApp said to retry is kept. The content is kept only while it still
+// has to go out.
+export type OutboxKind = 'email' | 'webhook' | 'whatsapp'
 export type DeliveryResult = { ok: boolean; error?: string | null; permanent?: boolean }
 
 export const OUTBOX_MAX_ATTEMPTS = 6
@@ -27,10 +29,12 @@ export async function queueRetry(kind: OutboxKind, payload: unknown, error: stri
   }
 }
 
-// Imported when needed: lib/email.ts and lib/webhooks.ts import this module to queue their failures.
-async function attempt(kind: string, payload: any): Promise<DeliveryResult> {
+// Imported when needed: lib/email.ts, lib/webhooks.ts and lib/whatsapp-cloud.ts import this module to queue their
+// failures. `lastTry` lets a WhatsApp message note on its order that it was not sent.
+async function attempt(kind: string, payload: any, lastTry: boolean): Promise<DeliveryResult> {
   if (kind === 'email') return (await import('@/lib/email')).retryQueuedEmail(payload)
   if (kind === 'webhook') return (await import('@/lib/webhooks')).retryQueuedWebhook(payload)
+  if (kind === 'whatsapp') return (await import('@/lib/whatsapp-cloud')).retryQueuedWhatsApp(payload, lastTry)
   return { ok: false, error: `Unknown kind: ${kind}`, permanent: true }
 }
 
@@ -39,13 +43,13 @@ export async function retryOutbox(now = new Date(), limit = 25) {
   const due = await db.outboxMessage.findMany({ where: { status: 'pending', nextAttemptAt: { lte: now } }, orderBy: { nextAttemptAt: 'asc' }, take: limit })
   const result = { checked: due.length, sent: 0, waiting: 0, gaveUp: 0, cleaned: 0 }
   for (const message of due) {
+    const attempts = message.attempts + 1
     let outcome: DeliveryResult
     try {
-      outcome = await attempt(message.kind, JSON.parse(message.payloadJson))
+      outcome = await attempt(message.kind, JSON.parse(message.payloadJson), attempts >= OUTBOX_MAX_ATTEMPTS)
     } catch (error) {
       outcome = { ok: false, error: error instanceof Error ? error.message : String(error) }
     }
-    const attempts = message.attempts + 1
     if (outcome.ok) {
       await db.outboxMessage.update({ where: { id: message.id }, data: { status: 'sent', attempts, lastError: null, payloadJson: '{}' } })
       result.sent += 1
