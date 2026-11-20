@@ -12,6 +12,7 @@ import { getPaymentProvider } from '@/lib/payments'
 import { sendNewOrderPush } from '@/lib/push'
 import { alertCheckoutFailure } from '@/lib/order-alerts'
 import { armOrderWatch } from '@/lib/order-watch-storage'
+import { armHourlyJobs } from '@/lib/hourly-jobs-storage'
 import { riskNote } from '@/lib/order-risk'
 import { sendAbandonedCheckoutEmail, sendOrderConfirmationEmail } from '@/lib/email'
 import { dispatchWebhookEvent } from '@/lib/webhooks'
@@ -479,6 +480,8 @@ export async function POST(req: Request) {
       .catch(error => console.error('[push] new-order notification failed', error)))
     // The owner confirms cash and transfer orders: watch this one, so a reminder comes if it waits too long.
     if (paymentMethod !== PaymentMethod.CARD) runInBackground(armOrderWatch())
+    // A card checkout holds stock until it is paid: the hourly job that releases abandoned ones runs while one waits.
+    else runInBackground(armHourlyJobs())
     if (paymentMethod !== PaymentMethod.CARD || order.grandTotal === 0) {
       runInBackground(sendOrderConfirmationEmail(order.id).catch(error => console.error('[email] order confirmation failed', error)))
       // Report the sale to Meta from the server too (card orders are reported once paid).

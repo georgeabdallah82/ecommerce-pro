@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import type { NextFetchEvent, NextRequest } from 'next/server'
 import { jwtVerify } from 'jose'
 import { countRedirectHit, findRedirect, getSettingValue, getStaffAccess } from '@/lib/edge-db'
+import { MAINTENANCE_GATE_HEADER, readEdgeConfig, redirectFor } from '@/lib/edge-config'
+import { isFileProbe } from '@/lib/probe-paths'
 import { isSessionRevoked } from '@/lib/session-revocation'
 import { staffSessionEnded } from '@/lib/session-limits'
 import { contentSecurityPolicy } from '@/lib/csp'
@@ -74,6 +76,9 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   // A path with broken percent-encoding (for example /product/%E0%A4%A) matches no page, and Next answers it with a
   // bare 500 while it matches the route. Show the normal not-found page instead, before any route is matched.
   try { decodeURIComponent(pathname) } catch { return NextResponse.rewrite(new URL('/not-found-page', request.url)) }
+  // /wp-login.php, /.env, /favicon.ico and other files the store does not have: a plain 404 here, without the store's
+  // 404 page and the database reads that come with it (lib/probe-paths.ts).
+  if (isFileProbe(pathname)) return applySecurityHeaders(new NextResponse('Not found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'public, max-age=3600' } }))
   const nonce = btoa(crypto.randomUUID())
   const isThemePreview = pathname === '/theme-editor-preview'
   // The theme editor's live preview (components/theme-preview-frame.tsx) embeds this one route
@@ -91,15 +96,20 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
 
   const needsRedirectCheck = !REDIRECT_BYPASS_PREFIXES.some(p => pathname.startsWith(p)) && !isStaticAsset(pathname)
   const needsMaintenanceCheck = !skipsMaintenanceCheck(pathname) && !isStaticAsset(pathname)
-  // Both lookups run at the same time: a storefront page view used to wait for one database
-  // round trip, then a second, before rendering even started.
+  // Both answers come from the copy kept in the media bucket (lib/edge-config.ts), so a request -- a shopper's or a
+  // robot's -- does not wake the database. Without the copy, both lookups run at the same time: a storefront page view
+  // used to wait for one database round trip, then a second, before rendering even started.
   // A failed lookup (a brief database/Accelerate hiccup) must not fail the request itself:
   // unhandled, it turned every page and API call into a bare 500 -- checkout showed "Unable
   // to load checkout settings". Treat it as "no redirect" / "not in maintenance" instead.
-  const [redirect, maintenanceSetting] = await Promise.all([
-    needsRedirectCheck ? findRedirect(pathname).catch(() => null) : null,
-    needsMaintenanceCheck ? getSettingValue('maintenance.enabled').catch(() => null) : null,
-  ])
+  const edge = needsRedirectCheck || needsMaintenanceCheck ? await readEdgeConfig().catch(() => null) : null
+  const edgeRedirect = edge && needsRedirectCheck ? redirectFor(edge, pathname) : null
+  const [redirect, maintenanceSetting] = edge
+    ? [edgeRedirect === undefined ? await findRedirect(pathname).catch(() => null) : edgeRedirect, needsMaintenanceCheck ? (edge.maintenance ? 'true' : 'false') : null]
+    : await Promise.all([
+      needsRedirectCheck ? findRedirect(pathname).catch(() => null) : null,
+      needsMaintenanceCheck ? getSettingValue('maintenance.enabled').catch(() => null) : null,
+    ])
   if (needsRedirectCheck) {
     if (redirect) {
       // waitUntil keeps the Worker alive for the counter write after the redirect is sent.
@@ -123,8 +133,12 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
           return applySecurityHeaders(NextResponse.json({ error: 'The store is temporarily unavailable.' }, { status: 503, headers: { 'Cache-Control': 'no-store' } }))
         }
       } else {
-        // The maintenance page (app/maintenance/route.ts) answers 503 + Retry-After itself.
-        const rewrite = NextResponse.rewrite(new URL('/maintenance', request.url), { request: { headers: withNonce(new Headers(request.headers)) } })
+        // The maintenance page (app/maintenance/route.ts) answers 503 + Retry-After itself. The header tells it the
+        // store is closed for this request: it must not send the visitor back home (its own copy of the switch can be a
+        // minute newer than this one, just after the store reopens, and the two would send the visitor round in circles).
+        const gateHeaders = withNonce(new Headers(request.headers))
+        gateHeaders.set(MAINTENANCE_GATE_HEADER, '1')
+        const rewrite = NextResponse.rewrite(new URL('/maintenance', request.url), { request: { headers: gateHeaders } })
         rewrite.headers.set('Content-Security-Policy', csp)
         return applySecurityHeaders(rewrite)
       }

@@ -5,6 +5,8 @@ import { audit } from '@/lib/audit'
 import { json } from '@/lib/utils'
 import { cappedJson, LIST_CAP } from '@/lib/admin-list'
 import { cleanFromPath, cleanToPath, redirectProblem } from '@/lib/redirects'
+import { clearEdgeCopies } from '@/lib/edge-config'
+import { runInBackground } from '@/lib/background'
 
 // The rules for the two addresses (a path only for the old one, no redirects from the store's own pages, no
 // circles) are in lib/redirects.ts. The circle check reads every redirect: the table is the store's own short list.
@@ -30,6 +32,7 @@ export async function POST(req: Request) {
 
     const redirect = await db.redirect.create({ data: { fromPath, toPath } })
     await audit(actor.id, 'redirect.created', 'Redirect', redirect.id, { fromPath, toPath })
+    await clearEdgeCopies('config', runInBackground)
     return json({ redirect }, { status: 201 })
   } catch (e) {
     if (e instanceof Error && e.message.includes('Unique constraint')) return json({ error: 'A redirect from this path already exists.' }, { status: 409 })
@@ -53,6 +56,7 @@ export async function PATCH(req: Request) {
 
     const redirect = await db.redirect.update({ where: { id }, data: { fromPath, toPath } })
     await audit(actor.id, 'redirect.updated', 'Redirect', id, { fromPath, toPath })
+    await clearEdgeCopies('config', runInBackground)
     return json({ redirect })
   } catch (e) {
     if (e instanceof Error && e.message.includes('Unique constraint')) return json({ error: 'A redirect from this path already exists.' }, { status: 409 })
@@ -68,6 +72,7 @@ export async function DELETE(req: Request) {
     if (!id) return json({ error: 'Redirect id is required' }, { status: 400 })
     await db.redirect.delete({ where: { id } })
     await audit(actor.id, 'redirect.deleted', 'Redirect', id, {})
+    await clearEdgeCopies('config', runInBackground)
     return json({ ok: true })
   } catch (e) {
     return routeError(e, 'Unable to delete redirect', 400)

@@ -16,9 +16,10 @@ test('refund reconciliation is due at the top of the hour, and at no other quart
   assert.equal(reconcileDue(Date.UTC(2026, 10, 12, 9, 45)), false)
 })
 
-test('the Worker includes the reconciliation only when it is due, and the order watch cron is unchanged', () => {
+test('the Worker includes the reconciliation only at the top of the hour while there is work (lib/hourly-jobs.ts), and the order watch cron is unchanged', () => {
   const worker = read('worker.ts')
-  assert.match(worker, /if \(reconcileDue\(controller\.scheduledTime\)\) paths\.push\('\/api\/internal\/reconcile-refunds'\)/)
+  assert.match(worker, /if \(reconcileDue\(controller\.scheduledTime\)\) \{[\s\S]*?hourly = hourlyJobsDue\(controller\.scheduledTime, marker\)/)
+  assert.match(worker, /if \(hourly\) paths\.push\('\/api\/internal\/reconcile-refunds'\)/)
   assert.match(worker, /import \{ ORDER_WATCH_CRON, ORDER_WATCH_KEY, inQuietHours, parseWatch, reconcileDue \} from '\.\/lib\/order-watch'/)
   assert.match(read('lib/order-watch.ts'), /export const ORDER_WATCH_CRON = '\*\/15 \* \* \* \*'/)
 })

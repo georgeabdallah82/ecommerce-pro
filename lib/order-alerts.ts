@@ -70,7 +70,8 @@ export const SCHEDULED_JOBS: Record<string, string> = {
   '/api/internal/order-watch': 'The check for orders waiting too long',
   '/api/internal/reconcile-refunds': 'The hourly refund check',
   '/api/internal/release-expired-reservations': 'The hourly stock release for abandoned card checkouts',
-  '/api/internal/retry-outbox': 'The hourly retry of failed emails and webhooks',
+  '/api/internal/retry-outbox': 'The hourly retry of failed messages',
+  '/api/internal/hourly-idle': 'The check that pauses the hourly jobs when they have nothing to do',
 }
 export const JOB_ALERT_WINDOW_MS = 6 * 60 * 60 * 1000
 

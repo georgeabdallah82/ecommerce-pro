@@ -1,3 +1,5 @@
+import { clearEdgeCopies } from '@/lib/edge-config'
+import { runInBackground } from '@/lib/background'
 import { routeError } from '@/lib/api-error'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
@@ -48,6 +50,8 @@ export async function POST() {
 
     for (const path of ['/', '/shop', '/collections', '/cart', '/blog', '/about']) revalidatePath(path)
     await audit(actor.id, 'theme.published', 'Theme', 'theme.config', { publishedAt: new Date().toISOString() })
+    // The maintenance page shows the brand, logo and colour from its copy (lib/maintenance-page-data.ts).
+    await clearEdgeCopies('page', runInBackground)
     return json({ ok: true, published: true }, { headers: { 'cache-control': 'no-store' } })
   } catch (e) { return routeError(e, 'Unable to publish theme', 400) }
 }

@@ -6,6 +6,8 @@ import { json } from '@/lib/utils'
 import { cappedJson, LIST_CAP } from '@/lib/admin-list'
 import { isAllowedSenderAddress, senderDomain } from '@/lib/email'
 import { sealSecret } from '@/lib/two-step'
+import { clearEdgeCopies } from '@/lib/edge-config'
+import { runInBackground } from '@/lib/background'
 
 // push.subscription.*: staff phone notification devices. security.devices.*: the browsers each
 // account signed in from (lib/sign-in-alerts.ts); nobody can add one here to dodge the alert.
@@ -56,6 +58,8 @@ export async function PATCH(req:Request){
       const changed=entries.filter(([k,v])=>current.get(k)!==v)
       const saved=await Promise.all(changed.map(async([key,typed])=>{const value=await storedValue(key,typed);return db.setting.upsert({where:{key},update:{value},create:{key,value}})}))
       if(saved.length)await audit(actor.id,'settings.updated','Setting',undefined,{keys:changed.map(([k])=>k)})
+      // The maintenance switch and the maintenance page's details are kept as copies for the proxy (lib/edge-config.ts).
+      if(saved.length)await clearEdgeCopies('all',runInBackground)
       return json({settings:saved.map(masked),changed:saved.length})
     }
     const key=String(b.key||'').trim()
@@ -65,6 +69,6 @@ export async function PATCH(req:Request){
     if(isMaskEcho(key,String(b.value??'')))return json({error:'Paste the new value to replace the saved one'},{status:400})
     const value=await storedValue(key,String(b.value??''))
     const s=await db.setting.upsert({where:{key},update:{value},create:{key,value}})
-    await audit(actor.id,'setting.updated','Setting',s.id,{key});return json({setting:masked(s)})
+    await audit(actor.id,'setting.updated','Setting',s.id,{key});await clearEdgeCopies('all',runInBackground);return json({setting:masked(s)})
   }catch(e){return routeError(e, 'Unable to update setting', 400)}
 }

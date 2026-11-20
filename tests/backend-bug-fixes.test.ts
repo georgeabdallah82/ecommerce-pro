@@ -38,8 +38,9 @@ describe('passwords: native scrypt instead of bcryptjs', () => {
 })
 
 describe('card checkouts left at the payment page give their stock back', () => {
-  it('the Worker runs the release job at the top of each hour', () => {
-    assert.match(read('worker.ts'), /if \(reconcileDue\(controller\.scheduledTime\)\) paths\.push\('\/api\/internal\/release-expired-reservations'\)/)
+  it('the Worker runs the release job at the top of the hour while a card checkout waits (lib/hourly-jobs.ts)', () => {
+    assert.match(read('worker.ts'), /if \(hourly\) paths\.push\('\/api\/internal\/release-expired-reservations'\)/)
+    assert.match(read('app/api/checkout/route.ts'), /else runInBackground\(armHourlyJobs\(\)\)/)
   })
   it('the job answers the Worker\'s own POST, and asks the gateway before cancelling', () => {
     const job = read('app/api/internal/release-expired-reservations/route.ts')
