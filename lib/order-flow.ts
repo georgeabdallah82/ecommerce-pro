@@ -105,6 +105,12 @@ export function addressLines(order: Pick<FlowOrder, 'shippingAddressJson'>) {
   const a = shippingAddress(order.shippingAddressJson)
   return [a.line1, a.line2, [a.city, a.region].filter(Boolean).join(', '), a.country].map(x => String(x || '').trim()).filter(Boolean)
 }
+// The same address in separate parts, for one line on screen (components/address-parts.tsx): the city and the region
+// stay apart there, so an Arabic city next to an English region keeps its place.
+export function addressParts(order: Pick<FlowOrder, 'shippingAddressJson'>) {
+  const a = shippingAddress(order.shippingAddressJson)
+  return [a.line1, a.line2, a.city, a.region, a.country].map(x => String(x || '').trim()).filter(Boolean)
+}
 
 export function itemsSummary(order: Pick<FlowOrder, 'items'>) {
   const items = order.items || []
