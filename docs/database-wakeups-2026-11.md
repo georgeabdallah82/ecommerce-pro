@@ -36,6 +36,12 @@ Branch `claude/db-hours`, based on `origin/main` at 3969762 (after #641).
    - **Refunds:** a refund sent to the gateway does not set the marker. The 6-hourly run picks it up, so it is confirmed within 6 hours instead of 1.
    - **An hour with nothing to do** costs one read of the marker in the media bucket, and no database time.
 
+4. **A file the store does not have gets a plain 404 from the proxy** (`lib/probe-paths.ts`).
+   - **Which requests:** scanners try addresses like `/wp-login.php`, `/xmlrpc.php` and `/.env`, and browsers ask for `/favicon.ico`.
+   - **Why it mattered:** those addresses skip the maintenance check, so they used to get the store's 404 page, whose layout reads the theme, settings and tracking from the database. Every probe woke it, closed store or not.
+   - **Why it is safe:** real files never reach the Worker (Cloudflare serves the static files first), and the store's own file-like routes are listed: `/robots.txt`, `/sitemap.xml`, `/manifest.webmanifest`, `/feeds/products.xml`.
+   - Only common file types count, so a product address ending in something like `.5l` still reaches its page.
+
 ## What it saves
 
 - **Requests:** robots and visitors on the closed store no longer wake the database. The proxy and the maintenance page read it at most every 6 hours, or once after a save.
@@ -44,6 +50,7 @@ Branch `claude/db-hours`, based on `origin/main` at 3969762 (after #641).
 
 ## Not changed, on purpose
 
+- **An ordinary missing page** (`/no-such-page`) still gets the store's 404 page and its database reads. While the store is closed, such addresses get the maintenance page from its copy instead.
 - **Once the store is open**, shoppers' page views read the database (products, prices, stock), as they must. With real traffic the database stays awake most of the day, so plan Neon's paid Launch plan before opening. It is billed by use.
 - **The product feed and the sitemap** still read the database when they are fetched: Meta's catalog and search engines fetch them rarely.
 - **`/api/health`** still wakes the database on purpose: it checks it. An uptime monitor should call `/robots.txt` instead, or call `/api/health` at most hourly.
@@ -51,8 +58,8 @@ Branch `claude/db-hours`, based on `origin/main` at 3969762 (after #641).
 
 ## Verification
 
-- `npm run typecheck`, `npm test` (1375 pass), `npm run backend:audit`, the dependency audit and `npm run build:cloudflare` (CI environment) pass.
-- **Tests:** `tests/database-wakeups.test.ts` adds 10. Three existing tests that pinned the old "every hour" lines in `worker.ts` now check the new rule.
+- `npm run typecheck`, `npm test` (1377 pass), `npm run backend:audit`, the dependency audit and `npm run build:cloudflare` (CI environment) pass.
+- **Tests:** `tests/database-wakeups.test.ts` adds 12. Three existing tests that pinned the old "every hour" lines in `worker.ts` now check the new rule.
   - **The proxy's copy:** used while readable and under 6 hours old; redirects found, none, or "ask the database" when cut short; the proxy reads it first and falls back.
   - **Clearing:** every save that changes the copies clears them, and again 5 seconds later.
   - **The maintenance page:**
@@ -66,6 +73,10 @@ Branch `claude/db-hours`, based on `origin/main` at 3969762 (after #641).
   - **The hourly jobs** (scheduled runs at a chosen time; database connections counted from the runtime's own traces):
     - **They run (6 connections each):** with no marker yet, at 12:00 regardless, and at 09:00 with the marker set. The idle check then cleared the marker.
     - **They don't run (0 connections):** at 09:00 with nothing to do, and at a quarter past.
+- **11 more checks in the Cloudflare runtime, for file probes:**
+  - **Probes:** `/wp-login.php`, `/.env`, `/favicon.ico`, `/xmlrpc.php` and `/backup.zip` each got a plain 404 with **0 database connections**.
+  - **The store's own routes:** `/robots.txt`, `/sitemap.xml`, `/feeds/products.xml`, `/manifest.webmanifest` and a product page still answered 200.
+  - **An ordinary missing page** still got the store's 404 page.
 - **A loop this check caught, fixed before commit:**
   - **The problem:** just after the store reopens, a Worker's one-minute memory can still say "closed" while the maintenance page already reads "open". The page sent visitors home, the proxy sent them back, and the Worker gave up with a 500.
   - **The fix:** the proxy now marks the request it sends to the maintenance page (`x-maintenance-gate`), and the page never sends such a visitor home. For at most a minute they see the closed page instead of an error.

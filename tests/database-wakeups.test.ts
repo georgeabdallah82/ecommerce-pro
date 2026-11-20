@@ -5,6 +5,7 @@ import { EDGE_COPY_MAX_AGE_MS, parseEdgeConfig, redirectFor } from '@/lib/edge-c
 import { parseMaintenancePageData } from '@/lib/maintenance-page-data'
 import { hourlyJobsDue, parseHourlyJobs } from '@/lib/hourly-jobs'
 import { GET as maintenancePage } from '@/app/maintenance/route'
+import { isFileProbe } from '@/lib/probe-paths'
 import { POST as hourlyIdle } from '@/app/api/internal/hourly-idle/route'
 
 // Database wake-ups (docs/database-wakeups-2026-11.md): requests and the hourly jobs no longer wake the database when they
@@ -41,6 +42,16 @@ describe("the proxy's copy", () => {
     assert.equal((read('lib/redirect-moves.ts').match(/await clearEdgeCopies\('config', runInBackground\)/g) || []).length, 2)
     for (const path of ['app/api/admin/theme/publish/route.ts', 'app/api/admin/theme/versions/[id]/restore/route.ts']) assert.match(read(path), /await clearEdgeCopies\('page', runInBackground\)/, path)
     assert.match(read('lib/edge-config.ts'), /later\?\.\(new Promise\(resolve => setTimeout\(resolve, 5000\)\)\.then\(clear\)\)/)
+  })
+})
+
+describe('file probes', () => {
+  it('a file the store does not have gets a plain 404 from the proxy, without the 404 page and its database reads', () => {
+    for (const path of ['/wp-login.php', '/xmlrpc.php', '/.env', '/favicon.ico', '/backup.zip', '/config.yml', '/wp-content/plugins/x/readme.txt', '/admin.php', '/.DS_Store', '/old/index.html']) assert.equal(isFileProbe(path), true, path)
+  })
+  it("the store's own file-like routes, its API and Next's files are untouched, and so is a product address ending in '.5l'", () => {
+    for (const path of ['/robots.txt', '/sitemap.xml', '/manifest.webmanifest', '/feeds/products.xml', '/.well-known/appspecific/com.chrome.devtools.json', '/api/media/photo.webp', '/_next/static/chunks/app.js', '/product/olive-oil-1.5l', '/product/olive-oil', '/', '/.git/HEAD']) assert.equal(isFileProbe(path), false, path)
+    assert.match(read('proxy.ts'), /if \(isFileProbe\(pathname\)\) return applySecurityHeaders\(new NextResponse\('Not found', \{ status: 404/)
   })
 })
 

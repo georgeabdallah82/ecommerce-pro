@@ -3,6 +3,7 @@ import type { NextFetchEvent, NextRequest } from 'next/server'
 import { jwtVerify } from 'jose'
 import { countRedirectHit, findRedirect, getSettingValue, getStaffAccess } from '@/lib/edge-db'
 import { MAINTENANCE_GATE_HEADER, readEdgeConfig, redirectFor } from '@/lib/edge-config'
+import { isFileProbe } from '@/lib/probe-paths'
 import { isSessionRevoked } from '@/lib/session-revocation'
 import { staffSessionEnded } from '@/lib/session-limits'
 import { contentSecurityPolicy } from '@/lib/csp'
@@ -75,6 +76,9 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   // A path with broken percent-encoding (for example /product/%E0%A4%A) matches no page, and Next answers it with a
   // bare 500 while it matches the route. Show the normal not-found page instead, before any route is matched.
   try { decodeURIComponent(pathname) } catch { return NextResponse.rewrite(new URL('/not-found-page', request.url)) }
+  // /wp-login.php, /.env, /favicon.ico and other files the store does not have: a plain 404 here, without the store's
+  // 404 page and the database reads that come with it (lib/probe-paths.ts).
+  if (isFileProbe(pathname)) return applySecurityHeaders(new NextResponse('Not found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'public, max-age=3600' } }))
   const nonce = btoa(crypto.randomUUID())
   const isThemePreview = pathname === '/theme-editor-preview'
   // The theme editor's live preview (components/theme-preview-frame.tsx) embeds this one route
