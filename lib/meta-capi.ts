@@ -4,6 +4,7 @@ import { cleanTrackingIds } from '@/lib/tracking'
 import { internationalPhone, isLebanon } from '@/lib/phone'
 import { SESSION_COOKIE } from '@/lib/visitor-tracking'
 import { openSecret } from '@/lib/two-step'
+import { queueRetry, type DeliveryResult } from '@/lib/outbox'
 
 // Meta Conversions API: the store's server reports each sale to Meta directly, alongside the
 // browser pixel. Sales still count when the shopper's browser blocks the pixel (ad blockers,
@@ -109,6 +110,14 @@ async function loadMetaCapiConfig() {
   return { pixelId, token, testCode: (map.get('tracking.metaCapiTestCode') || '').trim(), storeCountry: map.get('store.country') || 'Lebanon', enabled: !!(pixelId && token) }
 }
 
+// Meta's refusal, with what is needed to tell whether a later try can work (metaFailureIsPermanent).
+export class MetaApiError extends Error {
+  constructor(message: string, readonly status: number, readonly code: number, readonly transient: boolean) {
+    super(message)
+    this.name = 'MetaApiError'
+  }
+}
+
 export async function sendMetaEvents(events: unknown[], config: { pixelId: string; token: string; testCode?: string }, timeoutMs = 10000) {
   const res = await fetch(`${graphBase()}/${GRAPH_VERSION}/${config.pixelId}/events?access_token=${encodeURIComponent(config.token)}`, {
     method: 'POST',
@@ -116,14 +125,30 @@ export async function sendMetaEvents(events: unknown[], config: { pixelId: strin
     body: JSON.stringify({ data: events, ...(config.testCode ? { test_event_code: config.testCode } : {}) }),
     signal: AbortSignal.timeout(timeoutMs),
   })
-  const body = await res.json().catch(() => ({})) as { events_received?: number; error?: { message?: string } }
-  if (!res.ok) throw new Error(body.error?.message || `Meta returned ${res.status}`)
+  const body = await res.json().catch(() => ({})) as { events_received?: number; error?: { message?: string; code?: number; is_transient?: boolean } }
+  if (!res.ok) throw new MetaApiError(body.error?.message || `Meta returned ${res.status}`, res.status, Number(body.error?.code) || 0, body.error?.is_transient === true)
   return body
+}
+
+// A sale report that failed is tried again by the hourly job (lib/outbox.ts) when a later try can work: no answer or a
+// timeout, too many requests (429; codes 4, 17, 32, 341, 613), Meta's own error (5xx; codes 1, 2; or any answer Meta
+// marks is_transient), and an expired or wrong access key (190) -- each try reads the key from Settings, so a sale
+// made while the key was broken still reaches Meta once a new key is saved that day. Anything else Meta refuses (a
+// malformed event, a wrong Pixel ID) would be refused again, so it is only logged. Retrying never counts a sale twice:
+// Meta keeps one event per event id (purchase-<order number>), and the tries end within a day.
+const RETRY_CODES = new Set([1, 2, 4, 17, 32, 190, 341, 613])
+export function metaFailureIsPermanent(error: unknown) {
+  if (!(error instanceof MetaApiError)) return false
+  if (error.transient || RETRY_CODES.has(error.code)) return false
+  return !(error.status === 429 || error.status >= 500)
 }
 
 // Reports one order as a Purchase. Safe to call for every order: it does nothing when the
 // Conversions API isn't set up, and never throws (a reporting failure must not affect the sale).
+// A failure a later try can fix is kept for the hourly retries with the event as built now (same
+// event id and time); the access key is not kept with it.
 export async function sendMetaPurchase(orderId: string, opts: { context?: AdClientContext; storeUrl?: string } = {}) {
+  let queued: QueuedMetaEvents | null = null
   try {
     const config = await metaCapiConfig()
     if (!config.enabled) return
@@ -131,9 +156,27 @@ export async function sendMetaPurchase(orderId: string, opts: { context?: AdClie
     // Only when the shopper accepted cookies at checkout, as the browser pixel does: Decline (or no answer) means
     // no ad tracking, from the browser or from here.
     if (!order || order.adConsent !== 'granted') return
-    await sendMetaEvents([buildMetaPurchaseEvent(order, { storeCountry: config.storeCountry, storeUrl: opts.storeUrl, context: opts.context })], config)
+    queued = { orderNumber: order.orderNumber, events: [buildMetaPurchaseEvent(order, { storeCountry: config.storeCountry, storeUrl: opts.storeUrl, context: opts.context })], testCode: config.testCode }
+    await sendMetaEvents(queued.events, config)
   } catch (error) {
-    console.error('[meta-capi] purchase not sent', orderId, error instanceof Error ? error.message : error)
+    const message = error instanceof Error ? error.message : String(error)
+    console.error('[meta-capi] purchase not sent', orderId, message)
+    if (queued && !metaFailureIsPermanent(error)) await queueRetry('meta', queued, message)
+  }
+}
+
+type QueuedMetaEvents = { orderNumber: string; events: unknown[]; testCode?: string }
+
+// The hourly job's try (lib/outbox.ts): the same events, to the Pixel ID and with the access key saved in Settings now.
+export async function retryQueuedMeta(message: QueuedMetaEvents): Promise<DeliveryResult> {
+  if (!Array.isArray(message?.events) || !message.events.length) return { ok: false, error: 'Nothing to send', permanent: true }
+  const config = await metaCapiConfig()
+  if (!config.enabled) return { ok: false, error: 'The Conversions API is no longer set up in Settings › Tracking', permanent: true }
+  try {
+    await sendMetaEvents(message.events, { ...config, testCode: message.testCode || '' })
+    return { ok: true }
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error), permanent: metaFailureIsPermanent(error) }
   }
 }
 
