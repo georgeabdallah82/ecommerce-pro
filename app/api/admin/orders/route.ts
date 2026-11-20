@@ -20,6 +20,8 @@ import { orderCounts } from '@/lib/order-counts'
 import { withRisk } from '@/lib/order-risk'
 import { getStoreIdentity } from '@/lib/store-identity'
 import { userError } from '@/lib/user-error'
+import { sendOrderWhatsApp, whatsappUpdateForStatus } from '@/lib/whatsapp-cloud'
+import { requestOrigin } from '@/lib/site-url'
 
 const ORDER_UPDATE_CONFLICT_MESSAGE = 'This order was just modified — please retry.'
 
@@ -280,6 +282,11 @@ export async function PATCH(req: Request) {
       await db.notification.create({ data: { userId: result.order.userId, title: `Order ${result.order.orderNumber} updated`, body, type: result.cancelRefundAmount > 0 || result.refundToSettle ? 'ORDER_REFUND' : 'ORDER_STATUS' } })
     }
     if (result.fulfilling) runInBackground(sendFulfillmentEmail(result.order.id).catch(error => console.error('[email] fulfillment notification failed', error)))
+    // The automatic WhatsApp message, for a customer who asked for updates at checkout (lib/whatsapp-cloud.ts).
+    if (result.statusChanged && whatsappUpdateForStatus(result.updated.status)) {
+      const origin = await requestOrigin()
+      runInBackground(sendOrderWhatsApp(result.updated.id, result.updated.status, origin).catch(error => console.error('[whatsapp] order update failed', error)))
+    }
     if (result.trackingCorrection && result.order.userId) {
       const body = result.trackingCorrection.trackingNumber
         ? `The tracking number for order ${result.trackingCorrection.orderNumber} was updated to ${result.trackingCorrection.trackingNumber}.`

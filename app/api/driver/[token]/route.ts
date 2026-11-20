@@ -3,6 +3,7 @@ import { consumeDurableRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { driverForToken, markDeliveredByDriver, reportDeliveryProblem } from '@/lib/drivers'
 import { PROBLEM_REASONS, type ProblemReason } from '@/lib/drivers-shared'
+import { requestOrigin } from '@/lib/site-url'
 
 const NO_STORE = { 'Cache-Control': 'private, no-store' }
 
@@ -18,7 +19,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
   if (!orderId) return json({ error: 'Choose an order' }, { status: 400, headers: NO_STORE })
   try {
     if (body?.action === 'delivered') {
-      const result = await markDeliveredByDriver(driver, orderId)
+      const result = await markDeliveredByDriver(driver, orderId, await requestOrigin())
       return json({ ok: true, cash: result.cash, already: result.already }, { headers: NO_STORE })
     }
     if (body?.action === 'problem') {

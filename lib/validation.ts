@@ -9,6 +9,8 @@ export const checkoutSchema = z.object({
   phone: z.string().trim().max(40).optional().or(z.literal('')),
   // The shopper's cookie choice (components/cookie-consent.tsx), kept on the order for the Meta Purchase event.
   adConsent: z.enum(['granted', 'denied']).nullable().optional(),
+  // "Send my order updates on WhatsApp" (only offered when the store has automatic WhatsApp messages on).
+  whatsappUpdates: z.boolean().optional(),
   paymentMethod: z.enum(['COD','CARD','BANK_TRANSFER','WALLET']),
   couponCode: z.string().trim().max(60).optional().or(z.literal('')),
   giftCardCode: z.string().trim().max(60).optional().or(z.literal('')),

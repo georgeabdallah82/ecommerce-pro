@@ -62,6 +62,13 @@ const CLIENT_SETTING_KEYS = new Set([
   'tracking.googleAdsId',
   'tracking.googleAdsPurchaseLabel',
   'tracking.metaCapiTestCode',
+  // Automatic WhatsApp messages (lib/whatsapp-cloud.ts); the access key is loaded below, as a yes or no.
+  'whatsapp.cloud.enabled',
+  'whatsapp.cloud.phoneNumberId',
+  'whatsapp.cloud.language',
+  'whatsapp.cloud.templateConfirmed',
+  'whatsapp.cloud.templateOnTheWay',
+  'whatsapp.cloud.templateDelivered',
   'maintenance.enabled',
   'maintenance.mode',
   'maintenance.backBy',
@@ -80,6 +87,9 @@ export default async function Settings({ searchParams }: { searchParams: Promise
   // The Conversions API token is a secret: the page only learns whether one is saved.
   const capiToken = await db.setting.findUnique({ where: { key: 'tracking.metaCapiToken' } }).catch(() => null)
   const metaCapiTokenUnreadable = !!capiToken?.value && !(await isReadableSecret(capiToken.value))
+  // So is the WhatsApp access key.
+  const whatsappToken = await db.setting.findUnique({ where: { key: 'whatsapp.cloud.accessToken' } }).catch(() => null)
+  const whatsappTokenUnreadable = !!whatsappToken?.value && !(await isReadableSecret(whatsappToken.value))
   // Phone app icon (components/app-icon-card.tsx): the saved one, or the logo it's made from.
   const [{ theme }, appIcons] = await Promise.all([
     getThemeState().catch(() => ({ theme: defaultTheme })),
@@ -98,5 +108,5 @@ export default async function Settings({ searchParams }: { searchParams: Promise
     db.product.findMany({ where: { status: 'ACTIVE' }, select: { id: true, name: true }, orderBy: { name: 'asc' }, take: 1000 }),
     db.phoneSubscriber.count().catch(() => 0),
   ])
-  return <SettingsCenterPro addSearchWord={addWord || undefined} initial={settings} metaCapiTokenSet={!!capiToken?.value} metaCapiTokenUnreadable={metaCapiTokenUnreadable} emailFromDefault={process.env.EMAIL_FROM || ''} appIcon={appIcon} products={products} whatsappListCount={whatsappListCount} />
+  return <SettingsCenterPro addSearchWord={addWord || undefined} initial={settings} metaCapiTokenSet={!!capiToken?.value} metaCapiTokenUnreadable={metaCapiTokenUnreadable} whatsappTokenSet={!!whatsappToken?.value} whatsappTokenUnreadable={whatsappTokenUnreadable} emailFromDefault={process.env.EMAIL_FROM || ''} appIcon={appIcon} products={products} whatsappListCount={whatsappListCount} />
 }

@@ -13,10 +13,14 @@ import { sealSecret } from '@/lib/two-step'
 const PRIVATE_PREFIXES = ['push.subscription.', 'security.devices.', 'payment.areeba.apiPassword']
 function isPrivateKey(key: string) { return PRIVATE_PREFIXES.some(prefix => key.startsWith(prefix)) }
 // Write-only secrets: saved through this route but never sent back to the browser.
-const SECRET_KEYS = new Set(['tracking.metaCapiToken'])
+const SECRET_KEYS = new Set(['tracking.metaCapiToken', 'whatsapp.cloud.accessToken'])
+const MASK = '********'
 // Secrets are kept sealed (encrypted with a key derived from AUTH_SECRET, lib/two-step.ts); read back by openSecret.
+// Both saves below seal them: before, they were written as typed and stayed readable until the daily job sealed them.
 async function storedValue(key:string, value:string){ return SECRET_KEYS.has(key) && value ? sealSecret(value) : value }
-const masked = <T extends { key: string; value: string }>(row: T) => SECRET_KEYS.has(row.key) ? { ...row, value: row.value ? '********' : '' } : row
+const masked = <T extends { key: string; value: string }>(row: T) => SECRET_KEYS.has(row.key) ? { ...row, value: row.value ? MASK : '' } : row
+// The mask a screen got back from GET is never saved over the real secret.
+const isMaskEcho = (key: string, value: string) => SECRET_KEYS.has(key) && value === MASK
 
 export async function GET(){
   try {
@@ -43,14 +47,14 @@ export async function PATCH(req:Request){
   try{
     const actor=await requirePermission('settings.manage');const b=await req.json()
     if(b&&typeof b.settings==='object'&&b.settings&&!Array.isArray(b.settings)){
-      const entries=Object.entries(b.settings as Record<string,unknown>).map(([k,v])=>[String(k).trim(),String(v??'')] as const).filter(([k])=>k)
+      const entries=Object.entries(b.settings as Record<string,unknown>).map(([k,v])=>[String(k).trim(),String(v??'')] as const).filter(([k,v])=>k&&!isMaskEcho(k,v))
       if(entries.length>200)return json({error:'Too many settings in one save'},{status:400})
       const blocked=entries.find(([k])=>isPrivateKey(k));if(blocked)return json({error:'Private setting keys cannot be edited here'},{status:403})
       const invalid=invalidSetting(entries);if(invalid)return json({error:invalid},{status:400})
       const keys=entries.map(([k])=>k)
       const current=new Map((keys.length?await db.setting.findMany({where:{key:{in:keys}}}):[]).map(row=>[row.key,row.value]))
       const changed=entries.filter(([k,v])=>current.get(k)!==v)
-      const saved=await Promise.all(changed.map(([key,value])=>db.setting.upsert({where:{key},update:{value},create:{key,value}})))
+      const saved=await Promise.all(changed.map(async([key,typed])=>{const value=await storedValue(key,typed);return db.setting.upsert({where:{key},update:{value},create:{key,value}})}))
       if(saved.length)await audit(actor.id,'settings.updated','Setting',undefined,{keys:changed.map(([k])=>k)})
       return json({settings:saved.map(masked),changed:saved.length})
     }
@@ -58,7 +62,9 @@ export async function PATCH(req:Request){
     if(!key)return json({error:'Setting key required'},{status:400})
     if(isPrivateKey(key))return json({error:'Private setting keys cannot be edited here'},{status:403})
     const invalid=invalidSetting([[key,String(b.value??'')]]);if(invalid)return json({error:invalid},{status:400})
-    const s=await db.setting.upsert({where:{key},update:{value:String(b.value??'')},create:{key,value:String(b.value??'')}})
+    if(isMaskEcho(key,String(b.value??'')))return json({error:'Paste the new value to replace the saved one'},{status:400})
+    const value=await storedValue(key,String(b.value??''))
+    const s=await db.setting.upsert({where:{key},update:{value},create:{key,value}})
     await audit(actor.id,'setting.updated','Setting',s.id,{key});return json({setting:masked(s)})
   }catch(e){return routeError(e, 'Unable to update setting', 400)}
 }
