@@ -9,6 +9,7 @@ import { default as handler } from './.open-next/worker.js'
 export { DOQueueHandler, DOShardedTagCache, BucketCachePurge } from './.open-next/worker.js'
 
 import { ORDER_WATCH_CRON, ORDER_WATCH_KEY, inQuietHours, parseWatch, reconcileDue } from './lib/order-watch'
+import { HOURLY_JOBS_KEY, hourlyJobsDue, parseHourlyJobs } from './lib/hourly-jobs'
 
 type ExecutionContext = { waitUntil(promise: Promise<unknown>): void; passThroughOnException(): void }
 
@@ -80,14 +81,25 @@ const worker = {
     const site = String(env?.NEXT_PUBLIC_SITE_URL || env?.APP_URL || 'https://internal.invalid').replace(/\/$/, '')
     const paths: string[] = []
     if (controller.cron === ORDER_WATCH_CRON) {
-      // Once an hour: refunds the store has not recorded are confirmed with the gateway (lib/refund-reconciliation.ts),
-      // and card checkouts left at the payment page for over 30 minutes give their stock back
-      // (app/api/internal/release-expired-reservations), and failed emails and webhooks are tried again (lib/outbox.ts).
-      // This cron runs every 15 minutes and each run wakes the
-      // database, so only the top-of-hour run includes them.
-      if (reconcileDue(controller.scheduledTime)) paths.push('/api/internal/reconcile-refunds')
-      if (reconcileDue(controller.scheduledTime)) paths.push('/api/internal/release-expired-reservations')
-      if (reconcileDue(controller.scheduledTime)) paths.push('/api/internal/retry-outbox')
+      // Once an hour, while there is work for them (lib/hourly-jobs.ts), and every 6 hours regardless: refunds the store
+      // has not recorded are confirmed with the gateway (lib/refund-reconciliation.ts), card checkouts left at the
+      // payment page for over 30 minutes give their stock back (app/api/internal/release-expired-reservations), and
+      // failed messages are tried again (lib/outbox.ts). Each run wakes the database, so they never run on the other
+      // quarter-hours, and an hour with nothing to do costs only a read of the marker in the media bucket. The idle
+      // check runs last and clears the marker when nothing is left.
+      let hourly = false
+      if (reconcileDue(controller.scheduledTime)) {
+        let marker = null
+        try {
+          const object = await env?.MEDIA_BUCKET?.get(HOURLY_JOBS_KEY)
+          marker = object ? parseHourlyJobs(await object.text()) : null
+        } catch { /* unreadable: the jobs run */ }
+        hourly = hourlyJobsDue(controller.scheduledTime, marker)
+      }
+      if (hourly) paths.push('/api/internal/reconcile-refunds')
+      if (hourly) paths.push('/api/internal/release-expired-reservations')
+      if (hourly) paths.push('/api/internal/retry-outbox')
+      if (hourly) paths.push('/api/internal/hourly-idle')
       // The marker file is the only thing read first: no order being watched, or night time, means the
       // database is never touched by the order watch.
       try {

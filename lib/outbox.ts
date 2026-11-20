@@ -1,5 +1,6 @@
 import { db } from '@/lib/prisma'
 import { audit } from '@/lib/audit'
+import { armHourlyJobs } from '@/lib/hourly-jobs-storage'
 
 // Emails and webhook deliveries that failed for a reason that may pass -- no answer, a timeout, too many requests,
 // the other side's server error -- are kept here and tried again by the hourly job (app/api/internal/retry-outbox,
@@ -24,6 +25,8 @@ export function nextAttemptDelayMs(attempts: number) {
 export async function queueRetry(kind: OutboxKind, payload: unknown, error: string, now = new Date()) {
   try {
     await db.outboxMessage.create({ data: { kind, payloadJson: JSON.stringify(payload), attempts: 1, nextAttemptAt: new Date(now.getTime() + nextAttemptDelayMs(1)), lastError: String(error).slice(0, 500) } })
+    // The hourly job runs only while there is work for it (lib/hourly-jobs.ts).
+    await armHourlyJobs(now.getTime())
   } catch (queueError) {
     console.error('[outbox] could not keep a failed', kind, 'for another try', queueError)
   }

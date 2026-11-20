@@ -31,6 +31,21 @@ export async function getSettingValue(key: string): Promise<string | null> {
   return rows[0]?.value ?? null
 }
 
+// Everything proxy.ts needs, read at once for the copy kept in the media bucket (lib/edge-config.ts): the maintenance
+// switch and every redirect. Null without a Neon database (local development, CI).
+export const EDGE_REDIRECT_LIMIT = 5000
+export async function loadEdgeConfigRows(): Promise<{ maintenance: boolean; redirects: Record<string, [string, string]>; partial: boolean } | null> {
+  if (!sql) return null
+  const [setting, redirects] = await Promise.all([
+    sql`SELECT "value" FROM "Setting" WHERE "key" = 'maintenance.enabled' LIMIT 1`,
+    sql`SELECT "id", "fromPath", "toPath" FROM "Redirect" ORDER BY "createdAt" ASC LIMIT ${EDGE_REDIRECT_LIMIT}`,
+  ]) as [{ value: string }[], { id: string; fromPath: string; toPath: string }[]]
+  const map: Record<string, [string, string]> = {}
+  for (const row of redirects) map[row.fromPath] = [row.id, row.toPath]
+  // Cut short: the copy says so, and an address not in it is looked up in the database (proxy.ts).
+  return { maintenance: setting[0]?.value === 'true', redirects: map, partial: redirects.length >= EDGE_REDIRECT_LIMIT }
+}
+
 export async function getStaffAccess(userId: string): Promise<{ isActive: boolean; role: string; sessionsRevokedAt: Date | null; totpEnabled: boolean } | null> {
   if (!sql) return null
   const rows = await sql`SELECT "isActive", "role", "sessionsRevokedAt", "totpEnabledAt" FROM "User" WHERE "id" = ${userId} LIMIT 1` as { isActive: boolean; role: string; sessionsRevokedAt: Date | string | null; totpEnabledAt: Date | string | null }[]

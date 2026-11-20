@@ -67,8 +67,9 @@ describe('webhooks', () => {
 })
 
 describe('the hourly job', () => {
-  it('runs at the top of each hour from the Worker, with its key or the bearer only', async () => {
-    assert.match(read('worker.ts'), /if \(reconcileDue\(controller\.scheduledTime\)\) paths\.push\('\/api\/internal\/retry-outbox'\)/)
+  it('runs at the top of the hour from the Worker while a message waits (lib/hourly-jobs.ts), with its key or the bearer only', async () => {
+    assert.match(read('worker.ts'), /if \(hourly\) paths\.push\('\/api\/internal\/retry-outbox'\)/)
+    assert.match(read('lib/outbox.ts'), /await armHourlyJobs\(now\.getTime\(\)\)/)
     process.env.CRON_SECRET = 'test-cron-secret'
     assert.equal((await POST(new Request('http://x/api/internal/retry-outbox', { method: 'POST' }))).status, 401)
     const ran = await POST(new Request('http://x/api/internal/retry-outbox', { method: 'POST', headers: { authorization: 'Bearer test-cron-secret' } }))
