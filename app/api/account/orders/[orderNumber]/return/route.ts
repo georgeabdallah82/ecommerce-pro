@@ -34,7 +34,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderNu
     const user = await requireUser()
     if (!(await getReturnsEnabled())) return json({ error: 'This store does not accept returns. Please contact us if your item arrived damaged or wrong.' }, { status: 403 })
     const { orderNumber } = await params
-    const body = await req.json().catch(() => ({}))
+    // A body of null (valid JSON) is read like an empty one, not as a crash (docs/input-hardening-2026-11.md).
+    const body = (await req.json().catch(() => null)) ?? {}
     const reason = String(body.reason || '').trim().slice(0, 1000)
     const inputItems = Array.isArray(body.items) ? body.items.slice(0, 100) : []
     if (!reason) return json({ error: 'Please tell us why you want to return these items' }, { status: 400 })

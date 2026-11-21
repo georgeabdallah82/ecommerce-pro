@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 import { PrismaNeon, PrismaNeonHTTP } from '@prisma/adapter-neon'
 import { PrismaPg } from '@prisma/adapter-pg'
-import type { SqlDriverAdapter, SqlDriverAdapterFactory } from '@prisma/driver-adapter-utils'
+import type { SqlDriverAdapter, SqlDriverAdapterFactory, SqlQuery, Transaction } from '@prisma/driver-adapter-utils'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { defaultTheme, defaultSections, defaultNavigation } from './theme-defaults'
 
@@ -2646,15 +2646,37 @@ function queryConnection(): Promise<SqlDriverAdapter> {
   return (connections.http ??= new PrismaNeonHTTP(databaseUrl, {}).connect())
 }
 
+// Postgres text cannot hold the NUL character (U+0000): a query with one in any value fails with
+// "invalid byte sequence for encoding UTF8: 0x00" (22021), and so does the request. People never type
+// it; it comes from broken or hostile requests (an input fuzz had it crash the newsletter, password
+// reset and delivery tracking, docs/input-hardening-2026-11.md). So it is dropped from every text
+// value on its way to the database, in single queries and inside transactions alike.
+const hasNul = (value: unknown): boolean => typeof value === 'string' ? value.includes('\u0000') : Array.isArray(value) && value.some(hasNul)
+const dropNul = (value: unknown): unknown => typeof value === 'string' ? value.replace(/\u0000/g, '') : Array.isArray(value) ? value.map(dropNul) : value
+export function withoutNul<Q extends SqlQuery>(query: Q): Q {
+  return query.args.some(hasNul) ? { ...query, args: query.args.map(dropNul) } : query
+}
+// A transaction whose queries go through withoutNul; everything else is the transaction's own.
+export function nulFreeTransaction(tx: Transaction): Transaction {
+  return new Proxy(tx, {
+    get(target, prop) {
+      if (prop === 'queryRaw') return (query: SqlQuery) => target.queryRaw(withoutNul(query))
+      if (prop === 'executeRaw') return (query: SqlQuery) => target.executeRaw(withoutNul(query))
+      const value = Reflect.get(target, prop, target)
+      return typeof value === 'function' ? value.bind(target) : value
+    },
+  })
+}
+
 // The adapter the shared client is built with: each call goes to the calling request's own
 // connection (Prisma runs a query's I/O in the caller's async context).
 const requestScopedAdapter: SqlDriverAdapter = {
   provider: 'postgres',
   adapterName: isNeon ? '@prisma/adapter-neon' : '@prisma/adapter-pg',
-  queryRaw: async query => (await queryConnection()).queryRaw(query),
-  executeRaw: async query => (await queryConnection()).executeRaw(query),
+  queryRaw: async query => (await queryConnection()).queryRaw(withoutNul(query)),
+  executeRaw: async query => (await queryConnection()).executeRaw(withoutNul(query)),
   executeScript: async script => (await poolConnection()).executeScript(script),
-  startTransaction: async isolationLevel => (await poolConnection()).startTransaction(isolationLevel),
+  startTransaction: async isolationLevel => nulFreeTransaction(await (await poolConnection()).startTransaction(isolationLevel)),
   // What the underlying query adapter reports: Neon's HTTP adapter reports nothing, node-postgres
   // supports relation joins.
   ...(isNeon ? {} : { getConnectionInfo: () => ({ supportsRelationJoins: true }) }),

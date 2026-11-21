@@ -16,7 +16,8 @@ export async function POST(req: Request) {
     if (user.role !== 'CUSTOMER') return json({ error: 'Forbidden' }, { status: 403 })
     const limit = await consumeDurableRateLimit(`account-delete:${user.id}`, 5, 60 * 60 * 1000)
     if (!limit.allowed) return json({ error: 'Too many attempts. Please wait a while and try again.' }, { status: 429 })
-    const body = await req.json().catch(() => ({}))
+    // A body of null (valid JSON) is read like an empty one, not as a crash (docs/input-hardening-2026-11.md).
+    const body = (await req.json().catch(() => null)) ?? {}
     const password = typeof body.password === 'string' ? body.password : ''
     if (!(await verifyPassword(password, user.passwordHash))) return json({ error: 'Your password is incorrect.' }, { status: 400 })
     await audit(null, 'customer.self_deleted', 'User', user.id)
