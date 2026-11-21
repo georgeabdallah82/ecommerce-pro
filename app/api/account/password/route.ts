@@ -11,7 +11,8 @@ export async function POST(req: Request) {
     const user = await requireUser()
     const limit = await consumeDurableRateLimit(`password-change:${user.id}`, 10, 15 * 60 * 1000)
     if (!limit.allowed) return json({ error: 'Too many attempts. Please wait a few minutes and try again.' }, { status: 429 })
-    const body = await req.json().catch(() => ({}))
+    // A body of null (valid JSON) is read like an empty one, not as a crash (docs/input-hardening-2026-11.md).
+    const body = (await req.json().catch(() => null)) ?? {}
     const current = typeof body.currentPassword === 'string' ? body.currentPassword : ''
     const next = typeof body.newPassword === 'string' ? body.newPassword : ''
     if (next.length < 8 || next.length > 72) return json({ error: 'Your new password must be 8 to 72 characters.' }, { status: 400 })

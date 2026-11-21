@@ -29,7 +29,8 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   try {
     const user = await requireUser()
-    const body = await req.json().catch(() => ({}))
+    // A body of null (valid JSON) is read like an empty one, not as a crash (docs/input-hardening-2026-11.md).
+    const body = (await req.json().catch(() => null)) ?? {}
     const endpoint = String(body.endpoint || '').trim()
     if (!endpoint) return json({ error: 'Endpoint is required' }, { status: 400 })
     await removeCustomerPushSubscription(user.id, endpoint)

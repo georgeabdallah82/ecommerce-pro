@@ -132,6 +132,13 @@ const wish = await cp.evaluate(async id => { const r = await fetch('/api/wishlis
 step('wishlist add', wish.startsWith('200') || wish.startsWith('201'), wish)
 const news = await cp.evaluate(async email => { const r = await fetch('/api/newsletter', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email }) }); return r.status + ' ' + (await r.text()).slice(0, 80) }, `pg-news-${stamp}@example.com`)
 step('newsletter signup', /^20[01]/.test(news), news)
+// A NUL character (never typed by a person; Postgres refuses it in text) is answered, not a server error
+// (withoutNul in lib/prisma.ts): the newsletter, the password reset and the delivery tracking link.
+const nulAnswers = await cp.evaluate(async () => {
+  const post = (url, body) => fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.status, () => 0)
+  return [await post('/api/newsletter', { email: 'nul\u0000@example.com' }), await post('/api/auth/forgot-password', { email: 'nul\u0000@example.com' }), await fetch('/api/tracking/' + '%00'.repeat(32)).then(r => r.status, () => 0)]
+})
+step('a NUL character in input is answered, not a server error', nulAnswers.every(s => s > 0 && s < 500), nulAnswers.join(','))
 await customerSignIn({ browser: b, B, step, email: `pg-cust-${stamp}@example.com`, password: 'Secret123!pg' })
 
 // ---------- Admin
