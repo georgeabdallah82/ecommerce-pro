@@ -80,9 +80,12 @@ const CLIENT_SETTING_KEYS = new Set([
   'maintenance.message',
 ])
 
-export default async function Settings({ searchParams }: { searchParams: Promise<{ addWord?: string }> }) {
+export default async function Settings({ searchParams }: { searchParams: Promise<{ addWord?: string; tab?: string }> }) {
   // From Admin > Analytics > Searches: "Add a search word" opens the Selling tab with the term ready to finish.
-  const addWord = String((await searchParams).addWord || '').replace(/[\u0000-\u001f]/g, '').trim().slice(0, 80)
+  const params = await searchParams
+  const addWord = String(params.addWord || '').replace(/[\u0000-\u001f]/g, '').trim().slice(0, 80)
+  // ?tab=Email: the tab to open (the WhatsApp setup guide links there); an unknown one opens General.
+  const initialTab = String(params.tab || '').slice(0, 40)
   await requirePermission('settings.view')
   const settings = await db.setting.findMany({
     where: { key: { in: Array.from(CLIENT_SETTING_KEYS) } },
@@ -112,5 +115,5 @@ export default async function Settings({ searchParams }: { searchParams: Promise
     db.product.findMany({ where: { status: 'ACTIVE' }, select: { id: true, name: true }, orderBy: { name: 'asc' }, take: 1000 }),
     db.phoneSubscriber.count().catch(() => 0),
   ])
-  return <SettingsCenterPro addSearchWord={addWord || undefined} initial={settings} metaCapiTokenSet={!!capiToken?.value} metaCapiTokenUnreadable={metaCapiTokenUnreadable} whatsappTokenSet={!!whatsappToken?.value} whatsappTokenUnreadable={whatsappTokenUnreadable} emailFromDefault={process.env.EMAIL_FROM || ''} appIcon={appIcon} products={products} whatsappListCount={whatsappListCount} />
+  return <SettingsCenterPro addSearchWord={addWord || undefined} initialTab={initialTab || undefined} initial={settings} metaCapiTokenSet={!!capiToken?.value} metaCapiTokenUnreadable={metaCapiTokenUnreadable} whatsappTokenSet={!!whatsappToken?.value} whatsappTokenUnreadable={whatsappTokenUnreadable} emailFromDefault={process.env.EMAIL_FROM || ''} appIcon={appIcon} products={products} whatsappListCount={whatsappListCount} />
 }

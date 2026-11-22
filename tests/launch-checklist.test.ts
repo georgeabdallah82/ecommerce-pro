@@ -9,7 +9,7 @@ const ready: LaunchFacts = {
   codOn: true, cardOn: false, freeShippingThreshold: 50, announcementText: 'Free delivery over $50 · Cash on delivery',
   shippingZones: 2, activeProducts: 12, productsWithoutPhoto: 0, productsWithoutPrice: 0,
   twoStepOn: true, phoneAlertsOn: true, emailConfigured: true, maintenanceOn: false, orderCount: 0,
-  arabicOn: true, socialLinks: 3, adTracking: true, footerText: 'Home essentials, delivered.',
+  arabicOn: true, socialLinks: 3, adTracking: true, footerText: 'Home essentials, delivered.', whatsappOn: true,
   manual: Object.fromEntries(MANUAL_IDS.map(id => [id, '2026-10-17T10:00:00Z'])),
 }
 const item = (f: LaunchFacts, id: string) => buildChecklist(f).items.find(i => i.id === id)!
