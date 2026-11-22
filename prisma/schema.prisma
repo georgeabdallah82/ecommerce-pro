@@ -1067,3 +1067,16 @@ model RefillOptOut {
   contact   String   @unique
   createdAt DateTime @default(now())
 }
+
+// A sign-in code sent on WhatsApp (lib/phone-sign-in.ts): its keyed hash, for one number (international digits), for
+// 10 minutes and 5 tries. Only the latest one per number is kept.
+model PhoneLoginCode {
+  id        String   @id @default(cuid())
+  phone     String
+  codeHash  String
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+}

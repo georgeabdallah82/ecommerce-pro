@@ -37,6 +37,7 @@ describe('manual orders (WhatsApp, Instagram, phone, in the shop)', () => {
     const route = readFileSync('app/api/admin/orders/route.ts', 'utf8')
     assert.doesNotMatch(route, /if \(!email \|\| !email\.includes\('@'\)\)/)
     const email = readFileSync('lib/email.ts', 'utf8')
-    assert.match(email, /if \(!to \|\| !to\.includes\('@'\)\) return \{ sent: false, skipped: true \}/)
+    // Nor to the placeholder address of an account made by a WhatsApp sign-in (lib/phone-sign-in.ts).
+    assert.match(email, /if \(!to \|\| !to\.includes\('@'\) \|\| \/@phone\\\.invalid\$\/i\.test\(to\.trim\(\)\)\) return \{ sent: false, skipped: true \}/)
   })
 })

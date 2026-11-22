@@ -7,6 +7,8 @@ import { safeNextPath } from '@/lib/links'
 import { getT } from '@/lib/i18n-server'
 import { getThemeState } from '@/lib/theme'
 import { firstHeroPhoto } from '@/lib/hero-photo'
+import PhoneSignIn from '@/components/phone-sign-in'
+import { phoneSignInOffered } from '@/lib/phone-sign-in'
 
 export const metadata: Metadata = { title: 'Sign in' }
 
@@ -18,7 +20,8 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
   const nextQuery = next === '/account' ? '' : `?next=${encodeURIComponent(next)}`
   // The panel shows the store's own first hero photo. The layout has already read the theme for this request
   // (getThemeState is cached), so this costs nothing; without a photo the panel is the cream band.
-  const [t, photo] = await Promise.all([getT(), getThemeState().then(state => firstHeroPhoto(state.sections)).catch(() => null)])
+  // "Sign in with WhatsApp" once the store has set up the code's template (lib/phone-sign-in.ts).
+  const [t, photo, phoneOffered] = await Promise.all([getT(), getThemeState().then(state => firstHeroPhoto(state.sections)).catch(() => null), phoneSignInOffered().catch(() => false)])
 
   return (
     <><main className="section authPage">
@@ -52,6 +55,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
               <input className="input" id="password" name="password" type="password" autoComplete="current-password" required />
               <button className="btn authSubmit">{t('Sign in')}</button>
             </form>
+            {phoneOffered && <><p className="authDivider">{t('or')}</p><PhoneSignIn next={next} /></>}
             <p className="authDivider">{t('New here?')}</p>
             <Link className="authSecondary" href={`/account/register${nextQuery}`}>{t('Create an account')}</Link>
           </div>
