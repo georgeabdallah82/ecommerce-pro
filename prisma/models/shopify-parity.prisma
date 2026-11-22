@@ -399,6 +399,8 @@ model AbandonedCheckout {
   // shoppers who order by phone only can be reminded on WhatsApp (Admin > Orders > Unfinished).
   phone        String?
   name         String?
+  // The language the shopper used at checkout ("en" or "ar"): the cart reminder email is written in it.
+  lang         String?
   // When staff last opened the WhatsApp reminder for it.
   whatsappAt   DateTime?
   // Where the shopper said they are, typed at checkout (town and area), and the exact spot if they tapped

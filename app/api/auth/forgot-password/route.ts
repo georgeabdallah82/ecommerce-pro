@@ -4,6 +4,7 @@ import { db } from '@/lib/prisma'
 import { consumeDurableRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { sendPasswordResetEmail } from '@/lib/email'
+import { shopperLang } from '@/lib/message-lang'
 import { runInBackground } from '@/lib/background'
 
 const WINDOW_MS = 60 * 60 * 1000
@@ -39,7 +40,9 @@ export async function POST(request: NextRequest) {
     const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL
     if (appUrl) {
       const resetUrl = `${appUrl.replace(/\/$/, '')}/account/reset-password?token=${encodeURIComponent(token)}`
-      runInBackground(sendPasswordResetEmail(user.email, resetUrl, 30).catch(error => console.error('[password-recovery] email delivery failed', error)))
+      // In the language of the page the shopper asked from (docs/arabic-messages-2026-11.md).
+      const lang = await shopperLang()
+      runInBackground(sendPasswordResetEmail(user.email, resetUrl, 30, lang).catch(error => console.error('[password-recovery] email delivery failed', error)))
     }
   }
 

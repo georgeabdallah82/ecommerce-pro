@@ -5,6 +5,7 @@ import { clientIp } from '@/lib/request-ip'
 import { sendEmailVerificationEmail } from '@/lib/email'
 import { runInBackground } from '@/lib/background'
 import { VERIFY_HOURS, createVerificationToken, siteBase } from '@/lib/email-verification'
+import { shopperLang } from '@/lib/message-lang'
 
 const WINDOW_MS = 60 * 60 * 1000
 const headers = { 'Cache-Control': 'private, no-store' }
@@ -27,7 +28,8 @@ export async function POST(request: NextRequest) {
     const token = await createVerificationToken(user.id)
     const h = request.headers
     const base = siteBase(h.get('host'), process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL)
-    runInBackground(sendEmailVerificationEmail(email, `${base}/api/auth/verify-email?token=${encodeURIComponent(token)}`, VERIFY_HOURS).catch(error => console.error('[verify-resend] email failed', error)))
+    const lang = await shopperLang()
+    runInBackground(sendEmailVerificationEmail(email, `${base}/api/auth/verify-email?token=${encodeURIComponent(token)}`, VERIFY_HOURS, lang).catch(error => console.error('[verify-resend] email failed', error)))
   }
   return generic
 }

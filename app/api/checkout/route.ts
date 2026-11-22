@@ -37,6 +37,7 @@ import { orderSuccessPath } from '@/lib/order-access'
 import { BLOCKED_MESSAGE, BLOCKED_PHONES_KEY, isBlocked, parseBlockedPhones } from '@/lib/blocked-phones'
 import { bundleDiscount } from '@/lib/bundles'
 import { userError } from '@/lib/user-error'
+import { shopperLang } from '@/lib/message-lang'
 
 function stableSerialize(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value)
@@ -316,6 +317,8 @@ export async function POST(req: Request) {
       return json({ error: 'Your total has changed since you reviewed it. Check the new total and place the order again.', code: 'TOTAL_CHANGED', total: grandTotal }, { status: 409, headers: { 'Cache-Control': 'no-store' } })
     }
     const orderNumber = await nextOrderNumber()
+    // The language the shopper is using: the order's emails and WhatsApp messages are written in it.
+    const lang = await shopperLang()
     const fingerprint = checkoutFingerprint(user?.id ?? null, input, merged)
 
     // Wallet and coin balances move in this transaction, so it must run for real: see lib/prisma.ts.
@@ -414,6 +417,7 @@ export async function POST(req: Request) {
             email: orderEmail,
             phone: input.phone || null,
             whatsappUpdates: input.whatsappUpdates === true,
+            lang,
             adConsent: input.adConsent || null,
             ...orderRecordTotals(subtotal, discount.total, { coinDiscount, shipping, shippingTotal, freeShippingDiscount, taxTotal, giftCardDiscount, grandTotal }),
             currency: orderCurrency,

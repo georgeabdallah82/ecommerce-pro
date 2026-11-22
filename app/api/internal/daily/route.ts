@@ -41,7 +41,7 @@ async function sendReviewRequests(now: Date, site: string) {
       reviews: { none: {} },
     },
     select: {
-      id: true, orderNumber: true, email: true, shippingAddressJson: true,
+      id: true, orderNumber: true, email: true, userId: true, lang: true, shippingAddressJson: true,
       items: { select: { product: { select: { id: true, name: true, status: true, images: { select: { url: true }, orderBy: { sortOrder: 'asc' }, take: 1 } } } } },
     },
     orderBy: { createdAt: 'asc' },
@@ -66,7 +66,7 @@ async function sendReviewRequests(now: Date, site: string) {
     // Marked first, so an overlapping run can't email the same customer twice; the mark is
     // removed again if the email could not go out, so tomorrow's run tries again.
     const mark = await db.orderEvent.create({ data: { orderId: order.id, status: OrderStatus.DELIVERED, message: REVIEW_REQUEST_MARK } })
-    const sent = await sendReviewRequestEmail({ email: order.email, orderNumber: order.orderNumber, firstName, products }, `${site}${orderReviewPath(order.orderNumber)}`)
+    const sent = await sendReviewRequestEmail({ email: order.email, orderNumber: order.orderNumber, firstName, products, lang: order.lang, userId: order.userId }, `${site}${orderReviewPath(order.orderNumber)}`)
     if (sent.sent) { result.sent += 1; continue }
     await db.orderEvent.delete({ where: { id: mark.id } }).catch(() => undefined)
     if (sent.skipped) result.skipped += 1
