@@ -6,7 +6,9 @@ import { internationalPhone } from '@/lib/phone'
 import { customerPhone, shippingAddress } from '@/lib/order-flow'
 import { orderReviewPath, orderViewToken } from '@/lib/order-access'
 import { money } from '@/lib/config'
-import { WHATSAPP_LABELS, templateWords, type WhatsAppUpdate } from '@/lib/whatsapp-templates'
+import { WHATSAPP_LABELS, WHATSAPP_LANGUAGES, isArabicTemplate, templateWords, type WhatsAppUpdate } from '@/lib/whatsapp-templates'
+import type { Lang } from '@/lib/i18n'
+import { langFor } from '@/lib/message-lang'
 
 // Automatic WhatsApp messages from the store's own WhatsApp number (WhatsApp Cloud API), for customers who ticked
 // "Send my order updates on WhatsApp" at checkout: one when the order is confirmed, one when it is out for delivery,
@@ -18,6 +20,10 @@ import { WHATSAPP_LABELS, templateWords, type WhatsAppUpdate } from '@/lib/whats
 // says how it went, so staff see it on the order page. A failure that may pass (no answer, too many requests,
 // Meta's server error) is tried again by the hourly job (lib/outbox.ts); a refusal is noted on the order. The texts
 // to create and the words filled into them are in lib/whatsapp-templates.ts.
+//
+// Customers who shop in Arabic get the templates' Arabic version once the owner has added one in WhatsApp Manager
+// and said so in Settings ("My templates also have an Arabic version"); if WhatsApp has no Arabic version of a
+// template after all, that message goes out in the templates' main language (docs/arabic-messages-2026-11.md).
 export type { WhatsAppUpdate }
 
 export const WHATSAPP_KEYS = {
@@ -25,9 +31,11 @@ export const WHATSAPP_KEYS = {
   phoneNumberId: 'whatsapp.cloud.phoneNumberId',
   token: 'whatsapp.cloud.accessToken',
   language: 'whatsapp.cloud.language',
+  // 'true' once the three templates also have an Arabic version (language "ar") in WhatsApp Manager.
+  arabicVersion: 'whatsapp.cloud.arabicVersion',
   templates: { confirmed: 'whatsapp.cloud.templateConfirmed', on_the_way: 'whatsapp.cloud.templateOnTheWay', delivered: 'whatsapp.cloud.templateDelivered' } as Record<WhatsAppUpdate, string>,
 }
-const ALL_KEYS = [WHATSAPP_KEYS.enabled, WHATSAPP_KEYS.phoneNumberId, WHATSAPP_KEYS.token, WHATSAPP_KEYS.language, ...Object.values(WHATSAPP_KEYS.templates)]
+const ALL_KEYS = [WHATSAPP_KEYS.enabled, WHATSAPP_KEYS.phoneNumberId, WHATSAPP_KEYS.token, WHATSAPP_KEYS.language, WHATSAPP_KEYS.arabicVersion, ...Object.values(WHATSAPP_KEYS.templates)]
 
 const marker = (kind: WhatsAppUpdate) => `WhatsApp message "${WHATSAPP_LABELS[kind]}"`
 
@@ -66,8 +74,15 @@ export async function whatsappCloudConfig() {
     delivered: templateName(map.get(WHATSAPP_KEYS.templates.delivered)),
   }
   const connected = !!phoneNumberId && !!token
-  return { enabled: map.get(WHATSAPP_KEYS.enabled) === 'true', connected, phoneNumberId, token, language: templateLanguage(map.get(WHATSAPP_KEYS.language)), templates, storeCountry: map.get('store.country') || 'Lebanon' }
+  return { enabled: map.get(WHATSAPP_KEYS.enabled) === 'true', connected, phoneNumberId, token, language: templateLanguage(map.get(WHATSAPP_KEYS.language)), arabicVersion: map.get(WHATSAPP_KEYS.arabicVersion) === 'true', templates, storeCountry: map.get('store.country') || 'Lebanon' }
 }
+
+// The language a customer's messages go in: the Arabic version for a customer who shops in Arabic, once the owner
+// has said the templates have one; otherwise the templates' main language.
+export function whatsappLanguageFor(config: { language: string; arabicVersion: boolean }, lang: Lang) {
+  return lang === 'ar' && config.arabicVersion && !isArabicTemplate(config.language) ? 'ar' : config.language
+}
+const languageLabel = (code: string) => WHATSAPP_LANGUAGES.find(l => l.code === code)?.label || code
 
 // Whether checkout offers "Send my order updates on WhatsApp": switched on, connected and at least one message set
 // up. Only checks that the values are there (the public settings call makes it), never reads them out.
@@ -139,7 +154,7 @@ const PLAIN_ERRORS: Record<number, string> = {
 
 export type OutgoingWhatsApp = { to: string; template: string; language: string; params: string[] }
 
-export async function deliverWhatsApp(config: { phoneNumberId: string; token: string }, message: OutgoingWhatsApp, timeoutMs = 10000): Promise<DeliveryResult & { messageId?: string }> {
+export async function deliverWhatsApp(config: { phoneNumberId: string; token: string }, message: OutgoingWhatsApp, timeoutMs = 10000): Promise<DeliveryResult & { messageId?: string; code?: number }> {
   try {
     const res = await fetch(`${apiBase()}/${GRAPH_VERSION}/${encodeURIComponent(config.phoneNumberId)}/messages`, {
       method: 'POST',
@@ -167,19 +182,34 @@ export async function deliverWhatsApp(config: { phoneNumberId: string; token: st
     const code = rawCode == null ? 0 : Number(rawCode) || 0
     const plain = rawCode == null ? undefined : PLAIN_ERRORS[code]
     const said = String(data?.error?.error_data?.details || data?.error?.message || `HTTP ${res.status}`).replace(/\s+/g, ' ').trim().slice(0, 300)
-    return { ok: false, error: plain ? `${plain} (WhatsApp code ${code})` : `WhatsApp said: ${said}${code ? ` (code ${code})` : ''}`, permanent: whatsappFailureIsPermanent(res.status, code) }
+    return { ok: false, error: plain ? `${plain} (WhatsApp code ${code})` : `WhatsApp said: ${said}${code ? ` (code ${code})` : ''}`, permanent: whatsappFailureIsPermanent(res.status, code), ...(code ? { code } : {}) }
   } catch (error) {
     const timedOut = error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')
     return { ok: false, error: timedOut ? 'WhatsApp did not answer in time' : `Could not reach WhatsApp: ${error instanceof Error ? error.message : String(error)}`, permanent: false }
   }
 }
 
-type QueuedWhatsApp = OutgoingWhatsApp & { eventId: string; orderId: string; kind: WhatsAppUpdate }
+// `fallback`: the same message in the templates' main language, for a message sent in their Arabic version.
+type QueuedWhatsApp = OutgoingWhatsApp & { eventId: string; orderId: string; kind: WhatsAppUpdate; fallback?: { language: string; params: string[] } }
+
+// WhatsApp's answer when it has no template by that name in that language.
+const TEMPLATE_NOT_FOUND = 132001
+
+// Sends the message; one in the templates' Arabic version that WhatsApp does not have goes out in their main
+// language instead, so the customer still gets it.
+export async function deliverWithFallback(config: { phoneNumberId: string; token: string }, message: OutgoingWhatsApp & { fallback?: { language: string; params: string[] } }): Promise<DeliveryResult & { fellBackTo?: string }> {
+  const first = await deliverWhatsApp(config, message)
+  if (first.ok || first.code !== TEMPLATE_NOT_FOUND || !message.fallback) return first
+  const second = await deliverWhatsApp(config, { to: message.to, template: message.template, language: message.fallback.language, params: message.fallback.params })
+  return { ...second, fellBackTo: message.fallback.language }
+}
 
 // The order event says how it went; staff read it on the order page.
-async function noteOutcome(message: QueuedWhatsApp, result: DeliveryResult, final: boolean) {
+async function noteOutcome(message: QueuedWhatsApp, result: DeliveryResult & { fellBackTo?: string }, final: boolean) {
   const text = result.ok
-    ? `${marker(message.kind)} sent to +${message.to}.`
+    ? result.fellBackTo
+      ? `${marker(message.kind)} sent to +${message.to} in ${languageLabel(result.fellBackTo)}: the template has no Arabic version in WhatsApp Manager yet.`
+      : `${marker(message.kind)} sent to +${message.to}${isArabicTemplate(message.language) ? ' in Arabic' : ''}.`
     : final
       ? `${marker(message.kind)} not sent: ${result.error || 'failed'}.`
       : `${marker(message.kind)} not sent yet: ${result.error || 'failed'}. It will be tried again.`
@@ -200,7 +230,7 @@ export async function sendOrderWhatsApp(orderId: string, status: string, origin:
   if (!origin) return { status: 'skipped', reason: 'no store address for the links' }
   const order = await db.order.findUnique({
     where: { id: orderId },
-    select: { id: true, orderNumber: true, status: true, paymentStatus: true, paymentMethod: true, phone: true, grandTotal: true, currency: true, shippingAddressJson: true, whatsappUpdates: true, user: { select: { name: true } } },
+    select: { id: true, orderNumber: true, status: true, paymentStatus: true, paymentMethod: true, phone: true, grandTotal: true, currency: true, shippingAddressJson: true, whatsappUpdates: true, lang: true, userId: true, email: true, user: { select: { name: true } } },
   })
   if (!order || !order.whatsappUpdates) return { status: 'skipped', reason: 'the customer did not ask for WhatsApp updates' }
   // Once per message per order: confirming and then preparing an order, or a second tap, sends nothing more.
@@ -212,8 +242,11 @@ export async function sendOrderWhatsApp(orderId: string, status: string, origin:
     return { status: 'failed', reason: 'no valid mobile number' }
   }
   const event = await db.orderEvent.create({ data: { orderId: order.id, status: order.status, message: `${marker(kind)}: sending…` } })
-  const message: QueuedWhatsApp = { eventId: event.id, orderId: order.id, kind, to, template, language: config.language, params: templateParams(kind, order, origin, config.language) }
-  const result = await deliverWhatsApp(config, message)
+  // In the customer's language when the templates have it (docs/arabic-messages-2026-11.md).
+  const language = whatsappLanguageFor(config, await langFor(order))
+  const fallback = language === config.language ? undefined : { language: config.language, params: templateParams(kind, order, origin, config.language) }
+  const message: QueuedWhatsApp = { eventId: event.id, orderId: order.id, kind, to, template, language, params: templateParams(kind, order, origin, language), ...(fallback ? { fallback } : {}) }
+  const result = await deliverWithFallback(config, message)
   await noteOutcome(message, result, result.ok || !!result.permanent)
   if (result.ok) return { status: 'sent' }
   if (!result.permanent) {
@@ -231,7 +264,7 @@ export async function retryQueuedWhatsApp(message: QueuedWhatsApp, lastTry = fal
     await noteOutcome(message, result, true)
     return result
   }
-  const result = await deliverWhatsApp(config, message)
+  const result = await deliverWithFallback(config, message)
   await noteOutcome(message, result, result.ok || !!result.permanent || lastTry)
   return result
 }

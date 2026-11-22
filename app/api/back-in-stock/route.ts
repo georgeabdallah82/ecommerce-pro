@@ -3,6 +3,7 @@ import { requestBackInStock } from '@/lib/back-in-stock'
 import { consumeDurableRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { json } from '@/lib/utils'
+import { shopperLang } from '@/lib/message-lang'
 
 // Public endpoint behind "Notify me when it's back" on sold-out products
 // (components/back-in-stock-button.tsx). No account needed; a handful of tries per visitor per
@@ -14,7 +15,7 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => null)
     if (!body || typeof body !== 'object') return json({ error: 'Something went wrong. Please try again.' }, { status: 400 })
     const user = await getCurrentUser().catch(() => null)
-    const result = await requestBackInStock(body, user?.role === 'CUSTOMER' ? user.id : null)
+    const result = await requestBackInStock(body, user?.role === 'CUSTOMER' ? user.id : null, await shopperLang())
     return json({ ok: true, ...result })
   } catch (error) {
     const message = error instanceof Error ? error.message : ''

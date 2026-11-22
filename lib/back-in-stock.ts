@@ -5,6 +5,8 @@ import { sendPushToDevice } from '@/lib/push'
 import { sendBackInStockEmail } from '@/lib/email'
 import { getUnpublishedProductIds } from '@/lib/sales-channels'
 import { userError } from '@/lib/user-error'
+import { translator, type Lang } from '@/lib/i18n'
+import { langFor } from '@/lib/message-lang'
 
 // "Notify me when it's back" on a sold-out product page (components/back-in-stock-button.tsx).
 // The customer leaves this browser (a push notification) or an email address; when the product or
@@ -41,7 +43,8 @@ export function canBuyAgain(product: StockProduct, variantId: string | null): bo
 export type BackInStockInput = { productId: unknown; variantId?: unknown; subscription?: unknown; email?: unknown }
 
 // Saves a request from the storefront. Throws a message the customer can read.
-export async function requestBackInStock(input: BackInStockInput, userId: string | null) {
+// `lang` is the shopper's language: the message is written in it (docs/arabic-messages-2026-11.md).
+export async function requestBackInStock(input: BackInStockInput, userId: string | null, lang: Lang = 'en') {
   const productId = String(input.productId ?? '').trim()
   const variantId = String(input.variantId ?? '').trim() || null
   if (!productId) throw userError('Choose a product first.')
@@ -62,7 +65,7 @@ export async function requestBackInStock(input: BackInStockInput, userId: string
     target = { email }
   }
   const dedupeKey = backInStockKey(product.id, variantId, 'email' in target ? { email: target.email } : { endpoint: target.endpoint })
-  const data = { productId: product.id, variantId, userId, ...target }
+  const data = { productId: product.id, variantId, userId, lang, ...target }
   await db.backInStockRequest.upsert({ where: { dedupeKey }, update: data, create: { ...data, dedupeKey } })
   return { inStock: false as const }
 }
@@ -95,17 +98,19 @@ export async function sendBackInStockAlerts(productIds: Iterable<string>) {
     const name = variantName ? `${product.name} (${variantName})` : product.name
     const image = product.images[0]?.url
     let outcome: 'sent' | 'gone' | 'failed' | 'skipped'
+    const lang = await langFor(request)
+    const t = translator(lang)
     if (request.endpoint && request.p256dh && request.auth) {
       outcome = await sendPushToDevice({ endpoint: request.endpoint, p256dh: request.p256dh, auth: request.auth }, {
-        title: 'Back in stock',
-        body: `${name} is available again. Order before it sells out.`,
+        title: t('Back in stock'),
+        body: t('{name} is available again. Order before it sells out.', { name }),
         url: `/product/${product.slug}`,
         ...(image ? { icon: image } : {}),
         marketing: true,
         tag: `back-in-stock-${product.id}`,
       })
     } else if (request.email) {
-      const result = await sendBackInStockEmail(request.email, { name, slug: product.slug, image })
+      const result = await sendBackInStockEmail(request.email, { name, slug: product.slug, image }, lang)
       outcome = result.sent ? 'sent' : result.skipped ? 'skipped' : 'failed'
     } else {
       outcome = 'gone'

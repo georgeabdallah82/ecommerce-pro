@@ -10,6 +10,7 @@ import { sendAbandonedCheckoutEmail } from '@/lib/email'
 import { internationalPhone } from '@/lib/phone'
 import { cleanCheckoutPlace } from '@/lib/checkout-place'
 import { countryCode as isoCountryCode } from '@/lib/delivery-countries'
+import { shopperLang } from '@/lib/message-lang'
 
 // Public, unauthenticated capture endpoint for the checkout page -- distinct from
 // /api/admin/abandoned-checkouts, which is staff-only and used to browse the
@@ -75,13 +76,15 @@ export async function POST(req: Request) {
     // The recovery link has to carry this token, or the recovery email's "pick up where you
     // left off" is a lie -- app/checkout/page.tsx reads ?recover=<token> to fetch this exact
     // cart back via the GET handler below and re-add it, which a bare /checkout link can't do.
+    // The cart reminder email is written in the language the shopper is using (docs/arabic-messages-2026-11.md).
+    const lang = await shopperLang()
     const recoveryUrl = siteUrl ? `${siteUrl}/checkout?recover=${encodeURIComponent(token)}` : null
     await db.abandonedCheckout.upsert({
       where: { token },
       // A box left empty keeps what was saved before (the email typed earlier stays when the phone
       // arrives next).
-      update: { customerId: user?.id ?? null, ...(email ? { email } : {}), ...(phone ? { phone } : {}), ...(name ? { name } : {}), ...(place.city ? { city: place.city } : {}), ...(place.area ? { area: place.area } : {}), ...(place.pin ? { pinLat: place.pin.lat, pinLng: place.pin.lng, pinAccuracy: place.pin.accuracy } : {}), cartJson: JSON.stringify(cartItems), subtotal, currency, recoveryUrl, status: 'OPEN', lastActivity: new Date() },
-      create: { token, customerId: user?.id ?? null, email: email || null, phone: phone || null, name: name || null, city: place.city || null, area: place.area || null, pinLat: place.pin?.lat ?? null, pinLng: place.pin?.lng ?? null, pinAccuracy: place.pin?.accuracy ?? null, cartJson: JSON.stringify(cartItems), subtotal, currency, recoveryUrl },
+      update: { customerId: user?.id ?? null, ...(email ? { email } : {}), ...(phone ? { phone } : {}), ...(name ? { name } : {}), ...(place.city ? { city: place.city } : {}), ...(place.area ? { area: place.area } : {}), ...(place.pin ? { pinLat: place.pin.lat, pinLng: place.pin.lng, pinAccuracy: place.pin.accuracy } : {}), cartJson: JSON.stringify(cartItems), subtotal, currency, recoveryUrl, lang, status: 'OPEN', lastActivity: new Date() },
+      create: { token, customerId: user?.id ?? null, email: email || null, phone: phone || null, name: name || null, city: place.city || null, area: place.area || null, pinLat: place.pin?.lat ?? null, pinLng: place.pin?.lng ?? null, pinAccuracy: place.pin?.accuracy ?? null, cartJson: JSON.stringify(cartItems), subtotal, currency, recoveryUrl, lang },
     })
     // The database is awake anyway: a good moment for the (rare, throttled) reminder check.
     runInBackground(maybeSendCartReminders(sendAbandonedCheckoutEmail))

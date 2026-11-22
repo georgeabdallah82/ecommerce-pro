@@ -398,6 +398,9 @@ model Order {
   // "Send my order updates on WhatsApp" ticked at checkout: the store's WhatsApp number then messages the
   // customer when the order is confirmed, out for delivery and delivered (lib/whatsapp-cloud.ts).
   whatsappUpdates     Boolean              @default(false)
+  // The language the customer shopped in ("en" or "ar"): emails and WhatsApp messages about the order are written in
+  // it (lib/message-lang.ts). Empty for orders from before, and for orders staff typed in.
+  lang                String?
   status              OrderStatus          @default(PENDING)
   paymentStatus       PaymentStatus        @default(UNPAID)
   fulfillmentStatus   FulfillmentStatus    @default(UNFULFILLED)
@@ -561,6 +564,8 @@ model BackInStockRequest {
   auth      String?
   email     String?
   userId    String?
+  // The language the shopper asked in ("en" or "ar"): the "back in stock" message is written in it.
+  lang      String?
   // Product, option and the browser or email: one request each, however often the button is tapped.
   dedupeKey String   @unique
   createdAt DateTime @default(now())

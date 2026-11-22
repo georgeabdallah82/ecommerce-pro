@@ -66,6 +66,7 @@ const CLIENT_SETTING_KEYS = new Set([
   'whatsapp.cloud.enabled',
   'whatsapp.cloud.phoneNumberId',
   'whatsapp.cloud.language',
+  'whatsapp.cloud.arabicVersion',
   'whatsapp.cloud.templateConfirmed',
   'whatsapp.cloud.templateOnTheWay',
   'whatsapp.cloud.templateDelivered',

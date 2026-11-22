@@ -29,7 +29,8 @@ describe('emails', () => {
     assert.match(email, /'idempotency-key': message\.idempotencyKey/)
   })
   it('a password reset is never retried: its link expires within the hour', () => {
-    assert.match(read('lib/email.ts'), /return sendEmail\(to, 'Reset your password', html, text, \{ retry: false \}\)/)
+    // In English or Arabic (docs/arabic-messages-2026-11.md), never retried.
+    assert.match(read('lib/email.ts'), /return sendEmail\(to, t\('Reset your password'\), html, text, \{ retry: false \}\)/)
   })
   it('sends with a key, and reports a refusal without throwing', async () => {
     const saved = { key: process.env.RESEND_API_KEY, from: process.env.EMAIL_FROM, fetch: global.fetch }

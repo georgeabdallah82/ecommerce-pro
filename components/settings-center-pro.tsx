@@ -16,7 +16,7 @@ import { POLICY_DEFAULTS } from '@/lib/policy-defaults'
 import { CountrySelect, CountryMultiSelect, CurrencySelect, TimezoneSelect } from './field-selects'
 import { allowLeave, useLeaveGuard } from './use-leave-guard'
 import { fetchRead } from '@/lib/retry-fetch'
-import { SUGGESTED_TEMPLATE_NAMES, WHATSAPP_LABELS, WHATSAPP_LANGUAGES, WHATSAPP_UPDATES, templateBody, type WhatsAppUpdate } from '@/lib/whatsapp-templates'
+import { SUGGESTED_TEMPLATE_NAMES, WHATSAPP_LABELS, WHATSAPP_LANGUAGES, WHATSAPP_UPDATES, isArabicTemplate, templateBody, type WhatsAppUpdate } from '@/lib/whatsapp-templates'
 
 // Settings › Email & messaging › Automatic WhatsApp messages: the template name saved for each message.
 const WA_TEMPLATE_KEYS: Record<WhatsAppUpdate, string> = { confirmed: 'whatsapp.cloud.templateConfirmed', on_the_way: 'whatsapp.cloud.templateOnTheWay', delivered: 'whatsapp.cloud.templateDelivered' }
@@ -150,6 +150,7 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
   const [waNote, setWaNote] = useState('')
   const [waTestPhone, setWaTestPhone] = useState('')
   const [waTestKind, setWaTestKind] = useState<WhatsAppUpdate>('confirmed')
+  const [waTestArabic, setWaTestArabic] = useState(false)
   const [waTesting, setWaTesting] = useState(false)
   const defaultSender = useMemo(() => {
     const match = /^\s*(.*?)\s*<\s*([^<>\s]+)\s*>\s*$/.exec(emailFromDefault)
@@ -164,7 +165,7 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
       'checkout.giftOption', 'product.whatsappOrder', 'product.questions',
     ].map(k => [k, map.get(k) !== 'false'])),
     // Off until switched on.
-    ...Object.fromEntries(['currency.showLbp', 'freeGift.enabled', 'welcome.enabled', 'invite.enabled', 'whatsapp.cloud.enabled'].map(k => [k, map.get(k) === 'true'])),
+    ...Object.fromEntries(['currency.showLbp', 'freeGift.enabled', 'welcome.enabled', 'invite.enabled', 'whatsapp.cloud.enabled', 'whatsapp.cloud.arabicVersion'].map(k => [k, map.get(k) === 'true'])),
     'maintenance.enabled': map.get('maintenance.enabled') === 'true',
   }))
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig>(defaultPaymentConfig)
@@ -200,11 +201,13 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
   const filtered = groups.filter(g => `${g.label} ${g.desc}`.toLowerCase().includes(search.toLowerCase()))
   // The test uses what is saved, so it waits for unsaved WhatsApp changes to be saved.
   const waUnsaved = !!waToken.trim() || Object.keys(values).some(key => key.startsWith('whatsapp.cloud.') && (values[key] || '') !== (saved.values[key] || ''))
+  // The Arabic version is for templates made in another language; templates made in Arabic are Arabic already.
+  const waArabicOffered = !isArabicTemplate(values['whatsapp.cloud.language'] || 'en')
   async function sendWhatsAppTest() {
     if (waUnsaved) { setWaNote('Save your changes first, then send the test.'); return }
     setWaTesting(true); setWaNote('Sending…')
     try {
-      await api('/api/admin/whatsapp/test', { method: 'POST', body: JSON.stringify({ phone: waTestPhone, kind: waTestKind }) })
+      await api('/api/admin/whatsapp/test', { method: 'POST', body: JSON.stringify({ phone: waTestPhone, kind: waTestKind, arabic: waArabicOffered && flags['whatsapp.cloud.arabicVersion'] && waTestArabic }) })
       setWaNote('Sent. It should arrive on that WhatsApp within a minute.')
     } catch (e) {
       setWaNote(e instanceof Error ? e.message : 'The test was not sent')
@@ -575,6 +578,10 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
                 {WHATSAPP_UPDATES.map(kind => <Field key={kind} label={`“${WHATSAPP_LABELS[kind]}” template name`} value={values[WA_TEMPLATE_KEYS[kind]]} placeholder={SUGGESTED_TEMPLATE_NAMES[kind]} onChange={v => set(WA_TEMPLATE_KEYS[kind], waTemplateInput(v))} />)}
               </div>
               <p className={ui.muted}>Leave a name empty to not send that message.</p>
+              {waArabicOffered && <>
+                <Toggle label="My templates also have an Arabic version" keyName="whatsapp.cloud.arabicVersion" value={flags['whatsapp.cloud.arabicVersion']} onChange={() => toggle('whatsapp.cloud.arabicVersion')} />
+                <p className={ui.muted}>Customers who shop in Arabic then get the Arabic version. Add it in WhatsApp Manager: open each template, add the language Arabic, and paste its Arabic text (below). If a template has no Arabic version yet, that message goes in {WHATSAPP_LANGUAGES.find(l => l.code === values['whatsapp.cloud.language'])?.label || 'English'} instead.</p>
+              </>}
               <details>
                 <summary style={{ cursor: 'pointer', fontWeight: 700 }}>The three templates to create in WhatsApp Manager</summary>
                 <p className={ui.muted}>In WhatsApp Manager › Message templates › Create template: category Utility, language {WHATSAPP_LANGUAGES.find(l => l.code === values['whatsapp.cloud.language'])?.label || 'English'}, the name below, and this text as the body (the {'{{1}}'}-style values are filled in for each order). Meta usually approves them within minutes.</p>
@@ -582,6 +589,10 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
                   <div key={kind} style={{ marginTop: 10 }}>
                     <strong>{values[WA_TEMPLATE_KEYS[kind]] || SUGGESTED_TEMPLATE_NAMES[kind]}</strong> <span className={ui.muted}>({WHATSAPP_LABELS[kind]})</span>
                     <pre dir="auto" style={{ whiteSpace: 'pre-wrap', margin: '6px 0 0', padding: '10px 12px', border: '1px solid var(--admin-border)', borderRadius: 'var(--admin-radius-md)', background: 'var(--admin-bg)', fontFamily: 'inherit', fontSize: 13 }}>{templateBody(kind, values['whatsapp.cloud.language'])}</pre>
+                    {waArabicOffered && flags['whatsapp.cloud.arabicVersion'] && <>
+                      <p className={ui.muted} style={{ margin: '8px 0 0' }}>Its Arabic version (language Arabic, same name):</p>
+                      <pre dir="rtl" lang="ar" style={{ whiteSpace: 'pre-wrap', margin: '6px 0 0', padding: '10px 12px', border: '1px solid var(--admin-border)', borderRadius: 'var(--admin-radius-md)', background: 'var(--admin-bg)', fontFamily: 'inherit', fontSize: 13 }}>{templateBody(kind, 'ar')}</pre>
+                    </>}
                   </div>
                 ))}
               </details>
@@ -592,6 +603,12 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
                     {WHATSAPP_UPDATES.map(kind => <option key={kind} value={kind}>{WHATSAPP_LABELS[kind]}</option>)}
                   </select>
                 </label>
+                {waArabicOffered && flags['whatsapp.cloud.arabicVersion'] && <label className={ui.fieldLabel}>Version
+                  <select className={ui.select} value={waTestArabic ? 'ar' : 'main'} onChange={e => setWaTestArabic(e.target.value === 'ar')}>
+                    <option value="main">{WHATSAPP_LANGUAGES.find(l => l.code === values['whatsapp.cloud.language'])?.label || 'English'}</option>
+                    <option value="ar">Arabic</option>
+                  </select>
+                </label>}
                 <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} disabled={waTesting || !waTestPhone.trim()} onClick={sendWhatsAppTest}>{waTesting ? 'Sending…' : 'Send test'}</button>
               </div>
               {waNote && <p className={ui.muted} role="status" style={{ margin: 0 }}>{waNote}</p>}
