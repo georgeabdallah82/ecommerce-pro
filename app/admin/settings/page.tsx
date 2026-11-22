@@ -52,6 +52,7 @@ const CLIENT_SETTING_KEYS = new Set([
   'email.returnStatus',
   'email.orderEdit',
   'email.reviewRequest',
+  'email.refillReminder',
   // Selling tools (lib/selling.ts)
   'currency.showLbp', 'currency.lbpRate', 'freeGift.enabled', 'freeGift.threshold', 'freeGift.productId', 'checkout.giftOption',
   'product.whatsappOrder', 'product.lowStockThreshold', 'welcome.enabled', 'welcome.code', 'welcome.title', 'welcome.delaySeconds', 'search.synonyms',
@@ -67,6 +68,7 @@ const CLIENT_SETTING_KEYS = new Set([
   'whatsapp.cloud.phoneNumberId',
   'whatsapp.cloud.language',
   'whatsapp.cloud.arabicVersion',
+  'whatsapp.cloud.templateRefill',
   'whatsapp.cloud.templateConfirmed',
   'whatsapp.cloud.templateOnTheWay',
   'whatsapp.cloud.templateDelivered',

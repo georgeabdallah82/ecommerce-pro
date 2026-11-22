@@ -1,4 +1,5 @@
 import { requirePermission } from '@/lib/auth'
+import { cleanRefillDays } from '@/lib/refill-reminders'
 import { priceProblem } from '@/lib/editor-readiness'
 import { audit } from '@/lib/audit'
 import { db } from '@/lib/prisma'
@@ -109,6 +110,7 @@ export async function POST(req: Request) {
         weight: b.weight !== undefined && b.weight !== '' ? Number(b.weight) : null, weightUnit: b.weightUnit || null,
         requiresShipping: b.requiresShipping !== false, taxable: b.taxable !== false, trackInventory: b.trackInventory !== false, continueSellingWhenOutOfStock: Boolean(b.continueSellingWhenOutOfStock) || Boolean(b.preorder), giftCard: Boolean(b.giftCard),
         preorder: Boolean(b.preorder), preorderNote: b.preorder && b.preorderNote ? String(b.preorderNote).trim().slice(0, 120) : null,
+        refillDays: cleanRefillDays(b.refillDays),
         videoUrl: cleanVideoUrl(b.videoUrl),
         salesChannelsJson: b.salesChannelsJson ? String(b.salesChannelsJson).slice(0, 5000) : JSON.stringify(['online_store']), productTemplate: b.productTemplate ? String(b.productTemplate).slice(0, 100) : 'product', publishedAt: b.status === 'ACTIVE' ? (b.publishedAt ? new Date(b.publishedAt) : new Date()) : null,
         images: { create: images },

@@ -33,9 +33,11 @@ export const WHATSAPP_KEYS = {
   language: 'whatsapp.cloud.language',
   // 'true' once the three templates also have an Arabic version (language "ar") in WhatsApp Manager.
   arabicVersion: 'whatsapp.cloud.arabicVersion',
+  // The "Running low?" reminder's template (lib/refill-reminders.ts); empty: those go by email.
+  refillTemplate: 'whatsapp.cloud.templateRefill',
   templates: { confirmed: 'whatsapp.cloud.templateConfirmed', on_the_way: 'whatsapp.cloud.templateOnTheWay', delivered: 'whatsapp.cloud.templateDelivered' } as Record<WhatsAppUpdate, string>,
 }
-const ALL_KEYS = [WHATSAPP_KEYS.enabled, WHATSAPP_KEYS.phoneNumberId, WHATSAPP_KEYS.token, WHATSAPP_KEYS.language, WHATSAPP_KEYS.arabicVersion, ...Object.values(WHATSAPP_KEYS.templates)]
+const ALL_KEYS = [WHATSAPP_KEYS.enabled, WHATSAPP_KEYS.phoneNumberId, WHATSAPP_KEYS.token, WHATSAPP_KEYS.language, WHATSAPP_KEYS.arabicVersion, WHATSAPP_KEYS.refillTemplate, ...Object.values(WHATSAPP_KEYS.templates)]
 
 const marker = (kind: WhatsAppUpdate) => `WhatsApp message "${WHATSAPP_LABELS[kind]}"`
 
@@ -72,6 +74,7 @@ export async function whatsappCloudConfig() {
     confirmed: templateName(map.get(WHATSAPP_KEYS.templates.confirmed)),
     on_the_way: templateName(map.get(WHATSAPP_KEYS.templates.on_the_way)),
     delivered: templateName(map.get(WHATSAPP_KEYS.templates.delivered)),
+    refill: templateName(map.get(WHATSAPP_KEYS.refillTemplate)),
   }
   const connected = !!phoneNumberId && !!token
   return { enabled: map.get(WHATSAPP_KEYS.enabled) === 'true', connected, phoneNumberId, token, language: templateLanguage(map.get(WHATSAPP_KEYS.language)), arabicVersion: map.get(WHATSAPP_KEYS.arabicVersion) === 'true', templates, storeCountry: map.get('store.country') || 'Lebanon' }
@@ -254,6 +257,20 @@ export async function sendOrderWhatsApp(orderId: string, status: string, origin:
     return { status: 'queued', reason: result.error || undefined }
   }
   return { status: 'failed', reason: result.error || undefined }
+}
+
+// A "Running low?" reminder (lib/refill-reminders.ts), in the customer's language when the templates have it. Not
+// queued for retries: the reminder is released, and a later morning tries again.
+export async function sendRefillWhatsApp(config: { phoneNumberId: string; token: string; language: string; arabicVersion: boolean; templates: { refill: string } }, reminder: { to: string; lang: Lang; firstName: string; products: string[]; url: string }) {
+  const values = (language: string) => [oneLine(reminder.firstName, 60) || templateWords(language).there, oneLine(reminder.products.join(', '), 200), reminder.url]
+  const language = whatsappLanguageFor(config, reminder.lang)
+  return deliverWithFallback(config, {
+    to: reminder.to,
+    template: config.templates.refill,
+    language,
+    params: values(language),
+    ...(language === config.language ? {} : { fallback: { language: config.language, params: values(config.language) } }),
+  })
 }
 
 // The hourly job's try (lib/outbox.ts). The access key is read from Settings each time, never kept with the message.

@@ -16,7 +16,7 @@ import { POLICY_DEFAULTS } from '@/lib/policy-defaults'
 import { CountrySelect, CountryMultiSelect, CurrencySelect, TimezoneSelect } from './field-selects'
 import { allowLeave, useLeaveGuard } from './use-leave-guard'
 import { fetchRead } from '@/lib/retry-fetch'
-import { SUGGESTED_TEMPLATE_NAMES, WHATSAPP_LABELS, WHATSAPP_LANGUAGES, WHATSAPP_UPDATES, isArabicTemplate, templateBody, type WhatsAppUpdate } from '@/lib/whatsapp-templates'
+import { REFILL_TEMPLATE_LABEL, SUGGESTED_REFILL_TEMPLATE_NAME, SUGGESTED_TEMPLATE_NAMES, WHATSAPP_LABELS, WHATSAPP_LANGUAGES, WHATSAPP_UPDATES, isArabicTemplate, refillTemplateBody, templateBody, type WhatsAppUpdate } from '@/lib/whatsapp-templates'
 
 // Settings › Email & messaging › Automatic WhatsApp messages: the template name saved for each message.
 const WA_TEMPLATE_KEYS: Record<WhatsAppUpdate, string> = { confirmed: 'whatsapp.cloud.templateConfirmed', on_the_way: 'whatsapp.cloud.templateOnTheWay', delivered: 'whatsapp.cloud.templateDelivered' }
@@ -139,6 +139,7 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
     'whatsapp.cloud.templateConfirmed': map.get('whatsapp.cloud.templateConfirmed') || '',
     'whatsapp.cloud.templateOnTheWay': map.get('whatsapp.cloud.templateOnTheWay') || '',
     'whatsapp.cloud.templateDelivered': map.get('whatsapp.cloud.templateDelivered') || '',
+    'whatsapp.cloud.templateRefill': map.get('whatsapp.cloud.templateRefill') || '',
   }))
   // The Conversions API token is write-only: typed in to save or replace it, never shown back.
   const [capiToken, setCapiToken] = useState('')
@@ -161,7 +162,7 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
     ...Object.fromEntries([
       'payment.cod', 'payment.card', 'payment.bank', 'payment.wallet',
       'checkout.guestCheckout', 'notifications.orderEmail', 'notifications.lowStock',
-      'notifications.reviews', 'notifications.security', 'notifications.orderProblems', 'notifications.dailySummary', 'notifications.weeklyReport', 'email.customerOrder', 'email.fulfillment', 'email.abandonedCheckout', 'email.giftCard', 'email.returnStatus', 'email.orderEdit', 'email.reviewRequest',
+      'notifications.reviews', 'notifications.security', 'notifications.orderProblems', 'notifications.dailySummary', 'notifications.weeklyReport', 'email.customerOrder', 'email.fulfillment', 'email.abandonedCheckout', 'email.giftCard', 'email.returnStatus', 'email.orderEdit', 'email.reviewRequest', 'email.refillReminder',
       'checkout.giftOption', 'product.whatsappOrder', 'product.questions',
     ].map(k => [k, map.get(k) !== 'false'])),
     // Off until switched on.
@@ -557,6 +558,8 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
               <Toggle label="Return status updates" keyName="email.returnStatus" value={flags['email.returnStatus']} onChange={() => toggle('email.returnStatus')} />
               <Toggle label="Order edited by staff" keyName="email.orderEdit" value={flags['email.orderEdit']} onChange={() => toggle('email.orderEdit')} />
               <Toggle label="Ask for a review 1 day after delivery" keyName="email.reviewRequest" value={flags['email.reviewRequest']} onChange={() => toggle('email.reviewRequest')} />
+              <Toggle label="“Running low?” reminders" keyName="email.refillReminder" value={flags['email.refillReminder']} onChange={() => toggle('email.refillReminder')} />
+              <p className={ui.muted} style={{ margin: 0 }}>For products with a reminder set (product › Inventory › &ldquo;Running low?&rdquo; reminder): that many days after delivery, the customer gets one reminder with a link that puts the product back in their cart. On WhatsApp when they asked for WhatsApp updates and the &ldquo;Running low?&rdquo; template is set below, otherwise by email. At most one a week per customer, and never after they ask to stop.</p>
             </Card>
             <Card title="Automatic WhatsApp messages" desc="Customers who tick “Send my order updates on WhatsApp” at checkout get a message from your WhatsApp Business number when you confirm their order, when it is out for delivery and when it is delivered. Checkout offers the choice once this is switched on and set up. Meta charges per message, at its utility rate.">
               <Toggle label="Send automatic WhatsApp messages" keyName="whatsapp.cloud.enabled" value={flags['whatsapp.cloud.enabled']} onChange={() => toggle('whatsapp.cloud.enabled')} />
@@ -576,14 +579,15 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
               {waTokenSaved && <button type="button" className={`${ui.btn} ${ui.btnDanger} ${ui.btnSmall}`} onClick={removeWhatsAppToken}>Remove access key</button>}
               <div className={ui.twoCol}>
                 {WHATSAPP_UPDATES.map(kind => <Field key={kind} label={`“${WHATSAPP_LABELS[kind]}” template name`} value={values[WA_TEMPLATE_KEYS[kind]]} placeholder={SUGGESTED_TEMPLATE_NAMES[kind]} onChange={v => set(WA_TEMPLATE_KEYS[kind], waTemplateInput(v))} />)}
+                <Field label={`“${REFILL_TEMPLATE_LABEL}” template name (optional)`} value={values['whatsapp.cloud.templateRefill']} placeholder={SUGGESTED_REFILL_TEMPLATE_NAME} onChange={v => set('whatsapp.cloud.templateRefill', waTemplateInput(v))} />
               </div>
-              <p className={ui.muted}>Leave a name empty to not send that message.</p>
+              <p className={ui.muted}>Leave a name empty to not send that message. Without a &ldquo;{REFILL_TEMPLATE_LABEL}&rdquo; template, those reminders go by email.</p>
               {waArabicOffered && <>
                 <Toggle label="My templates also have an Arabic version" keyName="whatsapp.cloud.arabicVersion" value={flags['whatsapp.cloud.arabicVersion']} onChange={() => toggle('whatsapp.cloud.arabicVersion')} />
                 <p className={ui.muted}>Customers who shop in Arabic then get the Arabic version. Add it in WhatsApp Manager: open each template, add the language Arabic, and paste its Arabic text (below). If a template has no Arabic version yet, that message goes in {WHATSAPP_LANGUAGES.find(l => l.code === values['whatsapp.cloud.language'])?.label || 'English'} instead.</p>
               </>}
               <details>
-                <summary style={{ cursor: 'pointer', fontWeight: 700 }}>The three templates to create in WhatsApp Manager</summary>
+                <summary style={{ cursor: 'pointer', fontWeight: 700 }}>The templates to create in WhatsApp Manager</summary>
                 <p className={ui.muted}>In WhatsApp Manager › Message templates › Create template: category Utility, language {WHATSAPP_LANGUAGES.find(l => l.code === values['whatsapp.cloud.language'])?.label || 'English'}, the name below, and this text as the body (the {'{{1}}'}-style values are filled in for each order). Meta usually approves them within minutes.</p>
                 {WHATSAPP_UPDATES.map(kind => (
                   <div key={kind} style={{ marginTop: 10 }}>
@@ -595,6 +599,14 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
                     </>}
                   </div>
                 ))}
+                <div style={{ marginTop: 10 }}>
+                  <strong>{values['whatsapp.cloud.templateRefill'] || SUGGESTED_REFILL_TEMPLATE_NAME}</strong> <span className={ui.muted}>({REFILL_TEMPLATE_LABEL}, optional: category Marketing, not Utility)</span>
+                  <pre dir="auto" style={{ whiteSpace: 'pre-wrap', margin: '6px 0 0', padding: '10px 12px', border: '1px solid var(--admin-border)', borderRadius: 'var(--admin-radius-md)', background: 'var(--admin-bg)', fontFamily: 'inherit', fontSize: 13 }}>{refillTemplateBody(values['whatsapp.cloud.language'])}</pre>
+                  {waArabicOffered && flags['whatsapp.cloud.arabicVersion'] && <>
+                    <p className={ui.muted} style={{ margin: '8px 0 0' }}>Its Arabic version (language Arabic, same name):</p>
+                    <pre dir="rtl" lang="ar" style={{ whiteSpace: 'pre-wrap', margin: '6px 0 0', padding: '10px 12px', border: '1px solid var(--admin-border)', borderRadius: 'var(--admin-radius-md)', background: 'var(--admin-bg)', fontFamily: 'inherit', fontSize: 13 }}>{refillTemplateBody('ar')}</pre>
+                  </>}
+                </div>
               </details>
               <div className="inline" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
                 <Field label="Send a test to (your WhatsApp number)" type="tel" value={waTestPhone} placeholder="e.g. 70 123 456" onChange={setWaTestPhone} />

@@ -2,7 +2,7 @@ import { db } from '@/lib/prisma'
 import { getUnpublishedProductIds } from '@/lib/sales-channels'
 import type { CartItem } from '@/components/cart-provider'
 
-type OrderLine = { productId: string; variantId: string | null; quantity: number; unitPrice: number; name: string }
+export type OrderLine = { productId: string; variantId: string | null; quantity: number; unitPrice: number; name: string }
 
 // "Order again" on a past order (app/account/orders/[orderNumber]): the same products at
 // today's price, as many as are in stock. Products no longer for sale and free gifts are left
@@ -34,7 +34,9 @@ export async function buyAgainItems(userId: string, limit = 8): Promise<CartItem
   return (await cartLinesFor(items)).slice(0, limit)
 }
 
-async function cartLinesFor(items: OrderLine[]): Promise<CartItem[]> {
+// The lines that can be bought today: at today's price, as many as are in stock (also the "Running low?" page,
+// lib/refill-reminders.ts).
+export async function cartLinesFor(items: OrderLine[]): Promise<CartItem[]> {
   const paid = items.filter(i => !(i.unitPrice === 0 && /\(Free gift\)$/.test(i.name)))
   if (!paid.length) return []
   const [hidden, products] = await Promise.all([

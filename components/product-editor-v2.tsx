@@ -34,6 +34,7 @@ type Product = {
   weight?: number | null; weightUnit?: string | null
   requiresShipping: boolean; taxable: boolean; trackInventory: boolean; continueSellingWhenOutOfStock: boolean; giftCard: boolean
   preorder?: boolean; preorderNote?: string | null
+  refillDays?: number | null
   videoUrl?: string | null
   productTemplate?: string | null; publishedAt?: string | null
   images: ImageItem[]; variants: Variant[]; inventory: any[]; tags: any[]; metafields?: any[]
@@ -468,6 +469,8 @@ export default function ProductEditorV2({ initial, creating, definitions, locati
               <Check checked={!!product.preorder} onChange={v => update({ preorder: v, ...(v ? { continueSellingWhenOutOfStock: true } : {}) })} title="Pre-order when sold out" text="Keeps selling at zero stock, shown to customers as a pre-order." />
             </div>
             {product.preorder && <Field label="Pre-order note (shown to customers)"><input className={ui.input} value={product.preorderNote || ''} maxLength={120} onChange={e => update({ preorderNote: e.target.value })} placeholder="e.g. Ships in about 2 weeks" /></Field>}
+            <Field label="“Running low?” reminder after (days)"><NumInput className={ui.input} value={product.refillDays ?? null} empty={null} onValue={v => update({ refillDays: v })} placeholder="No reminder" /></Field>
+            <p className={ui.muted} style={{ margin: 0 }}>For things customers buy again, like detergent or coffee: this many days after delivery, they get one email (or WhatsApp message) with a link that puts it back in their cart. Between 7 and 365 days; leave empty for none.</p>
             <div className={s.notice}><strong>{product.sharedInventory ? 'Shared inventory pool' : product.variants.length ? 'Variant inventory' : 'Product inventory'}</strong><span>{inventoryTotal} units represented by the current inventory mode.</span></div>
           </Card>
           {(!product.variants.length || product.sharedInventory) && <Card title="Product inventory" sub="Used for non-variant stock or a shared variant pool">

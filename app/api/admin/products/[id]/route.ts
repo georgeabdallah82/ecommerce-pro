@@ -1,4 +1,5 @@
 import { routeError } from '@/lib/api-error'
+import { cleanRefillDays } from '@/lib/refill-reminders'
 import { priceProblem } from '@/lib/editor-readiness'
 import { db } from '@/lib/prisma'
 import { requirePermission } from '@/lib/auth'
@@ -43,6 +44,8 @@ export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){
     // Pre-order keeps selling at zero stock (checkout's stock rule), so it turns that on too.
     if(data.preorder===true)data.continueSellingWhenOutOfStock=true
     if(b.preorderNote!==undefined)data.preorderNote=b.preorderNote?String(b.preorderNote).trim().slice(0,120):null
+    // "Running low?" reminder (lib/refill-reminders.ts): empty for none, else 7-365 days.
+    if(b.refillDays!==undefined)data.refillDays=cleanRefillDays(b.refillDays)
     // The product video: only the store's own uploaded file (lib/product-video.ts); anything else clears it.
     if(b.videoUrl!==undefined)data.videoUrl=cleanVideoUrl(b.videoUrl)
     if(b.status!==undefined)data.status=b.status;if(b.publishedAt!==undefined)data.publishedAt=b.publishedAt?new Date(b.publishedAt):null
