@@ -75,6 +75,25 @@ export const SCHEDULED_JOBS: Record<string, string> = {
 }
 export const JOB_ALERT_WINDOW_MS = 6 * 60 * 60 * 1000
 
+// The store answered with server errors (worker.ts counts them in the media bucket, lib/server-errors.ts, and
+// asks app/api/internal/server-errors to tell the owner). Every report goes in the activity log; the owner is
+// told at most once every 6 hours, shared by every server instance, and only while "Tell me about order
+// problems" is on (Settings > Notifications).
+export const SERVER_ERRORS_ALERT_WINDOW_MS = 6 * 60 * 60 * 1000
+export async function alertServerErrors(summary: string, count: number) {
+  await audit(null, 'store.server_errors', 'Store', 'server-errors', { count, summary }).catch(error => console.error('[order-alerts] server errors not logged', error))
+  try {
+    if (!(await orderProblemAlertsOn())) return false
+    const gate = await consumeDurableRateLimit('alert:server-errors', 1, SERVER_ERRORS_ALERT_WINDOW_MS)
+    if (!gate.allowed) return false
+    await tell({ title: 'The store is answering with errors', body: `${summary} Shoppers get an error there. Open Website status, and send this to your developer if it keeps happening.`, subject: 'The store is answering with errors', path: '/admin/website-status', button: 'Open website status' })
+    return true
+  } catch (error) {
+    console.error('[order-alerts] server error alert failed', error)
+    return false
+  }
+}
+
 // A scheduled job answered with an error (app/api/internal/job-failed), or a scheduled GitHub check failed
 // (app/api/internal/github-check-failed, with its own name and words in `about`). Every failure goes in the activity
 // log; the owner is told at most once per job every 6 hours, shared by every server instance, and only while

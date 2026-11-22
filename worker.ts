@@ -10,6 +10,7 @@ export { DOQueueHandler, DOShardedTagCache, BucketCachePurge } from './.open-nex
 
 import { ORDER_WATCH_CRON, ORDER_WATCH_KEY, inQuietHours, parseWatch, reconcileDue } from './lib/order-watch'
 import { HOURLY_JOBS_KEY, hourlyJobsDue, parseHourlyJobs } from './lib/hourly-jobs'
+import { SERVER_ERRORS_KEY, countsAsServerError, noteServerError, parseServerErrors } from './lib/server-errors'
 
 type ExecutionContext = { waitUntil(promise: Promise<unknown>): void; passThroughOnException(): void }
 
@@ -35,6 +36,27 @@ async function reportJobFailure(site: string, path: string, status: number, deta
   }
 }
 
+// A server error the store answered with (lib/server-errors.ts): counted in the media bucket, which works even
+// when the database is what fails. Once there are enough in the window, the store is asked to tell the owner
+// (app/api/internal/server-errors); only a try that worked counts as told. Losing a count only loses the alert.
+async function recordServerError(origin: string, path: string, status: number, env: any, ctx: ExecutionContext) {
+  try {
+    const bucket = env?.MEDIA_BUCKET
+    if (!bucket) return
+    const now = Date.now()
+    const object = await bucket.get(SERVER_ERRORS_KEY)
+    const { state, alert } = noteServerError(object ? parseServerErrors(await object.text()) : null, now, path, status)
+    await bucket.put(SERVER_ERRORS_KEY, JSON.stringify(state))
+    if (!alert) return
+    const request = new Request(`${origin}/api/internal/server-errors`, { method: 'POST', headers: { 'x-internal-job': internalJobKey(), 'content-type': 'application/json' }, body: JSON.stringify({ state }) })
+    const response = await worker.fetch(request, env, ctx)
+    await response.text().catch(() => '')
+    if (response.ok) await bucket.put(SERVER_ERRORS_KEY, JSON.stringify({ ...state, alertedAt: now }))
+  } catch (error) {
+    console.error('[server-errors] not recorded', error)
+  }
+}
+
 const worker = {
   async fetch(request: Request, env: unknown, ctx: ExecutionContext): Promise<Response> {
     requestCounts.started++
@@ -56,13 +78,19 @@ const worker = {
       requestCounts.finished++
     }
 
+    const noteStatus = (status: number) => {
+      const url = new URL(request.url)
+      if (countsAsServerError(status, url.pathname, request.headers.has('x-internal-job'))) ctx.waitUntil(recordServerError(url.origin, url.pathname, status, env, ctx))
+    }
     let response: Response
     try {
       response = await handler.fetch(request, env, requestCtx)
     } catch (error) {
+      noteStatus(500)
       ctx.waitUntil(finish())
       throw error
     }
+    noteStatus(response.status)
     if (response.body) {
       // Pages stream: database queries can still run while the body is being sent.
       const { readable, writable } = new TransformStream()
