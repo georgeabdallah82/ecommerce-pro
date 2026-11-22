@@ -195,6 +195,9 @@ model Product {
   // 2 weeks") on the product page, in the cart and on the order.
   preorder           Boolean              @default(false)
   preorderNote       String?
+  // "Running low?" reminder: customers who bought it are reminded to buy it again this many days after delivery
+  // (lib/refill-reminders.ts). Empty: no reminder.
+  refillDays         Int?
   // A short clip shown on the product page (lib/product-video.ts): the address of a file uploaded in the product editor.
   videoUrl           String?
   giftCard           Boolean              @default(false)
@@ -1039,4 +1042,28 @@ model WholesaleInquiry {
   createdAt    DateTime @default(now())
 
   @@index([createdAt])
+}
+
+// "Running low?" reminders (lib/refill-reminders.ts): one row per product per order, written before the reminder goes
+// out, so none is sent twice. channel says how it went: "email" or "whatsapp" (sent), "opted_out", "bought_again" or
+// "no_contact" (not sent, and not tried again). contact is the customer's "email:..." or "phone:..." key: at most one
+// reminder a week per customer.
+model RefillReminder {
+  id        String   @id @default(cuid())
+  orderId   String
+  productId String
+  channel   String
+  contact   String?
+  createdAt DateTime @default(now())
+
+  @@unique([orderId, productId])
+  @@index([contact, createdAt])
+}
+
+// "Stop these reminders" on a "Running low?" reminder: no more of them to this email address or phone number.
+// contact is "email:<address>" or "phone:<international digits>".
+model RefillOptOut {
+  id        String   @id @default(cuid())
+  contact   String   @unique
+  createdAt DateTime @default(now())
 }

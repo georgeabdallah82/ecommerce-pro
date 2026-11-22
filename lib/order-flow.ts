@@ -33,6 +33,8 @@ const STATUS: Record<string, { label: string; hint: string; tone: 'warning' | 'i
   DELIVERED: { label: 'Delivered', hint: 'Done', tone: 'success' },
   CANCELLED: { label: 'Cancelled', hint: 'Nothing to do', tone: 'danger' },
   REFUNDED: { label: 'Refunded', hint: 'Nothing to do', tone: 'neutral' },
+  // Not an order status: a note in the order's history ("Running low?" reminders, lib/refill-reminders.ts).
+  NOTE: { label: 'Note', hint: '', tone: 'neutral' },
 }
 export const statusInfo = (status: string) => STATUS[status] || { label: status, hint: '', tone: 'neutral' as const }
 

@@ -44,3 +44,14 @@ const WORDS = {
   ar: { there: 'عزيزي العميل', cashOnDelivery: '(الدفع عند الاستلام)', paid: '(مدفوع)', inCash: 'نقداً', alreadyPaid: 'لا شيء، الطلب مدفوع' },
 }
 export const templateWords = (language: string) => WORDS[isArabicTemplate(language) ? 'ar' : 'en']
+
+// "Running low?" (lib/refill-reminders.ts): a Marketing template, sent some time after delivery to customers who asked
+// for WhatsApp updates. {{1}} first name, {{2}} what they bought, {{3}} the link that puts it back in their cart.
+export const REFILL_TEMPLATE_LABEL = 'Running low?'
+export const SUGGESTED_REFILL_TEMPLATE_NAME = 'running_low'
+export const REFILL_TEMPLATE_VALUE_COUNT = 3
+const REFILL_BODIES = {
+  en: 'Hi {{1}}, running low on {{2}}? Order it again in one tap: {{3}}\nThank you for shopping with us.',
+  ar: 'مرحباً {{1}}، هل قارب {{2}} على النفاد؟ اطلبه من جديد بنقرة واحدة: {{3}}\nشكراً لتسوقك معنا.',
+}
+export const refillTemplateBody = (language: string) => REFILL_BODIES[isArabicTemplate(language) ? 'ar' : 'en']

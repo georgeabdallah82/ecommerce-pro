@@ -13,7 +13,7 @@
 export type RedirectRule = { id?: string; fromPath: string; toPath: string }
 
 // Everything at or under these keeps the store working (and the admin): never redirected.
-export const WORKING_PATHS = ['/admin', '/admin-login', '/api', '/_next', '/maintenance', '/checkout', '/cart', '/account', '/order', '/orders', '/invoice', '/pay-invoice', '/track', '/unsubscribe', '/review', '/driver', '/feeds', '/theme-editor-preview']
+export const WORKING_PATHS = ['/admin', '/admin-login', '/api', '/_next', '/maintenance', '/checkout', '/cart', '/account', '/order', '/orders', '/invoice', '/pay-invoice', '/track', '/unsubscribe', '/review', '/refill', '/driver', '/feeds', '/theme-editor-preview']
 // The store's own pages. A redirect from one of these exact addresses would hide it; addresses under them (an old
 // collection, post or product) can be redirected.
 export const STORE_PAGE_PATHS = ['/shop', '/collections', '/blog', '/product', '/wishlist', '/stores', '/wholesale', '/privacy-policy', '/refund-policy', '/terms-of-service']

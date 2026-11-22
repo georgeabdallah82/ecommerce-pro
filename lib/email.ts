@@ -556,6 +556,29 @@ export async function sendReviewRequestEmail(order: { email: string; orderNumber
   return sendEmail(order.email, t('How was your order #{number}?', { number: order.orderNumber }), html, text)
 }
 
+// "Running low?" (lib/refill-reminders.ts): some time after delivery, what the customer may need again, with the link
+// that puts it back in their cart. Not queued for retries: a reminder that could not go out is tried on a later morning.
+export async function sendRefillReminderEmail(to: string, reminder: { firstName: string; products: Array<{ name: string; image: string }>; url: string; stopUrl: string; oneClickStopUrl: string; lang: Lang }) {
+  const { lang } = reminder
+  const t = translator(lang)
+  const brand = await emailBrand()
+  const names = reminder.products.map(p => p.name)
+  const rows = reminder.products.slice(0, 4).map(p => `<tr>
+      <td width="56" style="padding:8px 0">${/^https:\/\//i.test(p.image) ? `<img src="${escapeHtml(p.image)}" width="48" height="48" alt="" style="display:block;width:48px;height:48px;border-radius:8px;object-fit:cover;border:0">` : ''}</td>
+      <td style="padding:8px 12px;font-size:14px;color:#121212">${escapeHtml(p.name)}</td>
+    </tr>`).join('')
+  const html = layout(`
+    <h1 style="font-size:20px;margin:0 0 8px">${escapeHtml(reminder.firstName ? t('Running low, {name}?', { name: reminder.firstName }) : t('Running low?'))}</h1>
+    <p style="font-size:14px;line-height:1.6;color:#3f3f46;margin:0 0 16px">${escapeHtml(t("It may be time to stock up again. Put it back in your cart in one tap, at today's prices."))}</p>
+    ${rows ? `<table role="presentation" width="100%" style="border-collapse:collapse">${rows}</table>` : ''}
+    ${button(reminder.url, t('Order again'), brand)}
+    <p style="font-size:12px;color:#6b7280;margin:24px 0 0">${escapeHtml(t('We send this once for each order.'))} <a href="${escapeHtml(reminder.stopUrl)}" style="color:#6b7280">${escapeHtml(t('Stop these reminders'))}</a>.</p>
+  `, brand, lang)
+  const text = [t('Running low on {products}? Order again in one tap: {url}', { products: names.join(', '), url: reminder.url }), t('Stop these reminders: {url}', { url: reminder.stopUrl })].join('\n\n')
+  const subject = names.length === 1 ? t('Running low on {name}?', { name: names[0] }) : t('Running low?')
+  return sendEmail(to, subject, html, text, { headers: { 'List-Unsubscribe': `<${reminder.oneClickStopUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' }, retry: false })
+}
+
 // The owner's morning summary (lib/daily-summary.ts works out the numbers and words).
 export async function sendDailySummaryEmail(to: string, summary: { subject: string; dayLabel: string; ordersYesterday: number; sales: string; waiting: string[]; lowStock: Array<{ name: string; left: number }>; reviewEmailsSent: number }) {
   const brand = await emailBrand()
