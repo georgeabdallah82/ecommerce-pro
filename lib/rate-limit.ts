@@ -61,6 +61,17 @@ export async function consumeDurableRateLimit(key: string, limit: number, window
   }
 }
 
+// Whether a key has reached its limit, without counting another try (a lockout check).
+export async function durableLimitReached(key: string, limit: number) {
+  try {
+    const { db } = await import('@/lib/prisma')
+    const bucket = await db.rateLimitBucket.findUnique({ where: { key } })
+    return !!bucket && bucket.resetAt > new Date() && bucket.count >= limit
+  } catch {
+    return false
+  }
+}
+
 export async function clearDurableRateLimit(key: string) {
   clearRateLimit(key)
   try {

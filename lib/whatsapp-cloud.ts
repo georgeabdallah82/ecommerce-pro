@@ -35,9 +35,11 @@ export const WHATSAPP_KEYS = {
   arabicVersion: 'whatsapp.cloud.arabicVersion',
   // The "Running low?" reminder's template (lib/refill-reminders.ts); empty: those go by email.
   refillTemplate: 'whatsapp.cloud.templateRefill',
+  // The sign-in code's template (lib/phone-sign-in.ts); empty: no "Sign in with WhatsApp".
+  loginTemplate: 'whatsapp.cloud.templateLogin',
   templates: { confirmed: 'whatsapp.cloud.templateConfirmed', on_the_way: 'whatsapp.cloud.templateOnTheWay', delivered: 'whatsapp.cloud.templateDelivered' } as Record<WhatsAppUpdate, string>,
 }
-const ALL_KEYS = [WHATSAPP_KEYS.enabled, WHATSAPP_KEYS.phoneNumberId, WHATSAPP_KEYS.token, WHATSAPP_KEYS.language, WHATSAPP_KEYS.arabicVersion, WHATSAPP_KEYS.refillTemplate, ...Object.values(WHATSAPP_KEYS.templates)]
+const ALL_KEYS = [WHATSAPP_KEYS.enabled, WHATSAPP_KEYS.phoneNumberId, WHATSAPP_KEYS.token, WHATSAPP_KEYS.language, WHATSAPP_KEYS.arabicVersion, WHATSAPP_KEYS.refillTemplate, WHATSAPP_KEYS.loginTemplate, ...Object.values(WHATSAPP_KEYS.templates)]
 
 const marker = (kind: WhatsAppUpdate) => `WhatsApp message "${WHATSAPP_LABELS[kind]}"`
 
@@ -75,6 +77,7 @@ export async function whatsappCloudConfig() {
     on_the_way: templateName(map.get(WHATSAPP_KEYS.templates.on_the_way)),
     delivered: templateName(map.get(WHATSAPP_KEYS.templates.delivered)),
     refill: templateName(map.get(WHATSAPP_KEYS.refillTemplate)),
+    login: templateName(map.get(WHATSAPP_KEYS.loginTemplate)),
   }
   const connected = !!phoneNumberId && !!token
   return { enabled: map.get(WHATSAPP_KEYS.enabled) === 'true', connected, phoneNumberId, token, language: templateLanguage(map.get(WHATSAPP_KEYS.language)), arabicVersion: map.get(WHATSAPP_KEYS.arabicVersion) === 'true', templates, storeCountry: map.get('store.country') || 'Lebanon' }
@@ -155,7 +158,8 @@ const PLAIN_ERRORS: Record<number, string> = {
   368: 'the WhatsApp account is temporarily blocked for a policy issue; check WhatsApp Manager',
 }
 
-export type OutgoingWhatsApp = { to: string; template: string; language: string; params: string[] }
+// otpButton: the code for an Authentication template's "Copy code" button (sign-in codes).
+export type OutgoingWhatsApp = { to: string; template: string; language: string; params: string[]; otpButton?: string }
 
 export async function deliverWhatsApp(config: { phoneNumberId: string; token: string }, message: OutgoingWhatsApp, timeoutMs = 10000): Promise<DeliveryResult & { messageId?: string; code?: number }> {
   try {
@@ -170,7 +174,10 @@ export async function deliverWhatsApp(config: { phoneNumberId: string; token: st
         template: {
           name: message.template,
           language: { code: message.language },
-          ...(message.params.length ? { components: [{ type: 'body', parameters: message.params.map(text => ({ type: 'text', text })) }] } : {}),
+          ...(message.params.length || message.otpButton ? { components: [
+            ...(message.params.length ? [{ type: 'body', parameters: message.params.map(text => ({ type: 'text', text })) }] : []),
+            ...(message.otpButton ? [{ type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: message.otpButton }] }] : []),
+          ] } : {}),
         },
       }),
       signal: AbortSignal.timeout(timeoutMs),
@@ -203,7 +210,7 @@ const TEMPLATE_NOT_FOUND = 132001
 export async function deliverWithFallback(config: { phoneNumberId: string; token: string }, message: OutgoingWhatsApp & { fallback?: { language: string; params: string[] } }): Promise<DeliveryResult & { fellBackTo?: string }> {
   const first = await deliverWhatsApp(config, message)
   if (first.ok || first.code !== TEMPLATE_NOT_FOUND || !message.fallback) return first
-  const second = await deliverWhatsApp(config, { to: message.to, template: message.template, language: message.fallback.language, params: message.fallback.params })
+  const second = await deliverWhatsApp(config, { to: message.to, template: message.template, language: message.fallback.language, params: message.fallback.params, ...(message.otpButton ? { otpButton: message.otpButton } : {}) })
   return { ...second, fellBackTo: message.fallback.language }
 }
 
@@ -270,6 +277,20 @@ export async function sendRefillWhatsApp(config: { phoneNumberId: string; token:
     language,
     params: values(language),
     ...(language === config.language ? {} : { fallback: { language: config.language, params: values(config.language) } }),
+  })
+}
+
+// A sign-in code (lib/phone-sign-in.ts), in the customer's language when the template has it. Never queued: a code
+// that could not go out is asked for again.
+export async function sendLoginCodeWhatsApp(config: { phoneNumberId: string; token: string; language: string; arabicVersion: boolean; templates: { login: string } }, message: { to: string; code: string; lang: Lang }) {
+  const language = whatsappLanguageFor(config, message.lang)
+  return deliverWithFallback(config, {
+    to: message.to,
+    template: config.templates.login,
+    language,
+    params: [message.code],
+    otpButton: message.code,
+    ...(language === config.language ? {} : { fallback: { language: config.language, params: [message.code] } }),
   })
 }
 

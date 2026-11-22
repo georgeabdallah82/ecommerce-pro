@@ -93,6 +93,12 @@ html body.mk .authDivider { display: flex; align-items: center; gap: 14px; margi
 html body.mk .authDivider::before, html body.mk .authDivider::after { content: ""; flex: 1; height: 1px; background: var(--mk-line); }
 html body.mk .authSecondary { display: flex; align-items: center; justify-content: center; height: 50px; border: 1px solid var(--mk-ink); border-radius: 12px; color: var(--mk-ink); font-size: 15px; font-weight: 700; text-decoration: none; transition: background-color .15s ease, color .15s ease; }
 html body.mk .authSecondary:hover { background: var(--mk-ink); color: #fff; }
+/* "Sign in with WhatsApp" (components/phone-sign-in.tsx). */
+html body.mk .authWhatsApp { gap: 8px; width: 100%; background: var(--mk-card); cursor: pointer; }
+html body.mk .authPhone { margin-top: 4px; }
+html body.mk .authHint { margin: 8px 0 0; color: var(--mk-muted); font-size: 13.5px; line-height: 1.5; }
+html body.mk .authCode { letter-spacing: .3em; font-size: 20px; font-variant-numeric: tabular-nums; }
+html body.mk .authTextButton { justify-self: center; margin-top: 14px; padding: 10px; border: 0; background: none; color: var(--mk-muted); font-size: 13.5px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 @media (min-width: 900px) {
   html body.mk .authShell { max-width: 1080px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: 600px; }
   html body.mk .authPanel { position: relative; isolation: isolate; display: flex; align-items: flex-end; padding: 44px; background: var(--br-cream, #fff1e6); color: var(--mk-ink); }

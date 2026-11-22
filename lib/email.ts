@@ -173,8 +173,9 @@ async function deliverEmail(config: { apiKey: string; from: string }, message: Q
 
 // `retry: false` for an email that is no use later: a password reset link expires within the hour.
 export async function sendEmail(to: string, subject: string, html: string, text: string, extra?: { headers?: Record<string, string>; retry?: boolean }) {
-  // Orders taken on WhatsApp or by phone may have no email address: there is nobody to send to.
-  if (!to || !to.includes('@')) return { sent: false, skipped: true }
+  // Orders taken on WhatsApp or by phone may have no email address, and accounts made by a WhatsApp sign-in have a
+  // placeholder one (lib/phone-sign-in.ts): there is nobody to send to.
+  if (!to || !to.includes('@') || /@phone\.invalid$/i.test(to.trim())) return { sent: false, skipped: true }
   const config = credentials()
   if (!config) {
     console.warn('[email] RESEND_API_KEY/EMAIL_FROM not configured; skipping send', { to, subject })

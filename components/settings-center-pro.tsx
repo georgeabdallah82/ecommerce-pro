@@ -16,7 +16,7 @@ import { POLICY_DEFAULTS } from '@/lib/policy-defaults'
 import { CountrySelect, CountryMultiSelect, CurrencySelect, TimezoneSelect } from './field-selects'
 import { allowLeave, useLeaveGuard } from './use-leave-guard'
 import { fetchRead } from '@/lib/retry-fetch'
-import { REFILL_TEMPLATE_LABEL, SUGGESTED_REFILL_TEMPLATE_NAME, SUGGESTED_TEMPLATE_NAMES, WHATSAPP_LABELS, WHATSAPP_LANGUAGES, WHATSAPP_UPDATES, isArabicTemplate, refillTemplateBody, templateBody, type WhatsAppUpdate } from '@/lib/whatsapp-templates'
+import { LOGIN_TEMPLATE_LABEL, REFILL_TEMPLATE_LABEL, SUGGESTED_LOGIN_TEMPLATE_NAME, SUGGESTED_REFILL_TEMPLATE_NAME, SUGGESTED_TEMPLATE_NAMES, WHATSAPP_LABELS, WHATSAPP_LANGUAGES, WHATSAPP_UPDATES, isArabicTemplate, refillTemplateBody, templateBody, type WhatsAppUpdate } from '@/lib/whatsapp-templates'
 
 // Settings › Email & messaging › Automatic WhatsApp messages: the template name saved for each message.
 const WA_TEMPLATE_KEYS: Record<WhatsAppUpdate, string> = { confirmed: 'whatsapp.cloud.templateConfirmed', on_the_way: 'whatsapp.cloud.templateOnTheWay', delivered: 'whatsapp.cloud.templateDelivered' }
@@ -140,6 +140,7 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
     'whatsapp.cloud.templateOnTheWay': map.get('whatsapp.cloud.templateOnTheWay') || '',
     'whatsapp.cloud.templateDelivered': map.get('whatsapp.cloud.templateDelivered') || '',
     'whatsapp.cloud.templateRefill': map.get('whatsapp.cloud.templateRefill') || '',
+    'whatsapp.cloud.templateLogin': map.get('whatsapp.cloud.templateLogin') || '',
   }))
   // The Conversions API token is write-only: typed in to save or replace it, never shown back.
   const [capiToken, setCapiToken] = useState('')
@@ -150,7 +151,7 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
   const [waTokenSaved, setWaTokenSaved] = useState(whatsappTokenSet)
   const [waNote, setWaNote] = useState('')
   const [waTestPhone, setWaTestPhone] = useState('')
-  const [waTestKind, setWaTestKind] = useState<WhatsAppUpdate>('confirmed')
+  const [waTestKind, setWaTestKind] = useState<WhatsAppUpdate | 'login'>('confirmed')
   const [waTestArabic, setWaTestArabic] = useState(false)
   const [waTesting, setWaTesting] = useState(false)
   const defaultSender = useMemo(() => {
@@ -580,8 +581,9 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
               <div className={ui.twoCol}>
                 {WHATSAPP_UPDATES.map(kind => <Field key={kind} label={`“${WHATSAPP_LABELS[kind]}” template name`} value={values[WA_TEMPLATE_KEYS[kind]]} placeholder={SUGGESTED_TEMPLATE_NAMES[kind]} onChange={v => set(WA_TEMPLATE_KEYS[kind], waTemplateInput(v))} />)}
                 <Field label={`“${REFILL_TEMPLATE_LABEL}” template name (optional)`} value={values['whatsapp.cloud.templateRefill']} placeholder={SUGGESTED_REFILL_TEMPLATE_NAME} onChange={v => set('whatsapp.cloud.templateRefill', waTemplateInput(v))} />
+                <Field label={`“${LOGIN_TEMPLATE_LABEL}” template name (optional)`} value={values['whatsapp.cloud.templateLogin']} placeholder={SUGGESTED_LOGIN_TEMPLATE_NAME} onChange={v => set('whatsapp.cloud.templateLogin', waTemplateInput(v))} />
               </div>
-              <p className={ui.muted}>Leave a name empty to not send that message. Without a &ldquo;{REFILL_TEMPLATE_LABEL}&rdquo; template, those reminders go by email.</p>
+              <p className={ui.muted}>Leave a name empty to not send that message. Without a &ldquo;{REFILL_TEMPLATE_LABEL}&rdquo; template, those reminders go by email. With a &ldquo;{LOGIN_TEMPLATE_LABEL}&rdquo; template, the sign-in page offers &ldquo;Sign in with WhatsApp&rdquo;: customers type their mobile number and get a code (customer accounts only; staff always sign in with their password and 2-step code).</p>
               {waArabicOffered && <>
                 <Toggle label="My templates also have an Arabic version" keyName="whatsapp.cloud.arabicVersion" value={flags['whatsapp.cloud.arabicVersion']} onChange={() => toggle('whatsapp.cloud.arabicVersion')} />
                 <p className={ui.muted}>Customers who shop in Arabic then get the Arabic version. Add it in WhatsApp Manager: open each template, add the language Arabic, and paste its Arabic text (below). If a template has no Arabic version yet, that message goes in {WHATSAPP_LANGUAGES.find(l => l.code === values['whatsapp.cloud.language'])?.label || 'English'} instead.</p>
@@ -607,12 +609,17 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
                     <pre dir="rtl" lang="ar" style={{ whiteSpace: 'pre-wrap', margin: '6px 0 0', padding: '10px 12px', border: '1px solid var(--admin-border)', borderRadius: 'var(--admin-radius-md)', background: 'var(--admin-bg)', fontFamily: 'inherit', fontSize: 13 }}>{refillTemplateBody('ar')}</pre>
                   </>}
                 </div>
+                <div style={{ marginTop: 10 }}>
+                  <strong>{values['whatsapp.cloud.templateLogin'] || SUGGESTED_LOGIN_TEMPLATE_NAME}</strong> <span className={ui.muted}>({LOGIN_TEMPLATE_LABEL}, optional)</span>
+                  <p className={ui.muted} style={{ margin: '6px 0 0' }}>Category Authentication. WhatsApp Manager writes its text itself (&ldquo;123456 is your verification code.&rdquo;): choose &ldquo;Copy code&rdquo;, tick the security note, and set the code to expire in 10 minutes.{waArabicOffered && flags['whatsapp.cloud.arabicVersion'] ? ' Add Arabic to it too, the same way.' : ''}</p>
+                </div>
               </details>
               <div className="inline" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
                 <Field label="Send a test to (your WhatsApp number)" type="tel" value={waTestPhone} placeholder="e.g. 70 123 456" onChange={setWaTestPhone} />
                 <label className={ui.fieldLabel}>Message
-                  <select className={ui.select} value={waTestKind} onChange={e => setWaTestKind(e.target.value as WhatsAppUpdate)}>
+                  <select className={ui.select} value={waTestKind} onChange={e => setWaTestKind(e.target.value as WhatsAppUpdate | 'login')}>
                     {WHATSAPP_UPDATES.map(kind => <option key={kind} value={kind}>{WHATSAPP_LABELS[kind]}</option>)}
+                    <option value="login">{LOGIN_TEMPLATE_LABEL}</option>
                   </select>
                 </label>
                 {waArabicOffered && flags['whatsapp.cloud.arabicVersion'] && <label className={ui.fieldLabel}>Version

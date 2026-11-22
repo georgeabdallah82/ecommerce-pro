@@ -6,6 +6,7 @@ import { consumeDurableRateLimit } from '@/lib/rate-limit'
 import { internationalPhone } from '@/lib/phone'
 import { requestOrigin } from '@/lib/site-url'
 import { deliverWhatsApp, templateParams, whatsappCloudConfig } from '@/lib/whatsapp-cloud'
+import { LOGIN_TEMPLATE_LABEL } from '@/lib/whatsapp-templates'
 import { WHATSAPP_LABELS, WHATSAPP_UPDATES, type WhatsAppUpdate } from '@/lib/whatsapp-templates'
 
 // "Send a test" in Settings › Email & messaging › Automatic WhatsApp messages: one of the three messages, with a sample
@@ -16,20 +17,22 @@ export async function POST(req: Request) {
   try {
     const actor = await requirePermission('settings.manage')
     const body = await req.json().catch(() => null) as { phone?: unknown; kind?: unknown; arabic?: unknown } | null
+    // "login": the sign-in code's template (lib/phone-sign-in.ts), with a sample code.
+    const login = body?.kind === 'login'
     const kind: WhatsAppUpdate = WHATSAPP_UPDATES.includes(body?.kind as WhatsAppUpdate) ? body?.kind as WhatsAppUpdate : 'confirmed'
     const config = await whatsappCloudConfig()
     if (!config.phoneNumberId) return json({ error: 'Save the phone number ID first.' }, { status: 400 })
     if (!config.token) return json({ error: 'Save the access key first.' }, { status: 400 })
-    const template = config.templates[kind]
-    if (!template) return json({ error: `Save the template name for "${WHATSAPP_LABELS[kind]}" first.` }, { status: 400 })
+    const template = login ? config.templates.login : config.templates[kind]
+    if (!template) return json({ error: `Save the template name for "${login ? LOGIN_TEMPLATE_LABEL : WHATSAPP_LABELS[kind]}" first.` }, { status: 400 })
     const to = internationalPhone(String(body?.phone || ''), config.storeCountry)
     if (!to) return json({ error: 'Enter a mobile number that has WhatsApp, e.g. 70 123 456.' }, { status: 400 })
     const limit = await consumeDurableRateLimit(`whatsapp-test:${actor.id}`, 10, 60 * 60 * 1000)
     if (!limit.allowed) return json({ error: 'Too many test messages. Try again in an hour.' }, { status: 429 })
     const sample = { orderNumber: 'TEST-1001', paymentStatus: 'UNPAID', paymentMethod: 'COD', phone: to, grandTotal: 2500, currency: 'USD', shippingAddressJson: JSON.stringify({ firstName: 'Test' }) }
     const language = body?.arabic === true ? 'ar' : config.language
-    const result = await deliverWhatsApp(config, { to, template, language, params: templateParams(kind, sample, await requestOrigin(), language) })
-    await audit(actor.id, 'whatsapp.test_sent', 'Setting', undefined, { kind, language, ok: result.ok, error: result.ok ? undefined : result.error })
+    const result = await deliverWhatsApp(config, login ? { to, template, language, params: ['123456'], otpButton: '123456' } : { to, template, language, params: templateParams(kind, sample, await requestOrigin(), language) })
+    await audit(actor.id, 'whatsapp.test_sent', 'Setting', undefined, { kind: login ? 'login' : kind, language, ok: result.ok, error: result.ok ? undefined : result.error })
     if (!result.ok && language === 'ar' && result.code === 132001) return json({ error: 'WhatsApp has no Arabic version of "' + template + '" yet: add Arabic to it in WhatsApp Manager › Message templates, with the Arabic text shown here.' }, { status: 400 })
     if (!result.ok) return json({ error: result.error || 'WhatsApp did not take the message.' }, { status: 400 })
     return json({ ok: true })

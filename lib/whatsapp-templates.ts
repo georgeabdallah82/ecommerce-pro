@@ -55,3 +55,8 @@ const REFILL_BODIES = {
   ar: 'مرحباً {{1}}، هل قارب {{2}} على النفاد؟ اطلبه من جديد بنقرة واحدة: {{3}}\nشكراً لتسوقك معنا.',
 }
 export const refillTemplateBody = (language: string) => REFILL_BODIES[isArabicTemplate(language) ? 'ar' : 'en']
+
+// Sign in with a WhatsApp code (lib/phone-sign-in.ts): an Authentication template, whose wording WhatsApp Manager writes
+// itself ("{{1}} is your verification code."), with a "Copy code" button. The store fills in the code.
+export const LOGIN_TEMPLATE_LABEL = 'Sign-in code'
+export const SUGGESTED_LOGIN_TEMPLATE_NAME = 'login_code'
