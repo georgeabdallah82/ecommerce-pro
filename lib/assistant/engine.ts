@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { db } from '@/lib/prisma'
-import { ASSISTANT_MODELS, costMicros, isAssistantModel, type AssistantModel } from './config'
+import { ASSISTANT_MODELS, costMicros, isAssistantModel, modelProvider, type AssistantModel } from './config'
+import { workersAiConfigured } from './workers-ai'
 import type { ChatLang } from './language'
 import { readMarkers, shopperTurn, systemPrompt } from './prompt'
 import { TOOLS, runTool, type ToolContext } from './tools'
@@ -15,6 +16,12 @@ const MAX_TOKENS = 1500
 const TIMEOUT_MS = 30_000
 
 export const assistantKeyConfigured = () => !!process.env.ANTHROPIC_API_KEY
+
+// Whether the chosen model can answer: Claude needs ANTHROPIC_API_KEY; Cloudflare's free model needs
+// CLOUDFLARE_AI_ACCOUNT_ID and CLOUDFLARE_AI_TOKEN.
+export function providerReady(model: AssistantModel) {
+  return modelProvider(model) === 'cloudflare' ? workersAiConfigured() : assistantKeyConfigured()
+}
 
 let client: Anthropic | null = null
 function anthropic() {

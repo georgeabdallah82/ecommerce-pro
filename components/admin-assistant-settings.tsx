@@ -9,7 +9,7 @@ import { useLeaveGuard } from './use-leave-guard'
 import { useToast } from './admin-toast'
 import ui from './admin-ui.module.css'
 import styles from './admin-assistant.module.css'
-import { ASSISTANT_MODELS, QUICK_ACTIONS, type AssistantConfig, type AssistantModel, type AssistantSuggestion, type QuickAction } from '@/lib/assistant/config'
+import { ASSISTANT_MODELS, QUICK_ACTIONS, WORKERS_AI_FREE_MICROS, type AssistantConfig, type AssistantModel, type AssistantSuggestion, type QuickAction } from '@/lib/assistant/config'
 
 // Admin › AI assistant › Settings (app/api/admin/assistant). Docs: docs/ai-assistant-2026-11.md.
 
@@ -22,7 +22,7 @@ const ACTION_LABELS: Record<QuickAction, string> = {
   support: 'Talk to support (your WhatsApp and email)',
 }
 
-export default function AssistantSettings({ initial, canManage, keyConfigured }: { initial: AssistantConfig; canManage: boolean; keyConfigured: boolean }) {
+export default function AssistantSettings({ initial, canManage, ready }: { initial: AssistantConfig; canManage: boolean; ready: { anthropic: boolean; cloudflare: boolean } }) {
   const router = useRouter()
   const toast = useToast()
   const [saved, setSaved] = useState(initial)
@@ -61,10 +61,16 @@ export default function AssistantSettings({ initial, canManage, keyConfigured }:
 
   const disabled = !canManage || saving
   const model = ASSISTANT_MODELS[form.model]
-  // A rough guide: a typical answer is two calls (a search, then the reply), reading ~5,000 cached tokens of
-  // instructions, ~1,600 new tokens (the chat and search results) and writing ~600 (its thinking and the reply).
-  const perAnswer = (5000 * model.cacheRead + 1600 * model.input + 600 * model.output) / 1_000_000
-  const answersPerDay = perAnswer > 0 ? Math.floor(form.dailyBudgetUsd / perAnswer) : 0
+  const free = model.provider === 'cloudflare'
+  const keyConfigured = ready[model.provider]
+  // A rough guide. Claude: two calls (a search, then the reply), ~5,000 cached tokens of instructions,
+  // ~1,600 new tokens and ~600 written. Cloudflare: one call with the store data (~3,000 tokens) and a
+  // short reply (~250).
+  const perAnswer = free
+    ? (3000 * model.input + 250 * model.output) / 1_000_000
+    : (5000 * model.cacheRead + 1600 * model.input + 600 * model.output) / 1_000_000
+  const dayLimit = free ? Math.min(form.dailyBudgetUsd, WORKERS_AI_FREE_MICROS / 1_000_000) : form.dailyBudgetUsd
+  const answersPerDay = perAnswer > 0 ? Math.floor(dayLimit / perAnswer) : 0
 
   return (
     <div className={styles.settings}>
@@ -80,7 +86,11 @@ export default function AssistantSettings({ initial, canManage, keyConfigured }:
           </label>
         </div>
         {!keyConfigured ? (
-          <p className={`${ui.alert} ${styles.notice}`}>The Claude API key is not set on the server yet, so typed questions are answered with your shop&apos;s own search (no AI) and the buttons work as usual. See the setup steps in the docs (ANTHROPIC_API_KEY).</p>
+          <p className={`${ui.alert} ${styles.notice}`}>
+            {free
+              ? 'The Cloudflare AI keys are not set on the server yet (CLOUDFLARE_AI_ACCOUNT_ID and CLOUDFLARE_AI_TOKEN), so typed questions are answered with your shop\'s own search (no AI). The buttons work as usual. See the setup steps in the docs.'
+              : 'The Claude API key is not set on the server yet (ANTHROPIC_API_KEY), so typed questions are answered with your shop\'s own search (no AI). The buttons work as usual. See the setup steps in the docs.'}
+          </p>
         ) : null}
       </section>
 
@@ -99,8 +109,10 @@ export default function AssistantSettings({ initial, canManage, keyConfigured }:
           </label>
         </div>
         <p className={ui.fieldHelp}>
-          About ${perAnswer.toFixed(perAnswer < 0.01 ? 4 : 3)} per typed question with this model, so roughly {answersPerDay.toLocaleString()} AI answers a day on ${form.dailyBudgetUsd}.
-          When the day&apos;s budget is used up, typed questions get your shop&apos;s own search results until midnight (UTC). The buttons never use the AI and are always free. Set 0 to never use the AI.
+          {free
+            ? <>Free: Cloudflare gives 10,000 &ldquo;neurons&rdquo; of AI a day at no cost, and the assistant stops at 9,000, so this model never adds to your bill. That is roughly {answersPerDay.toLocaleString()} AI answers a day. </>
+            : <>Paid: about ${perAnswer.toFixed(perAnswer < 0.01 ? 4 : 3)} per typed question with this model, so roughly {answersPerDay.toLocaleString()} AI answers a day on ${form.dailyBudgetUsd}. </>}
+          After that, typed questions get your shop&apos;s own search results until midnight (UTC). The buttons never use the AI and are always free. Set the budget to 0 to never use the AI.
         </p>
       </section>
 

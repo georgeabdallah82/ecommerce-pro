@@ -6,7 +6,7 @@ import { after, before, describe, it } from 'node:test'
 import { detectLanguage } from '@/lib/assistant/language'
 import { redact } from '@/lib/assistant/redact'
 import { readMarkers, shopperTurn, systemPrompt } from '@/lib/assistant/prompt'
-import { ASSISTANT_MODELS, DEFAULT_CONFIG, SETTING_KEYS, cleanSuggestions, costMicros, parseAssistantConfig, withStoreName } from '@/lib/assistant/config'
+import { ASSISTANT_MODELS, DEFAULT_CONFIG, SETTING_KEYS, WORKERS_AI_FREE_MICROS, cleanSuggestions, costMicros, parseAssistantConfig, withStoreName } from '@/lib/assistant/config'
 import { matchFaqs } from '@/lib/assistant/knowledge'
 
 // The AI shopping assistant (docs/ai-assistant-2026-11.md): what can be checked without a database.
@@ -80,7 +80,8 @@ describe('assistant: settings', () => {
     const c = parseAssistantConfig(new Map())
     assert.equal(c.enabled, false)
     assert.equal(c.dailyBudgetUsd, 1)
-    assert.equal(c.model, 'claude-opus-5-5')
+    // The free Cloudflare model by default; Claude is a paid choice.
+    assert.equal(c.model, '@cf/meta/llama-4-scout-17b-16e-instruct')
     assert.equal(c.suggestions.length, 6)
     assert.equal(withStoreName(c.welcome, 'Yalla Haul').includes('Yalla Haul'), true)
   })
@@ -115,7 +116,9 @@ describe('assistant: cost of an answer', () => {
     assert.equal(costMicros('claude-opus-5-5', { input_tokens: 1000, output_tokens: 500, cache_read_input_tokens: 2000 }), 1000 * 4 + 500 * 20 + 2000 * 0.2)
     assert.equal(costMicros('claude-haiku-5-5', { input_tokens: 1_000_000 }), 100_000)
     assert.equal(costMicros('claude-sonnet-5-5', { cache_creation_input_tokens: 1000 }), Math.ceil(1000 * 2 * 1.25))
-    assert.equal(costMicros('unknown-model', { output_tokens: 1 }), ASSISTANT_MODELS['claude-opus-5-5'].output)
+    assert.equal(costMicros('unknown-model', { output_tokens: 1000 }), Math.ceil(1000 * ASSISTANT_MODELS['@cf/meta/llama-4-scout-17b-16e-instruct'].output))
+    // Cloudflare: Llama 4 Scout at $0.27 / $0.85 per million tokens.
+    assert.equal(costMicros('@cf/meta/llama-4-scout-17b-16e-instruct', { input_tokens: 3000, output_tokens: 250 }), Math.ceil(3000 * 0.27 + 250 * 0.85))
   })
 })
 
@@ -231,5 +234,31 @@ describe('assistant: the Claude loop', () => {
     const r = await ask('loop')
     assert.equal(r.ok, false)
     assert.ok(requests.length - before <= 5)
+  })
+})
+
+describe('assistant: the free Cloudflare model', () => {
+  it('order questions open the order form instead of going to the model', async () => {
+    const { looksLikeOrderQuestion } = await import('@/lib/assistant/workers-ai')
+    assert.equal(looksLikeOrderQuestion('Where is my order?'), true)
+    assert.equal(looksLikeOrderQuestion('wen talabiye?'), true)
+    assert.equal(looksLikeOrderQuestion('وين طلبي؟'), true)
+    assert.equal(looksLikeOrderQuestion('track order ORD-1042'), true)
+    assert.equal(looksLikeOrderQuestion('Do you have red dresses?'), false)
+    assert.equal(looksLikeOrderQuestion('Can I order a gift box?'), false)
+  })
+  it('stops at Cloudflare\'s free daily allowance, whatever the budget', () => {
+    const route = readFileSync('app/api/assistant/route.ts', 'utf8')
+    assert.match(route, /provider === 'cloudflare' \? WORKERS_AI_FREE_MICROS : Infinity/)
+    // 9,000 of the 10,000 free neurons a day, at $0.011 per 1,000.
+    assert.equal(WORKERS_AI_FREE_MICROS, 99_000)
+  })
+  it('its instructions are plain ASCII and keep the same rules', () => {
+    const source = readFileSync('lib/assistant/workers-ai.ts', 'utf8')
+    const prompt = source.slice(source.indexOf('return `You are'), source.indexOf('STORE DATA:\n${data}`'))
+    assert.ok(/^[\x00-\x7f]*$/.test(prompt))
+    assert.match(prompt, /Use ONLY the STORE DATA/)
+    assert.match(prompt, /never say you did or that an agent was notified/)
+    assert.match(prompt, /Never ask for card numbers/)
   })
 })
