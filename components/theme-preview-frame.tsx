@@ -10,6 +10,7 @@ import CustomPageView from '@/components/custom-page-view'
 import { BlogIndexView } from '@/components/blog-views'
 import AliExpressProduct from '@/components/aliexpress-product'
 import AliExpressShop from '@/components/aliexpress-shop'
+import AliExpressCollectionDetail from '@/components/aliexpress-collection-detail'
 import AliExpressCart from '@/components/aliexpress-cart'
 import { Footer } from '@/components/footer'
 import { fontCssStack } from '@/lib/font-options'
@@ -78,6 +79,9 @@ type PreviewState = {
 //   frame -> parent: { source: 'theme-preview', type: 'shortcut', key: 's' | 'z' | 'y', shift }
 export default function ThemePreviewFrame() {
   const [state, setState] = useState<PreviewState>(null)
+  // The Collection template is used by the Shop page and by every collection's page: the preview shows either
+  // (some of its settings, like the collection banner and description, only exist on a collection's page).
+  const [collectionView, setCollectionView] = useState<'shop' | 'collection'>('shop')
 
   useEffect(() => {
     function onMessage(event: MessageEvent) {
@@ -222,9 +226,20 @@ export default function ThemePreviewFrame() {
                 sections={view.sections}
                 collections={view.collections}
               />
-            ) : view.page === 'Collection' ? (
-              <AliExpressShop theme={view.theme} products={view.products} collections={view.collections} query={{}} sections={view.sections} />
-            ) : (
+            ) : view.page === 'Collection' ? (() => {
+              const collection = view.collections[0]
+              const showCollection = collectionView === 'collection' && collection
+              const ids = new Set((collection?.products || []).map((x: AnyMap) => x.productId))
+              return <>
+                {collection && <div className="themePreviewPageSwitch" role="group" aria-label="Page shown in the preview">
+                  <button type="button" aria-pressed={!showCollection} onClick={() => setCollectionView('shop')}>Shop page</button>
+                  <button type="button" aria-pressed={!!showCollection} onClick={() => setCollectionView('collection')}>A collection: {collection.name}</button>
+                </div>}
+                {showCollection
+                  ? <AliExpressCollectionDetail theme={view.theme} collection={collection} products={view.products.filter(p => ids.has(p.id))} sections={view.sections} zoneCollections={view.collections} />
+                  : <AliExpressShop theme={view.theme} products={view.products} collections={view.collections} query={{}} sections={view.sections} />}
+              </>
+            })() : (
               <AliExpressCart theme={view.theme} recommended={sample.related} sections={view.sections} zoneCollections={view.collections} />
             )
           ) : (

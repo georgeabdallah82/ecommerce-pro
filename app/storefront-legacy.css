@@ -3983,6 +3983,10 @@ a.aliSpecListItem:hover{opacity:.8}
 }
 
 /* Editor preview only: a section with nothing to show (see EmptySectionNotice). */
+/* Theme editor preview only (components/theme-preview-frame.tsx): which page the Collection template shows. */
+.themePreviewPageSwitch{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;padding:10px 16px;background:#faf7f4;border-bottom:1px dashed #c9bfb6;font:600 13px/1.2 system-ui,sans-serif}
+.themePreviewPageSwitch button{min-height:36px;padding:8px 14px;border:1px solid #d8cfc6;border-radius:999px;background:#fff;color:#191512;cursor:pointer;font:inherit}
+.themePreviewPageSwitch button[aria-pressed="true"]{background:#191512;border-color:#191512;color:#fff}
 .themeEmptyNotice{padding:18px 0;cursor:pointer}
 .themeEmptyNotice .focalContainer{display:grid;gap:4px;padding:16px 18px;border:2px dashed #c9bfb6;border-radius:12px;background:repeating-linear-gradient(135deg,#faf7f4 0 12px,#f4efea 12px 24px);color:#4a4039;font:500 13px/1.5 system-ui,sans-serif}
 .themeEmptyNotice strong{font-size:14px;color:#191512}
