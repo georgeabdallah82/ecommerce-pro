@@ -35,7 +35,7 @@ async function relevantProducts(message: string, pageProduct: CatalogProduct | n
   const found = new Map<string, CatalogProduct>()
   if (pageProduct) found.set(pageProduct.id, pageProduct)
   for (const p of await findProducts({ query: message.slice(0, 120), limit: 6 }).catch(() => [])) found.set(p.id, p)
-  const terms = [...new Set(words(message).filter(w => w.length >= 3 && !FILLER.has(normalize(w))))].slice(0, 5)
+  const terms = [...new Set(words(message).filter(w => w.length >= 3 && !FILLER.has(normalize(w))))].slice(0, 2)
   for (const term of terms) {
     if (found.size >= 8) break
     for (const p of await findProducts({ query: term, limit: 4 }).catch(() => [])) if (found.size < 8) found.set(p.id, p)

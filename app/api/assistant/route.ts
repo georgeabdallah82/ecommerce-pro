@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { consumeDurableRateLimit, consumeRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { json } from '@/lib/utils'
+import { withRequestMemo } from '@/lib/storefront-cache'
 import { statusLabel, translator, type Lang } from '@/lib/i18n'
 import { QUICK_ACTION_NAMES, WORKERS_AI_FREE_MICROS, isQuickAction, modelProvider, type ChatReply } from '@/lib/assistant/config'
 import { loadAssistantConfig } from '@/lib/assistant/settings'
@@ -52,7 +53,8 @@ type Progress = { step: string; lang: Lang }
 export async function POST(request: Request) {
   const progress: Progress = { step: 'start', lang: 'en' }
   try {
-    return await answer(request, progress)
+    // Each store read once per message: lib/storefront-cache.ts withRequestMemo.
+    return await withRequestMemo(() => answer(request, progress))
   } catch (error) {
     // Never a bare server error in the chat: the shopper gets a short message (with the step, so the
     // owner can report it) and the details go to the Worker log.

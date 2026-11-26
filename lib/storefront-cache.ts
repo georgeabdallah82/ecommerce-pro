@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { cookies } from 'next/headers'
 
 // Short-lived copies of database results that every shopper sees the same way (store settings
@@ -52,7 +53,31 @@ async function bypassCache(): Promise<boolean> {
   }
 }
 
+// Within one request run through withRequestMemo, each key is read at most once, signed in or not.
+// A Worker request may make only 50 outside calls on the Workers Free plan (every Neon query is one),
+// and the shopping assistant reads the catalogue, search index and settings from several places in a
+// single answer; for a signed-in owner each of those reads went to the database again and the answer
+// failed with "Too many subrequests" (docs/ai-assistant-2026-11.md).
+const requestMemo = new AsyncLocalStorage<Map<string, Promise<unknown>>>()
+export function withRequestMemo<T>(run: () => Promise<T>): Promise<T> {
+  return requestMemo.run(new Map(), run)
+}
+
 export async function storefrontCached<T>(key: string, load: () => Promise<T>): Promise<T> {
+  const memo = requestMemo.getStore()
+  if (!memo) return readThrough(key, load)
+  let pending = memo.get(key) as Promise<T> | undefined
+  if (!pending) {
+    pending = readThrough(key, load)
+    memo.set(key, pending)
+    // A failed read is tried again by the next caller rather than failing the rest of the request.
+    pending.catch(() => { if (memo.get(key) === pending) memo.delete(key) })
+  }
+  // A copy for each caller, as the shared cache does, so one caller's changes can't reach another.
+  return pending.then(value => structuredClone(value))
+}
+
+async function readThrough<T>(key: string, load: () => Promise<T>): Promise<T> {
   if (await bypassCache()) return load()
   return shared.get(key, load)
 }

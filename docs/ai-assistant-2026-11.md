@@ -118,6 +118,18 @@ The shopper's text is wrapped in `<shopper_message>`, and it can't close that ta
 - **Same site only.** Requests from other websites are refused, and maintenance mode blocks the endpoint for non-staff.
 - **Switch-off.** Turn it off in Settings and the chat button disappears within 30 seconds (the storefront settings cache).
 
+## Workers Free: 50 outside calls per request
+
+On the Workers Free plan, one request may make only 50 outside calls, and every Neon query is one. Signed-in people (the owner while testing) skip the shared 30-second cache. Before #661, each search in an answer re-read the catalogue and search index, so "Shou l jdid" made 74 queries and failed with "Too many subrequests".
+
+Now:
+- each chat message runs inside `withRequestMemo` (`lib/storefront-cache.ts`), so each store read happens once per message;
+- the free model runs at most 2 extra word searches.
+
+Measured on the local database, one signed-in message is 32 queries plus 1 AI call.
+
+If anything still fails, the chat says "Sorry, something went wrong on our side…" and names the step in brackets. The Worker log has `[assistant] answer failed at <step>`.
+
 ## Privacy and retention
 
 - **Chats are tied to the browser** by an http-only cookie (`chat_visitor`, path `/api/assistant`, 90 days). Only a hash of it is stored, and a chat can be continued only from that browser.

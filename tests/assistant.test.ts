@@ -262,3 +262,35 @@ describe('assistant: the free Cloudflare model', () => {
     assert.match(prompt, /Never ask for card numbers/)
   })
 })
+
+describe('assistant: one store read per message (Workers Free allows 50 outside calls a request)', () => {
+  it('within withRequestMemo a key is loaded once, and each caller gets its own copy', async () => {
+    const { storefrontCached, withRequestMemo } = await import('@/lib/storefront-cache')
+    let loads = 0
+    const load = async () => { loads++; return { list: [1, 2] } }
+    await withRequestMemo(async () => {
+      const a = await storefrontCached('memo-test', load)
+      const b = await storefrontCached('memo-test', load)
+      assert.equal(loads, 1)
+      a.list.push(3)
+      assert.deepEqual(b.list, [1, 2])
+      assert.deepEqual((await storefrontCached('memo-test', load)).list, [1, 2])
+    })
+    // Outside it (no request here, so nothing is shared) every call loads.
+    await storefrontCached('memo-test', load)
+    await storefrontCached('memo-test', load)
+    assert.equal(loads, 3)
+  })
+  it('a failed load is tried again by the next caller', async () => {
+    const { storefrontCached, withRequestMemo } = await import('@/lib/storefront-cache')
+    let calls = 0
+    await withRequestMemo(async () => {
+      await assert.rejects(storefrontCached('memo-fail', async () => { calls++; throw new Error('db') }))
+      assert.equal(await storefrontCached('memo-fail', async () => { calls++; return 'ok' }), 'ok')
+    })
+    assert.equal(calls, 2)
+  })
+  it('the chat endpoint runs each message inside it', () => {
+    assert.match(readFileSync('app/api/assistant/route.ts', 'utf8'), /withRequestMemo\(\(\) => answer\(request, progress\)\)/)
+  })
+})
