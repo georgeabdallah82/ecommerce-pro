@@ -1369,14 +1369,9 @@ export default function ThemeStudio({ initial }: Props) {
               <div className="themeInspector">
                 <details className="themeInspectorPanel" open><summary>Advanced</summary><div>
                   <label className="themeInspectorToggle"><span>Show section</span><button type="button" className={selected.enabled !== false ? 'on' : ''} aria-pressed={selected.enabled !== false} onClick={() => toggleSection(selected.enabled === false)}><i /></button></label>
-                  <label className="themeInspectorField"><span>Animation</span>
-                    <select value={selected.settings?.animation || 'fade-up'} onChange={event => patch({ animation: event.target.value })}>
-                      <option value="none">None</option>
-                      <option value="fade-up">Fade up</option>
-                      <option value="fade">Fade</option>
-                      <option value="zoom">Zoom</option>
-                    </select>
-                  </label>
+                  {/* There was an "Animation" choice here (none / fade up / fade / zoom). No section ever applied it, so it
+                      changed nothing; the homepage's own scroll-in motion (components/scroll-reveal.tsx) is the same for all. */}
+                  <p className="themeInspectorNote">Sections further down the homepage rise into view as shoppers scroll to them. It is the same for every section, and off for shoppers whose phone asks for less motion.</p>
                 </div></details>
               </div>
             )}

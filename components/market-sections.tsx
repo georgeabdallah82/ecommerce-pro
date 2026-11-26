@@ -202,6 +202,9 @@ function Cards({ items, c, rank }: { items: AnyMap[]; c: Common; rank?: boolean 
 }
 
 /* ---------------- Product tabs: deals / best sellers / new ---------------- */
+// With only the New tab to show (no sales or discounts yet), the standard heading "Today's deals" would be wrong,
+// so it reads "New arrivals". A heading the owner wrote is kept: it used to be replaced too, so editing it did nothing.
+const ownHeading = (heading: unknown) => { const h = String(heading || '').trim(); return h === "Today's deals" ? '' : h }
 export function ProductTabs(c: Common) {
   const { section, products, preview, selected, click } = c
   const s = section.settings || {}
@@ -224,7 +227,7 @@ export function ProductTabs(c: Common) {
   return (
     <section className={`mkSection ${selected ? 'isSelected' : ''}`} onClick={e => click(section.id, e)}>
       <div className="mkWrap">
-        <Head heading={lists.length === 1 && active.key === 'new' && !s.newOnlyKeepHeading ? tr('New arrivals') : (s.heading || tr("Today's deals"))} sub={s.subheading} right={lists.length > 1 ? (
+        <Head heading={lists.length === 1 && active.key === 'new' && !s.newOnlyKeepHeading && ownHeading(s.heading) === '' ? tr('New arrivals') : (s.heading || tr("Today's deals"))} sub={s.subheading} right={lists.length > 1 ? (
           <div className="mkTabs" role="tablist">
             {lists.map((l, i) => <button type="button" role="tab" key={l.key} aria-selected={l === active} onClick={e => { e.stopPropagation(); setTab(i) }}>{l.label}</button>)}
           </div>

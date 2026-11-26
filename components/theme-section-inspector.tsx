@@ -441,7 +441,7 @@ const SECTION_PANELS: Record<string, () => PanelSchema[]> = {
         select('Content position', 'contentPosition', ['top-left','top-center','top-right','center-left','center','center-right','bottom-left','bottom-center','bottom-right'], 'center-left'),
         select('Text alignment', 'textAlign', ['left','center','right'], 'left'),
         range('Content width', 'contentWidth', 320, 900, 620),
-        range('Height', 'minHeight', 360, 900, 640),
+        range('Height (with "Fixed height" on)', 'minHeight', 360, 900, 640),
       ],
       // heightMode and imageHeightMode both default to "adapt" (the section sizes
       // itself to the image's own proportions) -- the Height field above only has
