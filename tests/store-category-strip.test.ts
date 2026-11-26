@@ -40,7 +40,7 @@ test('up to four categories are the same wide cards on phones and computers', ()
 test('"Section width" and "Card position" from the editor work on the shop', () => {
   const css = read('app/storefront-sprint4.css')
   assert.match(css, /html body\.mk \.aliCategoryStrip\.has-sec-w :is\(\.mkStripHead, \.aliContainer\) \{ width: min\(var\(--sec-w\), 100%\) !important;/)
-  assert.match(css, /\.aliCategoryStrip\.has-sec-w\.sec-left :is\(\.mkStripHead, \.aliContainer\) \{ margin-inline: max\(0px, calc\(\(100% - 1328px\) \/ 2\)\) auto !important; \}/)
+  assert.match(css, /\.aliCategoryStrip\.has-sec-w\.sec-left :is\(\.mkStripHead, \.aliContainer\) \{ margin-inline: max\(0px, calc\(\(100% - \(var\(--store-max, 1360px\) - 32px\)\) \/ 2\)\) auto !important; \}/)
   assert.match(css, /\.aliCategoryStrip\.has-sec-w\.sec-right :is\(\.mkStripHead, \.aliContainer\) \{ margin-inline: auto max\(0px/)
   assert.match(css, /html body\.mk \.aliCategoryStrip:is\(\.block-center, \.block-right\) \.aliCategoryRow \{ display: flex !important; flex-wrap: wrap !important; \}/)
   assert.match(css, /html body\.mk \.aliCategoryStrip\.block-center \.aliCategoryRow \{ justify-content: center !important; \}/)

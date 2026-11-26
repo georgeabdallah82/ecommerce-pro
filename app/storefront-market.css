@@ -23,12 +23,12 @@ body.mk {
 body.mk h1, body.mk h2, body.mk h3, body.mk h4 { font-family: var(--store-font-heading); }
 
 /* Same content width as the shop, product and cart pages (1280px). */
-.mkWrap { width: min(1328px, 100%); margin: 0 auto; padding-inline: 16px; }
+.mkWrap { width: min(calc(var(--store-max, 1360px) - 32px), 100%); margin: 0 auto; padding-inline: 16px; }
 @media (min-width: 760px) { .mkWrap, html body.mk .focalNav.mkHeader .focalNavInner { padding-inline: 24px !important; } }
 
 /* ---------------- Header ---------------- */
 html body.mk .focalNav.mkHeader { background: var(--mk-header-bg, var(--mk-red)) !important; color: #fff !important; border: 0 !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; z-index: 60 !important; }
-html body.mk .focalNav.mkHeader .focalNavInner { width: min(1328px, 100%) !important; padding-inline: 16px !important; height: auto !important; min-height: 72px !important; padding-block: 12px !important; gap: 22px !important; }
+html body.mk .focalNav.mkHeader .focalNavInner { width: min(calc(var(--store-max, 1360px) - 32px), 100%) !important; padding-inline: 16px !important; height: auto !important; min-height: 72px !important; padding-block: 12px !important; gap: 22px !important; }
 html body.mk .focalNav.mkHeader .focalLogo { color: #fff !important; }
 html body.mk .focalNav.mkHeader .focalLogo img { max-height: 40px !important; }
 html body.mk .focalNav.mkHeader .focalLogo img.mkLogoWhite { filter: brightness(0) invert(1) !important; }
@@ -207,7 +207,7 @@ html body.mk .focalNav.mkHeader.mkHeaderLight .focalCartCount { background: var(
 .mkEmpty { color: var(--mk-muted); font-size: 14px; padding: 18px 0; }
 .mkCover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .mkBtns { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
-.mkBtn { display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 10px; padding: 12px 20px; font-weight: 700; font-size: 14.5px; text-decoration: none; transition: background-color .15s ease; }
+.mkBtn { display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: var(--store-button-radius, 10px); text-transform: var(--store-btn-transform, none); min-height: var(--store-button-height, 46px); padding: 12px 20px; font-weight: 700; font-size: 14.5px; text-decoration: none; transition: background-color .15s ease; }
 .mkBtnPrimary { background: var(--mk-red); color: #fff; }
 .mkBtnPrimary:hover { background: var(--mk-red-dark); }
 .mkBtnGhost { background: transparent; color: #fff; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.65); }
@@ -297,7 +297,7 @@ html body.mk .focalNav.mkHeader.mkHeaderLight .focalCartCount { background: var(
 
 /* ---------------- Category circles (category_strip) ---------------- */
 html body.mk .aliCategoryStrip { background: transparent !important; border: 0 !important; padding: 22px 0 6px !important; }
-html body.mk .aliCategoryStrip .aliContainer { width: min(1328px, 100%) !important; padding-inline: 16px !important; }
+html body.mk .aliCategoryStrip .aliContainer { width: min(calc(var(--store-max, 1360px) - 32px), 100%) !important; padding-inline: 16px !important; }
 html body.mk .aliCategoryRow { display: flex !important; gap: 14px !important; align-items: flex-start !important; overflow-x: auto !important; scrollbar-width: none !important; padding: 4px 2px !important; }
 html body.mk .aliCategoryRow::-webkit-scrollbar { display: none !important; }
 html body.mk .aliCategoryItem > span:last-child { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
@@ -396,7 +396,7 @@ html body.mk .aliCategoryItem:hover .aliCategoryIcon { box-shadow: 0 0 0 3px var
 .mkBundlePrice b { font-size: 18px; font-weight: 800; }
 .mkBundlePrice s { margin-left: 6px; color: #9ca3af; font-size: 13px; }
 .mkBundlePrice em { font-style: normal; background: var(--mk-yellow); color: #121212; font-size: 12px; font-weight: 800; border-radius: 6px; padding: 3px 8px; }
-.mkAdd { border: 0; background: var(--mk-red); color: #fff; font: inherit; font-weight: 700; border-radius: 10px; height: 42px; font-size: 14px; cursor: pointer; }
+.mkAdd { border: 0; background: var(--mk-red); color: #fff; font: inherit; font-weight: 700; border-radius: var(--store-button-radius, 10px); text-transform: var(--store-btn-transform, none); height: 42px; font-size: 14px; cursor: pointer; }
 .mkAdd:hover { background: var(--mk-red-dark); }
 
 /* ---------------- Trust strip ---------------- */
@@ -696,7 +696,7 @@ html body.mk .mkHead p { margin-inline-start: 15px; }
 html body.mk .mkCard { box-shadow: var(--mk-shadow-1), 0 0 0 1px var(--mk-line); transition: box-shadow .2s var(--mk-ease), transform .2s var(--mk-ease); }
 html body.mk .mkCardBadge { border-radius: 999px; padding: 4px 9px; letter-spacing: .01em; box-shadow: 0 1px 2px rgba(0, 0, 0, .12); }
 html body.mk .mkCardPrice strong { font-size: 17px; letter-spacing: -.01em; }
-html body.mk .mkCardAdd { min-height: 44px; border-radius: var(--mk-radius-sm); transition: background-color .15s ease, transform .1s ease; }
+html body.mk .mkCardAdd { min-height: 44px; border-radius: var(--store-button-radius, var(--mk-radius-sm)); text-transform: var(--store-btn-transform, none); transition: background-color .15s ease, transform .1s ease; }
 html body.mk .mkCardAdd:active { transform: scale(.98); }
 @media (hover: hover) {
   html body.mk .mkCard:hover { box-shadow: var(--mk-shadow-2), 0 0 0 1px var(--mk-line); transform: translateY(-2px); }
@@ -837,10 +837,12 @@ html body.mk .cartTrustUX small { font-size: 12px !important; }
    Colours still come from the theme (--store-*). Arabic keeps the theme heading font because the
    display face has no Arabic letters. Nothing here changes data, prices or behaviour. */
 body.mk {
-  --mk-display: var(--font-bricolage), var(--store-font-heading), system-ui, sans-serif;
-  --mk-section-gap: 40px;
+  /* Bricolage, or the heading font chosen in Theme settings (--store-display-face: lib/font-options.ts). */
+  --mk-display: var(--store-display-face, var(--font-bricolage)), var(--store-font-heading), system-ui, sans-serif;
+  /* Theme settings › Layout › Section spacing (76 by default) scales the gaps: 40px on phones, 64px on computers at 76. */
+  --mk-section-gap: calc(var(--store-section-space, 76px) * 40 / 76);
 }
-@media (min-width: 760px) { body.mk { --mk-section-gap: 64px; } }
+@media (min-width: 760px) { body.mk { --mk-section-gap: calc(var(--store-section-space, 76px) * 64 / 76); } }
 html[dir="rtl"] body.mk { --mk-display: var(--store-font-heading), system-ui, sans-serif; }
 
 /* Display type: headlines only. */

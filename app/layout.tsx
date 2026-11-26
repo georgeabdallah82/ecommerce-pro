@@ -22,7 +22,7 @@ import { getSiteSeo } from '@/lib/seo'
 import { getThemeState, defaultTheme, defaultNavigation } from '@/lib/theme'
 import { getTrackingConfig } from '@/lib/tracking'
 import { FONT_VARIABLE_CLASSES } from '@/lib/fonts'
-import { fontCssStack } from '@/lib/font-options'
+import { fontCssStack, marketDisplayFace } from '@/lib/font-options'
 import StoreNavRuntime from '@/components/store-nav-runtime'
 import StoreNavScroll from '@/components/store-nav-scroll'
 import VisitorTracker from '@/components/visitor-tracker'
@@ -108,7 +108,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     '--store-announcement-bg': theme.colors.announcementBg, '--store-announcement-text': theme.colors.announcementText,
     '--store-section-space': `${theme.layout.sectionSpacing}px`, '--store-card-radius': `${theme.cards.radius}px`, '--store-button-radius': `${theme.buttons.radius}px`,
     '--store-button-height': `${theme.buttons?.height || 48}px`, '--store-btn-transform': theme.buttons?.uppercase ? 'uppercase' : 'none',
-    '--store-font-heading': fontCssStack(theme.typography?.heading), '--store-font-body': fontCssStack(theme.typography?.body),
+    '--store-font-heading': fontCssStack(theme.typography?.heading), '--store-display-face': marketDisplayFace(theme.typography?.heading), '--store-font-body': fontCssStack(theme.typography?.body),
     '--store-animation-duration': `${theme.animations?.duration || 420}ms`,
     '--store-animation-easing': theme.animations?.easing || 'cubic-bezier(.22,.8,.26,1)', '--store-btn-style': theme.buttons?.style || 'solid', '--store-btn-hover': theme.buttons?.hover || 'lift',
     '--store-header-logo-width': `${theme.header?.logoWidth || 160}px`,

@@ -55,8 +55,8 @@ html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCa
    - Card position: a row that isn't full sits at the left, in the middle or at the right. Tiles used to stretch to
      fill the row, so the setting did nothing. Here they keep their size instead. */
 html body.mk .aliCategoryStrip.has-sec-w :is(.mkStripHead, .aliContainer) { width: min(var(--sec-w), 100%) !important; margin-inline: auto !important; }
-html body.mk .aliCategoryStrip.has-sec-w.sec-left :is(.mkStripHead, .aliContainer) { margin-inline: max(0px, calc((100% - 1328px) / 2)) auto !important; }
-html body.mk .aliCategoryStrip.has-sec-w.sec-right :is(.mkStripHead, .aliContainer) { margin-inline: auto max(0px, calc((100% - 1328px) / 2)) !important; }
+html body.mk .aliCategoryStrip.has-sec-w.sec-left :is(.mkStripHead, .aliContainer) { margin-inline: max(0px, calc((100% - (var(--store-max, 1360px) - 32px)) / 2)) auto !important; }
+html body.mk .aliCategoryStrip.has-sec-w.sec-right :is(.mkStripHead, .aliContainer) { margin-inline: auto max(0px, calc((100% - (var(--store-max, 1360px) - 32px)) / 2)) !important; }
 html body.mk .aliCategoryStrip:is(.block-center, .block-right) .aliCategoryRow { display: flex !important; flex-wrap: wrap !important; }
 html body.mk .aliCategoryStrip:is(.block-center, .block-right) .aliCategoryRow > .aliCategoryItem { flex: 0 1 140px !important; }
 html body.mk .aliCategoryStrip:is(.block-center, .block-right) .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem { flex: 0 1 300px !important; }
