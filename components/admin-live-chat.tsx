@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Send } from 'lucide-react'
 import Link from './admin-link'
+import DeleteChatButton from './admin-delete-chat'
 import { useToast } from './admin-toast'
 import { fetchRead } from '@/lib/retry-fetch'
 import ui from './admin-ui.module.css'
@@ -21,7 +22,7 @@ const minutesSince = (iso: string, now: number) => Math.max(0, Math.floor((now -
 const time = (iso: string) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 const LANG: Record<string, string> = { en: 'English', ar: 'Arabic', arabizi: 'Lebanese (Latin letters)' }
 
-export default function LiveChatInbox({ initialId }: { initialId: string | null }) {
+export default function LiveChatInbox({ initialId, canDelete }: { initialId: string | null; canDelete: boolean }) {
   const toast = useToast()
   const [presence, setPresence] = useState<Presence | null>(null)
   const [available, setAvailable] = useState(true)
@@ -181,6 +182,7 @@ export default function LiveChatInbox({ initialId }: { initialId: string | null 
                   <span>{LANG[thread.lang] || thread.lang}</span>
                 </div>
                 <Link href={`/admin/online-store/assistant/${thread.id}`} className={ui.textLink}>Full chat</Link>
+                {canDelete ? <DeleteChatButton id={thread.id} compact onDeleted={() => { setSelected(null); setThread(null); void loadInbox() }} /> : null}
               </header>
               <div className={styles.messages} ref={log} role="log" aria-live="polite">
                 {thread.messages.map(m => (

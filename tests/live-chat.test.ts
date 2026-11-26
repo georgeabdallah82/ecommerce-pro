@@ -106,3 +106,15 @@ describe('live chat: the store side', () => {
     assert.equal(redactCards('card 4242 4242 4242 4242'), 'card [card]')
   })
 })
+
+describe('deleting chats', () => {
+  it('only the owner and admins can delete (assistant.manage), and it is logged', () => {
+    const route = readFileSync('app/api/admin/assistant/conversations/route.ts', 'utf8')
+    assert.match(route, /requirePermission\('assistant\.manage'\)/)
+    assert.match(route, /audit\(actor\.id, 'assistant\.chat\.deleted'/)
+  })
+  it('the button shows only for them, on the chat page and in the live inbox', () => {
+    assert.match(readFileSync('app/admin/online-store/assistant/[id]/page.tsx', 'utf8'), /canDelete = hasPermission\(user, 'assistant\.manage'\)/)
+    assert.match(readFileSync('app/admin/online-store/assistant/live/page.tsx', 'utf8'), /canDelete=\{hasPermission\(user, 'assistant\.manage'\)\}/)
+  })
+})
