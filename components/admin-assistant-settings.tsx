@@ -86,7 +86,7 @@ export default function AssistantSettings({ initial, canManage, ready }: { initi
           </label>
         </div>
         {!keyConfigured ? (
-          <p className={`${ui.alert} ${styles.notice}`}>
+          <p className={styles.notice} role="status">
             {free
               ? 'The Cloudflare AI keys are not set on the server yet (CLOUDFLARE_AI_ACCOUNT_ID and CLOUDFLARE_AI_TOKEN), so typed questions are answered with your shop\'s own search (no AI). The buttons work as usual. See the setup steps in the docs.'
               : 'The Claude API key is not set on the server yet (ANTHROPIC_API_KEY), so typed questions are answered with your shop\'s own search (no AI). The buttons work as usual. See the setup steps in the docs.'}
