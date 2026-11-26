@@ -1,0 +1,29 @@
+/* Admin › Settings › WhatsApp setup guide (app/admin/settings/whatsapp). */
+.page { display: grid; gap: 16px; max-width: 920px; }
+.back { justify-self: start; }
+.progress { display: grid; gap: 14px; padding: clamp(16px, 2.4vw, 22px); }
+.progressHead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.progressHead h2, .stepTitle { margin: 0; font-size: 17px; font-weight: 800; }
+.stepsNav { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.stepsNav a { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); color: inherit; text-decoration: none; }
+.stepsNav a:hover { background: var(--admin-bg); }
+.offers { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; font-size: 14px; }
+.offers li { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.offers li > strong { flex: none; }
+.step { display: grid; gap: 12px; padding: clamp(16px, 2.4vw, 22px); scroll-margin-top: 84px; }
+.stepHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.stepTitle { display: flex; align-items: center; gap: 10px; }
+.number { display: inline-grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: 999px; background: var(--admin-bg); border: 1px solid var(--admin-border); font-size: 14px; font-weight: 800; }
+.list { display: grid; gap: 8px; margin: 0; padding-inline-start: 22px; line-height: 1.55; font-size: 14px; }
+.list li::marker { font-weight: 700; }
+.note { margin: 0; font-size: 13px; line-height: 1.5; color: var(--admin-muted); }
+.templates { display: grid; gap: 10px; }
+.template { display: grid; gap: 6px; padding: 12px 14px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md); background: var(--admin-bg); }
+.templateHead { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 14px; }
+.template pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: inherit; font-size: 13px; line-height: 1.55; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.errors { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; font-size: 14px; line-height: 1.5; }
+.errors li { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 10px; }
+.code { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--admin-muted); }
+/* A status pill stays on one line; the step's title wraps instead. */
+.stepsNav a > :last-child, .stepHead > :last-child { flex: none; white-space: nowrap; }

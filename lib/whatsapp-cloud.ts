@@ -141,8 +141,9 @@ export function whatsappFailureIsPermanent(status: number, code = 0) {
   return !(status === 0 || status === 408 || status === 429 || status >= 500)
 }
 
-// The refusals staff are most likely to see, in words that say what to do.
-const PLAIN_ERRORS: Record<number, string> = {
+// The refusals staff are most likely to see, in words that say what to do (also listed in the setup guide,
+// app/admin/settings/whatsapp).
+export const PLAIN_ERRORS: Record<number, string> = {
   0: 'the access key was refused; save a new one in Settings',
   10: 'the access key is missing the WhatsApp permission; make a new one with whatsapp_business_messaging',
   190: 'the access key has expired; save a new one in Settings',

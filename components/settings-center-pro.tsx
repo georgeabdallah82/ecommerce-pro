@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import AdminLink from './admin-link'
 import { Save, Store, CreditCard, Truck, Globe2, Mail, ShieldCheck, Search, Bell, Code2, ChevronRight, BarChart3, Wrench, Gift } from 'lucide-react'
 import { MAINTENANCE_MODES, MAINTENANCE_MODE_INFO, maintenanceMode } from '@/lib/maintenance-defaults'
 import styles from './admin-settings-center.module.css'
@@ -62,9 +63,10 @@ const defaultPaymentConfig: PaymentConfig = {
   apiPassword: '',
 }
 
-export default function SettingsCenterPro({ initial, addSearchWord, metaCapiTokenSet = false, metaCapiTokenUnreadable = false, whatsappTokenSet = false, whatsappTokenUnreadable = false, emailFromDefault = '', appIcon, products = [], whatsappListCount = 0 }: { initial: any[]; addSearchWord?: string; metaCapiTokenSet?: boolean; metaCapiTokenUnreadable?: boolean; whatsappTokenSet?: boolean; whatsappTokenUnreadable?: boolean; emailFromDefault?: string; appIcon?: { brandName: string; source: string; brandColor: string; saved: { large: string; small: string } }; products?: Array<{ id: string; name: string }>; whatsappListCount?: number }) {
+export default function SettingsCenterPro({ initial, addSearchWord, initialTab, metaCapiTokenSet = false, metaCapiTokenUnreadable = false, whatsappTokenSet = false, whatsappTokenUnreadable = false, emailFromDefault = '', appIcon, products = [], whatsappListCount = 0 }: { initial: any[]; addSearchWord?: string; initialTab?: string; metaCapiTokenSet?: boolean; metaCapiTokenUnreadable?: boolean; whatsappTokenSet?: boolean; whatsappTokenUnreadable?: boolean; emailFromDefault?: string; appIcon?: { brandName: string; source: string; brandColor: string; saved: { large: string; small: string } }; products?: Array<{ id: string; name: string }>; whatsappListCount?: number }) {
   const map = useMemo(() => new Map(initial.map(x => [x.key, x.value])), [initial])
-  const [tab, setTab] = useState('General')
+  // ?tab=Email opens a tab straight away (the WhatsApp setup guide links there).
+  const [tab, setTab] = useState(() => groups.some(g => g.key === initialTab) ? initialTab! : 'General')
   // A term the shoppers searched for and found nothing: add it as a new word group, left for the owner to finish.
   useEffect(() => {
     const word = (addSearchWord || '').trim()
@@ -563,6 +565,7 @@ export default function SettingsCenterPro({ initial, addSearchWord, metaCapiToke
               <p className={ui.muted} style={{ margin: 0 }}>For products with a reminder set (product › Inventory › &ldquo;Running low?&rdquo; reminder): that many days after delivery, the customer gets one reminder with a link that puts the product back in their cart. On WhatsApp when they asked for WhatsApp updates and the &ldquo;Running low?&rdquo; template is set below, otherwise by email. At most one a week per customer, and never after they ask to stop.</p>
             </Card>
             <Card title="Automatic WhatsApp messages" desc="Customers who tick “Send my order updates on WhatsApp” at checkout get a message from your WhatsApp Business number when you confirm their order, when it is out for delivery and when it is delivered. Checkout offers the choice once this is switched on and set up. Meta charges per message, at its utility rate.">
+              <p className={ui.muted} style={{ margin: 0 }}>New to this? <AdminLink className={ui.textLink} href="/admin/settings/whatsapp">Follow the step-by-step setup guide</AdminLink>: it walks through Meta and shows which steps are done.</p>
               <Toggle label="Send automatic WhatsApp messages" keyName="whatsapp.cloud.enabled" value={flags['whatsapp.cloud.enabled']} onChange={() => toggle('whatsapp.cloud.enabled')} />
               <div className={ui.twoCol}>
                 <Field label="Phone number ID" inputMode="numeric" value={values['whatsapp.cloud.phoneNumberId']} placeholder="e.g. 106540352242922" onChange={v => set('whatsapp.cloud.phoneNumberId', v.replace(/\D/g, '').slice(0, 25))} />

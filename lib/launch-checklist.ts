@@ -41,6 +41,8 @@ export type LaunchFacts = {
   manual: Record<string, string>
   // The free database hours in one line (lib/database-hours.ts), when the daily check can be read.
   databaseHours?: string
+  // Automatic WhatsApp messages switched on and connected (Settings › Email & messaging).
+  whatsappOn?: boolean
   // Product photos heavier than HEAVY_PHOTO_KB (sizes recorded at upload, lib/media-storage.ts).
   heavyPhotos?: Array<{ product: string; kb: number }>
 }
@@ -188,6 +190,9 @@ export function buildChecklist(f: LaunchFacts): { items: ChecklistItem[]; before
     f.adTracking
       ? { id: 'tracking', group: 'after', title: 'Ad tracking (Meta Pixel or Google Analytics)', status: 'ok', detail: 'Connected' }
       : { id: 'tracking', group: 'after', title: 'Ad tracking (Meta Pixel or Google Analytics)', status: 'todo', detail: 'Needed to see which ads bring orders.', href: '/admin/settings', fix: 'Settings › Tracking' },
+    f.whatsappOn
+      ? { id: 'whatsappcloud', group: 'after', title: 'Automatic WhatsApp messages', status: 'ok', detail: 'Connected: order updates, "Running low?" reminders and sign-in codes, for each template you set.' }
+      : { id: 'whatsappcloud', group: 'after', title: 'Automatic WhatsApp messages', status: 'todo', detail: 'Optional: order updates, "Running low?" reminders and sign-in with a WhatsApp code. The guide takes you through it.', href: '/admin/settings/whatsapp', fix: 'WhatsApp setup guide' },
   )
 
   const before = items.filter(i => i.group === 'before')
