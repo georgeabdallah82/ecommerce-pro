@@ -1,4 +1,7 @@
-name: Failed check alerts
+name: Alert if a check fails
+
+# Runs after each check below finishes. When that check passed, the job is skipped at once (a grey "skipped" in
+# the Actions list: nothing to report); it only runs, and alerts, when the check failed.
 
 # When one of the checks below fails on main, the owner hears about it the way a failing store job is reported: a
 # phone notification and an email (Admin > Settings > Notifications, "Tell me about order problems"), at most once
@@ -23,6 +26,7 @@ permissions:
 
 jobs:
   tell:
+    name: Alert the owner if it failed
     # Only main's own runs: pull requests have their own checks on the pull request page.
     if: >-
       github.event.workflow_run.head_branch == 'main' &&
