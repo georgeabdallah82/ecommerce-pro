@@ -1,0 +1,90 @@
+/*
+ * Admin › AI assistant (app/admin/online-store/assistant) - CSS Modules with the --admin-* tokens from
+ * ../app/admin/admin-overhaul.css, so dark mode is automatic.
+ */
+
+.page { display: grid; gap: 18px; max-width: 1180px; margin: 0 auto; padding-bottom: 96px; }
+
+.tabs, .periods { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-pill); background: var(--admin-surface); justify-self: start; }
+.tabs a, .periods a { min-height: 34px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: var(--admin-radius-pill); color: var(--admin-muted); font-size: 13px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.tabs a:hover, .periods a:hover { color: var(--admin-ink); }
+.tabs a:focus-visible, .periods a:focus-visible { outline: 3px solid var(--admin-focus); outline-offset: 1px; }
+.tabOn, .periodOn { background: var(--admin-ink) !important; color: var(--admin-surface) !important; }
+
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.stat { display: grid; gap: 4px; padding: 16px 18px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-lg); background: var(--admin-surface); box-shadow: var(--admin-shadow-sm); align-content: start; }
+.stat span { font-size: 12px; font-weight: 700; color: var(--admin-muted); }
+.stat strong { font-size: 28px; letter-spacing: -.02em; color: var(--admin-ink); font-variant-numeric: tabular-nums; }
+.stat small { font-size: 12px; color: var(--admin-muted); line-height: 1.45; }
+.statWarn { border-color: var(--admin-warning); background: var(--admin-warning-soft); }
+.statWarn strong { color: var(--admin-warning); }
+
+.tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; align-items: start; }
+.panel { display: grid; gap: 12px; padding: 18px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-lg); background: var(--admin-surface); box-shadow: var(--admin-shadow-sm); min-width: 0; }
+.panel h2 { margin: 0; font-size: 16px; color: var(--admin-ink); }
+.panel p { margin: 0; }
+.panelHead { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.panelHead p { margin: 3px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--admin-muted); }
+
+.list { list-style: none; margin: 0; padding: 0; display: grid; }
+.list li { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--admin-border); font-size: 13.5px; }
+.list li:first-child { border-top: 0; }
+.list a { color: var(--admin-ink); overflow-wrap: anywhere; }
+.list small { color: var(--admin-muted); white-space: nowrap; }
+
+.chatLink { display: block; max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--admin-ink); font-weight: 600; margin-bottom: 4px; }
+.pager { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+.pager a { font-weight: 700; color: var(--admin-ink); }
+
+/* Settings */
+.settings { display: grid; gap: 16px; }
+.switchRow { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.switchRow p { margin-top: 4px; font-size: 13px; line-height: 1.5; max-width: 640px; }
+.toggle { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; cursor: pointer; min-height: 44px; }
+.toggle input { width: 20px; height: 20px; accent-color: var(--admin-ink); }
+.notice { margin: 0; font-size: 13px; line-height: 1.5; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.field { display: grid; gap: 6px; min-width: 0; }
+.suggestions { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.suggestion { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) auto; gap: 8px; align-items: center; padding: 10px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md, 12px); }
+.wide { grid-column: 1 / -2; }
+.rowActions { display: inline-flex; gap: 4px; justify-content: flex-end; }
+
+/* FAQ */
+.faqs { display: grid; gap: 16px; }
+.faqEditor { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md, 12px); background: var(--admin-bg, transparent); }
+.check { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; }
+.formActions { display: flex; justify-content: flex-end; gap: 8px; }
+.hint { padding: 12px 14px; border-radius: var(--admin-radius-md, 12px); background: var(--admin-warning-soft); font-size: 13px; }
+.hint ul { margin: 6px 0 0; padding-inline-start: 18px; display: grid; gap: 2px; }
+.faqList { list-style: none; margin: 0; padding: 0; display: grid; }
+.faqList > li { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid var(--admin-border); }
+.faqList > li:first-child { border-top: 0; }
+.faqList > li > form { flex: 1; }
+.faqText { display: grid; gap: 4px; min-width: 0; font-size: 13.5px; }
+.faqText strong { color: var(--admin-ink); }
+.faqText p { line-height: 1.5; white-space: pre-wrap; }
+.off { opacity: .65; }
+
+/* One conversation */
+.pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.transcript { gap: 10px; }
+.fromShopper, .fromAssistant { max-width: 78%; padding: 10px 12px; border-radius: 14px; font-size: 14px; line-height: 1.5; }
+.fromShopper { justify-self: end; background: var(--admin-ink); color: var(--admin-surface); }
+.fromAssistant { justify-self: start; background: var(--admin-bg, rgba(0, 0, 0, .04)); border: 1px solid var(--admin-border); color: var(--admin-ink); }
+.fromShopper p, .fromAssistant p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.meta { font-size: 11.5px; opacity: .75; margin-bottom: 4px; }
+.productList { margin: 6px 0 0; padding-inline-start: 18px; font-size: 13px; }
+.productList a { color: inherit; }
+
+@media (max-width: 900px) {
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid2 { grid-template-columns: 1fr; }
+  .suggestion { grid-template-columns: 1fr; }
+  .wide { grid-column: auto; }
+  .fromShopper, .fromAssistant { max-width: 92%; }
+}
+@media (max-width: 520px) {
+  .stats { grid-template-columns: 1fr; }
+  .switchRow { flex-direction: column; }
+}

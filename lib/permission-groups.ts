@@ -39,6 +39,7 @@ export const PERMISSION_SECTIONS: PermissionSection[] = [
     { key: 'navigation', label: 'Menus', view: 'navigation.view', manage: 'navigation.manage' },
     { key: 'media', label: 'Files & images', view: 'media.view', manage: 'media.manage' },
     { key: 'channels', label: 'Sales channels', view: 'salesChannels.view', manage: 'salesChannels.manage' },
+    { key: 'assistant', label: 'AI shopping assistant', hint: 'See its chats; changing it covers switching it on or off, its daily budget and FAQ answers', view: 'assistant.view', manage: 'assistant.manage' },
   ] },
   { title: 'Reports', areas: [
     { key: 'dashboard', label: 'Dashboard', view: 'dashboard.view' },

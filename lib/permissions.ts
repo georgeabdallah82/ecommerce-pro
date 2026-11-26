@@ -31,6 +31,7 @@ export type Permission =
   | 'salesChannels.view' | 'salesChannels.manage'
   | 'apiCredentials.view' | 'apiCredentials.manage'
   | 'abandonedCheckouts.view' | 'abandonedCheckouts.manage'
+  | 'assistant.view' | 'assistant.manage'
   | 'notices.manage'
   | 'analytics.view'
   | 'reports.view'
@@ -67,6 +68,7 @@ export const ALL_PERMISSIONS: Permission[] = [
   'salesChannels.view', 'salesChannels.manage',
   'apiCredentials.view', 'apiCredentials.manage',
   'abandonedCheckouts.view', 'abandonedCheckouts.manage',
+  'assistant.view', 'assistant.manage',
   'notices.manage',
   'analytics.view',
   'reports.view',
@@ -82,7 +84,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   MANAGER: ALL_PERMISSIONS.filter(p => ![
     'settings.manage', 'users.view', 'users.manage', 'activity.view',
     'media.manage', 'content.manage', 'themes.manage', 'navigation.manage',
-    'apiCredentials.manage'
+    'apiCredentials.manage', 'assistant.manage'
   ].includes(p)),
   SUPPORT: [
     'dashboard.view',
@@ -93,7 +95,9 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'customers.view', 'customers.manage',
     'customerSegments.view', 'customerTags.view',
     'storeCredit.view',
-    'reviews.view', 'reviews.manage'
+    'reviews.view', 'reviews.manage',
+    // The AI assistant's chats: a shopper the assistant sent to support may be asking about one.
+    'assistant.view'
   ],
   EDITOR: [
     'dashboard.view',

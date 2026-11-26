@@ -34,6 +34,8 @@ import Script from 'next/script'
 import { NavProgress } from '@/components/nav-progress'
 import { safeStyleText } from '@/lib/sanitize-html'
 import { WhatsAppFloat } from '@/components/market-chrome'
+import { AssistantWidget } from '@/components/assistant-widget'
+import { parseAssistantConfig, withStoreName } from '@/lib/assistant/config'
 import PushOptIn from '@/components/push-opt-in'
 import { LangProvider } from '@/components/lang-provider'
 import WelcomePopup from '@/components/welcome-popup'
@@ -98,7 +100,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       console.error('[layout] getTrackingConfig failed, tracking disabled', error)
       return { metaPixelId: '', gaMeasurementId: '', tiktokPixelId: '', googleAdsId: '', googleAdsPurchaseLabel: '' }
     }),
-    // Same cached read the theme already made; only for the notification popup's switch.
+    // Same cached read the theme already made: the notification popup's switch and the AI assistant's chat button.
     getStorefrontSettings().catch(() => new Map<string, string>()),
   ])
   const vars = {
@@ -113,6 +115,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     '--store-animation-easing': theme.animations?.easing || 'cubic-bezier(.22,.8,.26,1)', '--store-btn-style': theme.buttons?.style || 'solid', '--store-btn-hover': theme.buttons?.hover || 'lift',
     '--store-header-logo-width': `${theme.header?.logoWidth || 160}px`,
   } as React.CSSProperties
+  // The AI shopping assistant (Admin › AI assistant), in the corner the WhatsApp button leaves free.
+  const assistant = parseAssistantConfig(storefrontSettings)
+  const storeName = String(theme.brandName || storefrontSettings.get('store.name') || 'our store').trim()
+  const whatsappRight = theme.whatsapp?.enabled === true && theme.whatsapp?.position !== 'left'
+  const assistantWidget = assistant.enabled ? <AssistantWidget welcome={withStoreName(assistant.welcome, storeName)} welcomeAr={withStoreName(assistant.welcomeAr, storeName)} suggestions={assistant.suggestions} side={whatsappRight ? 'left' : 'right'} storeName={storeName}/> : null
   const adminThemeScript = `try{if(location.pathname.startsWith('/admin')){var t=localStorage.getItem('admin.theme')==='dark'?'dark':'light';document.documentElement.dataset.adminTheme=t;document.documentElement.style.colorScheme=t}}catch(e){}`
   // These need to be visible at :root, not just <body>: several
   // storefront-legacy.css :root{} rules resolve their own tokens via
@@ -136,5 +143,5 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // editor's live-preview iframe: the fresh re-render recreates the iframe mid-handshake,
   // permanently losing the postMessage exchange that populates the preview pane.
   // Arabic pages read right to left (lib/i18n.ts); admin pages are always English.
-  return <html lang={lang} dir={lang === 'ar' ? 'rtl' : 'ltr'} className={FONT_VARIABLE_CLASSES} suppressHydrationWarning><head><Script id="admin-theme" strategy="beforeInteractive" nonce={nonce} dangerouslySetInnerHTML={{__html:adminThemeScript}}/><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/><link rel="icon" href={theme.faviconUrl || 'data:,'}/>{theme.customCss ? <style dangerouslySetInnerHTML={{ __html: safeStyleText(theme.customCss) }}/> : null}</head><body className={[theme.animations?.enabled ? 'animations-enabled' : '', theme.design === 'market' ? 'mk' : ''].filter(Boolean).join(' ') || undefined}>{pixelsAllowed ? <ConsentTracking config={tracking} nonce={nonce} /> : null}<LangProvider lang={lang} switchable={switchable} preview={languagePreview}><CartProvider><SkipLink/><CookieBanner /><NavProgress/><VisitorTracker/><StoreNavRuntime theme={theme} navigation={navigation}/><StoreNavScroll/><span id="main-content" tabIndex={-1} style={{ display: 'block', height: 0, overflow: 'hidden' }}/>{children}<WhatsAppFloat theme={theme}/><WelcomePopup/><InviteLanding/><PushOptIn vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} enabled={storefrontSettings.get('push.askVisitors') !== 'false'} storeName={String(theme.brandName || 'our store').trim()}/></CartProvider></LangProvider></body></html>
+  return <html lang={lang} dir={lang === 'ar' ? 'rtl' : 'ltr'} className={FONT_VARIABLE_CLASSES} suppressHydrationWarning><head><Script id="admin-theme" strategy="beforeInteractive" nonce={nonce} dangerouslySetInnerHTML={{__html:adminThemeScript}}/><style dangerouslySetInnerHTML={{__html:rootVarsCss}}/><link rel="stylesheet" href="/theme-fallback.css?v=13"/><link rel="icon" href={theme.faviconUrl || 'data:,'}/>{theme.customCss ? <style dangerouslySetInnerHTML={{ __html: safeStyleText(theme.customCss) }}/> : null}</head><body className={[theme.animations?.enabled ? 'animations-enabled' : '', theme.design === 'market' ? 'mk' : ''].filter(Boolean).join(' ') || undefined}>{pixelsAllowed ? <ConsentTracking config={tracking} nonce={nonce} /> : null}<LangProvider lang={lang} switchable={switchable} preview={languagePreview}><CartProvider><SkipLink/><CookieBanner /><NavProgress/><VisitorTracker/><StoreNavRuntime theme={theme} navigation={navigation}/><StoreNavScroll/><span id="main-content" tabIndex={-1} style={{ display: 'block', height: 0, overflow: 'hidden' }}/>{children}<WhatsAppFloat theme={theme}/>{assistantWidget}<WelcomePopup/><InviteLanding/><PushOptIn vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} enabled={storefrontSettings.get('push.askVisitors') !== 'false'} storeName={String(theme.brandName || 'our store').trim()}/></CartProvider></LangProvider></body></html>
 }
