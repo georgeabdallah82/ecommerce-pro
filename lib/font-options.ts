@@ -27,3 +27,11 @@ export function fontCssStack(key: string | undefined): string {
   const match = FONT_OPTIONS.find(f => f.key === key) || FONT_OPTIONS[0]
   return `${match.cssVar}, ${FALLBACK_STACK[match.category]}`
 }
+
+// The market storefront's headline face (app/storefront-market.css, --mk-display): Bricolage Grotesque while the
+// heading font is the market default (DM Sans), otherwise the heading font the owner chose in Theme settings ›
+// Typography. It used to be Bricolage whatever was chosen, so that setting changed no headline.
+export const MARKET_DEFAULT_HEADING = 'dmSans'
+export function marketDisplayFace(key: string | undefined): string {
+  return !key || key === MARKET_DEFAULT_HEADING || key === 'bricolage' ? 'var(--font-bricolage)' : fontCssStack(key)
+}

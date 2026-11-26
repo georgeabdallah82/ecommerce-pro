@@ -13,7 +13,7 @@ import AliExpressShop from '@/components/aliexpress-shop'
 import AliExpressCollectionDetail from '@/components/aliexpress-collection-detail'
 import AliExpressCart from '@/components/aliexpress-cart'
 import { Footer } from '@/components/footer'
-import { fontCssStack } from '@/lib/font-options'
+import { fontCssStack, marketDisplayFace } from '@/lib/font-options'
 import { localize } from '@/lib/i18n'
 import { LangProvider } from '@/components/lang-provider'
 
@@ -42,7 +42,7 @@ function themeCssVars(theme: Record<string, any>): React.CSSProperties {
     '--store-card-radius': cards.radius !== undefined ? `${cards.radius}px` : undefined,
     '--store-button-radius': buttons.radius !== undefined ? `${buttons.radius}px` : undefined,
     '--store-button-height': `${buttons.height || 48}px`, '--store-btn-transform': buttons.uppercase ? 'uppercase' : 'none',
-    '--store-font-heading': fontCssStack(theme.typography?.heading), '--store-font-body': fontCssStack(theme.typography?.body),
+    '--store-font-heading': fontCssStack(theme.typography?.heading), '--store-display-face': marketDisplayFace(theme.typography?.heading), '--store-font-body': fontCssStack(theme.typography?.body),
     '--store-animation-duration': `${animations.duration || 420}ms`,
     '--store-animation-easing': animations.easing || 'cubic-bezier(.22,.8,.26,1)', '--store-btn-style': buttons.style || 'solid', '--store-btn-hover': buttons.hover || 'lift',
     '--store-header-logo-width': theme.header?.logoWidth ? `${theme.header.logoWidth}px` : undefined,
@@ -237,7 +237,7 @@ export default function ThemePreviewFrame() {
                 </div>}
                 {showCollection
                   ? <AliExpressCollectionDetail theme={view.theme} collection={collection} products={view.products.filter(p => ids.has(p.id))} sections={view.sections} zoneCollections={view.collections} />
-                  : <AliExpressShop theme={view.theme} products={view.products} collections={view.collections} query={{}} sections={view.sections} />}
+                  : <AliExpressShop theme={view.theme} products={newestFirst(view.products)} collections={view.collections} query={{}} sections={view.sections} />}
               </>
             })() : (
               <AliExpressCart theme={view.theme} recommended={sample.related} sections={view.sections} zoneCollections={view.collections} />
@@ -255,6 +255,10 @@ export default function ThemePreviewFrame() {
     </LangProvider>
   )
 }
+
+// The live Shop page lists newest first unless the shopper picks another sort (app/shop/page.tsx); the editor's
+// product list comes featured first, so the preview showed the products in a different order.
+const newestFirst = (products: AnyMap[]) => [...products].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
 
 // Product pages need a real product to render; the Shop/Collection and Cart
 // previews only need the product list. Returns null when the store has no
