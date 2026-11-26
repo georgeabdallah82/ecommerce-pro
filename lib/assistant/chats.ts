@@ -53,8 +53,9 @@ export type SavedTurn = {
 
 export async function saveTurn(conversationId: string, turn: SavedTurn) {
   const now = Date.now()
+  // No shopper text: an answer on its own (the AI stepping in for a person in live chat).
   await db.$transaction([
-    db.assistantMessage.create({ data: { conversationId, role: 'user', kind: turn.userKind, text: redact(turn.userText).slice(0, 600), createdAt: new Date(now) } }),
+    ...(turn.userText ? [db.assistantMessage.create({ data: { conversationId, role: 'user', kind: turn.userKind, text: redact(turn.userText).slice(0, 600), createdAt: new Date(now) } })] : []),
     db.assistantMessage.create({
       data: {
         conversationId,
@@ -74,7 +75,7 @@ export async function saveTurn(conversationId: string, turn: SavedTurn) {
     db.assistantConversation.update({
       where: { id: conversationId },
       data: {
-        messageCount: { increment: 1 },
+        ...(turn.userText ? { messageCount: { increment: 1 } } : {}),
         lang: turn.lang,
         ...(turn.answered ? {} : { unanswered: true }),
         ...(turn.escalated ? { escalated: true } : {}),

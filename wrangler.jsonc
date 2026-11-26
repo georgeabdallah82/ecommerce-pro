@@ -15,6 +15,15 @@
   "r2_buckets": [
     { "binding": "MEDIA_BUCKET", "bucket_name": "ecommerce-pro-media" }
   ],
+  // The live chat relay (lib/live-chat/hub.ts, exported from worker.ts): one Durable Object that passes
+  // messages between shoppers and staff and keeps the "I'm online" switch. SQLite-backed, so it is
+  // available on the Workers Free plan.
+  "durable_objects": {
+    "bindings": [{ "name": "LIVE_CHAT", "class_name": "LiveChatHub" }]
+  },
+  "migrations": [
+    { "tag": "live-chat-v1", "new_sqlite_classes": ["LiveChatHub"] }
+  ],
   "observability": {
     "enabled": true
   },

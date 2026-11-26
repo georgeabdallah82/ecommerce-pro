@@ -13,14 +13,23 @@ import styles from './assistant-widget.module.css'
 // (app/api/assistant). Product cards, order links and contact buttons come from the server, never
 // from the AI's text. The chat is kept for this browser tab (sessionStorage). Docs:
 // docs/ai-assistant-2026-11.md.
+//
+// Live chat (docs/live-chat-2026-11.md): while someone from the store is online, typed messages go to
+// them (Admin › Live chat) and their replies arrive over a live connection (worker.ts
+// /api/live-chat/socket). If nobody replies within 3 minutes, the chat asks the AI to step in.
 
 type Message =
   | { id: string; role: 'user'; text: string }
   | { id: string; role: 'assistant'; reply: ChatReply }
+  | { id: string; role: 'agent'; text: string; author: string }
+  | { id: string; role: 'notice'; text: string }
   | { id: string; role: 'error'; text: string; retry?: Payload }
 
-type Payload = { message?: string; action?: QuickAction | 'track_order_form'; orderNumber?: string; contact?: string; label?: string }
-type Saved = { conversationId: string | null; messages: Message[] }
+type Payload = { message?: string; action?: QuickAction | 'track_order_form' | 'ai_fallback'; orderNumber?: string; contact?: string; label?: string }
+// waitingSince: when the shopper's message went to a person and no reply has come yet (ms).
+type Saved = { conversationId: string | null; messages: Message[]; waitingSince?: number | null }
+type Live = { online: boolean; name: string }
+type LiveMessage = { id: string; role: 'user' | 'assistant' | 'agent'; text: string; at: string; author?: string }
 
 const STORAGE_KEY = 'assistant.chat'
 const MAX_LENGTH = 500
@@ -28,13 +37,15 @@ const MAX_LENGTH = 500
 const HIDDEN = [/^\/checkout/, /^\/admin/, /^\/driver\//, /^\/theme-editor-preview/, /^\/(ar\/)?order\//]
 
 const uid = () => Math.random().toString(36).slice(2, 10)
+// The AI steps in when nobody from the store has replied after this long (lib/live-chat/server.ts).
+const AI_FALLBACK_MS = 3 * 60 * 1000
 
 function load(): Saved {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY)
     if (raw) {
       const saved = JSON.parse(raw) as Saved
-      if (Array.isArray(saved.messages)) return { conversationId: typeof saved.conversationId === 'string' ? saved.conversationId : null, messages: saved.messages.slice(-60) }
+      if (Array.isArray(saved.messages)) return { conversationId: typeof saved.conversationId === 'string' ? saved.conversationId : null, messages: saved.messages.slice(-60), waitingSince: typeof saved.waitingSince === 'number' ? saved.waitingSince : null }
     }
   } catch { /* private mode or a broken entry: start fresh */ }
   return { conversationId: null, messages: [] }
@@ -49,6 +60,10 @@ export function AssistantWidget({ welcome, welcomeAr, suggestions, side, storeNa
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
   const [tucked, setTucked] = useState(false)
+  const [live, setLive] = useState<Live>({ online: false, name: '' })
+  const [unread, setUnread] = useState(false)
+  const openRef = useRef(open)
+  openRef.current = open
   const launcher = useRef<HTMLButtonElement>(null)
   const input = useRef<HTMLTextAreaElement>(null)
   const log = useRef<HTMLDivElement>(null)
@@ -82,6 +97,68 @@ export function AssistantWidget({ welcome, welcomeAr, suggestions, side, storeNa
     return () => document.removeEventListener('keydown', onKey)
   }, [open, close])
 
+  // A reply from the store's person: added once (by its id), the wait cleared.
+  const addAgent = useCallback((items: LiveMessage[]) => {
+    const agents = items.filter(m => m.role === 'agent')
+    if (!agents.length) return
+    setState(s => {
+      const seen = new Set(s.messages.map(m => m.id))
+      const fresh = agents.filter(m => !seen.has(m.id)).map(m => ({ id: m.id, role: 'agent' as const, text: m.text, author: m.author || '' }))
+      return fresh.length ? { ...s, messages: [...s.messages.filter(m => m.role !== 'notice'), ...fresh], waitingSince: null } : s
+    })
+    if (!openRef.current) setUnread(true)
+  }, [])
+
+  // Online or not, a pass for the live connection, and replies missed while the window was closed.
+  const sync = useCallback(async (conversationId: string | null) => {
+    try {
+      const res = await fetch('/api/assistant/live', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ conversationId, after: conversationId ? new Date(0).toISOString() : undefined }) })
+      const data = await res.json().catch(() => null)
+      if (!res.ok || !data) return null
+      setLive({ online: !!data.online, name: String(data.name || '') })
+      if (Array.isArray(data.messages)) addAgent(data.messages)
+      return typeof data.ticket === 'string' ? data.ticket as string : null
+    } catch {
+      return null
+    }
+  }, [addAgent])
+
+  // Whether someone is online, each time the window opens.
+  useEffect(() => { if (open && ready) void sync(state.conversationId) }, [open, ready]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The live connection, while this tab has a chat that a person took part in or is waiting on.
+  const liveChat = state.waitingSince != null || state.messages.some(m => m.role === 'agent')
+  useEffect(() => {
+    if (!ready || !state.conversationId || !liveChat) return
+    let socket: WebSocket | null = null
+    let stopped = false
+    let tries = 0
+    let ping = 0
+    let retry = 0
+    const connect = async () => {
+      const ticket = await sync(state.conversationId)
+      if (stopped || !ticket) return
+      socket = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/live-chat/socket?ticket=${encodeURIComponent(ticket)}`)
+      socket.onopen = () => { tries = 0; ping = window.setInterval(() => socket?.readyState === 1 && socket.send('ping'), 45_000) }
+      socket.onmessage = event => {
+        if (typeof event.data !== 'string' || event.data === 'pong') return
+        try {
+          const data = JSON.parse(event.data)
+          if (data.type === 'presence') setLive({ online: !!data.online, name: String(data.name || '') })
+          if (data.type === 'message' && data.conversationId === state.conversationId && data.message) addAgent([data.message])
+        } catch { /* not ours */ }
+      }
+      socket.onclose = () => {
+        window.clearInterval(ping)
+        if (stopped || tries >= 6) return
+        tries += 1
+        retry = window.setTimeout(() => void connect(), Math.min(30_000, 1500 * 2 ** tries))
+      }
+    }
+    void connect()
+    return () => { stopped = true; window.clearInterval(ping); window.clearTimeout(retry); socket?.close() }
+  }, [ready, state.conversationId, liveChat, sync, addAgent])
+
   const send = useCallback(async (payload: Payload) => {
     if (busy) return
     const shown = payload.label || payload.message || ''
@@ -94,18 +171,33 @@ export function AssistantWidget({ welcome, welcomeAr, suggestions, side, storeNa
         body: JSON.stringify({ conversationId: state.conversationId, message: payload.message, action: payload.action, orderNumber: payload.orderNumber, contact: payload.contact, page: pathname, lang }),
       })
       const data = await res.json().catch(() => null)
+      // The AI stepping in found nothing to do (a person already replied).
+      if (payload.action === 'ai_fallback' && res.ok && !data?.reply) { setState(s => ({ ...s, waitingSince: null })); return }
+      if (res.ok && data?.reply?.live?.waiting) {
+        // Sent to a person: a note instead of an answer, and the 3-minute wait starts (or goes on).
+        const name = String(data.reply.live.name || storeName)
+        setState(s => ({ conversationId: data.conversationId || s.conversationId, messages: [...s.messages.filter(m => m.role !== 'notice'), { id: uid(), role: 'notice', text: t('Sent. {name} will reply here.', { name }) }], waitingSince: s.waitingSince ?? Date.now() }))
+        return
+      }
       if (!res.ok || !data?.reply) {
         const text = typeof data?.error === 'string' ? data.error : t('Something went wrong. Please try again.')
         setState(s => ({ ...s, messages: [...s.messages, { id: uid(), role: 'error', text, retry: res.status === 429 || res.status === 400 ? undefined : { ...payload, label: '' } }] }))
         return
       }
-      setState(s => ({ conversationId: data.conversationId || s.conversationId, messages: [...s.messages, { id: uid(), role: 'assistant', reply: data.reply as ChatReply }] }))
+      setState(s => ({ conversationId: data.conversationId || s.conversationId, messages: [...s.messages.filter(m => m.role !== 'notice'), { id: uid(), role: 'assistant', reply: data.reply as ChatReply }], waitingSince: payload.action === 'ai_fallback' ? null : s.waitingSince }))
     } catch {
       setState(s => ({ ...s, messages: [...s.messages, { id: uid(), role: 'error', text: t('No connection. Check your internet and try again.'), retry: { ...payload, label: '' } }] }))
     } finally {
       setBusy(false)
     }
-  }, [busy, state.conversationId, pathname, lang, t])
+  }, [busy, state.conversationId, pathname, lang, t, storeName])
+
+  // Nobody replied in 3 minutes: the AI steps in (the server checks the wait and runs it only once).
+  useEffect(() => {
+    if (!state.waitingSince) return
+    const timer = window.setTimeout(() => void send({ action: 'ai_fallback' }), Math.max(0, state.waitingSince + AI_FALLBACK_MS - Date.now()))
+    return () => window.clearTimeout(timer)
+  }, [state.waitingSince, send])
 
   const submit = (event?: React.FormEvent) => {
     event?.preventDefault()
@@ -115,7 +207,7 @@ export function AssistantWidget({ welcome, welcomeAr, suggestions, side, storeNa
     void send({ message: text })
   }
 
-  const newChat = () => { setState({ conversationId: null, messages: [] }); setDraft(''); input.current?.focus() }
+  const newChat = () => { setState({ conversationId: null, messages: [], waitingSince: null }); setDraft(''); input.current?.focus() }
   const pick = (s: AssistantSuggestion) => {
     const label = lang === 'ar' ? s.labelAr || s.label : s.label
     void send(s.action ? { action: s.action, label } : { message: s.message, label })
@@ -133,10 +225,10 @@ export function AssistantWidget({ welcome, welcomeAr, suggestions, side, storeNa
       {open ? (
         <div className={styles.panel} role="dialog" aria-modal="false" aria-labelledby="assistant-title" dir={dir}>
           <header className={styles.head}>
-            <span className={styles.avatar} aria-hidden="true"><Sparkles size={18} /></span>
+            <span className={styles.avatar} aria-hidden="true">{live.online ? <MessageCircle size={18} /> : <Sparkles size={18} />}</span>
             <div className={styles.titles}>
-              <strong id="assistant-title">{t('Shopping assistant')}</strong>
-              <span>{storeName}</span>
+              <strong id="assistant-title">{live.online ? t('Chat with {name}', { name: live.name || storeName }) : t('Shopping assistant')}</strong>
+              {live.online ? <span className={styles.online}><i aria-hidden="true" />{t('Online now')}</span> : <span>{storeName}</span>}
             </div>
             {state.messages.length ? <button type="button" className={styles.iconButton} onClick={newChat} aria-label={t('New chat')} title={t('New chat')}><RotateCcw size={17} /></button> : null}
             <button type="button" className={styles.iconButton} onClick={close} aria-label={t('Close chat')} title={t('Close chat')}><X size={19} /></button>
@@ -146,6 +238,13 @@ export function AssistantWidget({ welcome, welcomeAr, suggestions, side, storeNa
             <div className={`${styles.bubble} ${styles.bot}`} dir="auto">{greeting}</div>
             {state.messages.map(m => (
               m.role === 'user' ? <div key={m.id} className={`${styles.bubble} ${styles.me}`} dir="auto">{m.text}</div>
+                : m.role === 'agent' ? (
+                  <div key={m.id} className={`${styles.bubble} ${styles.bot} ${styles.agent}`} dir="auto">
+                    {m.author ? <span className={styles.author}>{m.author}</span> : null}
+                    {m.text}
+                  </div>
+                )
+                : m.role === 'notice' ? <p key={m.id} className={styles.notice} role="status">{m.text}</p>
                 : m.role === 'error' ? (
                   <div key={m.id} className={styles.error} role="alert">
                     <span>{m.text}</span>
@@ -184,11 +283,12 @@ export function AssistantWidget({ welcome, welcomeAr, suggestions, side, storeNa
         ref={launcher}
         type="button"
         className={`${styles.launcher} ${tucked && !open ? styles.tucked : ''}`}
-        onClick={() => (open ? close() : setOpen(true))}
+        onClick={() => { if (open) close(); else { setOpen(true); setUnread(false) } }}
         aria-expanded={open}
-        aria-label={open ? t('Close chat') : t('Open shopping assistant')}
+        aria-label={open ? t('Close chat') : unread ? t('Open chat: new reply') : t('Open shopping assistant')}
       >
         {open ? <X size={24} /> : <MessageCircle size={24} />}
+        {unread && !open ? <span className={styles.unread} aria-hidden="true" /> : null}
       </button>
     </aside>
   )

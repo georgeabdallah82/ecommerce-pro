@@ -202,6 +202,13 @@ export async function sendNewQuestionAlert(question: { id: string; productName: 
   return sendToSubscriptions({ title: 'New question', body: `About ${question.productName}: waiting for your answer`, url: '/admin/questions' })
 }
 
+// Live chat (lib/live-chat/server.ts): a shopper wrote while the store is "online". Only the first
+// message of a wait is announced, so a shopper typing several lines sends one alert.
+export async function sendLiveChatAlert(chat: { conversationId: string; preview: string }) {
+  const preview = chat.preview.replace(/\s+/g, ' ').trim()
+  return sendToSubscriptions({ title: 'New live chat message', body: preview.length > 120 ? `${preview.slice(0, 117)}...` : preview || 'A shopper is waiting for your reply', url: `/admin/online-store/assistant/live?c=${encodeURIComponent(chat.conversationId)}` })
+}
+
 // Called with the inventory item ids touched by a stock-reducing action (a manual adjustment,
 // an order fulfillment) to alert staff about any that are now at or below their threshold.
 // Re-reads current state rather than trusting the caller's snapshot, same reasoning as

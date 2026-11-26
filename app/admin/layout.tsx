@@ -60,6 +60,7 @@ const groups: AdminSidebarGroup[] = [
     { href: '/admin/online-store/navigation', label: 'Navigation', permission: 'content.view', icon: 'navigation' },
     { href: '/admin/online-store/policies', label: 'Policies', permission: 'content.view', icon: 'content' },
     { href: '/admin/online-store/assistant', label: 'AI assistant', permission: 'assistant.view', icon: 'assistant' },
+    { href: '/admin/online-store/assistant/live', label: 'Live chat', permission: 'assistant.view', icon: 'liveChat' },
     { href: '/admin/online-store/pages', label: 'Pages', permission: 'content.view', icon: 'pages', more: true },
     { href: '/admin/online-store/blog', label: 'Blog', permission: 'content.view', icon: 'blog', more: true },
     { href: '/admin/online-store/redirects', label: 'URL redirects', permission: 'content.view', icon: 'redirects', more: true },
