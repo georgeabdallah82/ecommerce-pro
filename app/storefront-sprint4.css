@@ -4,8 +4,8 @@
 
 /* ---- Category strip ------------------------------------------------------------------------------------------
    White tiles on the cream band. A collection photo fills the tile, a product photo sits on white, and a category
-   with neither shows a department glyph (lib/category-glyph.ts). Computers: up to four categories become wide cards
-   that share the row; more wrap into rows of tiles. Phones: rows of tiles too, four across on most phones. */
+   with neither shows a department glyph (lib/category-glyph.ts). Up to four categories are wide cards (side by side
+   on computers, one per line on phones); more wrap into rows of tiles, four across on most phones. */
 html body.mk .aliCategoryStrip { --cat-line: color-mix(in srgb, var(--mk-red) 14%, #fff1e6); }
 html body.mk .aliCategoryRow { display: grid !important; grid-auto-flow: row !important; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)) !important; gap: 22px 16px !important; align-items: start !important; overflow: visible !important; padding: 4px 2px 6px !important; }
 html body.mk .aliCategoryItem { width: auto !important; min-width: 0; display: grid !important; justify-items: center !important; align-content: start !important; gap: 10px !important; text-align: center; color: var(--mk-ink); text-decoration: none; }
@@ -17,20 +17,21 @@ html body.mk .aliCategoryIcon > svg { width: 36px; height: 36px; }
 html body.mk .aliCategoryItem > span:last-child { font-family: var(--mk-display); font-size: 14.5px; font-weight: 600; line-height: 1.25; }
 html body.mk .aliCategoryItem:hover .aliCategoryIcon { transform: translateY(-2px); border-color: var(--mk-ink) !important; box-shadow: 0 14px 24px -18px rgba(18, 18, 18, .5) !important; }
 html body.mk .aliCategoryItem:focus-visible .aliCategoryIcon { border-color: var(--mk-ink) !important; box-shadow: 0 0 0 2px var(--mk-ink) !important; }
-@media (min-width: 760px) {
-  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important; gap: 16px !important; }
-  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem { grid-template-columns: 76px minmax(0, 1fr) 20px; align-items: center; justify-items: start !important; gap: 18px !important; padding: 12px 20px 12px 12px; border: 1px solid var(--cat-line); border-radius: 20px; background: var(--mk-card); text-align: start; transition: border-color .18s ease, box-shadow .18s ease; }
-  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem::after { content: ""; width: 20px; height: 20px; background: currentColor; opacity: .45; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center / 20px no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center / 20px no-repeat; transition: transform .18s ease, opacity .18s ease; }
-  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem .aliCategoryIcon { width: 76px !important; border: 0 !important; border-radius: 14px !important; background: var(--br-cream, #fff1e6) !important; }
-  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem > span:last-child { font-size: 18px; text-align: start; }
-  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem:hover { border-color: var(--mk-ink); box-shadow: 0 16px 30px -24px rgba(18, 18, 18, .55); }
-  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem:hover .aliCategoryIcon,
-  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem:focus-visible .aliCategoryIcon { transform: none; box-shadow: none !important; }
-  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem:hover::after { opacity: 1; transform: translateX(3px); }
-  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem:focus-visible { border-color: var(--mk-ink); box-shadow: 0 0 0 2px var(--mk-ink); }
-  [dir="rtl"] body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem::after { transform: scaleX(-1); }
-  [dir="rtl"] body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem:hover::after { transform: scaleX(-1) translateX(3px); }
-}
+/* Up to four categories are wide cards (picture, name, arrow) that share the row, on computers and phones alike:
+   phones stack them one per line, so the shop looks the same on both. They used to be cards on computers but
+   small square tiles bunched at the left on phones. */
+html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important; gap: 16px !important; }
+html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem { grid-template-columns: 76px minmax(0, 1fr) 20px; align-items: center; justify-items: start !important; gap: 18px !important; padding: 12px 20px 12px 12px; border: 1px solid var(--cat-line); border-radius: 20px; background: var(--mk-card); text-align: start; transition: border-color .18s ease, box-shadow .18s ease; }
+html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem::after { content: ""; width: 20px; height: 20px; background: currentColor; opacity: .45; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center / 20px no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center / 20px no-repeat; transition: transform .18s ease, opacity .18s ease; }
+html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem .aliCategoryIcon { width: 76px !important; border: 0 !important; border-radius: 14px !important; background: var(--br-cream, #fff1e6) !important; }
+html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem > span:last-child { font-size: 18px; text-align: start; }
+html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem:hover { border-color: var(--mk-ink); box-shadow: 0 16px 30px -24px rgba(18, 18, 18, .55); }
+html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem:hover .aliCategoryIcon,
+html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem:focus-visible .aliCategoryIcon { transform: none; box-shadow: none !important; }
+html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem:hover::after { opacity: 1; transform: translateX(3px); }
+html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem:focus-visible { border-color: var(--mk-ink); box-shadow: 0 0 0 2px var(--mk-ink); }
+[dir="rtl"] body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem::after { transform: scaleX(-1); }
+[dir="rtl"] body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem:hover::after { transform: scaleX(-1) translateX(3px); }
 /* Phones show every category, in rows: four across on most phones, three on the narrowest. They were one row that
    scrolled sideways with no scrollbar, so a phone showed three and a half and the rest were out of sight. */
 @media (max-width: 759px) {
@@ -38,6 +39,32 @@ html body.mk .aliCategoryItem:focus-visible .aliCategoryIcon { border-color: var
   html body.mk .aliCategoryIcon { border-radius: 16px !important; }
   html body.mk .aliCategoryIcon > svg { width: 26px; height: 26px; }
   html body.mk .aliCategoryItem > span:last-child { font-size: 12.5px; }
+}
+/* Phones: the same cards, a little smaller. */
+@media (max-width: 759px) {
+  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) { gap: 10px !important; }
+  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem { grid-template-columns: 56px minmax(0, 1fr) 18px; gap: 14px !important; padding: 8px 14px 8px 8px; border-radius: 16px; }
+  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem .aliCategoryIcon { width: 56px !important; border-radius: 12px !important; }
+  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem .aliCategoryIcon > svg { width: 26px; height: 26px; }
+  html body.mk .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem > span:last-child { font-size: 15.5px; }
+}
+/* The theme editor's "Section layout" options for this section (components/theme-section-inspector.tsx, boxFields).
+   - Section width: the heading and the categories share one box that wide, centered or at the page's left or right
+     edge. The strip's own full-width box used to win, so the setting did nothing (or, set to the left, pushed the
+     row off the right edge of the screen).
+   - Card position: a row that isn't full sits at the left, in the middle or at the right. Tiles used to stretch to
+     fill the row, so the setting did nothing. Here they keep their size instead. */
+html body.mk .aliCategoryStrip.has-sec-w :is(.mkStripHead, .aliContainer) { width: min(var(--sec-w), 100%) !important; margin-inline: auto !important; }
+html body.mk .aliCategoryStrip.has-sec-w.sec-left :is(.mkStripHead, .aliContainer) { margin-inline: max(0px, calc((100% - 1328px) / 2)) auto !important; }
+html body.mk .aliCategoryStrip.has-sec-w.sec-right :is(.mkStripHead, .aliContainer) { margin-inline: auto max(0px, calc((100% - 1328px) / 2)) !important; }
+html body.mk .aliCategoryStrip:is(.block-center, .block-right) .aliCategoryRow { display: flex !important; flex-wrap: wrap !important; }
+html body.mk .aliCategoryStrip:is(.block-center, .block-right) .aliCategoryRow > .aliCategoryItem { flex: 0 1 140px !important; }
+html body.mk .aliCategoryStrip:is(.block-center, .block-right) .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem { flex: 0 1 300px !important; }
+html body.mk .aliCategoryStrip.block-center .aliCategoryRow { justify-content: center !important; }
+html body.mk .aliCategoryStrip.block-right .aliCategoryRow { justify-content: flex-end !important; }
+@media (max-width: 759px) {
+  html body.mk .aliCategoryStrip:is(.block-center, .block-right) .aliCategoryRow > .aliCategoryItem { flex: 0 1 calc((100% - 30px) / 4) !important; min-width: 70px; }
+  html body.mk .aliCategoryStrip:is(.block-center, .block-right) .aliCategoryRow:not(:has(> .aliCategoryItem:nth-child(5))) > .aliCategoryItem { flex: 1 1 100% !important; }
 }
 @media (prefers-reduced-motion: reduce) {
   html body.mk .aliCategoryIcon, html body.mk .aliCategoryItem, html body.mk .aliCategoryItem::after { transition: none !important; }

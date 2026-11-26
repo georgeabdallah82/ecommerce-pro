@@ -38,7 +38,7 @@ test('a category without a photo gets a department glyph from its name, not one 
   assert.match(sections, /<img src=\{photo\} alt="" /, 'the photo is decorative: the name is right beside it')
 })
 
-test('the category strip: wide cards for up to four categories, rows of tiles on phones, a visible focus ring', () => {
+test('the category strip: wide cards for up to four categories, rows of tiles on phones for more, a visible focus ring', () => {
   const css = read('app/storefront-sprint4.css')
   assert.match(css, /html body\.mk \.aliCategoryRow:not\(:has\(> \.aliCategoryItem:nth-child\(5\)\)\) \{ grid-template-columns: repeat\(auto-fit, minmax\(220px, 1fr\)\) !important;/)
   // Phones show every category in rows (docs/store-category-strip-2026-11.md); the sideways row hid all but three.
