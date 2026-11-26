@@ -26,6 +26,15 @@ The store's people can answer shoppers in the same chat window as the AI shoppin
 
 **Who can answer.** Staff with "AI shopping assistant: see" (`assistant.view`), which includes the Support role, can answer and use the switch. Going online and offline is recorded in the activity log.
 
+## Deleting chats
+
+- **Where:** a **Delete chat** button on a chat's full page (Admin › AI assistant › Conversations › a chat) and in the Live chat inbox.
+- **Confirm:** it asks before deleting.
+- **What goes:** the chat and all its messages are removed for good. The shopper keeps what is still on their screen; their next message starts a new chat.
+- **Who:** only staff who can change the AI assistant (`assistant.manage`: the owner and admins). Support can read and reply, but not delete.
+- **Logged:** each delete is recorded in the activity log (`assistant.chat.deleted`).
+- **Code:** `app/api/admin/assistant/conversations` and `components/admin-delete-chat.tsx`.
+
 ## How it's built
 
 **The relay** is a Cloudflare Durable Object, `LiveChatHub` (`lib/live-chat/hub.ts`).

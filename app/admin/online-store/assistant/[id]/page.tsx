@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation'
 import Link from '@/components/admin-link'
 import { requirePermission } from '@/lib/auth'
+import { hasPermission } from '@/lib/permissions'
+import DeleteChatButton from '@/components/admin-delete-chat'
 import { conversationDetail } from '@/lib/assistant/admin'
 import ui from '@/components/admin-ui.module.css'
 import styles from '@/components/admin-assistant.module.css'
@@ -10,7 +12,8 @@ import styles from '@/components/admin-assistant.module.css'
 const KIND: Record<string, string> = { ai: 'AI answer', action: 'Button', fallback: 'Shop search (AI unavailable)', limit: 'Shop search (AI off or budget used)', message: '' }
 
 export default async function AssistantConversation({ params }: { params: Promise<{ id: string }> }) {
-  await requirePermission('assistant.view')
+  const user = await requirePermission('assistant.view')
+  const canDelete = hasPermission(user, 'assistant.manage')
   const { id } = await params
   const chat = /^[a-z0-9]{10,40}$/i.test(id) ? await conversationDetail(id) : null
   if (!chat) notFound()
@@ -25,6 +28,7 @@ export default async function AssistantConversation({ params }: { params: Promis
         </p>
       </div>
       <div className={styles.pills}>
+        {canDelete ? <DeleteChatButton id={chat.id} goTo="/admin/online-store/assistant?tab=chats" /> : null}
         {chat.unanswered ? <span className={`${ui.statusPill} ${ui.statusPillWarning}`}>Has an unanswered question</span> : null}
         {chat.escalated ? <span className={ui.statusPill}>Shown support contacts</span> : null}
       </div>
