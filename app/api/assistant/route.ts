@@ -4,13 +4,14 @@ import { consumeDurableRateLimit, consumeRateLimit } from '@/lib/rate-limit'
 import { clientIp } from '@/lib/request-ip'
 import { json } from '@/lib/utils'
 import { statusLabel, translator, type Lang } from '@/lib/i18n'
-import { QUICK_ACTION_NAMES, isQuickAction, type ChatReply } from '@/lib/assistant/config'
+import { QUICK_ACTION_NAMES, WORKERS_AI_FREE_MICROS, isQuickAction, modelProvider, type ChatReply } from '@/lib/assistant/config'
 import { loadAssistantConfig } from '@/lib/assistant/settings'
 import { detectLanguage, pageLang } from '@/lib/assistant/language'
 import { productById, toCard } from '@/lib/assistant/catalog'
 import { MAX_CHAT_MESSAGES, VISITOR_COOKIE, VISITOR_COOKIE_MAX_AGE, isVisitorId, newVisitorId, openConversation, recentTurns, saveTurn, visitorKeyOf } from '@/lib/assistant/chats'
 import { emptyReply, quickAction, searchFallback, supportCard, trackOrderReply } from '@/lib/assistant/actions'
-import { answerWithClaude, assistantKeyConfigured, resolveModel, spentTodayMicros } from '@/lib/assistant/engine'
+import { answerWithClaude, providerReady, resolveModel, spentTodayMicros } from '@/lib/assistant/engine'
+import { answerWithWorkersAi, looksLikeOrderQuestion } from '@/lib/assistant/workers-ai'
 
 // The chat widget's endpoint (components/store/assistant). POST one shopper message or button;
 // the answer comes back with product cards, order links and contact buttons built from the database.
@@ -87,6 +88,7 @@ export async function POST(request: Request) {
   }
 
   const support = { supportNote: config.supportNote, supportNoteAr: config.supportNoteAr }
+  const model = resolveModel(config.model)
   let reply: ChatReply
   let saved: Parameters<typeof saveTurn>[1]
 
@@ -97,19 +99,26 @@ export async function POST(request: Request) {
   } else if (action != null) {
     reply = await quickAction(action, answerLang, { userId, ...support })
     saved = { userText: `[Button] ${isQuickAction(action) ? QUICK_ACTION_NAMES[action] : action}`, userKind: 'action', reply: reply.text, replyKind: 'action', productIds: reply.products.map(p => p.id), searches: [], answered: true, escalated: action === 'support', lang }
+  } else if (modelProvider(model) === 'cloudflare' && looksLikeOrderQuestion(message)) {
+    // The free model gets no order data: "where is my order" opens the store's own order form.
+    reply = await quickAction('track_order', answerLang, { userId, ...support })
+    saved = { userText: message, userKind: 'message', reply: reply.text, replyKind: 'action', productIds: [], searches: [], answered: true, escalated: false, lang }
   } else {
-    // Claude answers only while it is switched on, the key is set and today's budget isn't used up.
-    const budgetMicros = Math.round(config.dailyBudgetUsd * 1_000_000)
-    const canUseAi = assistantKeyConfigured() && budgetMicros > 0 && (await spentTodayMicros()) < budgetMicros
+    // The AI answers only while the assistant is on, the model's key is set and today's budget isn't
+    // used up. Cloudflare's free model also stops at Cloudflare's free daily allowance.
+    const provider = modelProvider(model)
+    const budgetMicros = Math.min(Math.round(config.dailyBudgetUsd * 1_000_000), provider === 'cloudflare' ? WORKERS_AI_FREE_MICROS : Infinity)
+    const canUseAi = providerReady(model) && budgetMicros > 0 && (await spentTodayMicros()) < budgetMicros
     let pageProduct: { id: string; name: string } | null = null
     const slug = page?.match(/^\/(?:ar\/)?product\/([^/?#]+)/)?.[1]
     if (slug) {
       const p = await productById(decodeURIComponent(slug)).catch(() => null)
       if (p) pageProduct = { id: p.id, name: p.name }
     }
-    const result = canUseAi
-      ? await answerWithClaude({ model: resolveModel(config.model), storeName: config.storeName, history: conversation.isNew ? [] : await recentTurns(conversation.id), message, lang, userId, ip, page, pageProduct })
-      : null
+    const history = canUseAi && !conversation.isNew ? await recentTurns(conversation.id) : []
+    const result = !canUseAi ? null
+      : provider === 'cloudflare' ? await answerWithWorkersAi({ model, storeName: config.storeName, history, message, lang, pageProduct })
+      : await answerWithClaude({ model, storeName: config.storeName, history, message, lang, userId, ip, page, pageProduct })
     if (result?.ok) {
       reply = {
         ...emptyReply(result.text),

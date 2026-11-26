@@ -6,6 +6,8 @@ A chat window on the storefront that helps shoppers find products, answers deliv
 
 It is **off until switched on** in Admin › Online Store › AI assistant › Settings.
 
+**Free or paid AI.** The default model is **Cloudflare Workers AI (Llama 4 Scout), which is free**: answers stop at Cloudflare's free daily allowance, so it never adds to a bill. Claude (Anthropic) is a paid choice for better answers, especially in Arabic. Without any AI key, the assistant still works with the free buttons and shop-search answers.
+
 ## How it works
 
 The shopper sees a round chat button in the bottom corner the WhatsApp button leaves free. On phones it slides away while scrolling down, like the WhatsApp button. It sits above a product page's or the cart's buy bar.
@@ -31,7 +33,26 @@ Six buttons are answered from the store's own data, with no Claude call:
 
 The owner can edit, reorder, remove or add buttons (up to 8). A button can also send a written question, which the AI answers.
 
-### Typed messages
+### Typed messages: the free Cloudflare model
+
+With a Cloudflare model chosen (`lib/assistant/workers-ai.ts`), the store first looks up what the question is about:
+- matching products, plus a short list of up to 30 others;
+- the delivery, payment and returns settings;
+- matching FAQ answers.
+
+One call to Workers AI then writes the reply from that. There is no tool loop. The same checks apply: product cards come from the database, made-up ids are dropped, and "talk to a person" shows WhatsApp and email.
+
+Order questions ("where is my order", "wen talabiye", "وين طلبي") open the store's order form instead, so no order data reaches this model.
+
+**Free allowance:**
+- Cloudflare gives **10,000 neurons a day free**.
+- One answer uses about 75, so roughly 120 AI answers a day.
+- The assistant stops Cloudflare answers at 9,000 a day (`WORKERS_AI_FREE_MICROS`, $0.099), whatever the daily budget says.
+- After that, typed questions use the shop search until midnight UTC.
+
+It is called over Cloudflare's API with an account id and a token, not a Worker binding. The AI binding is remote-only, so it stops `wrangler dev` from starting without a Cloudflare login, which would break the real-database CI check.
+
+### Typed messages: Claude (paid)
 
 Typed questions go to Claude, but only when all of these hold:
 - the assistant is on;
@@ -163,6 +184,7 @@ The new permissions are "AI shopping assistant" (`assistant.view` / `assistant.m
   - migration `prisma/migrations/20261126210000_ai_assistant`
   - three new tables: `AssistantConversation`, `AssistantMessage`, `AssistantFaq`
   - additive only; no existing table changes
+- **Free model:** `lib/assistant/workers-ai.ts`.
 - **Tests:** `tests/assistant.test.ts`. They cover language detection, redaction, markers, settings, cost, FAQ matching and the endpoint guards. They also run the Claude loop against a local stand-in for Anthropic's API, covering:
   - a plain answer
   - a refusal
@@ -170,7 +192,24 @@ The new permissions are "AI shopping assistant" (`assistant.view` / `assistant.m
   - a tool round with thinking kept
   - the round limit
 
-## Setting it up on Cloudflare
+## Setting up the free Cloudflare AI
+
+1. Create the token in the Cloudflare dashboard:
+   - open **My Profile › API Tokens › Create Token** and use the **Workers AI** template;
+   - under Account resources, choose your account;
+   - create it and copy the token.
+2. Copy your **Account ID**. It is on the dashboard's account home or on Workers & Pages, in the right-hand column.
+3. Open **Workers & Pages › the store worker (`ecommerce-pro`) › Settings › Variables and Secrets** and add two variables, both with type **Secret**:
+   - `CLOUDFLARE_AI_ACCOUNT_ID`, set to the account ID;
+   - `CLOUDFLARE_AI_TOKEN`, set to the token.
+
+   Use Secret for both: a plain text variable set in the dashboard is removed by the next deploy, but secrets stay.
+4. In Admin › AI assistant › Settings:
+   - keep the model on a Cloudflare one;
+   - check that the "keys are not set" note is gone;
+   - switch the assistant on.
+
+## Setting up Claude instead (paid)
 
 1. Merge. CI deploys and applies the migration (`prisma migrate deploy`; it only adds tables).
 2. Create an API key in the Anthropic Console (console.anthropic.com › API keys). Set a monthly spend limit there too, as a second safety net.
@@ -214,6 +253,7 @@ Checked by hand in this round, against a stand-in server on the local database:
 
 ## Not done / limits
 
+- **Free model quality.** The free Cloudflare model is weaker than Claude, especially in Arabic and Lebanese Arabic, and was tested only against a stand-in API here. Try a few questions in each language after setup; switch to Claude if the answers aren't good enough.
 - **Real answers.** Not tested against the real Claude API: there was no key in this environment. Answer quality, and the Lebanese Arabic, need a check with the real key; try a handful of questions in each language after setup.
 - **Order tracking.** It only reads. The assistant can't change or cancel orders, take payments or apply discounts, and says so.
 - **Cost figures.** These are estimates from list prices. The Anthropic Console shows the real bill.

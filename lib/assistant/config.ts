@@ -14,15 +14,24 @@ export const isQuickAction = (value: unknown): value is QuickAction => typeof va
 
 export type AssistantSuggestion = { label: string; labelAr: string; action?: QuickAction; message?: string }
 
-// The Claude models the owner can pick, with Anthropic's list prices in dollars per million tokens
-// (cache writes cost 1.25x the input price). Used to estimate each answer's cost for the daily cap.
+// The models the owner can pick, with list prices in dollars per million tokens, used to estimate
+// each answer's cost for the daily cap. Claude: Anthropic's API (cache writes cost 1.25x the input
+// price), key ANTHROPIC_API_KEY. Cloudflare: Workers AI (lib/assistant/workers-ai.ts), billed in
+// "neurons" ($0.011 per 1,000) with 10,000 free a day; the prices here are Cloudflare's per-token
+// equivalents, and answers stop at the free allowance (WORKERS_AI_FREE_MICROS) so they cost nothing.
 export const ASSISTANT_MODELS = {
-  'claude-opus-5-5': { label: 'Claude Opus 5.5 (best answers)', input: 4, output: 20, cacheRead: 0.2 },
-  'claude-sonnet-5-5': { label: 'Claude Sonnet 5.5 (balanced)', input: 2, output: 10, cacheRead: 0.1 },
-  'claude-haiku-5-5': { label: 'Claude Haiku 5.5 (lowest cost)', input: 0.1, output: 0.5, cacheRead: 0.01 },
+  '@cf/meta/llama-4-scout-17b-16e-instruct': { provider: 'cloudflare', label: 'Cloudflare Llama 4 Scout (free)', input: 0.27, output: 0.85, cacheRead: 0 },
+  '@cf/mistralai/mistral-small-3.1-24b-instruct': { provider: 'cloudflare', label: 'Cloudflare Mistral Small 3.1 (free)', input: 0.351, output: 0.555, cacheRead: 0 },
+  'claude-opus-5-5': { provider: 'anthropic', label: 'Claude Opus 5.5 (paid, best answers)', input: 4, output: 20, cacheRead: 0.2 },
+  'claude-sonnet-5-5': { provider: 'anthropic', label: 'Claude Sonnet 5.5 (paid, balanced)', input: 2, output: 10, cacheRead: 0.1 },
+  'claude-haiku-5-5': { provider: 'anthropic', label: 'Claude Haiku 5.5 (paid, lowest cost)', input: 0.1, output: 0.5, cacheRead: 0.01 },
 } as const
+// Cloudflare's free Workers AI allowance is 10,000 neurons a day ($0.11). Cloudflare answers stop at
+// 9,000 (a margin for estimates) whatever the daily budget, so they never reach a bill.
+export const WORKERS_AI_FREE_MICROS = 9_000 * 11
 export type AssistantModel = keyof typeof ASSISTANT_MODELS
-export const DEFAULT_MODEL: AssistantModel = 'claude-opus-5-5'
+export const DEFAULT_MODEL: AssistantModel = '@cf/meta/llama-4-scout-17b-16e-instruct'
+export const modelProvider = (model: AssistantModel) => ASSISTANT_MODELS[model].provider
 export const isAssistantModel = (value: unknown): value is AssistantModel => typeof value === 'string' && value in ASSISTANT_MODELS
 
 export type AssistantUsage = { input_tokens?: number | null; output_tokens?: number | null; cache_read_input_tokens?: number | null; cache_creation_input_tokens?: number | null }
@@ -39,7 +48,8 @@ export type AssistantConfig = {
   welcome: string
   welcomeAr: string
   suggestions: AssistantSuggestion[]
-  // Claude answers stop for the day once their estimated cost reaches this; quick actions keep working.
+  // AI answers stop for the day once their estimated cost reaches this (Cloudflare models also stop at
+  // the free allowance); quick actions keep working.
   dailyBudgetUsd: number
   model: AssistantModel
   // Shown when the assistant can't help, next to the store's WhatsApp and email.

@@ -4,7 +4,8 @@ import { hasPermission } from '@/lib/permissions'
 import { db } from '@/lib/prisma'
 import { ASSISTANT_MODELS } from '@/lib/assistant/config'
 import { loadAssistantConfigFresh } from '@/lib/assistant/settings'
-import { assistantKeyConfigured, resolveModel } from '@/lib/assistant/engine'
+import { assistantKeyConfigured, providerReady, resolveModel } from '@/lib/assistant/engine'
+import { workersAiConfigured } from '@/lib/assistant/workers-ai'
 import { CHAT_FILTERS, assistantReport, listConversations, type ChatFilter } from '@/lib/assistant/admin'
 import AssistantSettings from '@/components/admin-assistant-settings'
 import AssistantFaqs from '@/components/admin-assistant-faqs'
@@ -32,8 +33,9 @@ export default async function AssistantAdmin({ searchParams }: { searchParams: P
   const params = await searchParams
   const tab: Tab = TABS.some(t => t.key === params.tab) ? params.tab as Tab : 'overview'
   const config = await loadAssistantConfigFresh()
-  const keyConfigured = assistantKeyConfigured()
   const model = resolveModel(config.model)
+  const keyConfigured = providerReady(model)
+  const ready = { anthropic: assistantKeyConfigured(), cloudflare: workersAiConfigured() }
 
   return <div className={styles.page}>
     <div className={ui.sectionHead}>
@@ -41,8 +43,8 @@ export default async function AssistantAdmin({ searchParams }: { searchParams: P
         <span className={ui.muted}>ONLINE STORE</span>
         <h1 className={ui.title}>AI shopping assistant</h1>
         <p className={ui.muted}>
-          {config.enabled ? 'On' : 'Off'} · {ASSISTANT_MODELS[model].label} · budget {usd(config.dailyBudgetUsd)} a day
-          {keyConfigured ? '' : ' · Claude API key not set (answers use your shop search)'}
+          {config.enabled ? 'On' : 'Off'} · {ASSISTANT_MODELS[model].label} · {ASSISTANT_MODELS[model].provider === 'cloudflare' ? 'free (stops at Cloudflare\'s daily allowance)' : `budget ${usd(config.dailyBudgetUsd)} a day`}
+          {keyConfigured ? '' : ' · AI keys not set (answers use your shop search)'}
         </p>
       </div>
       <span className={`${ui.statusPill} ${config.enabled ? ui.statusPillSuccess : ui.statusPillWarning}`}>{config.enabled ? 'Showing on the shop' : 'Hidden from shoppers'}</span>
@@ -55,7 +57,7 @@ export default async function AssistantAdmin({ searchParams }: { searchParams: P
     {tab === 'overview' ? await Overview() : null}
     {tab === 'chats' ? await Chats(CHAT_FILTERS.includes(params.filter as ChatFilter) ? params.filter as ChatFilter : 'all', Math.max(1, Number(params.page) || 1)) : null}
     {tab === 'faq' ? await Faq(canManage) : null}
-    {tab === 'settings' ? <AssistantSettings initial={config} canManage={canManage} keyConfigured={keyConfigured} /> : null}
+    {tab === 'settings' ? <AssistantSettings initial={config} canManage={canManage} ready={ready} /> : null}
   </div>
 }
 
