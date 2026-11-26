@@ -46,7 +46,24 @@ function fromOtherSite(request: Request) {
 const cleanPage = (value: unknown) => (typeof value === 'string' && /^\/[^\s<>"]{0,200}$/.test(value) ? value : null)
 const uiLang = (value: unknown): Lang => (value === 'ar' ? 'ar' : 'en')
 
+// Which step an answer reached, for the log and the short code shown if it fails.
+type Progress = { step: string; lang: Lang }
+
 export async function POST(request: Request) {
+  const progress: Progress = { step: 'start', lang: 'en' }
+  try {
+    return await answer(request, progress)
+  } catch (error) {
+    // Never a bare server error in the chat: the shopper gets a short message (with the step, so the
+    // owner can report it) and the details go to the Worker log.
+    console.error('[assistant] answer failed at', progress.step, error instanceof Error ? `${error.name}: ${error.message}` : error)
+    const t = translator(progress.lang)
+    return json({ error: `${t('Sorry, something went wrong on our side. Please try again.')} (${progress.step})` }, { status: 500, headers: NO_STORE })
+  }
+}
+
+async function answer(request: Request, progress: Progress) {
+  progress.step = 'config'
   const config = await loadAssistantConfig()
   if (!config.enabled) return json({ error: 'The assistant is switched off.' }, { status: 404, headers: NO_STORE })
 
@@ -68,13 +85,16 @@ export async function POST(request: Request) {
     if (!consumeRateLimit(`assistant:action:${ip}`, 60, 10 * 60 * 1000).allowed) return json({ error: 'Too many requests. Please wait a moment.' }, { status: 429, headers: NO_STORE })
   }
 
+  progress.step = 'visitor'
   const [user, visitorKey] = await Promise.all([getCurrentUser().catch(() => null), visitor()])
   const userId = user?.id ?? null
   const lang = message ? detectLanguage(message) : pageUiLang === 'ar' ? 'ar' : 'en'
   const answerLang: Lang = message ? pageLang(lang) : pageUiLang
   const t = translator(answerLang)
+  progress.lang = answerLang
 
   if (action == null) {
+    progress.step = 'limits'
     const perVisitor = await consumeDurableRateLimit(`assistant:visitor:${visitorKey.slice(0, 32)}`, 15, 10 * 60 * 1000)
     const perIp = perVisitor.allowed ? await consumeDurableRateLimit(`assistant:ip:${ip}`, 60, 60 * 60 * 1000) : perVisitor
     if (!perVisitor.allowed || !perIp.allowed) {
@@ -82,6 +102,7 @@ export async function POST(request: Request) {
     }
   }
 
+  progress.step = 'chat'
   const conversation = await openConversation({ conversationId: body.conversationId, visitorKey, userId, lang })
   if (conversation.messageCount >= MAX_CHAT_MESSAGES) {
     return json({ conversationId: conversation.id, reply: { ...emptyReply(t('This chat is getting long. Start a new chat to continue.')), ended: true } }, { headers: NO_STORE })
@@ -107,6 +128,7 @@ export async function POST(request: Request) {
     // The AI answers only while the assistant is on, the model's key is set and today's budget isn't
     // used up. Cloudflare's free model also stops at Cloudflare's free daily allowance.
     const provider = modelProvider(model)
+    progress.step = 'budget'
     const budgetMicros = Math.min(Math.round(config.dailyBudgetUsd * 1_000_000), provider === 'cloudflare' ? WORKERS_AI_FREE_MICROS : Infinity)
     const canUseAi = providerReady(model) && budgetMicros > 0 && (await spentTodayMicros()) < budgetMicros
     let pageProduct: { id: string; name: string } | null = null
@@ -115,10 +137,13 @@ export async function POST(request: Request) {
       const p = await productById(decodeURIComponent(slug)).catch(() => null)
       if (p) pageProduct = { id: p.id, name: p.name }
     }
+    progress.step = 'history'
     const history = canUseAi && !conversation.isNew ? await recentTurns(conversation.id) : []
+    progress.step = provider === 'cloudflare' ? 'cloudflare-ai' : 'claude'
     const result = !canUseAi ? null
       : provider === 'cloudflare' ? await answerWithWorkersAi({ model, storeName: config.storeName, history, message, lang, pageProduct })
       : await answerWithClaude({ model, storeName: config.storeName, history, message, lang, userId, ip, page, pageProduct })
+    progress.step = 'reply'
     if (result?.ok) {
       reply = {
         ...emptyReply(result.text),
@@ -129,6 +154,7 @@ export async function POST(request: Request) {
       saved = { userText: message, userKind: 'message', reply: result.text, replyKind: 'ai', productIds: reply.products.map(p => p.id), searches: result.searches, answered: !result.unanswered, escalated: result.support, lang, inputTokens: result.usage.input, outputTokens: result.usage.output, costMicros: result.usage.costMicros }
     } else {
       // No AI answer: the store's own search, so the shopper still gets something useful.
+      progress.step = 'search'
       const fallback = await searchFallback(message, answerLang, support)
       reply = fallback.reply
       saved = { userText: message, userKind: 'message', reply: reply.text, replyKind: result ? 'fallback' : 'limit', productIds: reply.products.map(p => p.id), searches: [message.slice(0, 80)], answered: fallback.found, escalated: false, lang, costMicros: result && !result.ok ? result.costMicros : 0 }

@@ -1236,4 +1236,5 @@ export const AR: Record<string, string> = {
   "I could not find that. Try other words, pick an option below, or contact our team.": "لم أجد ذلك. جرّب كلمات أخرى، أو اختر أحد الخيارات في الأسفل، أو تواصل مع فريقنا.",
   "You are sending messages too quickly. Please wait a few minutes.": "أنت ترسل الرسائل بسرعة كبيرة. يرجى الانتظار بضع دقائق.",
   "This chat is getting long. Start a new chat to continue.": "أصبحت هذه المحادثة طويلة. ابدأ محادثة جديدة للمتابعة.",
+  "Sorry, something went wrong on our side. Please try again.": "عذراً، حدث خطأ من جهتنا. يرجى المحاولة مجدداً.",
 }
