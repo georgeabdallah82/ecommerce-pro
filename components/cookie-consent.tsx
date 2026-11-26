@@ -47,7 +47,7 @@ export function ConsentTracking({ config, nonce }: { config: TrackingConfig; non
   return <TrackingScripts config={config} nonce={nonce} />
 }
 
-// The banner: shown until the shopper chooses, and again from "Cookie settings". Not in the admin.
+// The banner: shown until the shopper chooses, and again from "Cookie settings". Not in the admin or the theme editor.
 export function CookieBanner() {
   const pathname = usePathname() || ''
   const { t } = useI18n()
@@ -80,7 +80,9 @@ export function CookieBanner() {
     }
   }, [open, pathname])
 
-  if (!open || pathname.startsWith('/admin')) return null
+  // Not in the admin, nor in the theme editor's preview: there it covered the bottom of the page being designed,
+  // and a click on it would have saved the owner's own choice.
+  if (!open || pathname.startsWith('/admin') || pathname === '/theme-editor-preview') return null
 
   const answer = (choice: Choice) => {
     const before = readChoice()

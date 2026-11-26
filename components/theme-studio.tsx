@@ -1439,8 +1439,9 @@ export default function ThemeStudio({ initial }: Props) {
             {(() => {
               const results = Object.entries(META)
                 // Flash deals' daily countdown restarted every midnight (a fake deadline), so it is no
-                // longer offered; a store that already has one keeps it.
-                .filter(([key]) => key !== 'flash_deals' && (isHome ? !['announcement', 'header', 'main_product', 'main_collection_banner', 'main_collection_grid'].includes(key) : !ZONE_HIDDEN_TYPES.has(key)))
+                // longer offered; a store that already has one keeps it. The footer is one per store
+                // (Theme settings > Footer); adding it here gave the homepage a second row that did nothing.
+                .filter(([key]) => key !== 'flash_deals' && (isHome ? !['announcement', 'header', 'footer', 'main_product', 'main_collection_banner', 'main_collection_grid'].includes(key) : !ZONE_HIDDEN_TYPES.has(key)))
                 .filter(([, label]) => label.toLowerCase().includes(pickerQuery.trim().toLowerCase()))
               if (!results.length) return <div className={styles.pickerEmpty}>No sections match &ldquo;{pickerQuery}&rdquo;.</div>
               return (
