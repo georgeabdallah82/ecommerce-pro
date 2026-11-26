@@ -17,6 +17,8 @@ export const STOREFRONT_SETTING_KEYS = [
   'push.askVisitors',
   // The home-screen app icon (lib/app-icon.ts, app/manifest.ts).
   'app.icon512', 'app.icon192',
+  // The AI shopping assistant's chat button and opening texts (lib/assistant/config.ts).
+  'assistant.enabled', 'assistant.welcome', 'assistant.welcomeAr', 'assistant.suggestions',
 ] as const
 
 export const getStorefrontSettings = cache(async (): Promise<Map<string, string>> => {

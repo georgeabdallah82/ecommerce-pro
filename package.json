@@ -22,6 +22,7 @@
     "db:ensure-admin": "tsx scripts/ensure-admin.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.14.0",
     "@neondatabase/serverless": "^1.2.0",
     "@prisma/adapter-neon": "^6.19.3",
     "@prisma/adapter-pg": "^6.19.3",

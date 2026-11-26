@@ -1080,3 +1080,64 @@ model PhoneLoginCode {
 
   @@index([phone])
 }
+
+// The AI shopping assistant (lib/assistant, docs/ai-assistant-2026-11.md). A conversation belongs to
+// one browser (visitorKey: a hash of the assistant's own cookie, never shown) and, when signed in,
+// one customer (userId, kept as a plain id: no change to User). Emails and phone numbers are blanked
+// out of saved text. Kept 90 days (the daily job deletes older ones; messages go with them).
+model AssistantConversation {
+  id           String             @id @default(cuid())
+  visitorKey   String
+  userId       String?
+  lang         String             @default("en")
+  messageCount Int                @default(0)
+  // Some answer in it said it had no confirmed information, or the shopper asked for a person.
+  unanswered   Boolean            @default(false)
+  escalated    Boolean            @default(false)
+  // Estimated Claude cost, in millionths of a dollar.
+  costMicros   Int                @default(0)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  messages     AssistantMessage[]
+
+  @@index([createdAt])
+  @@index([visitorKey, updatedAt])
+}
+
+model AssistantMessage {
+  id             String                @id @default(cuid())
+  conversationId String
+  conversation   AssistantConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  // "user" or "assistant".
+  role           String
+  text           String
+  // A quick action ("best_sellers", "track_order", ...) or "ai" for a Claude answer.
+  kind           String                @default("ai")
+  // Products shown as cards with the answer (JSON array of product ids).
+  productIdsJson String?
+  // What Claude searched the catalogue for while answering (JSON array), for Admin › AI assistant.
+  searchesJson   String?
+  answered       Boolean               @default(true)
+  inputTokens    Int                   @default(0)
+  outputTokens   Int                   @default(0)
+  costMicros     Int                   @default(0)
+  createdAt      DateTime              @default(now())
+
+  @@index([conversationId, createdAt])
+  @@index([createdAt])
+}
+
+// Questions and answers the assistant may quote word for word (Admin › AI assistant › FAQ).
+model AssistantFaq {
+  id         String   @id @default(cuid())
+  question   String
+  questionAr String?
+  answer     String
+  answerAr   String?
+  isActive   Boolean  @default(true)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+}

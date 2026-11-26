@@ -59,6 +59,8 @@ describe('lib/permissions', () => {
         'customerSegments.view', 'customerTags.view',
         'storeCredit.view',
         'reviews.view', 'reviews.manage',
+        // Reading the AI assistant's chats (a shopper it sent to support may ask about one); not its settings.
+        'assistant.view',
       ]
       for (const permission of ALL_PERMISSIONS) {
         const expected = allowed.includes(permission)
@@ -68,6 +70,7 @@ describe('lib/permissions', () => {
       assert.equal(hasPermission(Role.SUPPORT, 'orders.refund'), false)
       assert.equal(hasPermission(Role.SUPPORT, 'products.manage'), false)
       assert.equal(hasPermission(Role.SUPPORT, 'settings.manage'), false)
+      assert.equal(hasPermission(Role.SUPPORT, 'assistant.manage'), false)
     })
 
     it('limits EDITOR to its exact allowlist', () => {
