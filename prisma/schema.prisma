@@ -1096,20 +1096,27 @@ model AssistantConversation {
   escalated    Boolean            @default(false)
   // Estimated Claude cost, in millionths of a dollar.
   costMicros   Int                @default(0)
+  // Live chat (lib/live-chat): a person from the store answered in it, and since when the shopper has
+  // been waiting for a person's reply (null when nobody is waiting).
+  live         Boolean            @default(false)
+  waitingSince DateTime?
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
   messages     AssistantMessage[]
 
   @@index([createdAt])
   @@index([visitorKey, updatedAt])
+  @@index([waitingSince])
 }
 
 model AssistantMessage {
   id             String                @id @default(cuid())
   conversationId String
   conversation   AssistantConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  // "user" or "assistant".
+  // "user", "assistant" (AI or a button), or "agent" (a person from the store, live chat).
   role           String
+  // The staff member's first name, on "agent" messages.
+  author         String?
   text           String
   // A quick action ("best_sellers", "track_order", ...) or "ai" for a Claude answer.
   kind           String                @default("ai")

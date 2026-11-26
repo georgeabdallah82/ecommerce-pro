@@ -1237,4 +1237,11 @@ export const AR: Record<string, string> = {
   "You are sending messages too quickly. Please wait a few minutes.": "أنت ترسل الرسائل بسرعة كبيرة. يرجى الانتظار بضع دقائق.",
   "This chat is getting long. Start a new chat to continue.": "أصبحت هذه المحادثة طويلة. ابدأ محادثة جديدة للمتابعة.",
   "Sorry, something went wrong on our side. Please try again.": "عذراً، حدث خطأ من جهتنا. يرجى المحاولة مجدداً.",
+  // Live chat (components/assistant-widget.tsx, app/api/assistant).
+  "Sent. {name} will reply here.": "تمّ الإرسال. سيردّ عليك {name} هنا.",
+  "Chat with {name}": "دردش مع {name}",
+  "Online now": "متصل الآن",
+  "Open chat: new reply": "افتح المحادثة: ردّ جديد",
+  "Our team will also reply here as soon as they can.": "سيردّ عليك فريقنا هنا أيضاً بأسرع وقت ممكن.",
+  "Thanks for your message! Our team will reply here as soon as they can.": "شكراً لرسالتك! سيردّ عليك فريقنا هنا بأسرع وقت ممكن.",
 }

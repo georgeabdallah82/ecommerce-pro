@@ -14,3 +14,10 @@ export function redact(text: string) {
     .replace(CARD, match => (match.replace(/\D/g, '').length >= 13 ? '[card]' : match))
     .replace(PHONE, match => (match.replace(/\D/g, '').length >= 7 ? '[phone]' : match))
 }
+
+// Live chat with a person (lib/live-chat/server.ts): the shopper is talking to the store, like on
+// WhatsApp, and may give a phone number or email on purpose so the store can follow up; only
+// card-like numbers are hidden.
+export function redactCards(text: string) {
+  return String(text || '').replace(CARD, match => (match.replace(/\D/g, '').length >= 13 ? '[card]' : match))
+}

@@ -13,6 +13,8 @@ import { MAX_CHAT_MESSAGES, VISITOR_COOKIE, VISITOR_COOKIE_MAX_AGE, isVisitorId,
 import { emptyReply, quickAction, searchFallback, supportCard, trackOrderReply } from '@/lib/assistant/actions'
 import { answerWithClaude, providerReady, resolveModel, spentTodayMicros } from '@/lib/assistant/engine'
 import { answerWithWorkersAi, looksLikeOrderQuestion } from '@/lib/assistant/workers-ai'
+import { OFFLINE, getPresence } from '@/lib/live-chat/relay'
+import { fallbackDue, saveShopperLiveMessage } from '@/lib/live-chat/server'
 
 // The chat widget's endpoint (components/store/assistant). POST one shopper message or button;
 // the answer comes back with product cards, order links and contact buttons built from the database.
@@ -80,7 +82,7 @@ async function answer(request: Request, progress: Progress) {
   const message = typeof body.message === 'string' ? body.message.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').trim() : ''
   if (action == null && !message) return json({ error: 'Type a message.' }, { status: 400, headers: NO_STORE })
   if (message.length > MAX_MESSAGE) return json({ error: `Messages can be up to ${MAX_MESSAGE} characters.` }, { status: 400, headers: NO_STORE })
-  if (action != null && action !== 'track_order_form' && !isQuickAction(action)) return json({ error: 'Unknown action.' }, { status: 400, headers: NO_STORE })
+  if (action != null && action !== 'track_order_form' && action !== 'ai_fallback' && !isQuickAction(action)) return json({ error: 'Unknown action.' }, { status: 400, headers: NO_STORE })
 
   // Buttons are cheap (no AI); messages may call Claude, so they get tighter limits that survive restarts.
   if (action != null) {
@@ -114,19 +116,13 @@ async function answer(request: Request, progress: Progress) {
   const model = resolveModel(config.model)
   let reply: ChatReply
   let saved: Parameters<typeof saveTurn>[1]
+  let presence = OFFLINE
 
-  if (action === 'track_order_form') {
-    reply = await trackOrderReply({ orderNumber: body.orderNumber, contact: body.contact }, answerLang, { userId, ip })
-    const number = typeof body.orderNumber === 'string' ? body.orderNumber.slice(0, 60) : ''
-    saved = { userText: `[Order form] ${number}`, userKind: 'action', reply: reply.text, replyKind: 'action', productIds: [], searches: [], answered: reply.orders.length > 0, escalated: false, lang }
-  } else if (action != null) {
-    reply = await quickAction(action, answerLang, { userId, ...support })
-    saved = { userText: `[Button] ${isQuickAction(action) ? QUICK_ACTION_NAMES[action] : action}`, userKind: 'action', reply: reply.text, replyKind: 'action', productIds: reply.products.map(p => p.id), searches: [], answered: true, escalated: action === 'support', lang }
-  } else if (modelProvider(model) === 'cloudflare' && looksLikeOrderQuestion(message)) {
-    // The free model gets no order data: "where is my order" opens the store's own order form.
-    reply = await quickAction('track_order', answerLang, { userId, ...support })
-    saved = { userText: message, userKind: 'message', reply: reply.text, replyKind: 'action', productIds: [], searches: [], answered: true, escalated: false, lang }
-  } else {
+  // A typed message, or the AI stepping in for a person (action "ai_fallback"): Claude or the free
+  // Cloudflare model when available, otherwise the store's own search.
+  const aiAnswer = async (text: string, textLang: typeof lang, userText: string): Promise<{ reply: ChatReply; saved: Parameters<typeof saveTurn>[1] }> => {
+    const replyLang: Lang = pageLang(textLang)
+    const tr = translator(replyLang)
     // The AI answers only while the assistant is on, the model's key is set and today's budget isn't
     // used up. Cloudflare's free model also stops at Cloudflare's free daily allowance.
     const provider = modelProvider(model)
@@ -143,24 +139,64 @@ async function answer(request: Request, progress: Progress) {
     const history = canUseAi && !conversation.isNew ? await recentTurns(conversation.id) : []
     progress.step = provider === 'cloudflare' ? 'cloudflare-ai' : 'claude'
     const result = !canUseAi ? null
-      : provider === 'cloudflare' ? await answerWithWorkersAi({ model, storeName: config.storeName, history, message, lang, pageProduct })
-      : await answerWithClaude({ model, storeName: config.storeName, history, message, lang, userId, ip, page, pageProduct })
+      : provider === 'cloudflare' ? await answerWithWorkersAi({ model, storeName: config.storeName, history, message: text, lang: textLang, pageProduct })
+      : await answerWithClaude({ model, storeName: config.storeName, history, message: text, lang: textLang, userId, ip, page, pageProduct })
     progress.step = 'reply'
     if (result?.ok) {
-      reply = {
+      const answer: ChatReply = {
         ...emptyReply(result.text),
         products: result.products.map(toCard),
-        orders: result.orderLinks.map(o => ({ orderNumber: o.orderNumber, status: statusLabel(t, o.status), placedAt: o.placedAt, link: o.link })),
-        support: result.support ? await supportCard(answerLang, support) : null,
+        orders: result.orderLinks.map(o => ({ orderNumber: o.orderNumber, status: statusLabel(tr, o.status), placedAt: o.placedAt, link: o.link })),
+        support: result.support ? await supportCard(replyLang, support) : null,
       }
-      saved = { userText: message, userKind: 'message', reply: result.text, replyKind: 'ai', productIds: reply.products.map(p => p.id), searches: result.searches, answered: !result.unanswered, escalated: result.support, lang, inputTokens: result.usage.input, outputTokens: result.usage.output, costMicros: result.usage.costMicros }
-    } else {
-      // No AI answer: the store's own search, so the shopper still gets something useful.
-      progress.step = 'search'
-      const fallback = await searchFallback(message, answerLang, support)
-      reply = fallback.reply
-      saved = { userText: message, userKind: 'message', reply: reply.text, replyKind: result ? 'fallback' : 'limit', productIds: reply.products.map(p => p.id), searches: [message.slice(0, 80)], answered: fallback.found, escalated: false, lang, costMicros: result && !result.ok ? result.costMicros : 0 }
+      return { reply: answer, saved: { userText, userKind: 'message', reply: result.text, replyKind: 'ai', productIds: answer.products.map(p => p.id), searches: result.searches, answered: !result.unanswered, escalated: result.support, lang: textLang, inputTokens: result.usage.input, outputTokens: result.usage.output, costMicros: result.usage.costMicros } }
     }
+    // No AI answer: the store's own search, so the shopper still gets something useful.
+    progress.step = 'search'
+    const fallback = await searchFallback(text, replyLang, support)
+    return { reply: fallback.reply, saved: { userText, userKind: 'message', reply: fallback.reply.text, replyKind: result ? 'fallback' : 'limit', productIds: fallback.reply.products.map(p => p.id), searches: [text.slice(0, 80)], answered: fallback.found, escalated: false, lang: textLang, costMicros: result && !result.ok ? result.costMicros : 0 } }
+  }
+
+  if (action === 'ai_fallback') {
+    // Live chat: nobody from the store replied within 3 minutes. The AI answers what the shopper wrote
+    // while waiting, and says a person will also reply; without the AI, the shopper is told to expect a
+    // reply here and given the WhatsApp and email buttons. Checked on the server, so it runs once.
+    progress.step = 'fallback'
+    const due = await fallbackDue(conversation.id)
+    if (!due) return json({ conversationId: conversation.id, reply: null }, { headers: NO_STORE })
+    const askedLang = detectLanguage(due.asked)
+    const tr = translator(pageLang(askedLang))
+    const note = tr('Our team will also reply here as soon as they can.')
+    const ai = providerReady(model) && config.dailyBudgetUsd > 0 ? await aiAnswer(due.asked, askedLang, '') : null
+    if (ai && ai.saved.replyKind === 'ai') {
+      reply = { ...ai.reply, text: `${ai.reply.text}\n\n${note}` }
+      saved = { ...ai.saved, reply: reply.text }
+    } else {
+      reply = { ...emptyReply(tr('Thanks for your message! Our team will reply here as soon as they can.')), support: await supportCard(pageLang(askedLang), support) }
+      saved = { userText: '', userKind: 'message', reply: reply.text, replyKind: 'action', productIds: [], searches: [], answered: true, escalated: true, lang: askedLang }
+    }
+  } else if (action === 'track_order_form') {
+    reply = await trackOrderReply({ orderNumber: body.orderNumber, contact: body.contact }, answerLang, { userId, ip })
+    const number = typeof body.orderNumber === 'string' ? body.orderNumber.slice(0, 60) : ''
+    saved = { userText: `[Order form] ${number}`, userKind: 'action', reply: reply.text, replyKind: 'action', productIds: [], searches: [], answered: reply.orders.length > 0, escalated: false, lang }
+  } else if (action != null) {
+    reply = await quickAction(action, answerLang, { userId, ...support })
+    saved = { userText: `[Button] ${isQuickAction(action) ? QUICK_ACTION_NAMES[action] : action}`, userKind: 'action', reply: reply.text, replyKind: 'action', productIds: reply.products.map(p => p.id), searches: [], answered: true, escalated: action === 'support', lang }
+  } else if ((presence = await getPresence()).online) {
+    // Live chat: the store is online, so the message goes to a person (Admin › Live chat). Nothing is
+    // answered now; the reply arrives through the relay, or the AI steps in after 3 minutes.
+    progress.step = 'live'
+    await saveShopperLiveMessage(conversation.id, message, lang)
+    const name = presence.name || config.storeName
+    return json({ conversationId: conversation.id, reply: { ...emptyReply(''), live: { name, waiting: true } } }, { headers: NO_STORE })
+  } else if (modelProvider(model) === 'cloudflare' && looksLikeOrderQuestion(message)) {
+    // The free model gets no order data: "where is my order" opens the store's own order form.
+    reply = await quickAction('track_order', answerLang, { userId, ...support })
+    saved = { userText: message, userKind: 'message', reply: reply.text, replyKind: 'action', productIds: [], searches: [], answered: true, escalated: false, lang }
+  } else {
+    const ai = await aiAnswer(message, lang, message)
+    reply = ai.reply
+    saved = ai.saved
   }
 
   await saveTurn(conversation.id, saved).catch(error => console.error('[assistant] saving the chat failed', error))

@@ -138,4 +138,6 @@ export type ChatReply = {
   form: 'track_order' | null
   // The chat reached its length limit: the widget offers a new chat.
   ended?: boolean
+  // Live chat: the message went to a person from the store (`name`), who replies through the relay.
+  live?: { name: string; waiting: boolean }
 }

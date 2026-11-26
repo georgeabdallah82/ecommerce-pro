@@ -52,6 +52,7 @@ export default async function AssistantAdmin({ searchParams }: { searchParams: P
 
     <nav className={styles.tabs} aria-label="AI assistant sections">
       {TABS.map(t => <Link key={t.key} href={`/admin/online-store/assistant${t.key === 'overview' ? '' : `?tab=${t.key}`}`} aria-current={tab === t.key ? 'page' : undefined} className={tab === t.key ? styles.tabOn : undefined}>{t.label}</Link>)}
+      <Link href="/admin/online-store/assistant/live">Live chat</Link>
     </nav>
 
     {tab === 'overview' ? await Overview() : null}
