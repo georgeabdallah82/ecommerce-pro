@@ -79,3 +79,13 @@ test("the owner's Arabic texts replace the English; links and settings are never
   assert.equal(localize({ areas: 'Beirut | Tomorrow', areasAr: 'بيروت | غداً' }, 'ar').areas, 'بيروت | غداً')
   for (const key of ['buttonUrl', 'imageUrl', 'textAlign', 'textColor', 'icon', 'id', 'customCss']) assert.equal(isTranslatableKey(key), false, key)
 })
+
+test('an Arabic text is used when the English box was left empty (the English shows its standard text)', () => {
+  const out = localize({ searchPlaceholderAr: 'ابحث', label: '', labelAr: 'التوصيل إلى', areasAr: 'بيروت | غداً', note: 'Fast', noteAr: 'سريع' }, 'ar') as any
+  assert.equal(out.searchPlaceholder, 'ابحث')
+  assert.equal(out.label, 'التوصيل إلى')
+  assert.equal(out.areas, 'بيروت | غداً')
+  assert.equal(out.note, 'سريع')
+  // The English shop never sees it.
+  assert.equal((localize({ searchPlaceholderAr: 'ابحث' }, 'en') as any).searchPlaceholder, undefined)
+})
