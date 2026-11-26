@@ -95,6 +95,15 @@ export function localize<T>(value: T, lang: Lang): T {
       else if (typeof child === 'string' && isTranslatableKey(key)) out[key] = translate('ar', child)
       else out[key] = walk(child)
     }
+    // An Arabic text typed while the English box was left empty (the English then shows its standard text):
+    // it used to be skipped, because only keys that had an English value looked for an Arabic one.
+    for (const [key, own] of Object.entries(node)) {
+      if (!key.endsWith('Ar') || typeof own !== 'string' || !own.trim()) continue
+      const base = key.slice(0, -2)
+      if (!base) continue
+      const english = node[base]
+      if (english === undefined || english === null || (typeof english === 'string' && !english.trim())) out[base] = own
+    }
     return out
   }
   return walk(value)
