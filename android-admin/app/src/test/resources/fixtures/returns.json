@@ -1,0 +1,41 @@
+[
+ {
+  "id": "cmwyyvb9d00bhpsp71uwaktsf",
+  "orderId": "cmwyyvakm00akpsp7j5qx97is",
+  "customerId": null,
+  "status": "RECEIVED",
+  "reason": "Wrong colour",
+  "notes": null,
+  "refundAmount": 0,
+  "restock": true,
+  "receivedAt": "2026-11-27T12:37:42.718Z",
+  "refundedAt": null,
+  "createdAt": "2026-11-27T12:37:42.721Z",
+  "updatedAt": "2026-11-27T12:37:42.721Z",
+  "items": [
+   {
+    "id": "cmwyyvb9d00bipsp7fzafqcuh",
+    "returnRequestId": "cmwyyvb9d00bhpsp71uwaktsf",
+    "orderItemId": "cmwyyvakn00alpsp73fpywjte",
+    "productId": "cmwyyrm4h000d8r7dvlmpexai",
+    "variantId": null,
+    "quantity": 1,
+    "condition": null
+   }
+  ],
+  "order": {
+   "id": "cmwyyvakm00akpsp7j5qx97is",
+   "orderNumber": "1017",
+   "email": "",
+   "grandTotal": 2900,
+   "currency": "USD",
+   "status": "DELIVERED",
+   "items": [
+    {
+     "id": "cmwyyvakn00alpsp73fpywjte",
+     "name": "Smart Organizer"
+    }
+   ]
+  }
+ }
+]

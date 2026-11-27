@@ -1,0 +1,179 @@
+{
+ "range": {
+  "since": "2026-10-29T00:00:00.000Z",
+  "until": "2026-11-28T00:00:00.000Z",
+  "days": 30
+ },
+ "report": {
+  "currency": "USD",
+  "ordersPlaced": 16,
+  "otherCurrencyOrders": 0,
+  "grossOrderValue": 72910,
+  "cancelled": {
+   "orders": 5,
+   "value": 31200
+  },
+  "refunded": 3100,
+  "netSales": 38610,
+  "taxIncluded": 0,
+  "shippingCharged": 1500,
+  "discounts": 990,
+  "collected": {
+   "orders": 4,
+   "sales": 10300,
+   "salesExTax": 10300,
+   "productCost": 0
+  },
+  "unpaidCod": {
+   "orders": 6,
+   "sales": 28310,
+   "salesExTax": 28310,
+   "productCost": 0
+  },
+  "unpaidOther": {
+   "orders": 0,
+   "sales": 0,
+   "salesExTax": 0,
+   "productCost": 0
+  },
+  "productCost": {
+   "total": 0,
+   "missing": [
+    {
+     "productId": "cmwyyrm4v000j8r7dxdf8kggs",
+     "name": "Signature Value Box",
+     "units": 2,
+     "sales": 19800
+    },
+    {
+     "productId": "cmwyysttk0021psp7ezwrga4v",
+     "name": "Critical path mwyyryty",
+     "units": 2,
+     "sales": 5000
+    },
+    {
+     "productId": "cmwyyrm4o000g8r7dgh4rp4vf",
+     "name": "Daily Essentials Pack",
+     "units": 1,
+     "sales": 4500
+    },
+    {
+     "productId": "cmwyyu1pn005epsp7kuq7f2w4",
+     "name": "E2E Test Mop Pro",
+     "units": 2,
+     "sales": 3000
+    },
+    {
+     "productId": "cmwyyv82u008kpsp7fursqnfl",
+     "name": "E2E Test Mop Pro",
+     "units": 2,
+     "sales": 3000
+    },
+    {
+     "productId": "cmwyyrm4h000d8r7dvlmpexai",
+     "name": "Smart Organizer",
+     "units": 1,
+     "sales": 2900
+    }
+   ],
+   "missingSales": 38200
+  },
+  "delivery": {
+   "perOrder": null,
+   "orders": 10,
+   "total": null
+  },
+  "packaging": {
+   "perOrder": null,
+   "orders": 10,
+   "total": null
+  },
+  "expenses": {
+   "total": 0,
+   "lines": []
+  },
+  "byProduct": [
+   {
+    "productId": "cmwyyrm4v000j8r7dxdf8kggs",
+    "name": "Signature Value Box",
+    "units": 2,
+    "freeUnits": 0,
+    "sales": 18810,
+    "cost": null,
+    "profit": null,
+    "margin": null
+   },
+   {
+    "productId": "cmwyysttk0021psp7ezwrga4v",
+    "name": "Critical path mwyyryty",
+    "units": 2,
+    "freeUnits": 0,
+    "sales": 5000,
+    "cost": null,
+    "profit": null,
+    "margin": null
+   },
+   {
+    "productId": "cmwyyrm4o000g8r7dgh4rp4vf",
+    "name": "Daily Essentials Pack",
+    "units": 1,
+    "freeUnits": 0,
+    "sales": 4500,
+    "cost": null,
+    "profit": null,
+    "margin": null
+   },
+   {
+    "productId": "cmwyyu1pn005epsp7kuq7f2w4",
+    "name": "E2E Test Mop Pro",
+    "units": 2,
+    "freeUnits": 0,
+    "sales": 3000,
+    "cost": null,
+    "profit": null,
+    "margin": null
+   },
+   {
+    "productId": "cmwyyv82u008kpsp7fursqnfl",
+    "name": "E2E Test Mop Pro",
+    "units": 2,
+    "freeUnits": 0,
+    "sales": 3000,
+    "cost": null,
+    "profit": null,
+    "margin": null
+   },
+   {
+    "productId": "cmwyyrm4h000d8r7dvlmpexai",
+    "name": "Smart Organizer",
+    "units": 1,
+    "freeUnits": 0,
+    "sales": 2800,
+    "cost": null,
+    "profit": null,
+    "margin": null
+   }
+  ],
+  "adSpend": {
+   "total": 0,
+   "byPlatform": [],
+   "entries": 0,
+   "otherCurrency": 0
+  },
+  "profit": {
+   "collectedSoFar": 10300,
+   "ifUnpaidCollected": 38610
+  },
+  "estimated": true,
+  "missing": [
+   "Product cost not entered for 6 products sold",
+   "Delivery cost per order not entered",
+   "Packaging cost per order not entered",
+   "No ad spend entered for these dates"
+  ]
+ },
+ "expenseList": [],
+ "adSpend": [],
+ "canEdit": true,
+ "truncated": false
+}

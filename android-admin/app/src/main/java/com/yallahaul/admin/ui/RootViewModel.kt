@@ -27,6 +27,8 @@ class RootViewModel @Inject constructor(
     private val prefs: AppPreferences,
     private val registrar: PushRegistrar,
     private val notifier: AlertNotifier,
+    private val cache: com.yallahaul.admin.core.cache.ResponseCache,
+    private val widgets: com.yallahaul.admin.widget.WidgetUpdater,
 ) : ViewModel() {
     val session: StateFlow<SessionState> = sessionManager.state
 
@@ -51,10 +53,14 @@ class RootViewModel @Inject constructor(
                 if (state is SessionState.SignedIn && previous !is SessionState.SignedIn) {
                     launch { auth.refreshAccount() }
                     launch { runCatching { registrar.register() } }
+                    widgets.schedule()
                 }
                 if (state is SessionState.SignedOut && previous is SessionState.SignedIn) {
                     registrar.stop()
                     notifier.clearAll()
+                    // Nothing of the store stays on the phone after signing out or a lapsed session.
+                    cache.clear()
+                    widgets.signedOut()
                     _locked.value = false
                 }
                 previous = state

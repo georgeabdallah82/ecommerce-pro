@@ -5,7 +5,7 @@ import com.yallahaul.admin.core.network.AppError
 /** A screen's data: loading the first time, loaded (possibly refreshing), or failed with nothing to show. */
 sealed interface LoadState<out T> {
     data object Loading : LoadState<Nothing>
-    data class Ready<T>(val data: T, val refreshing: Boolean = false, val refreshError: String? = null) : LoadState<T>
+    data class Ready<T>(val data: T, val refreshing: Boolean = false, val refreshError: String? = null, val offlineSince: java.time.Instant? = null) : LoadState<T>
     data class Failed(val error: AppError) : LoadState<Nothing>
 }
 
@@ -19,6 +19,8 @@ data class Paged<T>(
     val total: Int = 0,
     val loadingMore: Boolean = false,
     val moreError: String? = null,
+    /** Set when the store couldn't be reached and these rows are the copy saved on the phone. */
+    val offlineSince: java.time.Instant? = null,
 ) {
     val canLoadMore get() = page < pages && !loadingMore
 }

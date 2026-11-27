@@ -1,0 +1,11 @@
+{
+ "presence": {
+  "online": false,
+  "name": "",
+  "since": null,
+  "staffConnected": 0
+ },
+ "inbox": [],
+ "available": true,
+ "ticket": "test-ticket"
+}

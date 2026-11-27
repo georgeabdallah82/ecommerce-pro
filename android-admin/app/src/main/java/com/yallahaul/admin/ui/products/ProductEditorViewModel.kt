@@ -69,6 +69,20 @@ class ProductEditorViewModel @Inject constructor(
         val dirty: Boolean = false,
         val errors: Map<String, String> = emptyMap(),
         val saved: Boolean = false,
+        /** The product's options (sizes, colours...), editable when it already has them. */
+        val variants: List<VariantForm> = emptyList(),
+        val variantsDirty: Boolean = false,
+    )
+
+    data class VariantForm(
+        val key: String,
+        val id: String?,
+        val name: String,
+        val sku: String,
+        val barcode: String,
+        val price: String,
+        val compareAt: String,
+        val original: com.yallahaul.admin.core.model.VariantFull?,
     )
 
     private val _state = MutableStateFlow(UiState(loading = !isNew))
@@ -108,7 +122,21 @@ class ProductEditorViewModel @Inject constructor(
                 }
                 is ApiResult.Failure -> _state.update { it.copy(loading = false, loadError = result.error) }
             }
+            if (_state.value.original?.variants?.isNotEmpty() == true) {
+                (repo.variants(id) as? ApiResult.Success)?.let { r ->
+                    _state.update { st -> st.copy(variantsDirty = false, variants = r.data.map { v ->
+                        VariantForm(v.id, v.id, v.name, v.sku, v.barcode.orEmpty(), Money.toInput(v.price, currency), Money.toInput(v.compareAtPrice, currency), v)
+                    }) }
+                }
+            }
         }
+    }
+
+    fun editVariant(key: String, change: (VariantForm) -> VariantForm) = _state.update { s -> s.copy(variants = s.variants.map { if (it.key == key) change(it) else it }, variantsDirty = true, dirty = true, errors = emptyMap()) }
+    fun removeVariant(key: String) = _state.update { s -> s.copy(variants = s.variants.filterNot { it.key == key }, variantsDirty = true, dirty = true) }
+    fun addVariant() = _state.update { s ->
+        val sku = "${s.form.sku}-${s.variants.size + 1}"
+        s.copy(variants = s.variants + VariantForm("new-${System.nanoTime()}", null, "", sku, "", s.form.price, "", null), variantsDirty = true, dirty = true)
     }
 
     fun edit(change: (Form) -> Form) = _state.update { it.copy(form = change(it.form), dirty = true, errors = emptyMap()) }
@@ -155,6 +183,14 @@ class ProductEditorViewModel @Inject constructor(
         val threshold = f.threshold.toIntOrNull()
         if (isNew && (quantity == null || quantity < 0)) errors["quantity"] = "Enter 0 or more"
         if (isNew && (threshold == null || threshold < 0)) errors["threshold"] = "Enter 0 or more"
+        val variantDrafts = if (!isNew && s.variantsDirty) s.variants.map { v ->
+            if (v.name.isBlank()) errors["variant:${v.key}:name"] = "Name it"
+            if (v.sku.isBlank()) errors["variant:${v.key}:sku"] = "SKU needed"
+            val vp = if (v.price.isBlank()) null else Money.parse(v.price, currency) ?: run { errors["variant:${v.key}:price"] = "Not a valid amount"; null }
+            val vc = if (v.compareAt.isBlank()) null else Money.parse(v.compareAt, currency) ?: run { errors["variant:${v.key}:compare"] = "Not a valid amount"; null }
+            com.yallahaul.admin.core.data.VariantDraft(v.id, v.name, v.sku, v.barcode, vp, vc, v.original)
+        } else null
+        if (variantDrafts != null && variantDrafts.isEmpty()) errors["variants"] = "Keep at least one option, or remove options on the website"
         if (errors.isNotEmpty()) { _state.update { it.copy(errors = errors) }; viewModelScope.launch { _messages.send("Check the highlighted fields") }; return }
 
         val draft = ProductDraft(
@@ -166,7 +202,9 @@ class ProductEditorViewModel @Inject constructor(
         )
         _state.update { it.copy(saving = true) }
         viewModelScope.launch {
-            val result = if (isNew) repo.create(draft) else repo.update(id, draft, s.original!!)
+            var result: ApiResult<*> = if (isNew) repo.create(draft) else repo.update(id, draft, s.original!!)
+            // Options are saved after the product, through the same product route, with every option sent.
+            if (result is ApiResult.Success && variantDrafts != null) result = repo.saveVariants(id, variantDrafts)
             when (result) {
                 is ApiResult.Success -> {
                     _state.update { it.copy(saving = false, dirty = false, saved = true) }

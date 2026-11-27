@@ -23,7 +23,10 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class ProductsViewModel @Inject constructor(private val repo: ProductsRepository) : ViewModel() {
+class ProductsViewModel @Inject constructor(
+    private val repo: ProductsRepository,
+    private val inventory: com.yallahaul.admin.core.data.InventoryRepository,
+) : ViewModel() {
     data class UiState(
         val status: String = "ALL",
         val query: String = "",
@@ -40,6 +43,38 @@ class ProductsViewModel @Inject constructor(private val repo: ProductsRepository
     private val _messages = Channel<String>(Channel.BUFFERED)
     val messages = _messages.receiveAsFlow()
     private var job: Job? = null
+    private val _selected = MutableStateFlow<Set<String>>(emptySet())
+    val selected: StateFlow<Set<String>> = _selected.asStateFlow()
+    private val _found = Channel<String>(Channel.BUFFERED)
+    /** The product a scanned barcode belongs to: the screen opens it. */
+    val found = _found.receiveAsFlow()
+
+    fun toggle(id: String) = _selected.update { if (id in it) it - id else it + id }
+    fun clearSelection() { _selected.value = emptySet() }
+
+    /** One change for every selected product, through the web's own bulk action. */
+    fun bulk(action: String, label: String) {
+        val ids = _selected.value.toList()
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            when (val r = repo.bulk(ids, action)) {
+                is ApiResult.Success -> { _messages.send("${r.data.count} product${if (r.data.count == 1) "" else "s"} $label"); clearSelection(); load(true, refreshing = true) }
+                is ApiResult.Failure -> _messages.send(r.error.message)
+            }
+        }
+    }
+
+    fun findCode(code: String) {
+        viewModelScope.launch {
+            when (val r = inventory.lookup(code)) {
+                is ApiResult.Success -> _found.send(r.data.productId)
+                is ApiResult.Failure -> {
+                    // Products that don't track stock aren't in the stock lookup: search by the code instead.
+                    setQuery(code)
+                }
+            }
+        }
+    }
 
     init {
         load(true)
@@ -83,7 +118,7 @@ class ProductsViewModel @Inject constructor(private val repo: ProductsRepository
                     val d = result.data
                     it.copy(
                         loading = false, refreshing = false, error = null, counts = d.counts,
-                        list = Paged(if (reset) d.rows else it.list.rows + d.rows.filter { r -> it.list.rows.none { x -> x.id == r.id } }, d.page, d.pages, d.total),
+                        list = Paged(if (reset) d.rows else it.list.rows + d.rows.filter { r -> it.list.rows.none { x -> x.id == r.id } }, d.page, d.pages, d.total, offlineSince = result.cachedAt),
                     )
                 }
                 is ApiResult.Failure -> _state.update {

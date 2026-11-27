@@ -22,6 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Inventory2
+import androidx.compose.material.icons.outlined.QrCodeScanner
+import kotlinx.coroutines.launch
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -64,6 +66,7 @@ import com.yallahaul.admin.core.model.AppUser
 import com.yallahaul.admin.core.model.StockItem
 import com.yallahaul.admin.core.util.Dates
 import com.yallahaul.admin.core.util.Labels
+import com.yallahaul.admin.ui.components.OfflineBanner
 import com.yallahaul.admin.ui.components.ConstrainedColumn
 import com.yallahaul.admin.ui.components.EmptyView
 import com.yallahaul.admin.ui.components.ErrorView
@@ -89,12 +92,25 @@ fun InventoryScreen(user: AppUser, padding: PaddingValues, initialFilter: String
     val canManage = user.can("inventory.manage")
     LaunchedEffect(Unit) { vm.messages.collect { snackbar.showSnackbar(it) } }
     LaunchedEffect(Unit) { vm.adjusted.collect { id -> if (editing?.id == id) editing = null } }
+    LaunchedEffect(Unit) { vm.scanned.collect { item -> if (canManage) editing = item else snackbar.showSnackbar("${item.name}: ${item.available} available") } }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val scan: () -> Unit = {
+        scope.launch {
+            when (val r = com.yallahaul.admin.core.scan.BarcodeScanner.scan(context)) {
+                is com.yallahaul.admin.core.scan.BarcodeScanner.Result.Code -> vm.findCode(r.value)
+                is com.yallahaul.admin.core.scan.BarcodeScanner.Result.Unavailable -> snackbar.showSnackbar(r.message)
+                else -> Unit
+            }
+        }
+    }
     LoadMoreEffect(listState, enabled = state.list.canLoadMore && !state.loading) { vm.loadMore() }
 
     Column(Modifier.fillMaxSize().padding(padding)) {
         TopAppBar(
             title = { Text("Stock", style = MaterialTheme.typography.headlineSmall) },
             navigationIcon = { if (onBack != null) IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") } },
+            actions = { IconButton(onClick = scan) { Icon(Icons.Outlined.QrCodeScanner, "Scan a barcode") } },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
         )
         ConstrainedColumn {
@@ -113,6 +129,7 @@ fun InventoryScreen(user: AppUser, padding: PaddingValues, initialFilter: String
                 }
             }
         }
+        OfflineBanner(state.list.offlineSince, Modifier.padding(horizontal = 16.dp, vertical = 4.dp), vm::refresh)
         when {
             state.loading && state.list.rows.isEmpty() -> LoadingView()
             state.error != null && state.list.rows.isEmpty() -> ErrorView(state.error!!, vm::refresh)

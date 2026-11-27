@@ -37,6 +37,14 @@ object Routes {
     const val DISCOUNTS = "discounts"
     const val ALERTS = "alerts"
     const val SETTINGS = "settings"
+    const val NEW_ORDER = "orders/new"
+    const val DRIVERS = "drivers"
+    const val LIVE_CHAT = "live-chat"
+    const val TEAM_CHAT = "team-chat"
+    const val REVIEWS = "reviews"
+    const val RETURNS = "returns"
+    const val UNFINISHED = "unfinished"
+    const val REPORTS = "reports"
     fun order(id: String) = "order/$id"
     fun ordersWith(status: String) = "orders-filtered/$status"
     fun inventoryWith(filter: String) = "inventory-filtered/$filter"
@@ -44,6 +52,8 @@ object Routes {
     fun newProduct() = "product/new"
     fun customer(id: String) = "customer/$id"
     fun discount(id: String) = "discount/$id"
+    fun liveThread(id: String) = "live-chat/$id"
+    fun teamThread(id: String) = "team-chat/$id"
 
     /** The screen for a path in an alert (the web admin's paths, lib/push.ts on the server). */
     fun fromAlertPath(path: String, user: AppUser): String? {
@@ -54,6 +64,11 @@ object Routes {
             clean == "/admin/orders" && user.can("orders.view") -> ORDERS
             clean.startsWith("/admin/inventory") && user.can("inventory.view") -> inventoryWith("low")
             clean == "/admin" || clean.isEmpty() -> if (user.can("dashboard.view")) DASHBOARD else ALERTS
+            clean.startsWith("/admin/online-store/assistant/live") && user.can("assistant.view") ->
+                Regex("[?&]c=([A-Za-z0-9]{10,40})").find(path)?.groupValues?.get(1)?.let { liveThread(it) } ?: LIVE_CHAT
+            clean.startsWith("/admin/team-chat") ->
+                Regex("[?&]c=([A-Za-z0-9]{10,40})").find(path)?.groupValues?.get(1)?.let { teamThread(it) } ?: TEAM_CHAT
+            (clean == "/admin/reviews" || clean == "/admin/questions") && user.can("reviews.view") -> REVIEWS
             else -> ALERTS
         }
     }
@@ -73,8 +88,9 @@ fun AppNavHost(nav: NavHostController, user: AppUser, padding: PaddingValues, st
         val back: () -> Unit = { nav.popBackStack() }
 
         composable(Routes.DASHBOARD) { DashboardScreen(user, padding, open) }
-        composable(Routes.ORDERS) { OrdersScreen(padding, open, initialStatus = null, onBack = null) }
-        composable("orders-filtered/{status}") { entry -> OrdersScreen(padding, open, initialStatus = entry.arguments?.getString("status"), onBack = back) }
+        composable(Routes.ORDERS) { OrdersScreen(padding, open, initialStatus = null, onBack = null, canManage = user.can("orders.manage")) }
+        composable("orders-filtered/{status}") { entry -> OrdersScreen(padding, open, initialStatus = entry.arguments?.getString("status"), onBack = back, canManage = user.can("orders.manage")) }
+        composable(Routes.NEW_ORDER) { com.yallahaul.admin.ui.orders.NewOrderScreen(back, onCreated = { id -> nav.popBackStack(); nav.navigate(Routes.order(id)) }) }
         composable("order/{id}", arguments = listOf(navArgument("id") { type = NavType.StringType })) { OrderDetailScreen(user, back, open) }
         composable(Routes.PRODUCTS) { ProductsScreen(user, padding, open) }
         composable("product/{id}", arguments = listOf(navArgument("id") { type = NavType.StringType })) { ProductEditorScreen(user, back) }
@@ -87,5 +103,14 @@ fun AppNavHost(nav: NavHostController, user: AppUser, padding: PaddingValues, st
         composable("discount/{id}", arguments = listOf(navArgument("id") { type = NavType.StringType })) { DiscountEditorScreen(back) }
         composable(Routes.ALERTS) { AlertsScreen(user, back, open) }
         composable(Routes.SETTINGS) { SettingsScreen(user, back) }
+        composable(Routes.DRIVERS) { com.yallahaul.admin.ui.drivers.DriversScreen(back, open) }
+        composable(Routes.LIVE_CHAT) { com.yallahaul.admin.ui.chat.LiveInboxScreen(back, open) }
+        composable("live-chat/{id}", arguments = listOf(navArgument("id") { type = NavType.StringType })) { com.yallahaul.admin.ui.chat.LiveThreadScreen(back) }
+        composable(Routes.TEAM_CHAT) { com.yallahaul.admin.ui.chat.TeamHomeScreen(back, open) }
+        composable("team-chat/{id}", arguments = listOf(navArgument("id") { type = NavType.StringType })) { com.yallahaul.admin.ui.chat.TeamThreadScreen(back) }
+        composable(Routes.REVIEWS) { com.yallahaul.admin.ui.reviews.ReviewsScreen(user, back) }
+        composable(Routes.RETURNS) { com.yallahaul.admin.ui.returns.ReturnsScreen(user, back, open) }
+        composable(Routes.UNFINISHED) { com.yallahaul.admin.ui.returns.UnfinishedScreen(user, back) }
+        composable(Routes.REPORTS) { com.yallahaul.admin.ui.reports.ReportsScreen(back) }
     }
 }

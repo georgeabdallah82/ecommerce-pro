@@ -43,9 +43,20 @@ object FakeStore {
                         path == "/api/admin/coupons" && request.method == "GET" -> "coupons"
                         path == "/api/mobile/v1/notifications" && request.method == "GET" -> "alerts"
                         path == "/api/mobile/v1/devices" -> "device"
+                        path == "/api/mobile/v1/drivers" -> "drivers"
+                        path == "/api/mobile/v1/reviews" -> "reviews"
+                        path == "/api/mobile/v1/questions" -> "questions"
+                        path == "/api/mobile/v1/unfinished" -> "unfinished"
+                        path == "/api/admin/returns" && request.method == "GET" -> "returns"
+                        path == "/api/admin/reports" -> "report-sales"
+                        path == "/api/admin/reports/profit" -> "report-profit"
+                        path == "/api/admin/live-chat" && request.requestUrl!!.queryParameter("c") != null -> "live-thread"
+                        path == "/api/admin/live-chat" && request.method == "GET" -> "live-inbox"
+                        path == "/api/admin/team-chat" && request.requestUrl!!.queryParameter("c") != null -> "team-messages"
+                        path == "/api/admin/team-chat" && request.method == "GET" -> "team-home"
                         else -> null
                     }
-                    val body = name?.let { javaClass.classLoader!!.getResource("fixtures/$it.json")!!.readText() } ?: "{\"ok\":true}"
+                    val body = name?.let { javaClass.classLoader!!.getResource("fixtures/$it.json")?.readText() } ?: "{\"ok\":true}"
                     return MockResponse().setHeader("content-type", "application/json").setBody(body)
                 }
             }
@@ -70,4 +81,13 @@ object TestNetworkModule {
 @TestInstallIn(components = [SingletonComponent::class], replaces = [StorageModule::class])
 object TestStorageModule {
     @Provides @Singleton fun vault(): TokenVault = FakeVault()
+    @Provides @Singleton fun cache(): com.yallahaul.admin.core.cache.ResponseCache = MemoryCache()
+}
+
+class MemoryCache : com.yallahaul.admin.core.cache.ResponseCache {
+    private val json = AppModule.json()
+    private val store = mutableMapOf<String, Pair<String, java.time.Instant>>()
+    override suspend fun <T> put(key: String, serializer: kotlinx.serialization.KSerializer<T>, value: T) { store[key] = json.encodeToString(serializer, value) to java.time.Instant.now() }
+    override suspend fun <T> get(key: String, serializer: kotlinx.serialization.KSerializer<T>) = store[key]?.let { json.decodeFromString(serializer, it.first) to it.second }
+    override suspend fun clear() { store.clear() }
 }

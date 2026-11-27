@@ -1,0 +1,36 @@
+{
+ "canManage": true,
+ "drivers": [
+  {
+   "id": "cmwyyu49r0078psp715olakdu",
+   "name": "Karim Driver",
+   "phone": "96170123456",
+   "active": true,
+   "currency": "USD",
+   "out": [],
+   "outCollect": 0,
+   "cash": [],
+   "cashTotal": 0,
+   "delivered30": 1
+  },
+  {
+   "id": "cmwyyvaji00ahpsp7h59nrbk9",
+   "name": "Karim Driver",
+   "phone": "96170123456",
+   "active": true,
+   "currency": "USD",
+   "out": [],
+   "outCollect": 0,
+   "cash": [
+    {
+     "id": "cmwyyvakm00akpsp7j5qx97is",
+     "orderNumber": "1017",
+     "amount": 2900,
+     "deliveredAt": "2026-11-27T12:37:41.989Z"
+    }
+   ],
+   "cashTotal": 2900,
+   "delivered30": 1
+  }
+ ]
+}

@@ -1,5 +1,6 @@
 package com.yallahaul.admin.ui.orders
 
+import com.yallahaul.admin.ui.components.OfflineBanner
 import com.yallahaul.admin.ui.components.openSafely
 import androidx.core.net.toUri
 import android.content.Intent
@@ -113,6 +114,7 @@ fun OrderDetailScreen(user: AppUser, onBack: () -> Unit, open: (String) -> Unit,
             actions = { IconButton(onClick = vm::refresh, enabled = !busy) { Icon(Icons.Rounded.Refresh, "Refresh") } },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
         )
+        OfflineBanner((state as? LoadState.Ready)?.offlineSince, Modifier.padding(horizontal = 16.dp, vertical = 4.dp), vm::refresh)
         when (val s = state) {
             is LoadState.Loading -> LoadingView()
             is LoadState.Failed -> ErrorView(s.error, onRetry = vm::refresh)
@@ -138,8 +140,12 @@ private fun OrderContent(data: OrderDetailResponse, refreshError: String?, busy:
         }
         item { ConstrainedColumn { ItemsCard(order) } }
         item { ConstrainedColumn { CustomerCard(order, user, open) } }
+        if (order.status !in setOf("CANCELLED", "REFUNDED") && (data.whatsapp.link != null || data.whatsapp.problem != null)) item { ConstrainedColumn { WhatsappCard(data, busy, vm) } }
         item { ConstrainedColumn { DeliveryCard(order, data.actions.canManage, busy, vm) } }
+        if (data.actions.canAssignDriver || order.driver != null) item { ConstrainedColumn { DriverCard(data, busy || !data.actions.canAssignDriver, vm) } }
         item { ConstrainedColumn { PaymentCard(order) } }
+        if (data.actions.canReturn || (data.actions.canRefund && data.actions.refundable > 0)) item { ConstrainedColumn { MoneyBackCard(data, busy, vm) } }
+        item { ConstrainedColumn { DocumentsCard(data) } }
         if (order.events.isNotEmpty()) item { ConstrainedColumn { TimelineCard(order) } }
         item { ConstrainedColumn { NotesCard(order, data.actions.canManage, busy, vm) } }
         item { Spacer(Modifier.windowInsetsPadding(WindowInsets.navigationBars)) }
@@ -380,7 +386,6 @@ private fun DeliveryCard(order: OrderDetail, canManage: Boolean, busy: Boolean, 
             Text("“$it”", style = MaterialTheme.typography.bodyMedium)
         }
         HorizontalDivider(Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
-        order.driver?.let { LabeledValue("Driver", it.name) }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Outlined.LocalShipping, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(10.dp))

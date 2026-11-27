@@ -46,6 +46,25 @@ class InventoryViewModel @Inject constructor(private val repo: InventoryReposito
     /** The id of a row that was just saved, so the sheet can close. */
     val adjusted = _adjusted.receiveAsFlow()
     private var job: Job? = null
+    private val _scanned = Channel<StockItem>(Channel.BUFFERED)
+    /** A stock row found by scanning its barcode: the screen opens the adjust sheet for it. */
+    val scanned = _scanned.receiveAsFlow()
+
+    /** Finds the stock row for a scanned or typed barcode/SKU (the web's lookup), then loads it with its history. */
+    fun findCode(code: String) {
+        viewModelScope.launch {
+            when (val found = repo.lookup(code)) {
+                is ApiResult.Failure -> _messages.send(found.error.message)
+                is ApiResult.Success -> {
+                    val ids = found.data.items.map { it.id }.toSet()
+                    val page = repo.list("all", found.data.sku.ifBlank { code }, 1)
+                    val row = (page as? ApiResult.Success)?.data?.items?.firstOrNull { it.id in ids }
+                    if (row != null) _scanned.send(row)
+                    else _messages.send("${found.data.name}: ${found.data.items.sumOf { it.quantity - it.reserved }} available")
+                }
+            }
+        }
+    }
 
     init {
         load(true)
@@ -100,7 +119,7 @@ class InventoryViewModel @Inject constructor(private val repo: InventoryReposito
                     val d = result.data
                     it.copy(
                         loading = false, refreshing = false, error = null, summary = d.summary,
-                        list = Paged(if (reset) d.items else it.list.rows + d.items.filter { r -> it.list.rows.none { x -> x.id == r.id } }, d.page, d.pages, d.total),
+                        list = Paged(if (reset) d.items else it.list.rows + d.items.filter { r -> it.list.rows.none { x -> x.id == r.id } }, d.page, d.pages, d.total, offlineSince = result.cachedAt),
                     )
                 }
                 is ApiResult.Failure -> _state.update {

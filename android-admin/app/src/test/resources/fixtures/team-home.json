@@ -1,0 +1,29 @@
+{
+ "me": {
+  "id": "cmwyyrlu600008r7dkvg1bvk6",
+  "isOwner": true
+ },
+ "channels": [
+  {
+   "id": "cmwyyu4p30082psp714lhkcbb",
+   "kind": "team",
+   "title": "Team room",
+   "otherUserId": null,
+   "unread": 0,
+   "muted": false,
+   "lastAt": "2026-11-27T12:36:47.590Z",
+   "last": "Store Admin: Order 1003 is ready for pickup"
+  }
+ ],
+ "staff": [
+  {
+   "id": "cmwyytctm0001yq7d9tq7cy2l",
+   "name": "No TOTP"
+  },
+  {
+   "id": "cmwyytctc0000yq7dsfzkeo1y",
+   "name": "Sara Support"
+  }
+ ],
+ "ticket": "test-ticket"
+}

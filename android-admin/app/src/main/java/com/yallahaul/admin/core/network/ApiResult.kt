@@ -15,12 +15,13 @@ data class AppError(val kind: Kind, val message: String, val code: String? = nul
 }
 
 sealed interface ApiResult<out T> {
-    data class Success<T>(val data: T) : ApiResult<T>
+    /** [cachedAt] is set when the store couldn't be reached and this is the copy saved on the phone at that time. */
+    data class Success<T>(val data: T, val cachedAt: java.time.Instant? = null) : ApiResult<T>
     data class Failure(val error: AppError) : ApiResult<Nothing>
 }
 
 inline fun <T, R> ApiResult<T>.map(transform: (T) -> R): ApiResult<R> = when (this) {
-    is ApiResult.Success -> ApiResult.Success(transform(data))
+    is ApiResult.Success -> ApiResult.Success(transform(data), cachedAt)
     is ApiResult.Failure -> this
 }
 

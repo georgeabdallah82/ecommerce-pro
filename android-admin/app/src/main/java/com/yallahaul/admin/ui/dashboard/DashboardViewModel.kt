@@ -18,6 +18,7 @@ import javax.inject.Inject
 class DashboardViewModel @Inject constructor(
     private val repo: DashboardRepository,
     private val alerts: AlertsRepository,
+    @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
 ) : ViewModel() {
     private val _state = MutableStateFlow<LoadState<DashboardResponse>>(LoadState.Loading)
     val state: StateFlow<LoadState<DashboardResponse>> = _state.asStateFlow()
@@ -42,7 +43,10 @@ class DashboardViewModel @Inject constructor(
         else if (!refresh) _state.value = LoadState.Loading
         viewModelScope.launch {
             when (val result = repo.load(_range.value)) {
-                is ApiResult.Success -> _state.value = LoadState.Ready(result.data)
+                is ApiResult.Success -> {
+                    _state.value = LoadState.Ready(result.data, offlineSince = result.cachedAt)
+                    if (result.cachedAt == null) runCatching { com.yallahaul.admin.widget.WidgetStore.save(context, result.data) }
+                }
                 is ApiResult.Failure -> _state.value = when (val prev = _state.value) {
                     is LoadState.Ready -> prev.copy(refreshing = false, refreshError = result.error.message)
                     else -> LoadState.Failed(result.error)

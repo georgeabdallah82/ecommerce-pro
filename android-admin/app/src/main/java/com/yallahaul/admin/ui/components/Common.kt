@@ -417,3 +417,10 @@ fun android.content.Context.openSafely(intent: android.content.Intent) {
         android.widget.Toast.makeText(this, "No app on this phone can open that.", android.widget.Toast.LENGTH_SHORT).show()
     }
 }
+
+/** Shown above data that came from the phone's saved copy because the store couldn't be reached. */
+@Composable
+fun OfflineBanner(since: java.time.Instant?, modifier: Modifier = Modifier, onRetry: (() -> Unit)? = null) {
+    if (since == null) return
+    InlineError("Offline · showing what was saved ${com.yallahaul.admin.core.util.Dates.relative(since.toString()).lowercase()}. Changes need internet.", onRetry, modifier)
+}

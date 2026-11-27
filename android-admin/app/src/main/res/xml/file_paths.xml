@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Invoices and packing slips the app creates to share or print (cache only, deleted by Android when space is needed). -->
+<paths>
+    <cache-path name="documents" path="documents/" />
+</paths>

@@ -54,6 +54,7 @@ import com.yallahaul.admin.core.model.AlertItem
 import com.yallahaul.admin.core.model.AppUser
 import com.yallahaul.admin.core.network.ApiResult
 import com.yallahaul.admin.core.util.Dates
+import com.yallahaul.admin.ui.components.OfflineBanner
 import com.yallahaul.admin.ui.components.ConfirmDialog
 import com.yallahaul.admin.ui.components.ConstrainedColumn
 import com.yallahaul.admin.ui.components.EmptyView
@@ -86,7 +87,7 @@ class AlertsViewModel @Inject constructor(private val repo: AlertsRepository) : 
         (_state.value as? LoadState.Ready)?.let { _state.value = it.copy(refreshing = true) }
         viewModelScope.launch {
             _state.value = when (val r = repo.list()) {
-                is ApiResult.Success -> LoadState.Ready(r.data.items)
+                is ApiResult.Success -> LoadState.Ready(r.data.items, offlineSince = r.cachedAt)
                 is ApiResult.Failure -> (_state.value as? LoadState.Ready)?.copy(refreshing = false, refreshError = r.error.message) ?: LoadState.Failed(r.error)
             }
         }
@@ -141,6 +142,7 @@ fun AlertsScreen(user: AppUser, onBack: () -> Unit, open: (String) -> Unit, vm: 
             },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
         )
+        OfflineBanner((state as? LoadState.Ready)?.offlineSince, Modifier.padding(horizontal = 16.dp, vertical = 4.dp), vm::load)
         when (val s = state) {
             is LoadState.Loading -> LoadingView()
             is LoadState.Failed -> ErrorView(s.error, vm::load)

@@ -1,0 +1,101 @@
+{
+ "periodDays": 30,
+ "orders": 11,
+ "revenue": 38610,
+ "averageOrderValue": 3510,
+ "itemsSold": 11,
+ "salesValue": 40700,
+ "newCustomers": 1,
+ "lowStock": [
+  {
+   "productId": "cmwyysttk0021psp7ezwrga4v",
+   "product": "Critical path mwyyryty",
+   "sku": "CP-mwyyryty",
+   "variant": null,
+   "quantity": 2,
+   "reserved": 2,
+   "available": 0,
+   "threshold": 5
+  },
+  {
+   "productId": "cmwyyu1pn005epsp7kuq7f2w4",
+   "product": "E2E Test Mop Pro",
+   "sku": "E2E-1795783003666",
+   "variant": null,
+   "quantity": 3,
+   "reserved": 1,
+   "available": 2,
+   "threshold": 3
+  },
+  {
+   "productId": "cmwyyu4ju007tpsp7hfkps2u9",
+   "product": "E2E Shirt",
+   "sku": "E2E-S-1795783007346",
+   "variant": "Small",
+   "quantity": 4,
+   "reserved": 0,
+   "available": 4,
+   "threshold": 5
+  },
+  {
+   "productId": "cmwyyu4ju007tpsp7hfkps2u9",
+   "product": "E2E Shirt",
+   "sku": "E2E-L-1795783007346",
+   "variant": "Large",
+   "quantity": 2,
+   "reserved": 0,
+   "available": 2,
+   "threshold": 5
+  },
+  {
+   "productId": "cmwyyu4ju007tpsp7hfkps2u9",
+   "product": "E2E Shirt",
+   "sku": "E2E-M-1795783007417",
+   "variant": "Medium",
+   "quantity": 0,
+   "reserved": 0,
+   "available": 0,
+   "threshold": 5
+  },
+  {
+   "productId": "cmwyyv82u008kpsp7fursqnfl",
+   "product": "E2E Test Mop Pro",
+   "sku": "E2E-1795783058571",
+   "variant": null,
+   "quantity": 3,
+   "reserved": 1,
+   "available": 2,
+   "threshold": 3
+  },
+  {
+   "productId": "cmwyyvatb00b2psp7yy0tfln4",
+   "product": "E2E Shirt",
+   "sku": "E2E-S-1795783062122",
+   "variant": "Small",
+   "quantity": 4,
+   "reserved": 0,
+   "available": 4,
+   "threshold": 5
+  },
+  {
+   "productId": "cmwyyvatb00b2psp7yy0tfln4",
+   "product": "E2E Shirt",
+   "sku": "E2E-L-1795783062122",
+   "variant": "Large",
+   "quantity": 2,
+   "reserved": 0,
+   "available": 2,
+   "threshold": 5
+  },
+  {
+   "productId": "cmwyyvatb00b2psp7yy0tfln4",
+   "product": "E2E Shirt",
+   "sku": "E2E-M-1795783062189",
+   "variant": "Medium",
+   "quantity": 0,
+   "reserved": 0,
+   "available": 0,
+   "threshold": 5
+  }
+ ]
+}

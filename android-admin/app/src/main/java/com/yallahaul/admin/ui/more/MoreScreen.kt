@@ -15,6 +15,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Discount
+import androidx.compose.material.icons.outlined.Insights
+import androidx.compose.material.icons.outlined.TwoWheeler
+import androidx.compose.material.icons.automirrored.outlined.AssignmentReturn
+import androidx.compose.material.icons.outlined.RemoveShoppingCart
+import androidx.compose.material.icons.outlined.SupportAgent
+import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.RateReview
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.OpenInBrowser
@@ -51,6 +58,7 @@ fun MoreScreen(user: AppUser, padding: PaddingValues, open: (String) -> Unit) {
     Column(Modifier.fillMaxSize().padding(padding)) {
         TopAppBar(title = { Text("More", style = MaterialTheme.typography.headlineSmall) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background))
         Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+
             ConstrainedColumn {
                 SectionCard {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -66,7 +74,14 @@ fun MoreScreen(user: AppUser, padding: PaddingValues, open: (String) -> Unit) {
             ConstrainedColumn {
                 SectionCard(contentPadding = PaddingValues(vertical = 6.dp)) {
                     val entries = buildList {
+                        if (user.can("reports.view")) add(Triple("Reports", Icons.Outlined.Insights, Routes.REPORTS))
                         if (user.can("customers.view")) add(Triple("Customers", Icons.Outlined.Group, Routes.CUSTOMERS))
+                        if (user.can("orders.view")) add(Triple("Drivers", Icons.Outlined.TwoWheeler, Routes.DRIVERS))
+                        if (user.can("returns.view")) add(Triple("Returns", Icons.AutoMirrored.Outlined.AssignmentReturn, Routes.RETURNS))
+                        if (user.can("abandonedCheckouts.view")) add(Triple("Unfinished checkouts", Icons.Outlined.RemoveShoppingCart, Routes.UNFINISHED))
+                        if (user.can("assistant.view")) add(Triple("Live chat", Icons.Outlined.SupportAgent, Routes.LIVE_CHAT))
+                        add(Triple("Team chat", Icons.Outlined.Groups, Routes.TEAM_CHAT))
+                        if (user.can("reviews.view")) add(Triple("Reviews & questions", Icons.Outlined.RateReview, Routes.REVIEWS))
                         if (user.can("coupons.view")) add(Triple("Discounts", Icons.Outlined.Discount, Routes.DISCOUNTS))
                         add(Triple("Alerts", Icons.Outlined.Notifications, Routes.ALERTS))
                         add(Triple("Settings", Icons.Outlined.Settings, Routes.SETTINGS))

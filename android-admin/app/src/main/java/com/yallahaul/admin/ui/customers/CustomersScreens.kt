@@ -1,5 +1,6 @@
 package com.yallahaul.admin.ui.customers
 
+import com.yallahaul.admin.ui.components.OfflineBanner
 import com.yallahaul.admin.ui.components.openSafely
 import androidx.core.net.toUri
 import android.content.Intent
@@ -83,6 +84,7 @@ fun CustomersScreen(onBack: () -> Unit, open: (String) -> Unit, vm: CustomersVie
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") } },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
         )
+        OfflineBanner(state.list.offlineSince, Modifier.padding(horizontal = 16.dp, vertical = 4.dp), vm::refresh)
         ConstrainedColumn { SearchField(state.query, vm::setQuery, "Search name, email or phone", Modifier.padding(horizontal = 16.dp).padding(bottom = 10.dp)) }
         when {
             state.loading && state.list.rows.isEmpty() -> LoadingView()
@@ -137,6 +139,7 @@ fun CustomerDetailScreen(onBack: () -> Unit, open: (String) -> Unit, vm: Custome
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") } },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
         )
+        OfflineBanner((state as? LoadState.Ready)?.offlineSince, Modifier.padding(horizontal = 16.dp, vertical = 4.dp), vm::load)
         when (val s = state) {
             is LoadState.Loading -> LoadingView()
             is LoadState.Failed -> ErrorView(s.error, vm::load)

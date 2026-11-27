@@ -1,0 +1,168 @@
+{
+ "order": {
+  "id": "cmwyyvakm00akpsp7j5qx97is",
+  "orderNumber": "1017",
+  "createdAt": "2026-11-27T12:37:41.830Z",
+  "updatedAt": "2026-11-27T12:37:42.906Z",
+  "status": "DELIVERED",
+  "paymentStatus": "PARTIALLY_REFUNDED",
+  "fulfillmentStatus": "FULFILLED",
+  "paymentMethod": "COD",
+  "currency": "USD",
+  "subtotal": 2900,
+  "discountTotal": 0,
+  "shippingTotal": 0,
+  "taxTotal": 0,
+  "grandTotal": 2900,
+  "couponCode": null,
+  "notes": null,
+  "isGift": false,
+  "giftMessage": null,
+  "trackingNumber": null,
+  "shippingMethod": "Delivery",
+  "whatsappUpdates": false,
+  "customer": {
+   "id": null,
+   "name": "Driver Test",
+   "email": null,
+   "phone": "+96170555555",
+   "hasAccount": false
+  },
+  "shippingAddress": {
+   "firstName": "Driver",
+   "lastName": "Test",
+   "line1": "Achrafieh",
+   "city": "Beirut",
+   "country": "Lebanon",
+   "phone": "+96170555555"
+  },
+  "billingAddress": {
+   "firstName": "Driver",
+   "lastName": "Test",
+   "line1": "Achrafieh",
+   "city": "Beirut",
+   "country": "Lebanon",
+   "phone": "+96170555555"
+  },
+  "driver": {
+   "id": "cmwyyvaji00ahpsp7h59nrbk9",
+   "name": "Karim Driver"
+  },
+  "items": [
+   {
+    "id": "cmwyyvakn00alpsp73fpywjte",
+    "productId": "cmwyyrm4h000d8r7dvlmpexai",
+    "name": "Smart Organizer",
+    "variant": null,
+    "sku": "SKU-004",
+    "quantity": 1,
+    "unitPrice": 2900,
+    "totalPrice": 2900,
+    "imageUrl": "/placeholder-product.svg"
+   }
+  ],
+  "events": [
+   {
+    "id": "cmwyyvbej00bppsp7j68cr8h8",
+    "status": "DELIVERED",
+    "message": "Order partially refunded (100 USD).",
+    "createdAt": "2026-11-27T12:37:42.906Z"
+   },
+   {
+    "id": "cmwyyvb9i00bjpsp7hgeek1o0",
+    "status": "PAID",
+    "message": "cmwyyvb9d00bhpsp71uwaktsf: Smart Organizer × 1 — restocked",
+    "createdAt": "2026-11-27T12:37:42.725Z"
+   },
+   {
+    "id": "cmwyyvap300aypsp71ec7t253",
+    "status": "DELIVERED",
+    "message": "Order moved from SHIPPED to DELIVERED. Cash collected on delivery — marked as paid.",
+    "createdAt": "2026-11-27T12:37:41.989Z"
+   },
+   {
+    "id": "cmwyyvans00aupsp7uqldm6zw",
+    "status": "SHIPPED",
+    "message": "Order moved from PROCESSING to SHIPPED.",
+    "createdAt": "2026-11-27T12:37:41.943Z"
+   },
+   {
+    "id": "cmwyyvame00arpsp7kyh4lt78",
+    "status": "PROCESSING",
+    "message": "Order moved from CONFIRMED to PROCESSING.",
+    "createdAt": "2026-11-27T12:37:41.893Z"
+   },
+   {
+    "id": "cmwyyvako00ampsp7db6l4coj",
+    "status": "PENDING",
+    "message": "Order added by hand by Store Admin.",
+    "createdAt": "2026-11-27T12:37:41.830Z"
+   },
+   {
+    "id": "cmwyyvako00anpsp73g5ohllu",
+    "status": "CONFIRMED",
+    "message": "The customer confirmed the order.",
+    "createdAt": "2026-11-27T12:37:41.830Z"
+   }
+  ],
+  "staffNotes": [],
+  "payments": [
+   {
+    "id": "cmwyyvbe800bopsp7ecgx9rqa",
+    "provider": "manual",
+    "status": "refunded",
+    "amount": 100,
+    "currency": "USD",
+    "createdAt": "2026-11-27T12:37:42.896Z"
+   }
+  ],
+  "paymentProofs": [],
+  "fulfillments": [
+   {
+    "id": "cmwyyvanx00avpsp73jegga8l",
+    "status": "SHIPPED",
+    "trackingNumber": null,
+    "trackingCompany": null,
+    "trackingUrl": null,
+    "shippedAt": "2026-11-27T12:37:41.947Z",
+    "createdAt": "2026-11-27T12:37:41.949Z"
+   }
+  ]
+ },
+ "actions": {
+  "canManage": true,
+  "canRefund": true,
+  "nextStatuses": [],
+  "canMarkPaid": false,
+  "canReturn": true,
+  "refundable": 2800,
+  "refundPending": false,
+  "canAssignDriver": false
+ },
+ "whatsapp": {
+  "link": "https://wa.me/96170555555?text=Hi%20Driver%2C%20this%20is%20YOUR%20BRAND.%20We%20received%20your%20order%20%231017%3A%0A%E2%80%A2%201%20%C3%97%20Smart%20Organizer%0ATotal%3A%20%2429.00%20(cash%20on%20delivery)%0ADelivery%20to%3A%20Achrafieh%2C%20Beirut%0A%0ACan%20you%20please%20confirm%20the%20order%3F%20Reply%20YES%20and%20we%20will%20send%20it%20out.%20Thank%20you!",
+  "problem": null,
+  "outcomes": [
+   {
+    "id": "confirmed",
+    "label": "Customer confirmed the order on WhatsApp"
+   },
+   {
+    "id": "no_answer",
+    "label": "Messaged on WhatsApp, no answer yet"
+   },
+   {
+    "id": "change_requested",
+    "label": "Customer asked for a change on WhatsApp"
+   },
+   {
+    "id": "cancel_requested",
+    "label": "Customer asked on WhatsApp to cancel"
+   },
+   {
+    "id": "wrong_number",
+    "label": "WhatsApp number is wrong or not on WhatsApp"
+   }
+  ]
+ }
+}

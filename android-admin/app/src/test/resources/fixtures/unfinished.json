@@ -1,0 +1,24 @@
+{
+ "checkouts": [
+  {
+   "id": "acmwyyvb0i",
+   "name": "Nour",
+   "phone": "+961 70 111 222",
+   "email": null,
+   "subtotal": 3000,
+   "currency": "USD",
+   "lines": [
+    {
+     "name": "E2E Test Mop Pro",
+     "quantity": 2,
+     "unitPrice": 1500
+    }
+   ],
+   "lastActivity": "2026-11-27T10:37:42.407Z",
+   "whatsappAt": null,
+   "emailSent": false,
+   "place": "Jounieh",
+   "whatsappLink": "https://wa.me/96170111222?text=Hi%20Nour%2C%20this%20is%20YOUR%20BRAND.%20We%20noticed%20you%20didn't%20finish%20your%20order%3A%0A%E2%80%A2%202%20%C3%97%20E2E%20Test%20Mop%20Pro%0ATotal%3A%20%2430.00%20(%2B%20delivery)%0A%0ACan%20we%20help%20with%20anything%3F%0AOr%20just%20reply%20here%20and%20we%20will%20take%20your%20order."
+  }
+ ]
+}

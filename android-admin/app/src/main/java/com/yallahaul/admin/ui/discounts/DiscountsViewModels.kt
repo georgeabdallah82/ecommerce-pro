@@ -58,7 +58,7 @@ class DiscountsViewModel @Inject constructor(private val repo: DiscountsReposito
         if (current is LoadState.Ready) _state.value = current.copy(refreshing = true)
         viewModelScope.launch {
             _state.value = when (val result = repo.list()) {
-                is ApiResult.Success -> LoadState.Ready(result.data)
+                is ApiResult.Success -> LoadState.Ready(result.data, offlineSince = result.cachedAt)
                 is ApiResult.Failure -> (_state.value as? LoadState.Ready)?.copy(refreshing = false, refreshError = result.error.message) ?: LoadState.Failed(result.error)
             }
         }

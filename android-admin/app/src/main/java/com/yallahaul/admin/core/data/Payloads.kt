@@ -100,11 +100,44 @@ object ProductPayloads {
         put("continueSellingWhenOutOfStock", d.continueSelling)
     }
 
+    /**
+     * The product's options: every option is sent (the server removes the ones left out), each with
+     * the fields the phone doesn't edit (option values, weight) exactly as they were. Quantities are
+     * not sent, so stock stays as it is; a new option starts with 0 in stock.
+     */
+    fun variants(list: List<VariantDraft>): JsonObject = buildJsonObject {
+        put("variants", JsonArray(list.map { v ->
+            buildJsonObject {
+                v.id?.let { put("id", it) }
+                put("name", v.name.trim().ifBlank { "Default Title" })
+                put("sku", v.sku.trim())
+                put("barcode", v.barcode.trim())
+                put("optionJson", v.original?.optionJson ?: kotlinx.serialization.json.Json.encodeToString(kotlinx.serialization.json.JsonObject.serializer(), buildJsonObject { put("Option", v.name.trim()) }))
+                put("price", nullable(v.price))
+                put("compareAtPrice", nullable(v.compareAtPrice))
+                v.original?.weight?.let { put("weight", it) }
+                v.original?.weightUnit?.let { put("weightUnit", it) }
+                if (v.id == null) put("quantity", 0)
+            }
+        }))
+    }
+
     fun status(status: String): JsonObject = buildJsonObject {
         put("status", status)
         if (status == "ACTIVE") put("publishedAt", java.time.Instant.now().toString())
     }
 }
+
+/** One product option as the editor holds it. [id] is null for a new one; [original] keeps what the phone doesn't edit. */
+data class VariantDraft(
+    val id: String? = null,
+    val name: String = "",
+    val sku: String = "",
+    val barcode: String = "",
+    val price: Long? = null,
+    val compareAtPrice: Long? = null,
+    val original: com.yallahaul.admin.core.model.VariantFull? = null,
+)
 
 /** What the discount editor holds. A percentage is 1-100; a fixed amount and the minimum are in cents. */
 data class CouponDraft(

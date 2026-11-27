@@ -1,0 +1,41 @@
+{
+ "waiting": 2,
+ "reviews": [
+  {
+   "id": "rvmwyyvb0i",
+   "rating": 5,
+   "title": "Great mop",
+   "body": "Cleans really well",
+   "photos": [],
+   "approved": false,
+   "featured": false,
+   "createdAt": "2026-11-27T12:37:42.404Z",
+   "author": "Maya",
+   "orderId": null,
+   "orderNumber": null,
+   "product": {
+    "id": "cmwyyv82u008kpsp7fursqnfl",
+    "name": "E2E Test Mop Pro",
+    "imageUrl": "/placeholder-product.svg"
+   }
+  },
+  {
+   "id": "rvmwyyu4rp",
+   "rating": 5,
+   "title": "Great mop",
+   "body": "Cleans really well",
+   "photos": [],
+   "approved": false,
+   "featured": false,
+   "createdAt": "2026-11-27T12:36:47.654Z",
+   "author": "Maya",
+   "orderId": null,
+   "orderNumber": null,
+   "product": {
+    "id": "cmwyyu1pn005epsp7kuq7f2w4",
+    "name": "E2E Test Mop Pro",
+    "imageUrl": "/placeholder-product.svg"
+   }
+  }
+ ]
+}

@@ -1,0 +1,16 @@
+{
+ "thread": {
+  "id": "cvmwyyvb0iabcd",
+  "lang": "en",
+  "waitingSince": "2026-11-27T12:37:42.409Z",
+  "customer": null,
+  "messages": [
+   {
+    "id": "mmwyyvb11",
+    "role": "user",
+    "text": "Hi, do you deliver to Jounieh today?",
+    "at": "2026-11-27T12:37:42.422Z"
+   }
+  ]
+ }
+}

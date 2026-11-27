@@ -19,6 +19,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.SearchOff
+import androidx.compose.material.icons.outlined.QrCodeScanner
+import androidx.compose.material.icons.rounded.Close
+import androidx.activity.compose.BackHandler
+import kotlinx.coroutines.launch
 import androidx.compose.material.icons.outlined.Sell
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Visibility
@@ -58,6 +62,7 @@ import com.yallahaul.admin.core.model.AppUser
 import com.yallahaul.admin.core.model.ProductRow
 import com.yallahaul.admin.core.util.Labels
 import com.yallahaul.admin.core.util.Money
+import com.yallahaul.admin.ui.components.OfflineBanner
 import com.yallahaul.admin.ui.components.ConfirmDialog
 import com.yallahaul.admin.ui.components.ConstrainedColumn
 import com.yallahaul.admin.ui.components.EmptyView
@@ -83,12 +88,48 @@ fun ProductsScreen(user: AppUser, padding: PaddingValues, open: (String) -> Unit
     val listState = rememberLazyListState()
     val canManage = user.can("products.manage")
     var confirm by remember { mutableStateOf<ProductRow?>(null) }
+    var confirmArchive by remember { mutableStateOf(false) }
+    val selected by vm.selected.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { vm.messages.collect { snackbar.showSnackbar(it) } }
+    LaunchedEffect(Unit) { vm.found.collect { id -> open(Routes.product(id)) } }
+    BackHandler(enabled = selected.isNotEmpty()) { vm.clearSelection() }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val scan: () -> Unit = {
+        scope.launch {
+            when (val r = com.yallahaul.admin.core.scan.BarcodeScanner.scan(context)) {
+                is com.yallahaul.admin.core.scan.BarcodeScanner.Result.Code -> vm.findCode(r.value)
+                is com.yallahaul.admin.core.scan.BarcodeScanner.Result.Unavailable -> snackbar.showSnackbar(r.message)
+                else -> Unit
+            }
+        }
+    }
     LoadMoreEffect(listState, enabled = state.list.canLoadMore && !state.loading) { vm.loadMore() }
 
     Box(Modifier.fillMaxSize().padding(padding)) {
         Column(Modifier.fillMaxSize()) {
-            TopAppBar(title = { Text("Products", style = MaterialTheme.typography.headlineSmall) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background))
+            if (selected.isNotEmpty()) TopAppBar(
+                title = { Text("${selected.size} selected") },
+                navigationIcon = { IconButton(onClick = vm::clearSelection) { Icon(Icons.Rounded.Close, "Clear selection") } },
+                actions = {
+                    var menu by remember { mutableStateOf(false) }
+                    TextButton(onClick = { vm.bulk("ACTIVE", "now live in the shop") }) { Text("Activate") }
+                    TextButton(onClick = { vm.bulk("DRAFT", "hidden from the shop") }) { Text("Hide") }
+                    Box {
+                        IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, "More actions") }
+                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                            DropdownMenuItem(text = { Text("Feature on home page") }, onClick = { menu = false; vm.bulk("FEATURED_ON", "featured") })
+                            DropdownMenuItem(text = { Text("Remove from featured") }, onClick = { menu = false; vm.bulk("FEATURED_OFF", "no longer featured") })
+                            DropdownMenuItem(text = { Text("Archive") }, onClick = { menu = false; confirmArchive = true })
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+            ) else TopAppBar(
+                title = { Text("Products", style = MaterialTheme.typography.headlineSmall) },
+                actions = { IconButton(onClick = scan) { Icon(Icons.Outlined.QrCodeScanner, "Scan a barcode") } },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+            )
             ConstrainedColumn {
                 SearchField(state.query, vm::setQuery, "Search name, SKU, brand", Modifier.padding(horizontal = 16.dp))
                 PrimaryScrollableTabRow(selectedTabIndex = TABS.indexOfFirst { it.first == state.status }.coerceAtLeast(0), edgePadding = 12.dp, containerColor = MaterialTheme.colorScheme.background, divider = {}) {
@@ -98,6 +139,7 @@ fun ProductsScreen(user: AppUser, padding: PaddingValues, open: (String) -> Unit
                     }
                 }
             }
+            OfflineBanner(state.list.offlineSince, Modifier.padding(horizontal = 16.dp, vertical = 4.dp), vm::refresh)
             when {
                 state.loading && state.list.rows.isEmpty() -> LoadingView()
                 state.error != null && state.list.rows.isEmpty() -> ErrorView(state.error!!, vm::refresh)
@@ -109,7 +151,12 @@ fun ProductsScreen(user: AppUser, padding: PaddingValues, open: (String) -> Unit
                         }
                         items(state.list.rows, key = { it.id }) { product ->
                             ConstrainedColumn {
-                                ProductCard(product, canManage, onOpen = { open(Routes.product(product.id)) }, onToggle = { confirm = product })
+                                ProductCard(
+                                    product, canManage, isSelected = product.id in selected,
+                                    onOpen = { if (selected.isNotEmpty()) vm.toggle(product.id) else open(Routes.product(product.id)) },
+                                    onToggle = { confirm = product },
+                                    onSelect = { if (canManage) vm.toggle(product.id) },
+                                )
                             }
                         }
                         item {
@@ -120,7 +167,7 @@ fun ProductsScreen(user: AppUser, padding: PaddingValues, open: (String) -> Unit
                 }
             }
         }
-        if (canManage) ExtendedFloatingActionButton(
+        if (canManage && selected.isEmpty()) ExtendedFloatingActionButton(
             onClick = { open(Routes.newProduct()) },
             icon = { Icon(Icons.Rounded.Add, null) },
             text = { Text("Add product") },
@@ -130,6 +177,12 @@ fun ProductsScreen(user: AppUser, padding: PaddingValues, open: (String) -> Unit
         )
     }
 
+    if (confirmArchive) ConfirmDialog(
+        title = "Archive ${selected.size} product${if (selected.size == 1) "" else "s"}?",
+        body = "They're hidden from the shop and moved out of the way. Past orders keep them, and you can activate them again later.",
+        confirmLabel = "Archive", destructive = true,
+        onConfirm = { vm.bulk("ARCHIVED", "archived") }, onDismiss = { confirmArchive = false },
+    )
     confirm?.let { product ->
         val activating = product.status != "ACTIVE"
         ConfirmDialog(
@@ -145,15 +198,15 @@ fun ProductsScreen(user: AppUser, padding: PaddingValues, open: (String) -> Unit
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ProductCard(product: ProductRow, canManage: Boolean, onOpen: () -> Unit, onToggle: () -> Unit) {
+private fun ProductCard(product: ProductRow, canManage: Boolean, isSelected: Boolean = false, onOpen: () -> Unit, onToggle: () -> Unit, onSelect: () -> Unit = {}) {
     var menu by remember { mutableStateOf(false) }
     val currency = LocalStore.current.currency
     val units = product.available()
     val stock = product.stockState()
     Surface(
-        Modifier.fillMaxWidth().combinedClickable(onClick = onOpen, onLongClick = { if (canManage) menu = true }),
+        Modifier.fillMaxWidth().combinedClickable(onClick = onOpen, onLongClick = onSelect),
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surface,
+        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {

@@ -18,14 +18,62 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class OrdersViewModel @Inject constructor(
     private val repo: OrdersRepository,
+    private val driversRepo: com.yallahaul.admin.core.data.DriversRepository,
     saved: SavedStateHandle,
 ) : ViewModel() {
+    // Selecting several orders: confirm them together, or give them to a driver.
+    private val _selected = MutableStateFlow<Set<String>>(emptySet())
+    val selected: StateFlow<Set<String>> = _selected.asStateFlow()
+    private val _drivers = MutableStateFlow<List<com.yallahaul.admin.core.model.DriverRow>>(emptyList())
+    val drivers: StateFlow<List<com.yallahaul.admin.core.model.DriverRow>> = _drivers.asStateFlow()
+    private val _working = MutableStateFlow(false)
+    val working: StateFlow<Boolean> = _working.asStateFlow()
+    private val _messages = kotlinx.coroutines.channels.Channel<String>(kotlinx.coroutines.channels.Channel.BUFFERED)
+    val messages = _messages.receiveAsFlow()
+
+    fun toggle(id: String) = _selected.update { if (id in it) it - id else it + id }
+    fun clearSelection() { _selected.value = emptySet() }
+
+    /** Confirms each selected order that is still pending, one at a time, through the usual order route. */
+    fun confirmSelected() {
+        val rows = _state.value.list.rows.filter { it.id in _selected.value && it.status == "PENDING" }
+        if (rows.isEmpty()) { viewModelScope.launch { _messages.send("None of the selected orders is pending") }; return }
+        _working.value = true
+        viewModelScope.launch {
+            var done = 0; var failed = 0
+            for (row in rows) { if (repo.setStatus(row.id, "CONFIRMED") is ApiResult.Success) done++ else failed++ }
+            _working.value = false
+            clearSelection()
+            _messages.send("$done order${if (done == 1) "" else "s"} confirmed" + if (failed > 0) ", $failed couldn't be (they may have changed)" else "")
+            refresh()
+        }
+    }
+
+    fun loadDrivers() = viewModelScope.launch {
+        (driversRepo.list() as? ApiResult.Success)?.let { r -> _drivers.value = r.data.drivers.filter { it.active } }
+    }
+
+    fun assignSelected(driverId: String) {
+        val ids = _selected.value.toList()
+        if (ids.isEmpty()) return
+        _working.value = true
+        viewModelScope.launch {
+            when (val r = driversRepo.assign(ids, driverId)) {
+                is ApiResult.Success -> _messages.send("${r.data.updated} of ${ids.size} given to ${_drivers.value.firstOrNull { it.id == driverId }?.name ?: "the driver"}" + if (r.data.updated < ids.size) " (only orders on their way can be)" else "")
+                is ApiResult.Failure -> _messages.send(r.error.message)
+            }
+            _working.value = false
+            clearSelection()
+            refresh()
+        }
+    }
     data class UiState(
         val status: String? = null,
         val query: String = "",
@@ -83,6 +131,7 @@ class OrdersViewModel @Inject constructor(
                             list = Paged(
                                 rows = if (reset) data.rows else it.list.rows + data.rows.filter { row -> it.list.rows.none { r -> r.id == row.id } },
                                 page = data.pagination.page, pages = data.pagination.pages, total = data.pagination.total,
+                                offlineSince = result.cachedAt,
                             ),
                         )
                     }

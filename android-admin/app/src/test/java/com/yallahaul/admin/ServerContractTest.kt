@@ -74,4 +74,29 @@ class ServerContractTest {
         assertTrue(me.user.can("orders.view"))
         assertEquals("USD", me.store.currency)
     }
+
+    @Test fun v11Answers() {
+        val drivers = load("drivers", DriversResponse.serializer())
+        assertTrue(drivers.drivers.isNotEmpty())
+        val delivered = load("order-delivered", OrderDetailResponse.serializer())
+        assertTrue(delivered.actions.canReturn)
+        val order = load("order", OrderDetailResponse.serializer())
+        assertNotNull(order)
+        val reviews = load("reviews", ReviewsResponse.serializer())
+        assertTrue(reviews.reviews.isNotEmpty())
+        val questions = load("questions", QuestionsResponse.serializer())
+        assertTrue(questions.questions.isNotEmpty())
+        val unfinished = load("unfinished", UnfinishedResponse.serializer())
+        assertTrue(unfinished.checkouts.any { it.whatsappLink?.startsWith("https://wa.me/") == true })
+        val returns = load("returns", ListSerializer(ReturnRow.serializer()))
+        assertTrue(returns.isNotEmpty())
+        load("report-sales", SalesReport.serializer())
+        load("report-profit", ProfitResponse.serializer())
+        load("live-inbox", LiveInboxResponse.serializer())
+        load("live-thread", LiveThreadResponse.serializer())
+        val team = load("team-home", TeamHome.serializer())
+        assertTrue(team.channels.isNotEmpty())
+        val messages = load("team-messages", TeamMessagesResponse.serializer())
+        assertTrue(messages.messages.isNotEmpty())
+    }
 }

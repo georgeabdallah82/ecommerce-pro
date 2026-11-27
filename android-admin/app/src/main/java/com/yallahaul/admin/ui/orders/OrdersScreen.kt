@@ -1,6 +1,18 @@
 package com.yallahaul.admin.ui.orders
 
 import androidx.compose.foundation.clickable
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.yallahaul.admin.ui.components.ConfirmDialog
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -45,7 +57,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yallahaul.admin.core.model.OrderRow
 import com.yallahaul.admin.core.util.Dates
 import com.yallahaul.admin.core.util.Labels
+import androidx.compose.ui.platform.testTag
 import com.yallahaul.admin.core.util.Money
+import com.yallahaul.admin.ui.components.OfflineBanner
 import com.yallahaul.admin.ui.components.ConstrainedColumn
 import com.yallahaul.admin.ui.components.EmptyView
 import com.yallahaul.admin.ui.components.ErrorView
@@ -69,12 +83,29 @@ private val FILTERS = listOf(
 )
 
 @Composable
-fun OrdersScreen(padding: PaddingValues, open: (String) -> Unit, initialStatus: String?, onBack: (() -> Unit)?, vm: OrdersViewModel = hiltViewModel()) {
+fun OrdersScreen(padding: PaddingValues, open: (String) -> Unit, initialStatus: String?, onBack: (() -> Unit)?, canManage: Boolean = false, vm: OrdersViewModel = hiltViewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val selected by vm.selected.collectAsStateWithLifecycle()
+    val working by vm.working.collectAsStateWithLifecycle()
+    val drivers by vm.drivers.collectAsStateWithLifecycle()
+    val snackbar = com.yallahaul.admin.ui.components.LocalSnackbar.current
+    var confirmBulk by remember { mutableStateOf(false) }
+    var pickDriver by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
+    LaunchedEffect(Unit) { vm.messages.collect { snackbar.showSnackbar(it) } }
     LoadMoreEffect(listState, enabled = state.list.canLoadMore && !state.loading) { vm.loadMore() }
-    Column(Modifier.fillMaxSize().padding(padding)) {
-        TopAppBar(
+    BackHandler(enabled = selected.isNotEmpty()) { vm.clearSelection() }
+    Box(Modifier.fillMaxSize().padding(padding)) {
+    Column(Modifier.fillMaxSize()) {
+        if (selected.isNotEmpty()) TopAppBar(
+            title = { Text("${selected.size} selected") },
+            navigationIcon = { IconButton(onClick = vm::clearSelection) { Icon(Icons.Rounded.Close, "Clear selection") } },
+            actions = {
+                TextButton(onClick = { confirmBulk = true }, enabled = !working) { Text("Confirm") }
+                TextButton(onClick = { vm.loadDrivers(); pickDriver = true }, enabled = !working) { Text("Driver") }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        ) else TopAppBar(
             title = { Text("Orders", style = MaterialTheme.typography.headlineSmall) },
             navigationIcon = { if (onBack != null) IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") } },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
@@ -96,6 +127,7 @@ fun OrdersScreen(padding: PaddingValues, open: (String) -> Unit, initialStatus: 
                 }
             }
         }
+        OfflineBanner(state.list.offlineSince, Modifier.padding(horizontal = 16.dp, vertical = 4.dp), vm::refresh)
         when {
             state.loading && state.list.rows.isEmpty() -> LoadingView()
             state.error != null && state.list.rows.isEmpty() -> ErrorView(state.error!!, onRetry = vm::refresh)
@@ -110,7 +142,16 @@ fun OrdersScreen(padding: PaddingValues, open: (String) -> Unit, initialStatus: 
                 } else {
                     LazyColumn(state = listState, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         item { Text("${state.list.total} order${if (state.list.total == 1) "" else "s"}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                        items(state.list.rows, key = { it.id }) { order -> ConstrainedColumn { OrderCard(order) { open(Routes.order(order.id)) } } }
+                        if (canManage && selected.isEmpty()) item { Text("Tip: press and hold an order to select several.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        items(state.list.rows, key = { it.id }) { order ->
+                            ConstrainedColumn {
+                                OrderCard(
+                                    order, isSelected = order.id in selected,
+                                    onClick = { if (selected.isNotEmpty()) vm.toggle(order.id) else open(Routes.order(order.id)) },
+                                    onLongClick = { if (canManage) vm.toggle(order.id) },
+                                )
+                            }
+                        }
                         item {
                             when {
                                 state.list.loadingMore -> Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.Center) { CircularProgressIndicator(Modifier.size(24.dp)) }
@@ -122,6 +163,33 @@ fun OrdersScreen(padding: PaddingValues, open: (String) -> Unit, initialStatus: 
             }
         }
     }
+    if (canManage && selected.isEmpty()) ExtendedFloatingActionButton(
+        onClick = { open(Routes.NEW_ORDER) }, icon = { Icon(Icons.Rounded.Add, null) }, text = { Text("New order") },
+        modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).testTag("new-order"),
+        containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary,
+    )
+    }
+    if (confirmBulk) ConfirmDialog(
+        title = "Confirm ${selected.size} order${if (selected.size == 1) "" else "s"}?",
+        body = "Every selected order that is still pending moves to Confirmed and each customer is updated. Orders in other steps are left as they are.",
+        confirmLabel = "Confirm orders", onConfirm = vm::confirmSelected, onDismiss = { confirmBulk = false },
+    )
+    if (pickDriver) AlertDialog(
+        onDismissRequest = { pickDriver = false },
+        title = { Text("Give to a driver") },
+        text = {
+            Column {
+                if (drivers.isEmpty()) Text("No active drivers. Add them in More › Drivers.")
+                drivers.forEach { d ->
+                    Row(Modifier.fillMaxWidth().clickable { vm.assignSelected(d.id); pickDriver = false }.padding(vertical = 12.dp)) {
+                        Text(d.name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                        Text("${d.out.size} on the way", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { pickDriver = false }) { Text("Cancel") } },
+    )
 }
 
 internal fun guestName(order: OrderRow): String {
@@ -133,13 +201,14 @@ internal fun guestName(order: OrderRow): String {
 
 internal fun cityOf(order: OrderRow): String? = runCatching { JSONObject(order.shippingAddressJson ?: "{}").optString("city").takeIf { it.isNotBlank() } }.getOrNull()
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-private fun OrderCard(order: OrderRow, onClick: () -> Unit) {
+private fun OrderCard(order: OrderRow, isSelected: Boolean = false, onClick: () -> Unit, onLongClick: () -> Unit = {}) {
     Surface(
-        Modifier.fillMaxWidth().clickable(onClick = onClick),
+        Modifier.fillMaxWidth().combinedClickable(onClick = onClick, onLongClick = onLongClick),
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surface,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(if (isSelected) 2.dp else 1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

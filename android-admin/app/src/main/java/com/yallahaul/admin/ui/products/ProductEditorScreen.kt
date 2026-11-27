@@ -33,6 +33,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.QrCodeScanner
+import kotlinx.coroutines.launch
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Star
@@ -212,7 +214,7 @@ private fun EditorForm(state: ProductEditorViewModel.UiState, vm: ProductEditorV
                 SectionCard(title = "Inventory") {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Field("SKU", f.sku, { v -> vm.edit { it.copy(sku = v.take(120)) } }, state.errors["sku"], canEdit, Modifier.weight(1f))
-                        Field("Barcode", f.barcode, { v -> vm.edit { it.copy(barcode = v.take(120)) } }, null, canEdit, Modifier.weight(1f))
+                        Field("Barcode", f.barcode, { v -> vm.edit { it.copy(barcode = v.take(120)) } }, null, canEdit, Modifier.weight(1f), trailing = if (canEdit) ({ ScanButton { code -> vm.edit { it.copy(barcode = code) } } }) else null)
                     }
                     ToggleRow("Track stock", f.trackInventory, canEdit) { v -> vm.edit { it.copy(trackInventory = v) } }
                     ToggleRow("Keep selling when sold out", f.continueSelling, canEdit) { v -> vm.edit { it.copy(continueSelling = v) } }
@@ -234,10 +236,10 @@ private fun EditorForm(state: ProductEditorViewModel.UiState, vm: ProductEditorV
                             }
                         }
                         Text("Change quantities in the Stock tab, so every change is recorded.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
-                        if (p.variants.size > 1) Text("This product has ${p.variants.size} options. Edit options and their prices on the website.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
 
+                if (state.variants.isNotEmpty()) OptionsCard(state, vm, canEdit)
                 SectionCard(title = "Organization") {
                     Text("Collections", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 6.dp)) {
@@ -304,9 +306,10 @@ private fun CollectionsDialog(state: ProductEditorViewModel.UiState, vm: Product
 private fun Field(
     label: String, value: String, onChange: (String) -> Unit, error: String?, enabled: Boolean,
     modifier: Modifier = Modifier.fillMaxWidth(), minLines: Int = 1, number: Boolean = false, capitalize: Boolean = false,
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     OutlinedTextField(
-        value = value, onValueChange = onChange, label = { Text(label) }, enabled = enabled,
+        value = value, onValueChange = onChange, label = { Text(label) }, enabled = enabled, trailingIcon = trailing,
         isError = error != null, supportingText = error?.let { { Text(it) } },
         singleLine = minLines == 1, minLines = minLines, modifier = modifier.padding(bottom = 6.dp), shape = RoundedCornerShape(14.dp),
         keyboardOptions = KeyboardOptions(
@@ -331,5 +334,54 @@ private fun ToggleRow(label: String, checked: Boolean, enabled: Boolean, onChang
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         Switch(checked = checked, onCheckedChange = onChange, enabled = enabled)
+    }
+}
+
+/** Scans a barcode with the camera and hands back the code. */
+@Composable
+private fun ScanButton(onCode: (String) -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val snackbar = LocalSnackbar.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    IconButton(onClick = {
+        scope.launch {
+            when (val r = com.yallahaul.admin.core.scan.BarcodeScanner.scan(context)) {
+                is com.yallahaul.admin.core.scan.BarcodeScanner.Result.Code -> onCode(r.value)
+                is com.yallahaul.admin.core.scan.BarcodeScanner.Result.Unavailable -> snackbar.showSnackbar(r.message)
+                else -> Unit
+            }
+        }
+    }) { Icon(Icons.Outlined.QrCodeScanner, "Scan a barcode") }
+}
+
+/** The product's options (sizes, colours...): name, price, compare-at price, SKU and barcode. Stock is changed in the Stock tab. */
+@Composable
+private fun OptionsCard(state: ProductEditorViewModel.UiState, vm: ProductEditorViewModel, canEdit: Boolean) {
+    var removing by remember { mutableStateOf<ProductEditorViewModel.VariantForm?>(null) }
+    val currency = vm.storeCurrency
+    SectionCard(title = "Options", action = { if (canEdit) TextButton(onClick = vm::addVariant) { Text("Add option") } }) {
+        state.errors["variants"]?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+        state.variants.forEachIndexed { index, v ->
+            if (index > 0) HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Field("Option name (e.g. Large, Red)", v.name, { t -> vm.editVariant(v.key) { it.copy(name = t.take(160)) } }, state.errors["variant:${v.key}:name"], canEdit, Modifier.weight(1f), capitalize = true)
+                if (canEdit) IconButton(onClick = { removing = v }) { Icon(Icons.Rounded.Close, "Remove option") }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                MoneyField("Price", v.price, { t -> vm.editVariant(v.key) { it.copy(price = t) } }, state.errors["variant:${v.key}:price"], canEdit, currency, Modifier.weight(1f))
+                MoneyField("Compare-at", v.compareAt, { t -> vm.editVariant(v.key) { it.copy(compareAt = t) } }, state.errors["variant:${v.key}:compare"], canEdit, currency, Modifier.weight(1f))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Field("SKU", v.sku, { t -> vm.editVariant(v.key) { it.copy(sku = t.take(120)) } }, state.errors["variant:${v.key}:sku"], canEdit, Modifier.weight(1f))
+                Field("Barcode", v.barcode, { t -> vm.editVariant(v.key) { it.copy(barcode = t.take(120)) } }, null, canEdit, Modifier.weight(1f),
+                    trailing = if (canEdit) ({ ScanButton { code -> vm.editVariant(v.key) { it.copy(barcode = code) } } }) else null)
+            }
+            if (v.id == null) Text("New option: starts with 0 in stock. Add stock in the Stock tab after saving.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Text("An option that is in past orders can't be removed; hide the product instead.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
+    }
+    removing?.let { v ->
+        ConfirmDialog("Remove \"${v.name.ifBlank { "this option" }}\"?", "Its stock is removed too when you save. Options in past orders can't be removed.", "Remove", destructive = true,
+            onConfirm = { vm.removeVariant(v.key) }, onDismiss = { removing = null })
     }
 }

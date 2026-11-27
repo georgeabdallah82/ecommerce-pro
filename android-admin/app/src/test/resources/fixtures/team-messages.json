@@ -1,0 +1,18 @@
+{
+ "messages": [
+  {
+   "id": "cmwyyu4q20083psp73p25rd7r",
+   "authorId": "cmwyyrlu600008r7dkvg1bvk6",
+   "authorName": "Store Admin",
+   "text": "Order 1003 is ready for pickup",
+   "at": "2026-11-27T12:36:47.590Z"
+  },
+  {
+   "id": "cmwyyvayw00bbpsp7ikpp78b2",
+   "authorId": "cmwyyrlu600008r7dkvg1bvk6",
+   "authorName": "Store Admin",
+   "text": "Order 1003 is ready for pickup",
+   "at": "2026-11-27T12:37:42.341Z"
+  }
+ ]
+}

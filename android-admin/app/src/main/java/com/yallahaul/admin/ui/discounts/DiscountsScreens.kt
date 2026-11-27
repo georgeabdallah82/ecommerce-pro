@@ -64,6 +64,7 @@ import com.yallahaul.admin.core.model.AppUser
 import com.yallahaul.admin.core.model.Coupon
 import com.yallahaul.admin.core.util.Dates
 import com.yallahaul.admin.core.util.Money
+import com.yallahaul.admin.ui.components.OfflineBanner
 import com.yallahaul.admin.ui.components.ConfirmDialog
 import com.yallahaul.admin.ui.components.ConstrainedColumn
 import com.yallahaul.admin.ui.components.EmptyView
@@ -99,6 +100,7 @@ fun DiscountsScreen(user: AppUser, onBack: () -> Unit, open: (String) -> Unit, v
                 actions = { IconButton(onClick = vm::load) { Icon(Icons.Rounded.Refresh, "Refresh") } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
+            OfflineBanner((state as? LoadState.Ready)?.offlineSince, Modifier.padding(horizontal = 16.dp, vertical = 4.dp), vm::load)
             when (val s = state) {
                 is LoadState.Loading -> LoadingView()
                 is LoadState.Failed -> ErrorView(s.error, vm::load)

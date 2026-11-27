@@ -1,0 +1,33 @@
+{
+ "open": 2,
+ "questions": [
+  {
+   "id": "qnmwyyvb0i",
+   "question": "Does it fit a 10L bucket?",
+   "answer": null,
+   "published": false,
+   "name": "Ali",
+   "createdAt": "2026-11-27T12:37:42.406Z",
+   "answeredAt": null,
+   "product": {
+    "id": "cmwyyv82u008kpsp7fursqnfl",
+    "name": "E2E Test Mop Pro",
+    "imageUrl": "/placeholder-product.svg"
+   }
+  },
+  {
+   "id": "qnmwyyu4rp",
+   "question": "Does it fit a 10L bucket?",
+   "answer": null,
+   "published": false,
+   "name": "Ali",
+   "createdAt": "2026-11-27T12:36:47.656Z",
+   "answeredAt": null,
+   "product": {
+    "id": "cmwyyu1pn005epsp7kuq7f2w4",
+    "name": "E2E Test Mop Pro",
+    "imageUrl": "/placeholder-product.svg"
+   }
+  }
+ ]
+}

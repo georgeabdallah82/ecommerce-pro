@@ -65,7 +65,7 @@ class CustomersViewModel @Inject constructor(private val repo: CustomersReposito
                 is ApiResult.Success -> _state.update {
                     val d = result.data
                     it.copy(loading = false, refreshing = false, error = null, active = d.active,
-                        list = Paged(if (reset) d.rows else it.list.rows + d.rows.filter { r -> it.list.rows.none { x -> x.id == r.id } }, d.page, d.pages, d.total))
+                        list = Paged(if (reset) d.rows else it.list.rows + d.rows.filter { r -> it.list.rows.none { x -> x.id == r.id } }, d.page, d.pages, d.total, offlineSince = result.cachedAt))
                 }
                 is ApiResult.Failure -> _state.update {
                     if (reset && it.list.rows.isEmpty()) it.copy(loading = false, refreshing = false, error = result.error)
@@ -89,7 +89,7 @@ class CustomerDetailViewModel @Inject constructor(private val repo: CustomersRep
         if (current is LoadState.Ready) _state.value = current.copy(refreshing = true)
         viewModelScope.launch {
             _state.value = when (val result = repo.detail(id)) {
-                is ApiResult.Success -> LoadState.Ready(result.data.customer)
+                is ApiResult.Success -> LoadState.Ready(result.data.customer, offlineSince = result.cachedAt)
                 is ApiResult.Failure -> (_state.value as? LoadState.Ready)?.copy(refreshing = false, refreshError = result.error.message) ?: LoadState.Failed(result.error)
             }
         }

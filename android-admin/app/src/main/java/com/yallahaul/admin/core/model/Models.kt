@@ -192,7 +192,7 @@ data class OrderRowItem(val id: String = "", val name: String = "", val quantity
 data class OrderRisk(val level: String = "medium", val headline: String = "", val reasons: List<String> = emptyList())
 
 @Serializable
-data class OrderDetailResponse(val order: OrderDetail, val actions: OrderActions = OrderActions())
+data class OrderDetailResponse(val order: OrderDetail, val actions: OrderActions = OrderActions(), val whatsapp: WhatsappInfo = WhatsappInfo())
 
 @Serializable
 data class OrderActions(
@@ -200,6 +200,10 @@ data class OrderActions(
     val canRefund: Boolean = false,
     val nextStatuses: List<String> = emptyList(),
     val canMarkPaid: Boolean = false,
+    val canReturn: Boolean = false,
+    val refundable: Long = 0,
+    val refundPending: Boolean = false,
+    val canAssignDriver: Boolean = false,
 )
 
 @Serializable

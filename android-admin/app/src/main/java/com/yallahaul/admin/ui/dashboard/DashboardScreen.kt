@@ -59,6 +59,7 @@ import com.yallahaul.admin.core.model.DashboardResponse
 import com.yallahaul.admin.core.util.Dates
 import com.yallahaul.admin.core.util.Labels
 import com.yallahaul.admin.core.util.Money
+import com.yallahaul.admin.ui.components.OfflineBanner
 import com.yallahaul.admin.ui.components.AreaChart
 import com.yallahaul.admin.ui.components.BarChart
 import com.yallahaul.admin.ui.components.ChartPoint
@@ -89,6 +90,7 @@ fun DashboardScreen(user: AppUser, padding: PaddingValues, open: (String) -> Uni
     val unread by vm.unread.collectAsStateWithLifecycle()
     Column(Modifier.fillMaxSize().padding(padding)) {
         DashboardHeader(user, unread, onAlerts = { open(Routes.ALERTS) })
+        OfflineBanner((state as? LoadState.Ready)?.offlineSince, Modifier.padding(horizontal = 16.dp, vertical = 4.dp), vm::refresh)
         when (val s = state) {
             is LoadState.Loading -> DashboardSkeleton()
             is LoadState.Failed -> ErrorView(s.error, onRetry = vm::refresh)

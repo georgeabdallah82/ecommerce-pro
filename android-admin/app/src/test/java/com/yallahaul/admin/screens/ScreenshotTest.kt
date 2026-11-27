@@ -127,6 +127,22 @@ abstract class ScreenshotBase {
             tab("products"); compose.onNodeWithTag("add-product").performClick(); settle(); shot("12-new-product")
         }
     }
+
+    @Test fun newFeatures() {
+        signIn()
+        launch { tab("more"); tap("Drivers"); shot("13-drivers") }
+        launch { tab("more"); tap("Reviews & questions"); shot("14-reviews") }
+        launch { tab("more"); tap("Returns"); shot("15-returns") }
+        launch { tab("more"); tap("Unfinished checkouts"); shot("16-unfinished") }
+        launch { tab("more"); tap("Reports"); shot("17-reports") }
+        launch { tab("more"); tap("Live chat"); shot("18-live-chat") }
+        launch { tab("more"); tap("Team chat"); shot("19-team-chat") }
+    }
+
+    @Test fun newOrder() {
+        signIn()
+        launch { tab("orders"); compose.onNodeWithTag("new-order").performClick(); settle(); shot("20-new-order") }
+    }
 }
 
 @HiltAndroidTest
