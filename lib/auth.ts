@@ -88,27 +88,16 @@ export async function clearSession() {
   store.set('session', '', { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 0 })
 }
 
-// Who is asking: the browser's session cookie, or else the Android admin app's bearer token
-// (lib/mobile-auth.ts). The app's token is staff-only; every other rule below applies to both.
-async function readSessionClaims(): Promise<{ sub: string; iat: number; app: boolean } | null> {
+export async function getCurrentUser() {
   const token = (await cookies()).get('session')?.value
-  if (token) {
+  // No browser session: maybe the Android admin app's bearer token (lib/mobile-auth.ts). The cookie path
+  // below is left exactly as it was; changing its timing made concurrent checkouts hang on Workers.
+  if (!token) return getAppUser()
+  try {
     const { payload } = await jwtVerify(token, getSecret())
     if (!payload.sub || payload.type !== 'session' || typeof payload.iat !== 'number') return null
-    return { sub: payload.sub, iat: payload.iat, app: false }
-  }
-  const app = await readMobileSession(bearerToken((await headers()).get('authorization')))
-  return app ? { sub: app.sub, iat: app.iat, app: true } : null
-}
-
-export async function getCurrentUser() {
-  try {
-    const payload = await readSessionClaims()
-    if (!payload) return null
     const user = await db.user.findUnique({ where: { id: payload.sub } })
     if (!user || !user.isActive) return null
-    // The app is for staff only: a customer account never gets in with an app token.
-    if (payload.app && user.role === 'CUSTOMER') return null
     // Staff must have 2-step login on (app/api/admin/login/enroll). A session from before it was required is not enough.
     if (user.role !== 'CUSTOMER' && !user.totpEnabledAt) return null
 
@@ -123,6 +112,27 @@ export async function getCurrentUser() {
 
     // Staff on a custom role: load what that role allows (one settings read, staff only).
     const permissions = user.role !== 'CUSTOMER' && user.staffRoleId ? resolvePermissions(user, await getStaffRoles()) : null
+    return { ...user, permissions }
+  } catch { return null }
+}
+
+// The Android admin app's signed-in staff member: the same rules as the cookie above (active, staff with
+// 2-step login on, not revoked, within the shift), and never a customer account.
+async function getAppUser() {
+  const raw = bearerToken((await headers()).get('authorization'))
+  if (!raw) return null
+  try {
+    const payload = await readMobileSession(raw)
+    if (!payload) return null
+    const user = await db.user.findUnique({ where: { id: payload.sub } })
+    if (!user || !user.isActive) return null
+    // The app is for staff only: a customer account never gets in with an app token.
+    if (user.role === 'CUSTOMER') return null
+    // Staff need 2-step login on, as for the cookie.
+    if (!user.totpEnabledAt) return null
+    if (isSessionRevoked(payload.iat, user.sessionsRevokedAt)) return null
+    if (staffSessionEnded(user.role, payload.iat, Math.floor(Date.now() / 1000))) return null
+    const permissions = user.staffRoleId ? resolvePermissions(user, await getStaffRoles()) : null
     return { ...user, permissions }
   } catch { return null }
 }

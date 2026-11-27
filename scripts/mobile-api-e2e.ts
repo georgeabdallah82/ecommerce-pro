@@ -73,7 +73,9 @@ async function main() {
   const products = await call('GET', '/api/admin/products?status=ALL&page=1&pageSize=24', undefined, token)
   check('existing admin products endpoint works with the app token', products.status === 200 && products.json.rows.length > 0, products.status)
   fixture('products', products.json)
-  const active = products.json.rows.filter((p: any) => p.status === 'ACTIVE' && !p.name.startsWith('E2E'))
+  // Active products with stock to sell, most first (other tests may have sold some out).
+  const available = (p: any) => [...p.inventory, ...p.variants.flatMap((v: any) => v.inventory)].reduce((n: number, i: any) => n + i.quantity - i.reserved, 0)
+  const active = products.json.rows.filter((p: any) => p.status === 'ACTIVE' && !p.name.startsWith('E2E') && p.variants.length === 0 && available(p) >= 3).sort((a: any, b: any) => available(b) - available(a))
   const product = await call('GET', `/api/admin/products/${active[0].id}`, undefined, token)
   check('product detail', product.status === 200 && product.json.product.id === active[0].id)
   fixture('product', product.json)

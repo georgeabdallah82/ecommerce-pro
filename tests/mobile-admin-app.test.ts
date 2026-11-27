@@ -63,17 +63,22 @@ describe('the Android admin app token', () => {
 
 describe('getCurrentUser accepts the app token with every existing rule', () => {
   const auth = read('lib/auth.ts')
+  const app = auth.slice(auth.indexOf('async function getAppUser'))
   test('the cookie still comes first, the bearer token only without one', () => {
-    assert.match(auth, /const token = \(await cookies\(\)\)\.get\('session'\)\?\.value\n  if \(token\) \{/)
-    assert.match(auth, /readMobileSession\(bearerToken\(\(await headers\(\)\)\.get\('authorization'\)\)\)/)
+    assert.match(auth, /const token = \(await cookies\(\)\)\.get\('session'\)\?\.value\n[^\n]*\n[^\n]*\n  if \(!token\) return getAppUser\(\)/)
+    assert.match(app, /bearerToken\(\(await headers\(\)\)\.get\('authorization'\)\)/)
+    assert.match(app, /await readMobileSession\(raw\)/)
   })
   test('customers never get in with an app token', () => {
-    assert.match(auth, /if \(payload\.app && user\.role === 'CUSTOMER'\) return null/)
+    assert.match(app, /if \(user\.role === 'CUSTOMER'\) return null/)
   })
   test('revocation, 2-step login and the shift limit still apply to both', () => {
     assert.match(auth, /if \(user\.role !== 'CUSTOMER' && !user\.totpEnabledAt\) return null/)
-    assert.match(auth, /if \(isSessionRevoked\(payload\.iat, user\.sessionsRevokedAt\)\) return null/)
-    assert.match(auth, /if \(staffSessionEnded\(user\.role, payload\.iat, Math\.floor\(Date\.now\(\) \/ 1000\)\)\) return null/)
+    assert.match(app, /if \(!user\.totpEnabledAt\) return null/)
+    for (const part of [auth, app]) {
+      assert.match(part, /if \(isSessionRevoked\(payload\.iat, user\.sessionsRevokedAt\)\) return null/)
+      assert.match(part, /if \(staffSessionEnded\(user\.role, payload\.iat, Math\.floor\(Date\.now\(\) \/ 1000\)\)\) return null/)
+    }
   })
 })
 
