@@ -209,6 +209,13 @@ export async function sendLiveChatAlert(chat: { conversationId: string; preview:
   return sendToSubscriptions({ title: 'New live chat message', body: preview.length > 120 ? `${preview.slice(0, 117)}...` : preview || 'A shopper is waiting for your reply', url: `/admin/online-store/assistant/live?c=${encodeURIComponent(chat.conversationId)}` })
 }
 
+// Team chat (lib/team-chat/server.ts): a message for these staff members. One notification per chat
+// on a device (the tag), replaced by the next instead of piling up.
+export async function sendTeamChatPush(userIds: string[], message: { title: string; body: string; channelId: string }) {
+  if (!userIds.length) return { sent: 0, skipped: true, failed: 0 }
+  return sendToSubscriptions({ title: message.title, body: message.body || 'New message', url: `/admin/team-chat?c=${encodeURIComponent(message.channelId)}`, tag: `team-chat-${message.channelId}` }, undefined, 'staff', userIds)
+}
+
 // Called with the inventory item ids touched by a stock-reducing action (a manual adjustment,
 // an order fulfillment) to alert staff about any that are now at or below their threshold.
 // Re-reads current state rather than trusting the caller's snapshot, same reasoning as

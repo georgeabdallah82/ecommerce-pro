@@ -1,4 +1,5 @@
 import './admin-overhaul.css'
+import { unreadTotal } from '@/lib/team-chat/server'
 import { getCurrentUser } from '@/lib/auth'
 import { hasPermission, type Permission } from '@/lib/permissions'
 import { redirect } from 'next/navigation'
@@ -20,6 +21,8 @@ const groups: AdminSidebarGroup[] = [
   { id: 'home', label: 'Home', items: [
     { href: '/admin', label: 'Dashboard', permission: 'dashboard.view', icon: 'dashboard' },
     { href: '/admin/notices', label: 'Team notices', permission: 'notices.manage', icon: 'notices' },
+    // Every staff member (no permission needed): app/admin/team-chat.
+    { href: '/admin/team-chat', label: 'Team chat', permission: 'staff', icon: 'teamChat' },
   ]},
   { id: 'orders', label: 'Orders', moreLabel: 'Advanced', items: [
     { href: '/admin/orders', label: 'Orders', permission: 'orders.view', icon: 'orders' },
@@ -140,7 +143,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const user = await getCurrentUser()
   // Customer accounts sign in on the storefront; the admin is for staff only.
   if (!user || user.role === 'CUSTOMER') redirect('/admin/login')
-  const visibleGroups = groups.map(group => ({ ...group, items: group.items.filter(item => hasPermission(user, item.permission as Permission)) })).filter(group => group.items.length)
+  const visibleGroups = groups.map(group => ({ ...group, items: group.items.filter(item => item.permission === 'staff' || hasPermission(user, item.permission as Permission)) })).filter(group => group.items.length)
   // The admin's accent follows the store's published Primary colour (see lib/admin-accent.ts).
   // If the theme can't be read, the admin keeps its default accent.
   const theme = await getThemeState().then(state => state.theme).catch(() => null)
@@ -150,6 +153,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const ordersToFulfill = hasPermission(user, 'orders.view')
     ? await db.order.count({ where: { status: { in: [OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PROCESSING] } } }).catch(() => 0)
     : 0
+  // Badge on Team chat: messages from others this person hasn't read (lib/team-chat/server.ts).
+  const teamChatUnread = await unreadTotal(user.id).catch(() => 0)
   // The team notice board: staff only, and never allowed to break a page.
   const now = new Date()
   const notices = activeNotices(await getNotices().catch(() => []), now).map(n => ({ id: n.id, text: n.text, authorName: n.authorName, age: noticeAge(n.createdAt, now) }))
@@ -161,7 +166,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="adminShell">
       <ToastProvider>
         <ConfirmProvider>
-          <AdminNav groups={visibleGroups} brand={brand} ordersToFulfill={ordersToFulfill} banner={<TeamNotices notices={notices} />} name={user.name} email={user.email} role={roleLabel} avatarUrl={user.avatarUrl ?? null} vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}>
+          <AdminNav groups={visibleGroups} brand={brand} ordersToFulfill={ordersToFulfill} teamChatUnread={teamChatUnread} banner={<TeamNotices notices={notices} />} name={user.name} email={user.email} role={roleLabel} avatarUrl={user.avatarUrl ?? null} vapidPublicKey={process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}>
             <ReauthProvider>{children}</ReauthProvider>
           </AdminNav>
         </ConfirmProvider>

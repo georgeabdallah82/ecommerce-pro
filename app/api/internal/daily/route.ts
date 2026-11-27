@@ -16,6 +16,7 @@ import { armOrderWatch } from '@/lib/order-watch-storage'
 import { pruneVisitorData } from '@/lib/visitors'
 import { pruneSearchData } from '@/lib/search-analytics'
 import { pruneAssistantData } from '@/lib/assistant/settings'
+import { pruneTeamChat } from '@/lib/team-chat/server'
 import { pruneAuditLog } from '@/lib/audit-retention'
 import { sealPlainSecrets } from '@/lib/secret-settings'
 import { REVIEW_REQUESTS_PER_DAY, REVIEW_REQUEST_MARK, dailySummaryMessage, dayLabel, reviewRequestWindow, storeDayKey, yesterdayKey } from '@/lib/daily-summary'
@@ -156,8 +157,9 @@ export async function POST(req: Request) {
   const sealedSecrets = await sealPlainSecrets().catch(error => { console.error('[daily] sealing secrets failed', error); return -1 })
   const searches = await pruneSearchData(now).catch(error => { console.error('[daily] search cleanup failed', error); return -1 })
   const assistantChats = await pruneAssistantData(now).catch(error => { console.error('[daily] assistant chat cleanup failed', error); return -1 })
+  const teamChat = await pruneTeamChat(now).catch(error => { console.error('[daily] team chat cleanup failed', error); return -1 })
   const activityLog = await pruneAuditLog(now).catch(error => { console.error('[daily] activity log cleanup failed', error); return -1 })
   const waiting = await rearmOrderWatch().catch(error => { console.error('[daily] order watch failed', error); return -1 })
-  console.log('[daily] done', { reviewEmails, refillReminders, summary, weekly, waiting, visitors, searches, assistantChats, sealedSecrets })
+  console.log('[daily] done', { reviewEmails, refillReminders, summary, weekly, waiting, visitors, searches, assistantChats, teamChat, sealedSecrets })
   return json({ reviewEmails, refillReminders, summary, weekly, waiting }, { headers: NO_STORE })
 }
