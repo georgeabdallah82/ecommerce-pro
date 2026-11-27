@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Yalla Haul Admin</string>
+    <string name="channel_orders">Orders</string>
+    <string name="channel_orders_desc">New orders, cancellations, payment screenshots and delivery updates</string>
+    <string name="channel_stock">Stock</string>
+    <string name="channel_stock_desc">Products running low or sold out</string>
+    <string name="channel_messages">Messages</string>
+    <string name="channel_messages_desc">Reviews, questions, live chat and team chat</string>
+    <string name="channel_security">Security</string>
+    <string name="channel_security_desc">Sign-ins from new devices and locked accounts</string>
+    <string name="channel_summary">Daily summary</string>
+    <string name="channel_summary_desc">The morning summary of yesterday\'s sales</string>
+</resources>

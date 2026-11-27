@@ -6,7 +6,7 @@
 // /driver: a driver's private delivery list (lib/drivers.ts) -- orders taken on WhatsApp still go
 // out while the store is closed.
 const MAINTENANCE_BYPASS_PREFIXES = ['/admin', '/maintenance', '/_next', '/unsubscribe', '/driver/']
-const MAINTENANCE_API_BYPASS_PREFIXES = ['/api/admin', '/api/auth', '/api/internal', '/api/payments', '/api/health', '/api/newsletter', '/api/unsubscribe', '/api/refill/stop', '/api/driver/']
+const MAINTENANCE_API_BYPASS_PREFIXES = ['/api/admin', '/api/mobile', '/api/auth', '/api/internal', '/api/payments', '/api/health', '/api/newsletter', '/api/unsubscribe', '/api/refill/stop', '/api/driver/']
 const MAINTENANCE_BYPASS_EXACT = new Set(['/favicon.ico', '/robots.txt', '/sitemap.xml'])
 
 // Paths the maintenance check never applies to (staff areas, the maintenance page itself...).

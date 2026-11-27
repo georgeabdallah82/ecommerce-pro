@@ -2,6 +2,7 @@ import webpush from 'web-push'
 import { db } from '@/lib/prisma'
 import { parsePushSubscription } from '@/lib/push-opt-in'
 import { userError } from '@/lib/user-error'
+import { pushToStaffApps } from '@/lib/mobile-devices'
 
 // Staff devices (order, review and low-stock alerts) are Setting rows keyed by endpoint.
 // Customer devices (push campaigns) are PushSubscription rows: from the storefront popup or
@@ -62,7 +63,10 @@ export async function countCustomerPushSubscriptions() {
 }
 
 async function sendToSubscriptions(payload: Record<string, unknown>, onlyUserId?: string, source: 'staff' | 'customer' = 'staff', allowedUserIds?: string[], onlyEndpoint?: string) {
-  if (!configure()) return { sent: 0, skipped: true, failed: 0 }
+  // Staff alerts also go to the Android admin app's phones (lib/mobile-devices.ts), with or without
+  // browser push set up. A test for one browser (onlyEndpoint) stays with that browser.
+  const apps = source === 'staff' && !onlyEndpoint ? pushToStaffApps(payload, { onlyUserId, allowedUserIds }) : null
+  if (!configure()) { await apps; return { sent: 0, skipped: true, failed: 0 } }
   const subscriptions = source === 'customer' ? await getCustomerSubscriptions() : await getStaffSubscriptions()
   const allowed = allowedUserIds?.length ? new Set(allowedUserIds) : null
   const targets = subscriptions.filter(s => (!onlyUserId || s.userId === onlyUserId) && (!onlyEndpoint || s.endpoint === onlyEndpoint) && (!allowed || (!!s.userId && allowed.has(s.userId))))
@@ -79,6 +83,7 @@ async function sendToSubscriptions(payload: Record<string, unknown>, onlyUserId?
       console.error('[push] send failed', { statusCode, message: error?.message || String(error) })
     }
   }))
+  await apps
   return { sent, skipped: false, failed }
 }
 

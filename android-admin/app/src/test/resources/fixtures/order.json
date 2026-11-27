@@ -1,0 +1,83 @@
+{
+  "order": {
+    "id": "cmwyqhp6e0031ej7dxruzu1ry",
+    "orderNumber": "1013",
+    "createdAt": "2026-11-27T08:43:10.646Z",
+    "updatedAt": "2026-11-27T08:43:10.646Z",
+    "status": "PENDING",
+    "paymentStatus": "UNPAID",
+    "fulfillmentStatus": "UNFULFILLED",
+    "paymentMethod": "COD",
+    "currency": "USD",
+    "subtotal": 1500,
+    "discountTotal": 0,
+    "shippingTotal": 0,
+    "taxTotal": 0,
+    "grandTotal": 1500,
+    "couponCode": null,
+    "notes": null,
+    "isGift": false,
+    "giftMessage": null,
+    "trackingNumber": null,
+    "shippingMethod": "Delivery",
+    "whatsappUpdates": false,
+    "customer": {
+      "id": null,
+      "name": "Rana Haddad",
+      "email": null,
+      "phone": "+96170123456",
+      "hasAccount": false
+    },
+    "shippingAddress": {
+      "firstName": "Rana",
+      "lastName": "Haddad",
+      "line1": "Hamra St",
+      "city": "Beirut",
+      "country": "Lebanon",
+      "phone": "+96170123456"
+    },
+    "billingAddress": {
+      "firstName": "Rana",
+      "lastName": "Haddad",
+      "line1": "Hamra St",
+      "city": "Beirut",
+      "country": "Lebanon",
+      "phone": "+96170123456"
+    },
+    "driver": null,
+    "items": [
+      {
+        "id": "cmwyqhp6f0032ej7dv5l7yucp",
+        "productId": "cmwyqhov0002pej7dblvc72ix",
+        "name": "E2E Test Mop Pro",
+        "variant": null,
+        "sku": "E2E-1795768990199",
+        "quantity": 1,
+        "unitPrice": 1500,
+        "totalPrice": 1500,
+        "imageUrl": "/placeholder-product.svg"
+      }
+    ],
+    "events": [
+      {
+        "id": "cmwyqhp6g0033ej7dgw1t1omf",
+        "status": "PENDING",
+        "message": "Order added by hand by Store Admin.",
+        "createdAt": "2026-11-27T08:43:10.646Z"
+      }
+    ],
+    "staffNotes": [],
+    "payments": [],
+    "paymentProofs": [],
+    "fulfillments": []
+  },
+  "actions": {
+    "canManage": true,
+    "canRefund": true,
+    "nextStatuses": [
+      "CONFIRMED",
+      "CANCELLED"
+    ],
+    "canMarkPaid": true
+  }
+}

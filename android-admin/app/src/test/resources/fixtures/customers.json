@@ -1,0 +1,26 @@
+{
+  "rows": [
+    {
+      "id": "cmwyq9zxi0001w17dxraa193x",
+      "name": "Demo Customer",
+      "email": "customer@example.com",
+      "phone": null,
+      "isActive": true,
+      "createdAt": "2026-11-27T08:37:11.334Z",
+      "lastLoginAt": null,
+      "_count": {
+        "orders": 0,
+        "reviews": 0
+      },
+      "totalSpent": 0,
+      "tags": []
+    }
+  ],
+  "total": 1,
+  "active": 1,
+  "disabled": 0,
+  "page": 1,
+  "pageSize": 25,
+  "pages": 1,
+  "availableTags": []
+}
