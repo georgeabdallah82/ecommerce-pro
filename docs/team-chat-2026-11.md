@@ -10,7 +10,10 @@ A chat for the staff inside the admin: **Admin › Home › Team chat** (on phon
 
 **Team room.** One conversation for the whole staff. Each person's unread count starts from when they first open it, so they don't get a flood of old messages.
 
-**Direct chats.** "Message a colleague" starts a private chat with one person. There is one per pair, whoever starts it. Only those two can read it; anyone else gets "Not found".
+**Direct chats.** **+ New chat** (top of the chat list) lists every other staff member, with search once there are more than 5.
+- Picking someone opens your chat with them, or starts it.
+- If you are the only staff member, it says so and links to Users & roles to invite someone.
+- A direct chat is private between the two people. There is one per pair, whoever starts it. Only those two can read it; anyone else gets "Not found".
 
 **Instant delivery.** Messages arrive at once (about 0.1 s in the local test) through the live chat relay, the `LiveChatHub` Durable Object.
 - A chat that is open is marked read as messages come in.

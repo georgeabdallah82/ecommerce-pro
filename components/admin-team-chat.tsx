@@ -1,7 +1,7 @@
 'use client'
 
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Bell, BellOff, Hash, Send, Trash2, User } from 'lucide-react'
+import { ArrowLeft, Bell, BellOff, Hash, Plus, Send, Trash2, User } from 'lucide-react'
 import Link from './admin-link'
 import { useConfirm } from './admin-confirm'
 import { useToast } from './admin-toast'
@@ -43,6 +43,9 @@ export default function TeamChat({ initialChannel }: { initialChannel: string | 
   const [sending, setSending] = useState(false)
   const [connected, setConnected] = useState<boolean | null>(null)
   const [showList, setShowList] = useState(!initialChannel)
+  // The "New chat" picker: every other staff member, opening the existing chat when there is one.
+  const [picking, setPicking] = useState(false)
+  const [filter, setFilter] = useState('')
   const selectedRef = useRef(selected)
   selectedRef.current = selected
   const meRef = useRef(me)
@@ -197,7 +200,6 @@ export default function TeamChat({ initialChannel }: { initialChannel: string | 
   }
 
   const current = channels.find(c => c.id === selected) || null
-  const withoutChat = staff.filter(s => !channels.some(c => c.otherUserId === s.id))
 
   return (
     <div className={styles.page}>
@@ -212,6 +214,34 @@ export default function TeamChat({ initialChannel }: { initialChannel: string | 
 
       <div className={`${styles.layout} ${showList ? '' : styles.threadOpen}`}>
         <aside className={styles.list} aria-label="Chats">
+          <div className={styles.listHead}>
+            <strong>Chats</strong>
+            <button type="button" className={`${ui.btn} ${picking ? ui.btnGhost : ''}`} onClick={() => { setPicking(p => !p); setFilter('') }} aria-expanded={picking}>
+              {picking ? 'Cancel' : <><Plus size={15} /> New chat</>}
+            </button>
+          </div>
+          {picking ? (
+            <div className={styles.picker}>
+              {staff.length > 5 ? <input className={ui.input} type="search" placeholder="Search staff…" aria-label="Search staff" value={filter} onChange={e => setFilter(e.target.value)} autoFocus /> : null}
+              {staff.length === 0 ? (
+                <p className={styles.pickerEmpty}>You are the only person on the staff for now. Invite someone in <Link href="/admin/users" className={ui.textLink}>Users &amp; roles</Link>, then they show up here.</p>
+              ) : (
+                <ul>
+                  {staff.filter(s => s.name.toLowerCase().includes(filter.trim().toLowerCase())).map(s => {
+                    const existing = channels.find(c => c.otherUserId === s.id)
+                    return (
+                      <li key={s.id}>
+                        <button type="button" className={styles.row} onClick={() => { setPicking(false); setFilter(''); if (existing) open(existing.id); else void startDirect(s.id) }}>
+                          <span className={styles.rowIcon} aria-hidden="true"><User size={16} /></span>
+                          <span className={styles.rowText}><strong>{s.name}</strong><span>{existing ? 'Open your chat' : 'Start a chat'}</span></span>
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+          ) : (
           <ul>
             {channels.map(c => (
               <li key={c.id}>
@@ -226,15 +256,7 @@ export default function TeamChat({ initialChannel }: { initialChannel: string | 
               </li>
             ))}
           </ul>
-          {withoutChat.length ? (
-            <label className={styles.newChat}>
-              <span className={ui.fieldLabel}>Message a colleague</span>
-              <select className={ui.input} value="" onChange={e => void startDirect(e.target.value)}>
-                <option value="">Choose a person…</option>
-                {withoutChat.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </label>
-          ) : null}
+          )}
         </aside>
 
         <section className={styles.thread} aria-label={current?.title || 'Chat'}>
