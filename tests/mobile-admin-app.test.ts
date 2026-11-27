@@ -162,3 +162,13 @@ describe('order shapes for the app', () => {
     assert.deepEqual(nextStatuses('CANCELLED'), [])
   })
 })
+
+describe('one session per 2-step ticket', () => {
+  test('a ticket issued before the last sign-in is spent', async () => {
+    const { ticketSpent } = await import('../lib/mobile-auth')
+    assert.equal(ticketSpent(1_000_500, null), false)
+    assert.equal(ticketSpent(1_000_500, new Date(1_000_400)), false, 'signed in just before the ticket')
+    assert.equal(ticketSpent(1_000_500, new Date(1_000_600)), true, 'signed in just after: spent')
+    assert.match(read('app/api/mobile/v1/auth/code/route.ts'), /if \(ticketSpent\(ticket\.issuedAtMs, user\.lastLoginAt\)\) return restart\(\)/)
+  })
+})

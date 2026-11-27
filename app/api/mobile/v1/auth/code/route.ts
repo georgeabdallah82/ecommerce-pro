@@ -4,7 +4,7 @@ import { audit } from '@/lib/audit'
 import { alertLockout, recordAppSignIn } from '@/lib/sign-in-alerts'
 import { consumeDurableRateLimit, clearDurableRateLimit } from '@/lib/rate-limit'
 import { alreadyUsedTotp, matchBackupCode, matchTotp, openSecret } from '@/lib/two-step'
-import { cleanInstallId, mobileSessionToken, MOBILE_TOKEN_SECONDS, readMobileTwoStepTicket } from '@/lib/mobile-auth'
+import { cleanInstallId, mobileSessionToken, MOBILE_TOKEN_SECONDS, readMobileTwoStepClaims, ticketSpent } from '@/lib/mobile-auth'
 import { getStaffRoles, resolvePermissions } from '@/lib/staff-roles'
 
 const MAX_TRIES = 6
@@ -20,16 +20,19 @@ export async function POST(request: Request) {
   const code = String(body.code ?? '').trim().slice(0, 40)
   const restart = () => NextResponse.json({ error: 'Your sign-in timed out. Enter your email and password again.', code: 'RESTART' }, { status: 401, headers })
 
-  const userId = await readMobileTwoStepTicket(body.ticket)
-  if (!userId) return restart()
+  const ticket = await readMobileTwoStepClaims(body.ticket)
+  if (!ticket) return restart()
+  const userId = ticket.sub
   const limitKey = `admin-2step:${userId}`
   const limit = await consumeDurableRateLimit(limitKey, MAX_TRIES, WINDOW_MS)
   if (!limit.allowed) {
     return NextResponse.json({ error: 'Too many wrong codes. Wait 15 minutes and try again.' }, { status: 429, headers: { ...headers, 'Retry-After': String(limit.retryAfterSeconds) } })
   }
 
-  const user = await db.user.findUnique({ where: { id: userId }, select: { id: true, email: true, name: true, role: true, isActive: true, staffRoleId: true, avatarUrl: true, totpSecret: true, totpEnabledAt: true, totpLastStep: true, totpBackupCodes: true } })
+  const user = await db.user.findUnique({ where: { id: userId }, select: { id: true, email: true, name: true, role: true, isActive: true, staffRoleId: true, avatarUrl: true, totpSecret: true, totpEnabledAt: true, totpLastStep: true, totpBackupCodes: true, lastLoginAt: true } })
   if (!user || !user.isActive || user.role === 'CUSTOMER' || !user.totpEnabledAt || !user.totpSecret) return restart()
+  // One session per ticket: a ticket issued before the last sign-in was used already.
+  if (ticketSpent(ticket.issuedAtMs, user.lastLoginAt)) return restart()
   const secret = await openSecret(user.totpSecret)
   if (!secret) {
     console.error('[mobile two-step] saved secret could not be read for', user.id)

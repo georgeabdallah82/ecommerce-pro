@@ -1,0 +1,95 @@
+{
+  "items": [
+    {
+      "id": "cmwyqhq320049ej7d3ggku5dn",
+      "title": "Low stock: 1 item",
+      "body": "E2E Test Mop Pro",
+      "kind": "lowStock",
+      "path": "/admin/inventory",
+      "read": false,
+      "createdAt": "2026-11-27T08:43:11.822Z"
+    },
+    {
+      "id": "cmwyqhq020044ej7dmwi7qz9c",
+      "title": "New order received",
+      "body": "Order #1015 · 15.00 USD",
+      "kind": "orders",
+      "path": "/admin/orders/cmwyqhpzr0040ej7d371g9t6l",
+      "read": false,
+      "createdAt": "2026-11-27T08:43:11.713Z"
+    },
+    {
+      "id": "cmwyqgnze0022ej7dq60efahm",
+      "title": "Low stock: 1 item",
+      "body": "E2E Test Mop Pro",
+      "kind": "lowStock",
+      "path": "/admin/inventory",
+      "read": true,
+      "createdAt": "2026-11-27T08:42:22.442Z"
+    },
+    {
+      "id": "cmwyqgnwc001xej7d03tg3crp",
+      "title": "New order received",
+      "body": "Order #1012 · 15.00 USD",
+      "kind": "orders",
+      "path": "/admin/orders/cmwyqgnvy001tej7dq0ym4c2m",
+      "read": true,
+      "createdAt": "2026-11-27T08:42:22.331Z"
+    },
+    {
+      "id": "cmwyqdq0a0064z47d35e2a7ep",
+      "title": "Low stock: 1 item",
+      "body": "E2E Test Mop Pro",
+      "kind": "lowStock",
+      "path": "/admin/inventory",
+      "read": true,
+      "createdAt": "2026-11-27T08:40:05.098Z"
+    },
+    {
+      "id": "cmwyqdpy0005zz47dfks02vpk",
+      "title": "New order received",
+      "body": "Order #1009 · 15.00 USD",
+      "kind": "orders",
+      "path": "/admin/orders/cmwyqdpxs005vz47dcvtdkl16",
+      "read": true,
+      "createdAt": "2026-11-27T08:40:05.016Z"
+    },
+    {
+      "id": "cmwyqcnts003nz47dcor78riv",
+      "title": "Low stock: 1 item",
+      "body": "E2E Test Mop Pro",
+      "kind": "lowStock",
+      "path": "/admin/inventory",
+      "read": true,
+      "createdAt": "2026-11-27T08:39:15.616Z"
+    },
+    {
+      "id": "cmwyqcnra003iz47d1shtjniq",
+      "title": "New order received",
+      "body": "Order #1006 · 15.00 USD",
+      "kind": "orders",
+      "path": "/admin/orders/cmwyqcnqv003ez47dtd4r1crr",
+      "read": true,
+      "createdAt": "2026-11-27T08:39:15.526Z"
+    },
+    {
+      "id": "cmwyqc5pr001yz47dkcuxudol",
+      "title": "New sign-in to your admin",
+      "body": "Sara Support (support@example.com) · Android app (Unknown device). Not you? Open Settings > Security.",
+      "kind": "security",
+      "path": "/admin/settings",
+      "read": true,
+      "createdAt": "2026-11-27T08:38:52.143Z"
+    },
+    {
+      "id": "cmwyqc3yk001sz47d8l67d1xa",
+      "title": "New order received",
+      "body": "Order #1003 · 15.00 USD",
+      "kind": "orders",
+      "path": "/admin/orders/cmwyqc3ya001oz47ddspfpabx",
+      "read": true,
+      "createdAt": "2026-11-27T08:38:49.867Z"
+    }
+  ],
+  "unread": 2
+}

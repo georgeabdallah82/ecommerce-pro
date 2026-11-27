@@ -73,13 +73,14 @@ export async function recordSignIn(headers: Header, user: Person) {
 export async function recordAppSignIn(headers: Header, user: Person, installId: string) {
   try {
     if (!isDeviceCookie(installId)) return
-    await rememberDevice(headers, user, installId, 'Android app')
+    await rememberDevice(headers, user, installId, 'Yalla Haul Admin app (Android)')
   } catch (error) { console.error('[security] could not record the app sign-in', error) }
 }
 
 async function rememberDevice(headers: Header, user: Person, cookie: string, labelPrefix = '') {
   const found = requestPlace(headers)
-  const place = labelPrefix ? { ...found, device: `${labelPrefix}${found.device ? ` (${found.device})` : ''}` } : found
+  // The app's own requests say little about the phone ("Android"), so the app is named plainly.
+  const place = labelPrefix ? { ...found, device: labelPrefix } : found
   const id = await hashDevice(cookie, user.id)
   const key = devicesKey(user.id)
   const row = await db.setting.findUnique({ where: { key } })

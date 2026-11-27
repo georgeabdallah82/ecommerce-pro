@@ -1,3 +1,4 @@
+import { routeError } from '@/lib/api-error'
 import { hashPassword, requirePermission } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { db } from '@/lib/prisma'
@@ -82,8 +83,9 @@ export async function GET(req: Request) {
 
     return json({ rows: hydratedRows, total, active, disabled, page, pageSize, pages: Math.max(1, Math.ceil(total / pageSize)), availableTags })
   } catch (e) {
-    console.error('[admin/customers] GET failed', e)
-    return json({ error: 'Unable to load customers' }, { status: 500 })
+    // Signed out or not allowed answers 401/403 (it answered 500 for those too, so a screen could not tell
+    // a lapsed sign-in from a server failure); anything else is logged and answered 500.
+    return routeError(e, 'Unable to load customers', 500)
   }
 }
 

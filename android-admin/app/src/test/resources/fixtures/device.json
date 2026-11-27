@@ -1,0 +1,12 @@
+{
+  "registered": true,
+  "prefs": {
+    "orders": true,
+    "lowStock": true,
+    "messages": true,
+    "security": true,
+    "summary": false
+  },
+  "hasPushToken": false,
+  "pushConfigured": false
+}

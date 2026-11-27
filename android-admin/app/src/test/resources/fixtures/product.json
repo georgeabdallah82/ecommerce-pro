@@ -1,0 +1,84 @@
+{
+  "product": {
+    "id": "cmwyq9zze000jw17d0c7y22w1",
+    "name": "Signature Value Box",
+    "slug": "signature-value-box",
+    "description": null,
+    "sizeGuide": null,
+    "shortDescription": "Thoughtfully selected essentials with a clean, premium presentation.",
+    "brand": null,
+    "vendor": null,
+    "productType": null,
+    "basePrice": 9900,
+    "compareAtPrice": null,
+    "costPrice": null,
+    "sku": "SKU-006",
+    "barcode": null,
+    "status": "ACTIVE",
+    "featured": false,
+    "seoTitle": null,
+    "seoDescription": null,
+    "seoImageUrl": null,
+    "weight": null,
+    "weightUnit": null,
+    "requiresShipping": true,
+    "taxable": true,
+    "trackInventory": true,
+    "continueSellingWhenOutOfStock": false,
+    "preorder": false,
+    "preorderNote": null,
+    "refillDays": null,
+    "videoUrl": null,
+    "giftCard": false,
+    "salesChannelsJson": null,
+    "productTemplate": "product",
+    "publishedAt": null,
+    "createdAt": "2026-11-27T08:37:11.401Z",
+    "updatedAt": "2026-11-27T08:37:11.401Z",
+    "images": [
+      {
+        "id": "cmwyq9zze000kw17d1n787kks",
+        "productId": "cmwyq9zze000jw17d0c7y22w1",
+        "url": "/placeholder-product.svg",
+        "alt": "Signature Value Box",
+        "sortOrder": 0
+      }
+    ],
+    "variants": [],
+    "inventory": [
+      {
+        "id": "cmwyq9zze000lw17dgbkf5fc5",
+        "productId": "cmwyq9zze000jw17d0c7y22w1",
+        "variantId": null,
+        "quantity": 24,
+        "reserved": 0,
+        "lowStockThreshold": 5,
+        "locationId": null,
+        "location": null
+      }
+    ],
+    "tags": [],
+    "collections": [
+      {
+        "collectionId": "cmwyq9zxt0002w17dboch0hcj",
+        "productId": "cmwyq9zze000jw17d0c7y22w1",
+        "sortOrder": 0,
+        "collection": {
+          "id": "cmwyq9zxt0002w17dboch0hcj",
+          "name": "Featured",
+          "slug": "featured",
+          "description": "Curated products",
+          "imageUrl": null,
+          "isActive": true,
+          "sortOrder": 1,
+          "seoTitle": null,
+          "seoDescription": null,
+          "createdAt": "2026-11-27T08:37:11.341Z",
+          "updatedAt": "2026-11-27T08:37:11.341Z"
+        }
+      }
+    ],
+    "metafields": [],
+    "sharedInventory": false
+  }
+}

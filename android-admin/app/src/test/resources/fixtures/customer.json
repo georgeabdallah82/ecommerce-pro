@@ -1,0 +1,21 @@
+{
+  "customer": {
+    "id": "cmwyq9zxi0001w17dxraa193x",
+    "name": "Demo Customer",
+    "email": "customer@example.com",
+    "phone": null,
+    "role": "CUSTOMER",
+    "isActive": true,
+    "createdAt": "2026-11-27T08:37:11.334Z",
+    "lastLoginAt": null,
+    "addresses": [],
+    "orders": [],
+    "reviews": [],
+    "orderNotes": [],
+    "_count": {
+      "orders": 0,
+      "reviews": 0
+    },
+    "orderTotal": 0
+  }
+}

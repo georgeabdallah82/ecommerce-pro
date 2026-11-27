@@ -13,3 +13,10 @@ coverage
 *.tsbuildinfo
 .migration-tmp
 .private-uploads
+# Android admin app build output and signing material
+android-admin/.gradle
+android-admin/build
+android-admin/app/build
+android-admin/local.properties
+android-admin/keystore.properties
+*.jks

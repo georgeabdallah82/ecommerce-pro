@@ -1,0 +1,60 @@
+{
+  "rows": [
+    {
+      "id": "cmwyq9zzn000mw17dgl6sm6ak",
+      "name": "Best Sellers",
+      "slug": "best-sellers",
+      "description": "Our most popular essentials",
+      "imageUrl": "/placeholder-product.svg",
+      "isActive": true,
+      "sortOrder": 0,
+      "seoTitle": null,
+      "seoDescription": null,
+      "createdAt": "2026-11-27T08:37:11.410Z",
+      "updatedAt": "2026-11-27T08:37:11.410Z",
+      "_count": {
+        "products": 3
+      }
+    },
+    {
+      "id": "cmwyq9zxt0002w17dboch0hcj",
+      "name": "Featured",
+      "slug": "featured",
+      "description": "Curated products",
+      "imageUrl": null,
+      "isActive": true,
+      "sortOrder": 1,
+      "seoTitle": null,
+      "seoDescription": null,
+      "createdAt": "2026-11-27T08:37:11.341Z",
+      "updatedAt": "2026-11-27T08:37:11.341Z",
+      "_count": {
+        "products": 5
+      }
+    },
+    {
+      "id": "cmwyq9zy00003w17dzal35al7",
+      "name": "Home Essentials",
+      "slug": "home-essentials",
+      "description": "Practical everyday products",
+      "imageUrl": null,
+      "isActive": true,
+      "sortOrder": 2,
+      "seoTitle": null,
+      "seoDescription": null,
+      "createdAt": "2026-11-27T08:37:11.350Z",
+      "updatedAt": "2026-11-27T08:37:11.350Z",
+      "_count": {
+        "products": 1
+      }
+    }
+  ],
+  "total": 3,
+  "skip": 0,
+  "take": 200,
+  "counts": {
+    "all": 3,
+    "active": 3,
+    "inactive": 0
+  }
+}

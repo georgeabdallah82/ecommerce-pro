@@ -1,0 +1,15 @@
+.gradle/
+build/
+app/build/
+local.properties
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+# Signing material and Firebase config stay out of git.
+keystore.properties
+*.jks
+*.keystore
+app/google-services.json
+dist/

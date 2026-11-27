@@ -1,0 +1,246 @@
+{
+  "items": [
+    {
+      "id": "cmwyqc10j000ez47dk5sy9w66",
+      "productId": "cmwyqc10i000dz47d5b4aoq3f",
+      "variantId": null,
+      "name": "E2E Test Mop Pro",
+      "variant": null,
+      "sku": "E2E-1795768726005",
+      "productStatus": "ACTIVE",
+      "trackInventory": true,
+      "sellsWhenOut": false,
+      "imageUrl": "/placeholder-product.svg",
+      "location": null,
+      "quantity": 1,
+      "reserved": 1,
+      "available": 0,
+      "lowStockThreshold": 3,
+      "state": "out",
+      "movements": [
+        {
+          "id": "cmwyqc3y8001nz47darikj3ac",
+          "type": "SALE_RESERVATION",
+          "quantity": 1,
+          "reason": "Checkout reservation",
+          "createdAt": "2026-11-27T08:38:49.856Z"
+        },
+        {
+          "id": "cmwyqc2e20012z47dptws3am9",
+          "type": "SALE_FULFILLMENT",
+          "quantity": 1,
+          "reason": "Order fulfilled",
+          "createdAt": "2026-11-27T08:38:47.834Z"
+        },
+        {
+          "id": "cmwyqc1o8000oz47dxb29afwn",
+          "type": "SALE_RESERVATION",
+          "quantity": 1,
+          "reason": "Checkout reservation",
+          "createdAt": "2026-11-27T08:38:46.904Z"
+        },
+        {
+          "id": "cmwyqc1g5000mz47dwt85eaiy",
+          "type": "ADJUSTMENT",
+          "quantity": -5,
+          "reason": "Stock count correction",
+          "createdAt": "2026-11-27T08:38:46.613Z"
+        }
+      ]
+    },
+    {
+      "id": "cmwyqcmiu002ez47dmnnrusvu",
+      "productId": "cmwyqcmit002dz47dwtimm7wj",
+      "variantId": null,
+      "name": "E2E Test Mop Pro",
+      "variant": null,
+      "sku": "E2E-1795768753895",
+      "productStatus": "ACTIVE",
+      "trackInventory": true,
+      "sellsWhenOut": false,
+      "imageUrl": "/placeholder-product.svg",
+      "location": null,
+      "quantity": 3,
+      "reserved": 1,
+      "available": 2,
+      "lowStockThreshold": 3,
+      "state": "low",
+      "movements": [
+        {
+          "id": "cmwyqcnte003lz47d0jf5buoa",
+          "type": "ADJUSTMENT",
+          "quantity": -1,
+          "reason": "Stock count correction",
+          "createdAt": "2026-11-27T08:39:15.602Z"
+        },
+        {
+          "id": "cmwyqcnsj003jz47dqv2b8t78",
+          "type": "ADJUSTMENT",
+          "quantity": 3,
+          "reason": "Received stock",
+          "createdAt": "2026-11-27T08:39:15.571Z"
+        },
+        {
+          "id": "cmwyqcnqs003dz47du88ve42k",
+          "type": "SALE_RESERVATION",
+          "quantity": 1,
+          "reason": "Checkout reservation",
+          "createdAt": "2026-11-27T08:39:15.508Z"
+        },
+        {
+          "id": "cmwyqcn34002xz47drraev4tq",
+          "type": "SALE_FULFILLMENT",
+          "quantity": 1,
+          "reason": "Order fulfilled",
+          "createdAt": "2026-11-27T08:39:14.656Z"
+        },
+        {
+          "id": "cmwyqcmsj002oz47da21tdwfc",
+          "type": "SALE_RESERVATION",
+          "quantity": 1,
+          "reason": "Checkout reservation",
+          "createdAt": "2026-11-27T08:39:14.275Z"
+        }
+      ]
+    },
+    {
+      "id": "cmwyqdoxx004lz47dek1z4jjd",
+      "productId": "cmwyqdoxw004kz47djijg0s79",
+      "variantId": null,
+      "name": "E2E Test Mop Pro",
+      "variant": null,
+      "sku": "E2E-1795768803690",
+      "productStatus": "ACTIVE",
+      "trackInventory": true,
+      "sellsWhenOut": false,
+      "imageUrl": "/placeholder-product.svg",
+      "location": null,
+      "quantity": 3,
+      "reserved": 1,
+      "available": 2,
+      "lowStockThreshold": 3,
+      "state": "low",
+      "movements": [
+        {
+          "id": "cmwyqdpzx0062z47d2op7ke2v",
+          "type": "ADJUSTMENT",
+          "quantity": -1,
+          "reason": "Stock count correction",
+          "createdAt": "2026-11-27T08:40:05.085Z"
+        },
+        {
+          "id": "cmwyqdpz00060z47ds457055o",
+          "type": "ADJUSTMENT",
+          "quantity": 3,
+          "reason": "Received stock",
+          "createdAt": "2026-11-27T08:40:05.052Z"
+        },
+        {
+          "id": "cmwyqdpxq005uz47duunz4g3s",
+          "type": "SALE_RESERVATION",
+          "quantity": 1,
+          "reason": "Checkout reservation",
+          "createdAt": "2026-11-27T08:40:05.006Z"
+        },
+        {
+          "id": "cmwyqdpei0059z47dcxakj9sc",
+          "type": "SALE_FULFILLMENT",
+          "quantity": 1,
+          "reason": "Order fulfilled",
+          "createdAt": "2026-11-27T08:40:04.314Z"
+        },
+        {
+          "id": "cmwyqdp69004vz47dujknwm46",
+          "type": "SALE_RESERVATION",
+          "quantity": 1,
+          "reason": "Checkout reservation",
+          "createdAt": "2026-11-27T08:40:04.017Z"
+        }
+      ]
+    },
+    {
+      "id": "cmwyqglow000jej7dv9bssvrt",
+      "productId": "cmwyqglov000iej7dkjnw0x4i",
+      "variantId": null,
+      "name": "E2E Test Mop Pro",
+      "variant": null,
+      "sku": "E2E-1795768939438",
+      "productStatus": "ACTIVE",
+      "trackInventory": true,
+      "sellsWhenOut": false,
+      "imageUrl": "/placeholder-product.svg",
+      "location": null,
+      "quantity": 3,
+      "reserved": 1,
+      "available": 2,
+      "lowStockThreshold": 3,
+      "state": "low",
+      "movements": [
+        {
+          "id": "cmwyqgnz00020ej7dnw4r38bk",
+          "type": "ADJUSTMENT",
+          "quantity": -1,
+          "reason": "Stock count correction",
+          "createdAt": "2026-11-27T08:42:22.428Z"
+        },
+        {
+          "id": "cmwyqgny2001yej7djuqawvgx",
+          "type": "ADJUSTMENT",
+          "quantity": 3,
+          "reason": "Received stock",
+          "createdAt": "2026-11-27T08:42:22.394Z"
+        },
+        {
+          "id": "cmwyqgnvw001sej7dccxwx0fm",
+          "type": "SALE_RESERVATION",
+          "quantity": 1,
+          "reason": "Checkout reservation",
+          "createdAt": "2026-11-27T08:42:22.316Z"
+        },
+        {
+          "id": "cmwyqgmt70017ej7d2erfwcb8",
+          "type": "SALE_FULFILLMENT",
+          "quantity": 1,
+          "reason": "Order fulfilled",
+          "createdAt": "2026-11-27T08:42:20.923Z"
+        },
+        {
+          "id": "cmwyqgm3w000tej7dajliv1tq",
+          "type": "SALE_RESERVATION",
+          "quantity": 1,
+          "reason": "Checkout reservation",
+          "createdAt": "2026-11-27T08:42:20.012Z"
+        }
+      ]
+    },
+    {
+      "id": "cmwyqhov0002qej7d71ol0jj6",
+      "productId": "cmwyqhov0002pej7dblvc72ix",
+      "variantId": null,
+      "name": "E2E Test Mop Pro",
+      "variant": null,
+      "sku": "E2E-1795768990199",
+      "productStatus": "ACTIVE",
+      "trackInventory": true,
+      "sellsWhenOut": false,
+      "imageUrl": "/placeholder-product.svg",
+      "location": null,
+      "quantity": 7,
+      "reserved": 0,
+      "available": 7,
+      "lowStockThreshold": 3,
+      "state": "in",
+      "movements": []
+    }
+  ],
+  "page": 1,
+  "pageSize": 30,
+  "total": 5,
+  "pages": 1,
+  "summary": {
+    "total": 11,
+    "low": 3,
+    "out": 1,
+    "units": 157
+  }
+}

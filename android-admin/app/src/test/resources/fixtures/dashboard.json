@@ -1,0 +1,382 @@
+{
+  "currency": "USD",
+  "timezone": "Asia/Beirut",
+  "range": 30,
+  "generatedAt": "2026-11-27T08:43:11.271Z",
+  "revenue": {
+    "total": 13500,
+    "today": 13500,
+    "yesterday": 0,
+    "range": 13500,
+    "previousRange": 0,
+    "averageOrder": 1500
+  },
+  "orders": {
+    "total": 13,
+    "today": 9,
+    "range": 9,
+    "previousRange": 0,
+    "pending": 4,
+    "processing": 0,
+    "shipped": 0,
+    "completed": 5,
+    "cancelled": 4,
+    "refunded": 0,
+    "byStatus": {
+      "PENDING": 4,
+      "CONFIRMED": 0,
+      "PROCESSING": 0,
+      "SHIPPED": 0,
+      "DELIVERED": 5,
+      "CANCELLED": 4,
+      "REFUNDED": 0
+    }
+  },
+  "daily": [
+    {
+      "day": "2026-10-29",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-10-30",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-10-31",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-11-01",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-11-02",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-11-03",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-11-04",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-11-05",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-11-06",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-11-07",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-11-08",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-11-09",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-11-10",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-11-11",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-11-12",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-11-13",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-11-14",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-11-15",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-11-16",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-11-17",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-11-18",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-11-19",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-11-20",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-11-21",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-11-22",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-11-23",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-11-24",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-11-25",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-11-26",
+      "orders": 0,
+      "net": 0
+    },
+    {
+      "day": "2026-11-27",
+      "orders": 9,
+      "net": 13500
+    }
+  ],
+  "bestSellers": [
+    {
+      "productId": "cmwyqdoxw004kz47djijg0s79",
+      "name": "E2E Test Mop Pro",
+      "sku": "E2E-1795768803690",
+      "imageUrl": "/placeholder-product.svg",
+      "sold": 2,
+      "revenue": 3000
+    },
+    {
+      "productId": "cmwyqc10i000dz47d5b4aoq3f",
+      "name": "E2E Test Mop Pro",
+      "sku": "E2E-1795768726005",
+      "imageUrl": "/placeholder-product.svg",
+      "sold": 2,
+      "revenue": 3000
+    },
+    {
+      "productId": "cmwyqcmit002dz47dwtimm7wj",
+      "name": "E2E Test Mop Pro",
+      "sku": "E2E-1795768753895",
+      "imageUrl": "/placeholder-product.svg",
+      "sold": 2,
+      "revenue": 3000
+    },
+    {
+      "productId": "cmwyqglov000iej7dkjnw0x4i",
+      "name": "E2E Test Mop Pro",
+      "sku": "E2E-1795768939438",
+      "imageUrl": "/placeholder-product.svg",
+      "sold": 2,
+      "revenue": 3000
+    },
+    {
+      "productId": "cmwyqhov0002pej7dblvc72ix",
+      "name": "E2E Test Mop Pro",
+      "sku": "E2E-1795768990199",
+      "imageUrl": "/placeholder-product.svg",
+      "sold": 1,
+      "revenue": 1500
+    }
+  ],
+  "recentOrders": [
+    {
+      "id": "cmwyqhp7h0036ej7dhobf6moq",
+      "orderNumber": "1014",
+      "customer": "Sami Khoury",
+      "status": "CANCELLED",
+      "paymentStatus": "REFUNDED",
+      "paymentMethod": "BANK_TRANSFER",
+      "grandTotal": 19800,
+      "currency": "USD",
+      "itemCount": 1,
+      "createdAt": "2026-11-27T08:43:10.685Z"
+    },
+    {
+      "id": "cmwyqhp6e0031ej7dxruzu1ry",
+      "orderNumber": "1013",
+      "customer": "Rana Haddad",
+      "status": "DELIVERED",
+      "paymentStatus": "PAID",
+      "paymentMethod": "COD",
+      "grandTotal": 1500,
+      "currency": "USD",
+      "itemCount": 1,
+      "createdAt": "2026-11-27T08:43:10.646Z"
+    },
+    {
+      "id": "cmwyqgnvy001tej7dq0ym4c2m",
+      "orderNumber": "1012",
+      "customer": "Alert Test",
+      "status": "PENDING",
+      "paymentStatus": "UNPAID",
+      "paymentMethod": "COD",
+      "grandTotal": 1500,
+      "currency": "USD",
+      "itemCount": 1,
+      "createdAt": "2026-11-27T08:42:22.318Z"
+    },
+    {
+      "id": "cmwyqgm5b000zej7dgytn9zdh",
+      "orderNumber": "1011",
+      "customer": "Sami Khoury",
+      "status": "CANCELLED",
+      "paymentStatus": "REFUNDED",
+      "paymentMethod": "BANK_TRANSFER",
+      "grandTotal": 19800,
+      "currency": "USD",
+      "itemCount": 1,
+      "createdAt": "2026-11-27T08:42:20.063Z"
+    },
+    {
+      "id": "cmwyqgm3y000uej7d6q4qxuw6",
+      "orderNumber": "1010",
+      "customer": "Rana Haddad",
+      "status": "DELIVERED",
+      "paymentStatus": "PAID",
+      "paymentMethod": "COD",
+      "grandTotal": 1500,
+      "currency": "USD",
+      "itemCount": 1,
+      "createdAt": "2026-11-27T08:42:20.014Z"
+    },
+    {
+      "id": "cmwyqdpxs005vz47dcvtdkl16",
+      "orderNumber": "1009",
+      "customer": "Alert Test",
+      "status": "PENDING",
+      "paymentStatus": "UNPAID",
+      "paymentMethod": "COD",
+      "grandTotal": 1500,
+      "currency": "USD",
+      "itemCount": 1,
+      "createdAt": "2026-11-27T08:40:05.008Z"
+    },
+    {
+      "id": "cmwyqdp7k0051z47d7o1r77x4",
+      "orderNumber": "1008",
+      "customer": "Sami Khoury",
+      "status": "CANCELLED",
+      "paymentStatus": "REFUNDED",
+      "paymentMethod": "BANK_TRANSFER",
+      "grandTotal": 19800,
+      "currency": "USD",
+      "itemCount": 1,
+      "createdAt": "2026-11-27T08:40:04.064Z"
+    },
+    {
+      "id": "cmwyqdp6c004wz47drgmijucp",
+      "orderNumber": "1007",
+      "customer": "Rana Haddad",
+      "status": "DELIVERED",
+      "paymentStatus": "PAID",
+      "paymentMethod": "COD",
+      "grandTotal": 1500,
+      "currency": "USD",
+      "itemCount": 1,
+      "createdAt": "2026-11-27T08:40:04.020Z"
+    }
+  ],
+  "lowStock": {
+    "count": 5,
+    "outOfStock": 1,
+    "items": [
+      {
+        "inventoryId": "cmwyqc10j000ez47dk5sy9w66",
+        "productId": "cmwyqc10i000dz47d5b4aoq3f",
+        "name": "E2E Test Mop Pro",
+        "variant": null,
+        "available": 0,
+        "threshold": 3,
+        "imageUrl": "/placeholder-product.svg"
+      },
+      {
+        "inventoryId": "cmwyqhov0002qej7d71ol0jj6",
+        "productId": "cmwyqhov0002pej7dblvc72ix",
+        "name": "E2E Test Mop Pro",
+        "variant": null,
+        "available": 1,
+        "threshold": 3,
+        "imageUrl": "/placeholder-product.svg"
+      },
+      {
+        "inventoryId": "cmwyqcmiu002ez47dmnnrusvu",
+        "productId": "cmwyqcmit002dz47dwtimm7wj",
+        "name": "E2E Test Mop Pro",
+        "variant": null,
+        "available": 2,
+        "threshold": 3,
+        "imageUrl": "/placeholder-product.svg"
+      },
+      {
+        "inventoryId": "cmwyqdoxx004lz47dek1z4jjd",
+        "productId": "cmwyqdoxw004kz47djijg0s79",
+        "name": "E2E Test Mop Pro",
+        "variant": null,
+        "available": 2,
+        "threshold": 3,
+        "imageUrl": "/placeholder-product.svg"
+      },
+      {
+        "inventoryId": "cmwyqglow000jej7dv9bssvrt",
+        "productId": "cmwyqglov000iej7dkjnw0x4i",
+        "name": "E2E Test Mop Pro",
+        "variant": null,
+        "available": 2,
+        "threshold": 3,
+        "imageUrl": "/placeholder-product.svg"
+      }
+    ]
+  },
+  "attention": {
+    "pendingReviews": 0,
+    "paymentProofsWaiting": 0
+  }
+}

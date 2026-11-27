@@ -38,7 +38,7 @@ export async function mobileSessionToken(userId: string) {
 // Between the password and the code: says whose password was right, for 10 minutes. It is the
 // app's equivalent of the web's admin_2step cookie, and opens nothing but the code step.
 export async function mobileTwoStepTicket(userId: string) {
-  return new SignJWT({ sub: userId, type: MOBILE_TICKET_TYPE })
+  return new SignJWT({ sub: userId, type: MOBILE_TICKET_TYPE, ts: Date.now() })
     .setProtectedHeader({ alg: 'HS256' })
     .setAudience(MOBILE_AUDIENCE)
     .setIssuedAt()
@@ -47,11 +47,24 @@ export async function mobileTwoStepTicket(userId: string) {
 }
 
 export async function readMobileTwoStepTicket(ticket: unknown) {
+  return (await readMobileTwoStepClaims(ticket))?.sub ?? null
+}
+
+// The ticket's owner and when it was issued. The code step refuses a ticket issued before the account's
+// last sign-in, so each ticket starts at most one session (the web clears its ticket cookie instead).
+export async function readMobileTwoStepClaims(ticket: unknown) {
   if (typeof ticket !== 'string' || !ticket || ticket.length > 2048) return null
   try {
     const { payload } = await jwtVerify(ticket, secret(), { audience: MOBILE_AUDIENCE })
-    return payload.type === MOBILE_TICKET_TYPE && typeof payload.sub === 'string' ? payload.sub : null
+    // ts: when the ticket was issued, in milliseconds (iat is whole seconds, too coarse to tell a sign-in
+    // a moment later from one a moment earlier).
+    return payload.type === MOBILE_TICKET_TYPE && typeof payload.sub === 'string' && typeof payload.ts === 'number' ? { sub: payload.sub, issuedAtMs: payload.ts } : null
   } catch { return null }
+}
+
+// True when a sign-in happened after the ticket was issued: the ticket was used already.
+export function ticketSpent(issuedAtMs: number, lastLoginAt: Date | null | undefined) {
+  return !!lastLoginAt && lastLoginAt.getTime() > issuedAtMs
 }
 
 // The bearer token from an Authorization header, or null. Only a well-formed header is read.
