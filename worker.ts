@@ -77,6 +77,7 @@ async function liveChatSocket(request: Request, env: any): Promise<Response> {
   const headers = new Headers(request.headers)
   headers.set('x-live-role', ticket.role)
   headers.set('x-live-conversation', ticket.conversationId || '')
+  headers.set('x-live-user', ticket.userId || '')
   return namespace.get(namespace.idFromName('hub')).fetch(new Request('https://live-chat/socket', { headers }))
 }
 

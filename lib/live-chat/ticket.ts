@@ -3,8 +3,10 @@
 // their own chat (the chat cookie), staff with the AI assistant permission. No database or Next.js
 // code, so worker.ts can check it before anything else runs.
 
-export type LiveRole = 'staff' | 'shopper'
-export type LiveTicket = { role: LiveRole; conversationId: string | null; expires: number }
+// staff: Admin › Live chat (shopper chats). shopper: their own chat. team: one staff member in Team chat
+// (lib/team-chat), who receives only the team room and their own direct chats.
+export type LiveRole = 'staff' | 'shopper' | 'team'
+export type LiveTicket = { role: LiveRole; conversationId: string | null; userId?: string | null; expires: number }
 
 export const TICKET_TTL_MS = 10 * 60 * 1000
 
@@ -18,7 +20,7 @@ async function key(secret: string) {
 
 export async function signTicket(secret: string, ticket: Omit<LiveTicket, 'expires'>, now = Date.now()) {
   if (!secret) throw new Error('AUTH_SECRET is not set')
-  const body = b64url(encoder.encode(JSON.stringify({ r: ticket.role, c: ticket.conversationId, e: now + TICKET_TTL_MS })))
+  const body = b64url(encoder.encode(JSON.stringify({ r: ticket.role, c: ticket.conversationId, ...(ticket.userId ? { u: ticket.userId } : {}), e: now + TICKET_TTL_MS })))
   const sig = new Uint8Array(await crypto.subtle.sign('HMAC', await key(secret), encoder.encode(body)))
   return `${body}.${b64url(sig)}`
 }
@@ -30,11 +32,13 @@ export async function verifyTicket(secret: string, token: string | null | undefi
   try {
     const ok = await crypto.subtle.verify('HMAC', await key(secret), fromB64url(sig), encoder.encode(body))
     if (!ok) return null
-    const data = JSON.parse(new TextDecoder().decode(fromB64url(body))) as { r?: unknown; c?: unknown; e?: unknown }
-    if ((data.r !== 'staff' && data.r !== 'shopper') || typeof data.e !== 'number' || data.e < now) return null
+    const data = JSON.parse(new TextDecoder().decode(fromB64url(body))) as { r?: unknown; c?: unknown; u?: unknown; e?: unknown }
+    if ((data.r !== 'staff' && data.r !== 'shopper' && data.r !== 'team') || typeof data.e !== 'number' || data.e < now) return null
     const conversationId = typeof data.c === 'string' && /^[a-z0-9]{10,40}$/i.test(data.c) ? data.c : null
     if (data.r === 'shopper' && !conversationId) return null
-    return { role: data.r, conversationId, expires: data.e }
+    const userId = typeof data.u === 'string' && /^[a-z0-9]{10,40}$/i.test(data.u) ? data.u : null
+    if (data.r === 'team' && !userId) return null
+    return { role: data.r, conversationId, ...(userId ? { userId } : {}), expires: data.e }
   } catch {
     return null
   }

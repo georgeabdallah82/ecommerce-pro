@@ -1148,3 +1148,44 @@ model AssistantFaq {
 
   @@index([isActive, sortOrder])
 }
+
+// Team chat (Admin › Team chat, docs/team-chat-2026-11.md): the staff's own messages. One "team" room
+// everyone on the staff can read, and one direct chat per pair of staff members. Kept 90 days.
+model StaffChannel {
+  id            String               @id @default(cuid())
+  // "team", or "dm:<userId>:<userId>" (the two ids sorted) for a direct chat.
+  key           String               @unique
+  kind          String               @default("team")
+  lastMessageAt DateTime?
+  createdAt     DateTime             @default(now())
+  messages      StaffMessage[]
+  members       StaffChannelMember[]
+}
+
+model StaffMessage {
+  id         String       @id @default(cuid())
+  channelId  String
+  channel    StaffChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  authorId   String
+  authorName String
+  text       String
+  // Deleted by its author or the owner: the text is cleared and "Message deleted" shows.
+  deletedAt  DateTime?
+  createdAt  DateTime     @default(now())
+
+  @@index([channelId, createdAt])
+  @@index([createdAt])
+}
+
+// Each person's place in a channel: read up to when, and whether its phone notifications are muted.
+// Direct chats have a row for both people from the start; the team room gets one when someone opens it.
+model StaffChannelMember {
+  channelId  String
+  channel    StaffChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  userId     String
+  lastReadAt DateTime     @default(now())
+  muted      Boolean      @default(false)
+
+  @@id([channelId, userId])
+  @@index([userId])
+}

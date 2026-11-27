@@ -13,6 +13,8 @@ export type LiveEvent =
   | { type: 'message'; conversationId: string; message: { id: string; role: 'user' | 'assistant' | 'agent'; text: string; at: string; author?: string } }
   | { type: 'waiting'; conversationId: string; waiting: boolean }
   | { type: 'presence'; online: boolean; name: string }
+  // Team chat (lib/team-chat/server.ts): a new or deleted staff message in a channel.
+  | { type: 'team'; channelId: string; message: { id: string; authorId: string; authorName: string; text: string; at: string; deleted?: boolean } }
 
 type Socket = { send(data: string): void; close(code?: number, reason?: string): void }
 type State = {
@@ -43,13 +45,16 @@ export class LiveChatHub {
     if (request.headers.get('Upgrade') === 'websocket') {
       const role = request.headers.get('x-live-role')
       const conversationId = request.headers.get('x-live-conversation') || ''
-      if (role !== 'staff' && !(role === 'shopper' && conversationId)) return new Response('Forbidden', { status: 403 })
+      const userId = request.headers.get('x-live-user') || ''
+      if (role !== 'staff' && !(role === 'shopper' && conversationId) && !(role === 'team' && userId)) return new Response('Forbidden', { status: 403 })
       // @ts-ignore -- WebSocketPair is a Workers runtime global
       const pair = new WebSocketPair()
       const [client, server] = Object.values(pair) as [Socket, Socket]
-      this.state.acceptWebSocket(server, role === 'staff' ? ['staff'] : [`chat:${conversationId}`])
-      const presence = await this.presence()
-      server.send(JSON.stringify({ type: 'presence', online: presence.online, name: presence.name } satisfies LiveEvent))
+      this.state.acceptWebSocket(server, role === 'staff' ? ['staff'] : role === 'team' ? ['team', `user:${userId}`] : [`chat:${conversationId}`])
+      if (role !== 'team') {
+        const presence = await this.presence()
+        server.send(JSON.stringify({ type: 'presence', online: presence.online, name: presence.name } satisfies LiveEvent))
+      }
       // @ts-ignore -- the Workers Response takes the client end of the socket
       return new Response(null, { status: 101, webSocket: client })
     }
@@ -59,9 +64,22 @@ export class LiveChatHub {
       const online = body?.online === true
       const name = typeof body?.name === 'string' ? body.name.slice(0, 60) : ''
       await this.state.storage.put(PRESENCE_KEY, { online, name, since: online ? Date.now() : null })
-      // Everyone connected sees the switch at once (the shop's chat header, other staff devices).
-      this.send(this.state.getWebSockets(), { type: 'presence', online, name })
+      // Everyone in live chat sees the switch at once (the shop's chat header, other staff devices).
+      // (Team chat pages are left out: the switch is about shopper chats.)
+      const team = new Set(this.state.getWebSockets('team'))
+      this.send(this.state.getWebSockets().filter(ws => !team.has(ws)), { type: 'presence', online, name })
       return Response.json(await this.presence())
+    }
+    // Team chat: the team room to every staff member's Team chat page, a direct chat only to its two people.
+    if (url.pathname === '/team' && request.method === 'POST') {
+      const body = await request.json().catch(() => null) as { users?: unknown; event?: LiveEvent } | null
+      const event = body?.event
+      if (!event || event.type !== 'team') return new Response('Bad request', { status: 400 })
+      const sockets = Array.isArray(body?.users)
+        ? body.users.filter((id): id is string => typeof id === 'string').flatMap(id => this.state.getWebSockets(`user:${id}`))
+        : this.state.getWebSockets('team')
+      this.send(sockets, event)
+      return Response.json({ ok: true })
     }
     if (url.pathname === '/publish' && request.method === 'POST') {
       const body = await request.json().catch(() => null) as { to?: unknown; event?: LiveEvent } | null

@@ -51,3 +51,14 @@ export async function publish(to: 'shopper' | 'staff' | 'both', event: Extract<L
 }
 
 export const liveRelayAvailable = async () => (await hub()) !== null
+
+// Team chat (lib/team-chat/server.ts): to everyone on Team chat, or only to the listed staff members.
+export async function publishTeam(users: string[] | null, event: Extract<LiveEvent, { type: 'team' }>) {
+  const stub = await hub()
+  if (!stub) return
+  try {
+    await stub.fetch('https://live-chat/team', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ users, event }) })
+  } catch (error) {
+    console.error('[team-chat] relay failed', error instanceof Error ? error.message : error)
+  }
+}

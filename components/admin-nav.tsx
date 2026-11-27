@@ -13,7 +13,7 @@ import Link from '@/components/admin-link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Activity, ArrowLeftRight, FileStack, Newspaper, Route, ChevronDown, Rocket, Star, BarChart3, Boxes, ClipboardList, CreditCard, FileEdit, FileText, Gauge, Image as ImageIcon, Layers3, LayoutDashboard, LogOut, Mail, Megaphone, Menu, MessageSquare, PackageCheck, Palette, Percent, Radio, RotateCcw, Search, Settings2, ShoppingBag, MoreHorizontal, Store, Tag, Truck, UserCog, Users, UsersRound, Workflow, X, PackagePlus, MessageCircleQuestion, HeartHandshake, UserPlus, PackageSearch, ScanBarcode, Barcode, BadgeDollarSign, Contact, CalendarHeart, Sparkles, MessagesSquare, type LucideIcon, Gift, ChevronLeft, UserRound } from 'lucide-react'
+import { Activity, ArrowLeftRight, FileStack, Newspaper, Route, ChevronDown, Rocket, Star, BarChart3, Boxes, ClipboardList, CreditCard, FileEdit, FileText, Gauge, Image as ImageIcon, Layers3, LayoutDashboard, LogOut, Mail, Megaphone, Menu, MessageSquare, PackageCheck, Palette, Percent, Radio, RotateCcw, Search, Settings2, ShoppingBag, MoreHorizontal, Store, Tag, Truck, UserCog, Users, UsersRound, Workflow, X, PackagePlus, MessageCircleQuestion, HeartHandshake, UserPlus, PackageSearch, ScanBarcode, Barcode, BadgeDollarSign, Contact, CalendarHeart, Sparkles, MessagesSquare, MessageSquareText, type LucideIcon, Gift, ChevronLeft, UserRound } from 'lucide-react'
 import AdminThemeToggle from '@/components/admin-theme-toggle'
 import OrderAlerts from '@/components/order-alerts'
 import type { Permission } from '@/lib/permissions'
@@ -21,7 +21,8 @@ import styles from './admin-nav.module.css'
 
 // `more` items sit behind a "More" toggle under their group (rarely used pages); `alsoActive` lists
 // other addresses that count as this item (the pages of one tabbed section).
-export type AdminSidebarItem = { href: string; label: string; permission: Permission; icon: string; more?: boolean; alsoActive?: string[] }
+// permission 'staff': every staff member (Team chat).
+export type AdminSidebarItem = { href: string; label: string; permission: Permission | 'staff'; icon: string; more?: boolean; alsoActive?: string[] }
 export type AdminSidebarGroup = { id: string; label: string; moreLabel?: string; items: AdminSidebarItem[] }
 
 const iconMap: Record<string, LucideIcon> = {
@@ -34,7 +35,7 @@ const iconMap: Record<string, LucideIcon> = {
   draftOrders: ClipboardList, returns: RotateCcw,
   segments: UsersRound, giftCards: CreditCard,
   liveVisitors: Radio, notices: Megaphone, pushCampaigns: Megaphone, newsletter: Mail, bundles: PackagePlus,
-  questions: MessageCircleQuestion, winback: HeartHandshake, rewards: Gift, invites: UserPlus, influencers: Star, quantityDeals: Layers3, drivers: Truck, reorder: PackageSearch, stockCount: ScanBarcode, labels: Barcode, prices: BadgeDollarSign, suppliers: Contact, occasions: CalendarHeart, assistant: Sparkles, liveChat: MessagesSquare,
+  questions: MessageCircleQuestion, winback: HeartHandshake, rewards: Gift, invites: UserPlus, influencers: Star, quantityDeals: Layers3, drivers: Truck, reorder: PackageSearch, stockCount: ScanBarcode, labels: Barcode, prices: BadgeDollarSign, suppliers: Contact, occasions: CalendarHeart, assistant: Sparkles, liveChat: MessagesSquare, teamChat: MessageSquareText,
 }
 
 // Pinned pages, recent pages and open "More" sections are remembered in this browser only.
@@ -153,8 +154,8 @@ const TAB_HREFS = [
 ]
 
 export default function AdminNav({
-  groups, name, email, role, avatarUrl, vapidPublicKey, brand: storeBrand, ordersToFulfill = 0, banner, children,
-}: { groups: AdminSidebarGroup[]; name: string | null; email: string; role?: string; avatarUrl?: string | null; vapidPublicKey?: string; brand?: AdminBrand; ordersToFulfill?: number; banner?: React.ReactNode; children: React.ReactNode }) {
+  groups, name, email, role, avatarUrl, vapidPublicKey, brand: storeBrand, ordersToFulfill = 0, teamChatUnread = 0, banner, children,
+}: { groups: AdminSidebarGroup[]; name: string | null; email: string; role?: string; avatarUrl?: string | null; vapidPublicKey?: string; brand?: AdminBrand; ordersToFulfill?: number; teamChatUnread?: number; banner?: React.ReactNode; children: React.ReactNode }) {
   const pathname = usePathname()
   const [mounted, setMounted] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
@@ -281,6 +282,8 @@ export default function AdminNav({
   const allowedHrefs = new Set(allItems.map(item => item.href))
   const tabs = TAB_HREFS.filter(tab => allowedHrefs.has(tab.href))
   const badge = ordersToFulfill > 99 ? '99+' : ordersToFulfill > 0 ? String(ordersToFulfill) : ''
+  const chatBadge = teamChatUnread > 99 ? '99+' : teamChatUnread > 0 ? String(teamChatUnread) : ''
+  const badges = { '/admin/orders': badge, '/admin/team-chat': chatBadge }
   // Logo for the dark sidebar/drawer (the store's "dark background" logo), and for light surfaces.
   const darkLogo = storeBrand?.logoDarkUrl
     ? <img className={styles.logoImg} src={storeBrand.logoDarkUrl} alt={storeName} />
@@ -324,7 +327,7 @@ export default function AdminNav({
           <button type="button" className={styles.collapseBtn} onClick={toggleCollapsed} aria-expanded={!collapsed} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}><ChevronLeft size={14} aria-hidden="true" /></button>
           <Link href="/admin" className={styles.sidebarBrand} aria-label={`${storeName} admin home`}>{lightLogo}</Link>
           <nav className={styles.sidebarNav}>
-            <NavGroups groups={groups} pathname={pathname} badges={{ '/admin/orders': badge }} pinnedItems={pinnedItems} pinned={pinned} onTogglePin={togglePin} />
+            <NavGroups groups={groups} pathname={pathname} badges={badges} pinnedItems={pinnedItems} pinned={pinned} onTogglePin={togglePin} />
           </nav>
           <div className={styles.userCard}>
             <span className={styles.userAvatar}>{avatarUrl ? <img className={styles.avatarImg} src={avatarUrl} alt="" /> : initials}</span>
@@ -438,7 +441,7 @@ export default function AdminNav({
               <Search size={15} aria-hidden="true" /> Search admin…
             </button>
             <nav className={styles.mobileNav} aria-label="Admin sections">
-              <NavGroups groups={groups} pathname={pathname} onNavigate={() => setMobileOpen(false)} badges={{ '/admin/orders': badge }} pinnedItems={pinnedItems} pinned={pinned} onTogglePin={togglePin} />
+              <NavGroups groups={groups} pathname={pathname} onNavigate={() => setMobileOpen(false)} badges={badges} pinnedItems={pinnedItems} pinned={pinned} onTogglePin={togglePin} />
             </nav>
             <div className={styles.mobileFoot}>
               {role && <span className={styles.rolePill}>{role}</span>}
