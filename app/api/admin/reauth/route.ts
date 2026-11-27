@@ -46,9 +46,11 @@ export async function POST(request: Request) {
   if (password) await upgradePasswordHash(user.id, password, user.passwordHash)
 
   await clearDurableRateLimit(limitKey)
-  await setReauth(user.id)
+  const token = await setReauth(user.id)
   await audit(user.id, 'user.confirmed_sensitive_action', 'User', user.id, { seconds: REAUTH_SECONDS })
-  return NextResponse.json({ ok: true, seconds: REAUTH_SECONDS }, { headers })
+  // The Android admin app (signed in with a bearer token, no cookies) gets the confirmation to send back as X-Reauth.
+  const fromApp = /^Bearer\s/i.test(request.headers.get('authorization') || '') && !request.headers.get('cookie')?.includes('session=')
+  return NextResponse.json({ ok: true, seconds: REAUTH_SECONDS, ...(fromApp ? { token } : {}) }, { headers })
 }
 
 // The 2-step code or a backup code, checked as the sign-in step checks them (app/api/admin/login/code):

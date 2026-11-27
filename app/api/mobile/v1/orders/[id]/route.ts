@@ -5,6 +5,9 @@ import { routeError } from '@/lib/api-error'
 import { json } from '@/lib/utils'
 import { publicUserSelect } from '@/lib/user-public'
 import { customerName, nextStatuses, parseAddress } from '@/lib/mobile-orders'
+import { WHATSAPP_OUTCOMES, whatsappConfirmLink, whatsappPhoneProblem } from '@/lib/whatsapp-confirm'
+import { getStoreIdentity } from '@/lib/store-identity'
+import { money } from '@/lib/config'
 
 const noStore = { 'Cache-Control': 'private, no-store' }
 
@@ -32,6 +35,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     if (!order) return json({ error: 'Order not found' }, { status: 404, headers: noStore })
     const fulfillments = await db.fulfillment.findMany({ where: { orderId: order.id }, select: { id: true, status: true, trackingNumber: true, trackingCompany: true, trackingUrl: true, shippedAt: true, createdAt: true }, orderBy: { createdAt: 'desc' } })
     const canManage = hasPermission(user, 'orders.manage')
+    const store = await getStoreIdentity()
+    // The WhatsApp "please confirm your order" chat, with the message ready (lib/whatsapp-confirm.ts, as on the web).
+    const confirmOrder = { ...order, items: order.items.map(item => ({ name: item.name, quantity: item.quantity, variant: item.variant })) }
+    const whatsappLink = whatsappConfirmLink(confirmOrder, store.name, store.country, money) || null
+    const refunded = order.paymentTransactions.filter(t => t.status === 'refunded' || t.status === 'partially_refunded').reduce((sum, t) => sum + t.amount, 0)
     const shipping = parseAddress(order.shippingAddressJson)
     return json({
       order: {
@@ -56,6 +64,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         canRefund: hasPermission(user, 'orders.refund'),
         nextStatuses: canManage ? nextStatuses(order.status) : [],
         canMarkPaid: canManage && (order.paymentStatus === 'UNPAID' || order.paymentStatus === 'PENDING' || order.paymentStatus === 'FAILED'),
+        canReturn: hasPermission(user, 'returns.manage') && ['SHIPPED', 'DELIVERED'].includes(order.status),
+        refundable: ['PAID', 'PARTIALLY_REFUNDED'].includes(order.paymentStatus) && order.status !== 'CANCELLED' ? Math.max(0, order.grandTotal - refunded) : 0,
+        refundPending: order.paymentTransactions.some(t => t.status === 'refund_pending'),
+        canAssignDriver: canManage && ['CONFIRMED', 'PROCESSING', 'SHIPPED'].includes(order.status),
+      },
+      whatsapp: {
+        link: whatsappLink,
+        problem: whatsappLink ? null : whatsappPhoneProblem(order, store.country) || null,
+        outcomes: Object.entries(WHATSAPP_OUTCOMES).map(([id, label]) => ({ id, label })),
       },
     }, { headers: noStore })
   } catch (error) { return routeError(error, 'Unable to load the order', 400, noStore) }

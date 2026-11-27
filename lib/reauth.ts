@@ -1,5 +1,5 @@
 import { SignJWT, jwtVerify } from 'jose'
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 
 // A recent confirmation by the signed-in person: their password, or a code from their 2-step app.
 // Refunds, role changes and removing a staff member need one from the last few minutes (see
@@ -18,7 +18,13 @@ export async function setReauth(userId: string) {
   const token = await new SignJWT({ sub: userId, type: 'reauth' })
     .setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime(`${REAUTH_SECONDS}s`).sign(secret())
   ;(await cookies()).set(REAUTH_COOKIE, token, { ...cookieOptions, maxAge: REAUTH_SECONDS })
+  // The Android admin app has no cookies: app/api/admin/reauth hands it this same token, which it sends
+  // back as the X-Reauth header (read below only when there is no cookie).
+  return token
 }
+
+// The Android admin app's confirmation, sent as a header because the app keeps no cookies.
+export const REAUTH_HEADER = 'x-reauth'
 
 // True when the token was issued for this account and has not expired. Kept apart from the cookie
 // read, so it can be tested on its own.
@@ -27,7 +33,7 @@ export function isFreshReauth(payload: { sub?: unknown; type?: unknown; exp?: un
 }
 
 export async function hasRecentReauth(userId: string) {
-  const token = (await cookies()).get(REAUTH_COOKIE)?.value
+  const token = (await cookies()).get(REAUTH_COOKIE)?.value || (await headers()).get(REAUTH_HEADER)?.trim().slice(0, 2048)
   if (!token) return false
   try {
     const { payload } = await jwtVerify(token, secret())

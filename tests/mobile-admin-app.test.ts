@@ -177,3 +177,26 @@ describe('one session per 2-step ticket', () => {
     assert.match(read('app/api/mobile/v1/auth/code/route.ts'), /if \(ticketSpent\(ticket\.issuedAtMs, user\.lastLoginAt\)\) return restart\(\)/)
   })
 })
+
+describe('app additions (v1.1)', () => {
+  test('re-authentication: the cookie first, the app header only without it', () => {
+    const reauth = read('lib/reauth.ts')
+    assert.match(reauth, /\(await cookies\(\)\)\.get\(REAUTH_COOKIE\)\?\.value \|\| \(await headers\(\)\)\.get\(REAUTH_HEADER\)/)
+    const route = read('app/api/admin/reauth/route.ts')
+    assert.match(route, /\.\.\.\(fromApp \? \{ token \} : \{\}\)/, 'only the app gets the token in the answer')
+    assert.match(route, /const token = await setReauth\(user\.id\)/)
+  })
+  test('new app endpoints check the signed-in person and are private', () => {
+    for (const [route, perm] of [['drivers', 'orders.view'], ['questions', 'reviews.view'], ['reviews', 'reviews.view'], ['unfinished', 'abandonedCheckouts.view']]) {
+      const src = read(`app/api/mobile/v1/${route}/route.ts`)
+      assert.match(src, new RegExp(`await requirePermission\\('${perm.replace('.', '\\.')}'\\)`), route)
+      assert.match(src, /'Cache-Control': 'private, no-store'/, route)
+    }
+    assert.doesNotMatch(read('app/api/mobile/v1/drivers/route.ts'), /token/, 'the driver\'s private link is never sent to the app')
+  })
+  test('the order gives the same WhatsApp confirm message as the web and what is left to refund', () => {
+    const order = read('app/api/mobile/v1/orders/[id]/route.ts')
+    assert.match(order, /whatsappConfirmLink\(confirmOrder, store\.name, store\.country, money\)/)
+    assert.match(order, /refundable: \['PAID', 'PARTIALLY_REFUNDED'\]\.includes\(order\.paymentStatus\)/)
+  })
+})
