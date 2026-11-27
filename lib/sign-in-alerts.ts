@@ -64,21 +64,35 @@ export async function recordSignIn(headers: Header, user: Person) {
     const existing = store.get(DEVICE_COOKIE)?.value
     const cookie = isDeviceCookie(existing) ? existing : newDeviceCookie()
     store.set(DEVICE_COOKIE, cookie, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: DEVICE_COOKIE_MAX_AGE })
-    const place = requestPlace(headers)
-    const id = await hashDevice(cookie, user.id)
-    const key = devicesKey(user.id)
-    const row = await db.setting.findUnique({ where: { key } })
-    const before = parseDevices(row?.value)
-    const at = new Date()
-    const { devices, isNew } = touchDevice(before, { id, label: place.device, country: place.country }, at)
-    const value = JSON.stringify(devices)
-    await db.setting.upsert({ where: { key }, update: { value }, create: { key, value } })
-    await audit(user.id, isNew ? 'admin.sign_in.new_device' : 'admin.sign_in', 'User', user.id, { device: place.device, country: place.country, ip: place.ip })
-    if (isNew) {
-      const alert: SecurityAlert = { kind: 'new_device', who: user.name ? `${user.name} (${user.email})` : user.email, device: place.device, country: place.country ? countryName(place.country) : '', ip: place.ip, at, firstSignIn: before.length === 0 }
-      runInBackground(notify(alert, user))
-    }
+    await rememberDevice(headers, user, cookie)
   } catch (error) { console.error('[security] could not record the sign-in', error) }
+}
+
+// A staff member signed in on the Android admin app (app/api/mobile/v1/auth/code). The app's own install id stands in
+// for the browser cookie, so the phone is one known device and a new phone tells the owner, the same as a new browser.
+export async function recordAppSignIn(headers: Header, user: Person, installId: string) {
+  try {
+    if (!isDeviceCookie(installId)) return
+    await rememberDevice(headers, user, installId, 'Android app')
+  } catch (error) { console.error('[security] could not record the app sign-in', error) }
+}
+
+async function rememberDevice(headers: Header, user: Person, cookie: string, labelPrefix = '') {
+  const found = requestPlace(headers)
+  const place = labelPrefix ? { ...found, device: `${labelPrefix}${found.device ? ` (${found.device})` : ''}` } : found
+  const id = await hashDevice(cookie, user.id)
+  const key = devicesKey(user.id)
+  const row = await db.setting.findUnique({ where: { key } })
+  const before = parseDevices(row?.value)
+  const at = new Date()
+  const { devices, isNew } = touchDevice(before, { id, label: place.device, country: place.country }, at)
+  const value = JSON.stringify(devices)
+  await db.setting.upsert({ where: { key }, update: { value }, create: { key, value } })
+  await audit(user.id, isNew ? 'admin.sign_in.new_device' : 'admin.sign_in', 'User', user.id, { device: place.device, country: place.country, ip: place.ip })
+  if (isNew) {
+    const alert: SecurityAlert = { kind: 'new_device', who: user.name ? `${user.name} (${user.email})` : user.email, device: place.device, country: place.country ? countryName(place.country) : '', ip: place.ip, at, firstSignIn: before.length === 0 }
+    runInBackground(notify(alert, user))
+  }
 }
 
 // An account was locked: 8 wrong passwords, or 6 wrong 2-step codes after the right password.

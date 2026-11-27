@@ -155,7 +155,9 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const response = applySecurityHeaders(NextResponse.next({ request: { headers: withNonce(new Headers(request.headers)) } }), { framedBySameSite: isThemePreview, camera: CAMERA_PATHS.has(pathname) })
   response.headers.set('Content-Security-Policy', csp)
 
-  if (isApi && hasSession) {
+  // The Android admin app signs its requests with a bearer token instead of the cookie (lib/mobile-auth.ts):
+  // its answers are private too. No browser sends that header by itself, so it needs no same-origin check.
+  if (isApi && (hasSession || request.headers.has('authorization'))) {
     response.headers.set('Cache-Control', 'private, no-store')
   }
 

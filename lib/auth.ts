@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { SignJWT, jwtVerify } from 'jose'
 import bcrypt from 'bcryptjs'
 import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto'
@@ -10,6 +10,7 @@ import { isSessionRevoked } from '@/lib/session-revocation'
 import { staffSessionEnded } from '@/lib/session-limits'
 import { hasRecentReauth } from '@/lib/reauth'
 import { userError } from '@/lib/user-error'
+import { bearerToken, readMobileSession } from '@/lib/mobile-auth'
 
 function getSecret() {
   const rawSecret = process.env.AUTH_SECRET
@@ -87,14 +88,27 @@ export async function clearSession() {
   store.set('session', '', { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 0 })
 }
 
-export async function getCurrentUser() {
+// Who is asking: the browser's session cookie, or else the Android admin app's bearer token
+// (lib/mobile-auth.ts). The app's token is staff-only; every other rule below applies to both.
+async function readSessionClaims(): Promise<{ sub: string; iat: number; app: boolean } | null> {
   const token = (await cookies()).get('session')?.value
-  if (!token) return null
-  try {
+  if (token) {
     const { payload } = await jwtVerify(token, getSecret())
     if (!payload.sub || payload.type !== 'session' || typeof payload.iat !== 'number') return null
+    return { sub: payload.sub, iat: payload.iat, app: false }
+  }
+  const app = await readMobileSession(bearerToken((await headers()).get('authorization')))
+  return app ? { sub: app.sub, iat: app.iat, app: true } : null
+}
+
+export async function getCurrentUser() {
+  try {
+    const payload = await readSessionClaims()
+    if (!payload) return null
     const user = await db.user.findUnique({ where: { id: payload.sub } })
     if (!user || !user.isActive) return null
+    // The app is for staff only: a customer account never gets in with an app token.
+    if (payload.app && user.role === 'CUSTOMER') return null
     // Staff must have 2-step login on (app/api/admin/login/enroll). A session from before it was required is not enough.
     if (user.role !== 'CUSTOMER' && !user.totpEnabledAt) return null
 
