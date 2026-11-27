@@ -16,7 +16,8 @@ export function MonthlyBars({ bars, label }: { bars: { label: string; value: num
   const slot = (W - PAD.left - PAD.right) / Math.max(1, bars.length)
   const plotH = H - PAD.top - PAD.bottom
   const y = (v: number) => PAD.top + (1 - v / max) * plotH
-  const ticks = [0, 0.25, 0.5, 0.75, 1].map(f => Math.round(max * f))
+  // Whole-number steps can repeat on a small scale (max 3: 0, 1, 2, 2, 3); each line and label is drawn once.
+  const ticks = [...new Set([0, 0.25, 0.5, 0.75, 1].map(f => Math.round(max * f)))]
   return <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label} className={s.chart}>
     {ticks.map(t => <g key={t}>
       <line x1={PAD.left} x2={W - PAD.right} y1={y(t)} y2={y(t)} className={s.grid} />

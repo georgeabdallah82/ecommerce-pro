@@ -272,6 +272,7 @@ export default function AdminNav({
   )
 
   const storeName = storeBrand?.name || 'Control Center'
+  const storeInitials = storeName.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || 'S'
   // The sidebar collapses to an icon rail. The choice is remembered in this browser.
   const [collapsed, setCollapsed] = useState(false)
   useEffect(() => { try { setCollapsed(window.localStorage.getItem('admin.sidebar') === 'collapsed') } catch {} }, [])
@@ -325,7 +326,11 @@ export default function AdminNav({
       <div className={styles.shell}>
         <aside className={`${styles.sidebar}${collapsed ? ` ${styles.sidebarCollapsed}` : ''}`} aria-label="Admin sections">
           <button type="button" className={styles.collapseBtn} onClick={toggleCollapsed} aria-expanded={!collapsed} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}><ChevronLeft size={14} aria-hidden="true" /></button>
-          <Link href="/admin" className={styles.sidebarBrand} aria-label={`${storeName} admin home`}>{lightLogo}</Link>
+          <Link href="/admin" className={styles.sidebarBrand} aria-label={`${storeName} admin home`}>
+            <span className={styles.brandFull}>{lightLogo}</span>
+            {/* In the icon rail: the store's square icon (Theme › favicon), or its initials; a wide logo shrunk to 34 px was unreadable. */}
+            <span className={styles.brandMark} aria-hidden="true">{storeBrand?.iconUrl ? <img src={storeBrand.iconUrl} alt="" /> : storeInitials}</span>
+          </Link>
           <nav className={styles.sidebarNav}>
             <NavGroups groups={groups} pathname={pathname} badges={badges} pinnedItems={pinnedItems} pinned={pinned} onTogglePin={togglePin} />
           </nav>
